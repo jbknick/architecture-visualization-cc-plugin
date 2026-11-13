@@ -27,12 +27,12 @@ Step 6, real Claude-made commit: in a scratch repo, install a pre-commit hook th
 
 ## Versions (step 1)
 
-| Item | Value |
-| --- | --- |
-| `claude --version` | 2.1.321 (Claude Code) |
+| Item                 | Value                                                                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `claude --version`   | 2.1.321 (Claude Code)                                                                                                            |
 | `claude auth status` | `loggedIn: false`, `authMethod: none`, `apiProvider: firstParty` (run from the agent's sandbox; the operator's state may differ) |
-| Node / pnpm | Node 22+, pnpm 10.31 (repo toolchain) |
-| Binary location | Not on `PATH`. It was found via `$CLAUDE_CODE_EXECPATH` (the Claude desktop app bundles it). |
+| Node / pnpm          | Node 22+, pnpm 10.31 (repo toolchain)                                                                                            |
+| Binary location      | Not on `PATH`. It was found via `$CLAUDE_CODE_EXECPATH` (the Claude desktop app bundles it).                                     |
 
 ## Working command line
 
@@ -50,16 +50,16 @@ Whether this returns `structured_output`: **pending operator**.
 
 Measured with the `system/init` event of `--output-format stream-json --verbose` in a scratch directory that has a project `.mcp.json` (stub MCP server), a `CLAUDE.md` and a project skill. This part needs no login. "Live" columns need one.
 
-| Variant | CLI parse | tools loaded | MCP servers loaded | skills / slash cmds | structured_output | live outcomes |
-| --- | --- | --- | --- | --- | --- | --- |
-| full recipe | accepted | 1 (`StructuredOutput`) | none | 19 / 52 | pending operator | pending operator |
-| drop `--safe-mode` | accepted | 1 | none | 20 / 53 | pending operator | pending operator |
-| drop `--strict-mcp-config` | accepted | 1 | none | 19 / 52 | pending operator | pending operator |
-| drop `--json-schema` | accepted | 0 | none | 19 / 52 | pending operator (expected: absent) | pending operator |
-| drop `--safe-mode` and `--strict-mcp-config` | accepted | 1 | **spike-stub** (project MCP loaded) | 20 / 53 | pending operator | pending operator |
-| drop `--tools ''` | accepted | 27 | none | 19 / 52 | pending operator | pending operator |
-| drop `--disallowedTools` | accepted | 1 | none | 19 / 52 | pending operator | pending operator |
-| drop `--no-session-persistence` | accepted | 1 | none | 19 / 52 | pending operator | pending operator |
+| Variant                                      | CLI parse | tools loaded           | MCP servers loaded                  | skills / slash cmds | structured_output                   | live outcomes    |
+| -------------------------------------------- | --------- | ---------------------- | ----------------------------------- | ------------------- | ----------------------------------- | ---------------- |
+| full recipe                                  | accepted  | 1 (`StructuredOutput`) | none                                | 19 / 52             | pending operator                    | pending operator |
+| drop `--safe-mode`                           | accepted  | 1                      | none                                | 20 / 53             | pending operator                    | pending operator |
+| drop `--strict-mcp-config`                   | accepted  | 1                      | none                                | 19 / 52             | pending operator                    | pending operator |
+| drop `--json-schema`                         | accepted  | 0                      | none                                | 19 / 52             | pending operator (expected: absent) | pending operator |
+| drop `--safe-mode` and `--strict-mcp-config` | accepted  | 1                      | **spike-stub** (project MCP loaded) | 20 / 53             | pending operator                    | pending operator |
+| drop `--tools ''`                            | accepted  | 27                     | none                                | 19 / 52             | pending operator                    | pending operator |
+| drop `--disallowedTools`                     | accepted  | 1                      | none                                | 19 / 52             | pending operator                    | pending operator |
+| drop `--no-session-persistence`              | accepted  | 1                      | none                                | 19 / 52             | pending operator                    | pending operator |
 
 Observed:
 
@@ -75,11 +75,11 @@ Observed:
 
 Scratch git repo with a stub hook that exits at once when `GANTRY_WORKER=1`, otherwise appends to a log. The stub is registered as a Claude Code `SessionStart` hook (project `.claude/settings.json`) and called from a git `pre-commit` hook, which then runs the worker. The commit itself runs without the guard, as in a Claude-made commit. Counts exclude the outer pre-commit call.
 
-| Worker invocation (inside git pre-commit) | worker-side hook runs that did work | worker-side guard exits |
-| --- | --- | --- |
-| no guard, no `--safe-mode` (positive control) | 1 | 0 |
-| `GANTRY_WORKER=1`, no `--safe-mode` | 0 | 1 |
-| `GANTRY_WORKER=1`, `--safe-mode` | 0 | 0 |
+| Worker invocation (inside git pre-commit)     | worker-side hook runs that did work | worker-side guard exits |
+| --------------------------------------------- | ----------------------------------- | ----------------------- |
+| no guard, no `--safe-mode` (positive control) | 1                                   | 0                       |
+| `GANTRY_WORKER=1`, no `--safe-mode`           | 0                                   | 1                       |
+| `GANTRY_WORKER=1`, `--safe-mode`              | 0                                   | 0                       |
 
 Findings: `claude -p` fires `SessionStart` hooks even before auth succeeds, so a worker without `--safe-mode` would re-enter Gantry hooks; `GANTRY_WORKER=1` stops that. With `--safe-mode`, project hooks do not run at all. The guard is therefore a second line of defence. A real Claude-made commit: **pending operator**.
 
@@ -87,11 +87,11 @@ Findings: `claude -p` fires `SessionStart` hooks even before auth succeeds, so a
 
 All **pending operator** (`--timing`).
 
-| Measure | Result |
-| --- | --- |
-| Cold start, 5 runs (n=1) | pending operator |
-| Median cold start | pending operator |
-| Wall time, 1 fact sheet | pending operator |
+| Measure                   | Result           |
+| ------------------------- | ---------------- |
+| Cold start, 5 runs (n=1)  | pending operator |
+| Median cold start         | pending operator |
+| Wall time, 1 fact sheet   | pending operator |
 | Wall time, 10 fact sheets | pending operator |
 | Wall time, 40 fact sheets | pending operator |
 
@@ -100,10 +100,10 @@ All **pending operator** (`--timing`).
 **Pending operator** (`--n 10` and `--timing` print `usage.input_tokens`, `output_tokens`, cache tokens and per-function values).
 
 | Fact sheets | input_tokens | output_tokens | output per function | all input per function |
-| --- | --- | --- | --- | --- |
-| 1 | pending | pending | pending | pending |
-| 10 | pending | pending | pending | pending |
-| 40 | pending | pending | pending | pending |
+| ----------- | ------------ | ------------- | ------------------- | ---------------------- |
+| 1           | pending      | pending       | pending             | pending                |
+| 10          | pending      | pending       | pending             | pending                |
+| 40          | pending      | pending       | pending             | pending                |
 
 ## Effort override (step 7)
 
