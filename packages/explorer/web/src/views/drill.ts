@@ -23,20 +23,4 @@ export function drillPatch(view: string, node: GraphNode): Partial<Route> | null
   return null;
 }
 
-/** Colours for workspace dots in the filter panel; stable per workspace id. */
-const WORKSPACE_COLORS = [
-  "#2f6fdb",
-  "#c2570c",
-  "#1f7a3d",
-  "#b43fd0",
-  "#a8261f",
-  "#0d8f7a",
-  "#7a5c1e",
-  "#4f46c8",
-];
-
-export function workspaceColor(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return WORKSPACE_COLORS[h % WORKSPACE_COLORS.length] as string;
-}
+export { workspaceColor } from "../workspacePalette.ts";

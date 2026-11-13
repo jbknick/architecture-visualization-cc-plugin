@@ -1,0 +1,1011 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`map-3d view > snapshot at level=dirs 1`] = `
+"{
+  "nodes": [
+    {
+      "id": "dir:ws:@acme/api:src",
+      "kind": "dir",
+      "label": "src",
+      "parent": "ws:@acme/api",
+      "size": 0,
+      "path": "apps/api/src",
+      "stats": {
+        "files": 3,
+        "functions": 0
+      },
+      "badges": [
+        "3 files",
+        "0 functions"
+      ]
+    },
+    {
+      "id": "dir:ws:@acme/db:src",
+      "kind": "dir",
+      "label": "src",
+      "parent": "ws:@acme/db",
+      "size": 3,
+      "path": "packages/db/src",
+      "stats": {
+        "files": 3,
+        "functions": 3
+      },
+      "badges": [
+        "3 files",
+        "3 functions"
+      ]
+    },
+    {
+      "id": "dir:ws:@acme/ui:src",
+      "kind": "dir",
+      "label": "src",
+      "parent": "ws:@acme/ui",
+      "size": 2,
+      "path": "packages/ui/src",
+      "stats": {
+        "files": 4,
+        "functions": 2
+      },
+      "badges": [
+        "4 files",
+        "2 functions"
+      ]
+    },
+    {
+      "id": "dir:ws:@acme/utils:src",
+      "kind": "dir",
+      "label": "src",
+      "parent": "ws:@acme/utils",
+      "size": 3,
+      "path": "packages/utils/src",
+      "stats": {
+        "files": 4,
+        "functions": 3
+      },
+      "badges": [
+        "4 files",
+        "3 functions"
+      ]
+    },
+    {
+      "id": "dir:ws:@acme/web:src/components",
+      "kind": "dir",
+      "label": "src/components",
+      "parent": "ws:@acme/web",
+      "size": 2,
+      "path": "apps/web/src/components",
+      "stats": {
+        "files": 2,
+        "functions": 2
+      },
+      "badges": [
+        "2 files",
+        "2 functions"
+      ]
+    },
+    {
+      "id": "dir:ws:@acme/web:src/hooks",
+      "kind": "dir",
+      "label": "src/hooks",
+      "parent": "ws:@acme/web",
+      "size": 1,
+      "path": "apps/web/src/hooks",
+      "stats": {
+        "files": 1,
+        "functions": 1
+      },
+      "badges": [
+        "1 files",
+        "1 functions"
+      ]
+    },
+    {
+      "id": "dir:ws:@acme/web:src/lib",
+      "kind": "dir",
+      "label": "src/lib",
+      "parent": "ws:@acme/web",
+      "size": 1,
+      "path": "apps/web/src/lib",
+      "stats": {
+        "files": 1,
+        "functions": 1
+      },
+      "badges": [
+        "1 files",
+        "1 functions"
+      ]
+    },
+    {
+      "id": "dir:ws:@acme/web:src/routes",
+      "kind": "dir",
+      "label": "src/routes",
+      "parent": "ws:@acme/web",
+      "size": 4,
+      "path": "apps/web/src/routes",
+      "stats": {
+        "files": 4,
+        "functions": 4
+      },
+      "badges": [
+        "4 files",
+        "4 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/api",
+      "kind": "workspace",
+      "label": "@acme/api",
+      "size": 0,
+      "path": "apps/api",
+      "stats": {
+        "files": 3,
+        "functions": 0
+      },
+      "badges": [
+        "app",
+        "3 files",
+        "0 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/db",
+      "kind": "workspace",
+      "label": "@acme/db",
+      "size": 3,
+      "path": "packages/db",
+      "stats": {
+        "files": 3,
+        "functions": 3
+      },
+      "badges": [
+        "package",
+        "3 files",
+        "3 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/ui",
+      "kind": "workspace",
+      "label": "@acme/ui",
+      "size": 2,
+      "path": "packages/ui",
+      "stats": {
+        "files": 4,
+        "functions": 2
+      },
+      "badges": [
+        "package",
+        "4 files",
+        "2 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/utils",
+      "kind": "workspace",
+      "label": "@acme/utils",
+      "size": 3,
+      "path": "packages/utils",
+      "stats": {
+        "files": 4,
+        "functions": 3
+      },
+      "badges": [
+        "package",
+        "4 files",
+        "3 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/web",
+      "kind": "workspace",
+      "label": "@acme/web",
+      "size": 8,
+      "path": "apps/web",
+      "stats": {
+        "files": 8,
+        "functions": 8
+      },
+      "badges": [
+        "app",
+        "8 files",
+        "8 functions"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "dir:ws:@acme/api:src|imports|dir:ws:@acme/db:src",
+      "src": "dir:ws:@acme/api:src",
+      "dst": "dir:ws:@acme/db:src",
+      "kind": "imports",
+      "weight": 4,
+      "confidence": "high"
+    },
+    {
+      "id": "dir:ws:@acme/web:src/components|imports|dir:ws:@acme/web:src/hooks",
+      "src": "dir:ws:@acme/web:src/components",
+      "dst": "dir:ws:@acme/web:src/hooks",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "dir:ws:@acme/web:src/components|imports|dir:ws:@acme/web:src/lib",
+      "src": "dir:ws:@acme/web:src/components",
+      "dst": "dir:ws:@acme/web:src/lib",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "dir:ws:@acme/web:src/routes|imports|dir:ws:@acme/db:src",
+      "src": "dir:ws:@acme/web:src/routes",
+      "dst": "dir:ws:@acme/db:src",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "dir:ws:@acme/web:src/routes|imports|dir:ws:@acme/ui:src",
+      "src": "dir:ws:@acme/web:src/routes",
+      "dst": "dir:ws:@acme/ui:src",
+      "kind": "imports",
+      "weight": 2,
+      "confidence": "high"
+    },
+    {
+      "id": "dir:ws:@acme/web:src/routes|imports|dir:ws:@acme/utils:src",
+      "src": "dir:ws:@acme/web:src/routes",
+      "dst": "dir:ws:@acme/utils:src",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "dir:ws:@acme/web:src/routes|imports|dir:ws:@acme/web:src/components",
+      "src": "dir:ws:@acme/web:src/routes",
+      "dst": "dir:ws:@acme/web:src/components",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "ws:@acme/api|depends_on|ws:@acme/db",
+      "src": "ws:@acme/api",
+      "dst": "ws:@acme/db",
+      "kind": "depends_on",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "ws:@acme/web|depends_on|ws:@acme/ui",
+      "src": "ws:@acme/web",
+      "dst": "ws:@acme/ui",
+      "kind": "depends_on",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "ws:@acme/web|depends_on|ws:@acme/utils",
+      "src": "ws:@acme/web",
+      "dst": "ws:@acme/utils",
+      "kind": "depends_on",
+      "weight": 1,
+      "confidence": "high"
+    }
+  ],
+  "layoutHint": "force-3d"
+}"
+`;
+
+exports[`map-3d view > snapshot at level=files 1`] = `
+"{
+  "nodes": [
+    {
+      "id": "file:apps/api/src/app.ts",
+      "kind": "file",
+      "label": "app.ts",
+      "parent": "ws:@acme/api",
+      "size": 0,
+      "path": "apps/api/src/app.ts",
+      "stats": {
+        "functions": 0
+      },
+      "badges": [
+        "0 functions"
+      ]
+    },
+    {
+      "id": "file:apps/api/src/index.ts",
+      "kind": "file",
+      "label": "index.ts",
+      "parent": "ws:@acme/api",
+      "size": 0,
+      "path": "apps/api/src/index.ts",
+      "stats": {
+        "functions": 0
+      },
+      "badges": [
+        "0 functions"
+      ]
+    },
+    {
+      "id": "file:apps/api/src/router.ts",
+      "kind": "file",
+      "label": "router.ts",
+      "parent": "ws:@acme/api",
+      "size": 0,
+      "path": "apps/api/src/router.ts",
+      "stats": {
+        "functions": 0
+      },
+      "badges": [
+        "0 functions"
+      ]
+    },
+    {
+      "id": "file:apps/web/src/components/Header.tsx",
+      "kind": "file",
+      "label": "Header.tsx",
+      "parent": "ws:@acme/web",
+      "size": 1,
+      "path": "apps/web/src/components/Header.tsx",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "file:apps/web/src/components/PostList.tsx",
+      "kind": "file",
+      "label": "PostList.tsx",
+      "parent": "ws:@acme/web",
+      "size": 1,
+      "path": "apps/web/src/components/PostList.tsx",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "file:apps/web/src/hooks/useDebounce.ts",
+      "kind": "file",
+      "label": "useDebounce.ts",
+      "parent": "ws:@acme/web",
+      "size": 1,
+      "path": "apps/web/src/hooks/useDebounce.ts",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "file:apps/web/src/lib/slug.ts",
+      "kind": "file",
+      "label": "slug.ts",
+      "parent": "ws:@acme/web",
+      "size": 1,
+      "path": "apps/web/src/lib/slug.ts",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "file:apps/web/src/routes/__root.tsx",
+      "kind": "file",
+      "label": "__root.tsx",
+      "parent": "ws:@acme/web",
+      "size": 1,
+      "path": "apps/web/src/routes/__root.tsx",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "file:apps/web/src/routes/index.tsx",
+      "kind": "file",
+      "label": "index.tsx",
+      "parent": "ws:@acme/web",
+      "size": 1,
+      "path": "apps/web/src/routes/index.tsx",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "file:apps/web/src/routes/posts.$postId.tsx",
+      "kind": "file",
+      "label": "posts.$postId.tsx",
+      "parent": "ws:@acme/web",
+      "size": 1,
+      "path": "apps/web/src/routes/posts.$postId.tsx",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "file:apps/web/src/routes/settings/profile.tsx",
+      "kind": "file",
+      "label": "profile.tsx",
+      "parent": "ws:@acme/web",
+      "size": 1,
+      "path": "apps/web/src/routes/settings/profile.tsx",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "file:packages/db/src/index.ts",
+      "kind": "file",
+      "label": "index.ts",
+      "parent": "ws:@acme/db",
+      "size": 0,
+      "path": "packages/db/src/index.ts",
+      "stats": {
+        "functions": 0
+      },
+      "badges": [
+        "0 functions"
+      ]
+    },
+    {
+      "id": "file:packages/db/src/queries.ts",
+      "kind": "file",
+      "label": "queries.ts",
+      "parent": "ws:@acme/db",
+      "size": 3,
+      "path": "packages/db/src/queries.ts",
+      "stats": {
+        "functions": 3
+      },
+      "badges": [
+        "3 functions"
+      ]
+    },
+    {
+      "id": "file:packages/db/src/schema.ts",
+      "kind": "file",
+      "label": "schema.ts",
+      "parent": "ws:@acme/db",
+      "size": 0,
+      "path": "packages/db/src/schema.ts",
+      "stats": {
+        "functions": 0
+      },
+      "badges": [
+        "0 functions"
+      ]
+    },
+    {
+      "id": "file:packages/ui/src/button.tsx",
+      "kind": "file",
+      "label": "button.tsx",
+      "parent": "ws:@acme/ui",
+      "size": 1,
+      "path": "packages/ui/src/button.tsx",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "file:packages/ui/src/card.tsx",
+      "kind": "file",
+      "label": "card.tsx",
+      "parent": "ws:@acme/ui",
+      "size": 1,
+      "path": "packages/ui/src/card.tsx",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "file:packages/ui/src/index.ts",
+      "kind": "file",
+      "label": "index.ts",
+      "parent": "ws:@acme/ui",
+      "size": 0,
+      "path": "packages/ui/src/index.ts",
+      "stats": {
+        "functions": 0
+      },
+      "badges": [
+        "0 functions"
+      ]
+    },
+    {
+      "id": "file:packages/ui/src/internal.ts",
+      "kind": "file",
+      "label": "internal.ts",
+      "parent": "ws:@acme/ui",
+      "size": 0,
+      "path": "packages/ui/src/internal.ts",
+      "stats": {
+        "functions": 0
+      },
+      "badges": [
+        "0 functions"
+      ]
+    },
+    {
+      "id": "file:packages/utils/src/date.ts",
+      "kind": "file",
+      "label": "date.ts",
+      "parent": "ws:@acme/utils",
+      "size": 1,
+      "path": "packages/utils/src/date.ts",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "file:packages/utils/src/index.ts",
+      "kind": "file",
+      "label": "index.ts",
+      "parent": "ws:@acme/utils",
+      "size": 0,
+      "path": "packages/utils/src/index.ts",
+      "stats": {
+        "functions": 0
+      },
+      "badges": [
+        "0 functions"
+      ]
+    },
+    {
+      "id": "file:packages/utils/src/slug.ts",
+      "kind": "file",
+      "label": "slug.ts",
+      "parent": "ws:@acme/utils",
+      "size": 1,
+      "path": "packages/utils/src/slug.ts",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "file:packages/utils/src/time.ts",
+      "kind": "file",
+      "label": "time.ts",
+      "parent": "ws:@acme/utils",
+      "size": 1,
+      "path": "packages/utils/src/time.ts",
+      "stats": {
+        "functions": 1
+      },
+      "badges": [
+        "1 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/api",
+      "kind": "workspace",
+      "label": "@acme/api",
+      "size": 0,
+      "path": "apps/api",
+      "stats": {
+        "files": 3,
+        "functions": 0
+      },
+      "badges": [
+        "app",
+        "3 files",
+        "0 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/db",
+      "kind": "workspace",
+      "label": "@acme/db",
+      "size": 3,
+      "path": "packages/db",
+      "stats": {
+        "files": 3,
+        "functions": 3
+      },
+      "badges": [
+        "package",
+        "3 files",
+        "3 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/ui",
+      "kind": "workspace",
+      "label": "@acme/ui",
+      "size": 2,
+      "path": "packages/ui",
+      "stats": {
+        "files": 4,
+        "functions": 2
+      },
+      "badges": [
+        "package",
+        "4 files",
+        "2 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/utils",
+      "kind": "workspace",
+      "label": "@acme/utils",
+      "size": 3,
+      "path": "packages/utils",
+      "stats": {
+        "files": 4,
+        "functions": 3
+      },
+      "badges": [
+        "package",
+        "4 files",
+        "3 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/web",
+      "kind": "workspace",
+      "label": "@acme/web",
+      "size": 8,
+      "path": "apps/web",
+      "stats": {
+        "files": 8,
+        "functions": 8
+      },
+      "badges": [
+        "app",
+        "8 files",
+        "8 functions"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "file:apps/api/src/app.ts|imports|file:packages/db/src/index.ts",
+      "src": "file:apps/api/src/app.ts",
+      "dst": "file:packages/db/src/index.ts",
+      "kind": "imports",
+      "weight": 2,
+      "confidence": "high"
+    },
+    {
+      "id": "file:apps/api/src/index.ts|imports|file:apps/api/src/app.ts",
+      "src": "file:apps/api/src/index.ts",
+      "dst": "file:apps/api/src/app.ts",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:apps/api/src/index.ts|imports|file:apps/api/src/router.ts",
+      "src": "file:apps/api/src/index.ts",
+      "dst": "file:apps/api/src/router.ts",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:apps/api/src/router.ts|imports|file:packages/db/src/index.ts",
+      "src": "file:apps/api/src/router.ts",
+      "dst": "file:packages/db/src/index.ts",
+      "kind": "imports",
+      "weight": 2,
+      "confidence": "high"
+    },
+    {
+      "id": "file:apps/web/src/components/PostList.tsx|imports|file:apps/web/src/hooks/useDebounce.ts",
+      "src": "file:apps/web/src/components/PostList.tsx",
+      "dst": "file:apps/web/src/hooks/useDebounce.ts",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:apps/web/src/components/PostList.tsx|imports|file:apps/web/src/lib/slug.ts",
+      "src": "file:apps/web/src/components/PostList.tsx",
+      "dst": "file:apps/web/src/lib/slug.ts",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:apps/web/src/routes/index.tsx|imports|file:apps/web/src/components/PostList.tsx",
+      "src": "file:apps/web/src/routes/index.tsx",
+      "dst": "file:apps/web/src/components/PostList.tsx",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:apps/web/src/routes/index.tsx|imports|file:packages/ui/src/button.tsx",
+      "src": "file:apps/web/src/routes/index.tsx",
+      "dst": "file:packages/ui/src/button.tsx",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:apps/web/src/routes/posts.$postId.tsx|imports|file:packages/db/src/index.ts",
+      "src": "file:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "file:packages/db/src/index.ts",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:apps/web/src/routes/posts.$postId.tsx|imports|file:packages/utils/src/index.ts",
+      "src": "file:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "file:packages/utils/src/index.ts",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:apps/web/src/routes/settings/profile.tsx|imports|file:packages/ui/src/index.ts",
+      "src": "file:apps/web/src/routes/settings/profile.tsx",
+      "dst": "file:packages/ui/src/index.ts",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:packages/db/src/index.ts|imports|file:packages/db/src/queries.ts",
+      "src": "file:packages/db/src/index.ts",
+      "dst": "file:packages/db/src/queries.ts",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:packages/db/src/index.ts|imports|file:packages/db/src/schema.ts",
+      "src": "file:packages/db/src/index.ts",
+      "dst": "file:packages/db/src/schema.ts",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:packages/db/src/queries.ts|imports|file:packages/db/src/schema.ts",
+      "src": "file:packages/db/src/queries.ts",
+      "dst": "file:packages/db/src/schema.ts",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:packages/ui/src/index.ts|imports|file:packages/ui/src/button.tsx",
+      "src": "file:packages/ui/src/index.ts",
+      "dst": "file:packages/ui/src/button.tsx",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:packages/ui/src/index.ts|imports|file:packages/ui/src/card.tsx",
+      "src": "file:packages/ui/src/index.ts",
+      "dst": "file:packages/ui/src/card.tsx",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:packages/utils/src/index.ts|imports|file:packages/utils/src/date.ts",
+      "src": "file:packages/utils/src/index.ts",
+      "dst": "file:packages/utils/src/date.ts",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "file:packages/utils/src/index.ts|imports|file:packages/utils/src/time.ts",
+      "src": "file:packages/utils/src/index.ts",
+      "dst": "file:packages/utils/src/time.ts",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "ws:@acme/api|depends_on|ws:@acme/db",
+      "src": "ws:@acme/api",
+      "dst": "ws:@acme/db",
+      "kind": "depends_on",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "ws:@acme/web|depends_on|ws:@acme/ui",
+      "src": "ws:@acme/web",
+      "dst": "ws:@acme/ui",
+      "kind": "depends_on",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "ws:@acme/web|depends_on|ws:@acme/utils",
+      "src": "ws:@acme/web",
+      "dst": "ws:@acme/utils",
+      "kind": "depends_on",
+      "weight": 1,
+      "confidence": "high"
+    }
+  ],
+  "layoutHint": "force-3d"
+}"
+`;
+
+exports[`map-3d view > snapshot at level=workspaces 1`] = `
+"{
+  "nodes": [
+    {
+      "id": "ws:@acme/api",
+      "kind": "workspace",
+      "label": "@acme/api",
+      "size": 0,
+      "path": "apps/api",
+      "stats": {
+        "files": 3,
+        "functions": 0
+      },
+      "badges": [
+        "app",
+        "3 files",
+        "0 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/db",
+      "kind": "workspace",
+      "label": "@acme/db",
+      "size": 3,
+      "path": "packages/db",
+      "stats": {
+        "files": 3,
+        "functions": 3
+      },
+      "badges": [
+        "package",
+        "3 files",
+        "3 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/ui",
+      "kind": "workspace",
+      "label": "@acme/ui",
+      "size": 2,
+      "path": "packages/ui",
+      "stats": {
+        "files": 4,
+        "functions": 2
+      },
+      "badges": [
+        "package",
+        "4 files",
+        "2 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/utils",
+      "kind": "workspace",
+      "label": "@acme/utils",
+      "size": 3,
+      "path": "packages/utils",
+      "stats": {
+        "files": 4,
+        "functions": 3
+      },
+      "badges": [
+        "package",
+        "4 files",
+        "3 functions"
+      ]
+    },
+    {
+      "id": "ws:@acme/web",
+      "kind": "workspace",
+      "label": "@acme/web",
+      "size": 8,
+      "path": "apps/web",
+      "stats": {
+        "files": 8,
+        "functions": 8
+      },
+      "badges": [
+        "app",
+        "8 files",
+        "8 functions"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "ws:@acme/api|depends_on|ws:@acme/db",
+      "src": "ws:@acme/api",
+      "dst": "ws:@acme/db",
+      "kind": "depends_on",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "ws:@acme/api|imports|ws:@acme/db",
+      "src": "ws:@acme/api",
+      "dst": "ws:@acme/db",
+      "kind": "imports",
+      "weight": 4,
+      "confidence": "high"
+    },
+    {
+      "id": "ws:@acme/web|depends_on|ws:@acme/ui",
+      "src": "ws:@acme/web",
+      "dst": "ws:@acme/ui",
+      "kind": "depends_on",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "ws:@acme/web|depends_on|ws:@acme/utils",
+      "src": "ws:@acme/web",
+      "dst": "ws:@acme/utils",
+      "kind": "depends_on",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "ws:@acme/web|imports|ws:@acme/db",
+      "src": "ws:@acme/web",
+      "dst": "ws:@acme/db",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
+      "id": "ws:@acme/web|imports|ws:@acme/ui",
+      "src": "ws:@acme/web",
+      "dst": "ws:@acme/ui",
+      "kind": "imports",
+      "weight": 2,
+      "confidence": "high"
+    },
+    {
+      "id": "ws:@acme/web|imports|ws:@acme/utils",
+      "src": "ws:@acme/web",
+      "dst": "ws:@acme/utils",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    }
+  ],
+  "layoutHint": "force-3d"
+}"
+`;

@@ -19,8 +19,9 @@ Plan doc (background and rationale): https://claude.ai/artifact/7UCZZRCs4k45gPkK
 
 ## 2. Approved dependencies
 
-Runtime: `oxc-parser`, `oxc-resolver`, `better-sqlite3`, `sqlite-vec` (pin exact version), `@modelcontextprotocol/sdk`, `zod`, `commander`, `ignore`, `picomatch`, `@huggingface/transformers`, `@parcel/watcher`, `ws`, `@ast-grep/napi`, `sigma`, `graphology`, `graphology-layout-forceatlas2`, `elkjs`, `react`, `react-dom`. Later only: `ts-morph`.
-Dev: `typescript`, `vitest`, `@biomejs/biome`, `tsup`, `tsx`, `vite`, `@vitejs/plugin-react`, `playwright` (explorer smoke tests only).
+Runtime: `oxc-parser`, `oxc-resolver`, `better-sqlite3`, `sqlite-vec` (pin exact version), `@modelcontextprotocol/sdk`, `zod`, `commander`, `ignore`, `picomatch`, `@huggingface/transformers`, `@parcel/watcher`, `ws`, `@ast-grep/napi`, `sigma`, `graphology`, `graphology-layout-forceatlas2`, `elkjs`, `react`, `react-dom`, `3d-force-graph`, `three`, `three-spritetext`. Later only: `ts-morph`.
+Explorer 3D map (`packages/explorer/web`, lazy chunk only): `3d-force-graph` gives the orbit camera, picking and link rendering for the `map-3d` view; `three` is its renderer and draws the workspace islands and bundled arcs; `three-spritetext` makes the always-facing text labels.
+Dev: `typescript`, `vitest`, `@biomejs/biome`, `tsup`, `tsx`, `vite`, `@vitejs/plugin-react`, `playwright` (explorer smoke tests only), `@types/three`.
 
 ## 3. Repo layout
 

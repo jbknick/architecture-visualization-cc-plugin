@@ -13,6 +13,10 @@ const shots = join(repoRoot, "docs/milestones/screenshots");
 // Runs the built explorer against the REAL server: the pnpm-turbo fixture is copied into a temp git repo,
 // indexed with `gantry init`, and served by `gantry map --no-open`. Needs `pnpm build` first (pnpm e2e does it).
 test.describe.configure({ mode: "serial" });
+// Headless Chromium has no GPU; software GL (SwiftShader) gives the 3D map a WebGL context.
+test.use({
+  launchOptions: { args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] },
+});
 
 let tmp = "";
 let server: ChildProcess | undefined;
@@ -134,4 +138,30 @@ test("project map: switch levels, drill into @acme/ui, then see Button's callers
   await inspector.getByRole("button", { name: "Open in project map" }).click();
   await expect(page).toHaveURL(/#\/project-map\?.*focus=file/);
   await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("button.tsx");
+});
+
+test("3D map: opens from the view switcher and draws the fixture's workspaces as islands", async ({
+  page,
+}) => {
+  mkdirSync(shots, { recursive: true });
+  await page.goto(url);
+  await page.getByRole("tab", { name: "3D map" }).click();
+  await expect(page).toHaveURL(/#\/map-3d/);
+  await page.goto(`${url.replace(/#.*$/, "")}#/map-3d`);
+  await expect(page.getByTestId("map3d-canvas").locator("canvas")).toBeVisible();
+  await expect(page.locator(".map3d[data-ready='true']")).toBeVisible();
+  const legend = page.getByRole("list").filter({ has: page.getByRole("button", { name: /@acme\/ui/ }) });
+  await expect(legend.getByRole("button")).toHaveCount(5);
+  await page.getByLabel(/Auto-rotate/).uncheck();
+  await page.waitForTimeout(2500);
+  await page.screenshot({ path: join(shots, "map-3d-fixture.png") });
+
+  // Level switch goes into the hash as `level=` and the filter checkbox as `hideTests=`.
+  await page.getByLabel("Files").click();
+  await expect(page).toHaveURL(/#\/map-3d\?.*level=files/);
+  await page.getByLabel("Hide tests").uncheck();
+  await expect(page).toHaveURL(/hideTests=false/);
+  await legend.getByRole("button", { name: /@acme\/ui/ }).click();
+  await expect(page).toHaveURL(/sel=ws%3A%40acme%2Fui/);
+  await expect(page.getByRole("complementary", { name: "Inspector" })).toBeVisible();
 });

@@ -24,6 +24,10 @@ Top bar (repo, short sha, view tabs, search, Cmd/Ctrl+K), left slot (filters, co
 - `src/theme.ts`: fixed kind colors (light and dark). Written as `--kind-<name>` CSS variables; canvases import `kindColor(kind, scheme)`.
 - `mock/`: fixture graph and a small `node:http` server. Its responses mirror the real server's shapes (including `level`, `focus`, `hops` and filter handling for `project-map` and `ego`), so change it together with `server/api.ts` and `server/views/*`. Used by component tests and the smoke test; not shipped.
 
+## 3D map
+
+`src/canvas3d/` renders the `map-3d` view (layoutHint `force-3d`) with `3d-force-graph`/three.js in a lazy chunk. `layout.ts` is pure and deterministic (seeded by id hashes, fixed ticks, no `Math.random`); `scene.ts` is the three.js side; `MapPanel.tsx` is the left panel (level, hide tests, auto-rotate, reset camera, workspace legend). Hash route: `#/map-3d?level=workspaces|dirs|files&hideTests=false&sel=<id>`. `level` (default `dirs`) goes through the route's `onRouteChange`, `hideTests` (default true) through the filters, like the project map. Clicking a node or island sets `sel` (inspector); the view's `focus` is not used. Double-click flies the camera to the node; it does not call `onDrill`, because the 3D map has no subtree view (the level switch is the zoom). Island colours come from `src/workspacePalette.ts`, shared with the project-map panel. The Playwright tests need software WebGL (`--use-angle=swiftshader`) and write `docs/milestones/screenshots/map-3d.png` (mock data) and `map-3d-fixture.png` (real server, pnpm-turbo fixture).
+
 ## Canvas slot
 
 A view returns `layoutHint` from `/api/view/:id`. The shell renders the component registered for that hint and falls back to the default, the placeholder windowed list.

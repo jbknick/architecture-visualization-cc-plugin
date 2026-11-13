@@ -22,6 +22,7 @@ describe("shell", () => {
       "Debug: workspaces",
       "Project map",
       "Function ego graph",
+      "3D map",
     ]);
     expect(await screen.findByText("5 workspaces")).toBeTruthy();
     expect(screen.getByText("9 files")).toBeTruthy();
