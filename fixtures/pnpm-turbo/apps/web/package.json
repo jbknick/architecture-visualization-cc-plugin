@@ -1,0 +1,12 @@
+{
+  "name": "@acme/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@acme/ui": "workspace:*",
+    "@acme/utils": "workspace:*",
+    "@tanstack/react-router": "^1.0.0",
+    "react": "^19.0.0"
+  }
+}

@@ -1,0 +1,1 @@
+{ "name": "pnpm-turbo-root", "private": true, "packageManager": "pnpm@10.31.0", "devDependencies": { "turbo": "^2.0.0" } }

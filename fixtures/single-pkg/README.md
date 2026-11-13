@@ -1,0 +1,2 @@
+# single-pkg
+Synthetic fixture.
