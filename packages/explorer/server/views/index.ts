@@ -1,5 +1,7 @@
 import type { ViewModule } from "../types.js";
 import { debugView } from "./debug.js";
+import { egoView } from "./ego.js";
+import { projectMapView } from "./projectMap.js";
 
 const registry = new Map<string, ViewModule>();
 
@@ -17,3 +19,5 @@ export function listViews(): ViewModule[] {
 
 // Later issues add one file each and register it here.
 registerView(debugView);
+registerView(projectMapView);
+registerView(egoView);
