@@ -77,7 +77,14 @@ export interface WorkspaceRecord {
   kind: WorkspaceKind;
   frameworks: string[];
   deps: string[];
-  exportsMap: Record<string, unknown>;
+  exportsMap: ExportsEntry[] | null;
+  main?: string;
+  types?: string;
+}
+/** Flattened package.json `exports` entry ("import"/"types"/"default" conditions, first match). */
+export interface ExportsEntry {
+  subpath: string;
+  target: string;
 }
 export interface FileRecord {
   id: string;

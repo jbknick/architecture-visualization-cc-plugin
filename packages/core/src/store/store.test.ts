@@ -117,7 +117,7 @@ describe("openStore", () => {
       kind: "app" as const,
       frameworks: ["react"],
       deps: ["zod"],
-      exportsMap: { ".": "./index.js" },
+      exportsMap: [{ subpath: ".", target: "./index.js" }],
     };
     store.upsertWorkspaces([w]);
     store.upsertWorkspaces([{ ...w, kind: "package" }]);
