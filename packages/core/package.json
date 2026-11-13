@@ -11,5 +11,8 @@
       "default": "./dist/index.js"
     }
   },
-  "dependencies": {}
+  "dependencies": {
+    "oxc-parser": "0.158.0",
+    "oxc-resolver": "11.24.2"
+  }
 }
