@@ -15,6 +15,8 @@ export type {
   GraphEdge,
   GraphNode,
   LayoutHint,
+  NodeStats,
+  ViewLevel,
   ViewModule,
   ViewParams,
   ViewResult,
