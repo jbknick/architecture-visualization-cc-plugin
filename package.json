@@ -10,13 +10,16 @@
   "scripts": {
     "build": "tsc -b && tsup",
     "check": "biome check . && tsc -b --noEmit && vitest run",
-    "test": "vitest run",
-    "fmt": "biome check --write ."
+    "fmt": "biome check --write .",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.7",
+    "@huggingface/transformers": "4.3.2",
     "@types/node": "^26.6.6",
+    "better-sqlite3": "13.1.1",
     "oxc-parser": "^0.158.0",
+    "sqlite-vec": "0.1.9",
     "tsup": "^9.0.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
