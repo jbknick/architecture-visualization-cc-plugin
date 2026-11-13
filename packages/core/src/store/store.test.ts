@@ -128,6 +128,18 @@ describe("openStore", () => {
     expect(JSON.parse(rows[0]?.frameworks ?? "")).toEqual(["react"]);
     expect(JSON.parse(rows[0]?.exports_map ?? "")).toEqual([{ subpath: ".", target: "./index.js" }]);
   });
+
+  it("listWorkspaces returns records ordered by id", () => {
+    const base = { dir: ".", kind: "package" as const, frameworks: [], deps: [], exportsMap: null };
+    store.upsertWorkspaces([
+      { ...base, id: "ws:b", name: "b", deps: ["a"] },
+      { ...base, id: "ws:a", name: "a", exportsMap: [{ subpath: ".", target: "./x.js" }] },
+    ]);
+    const list = store.listWorkspaces();
+    expect(list.map((w) => w.id)).toEqual(["ws:a", "ws:b"]);
+    expect(list[0]?.exportsMap).toEqual([{ subpath: ".", target: "./x.js" }]);
+    expect(list[1]?.deps).toEqual(["a"]);
+  });
 });
 
 describe("effective view", () => {
