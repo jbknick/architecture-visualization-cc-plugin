@@ -4,7 +4,8 @@ import path from "node:path";
 import picomatch from "picomatch";
 import { BUILTIN_EXCLUDES, type GantryConfig } from "../config/index.js";
 import type { GantryPaths } from "../paths/index.js";
-import { type WorkspaceRecord, workspaceForPath } from "../workspace/index.js";
+import type { WorkspaceRecord } from "../types.js";
+import { workspaceForPath } from "../workspace/index.js";
 
 export interface DiscoveredFile {
   path: string;
