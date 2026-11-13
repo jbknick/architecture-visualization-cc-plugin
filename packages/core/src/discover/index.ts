@@ -36,17 +36,30 @@ export const SENSITIVE_PATTERNS: readonly string[] = [
 ];
 
 const matcherCache = new Map<string, (s: string) => boolean>();
-function matcher(pattern: string): (s: string) => boolean {
-  let m = matcherCache.get(pattern);
+function matcher(pattern: string, nocase = false): (s: string) => boolean {
+  const key = `${nocase ? "i" : "s"}:${pattern}`;
+  let m = matcherCache.get(key);
   if (!m) {
-    m = picomatch(pattern, { dot: true });
-    matcherCache.set(pattern, m);
+    m = picomatch(pattern, { dot: true, nocase });
+    matcherCache.set(key, m);
   }
   return m;
 }
 
+/**
+ * Normalise to a clean repo-relative POSIX path, or null when the path is empty, absolute,
+ * has a drive letter, or escapes the repo root via `..`.
+ */
+function safeNormalize(repoRelPath: string): string | null {
+  const slashed = repoRelPath.replace(/\\/g, "/");
+  if (slashed.startsWith("/") || /^[A-Za-z]:/.test(slashed)) return null;
+  const p = path.posix.normalize(slashed);
+  if (p === "." || p === ".." || p.startsWith("../") || p.startsWith("/")) return null;
+  return p;
+}
+
 function normalize(repoRelPath: string): string {
-  return repoRelPath.replace(/\\/g, "/").replace(/^\.\//, "");
+  return safeNormalize(repoRelPath) ?? repoRelPath.replace(/\\/g, "/");
 }
 
 /**
@@ -54,12 +67,12 @@ function normalize(repoRelPath: string): string {
  * (so `dist` excludes everything below it), or, for slash-free patterns, any single
  * path segment (so `dist` and `secrets*` match at any depth).
  */
-function matchesAny(patterns: readonly string[], p: string): boolean {
+function matchesAny(patterns: readonly string[], p: string, nocase = false): boolean {
   const segments = p.split("/");
   const prefixes: string[] = [];
   for (let i = 1; i <= segments.length; i++) prefixes.push(segments.slice(0, i).join("/"));
   for (const pattern of patterns) {
-    const m = matcher(pattern);
+    const m = matcher(pattern, nocase);
     if (prefixes.some((pre) => m(pre))) return true;
     if (!pattern.includes("/") && segments.some((s) => m(s))) return true;
   }
@@ -68,7 +81,7 @@ function matchesAny(patterns: readonly string[], p: string): boolean {
 
 /** Path-only sensitivity check: basename and full path (and each directory segment). Never reads the file. */
 export function isSensitive(repoRelPath: string): boolean {
-  return matchesAny(SENSITIVE_PATTERNS, normalize(repoRelPath));
+  return matchesAny(SENSITIVE_PATTERNS, normalize(repoRelPath), true);
 }
 
 /**
@@ -76,8 +89,8 @@ export function isSensitive(repoRelPath: string): boolean {
  * `discoverFiles` additionally applies filesystem rules (nested git dirs, size).
  */
 export function isIndexable(repoRelPath: string, config: GantryConfig): boolean {
-  const p = normalize(repoRelPath);
-  if (!p || p.startsWith("../") || path.posix.isAbsolute(p)) return false;
+  const p = safeNormalize(repoRelPath);
+  if (p === null) return false;
   if (!EXTENSIONS.includes(path.posix.extname(p))) return false;
   if (isSensitive(p)) return false;
   if (matchesAny(BUILTIN_EXCLUDES, p)) return false;
@@ -120,11 +133,41 @@ export function discoverFiles(
     return false;
   };
 
+  // A candidate is rejected when any ancestor directory is a symlink or resolves outside the root.
+  let realRoot: string;
+  try {
+    realRoot = fs.realpathSync(root);
+  } catch {
+    return [];
+  }
+  const dirCache = new Map<string, boolean>([["", true]]);
+  const dirSafe = (dir: string): boolean => {
+    const cached = dirCache.get(dir);
+    if (cached !== undefined) return cached;
+    let ok = false;
+    const parent = dir.includes("/") ? dir.slice(0, dir.lastIndexOf("/")) : "";
+    if (dirSafe(parent)) {
+      try {
+        const abs = path.join(root, dir);
+        if (!fs.lstatSync(abs).isSymbolicLink()) {
+          const real = fs.realpathSync(abs);
+          ok = real === realRoot || real.startsWith(realRoot + path.sep);
+        }
+      } catch {
+        ok = false;
+      }
+    }
+    dirCache.set(dir, ok);
+    return ok;
+  };
+
   const out: DiscoveredFile[] = [];
   let tooLarge = 0;
   for (const rel of gitCandidates(root)) {
     if (!isIndexable(rel, config)) continue;
     if (inNestedRepo(rel)) continue;
+    const dir = path.posix.dirname(rel);
+    if (!dirSafe(dir === "." ? "" : dir)) continue;
     let st: fs.Stats;
     try {
       st = fs.lstatSync(path.join(root, rel));

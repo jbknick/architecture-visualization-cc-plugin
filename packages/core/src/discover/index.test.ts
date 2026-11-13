@@ -1,4 +1,5 @@
-import fs, { mkdirSync, writeFileSync } from "node:fs";
+import fs, { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../config/index.js";
@@ -111,15 +112,80 @@ describe("discoverFiles", () => {
   it("isIndexable agrees with discoverFiles on every fixture path", async () => {
     for (const name of ["single-pkg", "pnpm-turbo", "nx"] as const) {
       const { fx, paths, config, ws } = await setup(name);
+      writeFileSync(join(fx.dir, "untracked-new.ts"), "export const u = 1;\n");
+      writeFileSync(join(fx.dir, "secrets-untracked.ts"), "export const u = 1;\n");
       const found = new Set(discoverFiles(paths, config, ws).map((f) => f.path));
-      const all = fx.git(["ls-files", "-z"]).split("\0").filter(Boolean);
+      expect(found.has("untracked-new.ts")).toBe(true);
+      expect(found.has("secrets-untracked.ts")).toBe(false);
+      const all = fx
+        .git(["ls-files", "-z", "--cached", "--others", "--exclude-standard"])
+        .split("\0")
+        .filter(Boolean);
       expect(all.length).toBeGreaterThan(0);
       for (const p of all) expect(isIndexable(p, config), `${name}:${p}`).toBe(found.has(p));
     }
   });
 });
 
+describe("discoverFiles hardening", () => {
+  it("rejects files under a symlinked parent directory that points outside the repo", async () => {
+    const { fx, paths, config, ws, write } = await setup("single-pkg");
+    const outside = mkdtempSync(join(tmpdir(), "gantry-outside-"));
+    writeFileSync(join(outside, "x.ts"), "export const leaked = 1;\n");
+    write("lib/x.ts");
+    fx.git(["add", "lib/x.ts"]);
+    fs.rmSync(join(fx.dir, "lib"), { recursive: true });
+    symlinkSync(outside, join(fx.dir, "lib"));
+    try {
+      const files = discoverFiles(paths, config, ws).map((f) => f.path);
+      expect(files).not.toContain("lib/x.ts");
+      expect(files).toContain("src/greet.ts");
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
+  it("handles filenames containing a newline", async () => {
+    const { paths, config, ws, write } = await setup("single-pkg");
+    const name = "src/line\nbreak.ts";
+    write(name);
+    const files = discoverFiles(paths, config, ws).map((f) => f.path);
+    expect(files).toContain(name);
+    expect(isIndexable(name, config)).toBe(true);
+  });
+});
+
 describe("isSensitive / isIndexable", () => {
+  it("matches sensitive names case-insensitively", () => {
+    for (const p of [
+      "src/Secrets.ts",
+      "SECRETS.ts",
+      "Credentials.ts",
+      ".ENV.ts",
+      "ID_RSA.ts",
+      "X.PEM",
+      "a/.Env.Local",
+    ])
+      expect(isSensitive(p), p).toBe(true);
+  });
+
+  it("rejects escaping, absolute and drive-letter paths and normalises dot segments", async () => {
+    const { config } = await setup("single-pkg");
+    for (const p of [
+      "a/../../x.ts",
+      "src/../../../etc/x.ts",
+      "C:/x.ts",
+      "C:\\x.ts",
+      "/abs/x.ts",
+      "\\abs\\x.ts",
+      "../x.ts",
+    ])
+      expect(isIndexable(p, config), p).toBe(false);
+    expect(isIndexable("src/../lib/x.ts", config)).toBe(true);
+    expect(isIndexable("src/../src/secrets.ts", config)).toBe(false);
+    expect(isIndexable("src/../node_modules/x.ts", config)).toBe(false);
+  });
+
   it("flags sensitive paths by basename and full path", () => {
     const yes = [
       ".env",
