@@ -27,6 +27,9 @@ export function LeftPanel({
   onRouteChange,
 }: Props) {
   const Panel = viewId ? getFilterPanel(viewId) : null;
+  // The project map's panel already lists the workspaces with their colours; the kind colours only matter once
+  // functions are drawn.
+  const showKindLegend = viewId !== "project-map" || route?.level === "symbols";
   return (
     <aside className={`left ${open ? "" : "is-collapsed"}`} aria-label="Filters">
       <button
@@ -55,15 +58,23 @@ export function LeftPanel({
           ) : (
             <p className="muted">This view has no filters.</p>
           )}
-          <h2 className="panel-title legend-title">Legend</h2>
-          <ul className="legend">
-            {KINDS.map((kind) => (
-              <li key={kind}>
-                <span className="kind-dot" style={{ background: `var(--kind-${kind})` }} aria-hidden="true" />
-                {kind}
-              </li>
-            ))}
-          </ul>
+          {showKindLegend && (
+            <>
+              <h2 className="panel-title legend-title">Legend</h2>
+              <ul className="legend">
+                {KINDS.map((kind) => (
+                  <li key={kind}>
+                    <span
+                      className="kind-dot"
+                      style={{ background: `var(--kind-${kind})` }}
+                      aria-hidden="true"
+                    />
+                    {kind}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       )}
     </aside>

@@ -3,23 +3,8 @@
 import ELK, { type ElkNode } from "elkjs/lib/elk.bundled.js";
 import Graph from "graphology";
 import forceAtlas2 from "graphology-layout-forceatlas2";
-import {
-  aggregateEdges,
-  buildTree,
-  CELL_H,
-  CELL_W,
-  deriveRegions,
-  GAP,
-  gridBlockSize,
-  gridCell,
-  headFor,
-  isGridBlock,
-  leafSize,
-  leavesOf,
-  PAD,
-  type Tree,
-  type TreeNode,
-} from "./hierarchy.ts";
+import { buildTree, CELL_H, CELL_W, leavesOf, type Tree, type TreeNode } from "./hierarchy.ts";
+import { layoutMap } from "./mapLayout.ts";
 import { hashString, unitPair } from "./prng.ts";
 import type { LayoutInput, LayoutResult, Positions } from "./types.ts";
 
@@ -61,7 +46,7 @@ function indexEdges(tree: Tree, input: LayoutInput): IdxEdge[] {
     const a = tree.index.get(e.src);
     const b = tree.index.get(e.dst);
     if (a !== undefined && b !== undefined && a !== b)
-      out.push({ src: a, dst: b, weight: e.weight, kind: "" });
+      out.push({ src: a, dst: b, weight: e.weight, kind: e.kind ?? "" });
   }
   return out;
 }
@@ -72,6 +57,13 @@ export async function computeLayout(input: LayoutInput): Promise<LayoutResult> {
   const tree = buildTree(input.nodes, { boxWorkspaces: input.hint === "nested-elk" });
   const edges = indexEdges(tree, input);
   const hint = normaliseHint(input.hint, tree.hierarchical);
+
+  if (tree.hierarchical) {
+    // Workspace boxes with a treemap inside. Everything is derived from the data, so saved positions do not apply.
+    const { positions, map } = await layoutMap(tree, edges, input);
+    const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
+    return { positions, changed: false, ms: Math.round(t1 - t0), strategy: "treemap/layered", map };
+  }
 
   const saved = input.saved ?? {};
   const placed = new Set<number>();
@@ -94,7 +86,10 @@ export async function computeLayout(input: LayoutInput): Promise<LayoutResult> {
     strategy = fresh.strategy;
     changed = true;
   }
-  finalizeContainers(tree, positions);
+  for (const p of Object.values(positions)) {
+    p[0] = round(p[0]);
+    p[1] = round(p[1]);
+  }
   const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
   return { positions, changed, ms: Math.round(t1 - t0), strategy };
 }
@@ -105,10 +100,6 @@ async function layoutFresh(
   hint: Hint,
   focus: string | null,
 ): Promise<{ positions: Positions; strategy: string }> {
-  if (tree.hierarchical) {
-    const positions = await layoutHierarchy(tree, edges, hint, focus);
-    return { positions, strategy: `hierarchy/${hint}` };
-  }
   switch (hint) {
     case "layered":
       return { positions: await layoutFlatElk(tree, edges), strategy: "elk-layered" };
@@ -128,223 +119,8 @@ async function layoutFresh(
   }
 }
 
-// ---------------------------------------------------------------------------------------------------------
-// Hierarchical (nested) layout
-
-interface Built {
-  elk: ElkNode;
-  /** elk id -> tree index */
-  byId: Map<string, number>;
-}
-
 function elkIdOf(i: number): string {
   return `n${i}`;
-}
-
-function buildElkTree(tree: Tree, i: number, byId: Map<string, number>): ElkNode {
-  const n = tree.nodes[i] as TreeNode;
-  byId.set(elkIdOf(i), i);
-  if (n.children.length === 0) {
-    const [w, h] = leafSize(tree, i);
-    return { id: elkIdOf(i), width: w, height: h };
-  }
-  if (isGridBlock(tree, i)) {
-    const [w, h] = gridBlockSize(tree, i);
-    return { id: elkIdOf(i), width: w, height: h };
-  }
-  const head = headFor(n.tier);
-  return {
-    id: elkIdOf(i),
-    layoutOptions: {
-      "elk.algorithm": "rectpacking",
-      "elk.padding": `[top=${head},left=${PAD},bottom=${PAD},right=${PAD}]`,
-      "elk.spacing.nodeNode": String(GAP),
-      "elk.aspectRatio": "1.35",
-    },
-    children: n.children.map((c) => buildElkTree(tree, c, byId)),
-  };
-}
-
-function rootsOf(tree: Tree): number[] {
-  const roots: number[] = [];
-  tree.nodes.forEach((n, i) => {
-    if (n.parent === -1) roots.push(i);
-  });
-  return roots;
-}
-
-async function layoutHierarchy(
-  tree: Tree,
-  edges: IdxEdge[],
-  hint: Hint,
-  focus: string | null,
-): Promise<Positions> {
-  const roots = rootsOf(tree);
-  const byId = new Map<string, number>();
-  const rootElk = roots.map((r) => buildElkTree(tree, r, byId));
-  const built: Built = { elk: { id: "root", children: rootElk }, byId };
-  const rootEdges = aggregateEdges(
-    edges.map((e) => ({ ...e })),
-    (i) => (tree.nodes[i] as TreeNode).root,
-  );
-
-  const layered = hint === "layered";
-  built.elk.layoutOptions = layered
-    ? {
-        "elk.algorithm": "layered",
-        "elk.direction": "RIGHT",
-        "elk.spacing.nodeNode": "70",
-        "elk.layered.spacing.nodeNodeBetweenLayers": "200",
-        "elk.spacing.componentComponent": "70",
-        "elk.aspectRatio": "1.6",
-        "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
-      }
-    : {
-        "elk.algorithm": "rectpacking",
-        "elk.spacing.nodeNode": "70",
-        "elk.aspectRatio": "1.5",
-      };
-  if (layered) {
-    built.elk.edges = rootEdges.map((e, k) => ({
-      id: `e${k}`,
-      sources: [elkIdOf(e.src)],
-      targets: [elkIdOf(e.dst)],
-    }));
-  }
-  const elk = new ELK();
-  const out = await elk.layout(built.elk);
-
-  // Absolute top-left of every elk node.
-  const topLeft = new Map<number, [number, number]>();
-  const walk = (node: ElkNode, ox: number, oy: number): void => {
-    for (const c of node.children ?? []) {
-      const i = built.byId.get(c.id);
-      const x = ox + (c.x ?? 0);
-      const y = oy + (c.y ?? 0);
-      if (i !== undefined) topLeft.set(i, [x, y]);
-      walk(c, x, y);
-    }
-  };
-  walk(out, 0, 0);
-
-  if (hint === "radial") {
-    const sizes = new Map<number, [number, number]>();
-    for (const c of out.children ?? []) {
-      const i = built.byId.get(c.id);
-      if (i !== undefined) sizes.set(i, [c.width ?? 0, c.height ?? 0]);
-    }
-    const centres = radialBoxes(tree, roots, sizes, rootEdges, focus);
-    for (const r of roots) {
-      const old = topLeft.get(r) as [number, number];
-      const size = sizes.get(r) as [number, number];
-      const c = centres.get(r) as [number, number];
-      const dx = c[0] - size[0] / 2 - old[0];
-      const dy = c[1] - size[1] / 2 - old[1];
-      shiftSubtree(tree, r, dx, dy, topLeft);
-    }
-  }
-
-  // Leaves: grid-block children sit in their cells, free leaves at their box centre.
-  const positions: Positions = {};
-  const place = (i: number): void => {
-    const n = tree.nodes[i] as TreeNode;
-    const tl = topLeft.get(i);
-    if (n.children.length === 0) {
-      if (tl) {
-        const [w, h] = leafSize(tree, i);
-        positions[n.id] = [tl[0] + w / 2, tl[1] + h / 2];
-      }
-      return;
-    }
-    if (isGridBlock(tree, i)) {
-      if (!tl) return;
-      n.children.forEach((c, k) => {
-        positions[(tree.nodes[c] as TreeNode).id] = gridCell(tree, i, k, tl[0], tl[1]);
-      });
-      return;
-    }
-    for (const c of n.children) place(c);
-  };
-  for (const r of roots) place(r);
-  return positions;
-}
-
-function shiftSubtree(
-  tree: Tree,
-  i: number,
-  dx: number,
-  dy: number,
-  topLeft: Map<number, [number, number]>,
-): void {
-  const tl = topLeft.get(i);
-  if (tl) topLeft.set(i, [tl[0] + dx, tl[1] + dy]);
-  for (const c of (tree.nodes[i] as TreeNode).children) shiftSubtree(tree, c, dx, dy, topLeft);
-}
-
-/** Ring placement of boxes: the focus (or most connected) box in the middle, neighbours on outer rings. */
-function radialBoxes(
-  tree: Tree,
-  roots: number[],
-  sizes: Map<number, [number, number]>,
-  rootEdges: { src: number; dst: number; weight: number }[],
-  focus: string | null,
-): Map<number, [number, number]> {
-  const adj = new Map<number, number[]>();
-  const degree = new Map<number, number>();
-  for (const r of roots) {
-    adj.set(r, []);
-    degree.set(r, 0);
-  }
-  for (const e of rootEdges) {
-    adj.get(e.src)?.push(e.dst);
-    adj.get(e.dst)?.push(e.src);
-    degree.set(e.src, (degree.get(e.src) ?? 0) + e.weight);
-    degree.set(e.dst, (degree.get(e.dst) ?? 0) + e.weight);
-  }
-  const focusIdx = focus ? tree.index.get(focus) : undefined;
-  let centre = focusIdx === undefined ? undefined : (tree.nodes[focusIdx] as TreeNode).root;
-  if (centre === undefined) {
-    centre = roots[0] as number;
-    for (const r of roots) if ((degree.get(r) ?? 0) > (degree.get(centre) ?? 0)) centre = r;
-  }
-  const ring = new Map<number, number>([[centre, 0]]);
-  const queue = [centre];
-  for (let q = 0; q < queue.length; q++) {
-    const cur = queue[q] as number;
-    for (const nb of [...(adj.get(cur) ?? [])].sort((a, b) => a - b)) {
-      if (!ring.has(nb)) {
-        ring.set(nb, (ring.get(cur) as number) + 1);
-        queue.push(nb);
-      }
-    }
-  }
-  const maxRing = Math.max(...ring.values());
-  for (const r of roots) if (!ring.has(r)) ring.set(r, maxRing + 1);
-
-  const extent = (i: number): number => {
-    const s = sizes.get(i) as [number, number];
-    return Math.hypot(s[0], s[1]) / 2;
-  };
-  const out = new Map<number, [number, number]>([[centre, [0, 0]]]);
-  let prevRadius = 0;
-  let prevExtent = extent(centre);
-  for (let level = 1; level <= Math.max(...ring.values()); level++) {
-    const members = roots.filter((r) => ring.get(r) === level);
-    if (members.length === 0) continue;
-    const maxExt = Math.max(...members.map(extent));
-    const circumference = members.reduce((sum, r) => sum + extent(r) * 2 + 60, 0);
-    const radius = Math.max(prevRadius + prevExtent + maxExt + 120, circumference / (2 * Math.PI));
-    let angle = -Math.PI / 2 + (level % 2 === 0 ? Math.PI / members.length : 0);
-    for (const r of members) {
-      const share = ((extent(r) * 2 + 60) / circumference) * 2 * Math.PI;
-      const a = angle + share / 2;
-      out.set(r, [Math.cos(a) * radius, Math.sin(a) * radius]);
-      angle += share;
-    }
-    prevRadius = radius;
-    prevExtent = maxExt;
-  }
-  return out;
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -675,25 +451,4 @@ function placeIncremental(tree: Tree, edges: IdxEdge[], saved: Positions, placed
 
 function avg(v: number[]): number {
   return v.length === 0 ? 0 : v.reduce((a, b) => a + b, 0) / v.length;
-}
-
-/** Container nodes sit at the centre of their derived region (or the centroid of their leaves when flat). */
-function finalizeContainers(tree: Tree, positions: Positions): void {
-  const regions = deriveRegions(tree, positions);
-  tree.nodes.forEach((n, i) => {
-    if (n.children.length === 0) return;
-    const r = regions.get(i);
-    if (r) {
-      positions[n.id] = [round(r.x + r.w / 2), round(r.y + r.h / 2)];
-      return;
-    }
-    const leaves = leavesOf(tree, i)
-      .map((l) => positions[(tree.nodes[l] as TreeNode).id])
-      .filter((p): p is [number, number] => p !== undefined);
-    positions[n.id] = [round(avg(leaves.map((p) => p[0]))), round(avg(leaves.map((p) => p[1])))];
-  });
-  for (const p of Object.values(positions)) {
-    p[0] = round(p[0]);
-    p[1] = round(p[1]);
-  }
 }

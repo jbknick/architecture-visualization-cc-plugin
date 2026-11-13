@@ -91,12 +91,16 @@ describe("project map filter panel", () => {
     installMockFetch();
     renderApp("#/project-map");
     const section = await screen.findByRole("region", { name: "Workspaces" });
-    const web = await within(section).findByRole("checkbox", { name: /@acme\/web/ });
+    // Rows show the short name (the server strips the shared `@acme/` scope) and the workspace's own counts.
+    const web = await within(section).findByRole("checkbox", { name: /^web/ });
     expect((web as HTMLInputElement).checked).toBe(true);
     expect(within(section).getAllByRole("checkbox")).toHaveLength(5);
     expect(section.querySelectorAll(".kind-dot")).toHaveLength(5);
-    expect(within(section).getAllByText("2 files")).toHaveLength(3);
-    expect(within(section).getAllByText("1 file")).toHaveLength(2);
+    expect(section.querySelectorAll(".check-note")).toHaveLength(5);
+    for (const note of section.querySelectorAll(".check-note"))
+      expect(note.textContent).toMatch(/^\d+ functions? · \d+ files?$/);
+    // The full name stays available as the tooltip.
+    expect(web.closest("label")?.getAttribute("title")).toContain("@acme/web");
 
     fireEvent.click(web);
     await waitFor(() =>
@@ -104,7 +108,7 @@ describe("project map filter panel", () => {
     );
     await waitFor(() => expect(screen.queryByRole("option", { name: /@acme\/web/ })).toBeNull());
     // Still listed, now unticked, so it can be switched back on.
-    const again = within(section).getByRole("checkbox", { name: /@acme\/web/ }) as HTMLInputElement;
+    const again = within(section).getByRole("checkbox", { name: /^web/ }) as HTMLInputElement;
     expect(again.checked).toBe(false);
     fireEvent.click(within(section).getByRole("button", { name: "Show all workspaces" }));
     await waitFor(() => expect(hashParams().has("workspaces")).toBe(false));
@@ -112,7 +116,8 @@ describe("project map filter panel", () => {
 
   it("writes kind checkboxes, 'Exported only', 'Hide tests' (on by default) and 'Show npm packages'", async () => {
     installMockFetch();
-    renderApp("#/project-map");
+    // The kind colours matter only once functions are drawn, so the checkboxes appear at that level.
+    renderApp("#/project-map?level=symbols");
     const hideTests = (await screen.findByRole("checkbox", { name: "Hide tests" })) as HTMLInputElement;
     expect(hideTests.checked).toBe(true);
     expect((screen.getByRole("checkbox", { name: "Exported only" }) as HTMLInputElement).checked).toBe(false);

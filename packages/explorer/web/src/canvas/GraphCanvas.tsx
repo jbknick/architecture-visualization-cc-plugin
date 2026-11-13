@@ -5,17 +5,17 @@ import Sigma from "sigma";
 import { extremityArrow } from "sigma/rendering";
 import { api } from "../api.ts";
 import type { CanvasProps } from "../slots.ts";
+import { getFilterPanel } from "../slots.ts";
 import { currentScheme } from "../theme.ts";
-import { deriveRegions, isContainer, isRegion, type TreeNode } from "./hierarchy.ts";
+import type { TreeNode } from "./hierarchy.ts";
 import { Legend } from "./Legend.tsx";
 import { runLayout } from "./layoutClient.ts";
-import { distanceToPolyline, drawOverlay, type OverlayResult } from "./overlay.ts";
 import { hashPositions } from "./prng.ts";
-import { brightSet, buildScene, layoutInputFor, relatedSet } from "./scene.ts";
+import { brightSet, buildScene, layoutInputFor, relatedSet, type Scene } from "./scene.ts";
 import { makeSigmaStyles } from "./sigmaStyles.ts";
-import { type CanvasTheme, kindColor, readTheme, workspaceColor } from "./style.ts";
-import type { LayoutResult, Positions, Rect } from "./types.ts";
-import { type Level, levelForRatio, nodeTier, regionTier } from "./zoom.ts";
+import { type CanvasTheme, kindColor, readTheme } from "./style.ts";
+import { TreemapCanvas } from "./TreemapCanvas.tsx";
+import type { LayoutResult, Positions } from "./types.ts";
 
 export interface GraphCanvasProps extends CanvasProps {
   /** View id used as the key for saved positions. Omit to skip persistence. */
@@ -35,12 +35,10 @@ const FIT_MARGIN = 40;
 const MAX_LABEL_CHARS = 26;
 
 interface Live {
-  level: Level;
   theme: CanvasTheme;
   bright: Set<number> | null;
   related: Set<number> | null;
   selected: number | null;
-  hoverEdge: string | null;
 }
 
 function shortLabel(label: string): string {
@@ -51,7 +49,22 @@ function plain(id: string): string {
   return id.replace(/^(sym|file|ws|dir):/, "");
 }
 
-export function GraphCanvas({
+/**
+ * The canvas for every 2D view. Hierarchical views (the project map: workspaces, folders, files, functions)
+ * get the treemap canvas; flat graphs (ego, debug) keep the sigma force/layered canvas.
+ */
+export function GraphCanvas(props: GraphCanvasProps) {
+  const { nodes, edges, layoutHint, viewId } = props;
+  const scene = useMemo(() => buildScene(nodes, edges, layoutHint), [nodes, edges, layoutHint]);
+  if (scene.hierarchical) {
+    const panelLegend = Boolean(viewId) && getFilterPanel(viewId ?? "") !== null;
+    return <TreemapCanvas {...props} scene={scene} panelLegend={panelLegend} />;
+  }
+  return <FlatGraphCanvas {...props} scene={scene} />;
+}
+
+function FlatGraphCanvas({
+  scene,
   nodes,
   edges,
   layoutHint,
@@ -60,37 +73,27 @@ export function GraphCanvas({
   onHover,
   onDrill,
   viewId,
-}: GraphCanvasProps) {
+}: GraphCanvasProps & { scene: Scene }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const underRef = useRef<HTMLCanvasElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<CanvasTheme>(() => readTheme(null));
   const [layout, setLayout] = useState<(LayoutResult & { key: string }) | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [level, setLevel] = useState<Level>("far");
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
   const [tick, setTick] = useState(0);
   const fresh = useRef(false);
-  const live = useRef<Live>({
-    level: "far",
-    theme,
-    bright: null,
-    related: null,
-    selected: null,
-    hoverEdge: null,
-  });
+  const live = useRef<Live>({ theme, bright: null, related: null, selected: null });
   const api2 = useRef<{
     fit(): void;
     zoom(factor: number): void;
     zoomTo(index: number): void;
-    redraw(): void;
     refresh(): void;
   } | null>(null);
   const callbacks = useRef({ onSelect, onHover, onDrill });
   callbacks.current = { onSelect, onHover, onDrill };
   const internalSelect = useRef(false);
 
-  const scene = useMemo(() => buildScene(nodes, edges, layoutHint), [nodes, edges, layoutHint]);
   const sceneKey = useMemo(
     () => `${scene.nodes.length}:${scene.edges.length}:${scene.nodes[0]?.id ?? ""}`,
     [scene],
@@ -144,11 +147,6 @@ export function GraphCanvas({
     // eslint-disable-next-line: focus only matters to the radial layout
   }, [scene, sceneKey, layoutHint, viewId, persist, tick, layoutHint === "radial" ? focus : null]);
 
-  const regions = useMemo<Map<number, Rect>>(
-    () => (layout && layout.key === sceneKey ? deriveRegions(scene.tree, layout.positions) : new Map()),
-    [layout, scene, sceneKey],
-  );
-
   // Selection state shared with the reducers.
   const selectedIndex = focus ? (scene.tree.index.get(focus) ?? null) : null;
   useEffect(() => {
@@ -165,39 +163,26 @@ export function GraphCanvas({
     if (!box || !under || !layout || layout.key !== sceneKey) return;
     const positions = layout.positions;
     const tree = scene.tree;
-    const hierarchical = scene.hierarchical;
     const startTheme = live.current.theme;
 
     const graph = new Graph({ type: "directed", multi: false });
     tree.nodes.forEach((n, i) => {
       const p = positions[n.id] ?? [0, 0];
-      const container = isContainer(tree, i);
-      const size = !hierarchical
-        ? Math.min(16, 6 + 2.2 * Math.sqrt(Math.max(0, scene.nodes[i]?.size ?? 0)))
-        : container
-          ? Math.min(20, 9 + 1.6 * Math.sqrt(scene.symbolCount[i] ?? 1))
-          : n.tier >= 3
-            ? 7
-            : 10;
       graph.addNode(n.id, {
         x: p[0],
         y: SY * p[1],
-        size,
+        size: Math.min(16, 6 + 2.2 * Math.sqrt(Math.max(0, scene.nodes[i]?.size ?? 0))),
         label: shortLabel(scene.nodes[i]?.label ?? n.id),
         i,
         tier: n.tier,
         kind: n.kind,
-        container,
-        colorWs: hierarchical
-          ? workspaceColor(scene.rootRank.get(n.root) ?? 0, startTheme.scheme)
-          : kindColor(n.kind, startTheme.scheme),
+        colorWs: kindColor(n.kind, startTheme.scheme),
         colorKind: kindColor(n.kind, startTheme.scheme),
       });
     });
     for (const e of scene.edges) {
       const a = (tree.nodes[e.src] as TreeNode).id;
       const b = (tree.nodes[e.dst] as TreeNode).id;
-      if (hierarchical && (isRegion(tree, e.src) || isRegion(tree, e.dst))) continue;
       if (graph.hasEdge(a, b))
         graph.updateEdgeAttributes(a, b, (attrs) => ({
           ...attrs,
@@ -214,19 +199,8 @@ export function GraphCanvas({
         });
     }
 
-    const wsColor = (root: number) =>
-      workspaceColor(scene.rootRank.get(root) ?? 0, live.current.theme.scheme);
-
-    const nodeVisible = (i: number, lvl: Level): boolean => {
-      if (!hierarchical) return true;
-      const n = tree.nodes[i] as TreeNode;
-      if (n.tier > nodeTier(lvl)) return false;
-      if (isRegion(tree, i) && n.tier <= regionTier(lvl)) return false; // drawn as a region instead
-      return true;
-    };
-
-    // Visual changes (level, selection) are sigma item states set in batches, not reducers: a reducer makes
-    // sigma re-evaluate every node and edge whenever the camera starts or stops moving.
+    // Visual changes (selection) are sigma item states set in batches, not reducers: a reducer makes sigma
+    // re-evaluate every node and edge whenever the camera starts or stops moving.
     const styles = makeSigmaStyles(startTheme);
 
     const sigma = new Sigma(graph, box, {
@@ -258,17 +232,13 @@ export function GraphCanvas({
     });
     const edgeApplied = new Int16Array(edgeKeys.length).fill(-1);
 
-    /** Pushes the level/selection/theme-dependent item states to sigma, touching only items that changed. */
+    /** Pushes the selection/theme-dependent item states to sigma, touching only items that changed. */
     const applyFlags = () => {
       const l = live.current;
       const nodeGroups = new Map<number, string[]>();
       for (let i = 0; i < nodeApplied.length; i++) {
         const dim = l.bright !== null && !l.bright.has(i);
-        const flags =
-          (nodeVisible(i, l.level) ? 0 : 1) |
-          (dim ? 2 : 0) |
-          (!hierarchical || l.level === "near" ? 4 : 0) |
-          (l.selected === i ? 8 : 0);
+        const flags = (dim ? 2 : 0) | 4 | (l.selected === i ? 8 : 0);
         if (nodeApplied[i] === flags) continue;
         nodeApplied[i] = flags;
         let list = nodeGroups.get(flags);
@@ -280,7 +250,7 @@ export function GraphCanvas({
       }
       for (const [flags, keys] of nodeGroups) {
         sigma.setNodesState(keys, {
-          isHidden: (flags & 1) !== 0,
+          isHidden: false,
           dim: (flags & 2) !== 0,
           useKind: (flags & 4) !== 0,
           sel: (flags & 8) !== 0,
@@ -290,13 +260,7 @@ export function GraphCanvas({
       for (let k = 0; k < edgeKeys.length; k++) {
         const [s, d] = edgeEnds[k] as [number, number];
         const incident = l.related !== null && (l.related.has(s) || l.related.has(d));
-        const sameRoot = (tree.nodes[s] as TreeNode).root === (tree.nodes[d] as TreeNode).root;
-        const shown =
-          (!hierarchical || l.level === "near") &&
-          nodeVisible(s, l.level) &&
-          nodeVisible(d, l.level) &&
-          (!hierarchical || sameRoot || incident);
-        const flags = (shown ? 0 : 1) | (l.bright !== null && !incident ? 2 : 0) | (incident ? 4 : 0);
+        const flags = (l.bright !== null && !incident ? 2 : 0) | (incident ? 4 : 0);
         if (edgeApplied[k] === flags) continue;
         edgeApplied[k] = flags;
         let list = edgeGroups.get(flags);
@@ -308,30 +272,23 @@ export function GraphCanvas({
       }
       for (const [flags, keys] of edgeGroups) {
         sigma.setEdgesState(keys, {
-          isHidden: (flags & 1) !== 0,
+          isHidden: false,
           dim: (flags & 2) !== 0,
           sel: (flags & 4) !== 0,
         } as never);
       }
       sigma.scheduleRender();
     };
-    let applyTimer: ReturnType<typeof setTimeout> | null = null;
 
-    // Region-inclusive bounding box so "fit" shows every container fully.
     let x0 = Number.POSITIVE_INFINITY;
     let y0 = Number.POSITIVE_INFINITY;
     let x1 = Number.NEGATIVE_INFINITY;
     let y1 = Number.NEGATIVE_INFINITY;
-    const grow = (x: number, y: number) => {
-      x0 = Math.min(x0, x);
-      y0 = Math.min(y0, y);
-      x1 = Math.max(x1, x);
-      y1 = Math.max(y1, y);
-    };
-    for (const p of Object.values(positions)) grow(p[0], p[1]);
-    for (const r of regions.values()) {
-      grow(r.x, r.y);
-      grow(r.x + r.w, r.y + r.h);
+    for (const p of Object.values(positions)) {
+      x0 = Math.min(x0, p[0]);
+      y0 = Math.min(y0, p[1]);
+      x1 = Math.max(x1, p[0]);
+      y1 = Math.max(y1, p[1]);
     }
     if (x0 === Number.POSITIVE_INFINITY) {
       x0 = y0 = -100;
@@ -341,67 +298,18 @@ export function GraphCanvas({
       x: [x0 - FIT_MARGIN, x1 + FIT_MARGIN],
       y: [SY * (y1 + FIT_MARGIN), SY * (y0 - FIT_MARGIN)].sort((a, b) => a - b) as [number, number],
     });
-
-    const fullRect: Rect = {
+    const fullRect = {
       x: x0 - FIT_MARGIN,
       y: y0 - FIT_MARGIN,
       w: x1 - x0 + 2 * FIT_MARGIN,
       h: y1 - y0 + 2 * FIT_MARGIN,
     };
 
-    const ctx = under.getContext("2d");
-    let overlay: OverlayResult = { edgeHits: [], regionHits: [] };
-    let hoveredNode: string | null = null;
-
-    const project = (x: number, y: number) => sigma.graphToViewport({ x, y: SY * y });
-    const draw = () => {
-      if (!ctx) return;
-      const dpr = window.devicePixelRatio || 1;
-      const w = box.clientWidth;
-      const h = box.clientHeight;
-      if (under.width !== Math.round(w * dpr) || under.height !== Math.round(h * dpr)) {
-        under.width = Math.round(w * dpr);
-        under.height = Math.round(h * dpr);
-      }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const a = project(0, 0);
-      const b = project(1, 0);
-      const l = live.current;
-      overlay = drawOverlay({
-        ctx,
-        w,
-        h,
-        scene,
-        regions,
-        positions,
-        level: l.level,
-        theme: l.theme,
-        project,
-        scale: Math.hypot(b.x - a.x, b.y - a.y),
-        wsColor,
-        bright: l.bright,
-        related: l.related,
-        hoverEdge: l.hoverEdge,
-      });
-    };
-
     const camera = sigma.getCamera();
-    // Camera state that shows `fullRect` completely; levels are measured relative to it.
     let fit = { x: 0.5, y: 0.5, ratio: 1, angle: 0 };
-    const syncLevel = () => {
-      const next = hierarchical ? levelForRatio(camera.ratio / fit.ratio) : "near";
-      if (next !== live.current.level) {
-        live.current = { ...live.current, level: next };
-        setLevel(next);
-        if (applyTimer) clearTimeout(applyTimer);
-        applyTimer = setTimeout(applyFlags, 90);
-      }
-      box.dataset.level = next;
-    };
-    camera.on("updated", syncLevel);
-    sigma.on("afterRender", draw);
+    box.dataset.level = "near";
 
-    const targetState = (rect: Rect, padding: number) => {
+    const targetState = (rect: { x: number; y: number; w: number; h: number }, padding: number) => {
       const W = box.clientWidth;
       const H = box.clientHeight;
       const probe = { x: 0.5, y: 0.5, angle: 0, ratio: 1 };
@@ -429,63 +337,22 @@ export function GraphCanvas({
           ? camera.zoomIn({ factor, duration: 200 })
           : camera.zoomOut({ factor: 1 / factor, duration: 200 }),
       zoomTo: (index) => {
-        const region = regions.get(index);
-        const id = (tree.nodes[index] as TreeNode).id;
-        const p = positions[id];
-        const rect = region ?? (p ? { x: p[0] - 120, y: p[1] - 80, w: 240, h: 160 } : null);
-        if (rect) camera.animate(targetState(rect, 60), { duration: 450 });
+        const p = positions[(tree.nodes[index] as TreeNode).id];
+        if (p)
+          camera.animate(targetState({ x: p[0] - 120, y: p[1] - 80, w: 240, h: 160 }, 60), { duration: 450 });
       },
-      redraw: draw,
       refresh: applyFlags,
     };
 
-    // Hit testing: sigma handles nodes; edges and regions come from the overlay's last frame.
+    const describe = (i: number): Tooltip["lines"] => {
+      const n = tree.nodes[i] as TreeNode;
+      return [n.kind, plain(n.id)];
+    };
     const local = (clientX: number, clientY: number) => {
       const r = box.getBoundingClientRect();
       return { x: clientX - r.left, y: clientY - r.top };
     };
-    const regionAt = (x: number, y: number): number | null => {
-      let best: number | null = null;
-      let bestTier = -1;
-      let bestArea = Number.POSITIVE_INFINITY;
-      for (const r of overlay.regionHits) {
-        if (x < r.x || x > r.x + r.w || y < r.y || y > r.y + r.h) continue;
-        const tier = (tree.nodes[r.index] as TreeNode).tier;
-        const area = r.w * r.h;
-        if (tier > bestTier || (tier === bestTier && area < bestArea)) {
-          best = r.index;
-          bestTier = tier;
-          bestArea = area;
-        }
-      }
-      return best;
-    };
-    const edgeAt = (x: number, y: number) => {
-      let best: OverlayResult["edgeHits"][number] | null = null;
-      let bestD = Number.POSITIVE_INFINITY;
-      for (const e of overlay.edgeHits) {
-        const d = distanceToPolyline(x, y, e.pts);
-        if (d < bestD && d <= Math.max(7, e.width / 2 + 4)) {
-          best = e;
-          bestD = d;
-        }
-      }
-      return best;
-    };
-    const describe = (i: number): Tooltip["lines"] => {
-      const n = tree.nodes[i] as TreeNode;
-      const count = scene.symbolCount[i] ?? 0;
-      return [
-        `${n.kind}${count > 0 && isContainer(tree, i) ? ` · ${count.toLocaleString("en-US")} functions` : ""}`,
-        plain(n.id),
-      ];
-    };
-    const setHoverEdge = (key: string | null) => {
-      if (live.current.hoverEdge === key) return;
-      live.current = { ...live.current, hoverEdge: key };
-      draw();
-    };
-
+    let hoveredNode: string | null = null;
     const onMove = (event: PointerEvent) => {
       if (event.buttons !== 0) {
         setTooltip(null);
@@ -495,54 +362,14 @@ export function GraphCanvas({
       if (hoveredNode !== null) {
         const i = graph.getNodeAttribute(hoveredNode, "i") as number;
         setTooltip({ x, y, title: scene.nodes[i]?.label ?? hoveredNode, lines: describe(i) });
-        setHoverEdge(null);
-        return;
-      }
-      const edge = edgeAt(x, y);
-      if (edge) {
-        const from = scene.nodes[edge.src]?.label ?? "";
-        const to = scene.nodes[edge.dst]?.label ?? "";
-        setHoverEdge(edge.key);
-        setTooltip({
-          x,
-          y,
-          title: `${from} → ${to}: ${edge.weight.toLocaleString("en-US")} ${edge.noun}`,
-          lines: [],
-        });
-        return;
-      }
-      setHoverEdge(null);
-      const region = regionAt(x, y);
-      if (region !== null) {
-        setTooltip({ x, y, title: scene.nodes[region]?.label ?? "", lines: describe(region) });
-        callbacks.current.onHover(scene.nodes[region]?.id ?? null);
-      } else {
-        setTooltip(null);
-        callbacks.current.onHover(null);
-      }
+      } else setTooltip(null);
     };
-    const onLeave = () => {
-      setTooltip(null);
-      setHoverEdge(null);
-    };
+    const onLeave = () => setTooltip(null);
     box.addEventListener("pointermove", onMove);
     box.addEventListener("pointerleave", onLeave);
-    // Test hook: write the last frame's hit geometry and a hash of the positions to `data-probe`.
+    // Test hook: write a hash of the positions to `data-probe`.
     const onProbe = () => {
-      box.dataset.probe = JSON.stringify({
-        hash: hashPositions(positions),
-        edges: overlay.edgeHits.map((e) => {
-          const mid = e.pts[Math.floor(e.pts.length / 2)] as [number, number];
-          return { key: e.key, x: mid[0], y: mid[1], weight: e.weight };
-        }),
-        regions: overlay.regionHits.map((r) => ({
-          id: scene.nodes[r.index]?.id,
-          x: r.x,
-          y: r.y,
-          w: r.w,
-          h: r.h,
-        })),
-      });
+      box.dataset.probe = JSON.stringify({ hash: hashPositions(positions), edges: [], regions: [] });
     };
     box.addEventListener("gantry:probe", onProbe);
 
@@ -561,34 +388,18 @@ export function GraphCanvas({
       internalSelect.current = true;
       callbacks.current.onSelect(node);
     });
-    sigma.on("clickStage", ({ event }) => {
-      const { x, y } = local(
-        event.original instanceof MouseEvent ? event.original.clientX : 0,
-        event.original instanceof MouseEvent ? event.original.clientY : 0,
-      );
-      const region = regionAt(x, y);
+    sigma.on("clickStage", () => {
       internalSelect.current = true;
-      callbacks.current.onSelect(region === null ? null : (scene.nodes[region]?.id ?? null));
+      callbacks.current.onSelect(null);
     });
-    const goInto = (index: number | null) => {
-      if (index === null) return;
-      const id = (tree.nodes[index] as TreeNode).id;
-      // Views that can drill (project map: show the contents, ego: re-centre) get the first say.
-      if (callbacks.current.onDrill) callbacks.current.onDrill(id);
-      else api2.current?.zoomTo(index);
-    };
     sigma.on("doubleClickNode", ({ node, event }) => {
       event.preventSigmaDefault();
-      goInto(graph.getNodeAttribute(node, "i") as number);
+      const index = graph.getNodeAttribute(node, "i") as number;
+      // Views that can drill (ego: re-centre) get the first say.
+      if (callbacks.current.onDrill) callbacks.current.onDrill(node);
+      else api2.current?.zoomTo(index);
     });
-    sigma.on("doubleClickStage", ({ event }) => {
-      event.preventSigmaDefault();
-      const o = event.original;
-      if (o instanceof MouseEvent) {
-        const { x, y } = local(o.clientX, o.clientY);
-        goInto(regionAt(x, y));
-      }
-    });
+    sigma.on("doubleClickStage", ({ event }) => event.preventSigmaDefault());
 
     const resizeObserver = new ResizeObserver(() => {
       setTooltip(null);
@@ -602,10 +413,9 @@ export function GraphCanvas({
     });
     resizeObserver.observe(box);
 
-    live.current = { ...live.current, theme: startTheme, level: "far" };
+    live.current = { ...live.current, theme: startTheme };
     fit = targetState(fullRect, 28);
     camera.setState(fit);
-    syncLevel();
     applyFlags();
     box.dataset.ready = "true";
     box.dataset.nodes = String(graph.order);
@@ -617,10 +427,9 @@ export function GraphCanvas({
       box.removeEventListener("pointerleave", onLeave);
       box.removeEventListener("gantry:probe", onProbe);
       api2.current = null;
-      if (applyTimer) clearTimeout(applyTimer);
       sigma.kill();
     };
-  }, [layout, scene, sceneKey, regions]);
+  }, [layout, scene, sceneKey]);
 
   // Selecting from outside the canvas (search, inspector, deep link) brings the node into view.
   useEffect(() => {
@@ -720,13 +529,13 @@ export function GraphCanvas({
           Re-layout
         </button>
       </div>
-      <Legend scene={scene} scheme={scheme} level={level} />
+      <Legend scene={scene} scheme={scheme} level="near" />
       <div className="gc-status" aria-live="polite">
         {error
           ? `Layout failed: ${error}`
           : busy
             ? `Laying out ${nodes.length.toLocaleString("en-US")} nodes…`
-            : `${layout.strategy} · ${layout.ms} ms · ${level} zoom`}
+            : `${layout.strategy} · ${layout.ms} ms`}
       </div>
       {tooltip && (
         <div className="gc-tooltip" role="tooltip" style={{ left: tooltip.x + 14, top: tooltip.y + 14 }}>

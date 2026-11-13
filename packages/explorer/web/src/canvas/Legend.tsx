@@ -7,15 +7,20 @@ import type { Level } from "./zoom.ts";
 
 const MAX_WORKSPACES = 14;
 
-/** Colour key: workspace colours (far and mid zoom) and kind colours (symbol zoom). */
+/**
+ * Colour key: workspace colours and kind colours. Flat graphs start with it open; hierarchical maps (which have
+ * their own legend in the left panel, or none) start with it collapsed, tucked in the strip above the diagram,
+ * so it never covers the fitted picture.
+ */
 export function Legend({ scene, scheme, level }: { scene: Scene; scheme: Scheme; level: Level }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(!scene.hierarchical);
   const workspaces = useMemo(
     () =>
       scene.hierarchical
         ? scene.roots.map((r) => ({
             id: (scene.tree.nodes[r] as TreeNode).id,
-            label: scene.nodes[r]?.label ?? "",
+            label: scene.nodes[r]?.shortLabel ?? scene.nodes[r]?.label ?? "",
+            full: scene.nodes[r]?.label ?? "",
             color: workspaceColor(scene.rootRank.get(r) ?? 0, scheme),
           }))
         : [],
@@ -30,7 +35,7 @@ export function Legend({ scene, scheme, level }: { scene: Scene; scheme: Scheme;
   }, [scene]);
 
   return (
-    <aside className="gc-legend" aria-label="Legend">
+    <aside className={`gc-legend ${scene.hierarchical ? "is-top" : ""}`} aria-label="Legend">
       <button
         type="button"
         className="gc-legend-toggle"
@@ -42,11 +47,11 @@ export function Legend({ scene, scheme, level }: { scene: Scene; scheme: Scheme;
       {open && (
         <div className="gc-legend-body">
           {workspaces.length > 0 && (
-            <section aria-label="Workspace colours" className={level === "near" ? "is-muted" : ""}>
+            <section aria-label="Workspace colours">
               <h4>Workspaces</h4>
               <ul>
                 {workspaces.slice(0, MAX_WORKSPACES).map((w) => (
-                  <li key={w.id}>
+                  <li key={w.id} title={w.full}>
                     <span className="gc-swatch" style={{ background: w.color }} aria-hidden="true" />
                     {w.label}
                   </li>
@@ -55,12 +60,9 @@ export function Legend({ scene, scheme, level }: { scene: Scene; scheme: Scheme;
               </ul>
             </section>
           )}
-          {kinds.length > 0 && (
-            <section
-              aria-label="Kind colours"
-              className={workspaces.length > 0 && level !== "near" ? "is-muted" : ""}
-            >
-              <h4>{workspaces.length > 0 ? "Symbol kinds (zoomed in)" : "Kinds"}</h4>
+          {kinds.length > 0 && (level === "near" || workspaces.length === 0) && (
+            <section aria-label="Kind colours">
+              <h4>{workspaces.length > 0 ? "Function kinds" : "Kinds"}</h4>
               <ul>
                 {kinds.map((k) => (
                   <li key={k}>

@@ -168,25 +168,24 @@ test("3D map: opens from the view switcher and draws the fixture's workspaces as
   await expect(page.getByRole("complementary", { name: "Inspector" })).toBeVisible();
 });
 
-test("graph canvas: positions are saved through PUT /api/layout and reused after a reload", async ({
+test("graph canvas: the treemap layout is the same after a reload; PUT /api/layout stays token-gated", async ({
   page,
 }) => {
   await page.goto(url);
   await expect(page.locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 30_000 });
-  // The earlier test already opened this view, so the layout may come from a fresh run or from the saved one.
-  await expect(page.locator(".gc-status")).toContainText(/hierarchy\/|saved/);
-  const saved = () =>
-    page.evaluate(async () => {
-      const res = await fetch("/api/layout/project-map");
-      const body = (await res.json()) as { positions: Record<string, [number, number]> };
-      return Object.keys(body.positions).length;
+  // The project map's layout follows from the data (box area from function counts), so nothing is saved.
+  await expect(page.locator(".gc-status")).toContainText("treemap/layered");
+  const hash = () =>
+    page.locator(".gc-sigma").evaluate((el) => {
+      el.dispatchEvent(new CustomEvent("gantry:probe"));
+      return (JSON.parse((el as HTMLElement).dataset.probe ?? "{}") as { hash: string }).hash;
     });
-  await expect.poll(saved, { timeout: 10_000 }).toBeGreaterThan(10);
+  const first = await hash();
   await page.waitForTimeout(300);
   await page.screenshot({ path: join(shots, "canvas-real-server.png") });
   await page.reload();
   await expect(page.locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator(".gc-status")).toContainText("saved");
+  expect(await hash()).toBe(first);
   // The PUT route is token-gated like every /api route: without the cookie it is refused.
   const status = await page.evaluate(async () => {
     const res = await fetch("/api/layout/project-map", {

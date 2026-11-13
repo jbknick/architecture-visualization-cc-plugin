@@ -53,6 +53,7 @@
 }
 .gc-sigma {
   background: transparent;
+  touch-action: none;
 }
 .gc-controls {
   position: absolute;
@@ -100,6 +101,14 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   font-size: 12px;
+}
+.gc-legend.is-top {
+  /* Hierarchical maps: a collapsed key in the strip above the fitted diagram, never over it. */
+  top: 10px;
+  right: auto;
+  bottom: auto;
+  left: 120px;
+  max-height: 70%;
 }
 .gc-legend-toggle {
   display: block;

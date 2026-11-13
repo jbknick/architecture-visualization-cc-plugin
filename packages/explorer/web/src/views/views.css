@@ -46,12 +46,16 @@
   gap: 8px;
   cursor: pointer;
 }
-.check-label {
+.check-text {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+}
+.check-label {
+  min-width: 0;
+  /* Wrap long names instead of cutting them off with an ellipsis. */
+  overflow-wrap: anywhere;
 }
 .check-note {
   color: var(--muted);
