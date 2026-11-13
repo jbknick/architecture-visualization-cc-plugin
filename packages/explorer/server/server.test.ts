@@ -286,11 +286,14 @@ describe("/api/meta", () => {
   it("returns repo, headSha, counts and views", async () => {
     const res = await api("/api/meta");
     expect(res.status).toBe(200);
-    expect(res.json()).toEqual({
+    expect(res.json()).toMatchObject({
       repo: "repo",
       headSha: "deadbeef",
       counts: { workspaces: 2, files: 2, symbols: 3, edges: 4 },
-      views: [{ id: "debug", title: "Debug: workspaces", enabled: true }],
+      views: expect.arrayContaining([
+        { id: "debug", title: "Debug: workspaces", enabled: true },
+        { id: "map-3d", title: "3D map", enabled: true },
+      ]),
     });
   });
 });

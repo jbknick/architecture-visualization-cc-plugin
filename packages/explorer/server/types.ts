@@ -21,7 +21,7 @@ export interface GraphEdge {
   confidence: "high" | "low";
 }
 
-export type LayoutHint = "force" | "layered" | "tree" | "grid";
+export type LayoutHint = "force" | "force-3d" | "layered" | "tree" | "grid";
 
 export interface ViewResult {
   nodes: GraphNode[];
@@ -32,6 +32,8 @@ export interface ViewResult {
 export interface ViewParams {
   focus?: string;
   depth?: number;
+  /** Drill level for views that have one (`level` query param); the view validates it. */
+  level?: string;
   /** The comma-separated `filters` query value, split. */
   filters: string[];
 }

@@ -90,6 +90,11 @@ function view(ctx: ApiContext, id: string, query: URLSearchParams) {
   };
   const focus = query.get("focus");
   if (focus) params.focus = focus;
+  const level = query.get("level");
+  if (level) {
+    if (!/^[a-z][a-z-]{0,15}$/.test(level)) throw new HttpError(400, "level must be a short lowercase word");
+    params.level = level;
+  }
   const depth = query.get("depth");
   if (depth !== null) {
     const n = Number(depth);

@@ -20,6 +20,10 @@ Top bar (repo, short sha, view tabs, search, Cmd/Ctrl+K), left slot (filters, co
 - `src/theme.ts`: fixed kind colors (light and dark). Written as `--kind-<name>` CSS variables; canvases import `kindColor(kind, scheme)`.
 - `mock/`: fixture graph and a small `node:http` server. Used by tests and the smoke test; not shipped.
 
+## 3D map
+
+`src/canvas3d/` renders the `map-3d` view (layoutHint `force-3d`) with `3d-force-graph`/three.js in a lazy chunk. `layout.ts` is pure and deterministic (seeded by id hashes, fixed ticks, no `Math.random`); `scene.ts` is the three.js side; `MapPanel.tsx` is the left panel (level, hide tests, auto-rotate, reset camera, workspace legend). Level and test visibility travel as filters (`level=workspaces|dirs|files`, `tests=show`). The Playwright test needs software WebGL (`--use-angle=swiftshader`) and writes `docs/milestones/screenshots/map-3d.png`.
+
 ## Canvas slot
 
 A view returns `layoutHint` from `/api/view/:id`. The shell renders the component registered for that hint and falls back to the default, the placeholder windowed list.

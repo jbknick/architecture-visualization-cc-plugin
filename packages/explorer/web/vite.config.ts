@@ -14,5 +14,6 @@ export default defineConfig({
   build: {
     outDir: resolve(here, "../../../plugin/dist/explorer"),
     emptyOutDir: true,
+    chunkSizeWarningLimit: 1700, // the lazy 3D chunk (three.js) is ~1.5 MB; the main bundle stays small
   },
 });
