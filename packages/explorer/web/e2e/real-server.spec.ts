@@ -71,6 +71,8 @@ test("project map: switch levels, drill into @acme/ui, then see Button's callers
   mkdirSync(shots, { recursive: true });
   await page.goto(url);
   await expect(page.getByText("pnpm-turbo").first()).toBeVisible();
+  // These steps drive the list renderer; the graph canvas (#36) is the default for 2D views.
+  await page.getByRole("button", { name: "List" }).click();
   // The server reports counts only; nothing about a backlog or working changes yet.
   await expect(page.getByText(/^\d+ workspaces$/)).toBeVisible();
   await expect(page.getByText(/Backlog/)).toHaveCount(0);
@@ -164,4 +166,36 @@ test("3D map: opens from the view switcher and draws the fixture's workspaces as
   await legend.getByRole("button", { name: /^ui/ }).click();
   await expect(page).toHaveURL(/sel=ws%3A%40acme%2Fui/);
   await expect(page.getByRole("complementary", { name: "Inspector" })).toBeVisible();
+});
+
+test("graph canvas: positions are saved through PUT /api/layout and reused after a reload", async ({
+  page,
+}) => {
+  await page.goto(url);
+  await expect(page.locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 30_000 });
+  // The earlier test already opened this view, so the layout may come from a fresh run or from the saved one.
+  await expect(page.locator(".gc-status")).toContainText(/hierarchy\/|saved/);
+  const saved = () =>
+    page.evaluate(async () => {
+      const res = await fetch("/api/layout/project-map");
+      const body = (await res.json()) as { positions: Record<string, [number, number]> };
+      return Object.keys(body.positions).length;
+    });
+  await expect.poll(saved, { timeout: 10_000 }).toBeGreaterThan(10);
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: join(shots, "canvas-real-server.png") });
+  await page.reload();
+  await expect(page.locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".gc-status")).toContainText("saved");
+  // The PUT route is token-gated like every /api route: without the cookie it is refused.
+  const status = await page.evaluate(async () => {
+    const res = await fetch("/api/layout/project-map", {
+      method: "PUT",
+      credentials: "omit",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ positions: {} }),
+    });
+    return res.status;
+  });
+  expect(status).toBe(403);
 });

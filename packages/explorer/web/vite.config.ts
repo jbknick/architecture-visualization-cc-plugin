@@ -11,6 +11,7 @@ export default defineConfig({
   root: here,
   base: "./",
   plugins: [react()],
+  worker: { format: "es" },
   build: {
     outDir: resolve(here, "../../../plugin/dist/explorer"),
     emptyOutDir: true,

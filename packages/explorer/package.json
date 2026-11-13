@@ -15,13 +15,18 @@
     "build:web": "vite build --config web/vite.config.ts",
     "test": "vitest run --config web/vitest.config.ts",
     "mock": "tsx web/mock/server.ts",
-    "e2e": "pnpm build:web && playwright test --config web/playwright.config.ts"
+    "e2e": "pnpm build:web && playwright test --config web/playwright.config.ts",
+    "perf": "pnpm build:web && playwright test --config web/playwright.perf.config.ts"
   },
   "dependencies": {
     "3d-force-graph": "^1.80.2",
     "@gantry/core": "workspace:*",
+    "elkjs": "^0.12.1",
+    "graphology": "^0.26.0",
+    "graphology-layout-forceatlas2": "^0.10.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "sigma": "^4.0.6",
     "three": "^0.187.0",
     "three-spritetext": "^1.10.0"
   },

@@ -180,6 +180,26 @@ export const api = {
       signal,
     ),
 
+  /** Saved canvas positions for a view: `{ nodeId: [x, y] }`. */
+  layout: async (view: string, signal?: AbortSignal): Promise<Record<string, [number, number]>> =>
+    (
+      await getJson<{ positions: Record<string, [number, number]> }>(
+        `/api/layout/${encodeURIComponent(view)}`,
+        {},
+        signal,
+      )
+    ).positions,
+
+  saveLayout: async (view: string, positions: Record<string, [number, number]>): Promise<void> => {
+    const res = await fetch(`/api/layout/${encodeURIComponent(view)}`, {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ positions }),
+    });
+    if (!res.ok) throw new ApiError(res.status, `layout save failed with ${res.status}`);
+  },
+
   node: (id: string, signal?: AbortSignal) =>
     getJson<NodeDetail>(`/api/node/${encodeURIComponent(id)}`, {}, signal),
 

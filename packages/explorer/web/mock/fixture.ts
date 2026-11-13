@@ -11,6 +11,8 @@ import type {
   ViewData,
   ViewLevel,
 } from "../src/api.ts";
+import { generateSynthetic } from "../src/canvas/synthetic.ts";
+import { buildHierarchy } from "./hierarchy.ts";
 
 export const meta: Meta = {
   repo: "pnpm-turbo",
@@ -1123,6 +1125,12 @@ function map3dDetail(id: string): NodeDetail | null {
   return null;
 }
 
+/** Saved canvas positions per view; the mock server's PUT /api/layout/:view writes here. */
+export const mockLayouts = new Map<string, Record<string, [number, number]>>();
+
+let hierarchy: ReturnType<typeof buildHierarchy> | undefined;
+let synthetic: ReturnType<typeof generateSynthetic> | undefined;
+
 export interface MockResponse {
   status: number;
   body: unknown;
@@ -1132,6 +1140,32 @@ export interface MockResponse {
 export function handleMockApi(url: URL): MockResponse | null {
   const path = url.pathname;
   if (path === "/api/meta") return { status: 200, body: meta };
+
+  if (path.startsWith("/api/layout/")) {
+    const view = decodeURIComponent(path.slice("/api/layout/".length));
+    return { status: 200, body: { positions: mockLayouts.get(view) ?? {} } };
+  }
+
+  if (path === "/api/view/canvas-demo") {
+    hierarchy ??= buildHierarchy();
+    return { status: 200, body: { ...hierarchy, layoutHint: "nested-elk" } };
+  }
+  if (path === "/api/view/flat") {
+    hierarchy ??= buildHierarchy();
+    const keep = new Set(
+      hierarchy.nodes
+        .filter((n) => n.kind !== "workspace" && n.kind !== "directory" && n.kind !== "file")
+        .slice(0, 90)
+        .map((n) => n.id),
+    );
+    const nodes = hierarchy.nodes.filter((n) => keep.has(n.id)).map(({ parent: _p, ...rest }) => rest);
+    const edges = hierarchy.edges.filter((e) => keep.has(e.src) && keep.has(e.dst));
+    return { status: 200, body: { nodes, edges, layoutHint: "force" } };
+  }
+  if (path === "/api/view/perf") {
+    synthetic ??= generateSynthetic();
+    return { status: 200, body: { ...synthetic, layoutHint: "nested-elk" } };
+  }
 
   if (path.startsWith("/api/view/")) {
     const id = decodeURIComponent(path.slice("/api/view/".length));
@@ -1154,7 +1188,20 @@ export function handleMockApi(url: URL): MockResponse | null {
   if (path.startsWith("/api/node/")) {
     const id = decodeURIComponent(path.slice("/api/node/".length));
     const found = nodeDetail(id) ?? map3dDetail(id);
-    return found ? { status: 200, body: found } : { status: 404, body: { error: "Unknown node" } };
+    if (found) return { status: 200, body: found };
+    hierarchy ??= buildHierarchy();
+    const node = hierarchy.nodes.find((n) => n.id === id);
+    if (!node) return { status: 404, body: { error: "Unknown node" } };
+    const degree = hierarchy.edges.filter((e) => e.src === id || e.dst === id);
+    const detail: NodeDetail = {
+      node: { id: node.id, kind: node.kind, name: node.label, path: null },
+      signature: "",
+      fan_in: degree.filter((e) => e.dst === id).length,
+      fan_out: degree.filter((e) => e.src === id).length,
+      neighbors: {},
+      untrusted_description: null,
+    };
+    return { status: 200, body: detail };
   }
 
   if (path === "/api/search") {

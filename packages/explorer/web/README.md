@@ -6,6 +6,7 @@ Vite + React + TypeScript app for `gantry map`. `pnpm build` writes it to `plugi
 pnpm --filter @gantry/explorer test   # vitest + jsdom component tests
 pnpm --filter @gantry/explorer e2e    # builds the UI, then Playwright: a smoke test on the mock API and
                                       # a real-server test (needs `pnpm build` at the root first)
+pnpm --filter @gantry/explorer perf   # opens the synthetic 30k-function graph in Playwright and prints fps
 pnpm --filter @gantry/explorer mock   # serve the built UI plus the mock API on :4173
 ```
 
@@ -43,6 +44,23 @@ registerCanvas("3d", Canvas3d); // Canvas3d lazy-loads its chunk and renders its
 ```
 
 Register in `src/canvases.ts` (imported by `App.tsx`). `focus` is the focused node id or `null`. Call `onSelect(id)` to focus a node (updates the hash and opens the inspector) and `onSelect(null)` to clear it. Call `onHover(id | null)` for hover state. Use `kindColor` from `theme.ts` for node colors.
+
+## Graph canvas (`src/canvas/`)
+
+The sigma + graphology canvas registered for `nested-elk`, `elk-layered`, `radial`, `force`, `tree-lr`, `columns`, `clusters` and the server hints `layered`, `tree`, `grid`. `CanvasHost` wraps it with a List / Graph toggle and lazy-loads sigma.
+
+- `GraphCanvas.tsx`: sigma instance, selection, hover tooltips, controls, keyboard (`+`/`-` zoom, `0` fit, `Esc` clear).
+- `overlay.ts`: the 2D layer under sigma. Draws labelled containment regions (workspace, directory, file) and the aggregated arrows, redrawn on every sigma render.
+- `layout.ts` (+ `layout.worker.ts`, `layoutClient.ts`): deterministic layouts in a Web Worker. `nested-elk` builds an elkjs compound graph (rectpacking inside each region, layered across workspaces); symbols inside a file are a fixed grid. Flat graphs use `force` (ForceAtlas2 from a hash-seeded start), elk layered, radial, tree, columns, clusters or grid. No `Math.random`.
+- `hierarchy.ts`: containment tree (workspace, directory, file, symbol tiers), edge lifting and aggregation, region geometry shared by layout and renderer.
+- `zoom.ts`: far (workspaces only), mid (directories and files), near (symbols) from the camera ratio. `style.ts`: workspace palette (indexed by sorted id) and theme.
+- `synthetic.ts`: seeded 30k-function generator used by `pnpm --filter @gantry/explorer perf`.
+
+Positions persist through `GET/PUT /api/layout/:view` (`layouts` table). Known nodes keep their saved position; new nodes are placed under their parent's other children; Re-layout recomputes from scratch. `radial` layouts depend on `focus`, so they are not saved.
+
+Level, selection and dimming are sigma item states set in batches. Do not add a sigma `nodeReducer` or `edgeReducer`: with one, sigma re-evaluates every node and edge each time the camera starts or stops moving, which dropped the 30k graph to a few fps.
+
+Test hooks on the canvas element: dispatch `gantry:zoom-to` (`detail: { id }`) on `[data-testid=graph-canvas]` to fly to a node, and `gantry:probe` on `.gc-sigma` to write hit geometry and a hash of the positions to `data-probe`.
 
 ## Filter slot
 
