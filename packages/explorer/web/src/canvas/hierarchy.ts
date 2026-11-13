@@ -97,6 +97,53 @@ export function liftTo(t: Tree, i: number, maxTier: number): number {
   return cur;
 }
 
+export interface ChainInfo {
+  /** 1 for a folder that is the only child of a workspace or folder with no files of its own: no header, no box. */
+  skipped: Uint8Array;
+  /** Visible container -> the skipped folders below it, outermost first (`src`, `lib` for `src/lib`). */
+  chain: Map<number, number[]>;
+  /** Folders between a node and its workspace that have a header (skipped ones do not count), 0 for roots. */
+  depth: Uint8Array;
+}
+
+/**
+ * Single-child folder chains: a workspace or folder whose only child is a folder, and that holds no file of its
+ * own, shows that folder's children directly. `files[i]` is the number of files under node `i`; it tells a
+ * folder that holds files of its own (so it is not skipped even when only one folder is loaded below it).
+ * Purely structural, so the layout worker and the renderer agree; ids and selection are untouched.
+ */
+export function collapseChains(t: Tree, files?: ArrayLike<number>): ChainInfo {
+  const skipped = new Uint8Array(t.nodes.length);
+  t.nodes.forEach((n, i) => {
+    if (kindTier(n.kind) > TIER_DIR || n.children.length !== 1) return;
+    const c = n.children[0] as number;
+    if (kindTier((t.nodes[c] as TreeNode).kind) !== TIER_DIR) return;
+    if (files && (files[i] as number) - (files[c] as number) > 0) return; // files of its own
+    skipped[c] = 1;
+  });
+  const chain = new Map<number, number[]>();
+  const depth = new Uint8Array(t.nodes.length);
+  const walk = (i: number, d: number): void => {
+    const n = t.nodes[i] as TreeNode;
+    const mine = n.parent === -1 || skipped[i] ? d : d + (kindTier(n.kind) === TIER_DIR ? 1 : 0);
+    depth[i] = Math.min(255, mine);
+    if (!skipped[i] && n.children.length > 0) {
+      const below: number[] = [];
+      for (let cur = n; cur.children.length === 1 && skipped[cur.children[0] as number]; ) {
+        const c = cur.children[0] as number;
+        below.push(c);
+        cur = t.nodes[c] as TreeNode;
+      }
+      if (below.length > 0) chain.set(i, below);
+    }
+    for (const c of n.children) walk(c, mine);
+  };
+  t.nodes.forEach((n, i) => {
+    if (n.parent === -1) walk(i, 0);
+  });
+  return { skipped, chain, depth };
+}
+
 /** All leaf descendants (or the node itself when it is a leaf). */
 export function leavesOf(t: Tree, i: number, out: number[] = []): number[] {
   const n = t.nodes[i] as TreeNode;

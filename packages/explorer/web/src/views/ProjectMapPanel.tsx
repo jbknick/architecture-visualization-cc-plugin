@@ -47,6 +47,8 @@ function Check({
   dot,
   note,
   onHover,
+  onPick,
+  active,
 }: {
   label: string;
   checked: boolean;
@@ -55,10 +57,13 @@ function Check({
   dot?: string;
   note?: string;
   onHover?: (on: boolean) => void;
+  /** Makes the name a button: clicking it calls this, and the checkbox is left alone. */
+  onPick?: () => void;
+  active?: boolean;
 }) {
   return (
     <label
-      className="check"
+      className={active ? "check is-active" : "check"}
       title={title}
       onMouseEnter={onHover ? () => onHover(true) : undefined}
       onMouseLeave={onHover ? () => onHover(false) : undefined}
@@ -71,10 +76,17 @@ function Check({
         onBlur={onHover ? () => onHover(false) : undefined}
       />
       {dot && <span className="kind-dot" style={{ background: dot }} aria-hidden="true" />}
-      <span className="check-text">
-        <span className="check-label">{label}</span>
-        {note && <span className="check-note">{note}</span>}
-      </span>
+      {onPick ? (
+        <button type="button" className="check-text check-pick" onClick={onPick} title={title}>
+          <span className="check-label">{label}</span>
+          {note && <span className="check-note">{note}</span>}
+        </button>
+      ) : (
+        <span className="check-text">
+          <span className="check-label">{label}</span>
+          {note && <span className="check-note">{note}</span>}
+        </span>
+      )}
     </label>
   );
 }
@@ -223,6 +235,10 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
             title={w.path ? `${w.label} (${w.path})` : w.label}
             onChange={(on) => setWorkspace(w.id, on)}
             onHover={(on) => mapView.setHoverWorkspace(on ? w.id : null)}
+            onPick={
+              onRouteChange ? () => onRouteChange({ sel: route?.sel === w.id ? null : w.id }) : undefined
+            }
+            active={route?.sel === w.id}
           />
         ))}
         {picked && (

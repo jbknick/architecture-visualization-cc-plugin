@@ -60,6 +60,37 @@ test("large scenario, folders level (dark)", async ({ page }) => {
   await page.screenshot({ path: resolve(shots, "map-2d-large-dark.png") });
 });
 
+/** Zooms the camera to a node by id (the canvas listens for `gantry:zoom-to`) and waits for the animation. */
+async function zoomTo(page: Page, id: string) {
+  await canvas(page).evaluate((el, nodeId) => {
+    el.dispatchEvent(new CustomEvent("gantry:zoom-to", { detail: { id: nodeId } }));
+  }, id);
+  await page.waitForTimeout(900);
+  await page.mouse.move(2, 2);
+}
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`large scenario, files level zoomed in (${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await openLarge(page, "files");
+    // Into the biggest workspace, then one zoom step further: file names are readable, headers stay slim.
+    await zoomTo(page, "ws:@acme-platform-monorepo/api");
+    const { regions } = await probe(page);
+    const api = regions.find((r) => r.id === "ws:@acme-platform-monorepo/api");
+    const box = await surface(page).boundingBox();
+    if (!api || !box) throw new Error("api box missing");
+    // Wheel about the top-left corner of the box, so its title and the first folder strips stay in view.
+    await page.mouse.move(box.x + api.x + 10, box.y + api.y + 10);
+    await page.mouse.wheel(0, -420);
+    await page.waitForTimeout(500);
+    await page.mouse.move(2, 2);
+    await page.waitForTimeout(300);
+    await page.screenshot({
+      path: resolve(shots, `map-2d-large-zoomed${scheme === "dark" ? "-dark" : ""}.png`),
+    });
+  });
+}
+
 test("large scenario, workspace selected", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await openLarge(page, "dirs");
@@ -75,7 +106,7 @@ test("large scenario, workspace selected", async ({ page }) => {
   await page.mouse.click(box.x + api.x + 30, box.y + api.y + 10);
   await expect(page).toHaveURL(/sel=ws%3A%40acme-platform-monorepo%2Fapi/);
   await page.mouse.move(box.x + 4, box.y + box.height - 4);
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(2200); // the canvas was resized twice and laid out again each time
   await page.screenshot({ path: resolve(shots, "map-2d-large-selected.png") });
 });
 
@@ -91,9 +122,9 @@ test("large scenario: the whole diagram fits the canvas and every workspace titl
     expect(p.regions).toHaveLength(11);
     for (const r of p.regions) {
       expect(r.x, `${level} ${r.id}`).toBeGreaterThanOrEqual(0);
-      expect(r.y).toBeGreaterThanOrEqual(56 - 1); // below the strip with the controls
+      expect(r.y).toBeGreaterThanOrEqual(44 - 1); // below the strip with the controls
       expect(r.x + r.w).toBeLessThanOrEqual(box.width);
-      expect(r.y + r.h).toBeLessThanOrEqual(box.height - 40 + 1); // above the status chip
+      expect(r.y + r.h).toBeLessThanOrEqual(box.height - 34 + 1); // above the status chip
     }
     // Every title sits inside its box (a title that did not fit would be beside it or hidden).
     expect(Object.values(p.titles), level).toHaveLength(11);
@@ -104,6 +135,48 @@ test("large scenario: the whole diagram fits the canvas and every workspace titl
     expect(p.hiddenTitles, level).toEqual([]);
     expect(p.scale).toBeCloseTo(p.fitScale, 5);
   }
+});
+
+test("large scenario: the diagram fills the canvas and the biggest workspace is big", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  for (const level of ["workspaces", "dirs", "symbols"]) {
+    await openLarge(page, level);
+    const box = await surface(page).boundingBox();
+    if (!box) throw new Error("no canvas");
+    const { regions } = await probe(page);
+    const x0 = Math.min(...regions.map((r) => r.x));
+    const x1 = Math.max(...regions.map((r) => r.x + r.w));
+    const y0 = Math.min(...regions.map((r) => r.y));
+    const y1 = Math.max(...regions.map((r) => r.y + r.h));
+    const wide = (x1 - x0) / box.width;
+    const tall = (y1 - y0) / box.height;
+    expect(Math.max(wide, tall), `${level}: ${wide.toFixed(2)} x ${tall.toFixed(2)}`).toBeGreaterThanOrEqual(
+      0.88,
+    );
+    expect(wide * tall, level).toBeGreaterThanOrEqual(0.6);
+    const biggest = Math.max(...regions.map((r) => r.w));
+    expect(biggest / box.width, level).toBeGreaterThanOrEqual(0.22);
+  }
+});
+
+test("large scenario: hovering a workspace row outlines its box, clicking the row selects it", async ({
+  page,
+}) => {
+  await openLarge(page, "dirs");
+  const row = page.getByRole("checkbox", { name: /^core/ }).locator("xpath=ancestor::label");
+  await row.hover();
+  await page.waitForTimeout(250);
+  const hovered = JSON.parse(
+    await surface(page).evaluate((el) => {
+      el.dispatchEvent(new CustomEvent("gantry:probe"));
+      return (el as HTMLElement).dataset.probe ?? "{}";
+    }),
+  ) as { panelHover?: string };
+  expect(hovered.panelHover).toBe("ws:@acme-platform-monorepo/core");
+  await row.locator(".check-label").click();
+  await expect(page).toHaveURL(/sel=ws%3A%40acme-platform-monorepo%2Fcore/);
+  // The checkbox itself still toggles visibility and is left alone by the row click.
+  await expect(page.getByRole("checkbox", { name: /^core/ })).toBeChecked();
 });
 
 test("large scenario: declared-only dependencies are hidden until the toggle is on", async ({ page }) => {

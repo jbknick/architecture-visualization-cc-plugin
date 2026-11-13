@@ -112,7 +112,7 @@ describe("computeLayout", () => {
 });
 
 describe("map layout of a large monorepo (3 big workspaces, 8 tiny, scoped names)", () => {
-  it("sizes workspace boxes by function count with a floor, never overlapping and at least 60px apart", async () => {
+  it("sizes workspace boxes by function count with a floor, never overlapping and at least 36px apart", async () => {
     const inp = large("workspaces");
     const out = await computeLayout(inp);
     const map = out.map;
@@ -136,15 +136,15 @@ describe("map layout of a large monorepo (3 big workspaces, 8 tiny, scoped names
 
     for (const [n] of roots) {
       const r = box(n.id);
-      expect(r.w).toBeGreaterThanOrEqual(180); // tiny workspaces stay clickable and labelled
-      expect(r.h).toBeGreaterThanOrEqual(90);
+      expect(r.w).toBeGreaterThanOrEqual(120 - 1e-6); // tiny workspaces stay clickable and labelled
+      expect(r.h).toBeGreaterThanOrEqual(64 - 1e-6);
     }
     for (let a = 0; a < roots.length; a++) {
       for (let b = a + 1; b < roots.length; b++) {
         const p = box((roots[a] as readonly [{ id: string }, number])[0].id);
         const q = box((roots[b] as readonly [{ id: string }, number])[0].id);
         expect(overlaps(p, q)).toBe(false);
-        expect(gap(p, q)).toBeGreaterThanOrEqual(60);
+        expect(gap(p, q)).toBeGreaterThanOrEqual(36);
       }
     }
   });
@@ -208,7 +208,6 @@ describe("map layout of a large monorepo (3 big workspaces, 8 tiny, scoped names
         expect(r.y).toBeGreaterThanOrEqual(p.y - 1e-6);
         expect(r.x + r.w).toBeLessThanOrEqual(p.x + p.w + 1e-6);
         expect(r.y + r.h).toBeLessThanOrEqual(p.y + p.h + 1e-6);
-        expect(r.y).toBeGreaterThanOrEqual(p.y + (map.heads[n.parent] as number) - 1e-6);
       }
       // Sibling overlap, checked for containers of a workable size only (the fixture has thousands of cells).
       if (n.children.length > 1 && n.children.length < 400 && i % 7 === 0) {
@@ -220,6 +219,26 @@ describe("map layout of a large monorepo (3 big workspaces, 8 tiny, scoped names
       cells++;
     });
     expect(cells).toBeGreaterThan(4000);
+  });
+
+  it("fills the canvas: the biggest box is a quarter of its width and the diagram spans it", async () => {
+    const viewport = { w: 1180, h: 812 };
+    const inp = { ...large("workspaces"), viewport };
+    const out = await computeLayout(inp);
+    const map = out.map;
+    if (!map) throw new Error("no map geometry");
+    const tree = buildTree(inp.nodes, { boxWorkspaces: true });
+    const usableW = viewport.w - FIT_INSETS.left - FIT_INSETS.right;
+    const usableH = viewport.h - FIT_INSETS.top - FIT_INSETS.bottom;
+    const scale = Math.min(usableW / map.bounds.w, usableH / map.bounds.h);
+    expect(scale).toBeGreaterThanOrEqual(0.99); // tiny boxes keep their 120 x 64 at the fit zoom
+    const boxes = tree.nodes.flatMap((n, i) => (n.parent === -1 ? [rectOf(map.rects, i)] : []));
+    const widest = Math.max(...boxes.map((b) => b.w)) * scale;
+    expect(widest / viewport.w).toBeGreaterThanOrEqual(0.22);
+    const span = (lo: number, hi: number) => (hi - lo) * scale;
+    const w = span(Math.min(...boxes.map((b) => b.x)), Math.max(...boxes.map((b) => b.x + b.w)));
+    const h = span(Math.min(...boxes.map((b) => b.y)), Math.max(...boxes.map((b) => b.y + b.h)));
+    expect(Math.max(w / viewport.w, h / viewport.h)).toBeGreaterThanOrEqual(0.88);
   });
 
   it("gives a file with zero functions a thin but visible cell", async () => {

@@ -1,13 +1,17 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import {
+  breakPoints,
   ellipsizeMiddle,
   fitCellLabel,
+  fitFileLabel,
   layoutTreemap,
   squarify,
+  stripExtension,
   TM_PAD,
   type TmNode,
   wrapText,
+  wrapTwoLines,
 } from "./treemap.ts";
 import type { Rect } from "./types.ts";
 
@@ -177,5 +181,68 @@ describe("label fit rule", () => {
     expect(lines.join("").replace(/\s/g, "")).toBe("acme-platform-monorepo/db-client");
     expect(wrapText(measure, "short", 100)).toEqual(["short"]);
     expect(wrapText(measure, "unbreakablewordthatislong", 60).join("")).toBe("unbreakablewordthatislong");
+  });
+});
+
+describe("file name labels", () => {
+  // 6px per character at 11px, 5.5 at 10px.
+  const at = (t: string, f: number) => t.length * (f === 11 ? 6 : 5.5);
+
+  it("keeps a name that fits whole, at 11px, and at 10px before dropping anything", () => {
+    expect(fitFileLabel(at, "orderService.ts", 100, 16)).toEqual({ lines: ["orderService.ts"], font: 11 });
+    // 15 chars: 90px at 11px does not fit in 84, 82.5px at 10px does. Never ellipsized.
+    expect(fitFileLabel(at, "orderService.ts", 90, 16)).toEqual({ lines: ["orderService.ts"], font: 10 });
+  });
+
+  it("drops the extension before wrapping or ellipsizing", () => {
+    expect(fitFileLabel(at, "orderService.ts", 80, 16)).toEqual({ lines: ["orderService"], font: 11 });
+    expect(stripExtension("a.test.tsx")).toBe("a.test");
+    expect(stripExtension("README")).toBe("README");
+    expect(stripExtension("archive.longext")).toBe("archive.longext");
+  });
+
+  it("wraps at . - _ and camelCase onto two lines when the cell is tall enough, before ellipsizing", () => {
+    expect(breakPoints("customerInvoice.service.ts")).toEqual([8, 16, 24]);
+    expect(breakPoints("rate-limit_store")).toEqual([5, 11]);
+    const wrapped = fitFileLabel(at, "customerInvoiceRepository", 100, 28);
+    expect(wrapped?.lines).toHaveLength(2);
+    expect(wrapped?.lines.join("")).toBe("customerInvoiceRepository");
+    for (const l of wrapped?.lines ?? []) expect(at(l, wrapped?.font ?? 11)).toBeLessThanOrEqual(100 - 6);
+    // One line of height: no wrapping, so the middle is cut (the old rule).
+    const flat = fitFileLabel(at, "customerInvoiceRepository", 100, 13);
+    expect(flat?.lines).toHaveLength(1);
+    expect(flat?.lines[0]).toContain("…");
+  });
+
+  it("wrapTwoLines balances the lines and returns null when no split fits", () => {
+    expect(wrapTwoLines((t) => t.length * 6, "auditHandlerFactory", 80)).toEqual(["auditHandler", "Factory"]);
+    expect(wrapTwoLines((t) => t.length * 6, "abcdefghij", 40)).toBeNull();
+  });
+
+  it("gives nothing when the cell is too narrow or too short", () => {
+    expect(fitFileLabel(at, "orderService.ts", 8, 16)).toBeNull();
+    expect(fitFileLabel(at, "orderService.ts", 100, 9)).toBeNull();
+  });
+});
+
+describe("layoutTreemap with a transparent single child", () => {
+  it("gives the transparent folder its parent's whole inner rectangle and lays its children out there", () => {
+    const file = (id: string): TmNode => ({ id, weight: 4, head: 0, children: [] });
+    const root: TmNode = {
+      id: "ws",
+      weight: 0,
+      head: 0,
+      children: [
+        { id: "src", weight: 0, head: 0, transparent: true, children: [file("a"), file("b"), file("c")] },
+      ],
+    };
+    const out = layoutTreemap(root, { x: 0, y: 0, w: 300, h: 200 });
+    const src = out.rects.get("src") as Rect;
+    expect(src.x).toBeCloseTo(TM_PAD, 6);
+    expect(src.y).toBeCloseTo(TM_PAD, 6);
+    expect(src.w).toBeCloseTo(300 - 2 * TM_PAD, 6);
+    expect(src.h).toBeCloseTo(200 - 2 * TM_PAD, 6);
+    const total = ["a", "b", "c"].reduce((sum, id) => sum + area(out.rects.get(id) as Rect), 0);
+    expect(total).toBeCloseTo(area(src), 4); // no padding of its own
   });
 });

@@ -71,7 +71,7 @@ test("mid zoom shows directories and files inside the workspace", async ({ page 
 
 test("near zoom shows file regions with labelled symbols", async ({ page }) => {
   await openMap(page);
-  await zoomTo(page, "dir:@acme/web/src/components", "near");
+  await zoomTo(page, "file:packages/web/src/components/Modal.ts", "near");
   await page.screenshot({ path: resolve(shots, "canvas-near.png") });
 });
 
@@ -126,8 +126,20 @@ test("hovering an aggregated arrow shows 'A → B: N imports'", async ({ page })
   if (!edge) throw new Error("38-import edge missing");
   // Move off the count pill (drawn at the midpoint) onto the arrow body.
   let found = "";
-  for (const dx of [-60, 60, -90, 90, -120, 120]) {
-    await page.mouse.move(box.x + edge.x + dx, box.y + edge.y);
+  // (Boxes are close together, so the arrow body is short: step a little at first, along either axis.)
+  for (const [dx, dy] of [
+    [-28, 0],
+    [28, 0],
+    [-22, 0],
+    [22, 0],
+    [0, -28],
+    [0, 28],
+    [-60, 0],
+    [60, 0],
+    [0, -60],
+    [0, 60],
+  ] as const) {
+    await page.mouse.move(box.x + edge.x + dx, box.y + edge.y + dy);
     const tip = page.getByRole("tooltip");
     if (await tip.isVisible()) {
       found = (await tip.textContent()) ?? "";

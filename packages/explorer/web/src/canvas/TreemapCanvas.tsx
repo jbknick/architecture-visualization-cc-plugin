@@ -13,8 +13,8 @@ import {
   drawMap,
   type EdgeHit,
   pickCell,
-  rectOf,
 } from "./mapDraw.ts";
+import { worldRectOf } from "./mapGeom.ts";
 import { DEFAULT_VIEWPORT, FIT_INSETS } from "./mapLayout.ts";
 import { useMapView } from "./mapView.ts";
 import { hashPositions } from "./prng.ts";
@@ -79,6 +79,7 @@ export function TreemapCanvas({
     selected: null as number | null,
     hovered: null as number | null,
     highlightWs: null as number | null,
+    panelHover: null as number | null,
     showDeclared: false,
     bright: null as Set<number> | null,
     links: [] as CellLink[],
@@ -150,6 +151,7 @@ export function TreemapCanvas({
       bright: selectedIndex === null ? null : brightSet(scene, selectedIndex),
       links: selectedIndex !== null && selectedTier > 0 ? selectionLinks(scene, selectedIndex) : [],
       showDeclared: ui.showDeclared,
+      panelHover: hoverWsIndex,
       highlightWs:
         selectedIndex !== null && selectedTier === 0
           ? selectedIndex
@@ -194,10 +196,10 @@ export function TreemapCanvas({
       };
     };
     const bounds = (): Rect => ({
-      x: geo.bounds.x - 6,
-      y: geo.bounds.y - 6,
-      w: geo.bounds.w + 12,
-      h: geo.bounds.h + 12,
+      x: geo.bounds.x - 3,
+      y: geo.bounds.y - 3,
+      w: geo.bounds.w + 6,
+      h: geo.bounds.h + 6,
     });
 
     const draw = () => {
@@ -220,6 +222,7 @@ export function TreemapCanvas({
         cam,
         selected: l.selected,
         hovered: l.hovered,
+        panelHover: l.panelHover,
         highlightWs:
           l.highlightWs ??
           (l.hovered !== null && l.selected === null ? (tree.nodes[l.hovered] as TreeNode).root : null),
@@ -306,9 +309,11 @@ export function TreemapCanvas({
         zoomAbout(w / 2, h / 2, factor, true);
       },
       zoomTo: (index) => {
-        const r = rectOf(geo, index);
         const pad = { top: 70, right: 60, bottom: 60, left: 60 };
-        const t = fitTarget(r, pad);
+        // Headers keep their size on screen, so the cell's rectangle depends on the zoom: fit, then fit again to
+        // the rectangle it has at that zoom.
+        let t = fitTarget(worldRectOf(scene, geo, index, fitScale), pad);
+        for (let k = 0; k < 2; k++) t = fitTarget(worldRectOf(scene, geo, index, t.scale), pad);
         userMoved = true;
         animateTo({ ...t, scale: Math.min(t.scale, fitScale * MAX_SCALE) }, 450);
       },
@@ -450,6 +455,7 @@ export function TreemapCanvas({
         hash: hashPositions(layout.positions),
         scale: cam.scale,
         fitScale,
+        panelHover: live.current.panelHover === null ? null : scene.nodes[live.current.panelHover]?.id,
         hiddenTitles: [...last.hiddenTitles].map((i) => scene.nodes[i]?.id),
         titles: Object.fromEntries([...last.titles].map(([i, where]) => [scene.nodes[i]?.id, where])),
         edges: last.edgeHits.map((e) => {
