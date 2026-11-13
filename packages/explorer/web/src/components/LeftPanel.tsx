@@ -1,4 +1,5 @@
 import type { Filters, GraphEdge, GraphNode } from "../api.ts";
+import type { Route } from "../route.ts";
 import { getFilterPanel } from "../slots.ts";
 import { KINDS } from "../theme.ts";
 
@@ -10,9 +11,21 @@ interface Props {
   edges: GraphEdge[];
   filters: Filters;
   onFiltersChange: (filters: Filters) => void;
+  route?: Route;
+  onRouteChange?: (patch: Partial<Route>) => void;
 }
 
-export function LeftPanel({ open, onToggle, viewId, nodes, edges, filters, onFiltersChange }: Props) {
+export function LeftPanel({
+  open,
+  onToggle,
+  viewId,
+  nodes,
+  edges,
+  filters,
+  onFiltersChange,
+  route,
+  onRouteChange,
+}: Props) {
   const Panel = viewId ? getFilterPanel(viewId) : null;
   return (
     <aside className={`left ${open ? "" : "is-collapsed"}`} aria-label="Filters">
@@ -36,6 +49,8 @@ export function LeftPanel({ open, onToggle, viewId, nodes, edges, filters, onFil
               edges={edges}
               filters={filters}
               onFiltersChange={onFiltersChange}
+              route={route}
+              onRouteChange={onRouteChange}
             />
           ) : (
             <p className="muted">This view has no filters.</p>

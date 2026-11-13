@@ -6,7 +6,7 @@ import { KindBadge } from "./KindBadge.tsx";
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
 export function SearchBox() {
-  const { focusNode } = useStore();
+  const { selectNode, focusOn, view } = useStore();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -33,7 +33,9 @@ export function SearchBox() {
   const choose = (index: number) => {
     const hit = results[index];
     if (!hit) return;
-    focusNode(hit.id, hit);
+    // In the ego view a search result becomes the centre of the graph; elsewhere it opens in the inspector.
+    if (view === "ego") focusOn(hit.id, hit);
+    else selectNode(hit.id, hit);
     setOpen(false);
     setQuery("");
     inputRef.current?.blur();

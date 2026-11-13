@@ -9,9 +9,9 @@ export function TopBar() {
       <div className="topbar-id">
         <span className="brand">Gantry</span>
         {meta && (
-          <span className="repo" title={`${meta.repo} at ${meta.headSha}`}>
+          <span className="repo" title={meta.headSha ? `${meta.repo} at ${meta.headSha}` : meta.repo}>
             <span className="repo-name">{meta.repo}</span>
-            <code className="sha">{meta.headSha.slice(0, 7)}</code>
+            {meta.headSha && <code className="sha">{meta.headSha.slice(0, 7)}</code>}
           </span>
         )}
       </div>
