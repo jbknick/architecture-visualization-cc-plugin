@@ -10,7 +10,9 @@ and this README are committed. Never commit, paste or screenshot the output.
 ```sh
 # 1. Sample 200 symbols (seed 42) and build fact sheets -> candidates.jsonl
 DEVPRENTICE_PATH=/path/to/devprentice pnpm tsx evals/labelled/sample.ts
-#    default path: /Users/joseph/Dev/devprentice-mono-tanstack-start (read-only, never written)
+#    the repo is read-only, never written; also set LABELLED_SERVER_DIRS to its server-side
+#    workspace dirs, comma-separated with trailing slashes (the real values are recorded in
+#    evals/private/labelled/sample-meta.json, not here)
 
 # 2. Draft labels (a model, then the operator) as evals/private/labelled/draft-labels-*.json:
 #    arrays of [candidateIndex, behavior (<= 25 words), nameFits, suggestedName?]
@@ -26,8 +28,8 @@ Env: `DEVPRENTICE_PATH` (or first argument) selects the repo; `LABELLED_OUT` ove
 
 ## Sampling rules
 
-Strata: 40 components, 30 hooks, 50 exported utils, 40 server-side (`apps/server`, `packages/api`,
-`packages/db`, `packages/auth`: exported functions and handler-style `const x = call(fn)` bindings),
+Strata: 40 components, 30 hooks, 50 exported utils, 40 server-side (the workspace dirs named in
+`LABELLED_SERVER_DIRS`: exported functions and handler-style `const x = call(fn)` bindings),
 40 local (non-exported) helpers. Fixed PRNG seed 42 (mulberry32 Fisher-Yates over a path-sorted pool), at most
 3 per file. Trivial single-statement functions are skipped (hooks are the scarce stratum, so short hooks with
 one statement are skipped only when under 8 lines). Excluded: build output, tests, stories, `.d.ts`, `*.gen.ts`

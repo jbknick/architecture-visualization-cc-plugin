@@ -3,7 +3,7 @@
  * `candidates.jsonl` (fact sheets only, no labels) to the git-ignored `evals/private/labelled/`.
  *
  * Usage: pnpm tsx evals/labelled/sample.ts [repoPath]
- * Env:   DEVPRENTICE_PATH (default /Users/joseph/Dev/devprentice-mono-tanstack-start)
+ * Env:   DEVPRENTICE_PATH (required unless passed as the first argument), LABELLED_SERVER_DIRS (required)
  *        LABELLED_OUT     (default <repo>/evals/private/labelled)
  *
  * Read-only on the target repo. Output must never be committed (spec section 1).
@@ -52,7 +52,11 @@ const SKIP_DIRS = new Set([
 const SENSITIVE = /^(\.env.*|.*\.pem|.*\.key|.*\.p12|id_rsa.*|\.npmrc|credentials.*|secrets.*|.*\.tfvars)$/i;
 const SKIP_FILE = /(\.d\.ts|\.gen\.ts|\.test\.[cm]?tsx?|\.spec\.[cm]?tsx?|\.stories\.[cm]?tsx?)$/;
 const PARSED = /\.(ts|tsx|mts|cts)$/;
-const SERVER_DIRS = ["apps/server/", "packages/api/", "packages/db/", "packages/auth/"];
+// Server-side workspace dirs of the test bed, e.g. LABELLED_SERVER_DIRS="apps/api/,packages/db/" (kept out of the public repo).
+const SERVER_DIRS = (process.env.LABELLED_SERVER_DIRS ?? "")
+  .split(",")
+  .map((d) => d.trim())
+  .filter(Boolean);
 
 export function isExcluded(rel: string): boolean {
   const parts = rel.split("/");
@@ -287,9 +291,14 @@ function buildFactSheet(c: Candidate, kind: "function" | "component" | "hook") {
 }
 
 function main(): void {
-  const root = resolve(
-    process.argv[2] ?? process.env.DEVPRENTICE_PATH ?? "/Users/joseph/Dev/devprentice-mono-tanstack-start",
-  );
+  const rootArg = process.argv[2] ?? process.env.DEVPRENTICE_PATH;
+  if (!rootArg || SERVER_DIRS.length === 0) {
+    process.stderr.write(
+      "usage: DEVPRENTICE_PATH=<repo> LABELLED_SERVER_DIRS=<dir/,dir/> tsx evals/labelled/sample.ts\n",
+    );
+    process.exit(2);
+  }
+  const root = resolve(rootArg);
   const here = dirname(fileURLToPath(import.meta.url));
   const outDir = resolve(process.env.LABELLED_OUT ?? join(here, "..", "private", "labelled"));
   mkdirSync(outDir, { recursive: true });
