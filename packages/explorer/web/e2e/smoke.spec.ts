@@ -10,6 +10,8 @@ const shots = resolve(here, "../../../../docs/milestones/screenshots");
 test("search Button, open the inspector, deep link survives reload", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("pnpm-turbo")).toBeVisible();
+  // This test drives the list renderer; the graph canvas (#36) is the default for 2D views.
+  await page.getByRole("button", { name: "List" }).click();
   await expect(page.getByRole("option", { name: /@acme\/web/ })).toBeVisible();
 
   const search = page.getByRole("combobox", { name: "Search symbols" });

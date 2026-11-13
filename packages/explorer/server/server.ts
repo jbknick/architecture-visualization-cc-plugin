@@ -15,6 +15,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import path from "node:path";
 import { type GantryConfig, type GantryPaths, loadConfig, openStore, type Store } from "@gantry/core";
 import { HttpError, handleApi } from "./api.js";
+import { MAX_LAYOUT_BODY_BYTES, putLayout } from "./layout.js";
 import { buildExplorerUrl } from "./url.js";
 
 export interface ExplorerServerOptions {
@@ -61,6 +62,35 @@ const MIME: Record<string, string> = {
   ".map": "application/json; charset=utf-8",
   ".txt": "text/plain; charset=utf-8",
 };
+
+const LAYOUT_ROUTE = /^\/api\/layout\/[^/]+$/;
+
+/** Reads a request body up to cputime         unlimited
+filesize        unlimited
+datasize        unlimited
+stacksize       7MB
+coredumpsize    0kB
+addressspace    unlimited
+memorylocked    unlimited
+maxproc         2666
+descriptors     1048576 bytes; rejects with a 413 HttpError beyond that. */
+function readBody(req: IncomingMessage, limit: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > limit) {
+        reject(new HttpError(413, "Body too large"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
 
 function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
@@ -142,11 +172,12 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
       const host = `127.0.0.1:${port}`;
       // DNS-rebinding guard: applies to every request.
       if (req.headers.host !== host) return void sendJson(res, 403, { error: "Bad Host" });
-      if (req.method !== "GET" && req.method !== "HEAD") {
+      const url = new URL(req.url ?? "/", `http://${host}`);
+      const layoutPut = req.method === "PUT" && LAYOUT_ROUTE.test(url.pathname);
+      if (req.method !== "GET" && req.method !== "HEAD" && !layoutPut) {
         res.setHeader("allow", "GET, HEAD");
         return void sendJson(res, 405, { error: "Method not allowed" });
       }
-      const url = new URL(req.url ?? "/", `http://${host}`);
 
       if (url.pathname.startsWith("/api/") || url.pathname === "/api") {
         const origin = req.headers.origin;
@@ -158,6 +189,33 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
           (Array.isArray(header) ? header[0] : header) ?? parseCookies(req.headers.cookie)[COOKIE];
         if (!supplied || !safeEqual(supplied, token))
           return void sendJson(res, 403, { error: "Missing or bad token" });
+        if (layoutPut) {
+          let view: string;
+          try {
+            view = decodeURIComponent(url.pathname.slice("/api/layout/".length));
+          } catch {
+            return void sendJson(res, 400, { error: "Malformed id" });
+          }
+          if (!String(req.headers["content-type"] ?? "").startsWith("application/json")) {
+            return void sendJson(res, 415, { error: "Content-Type must be application/json" });
+          }
+          readBody(req, MAX_LAYOUT_BODY_BYTES).then(
+            (text) => {
+              try {
+                sendJson(res, 200, putLayout(store, view, JSON.parse(text)));
+              } catch (err) {
+                if (err instanceof HttpError) return void sendJson(res, err.status, { error: err.message });
+                if (err instanceof SyntaxError) return void sendJson(res, 400, { error: "Invalid JSON" });
+                sendJson(res, 500, { error: "Internal error" });
+              }
+            },
+            (err: unknown) => {
+              const tooLarge = err instanceof HttpError;
+              sendJson(res, tooLarge ? err.status : 400, { error: tooLarge ? err.message : "Bad body" });
+            },
+          );
+          return;
+        }
         return void sendJson(res, 200, handleApi(ctx, url.pathname, url.searchParams));
       }
 
