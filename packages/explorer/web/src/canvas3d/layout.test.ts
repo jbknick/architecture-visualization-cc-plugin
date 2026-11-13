@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { map3dView } from "../../mock/fixture.ts";
-import { computeLayout, nodeRadius, positionHash, summarizeIslands } from "./layout.ts";
+import {
+  arcWidthPx,
+  computeLayout,
+  islandGap,
+  islandLabelPx,
+  nodeRadius,
+  positionHash,
+  summarizeIslands,
+} from "./layout.ts";
 
 const files = map3dView("files");
 
@@ -61,14 +69,109 @@ describe("3D layout", () => {
   it("sizes nodes with a clamped sqrt scale", () => {
     expect(nodeRadius(0, "file")).toBeLessThan(nodeRadius(4, "file"));
     expect(nodeRadius(4, "file")).toBeLessThan(nodeRadius(100, "file"));
-    expect(nodeRadius(1e9, "file")).toBe(8);
+    expect(nodeRadius(1e9, "file")).toBe(6);
     expect(nodeRadius(0, "file")).toBeGreaterThan(0);
   });
 
   it("summarizes islands in colour order for the legend", () => {
     const s = summarizeIslands(files.nodes);
-    expect(s.map((i) => i.label)).toEqual(["@acme/api", "@acme/db", "@acme/ui", "@acme/utils", "@acme/web"]);
-    expect(s.find((i) => i.label === "@acme/web")?.wsKind).toBe("app");
+    expect(s.map((i) => i.label)).toEqual(["api", "db", "ui", "utils", "web"]);
+    expect(s.map((i) => i.fullLabel)).toEqual([
+      "@acme/api",
+      "@acme/db",
+      "@acme/ui",
+      "@acme/utils",
+      "@acme/web",
+    ]);
+    expect(s.find((i) => i.label === "web")?.wsKind).toBe("app");
     expect(s.every((i, k) => i.index === k && i.files > 0 && i.functions > 0)).toBe(true);
+  });
+});
+
+/** Spheres must be at least r1 + r2 + gap apart; checked for every pair. */
+function expectNoIslandOverlap(layout: ReturnType<typeof computeLayout>): void {
+  for (const [i, a] of layout.islands.entries()) {
+    for (const b of layout.islands.slice(i + 1)) {
+      const d = Math.hypot(a.center.x - b.center.x, a.center.y - b.center.y, a.center.z - b.center.z);
+      expect(d, `${a.label} vs ${b.label}`).toBeGreaterThanOrEqual(
+        a.radius + b.radius + islandGap(a.radius, b.radius) - 1e-6,
+      );
+    }
+  }
+}
+
+describe("3D layout of a large monorepo (3 huge workspaces, 8 tiny)", () => {
+  const fns = [1700, 980, 960, 32, 25, 18, 12, 9, 6, 3, 1];
+  const nodes = fns.map((f, i) => ({
+    id: `ws:ws${i}`,
+    kind: "workspace",
+    label: `@some-long-org-scope/ws${i}`,
+    shortLabel: `ws${i}`,
+    size: f,
+    badges: ["package", "4 files", `${f} functions`],
+  }));
+  const edges = [] as {
+    id: string;
+    src: string;
+    dst: string;
+    kind: string;
+    weight: number;
+    confidence: "high";
+  }[];
+  for (let i = 0; i < nodes.length; i++) {
+    for (const j of [0, 1, 2, 3]) {
+      if (i === j) continue;
+      edges.push({
+        id: `${i}>${j}`,
+        src: `ws:ws${i}`,
+        dst: `ws:ws${j}`,
+        kind: "imports",
+        weight: 1 + ((i * 7 + j * 3) % 9),
+        confidence: "high",
+      });
+    }
+  }
+
+  it("keeps every pair of island spheres at least r1 + r2 + gap apart", () => {
+    const layout = computeLayout({ nodes, edges });
+    expect(layout.islands).toHaveLength(11);
+    expectNoIslandOverlap(layout);
+  });
+
+  it("is order independent and deterministic", () => {
+    const a = computeLayout({ nodes, edges });
+    const b = computeLayout({ nodes: [...nodes].reverse(), edges: [...edges].reverse() });
+    expect(positionHash(a)).toBe(positionHash(b));
+  });
+
+  it("sizes islands by sqrt of function count with a floor, big ones on the outside", () => {
+    const layout = computeLayout({ nodes, edges });
+    const byFns = [...layout.islands].sort((a, b) => b.functions - a.functions);
+    const r = byFns.map((i) => i.radius);
+    expect(r[0]).toBeGreaterThan(r[3] as number);
+    expect(Math.min(...r)).toBeGreaterThanOrEqual(8);
+    const dist = (i: (typeof layout.islands)[number]) => Math.hypot(i.center.x, i.center.y, i.center.z);
+    const bigMean = byFns.slice(0, 3).reduce((a, i) => a + dist(i), 0) / 3;
+    const tinyMean = byFns.slice(3).reduce((a, i) => a + dist(i), 0) / 8;
+    expect(bigMean).toBeGreaterThan(tinyMean);
+  });
+
+  it("holds the invariant on the mock large scenario at every level", () => {
+    for (const level of ["workspaces", "dirs", "files"]) {
+      const layout = computeLayout(
+        map3dView({ focus: null, level: level as "dirs", hops: null, options: { scenario: "large" } }),
+      );
+      expect(layout.islands).toHaveLength(11);
+      expectNoIslandOverlap(layout);
+    }
+  });
+
+  it("scales label size with importance and arc width with sqrt(weight), both clamped", () => {
+    expect(islandLabelPx(1700)).toBeGreaterThan(islandLabelPx(30));
+    expect(islandLabelPx(30)).toBeGreaterThan(islandLabelPx(1) - 1e-9);
+    expect(islandLabelPx(1e9)).toBe(32);
+    expect(islandLabelPx(0)).toBe(12);
+    expect(arcWidthPx(1)).toBeLessThan(arcWidthPx(100));
+    expect(arcWidthPx(1e9)).toBe(6);
   });
 });

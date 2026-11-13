@@ -1,5 +1,6 @@
 import type { FileRecord } from "@gantry/core";
 import type { ApiContext, GraphEdge, GraphNode, ViewModule, ViewParams, ViewResult } from "../types.js";
+import { shortWorkspaceLabels } from "./labels.js";
 import { cmp, isTestPath, optBool } from "./options.js";
 
 export const MAP3D_LEVELS = ["workspaces", "dirs", "files"] as const;
@@ -76,6 +77,7 @@ export function buildMap3d(
   const workspaces = store.listWorkspaces();
   const wsById = new Map(workspaces.map((w) => [w.id, w]));
   const wsDir = (id: string): string => wsById.get(id)?.dir ?? ".";
+  const shortLabels = shortWorkspaceLabels(workspaces.map((w) => w.name));
 
   // Function-like symbol counts per file.
   const fnByFile = new Map<string, number>();
@@ -108,6 +110,7 @@ export function buildMap3d(
       id: w.id,
       kind: "workspace",
       label: w.name,
+      shortLabel: shortLabels.get(w.name) ?? w.name,
       size: wsFns.get(w.id) ?? 0,
       path: w.dir,
       stats: { files: wsFiles.get(w.id) ?? 0, functions: wsFns.get(w.id) ?? 0 },

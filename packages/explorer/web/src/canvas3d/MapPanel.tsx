@@ -18,7 +18,11 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
   const ui = useMapUi();
   const level = route?.level === "workspaces" || route?.level === "files" ? route.level : "dirs";
   const hideTests = getBool(filters, "hideTests", true);
-  const islands = useMemo(() => summarizeIslands(nodes), [nodes]);
+  // Biggest first; the colour index stays the island's position in the sorted-id order.
+  const islands = useMemo(
+    () => summarizeIslands(nodes).sort((a, b) => b.functions - a.functions || (a.id < b.id ? -1 : 1)),
+    [nodes],
+  );
   const scheme = currentScheme();
   const reduced = prefersReducedMotion();
 
@@ -55,6 +59,17 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
         />
         Auto-rotate{reduced ? " (off: reduced motion)" : ""}
       </label>
+      <label
+        className="map3d-check"
+        title="Also draw links that only come from package.json dependencies, with no imports"
+      >
+        <input
+          type="checkbox"
+          checked={ui.showDeclared}
+          onChange={(e) => mapUi.setShowDeclared(e.target.checked)}
+        />
+        Show declared dependencies
+      </label>
       <button type="button" className="map3d-reset" onClick={() => mapUi.resetCamera()}>
         Reset camera
       </button>
@@ -67,7 +82,12 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
               type="button"
               className={`map3d-legend-row ${ui.island === i.id ? "is-active" : ""}`}
               aria-pressed={ui.island === i.id}
+              title={i.fullLabel}
               onClick={() => mapUi.focusIsland(i.id)}
+              onMouseEnter={() => mapUi.setHoverIsland(i.id)}
+              onMouseLeave={() => mapUi.setHoverIsland(null)}
+              onFocus={() => mapUi.setHoverIsland(i.id)}
+              onBlur={() => mapUi.setHoverIsland(null)}
             >
               <span
                 className="kind-dot"
@@ -75,8 +95,9 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
                 aria-hidden="true"
               />
               <span className="map3d-legend-name">{i.label}</span>
+              <span className="map3d-legend-count">{i.functions.toLocaleString("en-US")} fn</span>
               <span className="map3d-legend-meta">
-                {i.wsKind} · {i.functions} fn · {i.files} files
+                {i.wsKind} · {i.files.toLocaleString("en-US")} {i.files === 1 ? "file" : "files"}
               </span>
             </button>
           </li>

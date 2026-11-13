@@ -135,6 +135,7 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       "id": "ws:@acme/api",
       "kind": "workspace",
       "label": "@acme/api",
+      "shortLabel": "api",
       "size": 0,
       "path": "apps/api",
       "stats": {
@@ -151,6 +152,7 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       "id": "ws:@acme/db",
       "kind": "workspace",
       "label": "@acme/db",
+      "shortLabel": "db",
       "size": 3,
       "path": "packages/db",
       "stats": {
@@ -167,6 +169,7 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       "id": "ws:@acme/ui",
       "kind": "workspace",
       "label": "@acme/ui",
+      "shortLabel": "ui",
       "size": 2,
       "path": "packages/ui",
       "stats": {
@@ -183,6 +186,7 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       "id": "ws:@acme/utils",
       "kind": "workspace",
       "label": "@acme/utils",
+      "shortLabel": "utils",
       "size": 3,
       "path": "packages/utils",
       "stats": {
@@ -199,6 +203,7 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       "id": "ws:@acme/web",
       "kind": "workspace",
       "label": "@acme/web",
+      "shortLabel": "web",
       "size": 8,
       "path": "apps/web",
       "stats": {
@@ -613,6 +618,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "ws:@acme/api",
       "kind": "workspace",
       "label": "@acme/api",
+      "shortLabel": "api",
       "size": 0,
       "path": "apps/api",
       "stats": {
@@ -629,6 +635,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "ws:@acme/db",
       "kind": "workspace",
       "label": "@acme/db",
+      "shortLabel": "db",
       "size": 3,
       "path": "packages/db",
       "stats": {
@@ -645,6 +652,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "ws:@acme/ui",
       "kind": "workspace",
       "label": "@acme/ui",
+      "shortLabel": "ui",
       "size": 2,
       "path": "packages/ui",
       "stats": {
@@ -661,6 +669,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "ws:@acme/utils",
       "kind": "workspace",
       "label": "@acme/utils",
+      "shortLabel": "utils",
       "size": 3,
       "path": "packages/utils",
       "stats": {
@@ -677,6 +686,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "ws:@acme/web",
       "kind": "workspace",
       "label": "@acme/web",
+      "shortLabel": "web",
       "size": 8,
       "path": "apps/web",
       "stats": {
@@ -871,6 +881,7 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
       "id": "ws:@acme/api",
       "kind": "workspace",
       "label": "@acme/api",
+      "shortLabel": "api",
       "size": 0,
       "path": "apps/api",
       "stats": {
@@ -887,6 +898,7 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
       "id": "ws:@acme/db",
       "kind": "workspace",
       "label": "@acme/db",
+      "shortLabel": "db",
       "size": 3,
       "path": "packages/db",
       "stats": {
@@ -903,6 +915,7 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
       "id": "ws:@acme/ui",
       "kind": "workspace",
       "label": "@acme/ui",
+      "shortLabel": "ui",
       "size": 2,
       "path": "packages/ui",
       "stats": {
@@ -919,6 +932,7 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
       "id": "ws:@acme/utils",
       "kind": "workspace",
       "label": "@acme/utils",
+      "shortLabel": "utils",
       "size": 3,
       "path": "packages/utils",
       "stats": {
@@ -935,6 +949,7 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
       "id": "ws:@acme/web",
       "kind": "workspace",
       "label": "@acme/web",
+      "shortLabel": "web",
       "size": 8,
       "path": "apps/web",
       "stats": {

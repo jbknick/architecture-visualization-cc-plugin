@@ -150,7 +150,7 @@ test("3D map: opens from the view switcher and draws the fixture's workspaces as
   await page.goto(`${url.replace(/#.*$/, "")}#/map-3d`);
   await expect(page.getByTestId("map3d-canvas").locator("canvas")).toBeVisible();
   await expect(page.locator(".map3d[data-ready='true']")).toBeVisible();
-  const legend = page.getByRole("list").filter({ has: page.getByRole("button", { name: /@acme\/ui/ }) });
+  const legend = page.getByRole("list").filter({ has: page.getByRole("button", { name: /^ui/ }) });
   await expect(legend.getByRole("button")).toHaveCount(5);
   await page.getByLabel(/Auto-rotate/).uncheck();
   await page.waitForTimeout(2500);
@@ -161,7 +161,7 @@ test("3D map: opens from the view switcher and draws the fixture's workspaces as
   await expect(page).toHaveURL(/#\/map-3d\?.*level=files/);
   await page.getByLabel("Hide tests").uncheck();
   await expect(page).toHaveURL(/hideTests=false/);
-  await legend.getByRole("button", { name: /@acme\/ui/ }).click();
+  await legend.getByRole("button", { name: /^ui/ }).click();
   await expect(page).toHaveURL(/sel=ws%3A%40acme%2Fui/);
   await expect(page.getByRole("complementary", { name: "Inspector" })).toBeVisible();
 });

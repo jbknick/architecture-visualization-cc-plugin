@@ -4,6 +4,8 @@ export interface GraphNode {
   id: string;
   kind: string;
   label: string;
+  /** Workspace nodes only: `label` without the npm scope shared by most workspaces (see views/labels.ts). */
+  shortLabel?: string;
   parent?: string;
   size: number;
   color?: string;

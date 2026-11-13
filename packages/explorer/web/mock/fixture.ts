@@ -776,16 +776,272 @@ const m3Imports: { src: string; dst: string; w: number }[] = (() => {
   });
 })();
 
-/** Mirrors server/views/map3d.ts: `level` from the param (unknown or `symbols` -> dirs); the synthetic data has no test files. */
+// ---- map-3d "large" scenario: shaped like a real 11-workspace monorepo (3 huge, 8 tiny, long scoped names) ------
+// Mock-only: pick it with `#/map-3d?scenario=large` (the hash flag travels as a filter).
+
+interface M3Ws {
+  id: string;
+  name: string;
+  kind: "app" | "package";
+}
+interface M3Data {
+  ws: M3Ws[];
+  files: M3File[];
+  imports: { src: string; dst: string; w: number }[];
+  /** package.json dependency pairs (workspace ids), drawn as `depends_on` edges. */
+  declared: [string, string][];
+}
+
+const M3_SMALL: M3Data = {
+  ws: M3_WS.map((w) => ({ id: `ws:${w.name}`, name: w.name, kind: w.kind })),
+  files: m3Files,
+  imports: m3Imports,
+  declared: [],
+};
+
+const SCOPE = "@acme-platform-monorepo";
+const LARGE_SPEC: {
+  name: string;
+  kind: "app" | "package";
+  dir: string;
+  files: number;
+  fns: number;
+  dirs: string[];
+}[] = [
+  {
+    name: `${SCOPE}/api`,
+    kind: "app",
+    dir: "apps/api",
+    files: 100,
+    fns: 1700,
+    dirs: [
+      "src/routes",
+      "src/services",
+      "src/middleware",
+      "src/jobs",
+      "src/models",
+      "src/lib",
+      "src/graphql",
+    ],
+  },
+  {
+    name: `${SCOPE}/web`,
+    kind: "app",
+    dir: "apps/web",
+    files: 90,
+    fns: 980,
+    dirs: ["src/routes", "src/components", "src/hooks", "src/lib", "src/state", "src/forms"],
+  },
+  {
+    name: `${SCOPE}/core`,
+    kind: "package",
+    dir: "packages/core",
+    files: 84,
+    fns: 960,
+    dirs: ["src/domain", "src/auth", "src/billing", "src/events", "src/utils"],
+  },
+  { name: `${SCOPE}/types`, kind: "package", dir: "packages/types", files: 3, fns: 32, dirs: ["src"] },
+  { name: `${SCOPE}/logger`, kind: "package", dir: "packages/logger", files: 3, fns: 24, dirs: ["src"] },
+  { name: `${SCOPE}/config`, kind: "package", dir: "packages/config", files: 2, fns: 18, dirs: ["src"] },
+  { name: `${SCOPE}/ui-kit`, kind: "package", dir: "packages/ui-kit", files: 5, fns: 12, dirs: ["src"] },
+  { name: `${SCOPE}/db-client`, kind: "package", dir: "packages/db-client", files: 4, fns: 9, dirs: ["src"] },
+  { name: `${SCOPE}/testing`, kind: "package", dir: "packages/testing", files: 2, fns: 6, dirs: ["src"] },
+  { name: "tooling", kind: "package", dir: "tooling", files: 1, fns: 3, dirs: ["."] },
+  { name: "scripts", kind: "app", dir: "scripts", files: 1, fns: 1, dirs: ["."] },
+];
+const WORDS = [
+  "user",
+  "order",
+  "invoice",
+  "session",
+  "token",
+  "account",
+  "report",
+  "search",
+  "upload",
+  "email",
+  "queue",
+  "cache",
+  "plan",
+  "team",
+  "audit",
+  "export",
+  "import",
+  "sync",
+  "hook",
+  "event",
+  "rate",
+  "feed",
+  "tag",
+  "role",
+  "badge",
+  "alert",
+  "form",
+  "table",
+  "chart",
+  "menu",
+];
+const SUFFIX = [
+  "Service",
+  "Handler",
+  "Controller",
+  "Store",
+  "View",
+  "Repo",
+  "Policy",
+  "Mapper",
+  "Client",
+  "Utils",
+];
+
+const M3_LARGE: M3Data = (() => {
+  const ws: M3Ws[] = LARGE_SPEC.map((w) => ({ id: `ws:${w.name}`, name: w.name, kind: w.kind }));
+  const files: M3File[] = [];
+  for (const w of LARGE_SPEC) {
+    const wsid = `ws:${w.name}`;
+    const used = new Set<string>();
+    const mine: M3File[] = [];
+    for (let i = 0; i < w.files; i++) {
+      const dir = w.dirs[i % w.dirs.length] as string;
+      const h = m3hash(`${w.name}#${i}`);
+      let base = `${WORDS[h % WORDS.length]}${SUFFIX[(h >>> 8) % SUFFIX.length]}`;
+      if (w.files <= 5) base = ["index", "types", "client", "util", "schema"][i] as string;
+      if (used.has(`${dir}/${base}`)) base = `${base}${i}`;
+      used.add(`${dir}/${base}`);
+      const rel = dir === "." ? `${base}.ts` : `${dir}/${base}.ts`;
+      const path = `${w.dir}/${rel}`;
+      mine.push({
+        id: `file:${path}`,
+        path,
+        ws: wsid,
+        dir: dir === "." ? "." : dir.split("/").slice(0, 2).join("/"),
+        fns: 0,
+      });
+    }
+    // Heavy-tailed weights scaled to the workspace total (every file keeps at least one function).
+    const weights = mine.map((f) => (1 + (m3hash(f.path) % 9)) ** 2);
+    const sum = weights.reduce((a, x) => a + x, 0);
+    let left = w.fns;
+    mine.forEach((f, i) => {
+      f.fns = Math.max(1, Math.floor((w.fns * (weights[i] as number)) / sum));
+      left -= f.fns;
+    });
+    for (let i = 0; left !== 0; i = (i + 1) % mine.length) {
+      const f = mine[i] as M3File;
+      if (left > 0) {
+        f.fns += 1;
+        left -= 1;
+      } else if (f.fns > 1) {
+        f.fns -= 1;
+        left += 1;
+      }
+    }
+    files.push(...mine);
+  }
+  const id = (n: string): string => `ws:${n}`;
+  const wsName = (n: string): string => (n === "tooling" || n === "scripts" ? n : `${SCOPE}/${n}`);
+  const rules: [string, string, number][] = [
+    ["api", "core", 2],
+    ["api", "types", 1],
+    ["api", "logger", 1],
+    ["api", "config", 1],
+    ["api", "db-client", 1],
+    ["web", "core", 2],
+    ["web", "ui-kit", 2],
+    ["web", "types", 1],
+    ["web", "api", 1],
+    ["web", "config", 1],
+    ["core", "types", 1],
+    ["core", "logger", 1],
+    ["ui-kit", "types", 1],
+    ["db-client", "types", 1],
+    ["testing", "core", 1],
+    ["scripts", "core", 1],
+    ["tooling", "config", 1],
+  ].map(([a, b, n]) => [id(wsName(a as string)), id(wsName(b as string)), n as number]);
+  const byWs = new Map<string, M3File[]>();
+  for (const f of files) byWs.set(f.ws, [...(byWs.get(f.ws) ?? []), f]);
+  const out = new Map<string, number>();
+  for (const f of files) {
+    for (const [from, to, n] of rules) {
+      if (f.ws !== from) continue;
+      const pool = byWs.get(to) as M3File[];
+      for (let k = 0; k < n; k++) {
+        const t = pool[m3hash(`${f.id}>${to}>${k}`) % pool.length] as M3File;
+        if (m3hash(`${f.id}${to}${k}`) % 3 !== 0)
+          out.set(`${f.id}|${t.id}`, 1 + (m3hash(`${f.id}${t.id}`) % 3));
+      }
+    }
+    const mates = byWs.get(f.ws) as M3File[];
+    for (let k = 0; k < 2 && mates.length > 1; k++) {
+      const t = mates[m3hash(`${f.id}local${k}`) % mates.length] as M3File;
+      if (t.id !== f.id) out.set(`${f.id}|${t.id}`, 1 + (m3hash(`${f.id}${t.id}x`) % 3));
+    }
+  }
+  const imports = [...out].map(([k, w]) => {
+    const [src, dst] = k.split("|") as [string, string];
+    return { src, dst, w };
+  });
+  const dec = (a: string, b: string): [string, string] => [id(wsName(a)), id(wsName(b))];
+  const declared: [string, string][] = [
+    dec("api", "testing"),
+    dec("web", "testing"),
+    dec("core", "config"),
+    dec("logger", "config"),
+    dec("ui-kit", "config"),
+    dec("db-client", "config"),
+    dec("db-client", "logger"),
+    dec("testing", "types"),
+    dec("testing", "logger"),
+    dec("scripts", "tooling"),
+    dec("scripts", "config"),
+    dec("tooling", "types"),
+    dec("api", "ui-kit"),
+    dec("config", "types"),
+    dec("ui-kit", "logger"),
+  ];
+  return { ws, files, imports, declared };
+})();
+
+/** Same rule as server/views/labels.ts: strip the npm scope shared by most scoped workspaces. */
+function shortLabels(names: string[]): Map<string, string> {
+  const scopeOf = (n: string): string | null => /^(@[^/]+)\//.exec(n)?.[1] ?? null;
+  const counts = new Map<string, number>();
+  let scoped = 0;
+  for (const n of names) {
+    const sc = scopeOf(n);
+    if (sc) {
+      scoped += 1;
+      counts.set(sc, (counts.get(sc) ?? 0) + 1);
+    }
+  }
+  const [shared, best] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? [null, 0];
+  const strip = shared !== null && best >= 2 && best * 2 > scoped;
+  const out = new Map(
+    names.map((n) => [n, strip && scopeOf(n) === shared ? n.slice((shared as string).length + 1) : n]),
+  );
+  const seen = new Map<string, number>();
+  for (const v of out.values()) seen.set(v, (seen.get(v) ?? 0) + 1);
+  for (const n of names) if ((seen.get(out.get(n) as string) ?? 0) > 1) out.set(n, n);
+  return out;
+}
+
+/**
+ * Mirrors server/views/map3d.ts: `level` from the param (unknown or `symbols` -> dirs); the synthetic data has no
+ * test files. The mock-only filter `scenario=large` switches to the 11-workspace dataset above.
+ */
 export function map3dView(q: ParsedQuery | string): ViewData {
   const level = typeof q === "string" ? q : (q.level ?? "dirs");
-  const wsNodes: GraphNode[] = M3_WS.map((w) => {
-    const fs = m3Files.filter((f) => f.ws === `ws:${w.name}`);
+  const data = typeof q !== "string" && q.options.scenario === "large" ? M3_LARGE : M3_SMALL;
+  const short = shortLabels(data.ws.map((w) => w.name));
+  const wsNodes: GraphNode[] = data.ws.map((w) => {
+    const fs = data.files.filter((f) => f.ws === w.id);
     const fns = fs.reduce((a, f) => a + f.fns, 0);
     return {
-      id: `ws:${w.name}`,
+      id: w.id,
       kind: "workspace",
       label: w.name,
+      shortLabel: short.get(w.name) ?? w.name,
       size: fns,
       badges: [w.kind, `${fs.length} files`, `${fns} functions`],
     };
@@ -793,9 +1049,9 @@ export function map3dView(q: ParsedQuery | string): ViewData {
   const nodeOf = new Map<string, string>();
   const nodes: GraphNode[] = [...wsNodes];
   if (level === "workspaces") {
-    for (const f of m3Files) nodeOf.set(f.id, f.ws);
+    for (const f of data.files) nodeOf.set(f.id, f.ws);
   } else if (level === "files") {
-    for (const f of m3Files) {
+    for (const f of data.files) {
       nodeOf.set(f.id, f.id);
       nodes.push({
         id: f.id,
@@ -808,17 +1064,24 @@ export function map3dView(q: ParsedQuery | string): ViewData {
     }
   } else {
     const dirs = new Map<string, GraphNode>();
-    for (const f of m3Files) {
+    for (const f of data.files) {
       const id = `dir:${f.ws}:${f.dir}`;
       nodeOf.set(f.id, id);
-      const d = dirs.get(id) ?? { id, kind: "dir", label: f.dir, parent: f.ws, size: 0, badges: [] };
+      const d = dirs.get(id) ?? {
+        id,
+        kind: "dir",
+        label: f.dir === "." ? "(root)" : f.dir,
+        parent: f.ws,
+        size: 0,
+        badges: [],
+      };
       d.size += f.fns;
       dirs.set(id, d);
     }
     nodes.push(...dirs.values());
   }
   const sum = new Map<string, GraphEdge>();
-  for (const e of m3Imports) {
+  for (const e of data.imports) {
     const a = nodeOf.get(e.src);
     const b = nodeOf.get(e.dst);
     if (!a || !b || a === b) continue;
@@ -827,25 +1090,37 @@ export function map3dView(q: ParsedQuery | string): ViewData {
     if (cur) cur.weight += e.w;
     else sum.set(id, { id, src: a, dst: b, kind: "imports", weight: e.w, confidence: "high" });
   }
+  for (const [a, b] of data.declared) {
+    const id = `${a}|depends_on|${b}`;
+    sum.set(id, { id, src: a, dst: b, kind: "depends_on", weight: 1, confidence: "high" });
+  }
   nodes.sort((a, b) => (a.id < b.id ? -1 : 1));
   const edges = [...sum.values()].sort((a, b) => (a.id < b.id ? -1 : 1));
   return { nodes, edges, layoutHint: "force-3d" };
 }
 
 function map3dDetail(id: string): NodeDetail | null {
-  const n = map3dView("files")
-    .nodes.concat(map3dView("dirs").nodes)
-    .find((x) => x.id === id);
-  if (!n) return null;
-  const file = m3Files.find((x) => x.id === id);
-  return {
-    node: { id, kind: n.kind, name: n.label, path: file?.path ?? null, workspaceId: n.parent ?? null },
-    signature: null,
-    fan_in: 0,
-    fan_out: 0,
-    neighbors: {},
-    untrusted_description: null,
-  };
+  for (const q of ["files", "dirs"] as const) {
+    for (const scenario of [undefined, "large"]) {
+      const n = map3dView({
+        focus: null,
+        level: q,
+        hops: null,
+        options: scenario ? { scenario } : {},
+      }).nodes.find((x) => x.id === id);
+      if (!n) continue;
+      const file = [...M3_SMALL.files, ...M3_LARGE.files].find((x) => x.id === id);
+      return {
+        node: { id, kind: n.kind, name: n.label, path: file?.path ?? null, workspaceId: n.parent ?? null },
+        signature: null,
+        fan_in: 0,
+        fan_out: 0,
+        neighbors: {},
+        untrusted_description: null,
+      };
+    }
+  }
+  return null;
 }
 
 export interface MockResponse {

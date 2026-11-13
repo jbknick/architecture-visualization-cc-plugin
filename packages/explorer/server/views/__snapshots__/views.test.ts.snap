@@ -829,6 +829,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "kind": "workspace",
       "label": "@acme/api",
       "path": "apps/api",
+      "shortLabel": "api",
       "size": 1,
       "stats": {
         "files": 3,
@@ -845,6 +846,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "kind": "workspace",
       "label": "@acme/db",
       "path": "packages/db",
+      "shortLabel": "db",
       "size": 3,
       "stats": {
         "files": 3,
@@ -861,6 +863,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "kind": "workspace",
       "label": "@acme/ui",
       "path": "packages/ui",
+      "shortLabel": "ui",
       "size": 2,
       "stats": {
         "files": 4,
@@ -876,6 +879,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "kind": "workspace",
       "label": "@acme/utils",
       "path": "packages/utils",
+      "shortLabel": "utils",
       "size": 3,
       "stats": {
         "files": 4,
@@ -893,6 +897,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "kind": "workspace",
       "label": "@acme/web",
       "path": "apps/web",
+      "shortLabel": "web",
       "size": 8,
       "stats": {
         "files": 8,
@@ -1964,6 +1969,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "kind": "workspace",
       "label": "@acme/api",
       "path": "apps/api",
+      "shortLabel": "api",
       "size": 1,
       "stats": {
         "files": 3,
@@ -1980,6 +1986,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "kind": "workspace",
       "label": "@acme/db",
       "path": "packages/db",
+      "shortLabel": "db",
       "size": 3,
       "stats": {
         "files": 3,
@@ -1996,6 +2003,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "kind": "workspace",
       "label": "@acme/ui",
       "path": "packages/ui",
+      "shortLabel": "ui",
       "size": 2,
       "stats": {
         "files": 4,
@@ -2011,6 +2019,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "kind": "workspace",
       "label": "@acme/utils",
       "path": "packages/utils",
+      "shortLabel": "utils",
       "size": 3,
       "stats": {
         "files": 4,
@@ -2028,6 +2037,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "kind": "workspace",
       "label": "@acme/web",
       "path": "apps/web",
+      "shortLabel": "web",
       "size": 8,
       "stats": {
         "files": 8,
@@ -2114,6 +2124,7 @@ exports[`project-map > snapshot: workspaces level 1`] = `
       "kind": "workspace",
       "label": "@acme/api",
       "path": "apps/api",
+      "shortLabel": "api",
       "size": 1,
       "stats": {
         "files": 3,
@@ -2130,6 +2141,7 @@ exports[`project-map > snapshot: workspaces level 1`] = `
       "kind": "workspace",
       "label": "@acme/db",
       "path": "packages/db",
+      "shortLabel": "db",
       "size": 3,
       "stats": {
         "files": 3,
@@ -2146,6 +2158,7 @@ exports[`project-map > snapshot: workspaces level 1`] = `
       "kind": "workspace",
       "label": "@acme/ui",
       "path": "packages/ui",
+      "shortLabel": "ui",
       "size": 2,
       "stats": {
         "files": 4,
@@ -2161,6 +2174,7 @@ exports[`project-map > snapshot: workspaces level 1`] = `
       "kind": "workspace",
       "label": "@acme/utils",
       "path": "packages/utils",
+      "shortLabel": "utils",
       "size": 3,
       "stats": {
         "files": 4,
@@ -2178,6 +2192,7 @@ exports[`project-map > snapshot: workspaces level 1`] = `
       "kind": "workspace",
       "label": "@acme/web",
       "path": "apps/web",
+      "shortLabel": "web",
       "size": 8,
       "stats": {
         "files": 8,

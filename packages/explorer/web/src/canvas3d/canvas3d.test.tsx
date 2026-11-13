@@ -80,11 +80,38 @@ describe("MapPanel", () => {
 
   it("lists workspaces with kind and counts; clicking a row focuses that island", () => {
     setup();
-    const row = screen.getByRole("button", { name: /@acme\/web/ });
-    expect(row.textContent).toMatch(/app · \d+ fn · 22 files/);
+    const row = screen.getByRole("button", { name: /^web/ });
+    expect(row.getAttribute("title")).toBe("@acme/web");
+    expect(row.textContent).toMatch(/web\d+ fnapp · 22 files/);
     fireEvent.click(row);
     expect(mapUi.get().island).toBe("ws:@acme/web");
     expect(mapUi.get().flyNonce).toBeGreaterThan(0);
+  });
+
+  it("sorts the legend by function count, biggest first, and hover highlights the island", () => {
+    setup();
+    const rows = [...document.querySelectorAll(".map3d-legend-row")];
+    expect(rows).toHaveLength(5);
+    const counts = rows.map((r) =>
+      Number.parseInt((r.querySelector(".map3d-legend-count")?.textContent ?? "").replace(/,/g, ""), 10),
+    );
+    expect(counts).toEqual([...counts].sort((a, b) => b - a));
+    const row = screen.getByRole("button", { name: /^web/ });
+    fireEvent.mouseEnter(row);
+    expect(mapUi.get().hoverIsland).toBe("ws:@acme/web");
+    fireEvent.mouseLeave(row);
+    expect(mapUi.get().hoverIsland).toBeNull();
+  });
+
+  it("declared dependencies are hidden by default and toggle through the store", () => {
+    setup();
+    expect(mapUi.get().showDeclared).toBe(false);
+    fireEvent.click(screen.getByLabelText("Show declared dependencies"));
+    expect(mapUi.get().showDeclared).toBe(true);
+  });
+
+  it("auto-rotate starts off", () => {
+    expect(mapUi.get().autoRotate).toBe(false);
   });
 
   it("Reset camera bumps the reset request and clears the island", () => {
