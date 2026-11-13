@@ -102,3 +102,6 @@ export interface FtsRow {
   behavior: string;
   searchTerms: string;
 }
+
+/** A symbol as produced by the parser: everything except the hashing fields (issue #14 fills those in). */
+export type ParsedSymbol = Omit<SymbolRecord, "exactHash" | "shapeHash" | "minhash">;

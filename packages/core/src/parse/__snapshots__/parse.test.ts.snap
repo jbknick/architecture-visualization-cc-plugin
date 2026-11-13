@@ -1,0 +1,479 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`fixture snapshots > barrel 1`] = `
+{
+  "bodies": [],
+  "errors": [],
+  "exports": [
+    {
+      "exported": "Button",
+      "fromSpecifier": "./button",
+      "local": "Button",
+    },
+    {
+      "exported": "Card",
+      "fromSpecifier": "./card",
+      "local": "Card",
+    },
+  ],
+  "fileId": "file:pnpm-turbo/packages/ui/src/index.ts",
+  "imports": [],
+  "sites": [],
+  "symbols": [],
+}
+`;
+
+exports[`fixture snapshots > class 1`] = `
+{
+  "bodies": [
+    {
+      "end": 222,
+      "id": "sym:single-pkg/src/counter.ts#Counter",
+      "start": 7,
+    },
+    {
+      "end": 123,
+      "id": "sym:single-pkg/src/counter.ts#Counter.increment",
+      "start": 47,
+    },
+    {
+      "end": 166,
+      "id": "sym:single-pkg/src/counter.ts#Counter.reset",
+      "start": 127,
+    },
+    {
+      "end": 220,
+      "id": "sym:single-pkg/src/counter.ts#Counter.current",
+      "start": 170,
+    },
+  ],
+  "errors": [],
+  "exports": [
+    {
+      "exported": "Counter",
+      "local": "Counter",
+    },
+  ],
+  "fileId": "file:single-pkg/src/counter.ts",
+  "imports": [],
+  "sites": [],
+  "symbols": [
+    {
+      "complexity": 1,
+      "endLine": 16,
+      "exported": true,
+      "fileId": "file:single-pkg/src/counter.ts",
+      "id": "sym:single-pkg/src/counter.ts#Counter",
+      "kind": "class",
+      "loc": 16,
+      "name": "Counter",
+      "signature": "",
+      "startLine": 1,
+      "stmtCount": 4,
+    },
+    {
+      "complexity": 1,
+      "endLine": 7,
+      "exported": true,
+      "fileId": "file:single-pkg/src/counter.ts",
+      "id": "sym:single-pkg/src/counter.ts#Counter.increment",
+      "kind": "method",
+      "loc": 4,
+      "name": "Counter.increment",
+      "signature": "(by = 1): number",
+      "startLine": 4,
+      "stmtCount": 2,
+    },
+    {
+      "complexity": 1,
+      "endLine": 11,
+      "exported": true,
+      "fileId": "file:single-pkg/src/counter.ts",
+      "id": "sym:single-pkg/src/counter.ts#Counter.reset",
+      "kind": "method",
+      "loc": 3,
+      "name": "Counter.reset",
+      "signature": "(): void",
+      "startLine": 9,
+      "stmtCount": 1,
+    },
+    {
+      "complexity": 1,
+      "endLine": 15,
+      "exported": true,
+      "fileId": "file:single-pkg/src/counter.ts",
+      "id": "sym:single-pkg/src/counter.ts#Counter.current",
+      "kind": "method",
+      "loc": 3,
+      "name": "Counter.current",
+      "signature": "(): number",
+      "startLine": 13,
+      "stmtCount": 1,
+    },
+  ],
+}
+`;
+
+exports[`fixture snapshots > component 1`] = `
+{
+  "bodies": [
+    {
+      "end": 176,
+      "id": "sym:pnpm-turbo/packages/ui/src/button.tsx#Button",
+      "start": 7,
+    },
+  ],
+  "errors": [],
+  "exports": [
+    {
+      "exported": "Button",
+      "local": "Button",
+    },
+  ],
+  "fileId": "file:pnpm-turbo/packages/ui/src/button.tsx",
+  "imports": [],
+  "sites": [],
+  "symbols": [
+    {
+      "complexity": 1,
+      "endLine": 7,
+      "exported": true,
+      "fileId": "file:pnpm-turbo/packages/ui/src/button.tsx",
+      "id": "sym:pnpm-turbo/packages/ui/src/button.tsx#Button",
+      "kind": "component",
+      "loc": 7,
+      "name": "Button",
+      "signature": "({ label, onClick }: { label: string; onClick?: () => void })",
+      "startLine": 1,
+      "stmtCount": 1,
+    },
+  ],
+}
+`;
+
+exports[`fixture snapshots > drizzle schema 1`] = `
+{
+  "bodies": [
+    {
+      "end": 181,
+      "id": "sym:pnpm-turbo/packages/db/src/schema.ts#users",
+      "start": 78,
+    },
+    {
+      "end": 382,
+      "id": "sym:pnpm-turbo/packages/db/src/schema.ts#posts",
+      "start": 190,
+    },
+  ],
+  "errors": [],
+  "exports": [
+    {
+      "exported": "users",
+      "local": "users",
+    },
+    {
+      "exported": "posts",
+      "local": "posts",
+    },
+  ],
+  "fileId": "file:pnpm-turbo/packages/db/src/schema.ts",
+  "imports": [
+    {
+      "imported": "integer",
+      "line": 1,
+      "local": "integer",
+      "specifier": "drizzle-orm/sqlite-core",
+      "typeOnly": false,
+    },
+    {
+      "imported": "sqliteTable",
+      "line": 1,
+      "local": "sqliteTable",
+      "specifier": "drizzle-orm/sqlite-core",
+      "typeOnly": false,
+    },
+    {
+      "imported": "text",
+      "line": 1,
+      "local": "text",
+      "specifier": "drizzle-orm/sqlite-core",
+      "typeOnly": false,
+    },
+  ],
+  "sites": [
+    {
+      "callee": "sqliteTable",
+      "fromSymbol": "sym:pnpm-turbo/packages/db/src/schema.ts#users",
+      "kind": "calls",
+      "line": 3,
+    },
+    {
+      "callee": "text",
+      "fromSymbol": "sym:pnpm-turbo/packages/db/src/schema.ts#users",
+      "kind": "calls",
+      "line": 4,
+    },
+    {
+      "callee": "text",
+      "fromSymbol": "sym:pnpm-turbo/packages/db/src/schema.ts#users",
+      "kind": "calls",
+      "line": 5,
+    },
+    {
+      "callee": "sqliteTable",
+      "fromSymbol": "sym:pnpm-turbo/packages/db/src/schema.ts#posts",
+      "kind": "calls",
+      "line": 8,
+    },
+    {
+      "callee": "text",
+      "fromSymbol": "sym:pnpm-turbo/packages/db/src/schema.ts#posts",
+      "kind": "calls",
+      "line": 9,
+    },
+    {
+      "callee": "text",
+      "fromSymbol": "sym:pnpm-turbo/packages/db/src/schema.ts#posts",
+      "kind": "calls",
+      "line": 10,
+    },
+    {
+      "callee": "text",
+      "fromSymbol": "sym:pnpm-turbo/packages/db/src/schema.ts#posts",
+      "kind": "calls",
+      "line": 11,
+    },
+    {
+      "callee": "integer",
+      "fromSymbol": "sym:pnpm-turbo/packages/db/src/schema.ts#posts",
+      "kind": "calls",
+      "line": 12,
+    },
+  ],
+  "symbols": [
+    {
+      "complexity": 1,
+      "endLine": 6,
+      "exported": true,
+      "fileId": "file:pnpm-turbo/packages/db/src/schema.ts",
+      "id": "sym:pnpm-turbo/packages/db/src/schema.ts#users",
+      "kind": "const",
+      "loc": 4,
+      "name": "users",
+      "signature": "",
+      "startLine": 3,
+      "stmtCount": 0,
+    },
+    {
+      "complexity": 1,
+      "endLine": 13,
+      "exported": true,
+      "fileId": "file:pnpm-turbo/packages/db/src/schema.ts",
+      "id": "sym:pnpm-turbo/packages/db/src/schema.ts#posts",
+      "kind": "const",
+      "loc": 6,
+      "name": "posts",
+      "signature": "",
+      "startLine": 8,
+      "stmtCount": 0,
+    },
+  ],
+}
+`;
+
+exports[`fixture snapshots > hono app 1`] = `
+{
+  "bodies": [
+    {
+      "end": 108,
+      "id": "sym:pnpm-turbo/apps/api/src/app.ts#app",
+      "start": 85,
+    },
+  ],
+  "errors": [],
+  "exports": [
+    {
+      "exported": "app",
+      "local": "app",
+    },
+  ],
+  "fileId": "file:pnpm-turbo/apps/api/src/app.ts",
+  "imports": [
+    {
+      "imported": "Hono",
+      "line": 1,
+      "local": "Hono",
+      "specifier": "hono",
+      "typeOnly": false,
+    },
+    {
+      "imported": "getPost",
+      "line": 2,
+      "local": "getPost",
+      "specifier": "@acme/db",
+      "typeOnly": false,
+    },
+    {
+      "imported": "createPost",
+      "line": 2,
+      "local": "createPost",
+      "specifier": "@acme/db",
+      "typeOnly": false,
+    },
+  ],
+  "sites": [
+    {
+      "callee": "Hono",
+      "fromSymbol": "sym:pnpm-turbo/apps/api/src/app.ts#app",
+      "kind": "calls",
+      "line": 4,
+    },
+    {
+      "callee": "app.get",
+      "fromSymbol": "file:pnpm-turbo/apps/api/src/app.ts",
+      "kind": "calls",
+      "line": 6,
+    },
+    {
+      "callee": "c.req.param",
+      "fromSymbol": "file:pnpm-turbo/apps/api/src/app.ts",
+      "kind": "calls",
+      "line": 7,
+    },
+    {
+      "callee": "getPost",
+      "fromSymbol": "file:pnpm-turbo/apps/api/src/app.ts",
+      "kind": "calls",
+      "line": 7,
+    },
+    {
+      "callee": "c.json",
+      "fromSymbol": "file:pnpm-turbo/apps/api/src/app.ts",
+      "kind": "calls",
+      "line": 8,
+    },
+    {
+      "callee": "app.post",
+      "fromSymbol": "file:pnpm-turbo/apps/api/src/app.ts",
+      "kind": "calls",
+      "line": 11,
+    },
+    {
+      "callee": "c.req.json",
+      "fromSymbol": "file:pnpm-turbo/apps/api/src/app.ts",
+      "kind": "calls",
+      "line": 12,
+    },
+    {
+      "callee": "createPost",
+      "fromSymbol": "file:pnpm-turbo/apps/api/src/app.ts",
+      "kind": "calls",
+      "line": 13,
+    },
+    {
+      "callee": "c.json",
+      "fromSymbol": "file:pnpm-turbo/apps/api/src/app.ts",
+      "kind": "calls",
+      "line": 14,
+    },
+  ],
+  "symbols": [
+    {
+      "complexity": 1,
+      "endLine": 4,
+      "exported": true,
+      "fileId": "file:pnpm-turbo/apps/api/src/app.ts",
+      "id": "sym:pnpm-turbo/apps/api/src/app.ts#app",
+      "kind": "const",
+      "loc": 1,
+      "name": "app",
+      "signature": "",
+      "startLine": 4,
+      "stmtCount": 0,
+    },
+  ],
+}
+`;
+
+exports[`fixture snapshots > hook 1`] = `
+{
+  "bodies": [
+    {
+      "end": 325,
+      "id": "sym:pnpm-turbo/apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "start": 53,
+    },
+  ],
+  "errors": [],
+  "exports": [
+    {
+      "exported": "useDebounce",
+      "local": "useDebounce",
+    },
+  ],
+  "fileId": "file:pnpm-turbo/apps/web/src/hooks/useDebounce.ts",
+  "imports": [
+    {
+      "imported": "useEffect",
+      "line": 1,
+      "local": "useEffect",
+      "specifier": "react",
+      "typeOnly": false,
+    },
+    {
+      "imported": "useState",
+      "line": 1,
+      "local": "useState",
+      "specifier": "react",
+      "typeOnly": false,
+    },
+  ],
+  "sites": [
+    {
+      "callee": "useState",
+      "fromSymbol": "sym:pnpm-turbo/apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "kind": "uses_hook",
+      "line": 4,
+    },
+    {
+      "callee": "useEffect",
+      "fromSymbol": "sym:pnpm-turbo/apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "kind": "uses_hook",
+      "line": 5,
+    },
+    {
+      "callee": "setDebounced",
+      "fromSymbol": "sym:pnpm-turbo/apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "kind": "calls",
+      "line": 6,
+    },
+    {
+      "callee": "setTimeout",
+      "fromSymbol": "sym:pnpm-turbo/apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "kind": "calls",
+      "line": 6,
+    },
+    {
+      "callee": "clearTimeout",
+      "fromSymbol": "sym:pnpm-turbo/apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "kind": "calls",
+      "line": 7,
+    },
+  ],
+  "symbols": [
+    {
+      "complexity": 1,
+      "endLine": 10,
+      "exported": true,
+      "fileId": "file:pnpm-turbo/apps/web/src/hooks/useDebounce.ts",
+      "id": "sym:pnpm-turbo/apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "kind": "hook",
+      "loc": 8,
+      "name": "useDebounce",
+      "signature": "<T>(value: T, delayMs: number): T",
+      "startLine": 3,
+      "stmtCount": 5,
+    },
+  ],
+}
+`;
