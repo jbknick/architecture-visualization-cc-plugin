@@ -8,7 +8,7 @@
   },
   "packageManager": "pnpm@10.31.0",
   "scripts": {
-    "build": "tsc -b && tsup",
+    "build": "tsc -b && tsup && pnpm --filter @gantry/explorer build:web",
     "check": "biome check . && tsc -b --noEmit && vitest run",
     "test": "vitest run",
     "fmt": "biome check --write ."
@@ -24,6 +24,8 @@
     "@huggingface/transformers": "4.3.2",
     "@types/node": "^26.6.6",
     "better-sqlite3": "13.1.1",
+    "oxc-parser": "0.158.0",
+    "oxc-resolver": "11.24.2",
     "sqlite-vec": "0.1.9",
     "tsup": "^9.0.0",
     "tsx": "^4.23.15",
