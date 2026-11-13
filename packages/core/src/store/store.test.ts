@@ -125,7 +125,7 @@ describe("openStore", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.kind).toBe("package");
     expect(JSON.parse(rows[0]?.frameworks ?? "")).toEqual(["react"]);
-    expect(JSON.parse(rows[0]?.exports_map ?? "")).toEqual({ ".": "./index.js" });
+    expect(JSON.parse(rows[0]?.exports_map ?? "")).toEqual([{ subpath: ".", target: "./index.js" }]);
   });
 });
 
