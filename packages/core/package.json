@@ -12,6 +12,10 @@
     }
   },
   "dependencies": {
+    "picomatch": "^4.0.7",
     "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/picomatch": "^4.0.3"
   }
 }
