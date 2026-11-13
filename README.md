@@ -25,15 +25,15 @@ Coding agents often write a new helper when an equivalent one already exists, us
 
 ## Roadmap
 
-| Milestone | Scope |
-| --- | --- |
-| M0 Spikes | Prove the risky parts: headless Claude calls, description quality, embeddings, the import graph |
-| M1 Structural graph | Workspace detection, parsing, import resolution, local index, git hooks |
-| M2 Reuse guard | Function descriptions, duplicate detection, reuse advice, MCP tools, Claude Code hooks |
-| M3 Explorer | Browser graph with project map, function, duplicate, page and feature views |
-| M4 Live updates | The explorer updates as you save |
-| M5 Code review | Blast radius of a change or pull request |
-| M6 Framework adapters | TanStack Start, Hono, oRPC and Drizzle: page → API → table views |
+| Milestone             | Scope                                                                                           |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| M0 Spikes             | Prove the risky parts: headless Claude calls, description quality, embeddings, the import graph |
+| M1 Structural graph   | Workspace detection, parsing, import resolution, local index, git hooks                         |
+| M2 Reuse guard        | Function descriptions, duplicate detection, reuse advice, MCP tools, Claude Code hooks          |
+| M3 Explorer           | Browser graph with project map, function, duplicate, page and feature views                     |
+| M4 Live updates       | The explorer updates as you save                                                                |
+| M5 Code review        | Blast radius of a change or pull request                                                        |
+| M6 Framework adapters | TanStack Start, Hono, oRPC and Drizzle: page → API → table views                                |
 
 ## Repository
 
@@ -42,3 +42,17 @@ The repo is named `architecture-visualization-cc-plugin`; the plugin, CLI and MC
 ## License
 
 [MIT](LICENSE). Use it for anything; just keep the copyright notice.
+
+## Development
+
+Requires Node 22+ and pnpm.
+
+```
+pnpm install
+pnpm build   # tsc -b && tsup, writes plugin/dist/cli.js and plugin/dist/mcp.js
+pnpm check   # biome + tsc + vitest, the local quality gate
+pnpm fmt     # apply Biome fixes
+node plugin/dist/cli.js --version
+```
+
+See `docs/SPEC.md` for the engineering contracts and `CLAUDE.md` for contribution rules.

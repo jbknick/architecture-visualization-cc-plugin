@@ -1,0 +1,23 @@
+{
+  "name": "gantry-workspace",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.31.0",
+  "scripts": {
+    "build": "tsc -b && tsup",
+    "check": "biome check . && tsc -b --noEmit && vitest run",
+    "test": "vitest run",
+    "fmt": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.7",
+    "@types/node": "^26.6.6",
+    "tsup": "^9.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

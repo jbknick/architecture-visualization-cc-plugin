@@ -26,7 +26,7 @@ Dev: `typescript`, `vitest`, `@biomejs/biome`, `tsup`, `tsx`, `vite`, `@vitejs/p
 
 ```
 architecture-visualization-cc-plugin/
-  package.json  pnpm-workspace.yaml  tsconfig.base.json  biome.json  vitest.workspace.ts
+  package.json  pnpm-workspace.yaml  tsconfig.base.json  biome.json  vitest.config.ts
   packages/core/       indexing library (no CLI, no MCP)
     src/paths/ config/ workspace/ discover/ parse/ hash/ resolve/ store/ heal/
         search/ embed/ describe/ dup/ advice/ adapters/ review/ types.ts index.ts
@@ -54,17 +54,26 @@ architecture-visualization-cc-plugin/
 Project config (`<dataDir>/config.json`) is deep-merged over global (`~/.gantry/config.json`) over defaults.
 
 ```ts
-type TaskName = "describe.init" | "describe.sync" | "describe.precommit" | "describe.retry" | "overview" | "explain";
+type TaskName =
+  | "describe.init"
+  | "describe.sync"
+  | "describe.precommit"
+  | "describe.retry"
+  | "overview"
+  | "explain";
 type GantryConfig = {
   precommit: { mode: "off" | "timeboxed" | "strict"; budgetMs: number; maxFunctions: number }; // off, 8000, 50
   routing: Record<TaskName, { model: "haiku" | "sonnet" | "opus"; effort: "low" | "medium" | "high" }>;
-  exclude: string[];                                   // extra globs, added to built-ins
+  exclude: string[]; // extra globs, added to built-ins
   workspaces: { overrides: Record<string, { kind?: "app" | "package" }> };
-  duplicates: { mode: "warn" | "block"; ignore: string[];
-                thresholds: { nearJaccard: number; codeVector: number; semantic: number } }; // 0.85, 0.92, 0.85
-  backlogReminderThreshold: number;                    // 100
-  renameSuggestions: boolean;                          // false until M0 measures nameFits precision
-  views: { slices: string[] };                         // ["apps/*/src/features/*", "apps/*/src/modules/*", "packages/*"]
+  duplicates: {
+    mode: "warn" | "block";
+    ignore: string[];
+    thresholds: { nearJaccard: number; codeVector: number; semantic: number };
+  }; // 0.85, 0.92, 0.85
+  backlogReminderThreshold: number; // 100
+  renameSuggestions: boolean; // false until M0 measures nameFits precision
+  views: { slices: string[] }; // ["apps/*/src/features/*", "apps/*/src/modules/*", "packages/*"]
 };
 ```
 Routing defaults: `describe.init|sync|precommit` haiku/low, `describe.retry` sonnet/low, `overview` sonnet/low, `explain` sonnet/medium.
@@ -82,18 +91,75 @@ Routing defaults: `describe.init|sync|precommit` haiku/low, `describe.retry` son
 
 ```ts
 export type Layer = "main" | "working";
-export type SymbolKind = "function" | "method" | "component" | "hook" | "class" | "type" | "interface" | "enum" | "const";
+export type SymbolKind =
+  | "function"
+  | "method"
+  | "component"
+  | "hook"
+  | "class"
+  | "type"
+  | "interface"
+  | "enum"
+  | "const";
 export interface SymbolRecord {
-  id: string; fileId: string; name: string; kind: SymbolKind; exported: boolean;
-  signature: string; startLine: number; endLine: number; loc: number; complexity: number;
-  stmtCount: number; exactHash: string; shapeHash: string; minhash: Uint32Array; // 64 permutations
+  id: string;
+  fileId: string;
+  name: string;
+  kind: SymbolKind;
+  exported: boolean;
+  signature: string;
+  startLine: number;
+  endLine: number;
+  loc: number;
+  complexity: number;
+  stmtCount: number;
+  exactHash: string;
+  shapeHash: string;
+  minhash: Uint32Array; // 64 permutations
 }
-export type EdgeKind = "contains" | "imports" | "exports" | "calls" | "renders" | "uses_hook" | "extends"
-  | "implements" | "references_type" | "depends_on" | "serves" | "handles" | "requests" | "reads" | "writes" | "similar_to";
-export interface EdgeRecord { src: string; dst: string; kind: EdgeKind; confidence: "high" | "low"; count: number; evidence: string[]; fileId: string }
-export interface FactSheet { contentKey: string; id: string; path: string; kind: SymbolKind; signature: string;
-  doc: string | null; callees: string[]; returnType: string | null; body: string } // body trimmed to 1,500 chars
-export interface Description { behavior: string; searchTerms: string[]; nameFits: boolean; suggestedName?: string }
+export type EdgeKind =
+  | "contains"
+  | "imports"
+  | "exports"
+  | "calls"
+  | "renders"
+  | "uses_hook"
+  | "extends"
+  | "implements"
+  | "references_type"
+  | "depends_on"
+  | "serves"
+  | "handles"
+  | "requests"
+  | "reads"
+  | "writes"
+  | "similar_to";
+export interface EdgeRecord {
+  src: string;
+  dst: string;
+  kind: EdgeKind;
+  confidence: "high" | "low";
+  count: number;
+  evidence: string[];
+  fileId: string;
+}
+export interface FactSheet {
+  contentKey: string;
+  id: string;
+  path: string;
+  kind: SymbolKind;
+  signature: string;
+  doc: string | null;
+  callees: string[];
+  returnType: string | null;
+  body: string;
+} // body trimmed to 1,500 chars
+export interface Description {
+  behavior: string;
+  searchTerms: string[];
+  nameFits: boolean;
+  suggestedName?: string;
+}
 ```
 **Function-like kinds** (get descriptions, duplicate checks): function, method, component, hook. A component is a PascalCase function returning JSX; a hook is a function named `use[A-Z]…`.
 **contentKey** = `<exactHash>:<PROMPT_MAJOR>`; `PROMPT_MAJOR` starts at `p1`.
@@ -137,20 +203,20 @@ Backlog priority: exported functions and route/entry files 0, other exported 1, 
 
 ## 10. CLI (`packages/cli`, binary `gantry`)
 
-| Command | Behavior |
-|---|---|
-| `gantry init [--estimate] [--exports-first]` | Full deterministic index; with `--estimate` prints function count, templated count, projected tokens (500 in, 150–200 out per function until M0 measures it), batches of 40 and rounds of 4; no model calls ever |
-| `gantry index [--files <p...>] [--layer main\|working] [--dump]` | Deterministic index; `--dump` prints the sorted graph JSON (used by snapshot tests) |
-| `gantry heal [--from <sha>]` | Reconcile main graph to HEAD (section 11) |
-| `gantry search <q> [--kind] [--json]`, `gantry node <id\|path:line> [--json]` | Lookups |
-| `gantry usage [--json]`, `gantry backlog [--json]` | Usage summary; backlog counts |
-| `gantry hooks install`, `gantry hooks uninstall`, `gantry uninstall [--keep-data]` | Section 12 |
-| `gantry hook <session-start\|post-tool-use\|pre-commit\|pre-push\|post-checkout\|post-merge\|post-rewrite> [args]` | Hook entry points |
-| `gantry describe --staged` | Pre-commit describer (timeboxed/strict modes only) |
-| `gantry map [--port] [--no-open]` | Start explorer server |
-| `gantry review <base>...<head> \| --pr <n> [--json] [--open]` | Review data / open view |
-| `gantry trace <target> [--json]` | Page → API → table chain (M6) |
-| `gantry config get\|set <key> [value]` | Project config |
+| Command                                                                                                            | Behavior                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gantry init [--estimate] [--exports-first]`                                                                       | Full deterministic index; with `--estimate` prints function count, templated count, projected tokens (500 in, 150–200 out per function until M0 measures it), batches of 40 and rounds of 4; no model calls ever |
+| `gantry index [--files <p...>] [--layer main\|working] [--dump]`                                                   | Deterministic index; `--dump` prints the sorted graph JSON (used by snapshot tests)                                                                                                                              |
+| `gantry heal [--from <sha>]`                                                                                       | Reconcile main graph to HEAD (section 11)                                                                                                                                                                        |
+| `gantry search <q> [--kind] [--json]`, `gantry node <id\|path:line> [--json]`                                      | Lookups                                                                                                                                                                                                          |
+| `gantry usage [--json]`, `gantry backlog [--json]`                                                                 | Usage summary; backlog counts                                                                                                                                                                                    |
+| `gantry hooks install`, `gantry hooks uninstall`, `gantry uninstall [--keep-data]`                                 | Section 12                                                                                                                                                                                                       |
+| `gantry hook <session-start\|post-tool-use\|pre-commit\|pre-push\|post-checkout\|post-merge\|post-rewrite> [args]` | Hook entry points                                                                                                                                                                                                |
+| `gantry describe --staged`                                                                                         | Pre-commit describer (timeboxed/strict modes only)                                                                                                                                                               |
+| `gantry map [--port] [--no-open]`                                                                                  | Start explorer server                                                                                                                                                                                            |
+| `gantry review <base>...<head> \| --pr <n> [--json] [--open]`                                                      | Review data / open view                                                                                                                                                                                          |
+| `gantry trace <target> [--json]`                                                                                   | Page → API → table chain (M6)                                                                                                                                                                                    |
+| `gantry config get\|set <key> [value]`                                                                             | Project config                                                                                                                                                                                                   |
 
 ## 11. Index lifecycle
 
@@ -180,18 +246,18 @@ Backlog priority: exported functions and route/entry files 0, other exported 1, 
 
 Every response is one JSON text block ≤ 4,000 chars; descriptions go in a field named `untrusted_description`. Lazy refresh (section 11) runs before each call.
 
-| Tool | Input | Output |
-|---|---|---|
-| `gantry_find_similar` | `{ query?: string, code?: string, kind?: string, workspace?: string, limit?: number ≤10 }` (one of query/code required) | `{ matches: [{ id, name, kind, path, line, signature, import_path, tier: "exact"\|"near"\|"code_vector"\|"semantic", score, untrusted_description, advice: { situation, action, inline } }] }` |
-| `gantry_browse` | `{ target: string }` (id or path) | `{ items: [{ id, name, kind, exported, path, line, untrusted_description }], catalog_path }` |
-| `gantry_search` | `{ query, kind?, workspace?, exported?, limit? }` | `{ hits: [...] }` |
-| `gantry_node` | `{ target: string }` | `{ node, untrusted_description, signature, fan_in, fan_out, neighbors: { [kind]: string[] } }` |
-| `gantry_open_view` | `{ view, focus?, filters? }` | `{ url }` |
-| `gantry_impact` | `{ paths?, symbol?, range? }` | `{ changed, callers_by_hop, crossings, notes }` |
-| `gantry_trace` | `{ target }` | `{ chain: [...] }` |
-| `gantry_get_overview` / `gantry_save_overview` | `{ node_id }` / `{ node_id, text }` | cached overview / saved |
-| `gantry_claim_batch` (describer only) | `{ worker_id, size ≤ 40 }` | `{ batch_id, items: FactSheet[] }` |
-| `gantry_submit_descriptions` (describer only) | `{ batch_id, results: [{ content_key, description }] }` | `{ accepted, rejected: [{ content_key, reason }] }` |
+| Tool                                           | Input                                                                                                                   | Output                                                                                                                                                                                         |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gantry_find_similar`                          | `{ query?: string, code?: string, kind?: string, workspace?: string, limit?: number ≤10 }` (one of query/code required) | `{ matches: [{ id, name, kind, path, line, signature, import_path, tier: "exact"\|"near"\|"code_vector"\|"semantic", score, untrusted_description, advice: { situation, action, inline } }] }` |
+| `gantry_browse`                                | `{ target: string }` (id or path)                                                                                       | `{ items: [{ id, name, kind, exported, path, line, untrusted_description }], catalog_path }`                                                                                                   |
+| `gantry_search`                                | `{ query, kind?, workspace?, exported?, limit? }`                                                                       | `{ hits: [...] }`                                                                                                                                                                              |
+| `gantry_node`                                  | `{ target: string }`                                                                                                    | `{ node, untrusted_description, signature, fan_in, fan_out, neighbors: { [kind]: string[] } }`                                                                                                 |
+| `gantry_open_view`                             | `{ view, focus?, filters? }`                                                                                            | `{ url }`                                                                                                                                                                                      |
+| `gantry_impact`                                | `{ paths?, symbol?, range? }`                                                                                           | `{ changed, callers_by_hop, crossings, notes }`                                                                                                                                                |
+| `gantry_trace`                                 | `{ target }`                                                                                                            | `{ chain: [...] }`                                                                                                                                                                             |
+| `gantry_get_overview` / `gantry_save_overview` | `{ node_id }` / `{ node_id, text }`                                                                                     | cached overview / saved                                                                                                                                                                        |
+| `gantry_claim_batch` (describer only)          | `{ worker_id, size ≤ 40 }`                                                                                              | `{ batch_id, items: FactSheet[] }`                                                                                                                                                             |
+| `gantry_submit_descriptions` (describer only)  | `{ batch_id, results: [{ content_key, description }] }`                                                                 | `{ accepted, rejected: [{ content_key, reason }] }`                                                                                                                                            |
 
 Claims expire after 10 minutes and return to `pending`. Tool names as seen by Claude: `mcp__plugin_gantry_gantry__<tool>`.
 
@@ -206,12 +272,12 @@ Claims expire after 10 minutes and return to `pending`. Tool names as seen by Cl
 
 ## 17. Duplicate tiers (initial thresholds, tuned in M2)
 
-| Tier | Rule |
-|---|---|
-| exact | same `exactHash`, `stmtCount ≥ 3` |
-| near | same `shapeHash` or MinHash Jaccard ≥ 0.85, `stmtCount ≥ 6`, same parameter count ±1 |
-| code_vector | cosine ≥ 0.92 between normalized-code embeddings |
-| semantic | cosine ≥ 0.85 between description embeddings, compatible signature |
+| Tier        | Rule                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------ |
+| exact       | same `exactHash`, `stmtCount ≥ 3`                                                    |
+| near        | same `shapeHash` or MinHash Jaccard ≥ 0.85, `stmtCount ≥ 6`, same parameter count ±1 |
+| code_vector | cosine ≥ 0.92 between normalized-code embeddings                                     |
+| semantic    | cosine ≥ 0.85 between description embeddings, compatible signature                   |
 
 Compare only within kind family (function/method together; component; hook). Skip tests, fixtures, generated files, barrels and `duplicates.ignore`. Dismissed pairs never alert. Budget: < 1 in 10 hook alerts false; alerts on < 5% of edits.
 
