@@ -1,6 +1,7 @@
 export const name = "@gantry/core";
 export * from "./config/index.js";
 export * from "./discover/index.js";
+export * from "./hash/index.js";
 export * from "./parse/index.js";
 export * from "./paths/index.js";
 export * from "./resolve/index.js";
