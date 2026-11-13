@@ -1,23 +1,7 @@
 import { type Dirent, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import picomatch from "picomatch";
-
-export interface ExportsEntry {
-  subpath: string;
-  target: string;
-}
-
-export interface WorkspaceRecord {
-  id: string;
-  name: string;
-  dir: string;
-  kind: "app" | "package" | "unknown";
-  frameworks: string[];
-  deps: string[];
-  exportsMap: ExportsEntry[] | null;
-  main?: string;
-  types?: string;
-}
+import type { ExportsEntry, WorkspaceRecord } from "../types.js";
 
 /** The slice of GantryConfig (spec section 5) that workspace detection reads. */
 export interface WorkspaceDetectionConfig {
