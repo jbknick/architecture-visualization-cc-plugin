@@ -26,7 +26,7 @@ Dev: `typescript`, `vitest`, `@biomejs/biome`, `tsup`, `tsx`, `vite`, `@vitejs/p
 
 ```
 architecture-visualization-cc-plugin/
-  package.json  pnpm-workspace.yaml  tsconfig.base.json  biome.json  vitest.workspace.ts
+  package.json  pnpm-workspace.yaml  tsconfig.base.json  biome.json  vitest.config.ts
   packages/core/       indexing library (no CLI, no MCP)
     src/paths/ config/ workspace/ discover/ parse/ hash/ resolve/ store/ heal/
         search/ embed/ describe/ dup/ advice/ adapters/ review/ types.ts index.ts
