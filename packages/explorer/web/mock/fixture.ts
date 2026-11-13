@@ -13,6 +13,7 @@ import type {
 } from "../src/api.ts";
 import { generateSynthetic } from "../src/canvas/synthetic.ts";
 import { buildHierarchy } from "./hierarchy.ts";
+import { largeMapNode, projectMapLarge } from "./largeMap.ts";
 
 export const meta: Meta = {
   repo: "pnpm-turbo",
@@ -303,6 +304,8 @@ const LEVEL_TIER: Record<ViewLevel, number> = { workspaces: 0, dirs: 1, files: 2
 const FUNCTION_LIKE = ["function", "method", "component", "hook"];
 
 function projectMap(q: ParsedQuery): ViewData | { error: string; status: number } {
+  // Mock-only flag, like the 3D map's: `#/project-map?scenario=large` serves the 11-workspace monorepo.
+  if (q.options.scenario === "large") return projectMapLarge(q);
   const hideTests = optBool(q.options, "hideTests", true);
   const exportedOnly = optBool(q.options, "exportedOnly", false);
   const wsAllowed = optList(q.options, "workspaces");
@@ -316,7 +319,15 @@ function projectMap(q: ParsedQuery): ViewData | { error: string; status: number 
   for (const w of WORKSPACES) {
     if (wsAllowed && !wsAllowed.includes(wsId(w.name))) continue;
     add(
-      { id: wsId(w.name), kind: "workspace", label: w.name, size: 1, path: w.dir, badges: [w.kind, "react"] },
+      {
+        id: wsId(w.name),
+        kind: "workspace",
+        label: w.name,
+        shortLabel: shortLabels(WORKSPACES.map((x) => x.name)).get(w.name) ?? w.name,
+        size: 1,
+        path: w.dir,
+        badges: [w.kind, "react"],
+      },
       TIER.workspace,
     );
   }
@@ -1189,6 +1200,19 @@ export function handleMockApi(url: URL): MockResponse | null {
     const id = decodeURIComponent(path.slice("/api/node/".length));
     const found = nodeDetail(id) ?? map3dDetail(id);
     if (found) return { status: 200, body: found };
+    const large = largeMapNode(id);
+    if (large)
+      return {
+        status: 200,
+        body: {
+          node: large,
+          signature: null,
+          fan_in: 0,
+          fan_out: 0,
+          neighbors: {},
+          untrusted_description: null,
+        } satisfies NodeDetail,
+      };
     hierarchy ??= buildHierarchy();
     const node = hierarchy.nodes.find((n) => n.id === id);
     if (!node) return { status: 404, body: { error: "Unknown node" } };

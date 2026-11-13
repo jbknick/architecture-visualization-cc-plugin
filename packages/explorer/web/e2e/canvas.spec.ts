@@ -51,7 +51,13 @@ async function origin(page: Page) {
 test("far zoom shows labelled workspace regions with weighted arrows", async ({ page }) => {
   await openMap(page);
   await expect(sigmaBox(page)).toHaveAttribute("data-level", "far");
-  await expect(page.getByRole("complementary", { name: "Legend" })).toContainText("@acme/web");
+  // The key starts collapsed in the strip above the diagram, so it never covers the fitted picture.
+  const legend = page.getByRole("complementary", { name: "Legend" });
+  await expect(legend).toContainText("Legend");
+  await expect(legend).not.toContainText("@acme/web");
+  await legend.getByRole("button").click();
+  await expect(legend).toContainText("@acme/web");
+  await legend.getByRole("button").click();
   await page.waitForTimeout(300);
   mkdirSync(shots, { recursive: true });
   await page.screenshot({ path: resolve(shots, "canvas-far.png") });
@@ -75,7 +81,8 @@ test("selecting a workspace highlights it and shows edge counts; Esc clears", as
   const box = await origin(page);
   const web = regions.find((r) => r.id === "ws:@acme/web");
   if (!web) throw new Error("web region missing");
-  await page.mouse.click(box.x + web.x + web.w / 2, box.y + web.y + web.h - 20);
+  // The title strip at the top of the box holds no cell, so a click there selects the workspace itself.
+  await page.mouse.click(box.x + web.x + 14, box.y + web.y + 8);
   await expect(page).toHaveURL(/sel=ws%3A%40acme%2Fweb/);
   await page.mouse.move(box.x + 5, box.y + 5);
   await page.waitForTimeout(500);
@@ -130,19 +137,15 @@ test("hovering an aggregated arrow shows 'A → B: N imports'", async ({ page })
   expect(found).toContain("@acme/web → @acme/ui: 38 imports");
 });
 
-test("positions are deterministic, saved, and survive reload and re-layout", async ({ page }) => {
+test("the layout is deterministic: same positions after reload and re-layout", async ({ page }) => {
   await openMap(page);
-  // Start from scratch: the mock server keeps positions saved by earlier tests.
-  await page.getByRole("button", { name: "Re-layout" }).click();
-  await expect(canvas(page).locator(".gc-status")).toContainText("hierarchy/layered", { timeout: 20_000 });
-  await expect(canvas(page).locator(".gc-sigma[data-ready=true]")).toBeVisible();
+  await expect(canvas(page).locator(".gc-status")).toContainText("treemap/layered", { timeout: 20_000 });
   const first = (await probe(page)).hash;
   await page.reload();
   await expect(canvas(page).locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 20_000 });
-  await expect(canvas(page).locator(".gc-status")).toContainText("saved");
   expect((await probe(page)).hash).toBe(first);
   await page.getByRole("button", { name: "Re-layout" }).click();
-  await expect(canvas(page).locator(".gc-status")).toContainText("hierarchy/layered", { timeout: 20_000 });
+  await expect(canvas(page).locator(".gc-status")).toContainText("treemap/layered", { timeout: 20_000 });
   await expect(canvas(page).locator(".gc-sigma[data-ready=true]")).toBeVisible();
   expect((await probe(page)).hash).toBe(first);
 });

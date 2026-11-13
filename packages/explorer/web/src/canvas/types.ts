@@ -13,12 +13,19 @@ export interface LayoutNode {
   kind: string;
   parent?: string;
   size: number;
+  /** Functions under the node (`stats.functions`); sizes workspace boxes and treemap cells. */
+  functions?: number;
+  /** Workspace boxes: the name and the parts of the detail line ("app", "1,700 functions", "260 files"). */
+  title?: string;
+  subtitle?: string[];
 }
 
 export interface LayoutEdge {
   src: string;
   dst: string;
   weight: number;
+  /** Edge kind; `depends_on` links are placed after the import links (see `layoutMap`). */
+  kind?: string;
 }
 
 export interface LayoutInput {
@@ -26,8 +33,25 @@ export interface LayoutInput {
   edges: LayoutEdge[];
   hint: string;
   focus: string | null;
-  /** Saved positions to keep. Unknown nodes are placed near their parent. */
+  /** Saved positions to keep. Unknown nodes are placed near their parent. Ignored by the map layout. */
   saved?: Positions;
+  /** CSS size of the canvas the map will be fitted to; the map layout sizes titles and gaps for it. */
+  viewport?: { w: number; h: number };
+}
+
+/** Geometry of a hierarchical map (workspace boxes with a treemap inside). Indexed like the sorted-id tree. */
+export interface MapGeometry {
+  /** x, y, w, h of every node, four numbers per tree index. */
+  rects: Float64Array;
+  /** Header strip reserved at the top of each container, per tree index. */
+  heads: Float32Array;
+  /** Routed workspace links, keyed `srcId>dstId`: polylines in layout units. */
+  routes: Record<string, [number, number][]>;
+  /** Bounding box of the boxes and routes. */
+  bounds: Rect;
+  /** Height of a folder title bar and of a file's header strip, in layout units. */
+  dirHead: number;
+  fileHead: number;
 }
 
 export interface LayoutResult {
@@ -37,4 +61,6 @@ export interface LayoutResult {
   ms: number;
   /** Which strategy ran, for the status line. */
   strategy: string;
+  /** Present for hierarchical maps. */
+  map?: MapGeometry;
 }

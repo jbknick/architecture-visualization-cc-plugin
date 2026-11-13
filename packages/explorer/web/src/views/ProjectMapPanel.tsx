@@ -1,7 +1,9 @@
 import type { GraphNode, ViewLevel } from "../api.ts";
+import { mapView, useMapView } from "../canvas/mapView.ts";
 import { useViewData } from "../hooks.ts";
 import type { FilterPanelProps } from "../slots.ts";
-import { workspaceColor } from "./drill.ts";
+import { currentScheme } from "../theme.ts";
+import { workspaceColorAt } from "../workspacePalette.ts";
 import { getBool, getList, setBool, setList } from "./filterUtils.ts";
 
 const LEVELS: { id: ViewLevel; label: string; hint: string }[] = [
@@ -44,6 +46,7 @@ function Check({
   title,
   dot,
   note,
+  onHover,
 }: {
   label: string;
   checked: boolean;
@@ -51,25 +54,63 @@ function Check({
   title?: string;
   dot?: string;
   note?: string;
+  onHover?: (on: boolean) => void;
 }) {
   return (
-    <label className="check" title={title}>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    <label
+      className="check"
+      title={title}
+      onMouseEnter={onHover ? () => onHover(true) : undefined}
+      onMouseLeave={onHover ? () => onHover(false) : undefined}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        onFocus={onHover ? () => onHover(true) : undefined}
+        onBlur={onHover ? () => onHover(false) : undefined}
+      />
       {dot && <span className="kind-dot" style={{ background: dot }} aria-hidden="true" />}
-      <span className="check-label">{label}</span>
-      {note && <span className="check-note">{note}</span>}
+      <span className="check-text">
+        <span className="check-label">{label}</span>
+        {note && <span className="check-note">{note}</span>}
+      </span>
     </label>
   );
 }
 
+/** "1,700 functions · 260 files", from the workspace node's own counts. */
+export function workspaceCounts(w: GraphNode): string | undefined {
+  const fn = w.stats?.functions;
+  const files = w.stats?.files;
+  const parts: string[] = [];
+  if (fn !== undefined) parts.push(`${fn.toLocaleString("en-US")} ${fn === 1 ? "function" : "functions"}`);
+  if (files !== undefined) parts.push(`${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"}`);
+  return parts.length > 0 ? parts.join(" · ") : undefined;
+}
+
 export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRouteChange }: FilterPanelProps) {
   // The workspace list always comes from an unfiltered request, so unticked workspaces stay in the list.
-  const all = useViewData("project-map", { focus: null, level: "workspaces", hops: null, filters: {} });
-  const workspaces = (all.data?.nodes ?? nodes).filter((n) => n.kind === "workspace");
+  // The mock-only `scenario` flag is the one filter that travels along, so the mock serves the same dataset.
+  const all = useViewData("project-map", {
+    focus: null,
+    level: "workspaces",
+    hops: null,
+    filters: filters.scenario ? { scenario: filters.scenario } : {},
+  });
+  const ui = useMapView();
+  const workspaces = [...(all.data?.nodes ?? nodes)]
+    .filter((n) => n.kind === "workspace")
+    .sort((a, b) => (b.stats?.functions ?? 0) - (a.stats?.functions ?? 0) || (a.id < b.id ? -1 : 1));
+  // The same colour as the canvas: the workspace's position among all workspaces sorted by id.
+  const scheme = currentScheme();
+  const colourRank = new Map(
+    [...workspaces].sort((a, b) => (a.id < b.id ? -1 : 1)).map((w, i) => [w.id, i] as const),
+  );
   const picked = getList(filters, "workspaces");
   const isOn = (id: string) => (picked ? picked.includes(id) : true);
   const setWorkspace = (id: string, on: boolean) => {
-    const ids = workspaces.map((w) => w.id);
+    const ids = workspaces.map((w) => w.id).sort();
     const current = picked ?? ids;
     const next = on ? [...new Set([...current, id])] : current.filter((x) => x !== id);
     onFiltersChange(setList(filters, "workspaces", next.length === 0 ? ids : next, ids));
@@ -175,16 +216,13 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
         {workspaces.map((w) => (
           <Check
             key={w.id}
-            label={w.label}
+            label={w.shortLabel ?? w.label}
             checked={isOn(w.id)}
-            dot={workspaceColor(w.id)}
-            note={
-              w.stats?.files !== undefined
-                ? `${w.stats.files} ${w.stats.files === 1 ? "file" : "files"}`
-                : undefined
-            }
+            dot={workspaceColorAt(colourRank.get(w.id) ?? 0, scheme)}
+            note={workspaceCounts(w)}
             title={w.path ? `${w.label} (${w.path})` : w.label}
             onChange={(on) => setWorkspace(w.id, on)}
+            onHover={(on) => mapView.setHoverWorkspace(on ? w.id : null)}
           />
         ))}
         {picked && (
@@ -198,19 +236,21 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
         )}
       </section>
 
-      <section className="filter-group" aria-label="Kinds of code">
-        <h3>Kinds of code</h3>
-        <p className="muted">Used when functions are shown.</p>
-        {KIND_OPTIONS.map((k) => (
-          <Check
-            key={k.id}
-            label={k.label}
-            checked={kinds.includes(k.id)}
-            dot={`var(--kind-${k.id}, var(--muted))`}
-            onChange={(on) => setKind(k.id, on)}
-          />
-        ))}
-      </section>
+      {level === "symbols" && (
+        <section className="filter-group" aria-label="Kinds of code">
+          <h3>Kinds of code</h3>
+          <p className="muted">Colour of each function cell. Untick a kind to hide it.</p>
+          {KIND_OPTIONS.map((k) => (
+            <Check
+              key={k.id}
+              label={k.label}
+              checked={kinds.includes(k.id)}
+              dot={`var(--kind-${k.id}, var(--muted))`}
+              onChange={(on) => setKind(k.id, on)}
+            />
+          ))}
+        </section>
+      )}
 
       <section className="filter-group" aria-label="Show or hide">
         <h3>Show or hide</h3>
@@ -225,6 +265,12 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
           title="Leave out test and spec files"
           checked={getBool(filters, "hideTests", true)}
           onChange={(on) => onFiltersChange(setBool(filters, "hideTests", on, true))}
+        />
+        <Check
+          label="Show declared dependencies"
+          title="Also draw links that only come from package.json dependencies, with no imports"
+          checked={ui.showDeclared}
+          onChange={(on) => mapView.setShowDeclared(on)}
         />
         <Check
           label="Show npm packages"

@@ -1,10 +1,9 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { buildHierarchy } from "../../mock/hierarchy.ts";
-import { aggregateEdges, buildTree, liftTo, TIER_DIR, TIER_SYMBOL, TIER_WORKSPACE } from "./hierarchy.ts";
-import { routeAround } from "./overlay.ts";
+import { buildTree, liftTo, TIER_DIR, TIER_SYMBOL, TIER_WORKSPACE } from "./hierarchy.ts";
 import { hashPositions } from "./prng.ts";
-import { brightSet, buildScene, relatedSet } from "./scene.ts";
+import { brightSet, buildScene, relatedSet, selectionLinks } from "./scene.ts";
 import { labelInk, mix, WORKSPACE_PALETTE_SIZE, workspaceColor } from "./style.ts";
 import { generateSynthetic } from "./synthetic.ts";
 import { levelForRatio, MID_AT, NEAR_AT } from "./zoom.ts";
@@ -36,19 +35,13 @@ describe("hierarchy", () => {
     expect(cyclic.nodes.some((n) => n.parent === -1)).toBe(true);
   });
 
-  it("lifts nodes to their ancestor at a tier and aggregates weighted edges", () => {
+  it("lifts nodes to their ancestor at a tier and sums edges into workspace links", () => {
     const { nodes, edges } = fixture();
     const tree = buildTree(nodes);
     const sym = tree.nodes.findIndex((n) => n.tier === TIER_SYMBOL);
     expect((tree.nodes[liftTo(tree, sym, TIER_WORKSPACE)] as { tier: number }).tier).toBe(TIER_WORKSPACE);
     expect((tree.nodes[liftTo(tree, sym, TIER_DIR)] as { tier: number }).tier).toBe(TIER_DIR);
-    const idx = edges.map((e) => ({
-      src: tree.index.get(e.src) as number,
-      dst: tree.index.get(e.dst) as number,
-      weight: e.weight,
-      kind: e.kind,
-    }));
-    const agg = aggregateEdges(idx, (i) => liftTo(tree, i, TIER_WORKSPACE));
+    const agg = buildScene(nodes, edges).wsEdges;
     const byName = new Map(
       agg.map((e) => [`${tree.nodes[e.src]?.id}>${tree.nodes[e.dst]?.id}`, e.weight] as const),
     );
@@ -73,19 +66,20 @@ describe("workspace-level map", () => {
   it("boxes childless workspaces for the nested hint only", () => {
     const boxed = buildScene(nodes, edges, "nested-elk");
     expect(boxed.hierarchical).toBe(true);
-    expect(boxed.overlayEdges.far).toHaveLength(1);
+    expect(boxed.wsEdges).toHaveLength(1);
+    expect(boxed.wsEdges[0]?.declaredOnly).toBe(true); // a depends_on edge with no imports
     const flat = buildScene(nodes, edges, "force");
     expect(flat.hierarchical).toBe(false);
   });
 });
 
 describe("scene", () => {
-  it("computes overlay edges per level and highlights a selection's neighbours", () => {
+  it("computes workspace links and highlights a selection's neighbours", () => {
     const { nodes, edges } = fixture();
     const scene = buildScene(nodes, edges);
-    expect(scene.overlayEdges.far.length).toBe(7);
-    expect(scene.overlayEdges.far[0]?.weight).toBe(38); // sorted by weight
-    expect(scene.overlayEdges.mid.length).toBeGreaterThan(scene.overlayEdges.far.length);
+    expect(scene.wsEdges.length).toBe(7);
+    expect(scene.wsEdges[0]?.weight).toBe(38); // sorted by weight
+    expect(scene.wsEdges.every((e) => !e.declaredOnly)).toBe(true);
     const web = scene.tree.index.get("ws:@acme/web") as number;
     const bright = brightSet(scene, web);
     const names = [...bright].map((i) => scene.tree.nodes[i]?.id);
@@ -148,19 +142,37 @@ describe("workspace colours", () => {
   });
 });
 
-describe("edge routing", () => {
-  it("goes straight when nothing is in the way and bends around a box that is", () => {
-    expect(routeAround([0, 0], [100, 0], [])).toEqual([
-      [0, 0],
-      [100, 0],
-    ]);
-    const box = { x0: 40, y0: -20, x1: 60, y1: 20 };
-    const path = routeAround([0, 0], [100, 0], [box]);
-    expect(path.length).toBeGreaterThan(2);
-    expect(path[0]).toEqual([0, 0]);
-    expect(path[path.length - 1]).toEqual([100, 0]);
-    // No vertex lies strictly inside the box.
-    for (const [x, y] of path) expect(x > box.x0 && x < box.x1 && y > box.y0 && y < box.y1).toBe(false);
+describe("selection links", () => {
+  it("lists the links of a selected function, strongest first, and none for an isolated node", () => {
+    const { nodes, edges } = fixture();
+    const scene = buildScene(nodes, edges);
+    const connected = scene.tree.nodes.findIndex(
+      (n, i) => n.tier === 3 && (scene.incident.get(i) ?? []).length > 0,
+    );
+    const links = selectionLinks(scene, connected);
+    expect(links.length).toBeGreaterThan(0);
+    for (const l of links) expect(l.src === connected || l.dst === connected).toBe(true);
+    for (let i = 1; i < links.length; i++)
+      expect((links[i - 1] as { weight: number }).weight).toBeGreaterThanOrEqual(
+        (links[i] as { weight: number }).weight,
+      );
+    const lonely = scene.tree.nodes.findIndex((n, i) => n.tier === 3 && !scene.incident.has(i));
+    if (lonely >= 0) expect(selectionLinks(scene, lonely)).toEqual([]);
+  });
+
+  it("sums the links of everything inside a selected folder and skips internal ones", () => {
+    const { nodes, edges } = fixture();
+    const scene = buildScene(nodes, edges);
+    const dir = scene.tree.nodes.findIndex((n) => n.id === "dir:@acme/web/src/components");
+    const links = selectionLinks(scene, dir);
+    const inside = new Set<number>();
+    const walk = (i: number) => {
+      inside.add(i);
+      for (const c of scene.tree.nodes[i]?.children ?? []) walk(c);
+    };
+    walk(dir);
+    expect(links.length).toBeGreaterThan(0);
+    for (const l of links) expect(inside.has(l.src) && inside.has(l.dst)).toBe(false);
   });
 });
 
