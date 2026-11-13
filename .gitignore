@@ -6,3 +6,5 @@ plugin/dist
 .DS_Store
 evals/private/
 evals/private
+test-results
+playwright-report

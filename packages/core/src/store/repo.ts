@@ -20,6 +20,8 @@ export interface Store {
   getMeta(k: string): string | undefined;
   setMeta(k: string, v: string): void;
   upsertWorkspaces(ws: WorkspaceRecord[]): void;
+  /** All workspaces ordered by id. */
+  listWorkspaces(): WorkspaceRecord[];
   /** Deletes the old rows for that file+layer first, then inserts the new ones. */
   replaceFile(layer: Layer, file: FileRecord, symbols: SymbolRecord[], edges: EdgeRecord[]): void;
   markDeleted(layer: Layer, fileId: string): void;
@@ -118,6 +120,26 @@ const toEdge = (r: EdgeRow): EdgeRecord => ({
   fileId: r.file_id,
 });
 
+interface WorkspaceRow {
+  id: string;
+  name: string;
+  dir: string;
+  kind: WorkspaceRecord["kind"];
+  frameworks: string | null;
+  deps: string | null;
+  exports_map: string | null;
+}
+
+const toWorkspace = (r: WorkspaceRow): WorkspaceRecord => ({
+  id: r.id,
+  name: r.name,
+  dir: r.dir,
+  kind: r.kind,
+  frameworks: JSON.parse(r.frameworks ?? "[]") as string[],
+  deps: JSON.parse(r.deps ?? "[]") as string[],
+  exportsMap: r.exports_map ? (JSON.parse(r.exports_map) as WorkspaceRecord["exportsMap"]) : null,
+});
+
 const toFile = (r: FileRow): FileRecord => ({
   id: r.id,
   path: r.path,
@@ -189,6 +211,10 @@ export function createStore(db: Database): Store {
           );
         }
       });
+    },
+    listWorkspaces() {
+      const rows = stmt("SELECT * FROM workspaces ORDER BY id").all() as WorkspaceRow[];
+      return rows.map(toWorkspace);
     },
     replaceFile(layer, file, symbols, edges) {
       tx(() => {
