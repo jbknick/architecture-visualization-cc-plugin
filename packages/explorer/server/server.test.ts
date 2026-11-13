@@ -290,7 +290,11 @@ describe("/api/meta", () => {
       repo: "repo",
       headSha: "deadbeef",
       counts: { workspaces: 2, files: 2, symbols: 3, edges: 4 },
-      views: [{ id: "debug", title: "Debug: workspaces", enabled: true }],
+      views: [
+        { id: "debug", title: "Debug: workspaces", enabled: true },
+        { id: "project-map", title: "Project map", enabled: true },
+        { id: "ego", title: "Function ego graph", enabled: true },
+      ],
     });
   });
 });
