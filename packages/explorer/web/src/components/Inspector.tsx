@@ -67,7 +67,7 @@ export function groupNeighbors(neighbors: NodeDetail["neighbors"]): Group[] {
   return [...groups.values()].sort((a, b) => structural(a) - structural(b));
 }
 
-function GraphNodeFacts({ node }: { node: GraphNode }) {
+function GraphNodeFacts({ node, view }: { node: GraphNode; view: string | null }) {
   const stats = node.stats;
   const facts: [string, number][] = [];
   if (stats?.files !== undefined) facts.push(["Files", stats.files]);
@@ -83,7 +83,13 @@ function GraphNodeFacts({ node }: { node: GraphNode }) {
         </p>
       )}
       {node.kind === "external" && <p>An npm package. {node.size} of your files import it.</p>}
-      {node.kind === "dir" && <p>A folder. Double-click it in the map to look inside.</p>}
+      {node.kind === "dir" && (
+        <p>
+          {view === "map-3d"
+            ? "A folder. Switch the level to Files in the left panel to see the files inside it."
+            : "A folder. Double-click it in the map to look inside."}
+        </p>
+      )}
       {facts.length > 0 && (
         <dl className="fan">
           {facts.map(([name, value]) => (
@@ -108,7 +114,7 @@ function GraphNodeFacts({ node }: { node: GraphNode }) {
 }
 
 export function Inspector({ nodes }: { nodes: GraphNode[] }) {
-  const { state, selectNode, openInView } = useStore();
+  const { state, selectNode, openInView, view } = useStore();
   const id = state.route.sel;
   const known = id !== null && isServerNode(id);
   const { data: detail, loading, error } = useNodeDetail(known ? id : null);
@@ -218,7 +224,7 @@ export function Inspector({ nodes }: { nodes: GraphNode[] }) {
       {known && !current && loading && <p className="muted">Loading…</p>}
 
       <div className="inspector-body">
-        {graphNode && !current && <GraphNodeFacts node={graphNode} />}
+        {graphNode && !current && <GraphNodeFacts node={graphNode} view={view} />}
 
         {current && (
           <>

@@ -43,6 +43,7 @@ export default function Graph3D({ nodes, edges, focus, onSelect, onHover }: Canv
     );
     scene.current = s;
     s.setAutoRotate(mapUi.get().autoRotate);
+    s.setShowDeclared(mapUi.get().showDeclared);
     const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
     const onScheme = () => s.setScheme(currentScheme());
     mq?.addEventListener?.("change", onScheme);
@@ -69,6 +70,8 @@ export default function Graph3D({ nodes, edges, focus, onSelect, onHover }: Canv
   }, [focus]);
 
   useEffect(() => scene.current?.setAutoRotate(ui.autoRotate), [ui.autoRotate]);
+  useEffect(() => scene.current?.setShowDeclared(ui.showDeclared), [ui.showDeclared]);
+  useEffect(() => scene.current?.setLegendHover(ui.hoverIsland), [ui.hoverIsland]);
 
   useEffect(() => {
     if (ui.resetNonce > 0) {

@@ -4,6 +4,10 @@ import { useSyncExternalStore } from "react";
 
 export interface MapUi {
   autoRotate: boolean;
+  /** Show arcs that only come from package.json `depends_on` (no imports). Off by default. */
+  showDeclared: boolean;
+  /** Island under the pointer in the legend; the scene highlights it and reveals its labels and arcs. */
+  hoverIsland: string | null;
   /** Island id picked from the legend or by clicking an island; null for none. */
   island: string | null;
   /** Bumped on every request so the canvas reacts even when the target is unchanged. */
@@ -15,7 +19,14 @@ export function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
-let state: MapUi = { autoRotate: !prefersReducedMotion(), island: null, resetNonce: 0, flyNonce: 0 };
+let state: MapUi = {
+  autoRotate: false, // off by default: a rotating scene makes labels swim
+  showDeclared: false,
+  hoverIsland: null,
+  island: null,
+  resetNonce: 0,
+  flyNonce: 0,
+};
 const listeners = new Set<() => void>();
 
 function set(patch: Partial<MapUi>): void {
@@ -30,6 +41,8 @@ export const mapUi = {
     return () => listeners.delete(l);
   },
   setAutoRotate: (autoRotate: boolean) => set({ autoRotate }),
+  setShowDeclared: (showDeclared: boolean) => set({ showDeclared }),
+  setHoverIsland: (hoverIsland: string | null) => set({ hoverIsland }),
   resetCamera: () => set({ island: null, resetNonce: state.resetNonce + 1 }),
   /** Select an island and fly the camera to it. */
   focusIsland: (island: string) => set({ island, flyNonce: state.flyNonce + 1 }),

@@ -2,6 +2,7 @@ import type { EdgeRecord, SymbolKind, SymbolRecord } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { GraphEdge, GraphNode, ViewLevel, ViewModule, ViewParams } from "../types.js";
 import { buildHierarchy, type HNode, TIER } from "./hierarchy.js";
+import { shortWorkspaceLabels } from "./labels.js";
 import { cmp, getOrInit, isTestPath, optBool, optList } from "./options.js";
 
 const LEVEL_TIER: Record<ViewLevel, number> = { workspaces: 0, dirs: 1, files: 2, symbols: 3 };
@@ -100,6 +101,11 @@ export const projectMapView: ViewModule = {
     const edges = store.effectiveEdges();
     const nodes = new Map<string, GraphNode>();
     for (const id of returned) nodes.set(id, (byId.get(id) as HNode).node);
+    // Same short names as the 3D map, computed over every workspace so a filter never changes them.
+    const shortLabels = shortWorkspaceLabels(workspaces.map((w) => w.name));
+    for (const n of nodes.values()) {
+      if (n.kind === "workspace") n.shortLabel = shortLabels.get(n.label) ?? n.label;
+    }
 
     // External packages: only in the unfocused map.
     const externalFiles = new Map<string, Set<string>>();
