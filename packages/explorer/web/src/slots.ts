@@ -1,6 +1,7 @@
 // Extension points for later issues. See ../README.md.
 import type { ComponentType } from "react";
 import type { Filters, GraphEdge, GraphNode } from "./api.ts";
+import type { Route } from "./route.ts";
 
 /** Props every canvas renderer receives. */
 export interface CanvasProps {
@@ -14,6 +15,8 @@ export interface CanvasProps {
   onSelect: (id: string | null) => void;
   /** Call with the hovered node id, or null when the pointer leaves. */
   onHover: (id: string | null) => void;
+  /** Optional: call on double-click / Enter-with-modifier to "go into" a node (project map: show its contents; ego: re-centre). */
+  onDrill?: (id: string) => void;
 }
 
 /** Props for the view-specific filter panel in the left slot. */
@@ -24,6 +27,10 @@ export interface FilterPanelProps {
   filters: Filters;
   /** Replace the filters; they are written to the hash and sent to /api/view. */
   onFiltersChange: (filters: Filters) => void;
+  /** The current hash route (view params: focus, level, hops). Optional so older panels and tests keep working. */
+  route?: Route;
+  /** Merge a patch into the route (focus, level, hops, filters, ...). */
+  onRouteChange?: (patch: Partial<Route>) => void;
 }
 
 export type CanvasRenderer = ComponentType<CanvasProps>;
@@ -55,4 +62,17 @@ export function registerFilterPanel(viewId: string, panel: FilterPanel): void {
 
 export function getFilterPanel(viewId: string): FilterPanel | null {
   return filterPanels.get(viewId) ?? null;
+}
+
+/** Shown in the centre instead of the canvas while a view that needs a `focus` has none. */
+export type FocusPrompt = ComponentType<{ viewId: string }>;
+const focusPrompts = new Map<string, FocusPrompt>();
+
+/** Mark a view as needing `focus`: no request is sent until it is set, and `prompt` explains what to do. */
+export function registerFocusRequired(viewId: string, prompt: FocusPrompt): void {
+  focusPrompts.set(viewId, prompt);
+}
+
+export function getFocusPrompt(viewId: string): FocusPrompt | null {
+  return focusPrompts.get(viewId) ?? null;
 }
