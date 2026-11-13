@@ -1,0 +1,7 @@
+node_modules
+dist
+plugin/dist
+*.db
+*.tsbuildinfo
+.DS_Store
+evals/private/
