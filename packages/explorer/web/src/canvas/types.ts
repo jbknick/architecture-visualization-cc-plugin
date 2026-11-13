@@ -15,6 +15,8 @@ export interface LayoutNode {
   size: number;
   /** Functions under the node (`stats.functions`); sizes workspace boxes and treemap cells. */
   functions?: number;
+  /** Files under the node (`stats.files`); tells a folder with files of its own from one that only holds a folder. */
+  files?: number;
   /** Workspace boxes: the name and the parts of the detail line ("app", "1,700 functions", "260 files"). */
   title?: string;
   subtitle?: string[];
@@ -41,17 +43,19 @@ export interface LayoutInput {
 
 /** Geometry of a hierarchical map (workspace boxes with a treemap inside). Indexed like the sorted-id tree. */
 export interface MapGeometry {
-  /** x, y, w, h of every node, four numbers per tree index. */
+  /**
+   * x, y, w, h of every node, four numbers per tree index. Workspace boxes are in layout units; everything inside
+   * is laid out in a "normalized" content rectangle (the parent's rectangle minus `TM_PAD`, headers not
+   * reserved): the renderer maps it into the parent's real content area, which is the parent minus the header
+   * that is a constant size on screen (see `mapGeom.ts`).
+   */
   rects: Float64Array;
-  /** Header strip reserved at the top of each container, per tree index. */
+  /** Design height of a workspace's title block in layout units (roots only, 0 elsewhere); capped on screen. */
   heads: Float32Array;
   /** Routed workspace links, keyed `srcId>dstId`: polylines in layout units. */
   routes: Record<string, [number, number][]>;
   /** Bounding box of the boxes and routes. */
   bounds: Rect;
-  /** Height of a folder title bar and of a file's header strip, in layout units. */
-  dirHead: number;
-  fileHead: number;
 }
 
 export interface LayoutResult {

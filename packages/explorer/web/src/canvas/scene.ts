@@ -2,6 +2,7 @@
 import type { GraphEdge, GraphNode } from "../api.ts";
 import {
   buildTree,
+  collapseChains,
   kindTier,
   liftTo,
   TIER_FILE,
@@ -42,6 +43,12 @@ export interface Scene {
   functions: Int32Array;
   /** Files under each node (`stats.files` when sent, else counted). */
   files: Int32Array;
+  /** 1 for a folder drawn without a header or box: the only child folder of a container with no files of its own. */
+  skipped: Uint8Array;
+  /** Visible container -> the skipped folders below it, outermost first. */
+  chain: Map<number, number[]>;
+  /** Folders with a header between a cell and its workspace (see `collapseChains`). */
+  depth: Uint8Array;
   /** Workspace-to-workspace links, heaviest first. */
   wsEdges: WsEdge[];
   /** Edge indices incident to each node. */
@@ -123,6 +130,8 @@ export function buildScene(nodes: GraphNode[], edges: GraphEdge[], hint = "neste
     if (stats?.files !== undefined) files[i] = stats.files;
   });
 
+  const collapsed = collapseChains(tree, files);
+
   const incident = new Map<number, number[]>();
   sceneEdges.forEach((e, k) => {
     for (const end of [e.src, e.dst]) {
@@ -144,6 +153,9 @@ export function buildScene(nodes: GraphNode[], edges: GraphEdge[], hint = "neste
     symbolCount,
     functions,
     files,
+    skipped: collapsed.skipped,
+    chain: collapsed.chain,
+    depth: collapsed.depth,
     wsEdges: tree.hierarchical ? buildWsEdges(tree, sceneEdges) : [],
     incident,
     hierarchical: tree.hierarchical,
@@ -167,7 +179,24 @@ export function subtitleParts(scene: Scene, i: number): string[] {
   parts.push(`${fn.toLocaleString("en-US")} ${fn === 1 ? "function" : "functions"}`);
   if (files > 0 || node?.stats?.files !== undefined)
     parts.push(`${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"}`);
+  // Folders skipped below the workspace (a lone `src`): named here instead of in a header of their own.
+  const skipped = scene.chain.get(i);
+  if (skipped && skipped.length > 0)
+    parts.push(`${skipped.map((k) => folderName(scene.nodes[k]?.label ?? "")).join("/")}/`);
   return parts;
+}
+
+/** A folder's display name: its last path segment, or the last two when the server joined a chain (`a/b/c` -> `b/c`). */
+export function folderName(label: string): string {
+  const segs = label.split("/").filter(Boolean);
+  return segs.slice(-2).join("/") || label;
+}
+
+/** Header text of a folder: its name plus the folders skipped below it (`src/lib`). */
+export function folderTitle(scene: Scene, i: number): string {
+  const own = folderName(scene.nodes[i]?.label ?? "");
+  const below = (scene.chain.get(i) ?? []).map((k) => folderName(scene.nodes[k]?.label ?? ""));
+  return below.length > 0 ? [own, ...below].join("/") : own;
 }
 
 /** Layout input for a scene (positions are the only output the renderer needs). */
@@ -185,6 +214,7 @@ export function layoutInputFor(
       parent: n.parent,
       size: n.size,
       functions: scene.functions[i],
+      files: scene.files[i],
       ...((scene.tree.nodes[i] as TreeNode).parent === -1
         ? { title: nodeTitle(scene, i), subtitle: subtitleParts(scene, i) }
         : {}),

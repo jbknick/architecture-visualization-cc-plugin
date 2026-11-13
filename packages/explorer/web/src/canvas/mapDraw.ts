@@ -2,17 +2,23 @@
 // and the links of the selected cell. Everything is drawn on one 2D canvas; cells smaller than two pixels and
 // cells outside the viewport are skipped, which keeps 30k-function maps smooth.
 import { kindTier, type TreeNode } from "./hierarchy.ts";
-import { titleHead } from "./mapLayout.ts";
-import { edgeNoun, nodeTitle, type Scene, subtitleParts } from "./scene.ts";
+import {
+  actualInner,
+  type Cam,
+  headPx,
+  mapChild,
+  normInner,
+  rectAt,
+  rootRect,
+  screenRectOf,
+  WS_HEAD_MAX,
+} from "./mapGeom.ts";
+import { edgeNoun, folderTitle, nodeTitle, type Scene, subtitleParts } from "./scene.ts";
 import { type CanvasTheme, hexToRgba, kindColor, labelInk, mix, workspaceColor } from "./style.ts";
-import { fitCellLabel, wrapText } from "./treemap.ts";
+import { fitCellLabel, fitFileLabel, wrapText } from "./treemap.ts";
 import type { MapGeometry, Rect } from "./types.ts";
 
-export interface Camera {
-  scale: number;
-  tx: number;
-  ty: number;
-}
+export type Camera = Cam;
 
 /** A link between two cells, drawn as a thin curve when one of them is selected. */
 export interface CellLink {
@@ -33,6 +39,8 @@ export interface DrawEnv {
   hovered: number | null;
   /** Workspace whose links are shown in full (hovered, selected or picked in the left panel). */
   highlightWs: number | null;
+  /** Workspace whose row the pointer is over in the left panel: its box is outlined and the others recede. */
+  panelHover?: number | null;
   showDeclared: boolean;
   bright: Set<number> | null;
   links: CellLink[];
@@ -77,14 +85,9 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
+/** Layout rectangle of a node (normalized for cells inside a workspace box; see `mapGeom.ts`). */
 export function rectOf(geo: MapGeometry, i: number): Rect {
-  const k = i * 4;
-  return {
-    x: geo.rects[k] as number,
-    y: geo.rects[k + 1] as number,
-    w: geo.rects[k + 2] as number,
-    h: geo.rects[k + 3] as number,
-  };
+  return rectAt(geo, i);
 }
 
 export function distanceToPolyline(px: number, py: number, pts: [number, number][]): number {
@@ -175,39 +178,42 @@ export function edgeWidth(weight: number): number {
 
 /** The deepest cell under a screen point (cells under two pixels are not pickable), or null. */
 export function pickCell(scene: Scene, geo: MapGeometry, cam: Camera, px: number, py: number): number | null {
-  const gx = (px - cam.tx) / cam.scale;
-  const gy = (py - cam.ty) / cam.scale;
   const tree = scene.tree;
-  const contains = (i: number): boolean => {
-    const k = i * 4;
-    const x = geo.rects[k] as number;
-    const y = geo.rects[k + 1] as number;
-    return (
-      gx >= x && gx <= x + (geo.rects[k + 2] as number) && gy >= y && gy <= y + (geo.rects[k + 3] as number)
-    );
-  };
+  const has = (r: Rect): boolean => px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
   let cur = -1;
+  let rect: Rect = { x: 0, y: 0, w: 0, h: 0 };
   for (const r of scene.roots) {
-    if (contains(r)) {
+    const rr = rootRect(geo, r, cam);
+    if (has(rr)) {
       cur = r;
+      rect = rr;
       break;
     }
   }
   if (cur === -1) return null;
   for (;;) {
+    const kids = (tree.nodes[cur] as TreeNode).children;
+    if (kids.length === 0) break;
+    const norm = normInner(scene, geo, cur);
+    const act = actualInner(scene, geo, cur, rect, cam.scale);
     let next = -1;
-    for (const c of (tree.nodes[cur] as TreeNode).children) {
-      if (contains(c)) {
+    let nextRect = rect;
+    for (const c of kids) {
+      const cr = mapChild(geo, c, norm, act);
+      if (has(cr)) {
         next = c;
+        nextRect = cr;
         break;
       }
     }
-    if (next === -1) return cur;
-    const k = next * 4;
-    if (Math.min(geo.rects[k + 2] as number, geo.rects[k + 3] as number) * cam.scale < MIN_CELL_PX)
-      return cur;
+    if (next === -1 || Math.min(nextRect.w, nextRect.h) < MIN_CELL_PX) break;
     cur = next;
+    rect = nextRect;
   }
+  // A folder that is not drawn (the lone child of its parent) is never the answer: its parent is.
+  while (scene.skipped[cur] && (tree.nodes[cur] as TreeNode).parent !== -1)
+    cur = (tree.nodes[cur] as TreeNode).parent;
+  return cur;
 }
 
 export function drawMap(env: DrawEnv): DrawResult {
@@ -231,13 +237,14 @@ export function drawMap(env: DrawEnv): DrawResult {
     return v;
   };
 
-  // Per-workspace colours, computed once per frame.
+  // Per-workspace colours, computed once per frame. Siblings alternate between two close tints (by index), so
+  // neighbouring cells read as separate cells in both themes; folder strips get a little stronger per depth.
   interface Tint {
     colour: string;
     box: string;
-    folder: string;
-    folderBand: string;
-    file: string;
+    folder: [string, string];
+    band: [string, string, string];
+    file: [string, string];
     sep: string;
     ink: string;
   }
@@ -246,13 +253,14 @@ export function drawMap(env: DrawEnv): DrawResult {
     let t = tints.get(root);
     if (!t) {
       const colour = workspaceColor(scene.rootRank.get(root) ?? 0, theme.scheme);
+      const m = (amount: number) => mix(colour, theme.surface, amount);
       t = {
         colour,
-        box: mix(colour, theme.surface, light ? 0.08 : 0.13),
-        folder: mix(colour, theme.surface, light ? 0.32 : 0.36),
-        folderBand: mix(colour, theme.surface, light ? 0.5 : 0.5),
-        file: mix(colour, theme.surface, light ? 0.2 : 0.24),
-        sep: hexToRgba(theme.surface, 0.9),
+        box: m(light ? 0.08 : 0.13),
+        folder: light ? [m(0.3), m(0.38)] : [m(0.32), m(0.44)],
+        band: light ? [m(0.5), m(0.6), m(0.7)] : [m(0.5), m(0.6), m(0.7)],
+        file: light ? [m(0.18), m(0.27)] : [m(0.2), m(0.32)],
+        sep: light ? hexToRgba("#ffffff", 0.95) : hexToRgba("#06080b", 0.85),
         ink: labelInk(colour, theme.scheme),
       };
       tints.set(root, t);
@@ -269,20 +277,32 @@ export function drawMap(env: DrawEnv): DrawResult {
     return c;
   };
 
-  const sx = (x: number) => x * cam.scale + cam.tx;
-  const sy = (y: number) => y * cam.scale + cam.ty;
-  const dimmed = (i: number): boolean => env.bright !== null && !env.bright.has(i);
+  const panelHover = env.panelHover != null && env.panelHover < tree.nodes.length ? env.panelHover : null;
+  const dimmed = (i: number): boolean =>
+    (env.bright !== null && !env.bright.has(i)) ||
+    (panelHover !== null && (tree.nodes[i] as TreeNode).root !== panelHover);
 
-  const drawCell = (i: number, root: number, tint: Tint): void => {
-    const k = i * 4;
-    const gw = geo.rects[k + 2] as number;
-    const gh = geo.rects[k + 3] as number;
-    const pw = gw * cam.scale;
-    const ph = gh * cam.scale;
+  const measureAt = (weight: number, text: string, font: number) =>
+    measure(`${weight} ${font}px ${FONT}`, text);
+  const drawKids = (i: number, r: Rect, root: number, tint: Tint): void => {
+    const kids = (tree.nodes[i] as TreeNode).children;
+    if (kids.length === 0) return;
+    const norm = normInner(scene, geo, i);
+    const act = actualInner(scene, geo, i, r, cam.scale);
+    for (let k = 0; k < kids.length; k++) {
+      const c = kids[k] as number;
+      drawCell(c, mapChild(geo, c, norm, act), root, tint, k);
+    }
+  };
+
+  const drawCell = (i: number, r: Rect, root: number, tint: Tint, sib: number): void => {
+    const { x, y, w: pw, h: ph } = r;
     if (pw < MIN_CELL_PX || ph < MIN_CELL_PX) return;
-    const x = sx(geo.rects[k] as number);
-    const y = sy(geo.rects[k + 1] as number);
     if (x > w || y > h || x + pw < 0 || y + ph < 0) return;
+    if (scene.skipped[i]) {
+      drawKids(i, r, root, tint);
+      return;
+    }
     const node = tree.nodes[i] as TreeNode;
     const container = node.children.length > 0;
     const cls = kindTier(node.kind);
@@ -307,7 +327,7 @@ export function drawMap(env: DrawEnv): DrawResult {
       return;
     }
 
-    ctx.fillStyle = cls === 1 ? tint.folder : tint.file;
+    ctx.fillStyle = (cls === 1 ? tint.folder : tint.file)[sib & 1] as string;
     ctx.fillRect(x, y, pw, ph);
     if (pw >= 4 && ph >= 4) {
       ctx.strokeStyle = tint.sep;
@@ -315,58 +335,62 @@ export function drawMap(env: DrawEnv): DrawResult {
       ctx.strokeRect(x + 0.5, y + 0.5, pw - 1, ph - 1);
     }
 
-    // Title bar (folders) or file name (files).
-    const designHead = cls === 1 ? geo.dirHead : 0;
-    const head = (geo.heads[i] as number) * cam.scale;
-    const bandPx = head > 0 ? head : container ? 0 : designHead * cam.scale;
+    const head = headPx(scene, geo, i, pw, ph, cam.scale);
     const name = scene.nodes[i]?.label ?? "";
-    if (cls === 1 && bandPx >= 14 && ph >= bandPx * 1.25) {
-      ctx.fillStyle = tint.folderBand;
-      ctx.fillRect(x + 1, y + 1, pw - 2, bandPx - 1);
-      const fs = Math.min(13, bandPx - 5);
-      const fn = scene.functions[i] ?? 0;
-      const full = `${name} · ${fn.toLocaleString("en-US")} fn`;
-      const font = `600 ${fs}px ${FONT}`;
-      // Whole text first, then the name alone, and only then the name with its middle cut out.
-      const m = (t: string) => measure(font, t);
-      const text =
-        fitCellLabel(m, full, pw - 2, bandPx - 1, fs, 2, false) ??
-        fitCellLabel(m, name, pw - 2, bandPx - 1, fs, 2);
-      if (text) {
-        ctx.font = font;
-        ctx.fillStyle = tint.ink;
-        ctx.fillText(text, x + 5, y + 1 + (bandPx - 1 - fs) / 2 + 0.5);
-      }
-    } else if (cls === 2 || cls === 1) {
-      // Files: a header strip when the file holds function chips, else the name inside the cell.
-      const strip = container ? head : 0;
-      const fs = Math.min(11.5, Math.max(10, container ? strip - 3 : ph * 0.5));
-      const font = `600 ${fs}px ${FONT}`;
-      const availH = container ? strip : ph;
-      if (availH >= fs + 2 && !(container && strip <= 0)) {
-        const text = fitCellLabel((t) => measure(font, t), name, pw, availH, fs, 3);
+    // Labels stick to the left edge of the canvas while their cell is partly scrolled out of view.
+    const vx = Math.max(x, 0);
+    const vw = Math.min(x + pw, w) - vx;
+    if (cls === 1) {
+      // Folder strip: the name (last path segment, plus any skipped folders below) and the function count.
+      if (head > 0) {
+        const depth = Math.min(3, Math.max(1, scene.depth[i] as number));
+        ctx.fillStyle = tint.band[depth - 1] as string;
+        ctx.fillRect(x + 1, y + 1, pw - 2, head - 1);
+        const fs = Math.min(12, head - 4);
+        const title = folderTitle(scene, i);
+        const full = `${title} · ${(scene.functions[i] ?? 0).toLocaleString("en-US")} fn`;
+        const font = `600 ${fs}px ${FONT}`;
+        const m = (t: string) => measure(font, t);
+        const text =
+          fitCellLabel(m, full, vw - 2, head - 1, fs, 2, false) ??
+          fitCellLabel(m, title, vw - 2, head - 1, fs, 2);
         if (text) {
           ctx.font = font;
           ctx.fillStyle = tint.ink;
-          ctx.fillText(text, x + 3, y + (container ? 1 : 2));
+          ctx.fillText(text, vx + 5, y + 1 + (head - 1 - fs) / 2 + 0.5);
         }
+      }
+    } else if (container) {
+      // A file that holds function chips: its name in a slim strip.
+      if (head > 0) {
+        const label = fitFileLabel((t, f) => measureAt(600, t, f), name, vw, head, 3);
+        if (label) {
+          ctx.font = `600 ${label.font}px ${FONT}`;
+          ctx.fillStyle = tint.ink;
+          ctx.fillText(label.lines[0] as string, vx + 3, y + (head - label.font) / 2);
+        }
+      }
+    } else {
+      // A file cell: the name at 10 to 11px, wrapped onto two lines when that is what it takes.
+      const label = fitFileLabel((t, f) => measureAt(600, t, f), name, vw, ph, 3);
+      if (label) {
+        ctx.font = `600 ${label.font}px ${FONT}`;
+        ctx.fillStyle = tint.ink;
+        label.lines.forEach((line, k) => {
+          ctx.fillText(line, vx + 3, y + 2 + k * label.font * 1.15);
+        });
       }
     }
 
-    if (container && pw >= 6 && ph >= 6) {
-      for (const c of node.children) drawCell(c, root, tint);
-    }
+    if (container && pw >= 6 && ph >= 6) drawKids(i, r, root, tint);
   };
 
   // 1. Workspace boxes and their treemaps.
   const rootBoxes: Rect[] = [];
   for (const r of scene.roots) {
-    const k = r * 4;
-    const bx = sx(geo.rects[k] as number);
-    const by = sy(geo.rects[k + 1] as number);
-    const bw = (geo.rects[k + 2] as number) * cam.scale;
-    const bh = (geo.rects[k + 3] as number) * cam.scale;
-    rootBoxes[r] = { x: bx, y: by, w: bw, h: bh };
+    const rb = rootRect(geo, r, cam);
+    const { x: bx, y: by, w: bw, h: bh } = rb;
+    rootBoxes[r] = rb;
     if (bx > w || by > h || bx + bw < 0 || by + bh < 0) continue;
     result.boxes.push({ index: r, x: bx, y: by, w: bw, h: bh });
     const tint = tintOf(r);
@@ -377,7 +401,7 @@ export function drawMap(env: DrawEnv): DrawResult {
     ctx.lineWidth = 2;
     ctx.strokeStyle = hexToRgba(tint.colour, 0.9);
     ctx.stroke();
-    for (const c of (tree.nodes[r] as TreeNode).children) drawCell(c, r, tint);
+    drawKids(r, rb, r, tint);
   }
   ctx.globalAlpha = 1;
 
@@ -417,19 +441,39 @@ export function drawMap(env: DrawEnv): DrawResult {
 
   // 4. Hover and selection outlines.
   const outline = (i: number | null, width: number, colour: string) => {
-    if (i === null) return;
-    const k = i * 4;
-    const x = sx(geo.rects[k] as number);
-    const y = sy(geo.rects[k + 1] as number);
-    const pw = (geo.rects[k + 2] as number) * cam.scale;
-    const ph = (geo.rects[k + 3] as number) * cam.scale;
+    if (i === null || i >= tree.nodes.length) return; // an index from the previous scene, for one frame
+    const { x, y, w: pw, h: ph } = screenRectOf(scene, geo, cam, i);
     ctx.lineWidth = width;
     ctx.strokeStyle = colour;
     ctx.strokeRect(x + width / 2, y + width / 2, Math.max(1, pw - width), Math.max(1, ph - width));
   };
   ctx.globalAlpha = 1;
+  if (panelHover !== null) outline(panelHover, 3, theme.accent);
   if (env.hovered !== null && env.hovered !== env.selected) outline(env.hovered, 2, theme.text);
   outline(env.selected, 3, theme.accent);
+  // A folder with no strip of its own (too small, or nested deeper than three levels) shows its name on hover.
+  if (env.hovered !== null && env.hovered < tree.nodes.length) {
+    const hn = tree.nodes[env.hovered] as TreeNode;
+    const hr = screenRectOf(scene, geo, cam, env.hovered);
+    if (
+      kindTier(hn.kind) === 1 &&
+      !scene.skipped[env.hovered] &&
+      headPx(scene, geo, env.hovered, hr.w, hr.h, cam.scale) === 0 &&
+      hr.w >= 30 &&
+      hr.h >= 16
+    ) {
+      const title = folderTitle(scene, env.hovered);
+      const font = `600 11px ${FONT}`;
+      const text = fitCellLabel((t) => measure(font, t), title, hr.w - 2, 15, 11, 2) ?? "";
+      if (text) {
+        ctx.fillStyle = hexToRgba(theme.surface, 0.92);
+        ctx.fillRect(hr.x + 1, hr.y + 1, Math.min(hr.w - 2, measure(font, text) + 10), 15);
+        ctx.font = font;
+        ctx.fillStyle = theme.text;
+        ctx.fillText(text, hr.x + 5, hr.y + 3);
+      }
+    }
+  }
 
   // 5. Workspace titles last so nothing covers them; the selected and hovered ones first claim their space.
   const order = [...scene.roots]
@@ -461,21 +505,23 @@ function drawTitle(
   const { ctx, scene, theme, cam, geo } = env;
   const name = nodeTitle(scene, i);
   const sub = subtitleParts(scene, i);
-  const headUnits = (geo.heads[i] as number) > 0 ? (geo.heads[i] as number) : titleHead(box.w / cam.scale);
-  const hasKids = (geo.heads[i] as number) > 0;
-  const availH = (hasKids ? headUnits * cam.scale : box.h) - 6;
+  // The title block is at most `WS_HEAD_MAX` px tall whatever the zoom: it fills the header the cells leave free,
+  // or the whole box when there is nothing inside to leave room for.
+  const head = headPx(scene, geo, i, box.w, box.h, cam.scale);
+  const leaf = (scene.tree.nodes[i] as TreeNode).children.length === 0;
+  const availH = (head > 0 ? head : leaf ? Math.min(box.h, WS_HEAD_MAX + 12) : 0) - 7;
   const availW = box.w - 20;
   ctx.globalAlpha = 1;
 
-  const layout = (nameFont: number) => {
-    const subFont = Math.max(10, Math.round(nameFont * 0.74));
+  const layout = (nameFont: number, parts: string[]) => {
+    const subFont = Math.min(12, Math.max(10, Math.round(nameFont * 0.7)));
     const nameFontStr = `700 ${nameFont}px ${FONT}`;
     const subFontStr = `500 ${subFont}px ${FONT}`;
     const nameLines = wrapText((t) => measure(nameFontStr, t), name, availW);
     // Sub line: as many " · " parts per line as fit.
     const subLines: string[] = [];
     let cur = "";
-    for (const part of sub) {
+    for (const part of parts) {
       const next = cur ? `${cur} · ${part}` : part;
       if (cur && measure(subFontStr, next) > availW) {
         subLines.push(cur);
@@ -483,37 +529,44 @@ function drawTitle(
       } else cur = next;
     }
     if (cur) subLines.push(cur);
-    const height = nameLines.length * nameFont * 1.2 + 4 + subLines.length * subFont * 1.3;
-    return { nameFont, subFont, nameFontStr, subFontStr, nameLines, subLines, height };
+    const height = nameLines.length * nameFont * 1.2 + 3 + subLines.length * subFont * 1.25;
+    const wide = subLines.some((t) => measure(subFontStr, t) > availW);
+    return { nameFont, subFont, nameFontStr, subFontStr, nameLines, subLines, height, wide };
   };
 
+  // Full detail line first, then the same with "fn" for "functions", then without the leading kind ("package").
+  const short = sub.map((p) => p.replace(/ functions?$/, " fn"));
+  const variants: [string[], number][] = [
+    [sub, 12],
+    [short, 11],
+    [short.length > 2 ? short.slice(1) : short, 11],
+  ];
   let chosen: ReturnType<typeof layout> | null = null;
-  // A box with contents keeps its title inside the reserved strip; an empty one (workspace level) sizes it by width.
-  const design = hasKids
-    ? Math.min(44, Math.max(MIN_TITLE_PX, (headUnits * cam.scale) / 3.4))
-    : Math.min(34, Math.max(MIN_TITLE_PX, box.w * 0.105));
-  for (let f = Math.round(design); f >= MIN_TITLE_PX; f--) {
-    const l = layout(f);
-    if (l.height <= availH && l.nameLines.every((t) => measure(l.nameFontStr, t) <= availW)) {
-      chosen = l;
-      break;
+  if (availH > 0) {
+    for (const [parts, floor] of variants) {
+      for (let f = 18; f >= floor && !chosen; f--) {
+        const l = layout(f, parts);
+        if (l.height <= availH && !l.wide && l.nameLines.every((t) => measure(l.nameFontStr, t) <= availW))
+          chosen = l;
+      }
+      if (chosen) break;
     }
   }
   if (chosen) {
     result.titles.set(i, "inside");
-    let y = box.y + 8;
+    let y = box.y + 5;
     ctx.fillStyle = tint.ink;
     ctx.font = chosen.nameFontStr;
     for (const line of chosen.nameLines) {
       ctx.fillText(line, box.x + 10, y);
       y += chosen.nameFont * 1.2;
     }
-    y += 4;
+    y += 3;
     ctx.font = chosen.subFontStr;
     ctx.fillStyle = theme.scheme === "light" ? "#3d4756" : theme.muted;
     for (const line of chosen.subLines) {
       ctx.fillText(line, box.x + 10, y);
-      y += chosen.subFont * 1.3;
+      y += chosen.subFont * 1.25;
     }
     return;
   }

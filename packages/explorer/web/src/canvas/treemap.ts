@@ -109,6 +109,8 @@ export interface TmNode {
   head: number;
   /** Keep the header even when the container is short (workspace boxes always show their title). */
   keepHead?: boolean;
+  /** A single-child folder that is not drawn: it takes its parent's whole inner rectangle, with no padding. */
+  transparent?: boolean;
 }
 
 export interface TmResult {
@@ -153,12 +155,13 @@ export function layoutTreemap(
     }
     const head = n.keepHead || (r.h >= n.head * 2.2 && r.w >= 16) ? n.head : 0;
     out.heads.set(n.id, head);
-    const top = head > 0 ? head : TM_PAD;
+    const pad = n.transparent ? 0 : TM_PAD;
+    const top = head > 0 ? head : pad;
     const inner: Rect = {
-      x: r.x + TM_PAD,
+      x: r.x + pad,
       y: r.y + top,
-      w: Math.max(0, r.w - 2 * TM_PAD),
-      h: Math.max(0, r.h - top - TM_PAD),
+      w: Math.max(0, r.w - 2 * pad),
+      h: Math.max(0, r.h - top - pad),
     };
     const byId = new Map(n.children.map((c) => [c.id, c]));
     for (const placed of squarify(
@@ -258,4 +261,79 @@ export function wrapText(measure: (text: string) => number, text: string, maxW: 
   }
   if (cur) lines.push(cur.trimEnd());
   return lines;
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// File name labels
+
+/** `orderService.ts` -> `orderService`; names without a short extension are returned unchanged. */
+export function stripExtension(name: string): string {
+  const m = /^(.+?)\.[A-Za-z0-9]{1,5}$/.exec(name);
+  return m?.[1] ?? name;
+}
+
+/** Indices at which `text` may break: after `.`, `-`, `_`, and before an upper-case letter that follows a lower-case one. */
+export function breakPoints(text: string): number[] {
+  const out: number[] = [];
+  for (let i = 1; i < text.length; i++) {
+    const prev = text.charAt(i - 1);
+    const cur = text.charAt(i);
+    if (/[._-]/.test(prev) && !/[._-]/.test(cur)) out.push(i);
+    else if (/[a-z0-9]/.test(prev) && /[A-Z]/.test(cur)) out.push(i);
+  }
+  return out;
+}
+
+/** Two lines whose widths are both at most `maxW`, split at a break point as evenly as possible, or null. */
+export function wrapTwoLines(measure: (text: string) => number, text: string, maxW: number): string[] | null {
+  let best: string[] | null = null;
+  let bestW = Number.POSITIVE_INFINITY;
+  for (const at of breakPoints(text)) {
+    const a = text.slice(0, at);
+    const b = text.slice(at);
+    const w = Math.max(measure(a), measure(b));
+    if (w <= maxW && w < bestW) {
+      best = [a, b];
+      bestW = w;
+    }
+  }
+  return best;
+}
+
+export interface FileLabel {
+  lines: string[];
+  font: number;
+}
+
+/**
+ * How to print a file name in a cell: 11px, then 10px. One line when the whole name fits, then one line without its
+ * extension, then (when the cell is tall enough for two lines) two lines broken at `.`/`-`/`_`/camelCase
+ * boundaries, and only then the old middle-ellipsis. A name that fits at 10px is never ellipsized. `measureAt`
+ * gives the text width at a font size.
+ */
+export function fitFileLabel(
+  measureAt: (text: string, font: number) => number,
+  name: string,
+  cellW: number,
+  cellH: number,
+  padding = 3,
+): FileLabel | null {
+  const room = cellW - 2 * padding;
+  if (room <= 0) return null;
+  const bare = stripExtension(name);
+  const forms = bare === name ? [name] : [name, bare];
+  for (const form of forms) {
+    for (const font of [11, 10]) {
+      if (cellH >= font + 2 && measureAt(form, font) <= room) return { lines: [form], font };
+    }
+  }
+  for (const form of forms) {
+    for (const font of [11, 10]) {
+      if (cellH < 2 * font * 1.15 + 3) continue;
+      const two = wrapTwoLines((t) => measureAt(t, font), form, room);
+      if (two) return { lines: two, font };
+    }
+  }
+  const text = fitCellLabel((t) => measureAt(t, 10), bare, cellW, cellH, 10, padding);
+  return text ? { lines: [text], font: 10 } : null;
 }
