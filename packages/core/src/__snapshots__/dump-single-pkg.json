@@ -1,0 +1,834 @@
+{
+  "workspaces": [
+    {
+      "id": "ws:.",
+      "name": "single-pkg",
+      "dir": ".",
+      "kind": "unknown",
+      "frameworks": [],
+      "deps": [
+        "zod"
+      ],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:src/config.ts",
+      "path": "src/config.ts",
+      "workspaceId": "ws:.",
+      "contentHash": "2ed33a9a1f460e7d056a5646965b181f7bcf5100a786281b61d00aca84b193d7"
+    },
+    {
+      "id": "file:src/counter.ts",
+      "path": "src/counter.ts",
+      "workspaceId": "ws:.",
+      "contentHash": "ccfcd225204f6e59db165327f0157a5fad6445460722afeecfe5b2b385896f2a"
+    },
+    {
+      "id": "file:src/greet.ts",
+      "path": "src/greet.ts",
+      "workspaceId": "ws:.",
+      "contentHash": "4558d07c049d6592fa810ddaed3f91ffb2555b2a29faedb60f5e054ce03e3788"
+    },
+    {
+      "id": "file:src/index.ts",
+      "path": "src/index.ts",
+      "workspaceId": "ws:.",
+      "contentHash": "6e5bd325174542573070bdb29343d3dff507dfcc57cf218eb8f81331c0d73295"
+    },
+    {
+      "id": "file:src/main.ts",
+      "path": "src/main.ts",
+      "workspaceId": "ws:.",
+      "contentHash": "4cb32f750f05f10e907bef730ec84a373bc3828d9360a148fc677997962628ec"
+    },
+    {
+      "id": "file:src/math.ts",
+      "path": "src/math.ts",
+      "workspaceId": "ws:.",
+      "contentHash": "00d6297a00733079f4846e86744df6da6a7cbfd443922c97125d2b8a5e92d5f9"
+    },
+    {
+      "id": "file:src/types.ts",
+      "path": "src/types.ts",
+      "workspaceId": "ws:.",
+      "contentHash": "18cfd3070ddb27ba287157587ef78a2fb8de2ce7881391c5b5166bf8106fa075"
+    },
+    {
+      "id": "file:src/users.ts",
+      "path": "src/users.ts",
+      "workspaceId": "ws:.",
+      "contentHash": "588cbd7666fb82481760f5efd3e7cc4ad911f69af047fe05615a157a4e74cccb"
+    },
+    {
+      "id": "file:src/util/format.ts",
+      "path": "src/util/format.ts",
+      "workspaceId": "ws:.",
+      "contentHash": "6f868ada7f2b16e99f6ea742b1c89b9d966a62572894a9f896163663d7dd4c29"
+    },
+    {
+      "id": "file:src/util/strings.ts",
+      "path": "src/util/strings.ts",
+      "workspaceId": "ws:.",
+      "contentHash": "f4ce90fc1f86df178e4b39c83015972caff5bc2d33afe841ef94b55b0101daa7"
+    },
+    {
+      "id": "file:test/greet.test.ts",
+      "path": "test/greet.test.ts",
+      "workspaceId": "ws:.",
+      "contentHash": "804544193ec430ca98a80798955382ebb92e9e426597bb1cf9a7096abfca167b"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:src/config.ts#config",
+      "fileId": "file:src/config.ts",
+      "name": "config",
+      "kind": "const",
+      "exported": true,
+      "signature": "",
+      "startLine": 1,
+      "endLine": 1,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "a63711dbd5faf58d3593cd12c2e2c465",
+      "shapeHash": "90d32ce9bdbb66121733a7c2f52335e4"
+    },
+    {
+      "id": "sym:src/counter.ts#Counter",
+      "fileId": "file:src/counter.ts",
+      "name": "Counter",
+      "kind": "class",
+      "exported": true,
+      "signature": "",
+      "startLine": 1,
+      "endLine": 16,
+      "loc": 16,
+      "complexity": 1,
+      "stmtCount": 4,
+      "exactHash": "c39e13d2eb3251c1ec4f9680b23466b9",
+      "shapeHash": "f963b04873db4d5d578d994f8d00a3d4"
+    },
+    {
+      "id": "sym:src/counter.ts#Counter.current",
+      "fileId": "file:src/counter.ts",
+      "name": "Counter.current",
+      "kind": "method",
+      "exported": true,
+      "signature": "(): number",
+      "startLine": 13,
+      "endLine": 15,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "e6e97a7fd2ae2ed937cdd51d0962ecb2",
+      "shapeHash": "2a6ddc13d113c065972dc758ad7e2711"
+    },
+    {
+      "id": "sym:src/counter.ts#Counter.increment",
+      "fileId": "file:src/counter.ts",
+      "name": "Counter.increment",
+      "kind": "method",
+      "exported": true,
+      "signature": "(by = 1): number",
+      "startLine": 4,
+      "endLine": 7,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "ca43b7ecc0db4579a23a7ccf6558128a",
+      "shapeHash": "7a67778d7a0b5f2a7760fd87facdbd50"
+    },
+    {
+      "id": "sym:src/counter.ts#Counter.reset",
+      "fileId": "file:src/counter.ts",
+      "name": "Counter.reset",
+      "kind": "method",
+      "exported": true,
+      "signature": "(): void",
+      "startLine": 9,
+      "endLine": 11,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "0a67f2dac4516cd0430e129940b97f3a",
+      "shapeHash": "0f2d8a3f17b82cf0ec1b66d3cbf587dc"
+    },
+    {
+      "id": "sym:src/greet.ts#greet",
+      "fileId": "file:src/greet.ts",
+      "name": "greet",
+      "kind": "function",
+      "exported": true,
+      "signature": "(first: string, last: string): string",
+      "startLine": 3,
+      "endLine": 6,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "6c2d43636dfc432b5141cbcb8d446bf9",
+      "shapeHash": "8d608d653aafe60c5132bbb2b9f0e5f0"
+    },
+    {
+      "id": "sym:src/math.ts#clamp",
+      "fileId": "file:src/math.ts",
+      "name": "clamp",
+      "kind": "function",
+      "exported": true,
+      "signature": "(n: number, min: number, max: number): number",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "8da2dd8b8495d7b7f0e9b731ee08cc5e",
+      "shapeHash": "037c6021c0b15e5c1212ebb7c3aaf7d8"
+    },
+    {
+      "id": "sym:src/math.ts#sum",
+      "fileId": "file:src/math.ts",
+      "name": "sum",
+      "kind": "function",
+      "exported": true,
+      "signature": "(values: number[]): number",
+      "startLine": 5,
+      "endLine": 9,
+      "loc": 5,
+      "complexity": 2,
+      "stmtCount": 5,
+      "exactHash": "5e60e934eed7bb991d86673b426ef842",
+      "shapeHash": "bffcbe10fa3f5f0c6f5cc2190ad865a0"
+    },
+    {
+      "id": "sym:src/types.ts#User",
+      "fileId": "file:src/types.ts",
+      "name": "User",
+      "kind": "interface",
+      "exported": true,
+      "signature": "",
+      "startLine": 1,
+      "endLine": 1,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "c19346fe57ea3eea24bb34320dd67567",
+      "shapeHash": "aacb05994dbd977dc9c56a6f011900a2"
+    },
+    {
+      "id": "sym:src/types.ts#UserId",
+      "fileId": "file:src/types.ts",
+      "name": "UserId",
+      "kind": "type",
+      "exported": true,
+      "signature": "",
+      "startLine": 2,
+      "endLine": 2,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "5e338b7591fa73edca1356f074750a0b",
+      "shapeHash": "a5685b2b323b7b1b3122ad0a72f93293"
+    },
+    {
+      "id": "sym:src/users.ts#findUser",
+      "fileId": "file:src/users.ts",
+      "name": "findUser",
+      "kind": "function",
+      "exported": true,
+      "signature": "(users: User[], id: string): User | undefined",
+      "startLine": 3,
+      "endLine": 5,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "cac8c55f9dfab0788c96e495426e9a45",
+      "shapeHash": "a358eb54351fda7c28b5b573b54b1dac"
+    },
+    {
+      "id": "sym:src/util/format.ts#formatName",
+      "fileId": "file:src/util/format.ts",
+      "name": "formatName",
+      "kind": "function",
+      "exported": true,
+      "signature": "(first: string, last: string): string",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "41381cfea79efbf1c66a1d6b65324630",
+      "shapeHash": "559af2680e429365ce9cfb3e2085c0c9"
+    },
+    {
+      "id": "sym:src/util/strings.ts#capitalize",
+      "fileId": "file:src/util/strings.ts",
+      "name": "capitalize",
+      "kind": "function",
+      "exported": true,
+      "signature": "(s: string): string",
+      "startLine": 1,
+      "endLine": 1,
+      "loc": 1,
+      "complexity": 2,
+      "stmtCount": 1,
+      "exactHash": "66d23ca26964ceee015690083a7cea3d",
+      "shapeHash": "522efe43c11dd14c5ee5f749717a365e"
+    },
+    {
+      "id": "sym:test/greet.test.ts#result",
+      "fileId": "file:test/greet.test.ts",
+      "name": "result",
+      "kind": "const",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 3,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "cda39b8e47f974fd6fa54810c74f07fb",
+      "shapeHash": "eb025ed8c114e9889cdf770eccdc50cd"
+    }
+  ],
+  "edges": [
+    {
+      "src": "file:src/config.ts",
+      "dst": "sym:src/config.ts#config",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/config.ts"
+    },
+    {
+      "src": "file:src/config.ts",
+      "dst": "sym:src/config.ts#config",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/config.ts"
+    },
+    {
+      "src": "file:src/counter.ts",
+      "dst": "sym:src/counter.ts#Counter",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/counter.ts"
+    },
+    {
+      "src": "file:src/counter.ts",
+      "dst": "sym:src/counter.ts#Counter",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/counter.ts"
+    },
+    {
+      "src": "file:src/counter.ts",
+      "dst": "sym:src/counter.ts#Counter.current",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/counter.ts"
+    },
+    {
+      "src": "file:src/counter.ts",
+      "dst": "sym:src/counter.ts#Counter.increment",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/counter.ts"
+    },
+    {
+      "src": "file:src/counter.ts",
+      "dst": "sym:src/counter.ts#Counter.reset",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/counter.ts"
+    },
+    {
+      "src": "file:src/greet.ts",
+      "dst": "file:src/util/format.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/greet.ts:1"
+      ],
+      "fileId": "file:src/greet.ts"
+    },
+    {
+      "src": "file:src/greet.ts",
+      "dst": "sym:src/greet.ts#greet",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/greet.ts"
+    },
+    {
+      "src": "file:src/greet.ts",
+      "dst": "sym:src/greet.ts#greet",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/greet.ts"
+    },
+    {
+      "src": "file:src/index.ts",
+      "dst": "file:src/counter.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/index.ts"
+    },
+    {
+      "src": "file:src/index.ts",
+      "dst": "file:src/greet.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/index.ts"
+    },
+    {
+      "src": "file:src/index.ts",
+      "dst": "file:src/math.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [],
+      "fileId": "file:src/index.ts"
+    },
+    {
+      "src": "file:src/index.ts",
+      "dst": "file:src/util/format.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/index.ts"
+    },
+    {
+      "src": "file:src/index.ts",
+      "dst": "sym:src/counter.ts#Counter",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/index.ts"
+    },
+    {
+      "src": "file:src/index.ts",
+      "dst": "sym:src/greet.ts#greet",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/index.ts"
+    },
+    {
+      "src": "file:src/index.ts",
+      "dst": "sym:src/math.ts#clamp",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/index.ts"
+    },
+    {
+      "src": "file:src/index.ts",
+      "dst": "sym:src/math.ts#sum",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/index.ts"
+    },
+    {
+      "src": "file:src/index.ts",
+      "dst": "sym:src/util/format.ts#formatName",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/index.ts"
+    },
+    {
+      "src": "file:src/main.ts",
+      "dst": "file:src/config.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/main.ts:3"
+      ],
+      "fileId": "file:src/main.ts"
+    },
+    {
+      "src": "file:src/main.ts",
+      "dst": "file:src/greet.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/main.ts:1"
+      ],
+      "fileId": "file:src/main.ts"
+    },
+    {
+      "src": "file:src/main.ts",
+      "dst": "file:src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/main.ts:2"
+      ],
+      "fileId": "file:src/main.ts"
+    },
+    {
+      "src": "file:src/main.ts",
+      "dst": "sym:src/counter.ts#Counter",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/main.ts:5"
+      ],
+      "fileId": "file:src/main.ts"
+    },
+    {
+      "src": "file:src/main.ts",
+      "dst": "sym:src/greet.ts#greet",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/main.ts:7"
+      ],
+      "fileId": "file:src/main.ts"
+    },
+    {
+      "src": "file:src/math.ts",
+      "dst": "sym:src/math.ts#clamp",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/math.ts"
+    },
+    {
+      "src": "file:src/math.ts",
+      "dst": "sym:src/math.ts#clamp",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/math.ts"
+    },
+    {
+      "src": "file:src/math.ts",
+      "dst": "sym:src/math.ts#sum",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/math.ts"
+    },
+    {
+      "src": "file:src/math.ts",
+      "dst": "sym:src/math.ts#sum",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/math.ts"
+    },
+    {
+      "src": "file:src/types.ts",
+      "dst": "sym:src/types.ts#User",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/types.ts"
+    },
+    {
+      "src": "file:src/types.ts",
+      "dst": "sym:src/types.ts#User",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/types.ts"
+    },
+    {
+      "src": "file:src/types.ts",
+      "dst": "sym:src/types.ts#UserId",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/types.ts"
+    },
+    {
+      "src": "file:src/types.ts",
+      "dst": "sym:src/types.ts#UserId",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/types.ts"
+    },
+    {
+      "src": "file:src/users.ts",
+      "dst": "file:src/types.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/users.ts:1"
+      ],
+      "fileId": "file:src/users.ts"
+    },
+    {
+      "src": "file:src/users.ts",
+      "dst": "sym:src/users.ts#findUser",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/users.ts"
+    },
+    {
+      "src": "file:src/users.ts",
+      "dst": "sym:src/users.ts#findUser",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/users.ts"
+    },
+    {
+      "src": "file:src/util/format.ts",
+      "dst": "sym:src/util/format.ts#formatName",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/util/format.ts"
+    },
+    {
+      "src": "file:src/util/format.ts",
+      "dst": "sym:src/util/format.ts#formatName",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/util/format.ts"
+    },
+    {
+      "src": "file:src/util/strings.ts",
+      "dst": "sym:src/util/strings.ts#capitalize",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/util/strings.ts"
+    },
+    {
+      "src": "file:src/util/strings.ts",
+      "dst": "sym:src/util/strings.ts#capitalize",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/util/strings.ts"
+    },
+    {
+      "src": "file:test/greet.test.ts",
+      "dst": "file:src/greet.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "test/greet.test.ts:1"
+      ],
+      "fileId": "file:test/greet.test.ts"
+    },
+    {
+      "src": "file:test/greet.test.ts",
+      "dst": "sym:test/greet.test.ts#result",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:test/greet.test.ts"
+    },
+    {
+      "src": "file:test/greet.test.ts",
+      "dst": "sym:test/greet.test.ts#result",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:test/greet.test.ts"
+    },
+    {
+      "src": "sym:src/greet.ts#greet",
+      "dst": "sym:src/util/format.ts#formatName",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/greet.ts:4"
+      ],
+      "fileId": "file:src/greet.ts"
+    },
+    {
+      "src": "sym:src/types.ts#UserId",
+      "dst": "sym:src/types.ts#User",
+      "kind": "references_type",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/types.ts:2"
+      ],
+      "fileId": "file:src/types.ts"
+    },
+    {
+      "src": "sym:src/users.ts#findUser",
+      "dst": "sym:src/types.ts#User",
+      "kind": "references_type",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "src/users.ts:3"
+      ],
+      "fileId": "file:src/users.ts"
+    },
+    {
+      "src": "sym:test/greet.test.ts#result",
+      "dst": "sym:src/greet.ts#greet",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "test/greet.test.ts:3"
+      ],
+      "fileId": "file:test/greet.test.ts"
+    },
+    {
+      "src": "ws:.",
+      "dst": "file:src/config.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/config.ts"
+    },
+    {
+      "src": "ws:.",
+      "dst": "file:src/counter.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/counter.ts"
+    },
+    {
+      "src": "ws:.",
+      "dst": "file:src/greet.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/greet.ts"
+    },
+    {
+      "src": "ws:.",
+      "dst": "file:src/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/index.ts"
+    },
+    {
+      "src": "ws:.",
+      "dst": "file:src/main.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/main.ts"
+    },
+    {
+      "src": "ws:.",
+      "dst": "file:src/math.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/math.ts"
+    },
+    {
+      "src": "ws:.",
+      "dst": "file:src/types.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/types.ts"
+    },
+    {
+      "src": "ws:.",
+      "dst": "file:src/users.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/users.ts"
+    },
+    {
+      "src": "ws:.",
+      "dst": "file:src/util/format.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/util/format.ts"
+    },
+    {
+      "src": "ws:.",
+      "dst": "file:src/util/strings.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:src/util/strings.ts"
+    },
+    {
+      "src": "ws:.",
+      "dst": "file:test/greet.test.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:test/greet.test.ts"
+    }
+  ]
+}

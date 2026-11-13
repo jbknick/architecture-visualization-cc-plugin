@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EdgeRecord, FileRecord, SymbolRecord } from "../types.js";
 import { openStore, SchemaTooNewError, splitIdentifier } from "./index.js";
 import type { Store } from "./repo.js";
+import { SCHEMA_V1 } from "./schema.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -281,6 +282,27 @@ describe("fts", () => {
   });
 });
 
+describe("schema", () => {
+  const norm = (sql: string) =>
+    sql
+      .split("\n")
+      .map((l) => l.replace(/--.*$/, "").trim())
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s+/g, " ");
+
+  it("SCHEMA_V1 equals schema.sql", () => {
+    expect(SCHEMA_V1).toBe(readFileSync(join(here, "schema.sql"), "utf8"));
+  });
+
+  it("SCHEMA_V1 equals the SQL block of spec section 9", () => {
+    const spec = readFileSync(join(here, "../../../../docs/SPEC.md"), "utf8");
+    const sec = spec.split("## 9. SQLite schema v1")[1] ?? "";
+    const block = /```sql\n([\s\S]*?)```/.exec(sec)?.[1] ?? "";
+    expect(norm(SCHEMA_V1)).toBe(norm(block));
+  });
+});
+
 describe("splitIdentifier", () => {
   it.each([
     ["parseHTTPResponse2xx", ["parse", "http", "response", "2", "xx"]],
@@ -310,7 +332,6 @@ describe("concurrent writers", () => {
       dts: false,
       config: false,
     });
-    copyFileSync(join(here, "schema.sql"), join(out, "schema.sql"));
     symlinkSync(join(here, "../../node_modules"), join(out, "node_modules"), "dir");
     const workerPath = join(out, "worker.mjs");
     writeFileSync(
