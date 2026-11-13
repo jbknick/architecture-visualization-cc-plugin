@@ -1,0 +1,3942 @@
+{
+  "node": "v26.13.0",
+  "platform": "darwin/arm64",
+  "results": [
+    {
+      "model": "Xenova/all-MiniLM-L6-v2",
+      "coldLoadMs": 61.17970799999998,
+      "warmLoadMs": 35.90783299999998,
+      "dim": 384,
+      "msPerEmbeddingDescriptions": 0.8046901062500001,
+      "msPerEmbeddingCode": 3.70013515625,
+      "descriptions": {
+        "meanSame": 0.582594055117411,
+        "meanDiff": 0.3975521925871666,
+        "minSame": 0.37112706358609193,
+        "maxDiff": 0.7875109268305434,
+        "bestThreshold": 0.4543636889615942,
+        "bestAccuracy": 0.7666666666666667,
+        "accuracyAtSpec": 0.5,
+        "specThreshold": 0.85,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 0.6337
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 0.807
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 0.6102
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 0.3711
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 0.5797
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.6027
+          },
+          {
+            "topic": "deepClone",
+            "same": true,
+            "cosine": 0.526
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 0.6572
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 0.6102
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.4069
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 0.6892
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 0.6633
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 0.3726
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 0.6224
+          },
+          {
+            "topic": "throttle",
+            "same": true,
+            "cosine": 0.5865
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.5403
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 0.7311
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.5367
+          },
+          {
+            "topic": "slugify-vs-truncate",
+            "same": false,
+            "cosine": 0.2987
+          },
+          {
+            "topic": "retry-vs-timeout",
+            "same": false,
+            "cosine": 0.2728
+          },
+          {
+            "topic": "unique-vs-sort",
+            "same": false,
+            "cosine": 0.458
+          },
+          {
+            "topic": "clamp-vs-round",
+            "same": false,
+            "cosine": 0.2684
+          },
+          {
+            "topic": "groupBy-vs-sum",
+            "same": false,
+            "cosine": 0.3262
+          },
+          {
+            "topic": "isEmail-vs-isUrl",
+            "same": false,
+            "cosine": 0.4811
+          },
+          {
+            "topic": "sleep-vs-uuid",
+            "same": false,
+            "cosine": 0.0582
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.7875
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.7208
+          },
+          {
+            "topic": "formatDate-vs-readFile",
+            "same": false,
+            "cosine": 0.1643
+          },
+          {
+            "topic": "deepClone-vs-deepEqual",
+            "same": false,
+            "cosine": 0.1759
+          },
+          {
+            "topic": "hash-vs-logger",
+            "same": false,
+            "cosine": 0.1433
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 0.8,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.55,
+            "recall": 0.7333333333333333,
+            "falsePositiveRate": 0.2
+          },
+          {
+            "threshold": 0.6,
+            "recall": 0.6,
+            "falsePositiveRate": 0.2
+          },
+          {
+            "threshold": 0.65,
+            "recall": 0.26666666666666666,
+            "falsePositiveRate": 0.2
+          },
+          {
+            "threshold": 0.7,
+            "recall": 0.06666666666666667,
+            "falsePositiveRate": 0.2
+          },
+          {
+            "threshold": 0.75,
+            "recall": 0.06666666666666667,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.8,
+            "recall": 0.06666666666666667,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.85,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0,
+            "falsePositiveRate": 0
+          }
+        ]
+      },
+      "codeRaw": {
+        "meanSame": 0.7136520309585627,
+        "meanDiff": 0.6367168804216168,
+        "minSame": 0.4970758018952336,
+        "maxDiff": 0.8609330498239028,
+        "bestThreshold": 0.5960233569328235,
+        "bestAccuracy": 0.6666666666666666,
+        "accuracyAtSpec": 0.5,
+        "specThreshold": 0.92,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 0.6702
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 0.7658
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 0.6403
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 0.8116
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.6533
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 0.5947
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.4971
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 0.7486
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 0.8573
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 0.7444
+          },
+          {
+            "topic": "sum",
+            "same": true,
+            "cosine": 0.7566
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 0.7931
+          },
+          {
+            "topic": "once",
+            "same": true,
+            "cosine": 0.6364
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 0.7594
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 0.7759
+          },
+          {
+            "topic": "sum-vs-product",
+            "same": false,
+            "cosine": 0.8059
+          },
+          {
+            "topic": "min-vs-max",
+            "same": false,
+            "cosine": 0.8609
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 0.7594
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.8049
+          },
+          {
+            "topic": "sleep-vs-timeout",
+            "same": false,
+            "cosine": 0.8414
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.6964
+          },
+          {
+            "topic": "unique-vs-count",
+            "same": false,
+            "cosine": 0.5993
+          },
+          {
+            "topic": "clamp-vs-wrap",
+            "same": false,
+            "cosine": 0.5537
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.8086
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.5497
+          },
+          {
+            "topic": "retry-vs-memoize",
+            "same": false,
+            "cosine": 0.2565
+          },
+          {
+            "topic": "groupBy-vs-indexBy",
+            "same": false,
+            "cosine": 0.6431
+          },
+          {
+            "topic": "isEmail-vs-hexToRgb",
+            "same": false,
+            "cosine": 0.4207
+          },
+          {
+            "topic": "formatDate-vs-daysBetween",
+            "same": false,
+            "cosine": 0.5024
+          },
+          {
+            "topic": "once-vs-pipe",
+            "same": false,
+            "cosine": 0.4478
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.8
+          },
+          {
+            "threshold": 0.55,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.6666666666666666
+          },
+          {
+            "threshold": 0.6,
+            "recall": 0.8666666666666667,
+            "falsePositiveRate": 0.5333333333333333
+          },
+          {
+            "threshold": 0.65,
+            "recall": 0.7333333333333333,
+            "falsePositiveRate": 0.4666666666666667
+          },
+          {
+            "threshold": 0.7,
+            "recall": 0.6,
+            "falsePositiveRate": 0.4
+          },
+          {
+            "threshold": 0.75,
+            "recall": 0.4666666666666667,
+            "falsePositiveRate": 0.4
+          },
+          {
+            "threshold": 0.8,
+            "recall": 0.13333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.85,
+            "recall": 0.06666666666666667,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0,
+            "falsePositiveRate": 0
+          }
+        ]
+      },
+      "codeNormalized": {
+        "meanSame": 0.9914050796764665,
+        "meanDiff": 0.8518643186614453,
+        "minSame": 0.8806126121022247,
+        "maxDiff": 1,
+        "bestThreshold": 0.9788945780891989,
+        "bestAccuracy": 0.9333333333333333,
+        "accuracyAtSpec": 0.7333333333333333,
+        "specThreshold": 0.92,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.8806
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.9905
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "once",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum-vs-product",
+            "same": false,
+            "cosine": 0.9537
+          },
+          {
+            "topic": "min-vs-max",
+            "same": false,
+            "cosine": 0.9673
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 1
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.9301
+          },
+          {
+            "topic": "sleep-vs-timeout",
+            "same": false,
+            "cosine": 0.8352
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.919
+          },
+          {
+            "topic": "unique-vs-count",
+            "same": false,
+            "cosine": 0.8156
+          },
+          {
+            "topic": "clamp-vs-wrap",
+            "same": false,
+            "cosine": 0.8734
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.9427
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.9301
+          },
+          {
+            "topic": "retry-vs-memoize",
+            "same": false,
+            "cosine": 0.6131
+          },
+          {
+            "topic": "groupBy-vs-indexBy",
+            "same": false,
+            "cosine": 0.9548
+          },
+          {
+            "topic": "isEmail-vs-hexToRgb",
+            "same": false,
+            "cosine": 0.6635
+          },
+          {
+            "topic": "formatDate-vs-daysBetween",
+            "same": false,
+            "cosine": 0.6097
+          },
+          {
+            "topic": "once-vs-pipe",
+            "same": false,
+            "cosine": 0.7696
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.55,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.6,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.65,
+            "recall": 1,
+            "falsePositiveRate": 0.8666666666666667
+          },
+          {
+            "threshold": 0.7,
+            "recall": 1,
+            "falsePositiveRate": 0.8
+          },
+          {
+            "threshold": 0.75,
+            "recall": 1,
+            "falsePositiveRate": 0.8
+          },
+          {
+            "threshold": 0.8,
+            "recall": 1,
+            "falsePositiveRate": 0.7333333333333333
+          },
+          {
+            "threshold": 0.85,
+            "recall": 1,
+            "falsePositiveRate": 0.6
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.5333333333333333
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.4666666666666667
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.26666666666666666
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.13333333333333333
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.06666666666666667
+          }
+        ]
+      },
+      "codeNormalizedSemi": {
+        "meanSame": 0.9856113717004981,
+        "meanDiff": 0.8105263038366258,
+        "minSame": 0.8652774437731873,
+        "maxDiff": 0.9804818274097326,
+        "bestThreshold": 0.9610336319458059,
+        "bestAccuracy": 0.9333333333333333,
+        "accuracyAtSpec": 0.8,
+        "specThreshold": 0.92,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 0.9752
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.8653
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.9817
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "once",
+            "same": true,
+            "cosine": 0.9619
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum-vs-product",
+            "same": false,
+            "cosine": 0.9602
+          },
+          {
+            "topic": "min-vs-max",
+            "same": false,
+            "cosine": 0.9805
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 0.9219
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.8819
+          },
+          {
+            "topic": "sleep-vs-timeout",
+            "same": false,
+            "cosine": 0.8656
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.9203
+          },
+          {
+            "topic": "unique-vs-count",
+            "same": false,
+            "cosine": 0.7732
+          },
+          {
+            "topic": "clamp-vs-wrap",
+            "same": false,
+            "cosine": 0.8697
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.8732
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.7769
+          },
+          {
+            "topic": "retry-vs-memoize",
+            "same": false,
+            "cosine": 0.5092
+          },
+          {
+            "topic": "groupBy-vs-indexBy",
+            "same": false,
+            "cosine": 0.9298
+          },
+          {
+            "topic": "isEmail-vs-hexToRgb",
+            "same": false,
+            "cosine": 0.5721
+          },
+          {
+            "topic": "formatDate-vs-daysBetween",
+            "same": false,
+            "cosine": 0.5916
+          },
+          {
+            "topic": "once-vs-pipe",
+            "same": false,
+            "cosine": 0.7319
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.55,
+            "recall": 1,
+            "falsePositiveRate": 0.9333333333333333
+          },
+          {
+            "threshold": 0.6,
+            "recall": 1,
+            "falsePositiveRate": 0.8
+          },
+          {
+            "threshold": 0.65,
+            "recall": 1,
+            "falsePositiveRate": 0.8
+          },
+          {
+            "threshold": 0.7,
+            "recall": 1,
+            "falsePositiveRate": 0.8
+          },
+          {
+            "threshold": 0.75,
+            "recall": 1,
+            "falsePositiveRate": 0.7333333333333333
+          },
+          {
+            "threshold": 0.8,
+            "recall": 1,
+            "falsePositiveRate": 0.6
+          },
+          {
+            "threshold": 0.85,
+            "recall": 1,
+            "falsePositiveRate": 0.6
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.13333333333333333
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.13333333333333333
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.13333333333333333
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0.8666666666666667,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0.8,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0.7333333333333333,
+            "falsePositiveRate": 0
+          }
+        ]
+      }
+    },
+    {
+      "model": "Xenova/bge-small-en-v1.5",
+      "coldLoadMs": 61.11041599999999,
+      "warmLoadMs": 59.81070799999998,
+      "dim": 384,
+      "msPerEmbeddingDescriptions": 1.3036708312499996,
+      "msPerEmbeddingCode": 7.29757395625,
+      "descriptions": {
+        "meanSame": 0.7481486805975343,
+        "meanDiff": 0.65936617877636,
+        "minSame": 0.6046778852767781,
+        "maxDiff": 0.8277335539374169,
+        "bestThreshold": 0.6595603622570904,
+        "bestAccuracy": 0.7333333333333333,
+        "accuracyAtSpec": 0.5,
+        "specThreshold": 0.85,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 0.7816
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 0.8452
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 0.7737
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 0.7004
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 0.7687
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.7544
+          },
+          {
+            "topic": "deepClone",
+            "same": true,
+            "cosine": 0.7552
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 0.7154
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 0.7406
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.6961
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 0.8132
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 0.7849
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 0.6047
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 0.7653
+          },
+          {
+            "topic": "throttle",
+            "same": true,
+            "cosine": 0.7227
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.7821
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 0.745
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.7376
+          },
+          {
+            "topic": "slugify-vs-truncate",
+            "same": false,
+            "cosine": 0.623
+          },
+          {
+            "topic": "retry-vs-timeout",
+            "same": false,
+            "cosine": 0.6161
+          },
+          {
+            "topic": "unique-vs-sort",
+            "same": false,
+            "cosine": 0.7166
+          },
+          {
+            "topic": "clamp-vs-round",
+            "same": false,
+            "cosine": 0.5982
+          },
+          {
+            "topic": "groupBy-vs-sum",
+            "same": false,
+            "cosine": 0.6078
+          },
+          {
+            "topic": "isEmail-vs-isUrl",
+            "same": false,
+            "cosine": 0.7334
+          },
+          {
+            "topic": "sleep-vs-uuid",
+            "same": false,
+            "cosine": 0.489
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.8066
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.8277
+          },
+          {
+            "topic": "formatDate-vs-readFile",
+            "same": false,
+            "cosine": 0.5292
+          },
+          {
+            "topic": "deepClone-vs-deepEqual",
+            "same": false,
+            "cosine": 0.5572
+          },
+          {
+            "topic": "hash-vs-logger",
+            "same": false,
+            "cosine": 0.5211
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 0.9333333333333333
+          },
+          {
+            "threshold": 0.55,
+            "recall": 1,
+            "falsePositiveRate": 0.8
+          },
+          {
+            "threshold": 0.6,
+            "recall": 1,
+            "falsePositiveRate": 0.6666666666666666
+          },
+          {
+            "threshold": 0.65,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.4666666666666667
+          },
+          {
+            "threshold": 0.7,
+            "recall": 0.8666666666666667,
+            "falsePositiveRate": 0.4666666666666667
+          },
+          {
+            "threshold": 0.75,
+            "recall": 0.6,
+            "falsePositiveRate": 0.2
+          },
+          {
+            "threshold": 0.8,
+            "recall": 0.13333333333333333,
+            "falsePositiveRate": 0.13333333333333333
+          },
+          {
+            "threshold": 0.85,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0,
+            "falsePositiveRate": 0
+          }
+        ]
+      },
+      "codeRaw": {
+        "meanSame": 0.7486480720135326,
+        "meanDiff": 0.7542959300390467,
+        "minSame": 0.6683003602493246,
+        "maxDiff": 0.9335573944936991,
+        "bestThreshold": 0.6636903888585555,
+        "bestAccuracy": 0.6333333333333333,
+        "accuracyAtSpec": 0.4666666666666667,
+        "specThreshold": 0.92,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 0.7226
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 0.7543
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 0.6944
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 0.7976
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.6744
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 0.7133
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.6828
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 0.8695
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 0.83
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 0.813
+          },
+          {
+            "topic": "sum",
+            "same": true,
+            "cosine": 0.7792
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 0.7544
+          },
+          {
+            "topic": "once",
+            "same": true,
+            "cosine": 0.6683
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 0.7966
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 0.6793
+          },
+          {
+            "topic": "sum-vs-product",
+            "same": false,
+            "cosine": 0.8719
+          },
+          {
+            "topic": "min-vs-max",
+            "same": false,
+            "cosine": 0.9336
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 0.7544
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.8347
+          },
+          {
+            "topic": "sleep-vs-timeout",
+            "same": false,
+            "cosine": 0.8571
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.7053
+          },
+          {
+            "topic": "unique-vs-count",
+            "same": false,
+            "cosine": 0.7442
+          },
+          {
+            "topic": "clamp-vs-wrap",
+            "same": false,
+            "cosine": 0.7556
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.8626
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.7684
+          },
+          {
+            "topic": "retry-vs-memoize",
+            "same": false,
+            "cosine": 0.5116
+          },
+          {
+            "topic": "groupBy-vs-indexBy",
+            "same": false,
+            "cosine": 0.8269
+          },
+          {
+            "topic": "isEmail-vs-hexToRgb",
+            "same": false,
+            "cosine": 0.5709
+          },
+          {
+            "topic": "formatDate-vs-daysBetween",
+            "same": false,
+            "cosine": 0.6582
+          },
+          {
+            "topic": "once-vs-pipe",
+            "same": false,
+            "cosine": 0.6591
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.55,
+            "recall": 1,
+            "falsePositiveRate": 0.9333333333333333
+          },
+          {
+            "threshold": 0.6,
+            "recall": 1,
+            "falsePositiveRate": 0.8666666666666667
+          },
+          {
+            "threshold": 0.65,
+            "recall": 1,
+            "falsePositiveRate": 0.8666666666666667
+          },
+          {
+            "threshold": 0.7,
+            "recall": 0.6666666666666666,
+            "falsePositiveRate": 0.7333333333333333
+          },
+          {
+            "threshold": 0.75,
+            "recall": 0.5333333333333333,
+            "falsePositiveRate": 0.6
+          },
+          {
+            "threshold": 0.8,
+            "recall": 0.2,
+            "falsePositiveRate": 0.4
+          },
+          {
+            "threshold": 0.85,
+            "recall": 0.06666666666666667,
+            "falsePositiveRate": 0.26666666666666666
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0,
+            "falsePositiveRate": 0
+          }
+        ]
+      },
+      "codeNormalized": {
+        "meanSame": 0.9901609534807831,
+        "meanDiff": 0.9193964017407005,
+        "minSame": 0.8600660089122898,
+        "maxDiff": 1,
+        "bestThreshold": 0.9946811728328402,
+        "bestAccuracy": 0.9,
+        "accuracyAtSpec": 0.6666666666666666,
+        "specThreshold": 0.92,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.8601
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.9923
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "once",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum-vs-product",
+            "same": false,
+            "cosine": 0.9892
+          },
+          {
+            "topic": "min-vs-max",
+            "same": false,
+            "cosine": 0.9959
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 1
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.9646
+          },
+          {
+            "topic": "sleep-vs-timeout",
+            "same": false,
+            "cosine": 0.894
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.951
+          },
+          {
+            "topic": "unique-vs-count",
+            "same": false,
+            "cosine": 0.8376
+          },
+          {
+            "topic": "clamp-vs-wrap",
+            "same": false,
+            "cosine": 0.9401
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.9626
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.9726
+          },
+          {
+            "topic": "retry-vs-memoize",
+            "same": false,
+            "cosine": 0.7477
+          },
+          {
+            "topic": "groupBy-vs-indexBy",
+            "same": false,
+            "cosine": 0.9904
+          },
+          {
+            "topic": "isEmail-vs-hexToRgb",
+            "same": false,
+            "cosine": 0.8356
+          },
+          {
+            "topic": "formatDate-vs-daysBetween",
+            "same": false,
+            "cosine": 0.8554
+          },
+          {
+            "topic": "once-vs-pipe",
+            "same": false,
+            "cosine": 0.8542
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.55,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.6,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.65,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.7,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.75,
+            "recall": 1,
+            "falsePositiveRate": 0.9333333333333333
+          },
+          {
+            "threshold": 0.8,
+            "recall": 1,
+            "falsePositiveRate": 0.9333333333333333
+          },
+          {
+            "threshold": 0.85,
+            "recall": 1,
+            "falsePositiveRate": 0.8
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.6
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.6
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.6
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.5333333333333333
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.4666666666666667
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.26666666666666666
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.2
+          }
+        ]
+      },
+      "codeNormalizedSemi": {
+        "meanSame": 0.9878809982238289,
+        "meanDiff": 0.8910260282658918,
+        "minSame": 0.8820543469379787,
+        "maxDiff": 0.9957420316744925,
+        "bestThreshold": 0.9959934915933215,
+        "bestAccuracy": 0.8666666666666667,
+        "accuracyAtSpec": 0.7,
+        "specThreshold": 0.92,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 0.9724
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.8821
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.9924
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "once",
+            "same": true,
+            "cosine": 0.9714
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum-vs-product",
+            "same": false,
+            "cosine": 0.9915
+          },
+          {
+            "topic": "min-vs-max",
+            "same": false,
+            "cosine": 0.9957
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 0.9595
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.8619
+          },
+          {
+            "topic": "sleep-vs-timeout",
+            "same": false,
+            "cosine": 0.9487
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.9337
+          },
+          {
+            "topic": "unique-vs-count",
+            "same": false,
+            "cosine": 0.8276
+          },
+          {
+            "topic": "clamp-vs-wrap",
+            "same": false,
+            "cosine": 0.938
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.9765
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.8695
+          },
+          {
+            "topic": "retry-vs-memoize",
+            "same": false,
+            "cosine": 0.6906
+          },
+          {
+            "topic": "groupBy-vs-indexBy",
+            "same": false,
+            "cosine": 0.975
+          },
+          {
+            "topic": "isEmail-vs-hexToRgb",
+            "same": false,
+            "cosine": 0.7891
+          },
+          {
+            "topic": "formatDate-vs-daysBetween",
+            "same": false,
+            "cosine": 0.8042
+          },
+          {
+            "topic": "once-vs-pipe",
+            "same": false,
+            "cosine": 0.804
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.55,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.6,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.65,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.7,
+            "recall": 1,
+            "falsePositiveRate": 0.9333333333333333
+          },
+          {
+            "threshold": 0.75,
+            "recall": 1,
+            "falsePositiveRate": 0.9333333333333333
+          },
+          {
+            "threshold": 0.8,
+            "recall": 1,
+            "falsePositiveRate": 0.8666666666666667
+          },
+          {
+            "threshold": 0.85,
+            "recall": 1,
+            "falsePositiveRate": 0.6666666666666666
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.5333333333333333
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.5333333333333333
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.4
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.26666666666666666
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.26666666666666666
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0.8,
+            "falsePositiveRate": 0.13333333333333333
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0.8,
+            "falsePositiveRate": 0.13333333333333333
+          }
+        ]
+      }
+    },
+    {
+      "model": "nomic-ai/nomic-embed-text-v1.5",
+      "coldLoadMs": 140.00754200000029,
+      "warmLoadMs": 126.88491599999998,
+      "dim": 768,
+      "msPerEmbeddingDescriptions": 6.033611456249997,
+      "msPerEmbeddingCode": 29.490763543749996,
+      "descriptions": {
+        "meanSame": 0.7857537340101632,
+        "meanDiff": 0.755681059915899,
+        "minSame": 0.7142902607625384,
+        "maxDiff": 0.8987713732353553,
+        "bestThreshold": 0.712137560685977,
+        "bestAccuracy": 0.6666666666666666,
+        "accuracyAtSpec": 0.4666666666666667,
+        "specThreshold": 0.85,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 0.8251
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 0.824
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 0.8208
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 0.7143
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 0.7412
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.8112
+          },
+          {
+            "topic": "deepClone",
+            "same": true,
+            "cosine": 0.7755
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 0.7854
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 0.7902
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.7421
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 0.8282
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 0.7625
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 0.8
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 0.8018
+          },
+          {
+            "topic": "throttle",
+            "same": true,
+            "cosine": 0.764
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.7831
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 0.7992
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.7773
+          },
+          {
+            "topic": "slugify-vs-truncate",
+            "same": false,
+            "cosine": 0.708
+          },
+          {
+            "topic": "retry-vs-timeout",
+            "same": false,
+            "cosine": 0.6707
+          },
+          {
+            "topic": "unique-vs-sort",
+            "same": false,
+            "cosine": 0.8194
+          },
+          {
+            "topic": "clamp-vs-round",
+            "same": false,
+            "cosine": 0.7518
+          },
+          {
+            "topic": "groupBy-vs-sum",
+            "same": false,
+            "cosine": 0.7514
+          },
+          {
+            "topic": "isEmail-vs-isUrl",
+            "same": false,
+            "cosine": 0.7911
+          },
+          {
+            "topic": "sleep-vs-uuid",
+            "same": false,
+            "cosine": 0.5993
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.8988
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.8324
+          },
+          {
+            "topic": "formatDate-vs-readFile",
+            "same": false,
+            "cosine": 0.71
+          },
+          {
+            "topic": "deepClone-vs-deepEqual",
+            "same": false,
+            "cosine": 0.7651
+          },
+          {
+            "topic": "hash-vs-logger",
+            "same": false,
+            "cosine": 0.6778
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.55,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.6,
+            "recall": 1,
+            "falsePositiveRate": 0.9333333333333333
+          },
+          {
+            "threshold": 0.65,
+            "recall": 1,
+            "falsePositiveRate": 0.9333333333333333
+          },
+          {
+            "threshold": 0.7,
+            "recall": 1,
+            "falsePositiveRate": 0.8
+          },
+          {
+            "threshold": 0.75,
+            "recall": 0.8,
+            "falsePositiveRate": 0.6666666666666666
+          },
+          {
+            "threshold": 0.8,
+            "recall": 0.4666666666666667,
+            "falsePositiveRate": 0.2
+          },
+          {
+            "threshold": 0.85,
+            "recall": 0,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0,
+            "falsePositiveRate": 0
+          }
+        ]
+      },
+      "codeRaw": {
+        "meanSame": 0.8166592310629379,
+        "meanDiff": 0.8288275360984539,
+        "minSame": 0.7767713616714809,
+        "maxDiff": 0.9411104734149662,
+        "bestThreshold": 0.7717610903672174,
+        "bestAccuracy": 0.6,
+        "accuracyAtSpec": 0.4666666666666667,
+        "specThreshold": 0.92,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 0.7974
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 0.7814
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 0.7912
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 0.8627
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.7941
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 0.7968
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.7768
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 0.8906
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 0.7984
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 0.8572
+          },
+          {
+            "topic": "sum",
+            "same": true,
+            "cosine": 0.8168
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 0.8138
+          },
+          {
+            "topic": "once",
+            "same": true,
+            "cosine": 0.7857
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 0.8677
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 0.8194
+          },
+          {
+            "topic": "sum-vs-product",
+            "same": false,
+            "cosine": 0.8938
+          },
+          {
+            "topic": "min-vs-max",
+            "same": false,
+            "cosine": 0.9411
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 0.8664
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.9102
+          },
+          {
+            "topic": "sleep-vs-timeout",
+            "same": false,
+            "cosine": 0.8769
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.8037
+          },
+          {
+            "topic": "unique-vs-count",
+            "same": false,
+            "cosine": 0.8101
+          },
+          {
+            "topic": "clamp-vs-wrap",
+            "same": false,
+            "cosine": 0.857
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.8495
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.8094
+          },
+          {
+            "topic": "retry-vs-memoize",
+            "same": false,
+            "cosine": 0.6839
+          },
+          {
+            "topic": "groupBy-vs-indexBy",
+            "same": false,
+            "cosine": 0.8896
+          },
+          {
+            "topic": "isEmail-vs-hexToRgb",
+            "same": false,
+            "cosine": 0.6755
+          },
+          {
+            "topic": "formatDate-vs-daysBetween",
+            "same": false,
+            "cosine": 0.7668
+          },
+          {
+            "topic": "once-vs-pipe",
+            "same": false,
+            "cosine": 0.7985
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.55,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.6,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.65,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.7,
+            "recall": 1,
+            "falsePositiveRate": 0.8666666666666667
+          },
+          {
+            "threshold": 0.75,
+            "recall": 1,
+            "falsePositiveRate": 0.8666666666666667
+          },
+          {
+            "threshold": 0.8,
+            "recall": 0.4666666666666667,
+            "falsePositiveRate": 0.7333333333333333
+          },
+          {
+            "threshold": 0.85,
+            "recall": 0.26666666666666666,
+            "falsePositiveRate": 0.4666666666666667
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0,
+            "falsePositiveRate": 0.13333333333333333
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0,
+            "falsePositiveRate": 0
+          }
+        ]
+      },
+      "codeNormalized": {
+        "meanSame": 0.9938873940403348,
+        "meanDiff": 0.9325786973024646,
+        "minSame": 0.9249303786330895,
+        "maxDiff": 0.9999999999999998,
+        "bestThreshold": 0.9803578244453093,
+        "bestAccuracy": 0.9333333333333333,
+        "accuracyAtSpec": 0.7,
+        "specThreshold": 0.92,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.9249
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.9834
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "once",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum-vs-product",
+            "same": false,
+            "cosine": 0.9734
+          },
+          {
+            "topic": "min-vs-max",
+            "same": false,
+            "cosine": 0.9773
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 1
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.9578
+          },
+          {
+            "topic": "sleep-vs-timeout",
+            "same": false,
+            "cosine": 0.9027
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.9509
+          },
+          {
+            "topic": "unique-vs-count",
+            "same": false,
+            "cosine": 0.8989
+          },
+          {
+            "topic": "clamp-vs-wrap",
+            "same": false,
+            "cosine": 0.9284
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.9702
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.9318
+          },
+          {
+            "topic": "retry-vs-memoize",
+            "same": false,
+            "cosine": 0.8587
+          },
+          {
+            "topic": "groupBy-vs-indexBy",
+            "same": false,
+            "cosine": 0.9665
+          },
+          {
+            "topic": "isEmail-vs-hexToRgb",
+            "same": false,
+            "cosine": 0.8913
+          },
+          {
+            "topic": "formatDate-vs-daysBetween",
+            "same": false,
+            "cosine": 0.886
+          },
+          {
+            "topic": "once-vs-pipe",
+            "same": false,
+            "cosine": 0.8946
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.55,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.6,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.65,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.7,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.75,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.8,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.85,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.9,
+            "recall": 1,
+            "falsePositiveRate": 0.6666666666666666
+          },
+          {
+            "threshold": 0.92,
+            "recall": 1,
+            "falsePositiveRate": 0.6
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.4666666666666667
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.4666666666666667
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.26666666666666666
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0.8666666666666667,
+            "falsePositiveRate": 0.06666666666666667
+          }
+        ]
+      },
+      "codeNormalizedSemi": {
+        "meanSame": 0.9887408088354799,
+        "meanDiff": 0.9155531767815382,
+        "minSame": 0.9222814470815807,
+        "maxDiff": 0.9792421428308762,
+        "bestThreshold": 0.9803737946254754,
+        "bestAccuracy": 0.9,
+        "accuracyAtSpec": 0.7666666666666667,
+        "specThreshold": 0.92,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 0.9717
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.9223
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.9815
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "once",
+            "same": true,
+            "cosine": 0.9556
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum-vs-product",
+            "same": false,
+            "cosine": 0.9716
+          },
+          {
+            "topic": "min-vs-max",
+            "same": false,
+            "cosine": 0.9792
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 0.9743
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.9193
+          },
+          {
+            "topic": "sleep-vs-timeout",
+            "same": false,
+            "cosine": 0.9212
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.9385
+          },
+          {
+            "topic": "unique-vs-count",
+            "same": false,
+            "cosine": 0.8611
+          },
+          {
+            "topic": "clamp-vs-wrap",
+            "same": false,
+            "cosine": 0.9184
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.9569
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.9037
+          },
+          {
+            "topic": "retry-vs-memoize",
+            "same": false,
+            "cosine": 0.7971
+          },
+          {
+            "topic": "groupBy-vs-indexBy",
+            "same": false,
+            "cosine": 0.969
+          },
+          {
+            "topic": "isEmail-vs-hexToRgb",
+            "same": false,
+            "cosine": 0.8587
+          },
+          {
+            "topic": "formatDate-vs-daysBetween",
+            "same": false,
+            "cosine": 0.9045
+          },
+          {
+            "topic": "once-vs-pipe",
+            "same": false,
+            "cosine": 0.8598
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.55,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.6,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.65,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.7,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.75,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.8,
+            "recall": 1,
+            "falsePositiveRate": 0.9333333333333333
+          },
+          {
+            "threshold": 0.85,
+            "recall": 1,
+            "falsePositiveRate": 0.9333333333333333
+          },
+          {
+            "threshold": 0.9,
+            "recall": 1,
+            "falsePositiveRate": 0.7333333333333333
+          },
+          {
+            "threshold": 0.92,
+            "recall": 1,
+            "falsePositiveRate": 0.4666666666666667
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0.8666666666666667,
+            "falsePositiveRate": 0.26666666666666666
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0.8666666666666667,
+            "falsePositiveRate": 0.2
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0.8,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0.7333333333333333,
+            "falsePositiveRate": 0
+          }
+        ]
+      }
+    },
+    {
+      "model": "jinaai/jina-embeddings-v2-base-code",
+      "coldLoadMs": 233.85237499999857,
+      "warmLoadMs": 213.22141600000032,
+      "dim": 768,
+      "msPerEmbeddingDescriptions": 5.65674166875001,
+      "msPerEmbeddingCode": 29.326898175000018,
+      "descriptions": {
+        "meanSame": 0.6413604585149867,
+        "meanDiff": 0.3507564618259258,
+        "minSame": 0.35233359161574446,
+        "maxDiff": 0.7295449541054204,
+        "bestThreshold": 0.5728861820873068,
+        "bestAccuracy": 0.9,
+        "accuracyAtSpec": 0.5,
+        "specThreshold": 0.85,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 0.628
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 0.7529
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 0.6138
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 0.5785
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 0.6976
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.6374
+          },
+          {
+            "topic": "deepClone",
+            "same": true,
+            "cosine": 0.6028
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 0.6974
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 0.8008
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.3523
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 0.7933
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 0.6321
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 0.5373
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 0.651
+          },
+          {
+            "topic": "throttle",
+            "same": true,
+            "cosine": 0.6451
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.5673
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 0.5442
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.3909
+          },
+          {
+            "topic": "slugify-vs-truncate",
+            "same": false,
+            "cosine": 0.2951
+          },
+          {
+            "topic": "retry-vs-timeout",
+            "same": false,
+            "cosine": 0.3702
+          },
+          {
+            "topic": "unique-vs-sort",
+            "same": false,
+            "cosine": 0.4477
+          },
+          {
+            "topic": "clamp-vs-round",
+            "same": false,
+            "cosine": 0.3471
+          },
+          {
+            "topic": "groupBy-vs-sum",
+            "same": false,
+            "cosine": 0.2071
+          },
+          {
+            "topic": "isEmail-vs-isUrl",
+            "same": false,
+            "cosine": 0.4907
+          },
+          {
+            "topic": "sleep-vs-uuid",
+            "same": false,
+            "cosine": 0.1252
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.7295
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.3961
+          },
+          {
+            "topic": "formatDate-vs-readFile",
+            "same": false,
+            "cosine": -0.0026
+          },
+          {
+            "topic": "deepClone-vs-deepEqual",
+            "same": false,
+            "cosine": 0.3289
+          },
+          {
+            "topic": "hash-vs-logger",
+            "same": false,
+            "cosine": 0.0241
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.2
+          },
+          {
+            "threshold": 0.55,
+            "recall": 0.8666666666666667,
+            "falsePositiveRate": 0.13333333333333333
+          },
+          {
+            "threshold": 0.6,
+            "recall": 0.8,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.65,
+            "recall": 0.4,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.7,
+            "recall": 0.2,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.75,
+            "recall": 0.2,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.8,
+            "recall": 0.06666666666666667,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.85,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0,
+            "falsePositiveRate": 0
+          }
+        ]
+      },
+      "codeRaw": {
+        "meanSame": 0.684239502280972,
+        "meanDiff": 0.5426739547879011,
+        "minSame": 0.5472238931656157,
+        "maxDiff": 0.8814734329944093,
+        "bestThreshold": 0.5540688892355213,
+        "bestAccuracy": 0.7333333333333333,
+        "accuracyAtSpec": 0.5,
+        "specThreshold": 0.92,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 0.5719
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 0.7429
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 0.6162
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 0.7062
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.6125
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 0.6711
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.5472
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 0.637
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 0.7587
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 0.737
+          },
+          {
+            "topic": "sum",
+            "same": true,
+            "cosine": 0.796
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 0.7299
+          },
+          {
+            "topic": "once",
+            "same": true,
+            "cosine": 0.7372
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 0.6632
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 0.7365
+          },
+          {
+            "topic": "sum-vs-product",
+            "same": false,
+            "cosine": 0.8011
+          },
+          {
+            "topic": "min-vs-max",
+            "same": false,
+            "cosine": 0.7865
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 0.8815
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.7249
+          },
+          {
+            "topic": "sleep-vs-timeout",
+            "same": false,
+            "cosine": 0.5353
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.4474
+          },
+          {
+            "topic": "unique-vs-count",
+            "same": false,
+            "cosine": 0.4692
+          },
+          {
+            "topic": "clamp-vs-wrap",
+            "same": false,
+            "cosine": 0.7458
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.5618
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.6442
+          },
+          {
+            "topic": "retry-vs-memoize",
+            "same": false,
+            "cosine": 0.2127
+          },
+          {
+            "topic": "groupBy-vs-indexBy",
+            "same": false,
+            "cosine": 0.6587
+          },
+          {
+            "topic": "isEmail-vs-hexToRgb",
+            "same": false,
+            "cosine": 0.1136
+          },
+          {
+            "topic": "formatDate-vs-daysBetween",
+            "same": false,
+            "cosine": 0.1585
+          },
+          {
+            "topic": "once-vs-pipe",
+            "same": false,
+            "cosine": 0.399
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 0.6
+          },
+          {
+            "threshold": 0.55,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.5333333333333333
+          },
+          {
+            "threshold": 0.6,
+            "recall": 0.8666666666666667,
+            "falsePositiveRate": 0.4666666666666667
+          },
+          {
+            "threshold": 0.65,
+            "recall": 0.6666666666666666,
+            "falsePositiveRate": 0.4
+          },
+          {
+            "threshold": 0.7,
+            "recall": 0.5333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.75,
+            "recall": 0.13333333333333333,
+            "falsePositiveRate": 0.2
+          },
+          {
+            "threshold": 0.8,
+            "recall": 0,
+            "falsePositiveRate": 0.13333333333333333
+          },
+          {
+            "threshold": 0.85,
+            "recall": 0,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0,
+            "falsePositiveRate": 0
+          }
+        ]
+      },
+      "codeNormalized": {
+        "meanSame": 0.9834180395442339,
+        "meanDiff": 0.8169763017537932,
+        "minSame": 0.7619744219444993,
+        "maxDiff": 1.0000000000000002,
+        "bestThreshold": 0.9713937134888142,
+        "bestAccuracy": 0.9333333333333333,
+        "accuracyAtSpec": 0.8,
+        "specThreshold": 0.92,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.762
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.9893
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "once",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum-vs-product",
+            "same": false,
+            "cosine": 0.9262
+          },
+          {
+            "topic": "min-vs-max",
+            "same": false,
+            "cosine": 0.9483
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 1
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.8288
+          },
+          {
+            "topic": "sleep-vs-timeout",
+            "same": false,
+            "cosine": 0.8554
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.9071
+          },
+          {
+            "topic": "unique-vs-count",
+            "same": false,
+            "cosine": 0.5893
+          },
+          {
+            "topic": "clamp-vs-wrap",
+            "same": false,
+            "cosine": 0.8097
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.8819
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.9288
+          },
+          {
+            "topic": "retry-vs-memoize",
+            "same": false,
+            "cosine": 0.6978
+          },
+          {
+            "topic": "groupBy-vs-indexBy",
+            "same": false,
+            "cosine": 0.9535
+          },
+          {
+            "topic": "isEmail-vs-hexToRgb",
+            "same": false,
+            "cosine": 0.5313
+          },
+          {
+            "topic": "formatDate-vs-daysBetween",
+            "same": false,
+            "cosine": 0.5361
+          },
+          {
+            "topic": "once-vs-pipe",
+            "same": false,
+            "cosine": 0.8603
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 1
+          },
+          {
+            "threshold": 0.55,
+            "recall": 1,
+            "falsePositiveRate": 0.8666666666666667
+          },
+          {
+            "threshold": 0.6,
+            "recall": 1,
+            "falsePositiveRate": 0.8
+          },
+          {
+            "threshold": 0.65,
+            "recall": 1,
+            "falsePositiveRate": 0.8
+          },
+          {
+            "threshold": 0.7,
+            "recall": 1,
+            "falsePositiveRate": 0.7333333333333333
+          },
+          {
+            "threshold": 0.75,
+            "recall": 1,
+            "falsePositiveRate": 0.7333333333333333
+          },
+          {
+            "threshold": 0.8,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.7333333333333333
+          },
+          {
+            "threshold": 0.85,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.6
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.4
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.2
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.13333333333333333
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0.8666666666666667,
+            "falsePositiveRate": 0.06666666666666667
+          }
+        ]
+      },
+      "codeNormalizedSemi": {
+        "meanSame": 0.9847131263773151,
+        "meanDiff": 0.7651715043583464,
+        "minSame": 0.8286235722614783,
+        "maxDiff": 0.9654156712487415,
+        "bestThreshold": 0.96740394372204,
+        "bestAccuracy": 0.9666666666666667,
+        "accuracyAtSpec": 0.8,
+        "specThreshold": 0.92,
+        "scores": [
+          {
+            "topic": "debounce",
+            "same": true,
+            "cosine": 0.9841
+          },
+          {
+            "topic": "slugify",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "chunk",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "retry",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "unique",
+            "same": true,
+            "cosine": 0.8286
+          },
+          {
+            "topic": "clamp",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "groupBy",
+            "same": true,
+            "cosine": 0.9886
+          },
+          {
+            "topic": "pick",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sleep",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "parseQuery",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "capitalize",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "once",
+            "same": true,
+            "cosine": 0.9694
+          },
+          {
+            "topic": "formatDate",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "isEmail",
+            "same": true,
+            "cosine": 1
+          },
+          {
+            "topic": "sum-vs-product",
+            "same": false,
+            "cosine": 0.9258
+          },
+          {
+            "topic": "min-vs-max",
+            "same": false,
+            "cosine": 0.9654
+          },
+          {
+            "topic": "capitalize-vs-lower",
+            "same": false,
+            "cosine": 0.928
+          },
+          {
+            "topic": "pick-vs-omit",
+            "same": false,
+            "cosine": 0.7555
+          },
+          {
+            "topic": "sleep-vs-timeout",
+            "same": false,
+            "cosine": 0.8372
+          },
+          {
+            "topic": "chunk-vs-flatten",
+            "same": false,
+            "cosine": 0.9217
+          },
+          {
+            "topic": "unique-vs-count",
+            "same": false,
+            "cosine": 0.4809
+          },
+          {
+            "topic": "clamp-vs-wrap",
+            "same": false,
+            "cosine": 0.7981
+          },
+          {
+            "topic": "parseQuery-vs-buildQuery",
+            "same": false,
+            "cosine": 0.8948
+          },
+          {
+            "topic": "debounce-vs-throttle",
+            "same": false,
+            "cosine": 0.761
+          },
+          {
+            "topic": "retry-vs-memoize",
+            "same": false,
+            "cosine": 0.5647
+          },
+          {
+            "topic": "groupBy-vs-indexBy",
+            "same": false,
+            "cosine": 0.9456
+          },
+          {
+            "topic": "isEmail-vs-hexToRgb",
+            "same": false,
+            "cosine": 0.3751
+          },
+          {
+            "topic": "formatDate-vs-daysBetween",
+            "same": false,
+            "cosine": 0.5389
+          },
+          {
+            "topic": "once-vs-pipe",
+            "same": false,
+            "cosine": 0.785
+          }
+        ],
+        "sweep": [
+          {
+            "threshold": 0.5,
+            "recall": 1,
+            "falsePositiveRate": 0.8666666666666667
+          },
+          {
+            "threshold": 0.55,
+            "recall": 1,
+            "falsePositiveRate": 0.8
+          },
+          {
+            "threshold": 0.6,
+            "recall": 1,
+            "falsePositiveRate": 0.7333333333333333
+          },
+          {
+            "threshold": 0.65,
+            "recall": 1,
+            "falsePositiveRate": 0.7333333333333333
+          },
+          {
+            "threshold": 0.7,
+            "recall": 1,
+            "falsePositiveRate": 0.7333333333333333
+          },
+          {
+            "threshold": 0.75,
+            "recall": 1,
+            "falsePositiveRate": 0.7333333333333333
+          },
+          {
+            "threshold": 0.8,
+            "recall": 1,
+            "falsePositiveRate": 0.4666666666666667
+          },
+          {
+            "threshold": 0.85,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.4
+          },
+          {
+            "threshold": 0.9,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.92,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.3333333333333333
+          },
+          {
+            "threshold": 0.94,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.13333333333333333
+          },
+          {
+            "threshold": 0.95,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.96,
+            "recall": 0.9333333333333333,
+            "falsePositiveRate": 0.06666666666666667
+          },
+          {
+            "threshold": 0.97,
+            "recall": 0.8666666666666667,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.98,
+            "recall": 0.8666666666666667,
+            "falsePositiveRate": 0
+          },
+          {
+            "threshold": 0.99,
+            "recall": 0.7333333333333333,
+            "falsePositiveRate": 0
+          }
+        ]
+      }
+    }
+  ]
+}
