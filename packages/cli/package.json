@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@gantry/core": "workspace:*",
+    "@gantry/explorer": "workspace:*",
     "commander": "^15.1.0"
   }
 }
