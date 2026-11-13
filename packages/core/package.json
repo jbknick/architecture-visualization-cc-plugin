@@ -7,12 +7,19 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "default": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "dependencies": {
+    "better-sqlite3": "^13.1.1",
     "oxc-parser": "0.158.0",
-    "oxc-resolver": "11.24.2"
+    "oxc-resolver": "11.24.2",
+    "picomatch": "^4.0.7",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/picomatch": "^4.0.3"
   }
 }
