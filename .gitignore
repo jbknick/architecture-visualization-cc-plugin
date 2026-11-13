@@ -5,3 +5,4 @@ plugin/dist
 *.tsbuildinfo
 .DS_Store
 evals/private/
+evals/private
