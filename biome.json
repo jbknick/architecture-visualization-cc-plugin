@@ -1,6 +1,15 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.6.7/schema.json",
-  "files": { "includes": ["**", "!**/fixtures", "!**/dist", "!**/node_modules", "!**/*.tsbuildinfo"] },
+  "files": {
+    "includes": [
+      "**",
+      "!**/fixtures",
+      "!**/dist",
+      "!**/__snapshots__",
+      "!**/node_modules",
+      "!**/*.tsbuildinfo"
+    ]
+  },
   "formatter": { "indentStyle": "space", "lineWidth": 110 },
   "javascript": { "formatter": { "quoteStyle": "double" } },
   "linter": { "enabled": true, "rules": { "preset": "recommended" } }

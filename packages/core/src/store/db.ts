@@ -1,7 +1,8 @@
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import Database from "better-sqlite3";
 import { createStore, type Store } from "./repo.js";
+import { SCHEMA_V1 } from "./schema.js";
 
 export class SchemaTooNewError extends Error {
   constructor(
@@ -23,7 +24,7 @@ const MIGRATIONS: Migration[] = [
   {
     version: 1,
     apply(db) {
-      db.exec(readFileSync(new URL("./schema.sql", import.meta.url), "utf8"));
+      db.exec(SCHEMA_V1);
     },
   },
 ];

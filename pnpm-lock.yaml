@@ -20,6 +20,12 @@ importers:
       better-sqlite3:
         specifier: 13.1.1
         version: 13.1.1
+      oxc-parser:
+        specifier: 0.158.0
+        version: 0.158.0
+      oxc-resolver:
+        specifier: 11.24.2
+        version: 11.24.2
       sqlite-vec:
         specifier: 0.1.9
         version: 0.1.9

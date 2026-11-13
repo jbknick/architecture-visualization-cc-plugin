@@ -1,0 +1,274 @@
+{
+  "workspaces": [
+    {
+      "id": "ws:.",
+      "name": "nx-fixture",
+      "dir": ".",
+      "kind": "unknown",
+      "frameworks": [],
+      "deps": [
+        "nx"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:cart",
+      "name": "cart",
+      "dir": "libs/cart",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:shop",
+      "name": "shop",
+      "dir": "apps/shop",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:apps/shop/src/main.ts",
+      "path": "apps/shop/src/main.ts",
+      "workspaceId": "ws:shop",
+      "contentHash": "f9d107c8bd3f53540cf5085ce35c6e1208f3195904db743860cf2f96091c8abf"
+    },
+    {
+      "id": "file:libs/cart/src/cart.ts",
+      "path": "libs/cart/src/cart.ts",
+      "workspaceId": "ws:cart",
+      "contentHash": "59176bf4268fc2bf09c6dd1c3f1bfb3fc115bc91710687ca07491bdc26309271"
+    },
+    {
+      "id": "file:libs/cart/src/index.ts",
+      "path": "libs/cart/src/index.ts",
+      "workspaceId": "ws:cart",
+      "contentHash": "593945827ab6acd3725bebf4fb4d12e01db119de19a5ca77f8740e9d6921b4ab"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:libs/cart/src/cart.ts#CartItem",
+      "fileId": "file:libs/cart/src/cart.ts",
+      "name": "CartItem",
+      "kind": "interface",
+      "exported": true,
+      "signature": "",
+      "startLine": 1,
+      "endLine": 1,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "ede3e18cac1affe09277f60330e396a0",
+      "shapeHash": "b5601d7403d58239843501aa8c9d904a"
+    },
+    {
+      "id": "sym:libs/cart/src/cart.ts#addItem",
+      "fileId": "file:libs/cart/src/cart.ts",
+      "name": "addItem",
+      "kind": "function",
+      "exported": true,
+      "signature": "(cart: CartItem[], item: CartItem): CartItem[]",
+      "startLine": 3,
+      "endLine": 5,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "e6bb69faa9048a694df736e08a974e9e",
+      "shapeHash": "c747131c9d2ab5790fa0cc3213da7d3d"
+    },
+    {
+      "id": "sym:libs/cart/src/cart.ts#totalPrice",
+      "fileId": "file:libs/cart/src/cart.ts",
+      "name": "totalPrice",
+      "kind": "function",
+      "exported": true,
+      "signature": "(cart: CartItem[]): number",
+      "startLine": 7,
+      "endLine": 9,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "05b7cb5fdbf907d5ee0c0288892ea453",
+      "shapeHash": "0f627aad243c5b4fdf21d0b1596e1591"
+    }
+  ],
+  "edges": [
+    {
+      "src": "file:apps/shop/src/main.ts",
+      "dst": "file:libs/cart/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "apps/shop/src/main.ts:1"
+      ],
+      "fileId": "file:apps/shop/src/main.ts"
+    },
+    {
+      "src": "file:apps/shop/src/main.ts",
+      "dst": "sym:libs/cart/src/cart.ts#addItem",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/shop/src/main.ts:3"
+      ],
+      "fileId": "file:apps/shop/src/main.ts"
+    },
+    {
+      "src": "file:apps/shop/src/main.ts",
+      "dst": "sym:libs/cart/src/cart.ts#totalPrice",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/shop/src/main.ts:4"
+      ],
+      "fileId": "file:apps/shop/src/main.ts"
+    },
+    {
+      "src": "file:libs/cart/src/cart.ts",
+      "dst": "sym:libs/cart/src/cart.ts#CartItem",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:libs/cart/src/cart.ts"
+    },
+    {
+      "src": "file:libs/cart/src/cart.ts",
+      "dst": "sym:libs/cart/src/cart.ts#CartItem",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:libs/cart/src/cart.ts"
+    },
+    {
+      "src": "file:libs/cart/src/cart.ts",
+      "dst": "sym:libs/cart/src/cart.ts#addItem",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:libs/cart/src/cart.ts"
+    },
+    {
+      "src": "file:libs/cart/src/cart.ts",
+      "dst": "sym:libs/cart/src/cart.ts#addItem",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:libs/cart/src/cart.ts"
+    },
+    {
+      "src": "file:libs/cart/src/cart.ts",
+      "dst": "sym:libs/cart/src/cart.ts#totalPrice",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:libs/cart/src/cart.ts"
+    },
+    {
+      "src": "file:libs/cart/src/cart.ts",
+      "dst": "sym:libs/cart/src/cart.ts#totalPrice",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:libs/cart/src/cart.ts"
+    },
+    {
+      "src": "file:libs/cart/src/index.ts",
+      "dst": "file:libs/cart/src/cart.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 3,
+      "evidence": [],
+      "fileId": "file:libs/cart/src/index.ts"
+    },
+    {
+      "src": "file:libs/cart/src/index.ts",
+      "dst": "sym:libs/cart/src/cart.ts#CartItem",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:libs/cart/src/index.ts"
+    },
+    {
+      "src": "file:libs/cart/src/index.ts",
+      "dst": "sym:libs/cart/src/cart.ts#addItem",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:libs/cart/src/index.ts"
+    },
+    {
+      "src": "file:libs/cart/src/index.ts",
+      "dst": "sym:libs/cart/src/cart.ts#totalPrice",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:libs/cart/src/index.ts"
+    },
+    {
+      "src": "sym:libs/cart/src/cart.ts#addItem",
+      "dst": "sym:libs/cart/src/cart.ts#CartItem",
+      "kind": "references_type",
+      "confidence": "high",
+      "count": 3,
+      "evidence": [
+        "libs/cart/src/cart.ts:3"
+      ],
+      "fileId": "file:libs/cart/src/cart.ts"
+    },
+    {
+      "src": "sym:libs/cart/src/cart.ts#totalPrice",
+      "dst": "sym:libs/cart/src/cart.ts#CartItem",
+      "kind": "references_type",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "libs/cart/src/cart.ts:7"
+      ],
+      "fileId": "file:libs/cart/src/cart.ts"
+    },
+    {
+      "src": "ws:cart",
+      "dst": "file:libs/cart/src/cart.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:libs/cart/src/cart.ts"
+    },
+    {
+      "src": "ws:cart",
+      "dst": "file:libs/cart/src/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:libs/cart/src/index.ts"
+    },
+    {
+      "src": "ws:shop",
+      "dst": "file:apps/shop/src/main.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/shop/src/main.ts"
+    }
+  ]
+}

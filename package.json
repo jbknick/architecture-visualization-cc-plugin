@@ -18,6 +18,8 @@
     "@huggingface/transformers": "4.3.2",
     "@types/node": "^26.6.6",
     "better-sqlite3": "13.1.1",
+    "oxc-parser": "0.158.0",
+    "oxc-resolver": "11.24.2",
     "sqlite-vec": "0.1.9",
     "tsup": "^9.0.0",
     "tsx": "^4.23.15",
