@@ -8,7 +8,7 @@ import {
   useReducer,
 } from "react";
 import { api, type Meta, type SearchHit } from "./api.ts";
-import { formatHash, parseHash, type Route } from "./route.ts";
+import { emptyRoute, formatHash, parseHash, type Route } from "./route.ts";
 
 export interface State {
   route: Route;
@@ -51,9 +51,14 @@ export interface Store {
   view: string | null;
   /** Merge a patch into the route and write it to the hash (creates a history entry). */
   navigate: (patch: Partial<Route>) => void;
-  /** Change view; focus is cleared and filters reset unless given. */
+  /** Change view; focus, selection, level, hops and filters are cleared. */
   setView: (view: string) => void;
-  focusNode: (id: string | null, hit?: SearchHit | null) => void;
+  /** Open a node in the inspector (`sel`). */
+  selectNode: (id: string | null, hit?: SearchHit | null) => void;
+  /** Set the view's focus (project-map subtree, ego centre) and open the node in the inspector. */
+  focusOn: (id: string, hit?: SearchHit | null) => void;
+  /** Switch to `view` centred on `id`, with that view's default options. `selectId` is shown in the inspector. */
+  openInView: (view: string, id: string, selectId?: string | null) => void;
   toggleLeft: () => void;
   setHover: (id: string | null) => void;
 }
@@ -93,7 +98,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, []);
 
-  const view = state.route.view ?? state.meta?.views.find((v) => v.enabled)?.id ?? null;
+  // With no view in the hash, land on the project map when the server has it, else the first enabled view.
+  const enabledViews = state.meta?.views.filter((v) => v.enabled) ?? [];
+  const view =
+    state.route.view ?? (enabledViews.find((v) => v.id === "project-map") ?? enabledViews[0])?.id ?? null;
 
   // An empty hash lands on the first enabled view without adding a history entry.
   useEffect(() => {
@@ -117,11 +125,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       state,
       view,
       navigate,
-      setView: (id) => navigate({ view: id, focus: null, depth: null, filters: {} }),
-      focusNode: (id, hit = null) => {
+      setView: (id) => navigate({ ...emptyRoute, view: id }),
+      selectNode: (id, hit = null) => {
         dispatch({ type: "pick", hit });
-        navigate({ focus: id });
+        navigate({ sel: id });
       },
+      focusOn: (id, hit = null) => {
+        dispatch({ type: "pick", hit });
+        // The default connection types depend on whether the centre is a function or a file, so drop a stale choice.
+        const { edgeKinds: _drop, ...filters } = state.route.filters;
+        navigate({ focus: id, sel: id, filters });
+      },
+      openInView: (id, nodeId, selectId = nodeId) =>
+        navigate({ ...emptyRoute, view: id, focus: nodeId, sel: selectId }),
       toggleLeft: () => dispatch({ type: "toggleLeft" }),
       setHover: (id) => dispatch({ type: "hover", id }),
     }),

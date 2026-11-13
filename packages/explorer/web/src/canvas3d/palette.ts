@@ -1,26 +1,5 @@
-// Workspace colours for the 3D map. Index = position in the sorted workspace list, so a repo always gets the
-// same colours. Each pair is [light-theme, dark-theme]; hues are spread so neighbours stay distinguishable.
+// Scene colours for the 3D map. Workspace colours come from the shared ../workspacePalette.ts.
 import type { Scheme } from "../theme.ts";
-
-const PAIRS: [string, string][] = [
-  ["#2f6fdb", "#6ea2ff"],
-  ["#d9480f", "#ff9a5c"],
-  ["#2b9348", "#5fd68a"],
-  ["#b43fd0", "#e08cf5"],
-  ["#c9a000", "#f2cf4a"],
-  ["#0e8f9f", "#4fd6e6"],
-  ["#d6336c", "#ff82ab"],
-  ["#5f3dc4", "#a78bfa"],
-  ["#74812b", "#b9cc5a"],
-  ["#a8461f", "#e8956b"],
-  ["#1c7ed6", "#74c0fc"],
-  ["#8a6d3b", "#d9b779"],
-];
-
-export function workspaceColor(index: number, scheme: Scheme): string {
-  const pair = PAIRS[index % PAIRS.length] as [string, string];
-  return scheme === "dark" ? pair[1] : pair[0];
-}
 
 export interface SceneTheme {
   background: string;

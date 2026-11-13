@@ -20,7 +20,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { handleApi } from "../api.js";
 import type { ApiContext, ViewResult } from "../types.js";
-import { buildMap3d, isGeneratedPath, isTestPath } from "./map3d.js";
+import { buildMap3d, isGeneratedPath } from "./map3d.js";
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), "../../../../fixtures");
 
@@ -127,22 +127,23 @@ describe("map-3d view", () => {
     });
   }
 
-  it("defaults to dirs and ignores an unknown level", () => {
+  it("defaults to dirs and treats the symbols level as dirs", () => {
     expect(view("")).toEqual(view("level=dirs"));
-    expect(view("level=nonsense")).toEqual(view("level=dirs"));
+    expect(view("level=symbols")).toEqual(view("level=dirs"));
   });
 
   it("is deterministic", () => {
     expect(JSON.stringify(view("level=files"))).toBe(JSON.stringify(view("level=files")));
   });
 
-  it("hides tests and generated files by default and shows tests on request", () => {
+  it("hides tests and generated files by default; hideTests=false shows tests", () => {
     const ids = (q: string) => view(q).nodes.map((n) => n.id);
     const testFile = "file:apps/web/src/components/Header.test.tsx";
     expect(ids("level=files")).not.toContain(testFile);
     expect(ids("level=files")).not.toContain("file:apps/web/src/routeTree.gen.ts");
-    expect(ids("level=files&filters=tests%3Dshow")).toContain(testFile);
-    expect(ids("level=files&filters=level%3Dfiles%26tests%3Dshow")).toContain(testFile);
+    const json = (o: object) => encodeURIComponent(JSON.stringify(o));
+    expect(ids(`level=files&filters=${json({ hideTests: false })}`)).toContain(testFile);
+    expect(ids("level=files&filters=hideTests=false")).toContain(testFile);
   });
 
   it("lifts imports to workspace nodes and keeps depends_on", () => {
@@ -180,10 +181,7 @@ describe("map-3d view", () => {
 });
 
 describe("path classes", () => {
-  it("recognises tests and generated files", () => {
-    expect(isTestPath("a/b.test.ts")).toBe(true);
-    expect(isTestPath("a/__tests__/x.ts")).toBe(true);
-    expect(isTestPath("a/b.ts")).toBe(false);
+  it("recognises generated files", () => {
     expect(isGeneratedPath("a/routeTree.gen.ts")).toBe(true);
     expect(isGeneratedPath("a/types.d.ts")).toBe(true);
     expect(isGeneratedPath("a/b.ts")).toBe(false);

@@ -6,8 +6,9 @@ import * as THREE from "three";
 import SpriteText from "three-spritetext";
 import type { GraphEdge, GraphNode } from "../api.ts";
 import type { Scheme } from "../theme.ts";
+import { workspaceColorAt } from "../workspacePalette.ts";
 import { type Arc, computeLayout, type Island, type Layout, type Vec3 } from "./layout.ts";
-import { type SceneTheme, sceneTheme, workspaceColor } from "./palette.ts";
+import { type SceneTheme, sceneTheme } from "./palette.ts";
 
 export interface TipInfo {
   title: string;
@@ -319,7 +320,7 @@ export class MapScene {
   }
 
   private islandColor(i: Island): THREE.Color {
-    return new THREE.Color(workspaceColor(i.index, this.scheme));
+    return new THREE.Color(workspaceColorAt(i.index, this.scheme));
   }
 
   /** Labels keep a constant on-screen size: `tick` rescales them from the camera distance every frame. */

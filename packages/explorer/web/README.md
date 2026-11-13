@@ -4,9 +4,12 @@ Vite + React + TypeScript app for `gantry map`. `pnpm build` writes it to `plugi
 
 ```
 pnpm --filter @gantry/explorer test   # vitest + jsdom component tests
-pnpm --filter @gantry/explorer e2e    # builds, then Playwright smoke test against the mock API
+pnpm --filter @gantry/explorer e2e    # builds the UI, then Playwright: a smoke test on the mock API and
+                                      # a real-server test (needs `pnpm build` at the root first)
 pnpm --filter @gantry/explorer mock   # serve the built UI plus the mock API on :4173
 ```
+
+Set `MOCK_PORT` if 4173 is taken. The real-server test copies `fixtures/pnpm-turbo` into a temp git repo, runs `gantry init` and `gantry map --no-open` with a temp `CLAUDE_PLUGIN_DATA`, and writes `docs/milestones/screenshots/{project-map,ego}-fixture.png`.
 
 ## Layout
 
@@ -15,14 +18,15 @@ Top bar (repo, short sha, view tabs, search, Cmd/Ctrl+K), left slot (filters, co
 ## Files
 
 - `src/api.ts`: the only module that calls the server. Types for `GraphNode`, `GraphEdge`, `Meta`, `NodeDetail`, `SearchHit`.
-- `src/route.ts`: hash routes `#/<view>?focus=<id>&depth=<n>&<filters>`. Every key other than `focus` and `depth` is a filter, sent to `/api/view` as one `filters` param (`k=v&k2=v2`, URL-encoded).
+- `src/route.ts`: hash routes `#/<view>?focus=<id>&level=<level>&hops=<n>&sel=<id>&<filters>`. `focus`, `level` (`workspaces|dirs|files|symbols`) and `hops` (1-4) are sent to `/api/view/:id` as query params of the same name. `sel` is the node open in the inspector and never reaches the server. Every other key is a filter (`hideTests=false`, `workspaces=ws:a|ws:b`, `edgeKinds=calls|renders`); filters are sent as one `filters` param holding a JSON object, which the server's `parseOptions` reads. List values are `|` separated.
+- `src/views/`: the project-map and ego filter panels, the ego "pick a function" prompt, and double-click ("go into") rules in `drill.ts`. Registered from `views/index.ts`.
 - `src/store.tsx`: React context + reducer. The hash is the source of truth for view, focus, depth and filters, so back/forward works.
 - `src/theme.ts`: fixed kind colors (light and dark). Written as `--kind-<name>` CSS variables; canvases import `kindColor(kind, scheme)`.
-- `mock/`: fixture graph and a small `node:http` server. Used by tests and the smoke test; not shipped.
+- `mock/`: fixture graph and a small `node:http` server. Its responses mirror the real server's shapes (including `level`, `focus`, `hops` and filter handling for `project-map` and `ego`), so change it together with `server/api.ts` and `server/views/*`. Used by component tests and the smoke test; not shipped.
 
 ## 3D map
 
-`src/canvas3d/` renders the `map-3d` view (layoutHint `force-3d`) with `3d-force-graph`/three.js in a lazy chunk. `layout.ts` is pure and deterministic (seeded by id hashes, fixed ticks, no `Math.random`); `scene.ts` is the three.js side; `MapPanel.tsx` is the left panel (level, hide tests, auto-rotate, reset camera, workspace legend). Level and test visibility travel as filters (`level=workspaces|dirs|files`, `tests=show`). The Playwright test needs software WebGL (`--use-angle=swiftshader`) and writes `docs/milestones/screenshots/map-3d.png`.
+`src/canvas3d/` renders the `map-3d` view (layoutHint `force-3d`) with `3d-force-graph`/three.js in a lazy chunk. `layout.ts` is pure and deterministic (seeded by id hashes, fixed ticks, no `Math.random`); `scene.ts` is the three.js side; `MapPanel.tsx` is the left panel (level, hide tests, auto-rotate, reset camera, workspace legend). Hash route: `#/map-3d?level=workspaces|dirs|files&hideTests=false&sel=<id>`. `level` (default `dirs`) goes through the route's `onRouteChange`, `hideTests` (default true) through the filters, like the project map. Clicking a node or island sets `sel` (inspector); the view's `focus` is not used. Double-click flies the camera to the node; it does not call `onDrill`, because the 3D map has no subtree view (the level switch is the zoom). Island colours come from `src/workspacePalette.ts`, shared with the project-map panel. The Playwright tests need software WebGL (`--use-angle=swiftshader`) and write `docs/milestones/screenshots/map-3d.png` (mock data) and `map-3d-fixture.png` (real server, pnpm-turbo fixture).
 
 ## Canvas slot
 
@@ -40,7 +44,9 @@ Register in `src/canvases.ts` (imported by `App.tsx`). `focus` is the focused no
 
 ## Filter slot
 
-`registerFilterPanel(viewId, Panel)`, where `Panel` receives `{ viewId, nodes, edges, filters, onFiltersChange }`. `onFiltersChange` writes the hash and refetches the view. Views without a panel show "This view has no filters."
+`registerFilterPanel(viewId, Panel)`, where `Panel` receives `{ viewId, nodes, edges, filters, onFiltersChange, route, onRouteChange }`. `onFiltersChange` writes the hash filters and refetches the view; `onRouteChange({ focus, level, hops })` changes the view params. Views without a panel show "This view has no filters."
+
+`registerFocusRequired(viewId, Prompt)` marks a view that needs `focus` (the ego view): no request is sent until it is set, and `Prompt` fills the centre meanwhile. A canvas may also call the optional `onDrill(id)` prop on double-click.
 
 ## Security
 

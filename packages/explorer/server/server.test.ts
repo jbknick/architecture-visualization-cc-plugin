@@ -292,6 +292,8 @@ describe("/api/meta", () => {
       counts: { workspaces: 2, files: 2, symbols: 3, edges: 4 },
       views: expect.arrayContaining([
         { id: "debug", title: "Debug: workspaces", enabled: true },
+        { id: "project-map", title: "Project map", enabled: true },
+        { id: "ego", title: "Function ego graph", enabled: true },
         { id: "map-3d", title: "3D map", enabled: true },
       ]),
     });

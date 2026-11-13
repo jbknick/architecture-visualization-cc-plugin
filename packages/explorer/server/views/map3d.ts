@@ -1,5 +1,6 @@
 import type { FileRecord } from "@gantry/core";
 import type { ApiContext, GraphEdge, GraphNode, ViewModule, ViewParams, ViewResult } from "../types.js";
+import { cmp, isTestPath, optBool } from "./options.js";
 
 export const MAP3D_LEVELS = ["workspaces", "dirs", "files"] as const;
 export type Map3dLevel = (typeof MAP3D_LEVELS)[number];
@@ -10,45 +11,37 @@ export const MAX_FILE_NODES = 3000;
 const FUNCTION_LIKE = new Set(["function", "method", "component", "hook"]);
 const NO_WORKSPACE = "ws:(none)";
 
-const TEST_RE = /(^|\/)(__tests__|__mocks__|tests?|e2e)\/|\.(test|spec)\.[cm]?[jt]sx?$/;
 const GENERATED_RE =
   /(^|\/)(generated|__generated__|\.next|\.turbo)\/|\.(generated|gen|min)\.[cm]?[jt]sx?$|\.d\.[cm]?ts$/;
 
-export function isTestPath(p: string): boolean {
-  return TEST_RE.test(p);
-}
 export function isGeneratedPath(p: string): boolean {
   return GENERATED_RE.test(p);
 }
 
 interface Options {
   level: Map3dLevel;
-  showTests: boolean;
-  showGenerated: boolean;
+  hideTests: boolean;
+  hideGenerated: boolean;
   maxFileNodes: number;
 }
 
-/** Reads `level`, `tests` (`show` to include test files) and `generated` (`show`) from the param or the `filters` tokens. */
-export function parseOptions(params: ViewParams, maxFileNodes = MAX_FILE_NODES): Options {
-  const kv = new Map<string, string>();
-  for (const token of params.filters) {
-    // The web shell sends one `k=v&k2=v2` string; the documented form is comma-separated `k=v`.
-    for (const pair of token.split("&")) {
-      const eq = pair.indexOf("=");
-      if (eq > 0) kv.set(pair.slice(0, eq).trim(), pair.slice(eq + 1).trim());
-    }
-  }
-  const raw = params.level ?? kv.get("level") ?? DEFAULT_LEVEL;
+/**
+ * `level` comes from `ViewParams.level` (absent or unknown falls back to `dirs`); `hideTests` and
+ * `hideGenerated` (both default true) come from the shared view options, like the project map's.
+ */
+export function readOptions(params: ViewParams, maxFileNodes = MAX_FILE_NODES): Options {
+  const raw = params.level ?? DEFAULT_LEVEL;
   const level = (MAP3D_LEVELS as readonly string[]).includes(raw) ? (raw as Map3dLevel) : DEFAULT_LEVEL;
   return {
     level,
-    showTests: kv.get("tests") === "show",
-    showGenerated: kv.get("generated") === "show",
+    hideTests: optBool(params, "hideTests", true),
+    hideGenerated: optBool(params, "hideGenerated", true),
     maxFileNodes,
   };
 }
 
-const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+const joinPath = (base: string, dir: string): string =>
+  base === "." ? dir : dir === "." ? base : `${base}/${dir}`;
 
 interface FileInfo {
   rec: FileRecord;
@@ -79,7 +72,7 @@ export function buildMap3d(
   params: ViewParams,
   maxFileNodes = MAX_FILE_NODES,
 ): ViewResult {
-  const opts = parseOptions(params, maxFileNodes);
+  const opts = readOptions(params, maxFileNodes);
   const workspaces = store.listWorkspaces();
   const wsById = new Map(workspaces.map((w) => [w.id, w]));
   const wsDir = (id: string): string => wsById.get(id)?.dir ?? ".";
@@ -93,8 +86,8 @@ export function buildMap3d(
   const files = new Map<string, FileInfo>();
   for (const rec of store.effectiveFiles()) {
     if (rec.deleted) continue;
-    if (!opts.showTests && isTestPath(rec.path)) continue;
-    if (!opts.showGenerated && isGeneratedPath(rec.path)) continue;
+    if (opts.hideTests && isTestPath(rec.path)) continue;
+    if (opts.hideGenerated && isGeneratedPath(rec.path)) continue;
     const wsId = rec.workspaceId ?? NO_WORKSPACE;
     const base = wsDir(wsId);
     const rel = base !== "." && rec.path.startsWith(`${base}/`) ? rec.path.slice(base.length + 1) : rec.path;
@@ -116,6 +109,8 @@ export function buildMap3d(
       kind: "workspace",
       label: w.name,
       size: wsFns.get(w.id) ?? 0,
+      path: w.dir,
+      stats: { files: wsFiles.get(w.id) ?? 0, functions: wsFns.get(w.id) ?? 0 },
       badges: [w.kind, `${wsFiles.get(w.id) ?? 0} files`, `${wsFns.get(w.id) ?? 0} functions`],
     }));
   if (wsFiles.has(NO_WORKSPACE)) {
@@ -124,6 +119,7 @@ export function buildMap3d(
       kind: "workspace",
       label: "(no workspace)",
       size: wsFns.get(NO_WORKSPACE) ?? 0,
+      stats: { files: wsFiles.get(NO_WORKSPACE) ?? 0, functions: wsFns.get(NO_WORKSPACE) ?? 0 },
       badges: ["package", `${wsFiles.get(NO_WORKSPACE)} files`, `${wsFns.get(NO_WORKSPACE)} functions`],
     });
   }
@@ -151,6 +147,8 @@ export function buildMap3d(
         label: d.dir === "." ? "(root)" : d.dir,
         parent: d.wsId,
         size: d.fns,
+        path: joinPath(wsDir(d.wsId), d.dir),
+        stats: { files: d.files, functions: d.fns },
         badges: [`${d.files} files`, `${d.fns} functions`],
       });
     }
@@ -166,6 +164,8 @@ export function buildMap3d(
         label: f.rec.path.slice(f.rec.path.lastIndexOf("/") + 1),
         parent: f.wsId,
         size: f.fns,
+        path: f.rec.path,
+        stats: { functions: f.fns },
         badges: [`${f.fns} functions`],
       });
     }
@@ -184,6 +184,8 @@ export function buildMap3d(
         label: `+${d.files} files`,
         parent: d.wsId,
         size: d.fns,
+        path: joinPath(wsDir(d.wsId), d.dir),
+        stats: { files: d.files, functions: d.fns },
         badges: [`${d.files} files`, `${d.fns} functions`, d.dir === "." ? "(root)" : d.dir],
       });
     }

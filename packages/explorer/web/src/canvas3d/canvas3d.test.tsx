@@ -2,6 +2,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { map3dView } from "../../mock/fixture.ts";
+import type { ViewLevel } from "../api.ts";
+import { emptyRoute } from "../route.ts";
 import { installMockFetch, renderApp } from "../testUtils.tsx";
 import { Canvas3D } from "./index.tsx";
 import { MapPanel } from "./MapPanel.tsx";
@@ -30,13 +32,15 @@ describe("WebGL fallback", () => {
     renderApp("#/map-3d");
     expect(await screen.findByText("3D view needs WebGL")).toBeTruthy();
     expect(screen.getByLabelText("Hide tests")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "3D map" }).getAttribute("aria-selected")).toBe("true");
   });
 });
 
 describe("MapPanel", () => {
   const data = map3dView("dirs");
-  const setup = (filters: Record<string, string> = {}) => {
+  const setup = (filters: Record<string, string> = {}, level: ViewLevel | null = null) => {
     const onFiltersChange = vi.fn();
+    const onRouteChange = vi.fn();
     render(
       <MapPanel
         viewId="map-3d"
@@ -44,26 +48,34 @@ describe("MapPanel", () => {
         edges={data.edges}
         filters={filters}
         onFiltersChange={onFiltersChange}
+        route={{ ...emptyRoute, view: "map-3d", level, filters }}
+        onRouteChange={onRouteChange}
       />,
     );
-    return onFiltersChange;
+    return { onFiltersChange, onRouteChange };
   };
 
   it("switches level and keeps Folders as the default", () => {
-    const change = setup();
+    const { onRouteChange } = setup();
     expect((screen.getByLabelText("Folders") as HTMLInputElement).checked).toBe(true);
     fireEvent.click(screen.getByLabelText("Files"));
-    expect(change).toHaveBeenCalledWith({ level: "files" });
+    expect(onRouteChange).toHaveBeenCalledWith({ level: "files" });
     fireEvent.click(screen.getByLabelText("Workspaces"));
-    expect(change).toHaveBeenLastCalledWith({ level: "workspaces" });
+    expect(onRouteChange).toHaveBeenLastCalledWith({ level: "workspaces" });
   });
 
   it("hides tests by default and toggles the filter", () => {
-    const change = setup();
+    const { onFiltersChange } = setup();
     const box = screen.getByLabelText("Hide tests") as HTMLInputElement;
     expect(box.checked).toBe(true);
     fireEvent.click(box);
-    expect(change).toHaveBeenCalledWith({ tests: "show" });
+    expect(onFiltersChange).toHaveBeenCalledWith({ hideTests: "false" });
+  });
+
+  it("reads the level from the route and shows tests when hideTests is false", () => {
+    setup({ hideTests: "false" }, "files");
+    expect((screen.getByLabelText("Files") as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText("Hide tests") as HTMLInputElement).checked).toBe(false);
   });
 
   it("lists workspaces with kind and counts; clicking a row focuses that island", () => {

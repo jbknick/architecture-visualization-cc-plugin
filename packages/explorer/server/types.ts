@@ -8,8 +8,22 @@ export interface GraphNode {
   size: number;
   color?: string;
   badges?: string[];
+  /** Repo-relative path of the file (or directory) the node stands for. */
+  path?: string;
+  /** Counts under this node; which keys are set depends on the node kind. */
+  stats?: NodeStats;
+  /** Ego view only: caller side ("in"), callee side ("out") or the focus itself. */
+  side?: "in" | "out" | "focus";
+  /** Ego view only: distance from the focus in hops. */
+  hop?: number;
   x?: number;
   y?: number;
+}
+
+export interface NodeStats {
+  files?: number;
+  functions?: number;
+  loc?: number;
 }
 
 export interface GraphEdge {
@@ -19,9 +33,22 @@ export interface GraphEdge {
   kind: string;
   weight: number;
   confidence: "high" | "low";
+  /** Project map: number of call/render/hook edges between the same two nodes. */
+  uses?: number;
 }
 
-export type LayoutHint = "force" | "force-3d" | "layered" | "tree" | "grid";
+/** The canvas layouts defined by issue #36. */
+export type LayoutHint =
+  | "nested-elk"
+  | "elk-layered"
+  | "radial"
+  | "force"
+  | "tree-lr"
+  | "columns"
+  | "clusters"
+  | "force-3d";
+
+export type ViewLevel = "workspaces" | "dirs" | "files" | "symbols";
 
 export interface ViewResult {
   nodes: GraphNode[];
@@ -32,10 +59,15 @@ export interface ViewResult {
 export interface ViewParams {
   focus?: string;
   depth?: number;
-  /** Drill level for views that have one (`level` query param); the view validates it. */
-  level?: string;
+  /** Project map: how deep the hierarchy goes. */
+  level?: ViewLevel;
   /** The comma-separated `filters` query value, split. */
   filters: string[];
+  /**
+   * Parsed view options: the `filters` value (JSON object, or comma-separated `key=value`; list values
+   * separated by `|`) layered over any other plain query parameters. Absent in older callers.
+   */
+  options?: Record<string, unknown>;
 }
 
 export interface ApiContext {

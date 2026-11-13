@@ -23,7 +23,7 @@ test("search Button, open the inspector, deep link survives reload", async ({ pa
   await expect(inspector.getByRole("heading", { name: "Button" })).toBeVisible();
   await expect(inspector.getByText("Generated description — may be wrong")).toBeVisible();
   await expect(inspector.getByLabel(/Source of/)).toContainText("export function Button");
-  await expect(page).toHaveURL(/#\/debug\?focus=sym%3Apackages%2Fui%2Fsrc%2Fbutton\.tsx%23Button/);
+  await expect(page).toHaveURL(/#\/project-map\?sel=sym%3Apackages%2Fui%2Fsrc%2Fbutton\.tsx%23Button/);
 
   mkdirSync(shots, { recursive: true });
   await page.screenshot({ path: resolve(shots, "explorer-shell.png") });

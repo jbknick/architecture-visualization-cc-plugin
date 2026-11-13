@@ -1,0 +1,1816 @@
+{
+  "workspaces": [
+    {
+      "id": "ws:.",
+      "name": "pnpm-turbo-root",
+      "dir": ".",
+      "kind": "unknown",
+      "frameworks": [],
+      "deps": [
+        "turbo"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:@acme/api",
+      "name": "@acme/api",
+      "dir": "apps/api",
+      "kind": "app",
+      "frameworks": [
+        "hono",
+        "@orpc/server"
+      ],
+      "deps": [
+        "@acme/db",
+        "@orpc/server",
+        "hono"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:@acme/db",
+      "name": "@acme/db",
+      "dir": "packages/db",
+      "kind": "package",
+      "frameworks": [
+        "drizzle-orm"
+      ],
+      "deps": [
+        "drizzle-orm"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:@acme/ui",
+      "name": "@acme/ui",
+      "dir": "packages/ui",
+      "kind": "package",
+      "frameworks": [
+        "react"
+      ],
+      "deps": [
+        "react"
+      ],
+      "exportsMap": [
+        {
+          "subpath": ".",
+          "target": "./src/index.ts"
+        },
+        {
+          "subpath": "./button",
+          "target": "./src/button.tsx"
+        }
+      ]
+    },
+    {
+      "id": "ws:@acme/utils",
+      "name": "@acme/utils",
+      "dir": "packages/utils",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:@acme/web",
+      "name": "@acme/web",
+      "dir": "apps/web",
+      "kind": "app",
+      "frameworks": [
+        "react",
+        "@tanstack/react-router"
+      ],
+      "deps": [
+        "@acme/ui",
+        "@acme/utils",
+        "@tanstack/react-router",
+        "react"
+      ],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:apps/api/package.json",
+      "path": "apps/api/package.json",
+      "workspaceId": "ws:@acme/api",
+      "contentHash": "6bfaa526d8e045950ce7eface3c279b28a411cc07b88b06a63ef9ba4403a1af8"
+    },
+    {
+      "id": "file:apps/api/src/app.ts",
+      "path": "apps/api/src/app.ts",
+      "workspaceId": "ws:@acme/api",
+      "contentHash": "586c4f38192dd885c733455516c33bc7bcd01cc72a6e41856a54f665d53a5054"
+    },
+    {
+      "id": "file:apps/api/src/index.ts",
+      "path": "apps/api/src/index.ts",
+      "workspaceId": "ws:@acme/api",
+      "contentHash": "edd07d974cfaae9f8a66f82fff4da4a3543702ff309f20bf640a2ec709798f53"
+    },
+    {
+      "id": "file:apps/api/src/router.ts",
+      "path": "apps/api/src/router.ts",
+      "workspaceId": "ws:@acme/api",
+      "contentHash": "d0a4587103e96e793299e0beaad4b25e5b10d40cdebc0940693747d91068592b"
+    },
+    {
+      "id": "file:apps/web/package.json",
+      "path": "apps/web/package.json",
+      "workspaceId": "ws:@acme/web",
+      "contentHash": "e11dcf2ee40d1282595de1bf74a25bef58f6452302d7358874af821437fdf89e"
+    },
+    {
+      "id": "file:apps/web/src/components/Header.tsx",
+      "path": "apps/web/src/components/Header.tsx",
+      "workspaceId": "ws:@acme/web",
+      "contentHash": "9df027e26363f794203f896559ee51cd4f01d67908653f9609ab77a6e1233aea"
+    },
+    {
+      "id": "file:apps/web/src/components/PostList.tsx",
+      "path": "apps/web/src/components/PostList.tsx",
+      "workspaceId": "ws:@acme/web",
+      "contentHash": "6536b70858a8855e179a1a4cb0a6cf8f61d9b42191071f9206c65a1a88a5df32"
+    },
+    {
+      "id": "file:apps/web/src/hooks/useDebounce.ts",
+      "path": "apps/web/src/hooks/useDebounce.ts",
+      "workspaceId": "ws:@acme/web",
+      "contentHash": "956350a526c6a647409e7716e99965d0f9efe5311adba46062b78f2c1c9d839a"
+    },
+    {
+      "id": "file:apps/web/src/lib/slug.ts",
+      "path": "apps/web/src/lib/slug.ts",
+      "workspaceId": "ws:@acme/web",
+      "contentHash": "ad9b5f3bdaa0b01bc00798c9ec96673e908814acdaea882643c185b8c9ec4103"
+    },
+    {
+      "id": "file:apps/web/src/routes/__root.tsx",
+      "path": "apps/web/src/routes/__root.tsx",
+      "workspaceId": "ws:@acme/web",
+      "contentHash": "4159d7bd018a6fbc9c2e52843d542785601e67fab811cc1516092e44bd81b538"
+    },
+    {
+      "id": "file:apps/web/src/routes/index.tsx",
+      "path": "apps/web/src/routes/index.tsx",
+      "workspaceId": "ws:@acme/web",
+      "contentHash": "a3bcdac0dd3f47e3b2c6657e4ed15535ae2359bdcaccdc1000b03f7c9e6dc96c"
+    },
+    {
+      "id": "file:apps/web/src/routes/posts.$postId.tsx",
+      "path": "apps/web/src/routes/posts.$postId.tsx",
+      "workspaceId": "ws:@acme/web",
+      "contentHash": "ed67df2529c5d0307dd93c30a94e6b6038f2191bad8fc0fd2782e665c58d04fd"
+    },
+    {
+      "id": "file:apps/web/src/routes/settings/profile.tsx",
+      "path": "apps/web/src/routes/settings/profile.tsx",
+      "workspaceId": "ws:@acme/web",
+      "contentHash": "5ecd8f61d2de63385c19cc45b5f46d7294a066408b0cbf14f895b0ab4d526a99"
+    },
+    {
+      "id": "file:packages/db/src/index.ts",
+      "path": "packages/db/src/index.ts",
+      "workspaceId": "ws:@acme/db",
+      "contentHash": "bee55050e5fa4e8237f711325e8c39e463a9d6567964b98286154025f75afd87"
+    },
+    {
+      "id": "file:packages/db/src/queries.ts",
+      "path": "packages/db/src/queries.ts",
+      "workspaceId": "ws:@acme/db",
+      "contentHash": "5425eb309ec58f998fdb0f0a9dcafcd017b0853c344255c38ac0a45ddb008353"
+    },
+    {
+      "id": "file:packages/db/src/schema.ts",
+      "path": "packages/db/src/schema.ts",
+      "workspaceId": "ws:@acme/db",
+      "contentHash": "20b5ed83a34c4fd38d5682354c72f8e8e526561803d446dbd6b3e03368182015"
+    },
+    {
+      "id": "file:packages/ui/src/button.tsx",
+      "path": "packages/ui/src/button.tsx",
+      "workspaceId": "ws:@acme/ui",
+      "contentHash": "7f0d73536ec239b69803013e92ba0df1f18186fd8a784c366b5aaca1eaf53371"
+    },
+    {
+      "id": "file:packages/ui/src/card.tsx",
+      "path": "packages/ui/src/card.tsx",
+      "workspaceId": "ws:@acme/ui",
+      "contentHash": "a24b654756b525a260816628007786bdc365aaa39a0dfb91a5aebbf55bbeefb9"
+    },
+    {
+      "id": "file:packages/ui/src/index.ts",
+      "path": "packages/ui/src/index.ts",
+      "workspaceId": "ws:@acme/ui",
+      "contentHash": "cf92efb6f9ecd429bda8c570ba213ae9300e2363e04b026a1ccf5563045cc6d7"
+    },
+    {
+      "id": "file:packages/ui/src/internal.ts",
+      "path": "packages/ui/src/internal.ts",
+      "workspaceId": "ws:@acme/ui",
+      "contentHash": "7c24d19c77ece2bf9b6dbca63064cfb6b6dd1ea02a905aa8ae826021050b0458"
+    },
+    {
+      "id": "file:packages/utils/src/date.ts",
+      "path": "packages/utils/src/date.ts",
+      "workspaceId": "ws:@acme/utils",
+      "contentHash": "bfd82675e95a1c1ae8e3fd27e61ed217d233397a8dacaa208f02d6f047e228a2"
+    },
+    {
+      "id": "file:packages/utils/src/index.ts",
+      "path": "packages/utils/src/index.ts",
+      "workspaceId": "ws:@acme/utils",
+      "contentHash": "ff00895ff692d4445f90a55be0fc929006564eeea3f374f9bbe8b01d1f1669a3"
+    },
+    {
+      "id": "file:packages/utils/src/slug.ts",
+      "path": "packages/utils/src/slug.ts",
+      "workspaceId": "ws:@acme/utils",
+      "contentHash": "c82d0b79f2c37a260d3f092d6071f2bfc2831eaa47092393062049122a98354b"
+    },
+    {
+      "id": "file:packages/utils/src/time.ts",
+      "path": "packages/utils/src/time.ts",
+      "workspaceId": "ws:@acme/utils",
+      "contentHash": "8931db956997e62df917bd48d946fb217fa3c63b1fa636f70d0d3a8aa479df24"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:apps/api/src/app.ts#app",
+      "fileId": "file:apps/api/src/app.ts",
+      "name": "app",
+      "kind": "const",
+      "exported": true,
+      "signature": "",
+      "startLine": 4,
+      "endLine": 4,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "06f5df2f90687e7a612ff6e584fd1fb5",
+      "shapeHash": "0ced2a1203dbf226767528f661c94b92"
+    },
+    {
+      "id": "sym:apps/api/src/router.ts#router",
+      "fileId": "file:apps/api/src/router.ts",
+      "name": "router",
+      "kind": "const",
+      "exported": true,
+      "signature": "",
+      "startLine": 4,
+      "endLine": 9,
+      "loc": 6,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "f8277f0160772eb2d331e2a29e523404",
+      "shapeHash": "c5729d49a8eae801cb9531328e4a1dcd"
+    },
+    {
+      "id": "sym:apps/web/src/components/Header.tsx#Header",
+      "fileId": "file:apps/web/src/components/Header.tsx",
+      "name": "Header",
+      "kind": "component",
+      "exported": true,
+      "signature": "({ title }: { title: string })",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "bbb205ce805795aa5deee6efebbcc25b",
+      "shapeHash": "bcae0954b4d7b19aa0033658bf34069d"
+    },
+    {
+      "id": "sym:apps/web/src/components/PostList.tsx#PostList",
+      "fileId": "file:apps/web/src/components/PostList.tsx",
+      "name": "PostList",
+      "kind": "component",
+      "exported": true,
+      "signature": "()",
+      "startLine": 5,
+      "endLine": 14,
+      "loc": 10,
+      "complexity": 1,
+      "stmtCount": 3,
+      "exactHash": "78a2d1af4e92db59e2fe0ed2784659e8",
+      "shapeHash": "6b6c5284bb2d9b9b2605ece390aabf1e"
+    },
+    {
+      "id": "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "fileId": "file:apps/web/src/hooks/useDebounce.ts",
+      "name": "useDebounce",
+      "kind": "hook",
+      "exported": true,
+      "signature": "<T>(value: T, delayMs: number): T",
+      "startLine": 3,
+      "endLine": 10,
+      "loc": 8,
+      "complexity": 1,
+      "stmtCount": 5,
+      "exactHash": "fe11dc180c411abe1732cda74471fd55",
+      "shapeHash": "3fa9e56041697505ca92e5d434d06b65"
+    },
+    {
+      "id": "sym:apps/web/src/lib/slug.ts#slugify",
+      "fileId": "file:apps/web/src/lib/slug.ts",
+      "name": "slugify",
+      "kind": "function",
+      "exported": true,
+      "signature": "(input: string): string",
+      "startLine": 1,
+      "endLine": 8,
+      "loc": 8,
+      "complexity": 1,
+      "stmtCount": 6,
+      "exactHash": "8443c45ca4363d0363ffaab88cb18427",
+      "shapeHash": "7807c63975879dc5e3fd5ecef8e77794"
+    },
+    {
+      "id": "sym:apps/web/src/routes/__root.tsx#RootLayout",
+      "fileId": "file:apps/web/src/routes/__root.tsx",
+      "name": "RootLayout",
+      "kind": "component",
+      "exported": false,
+      "signature": "()",
+      "startLine": 5,
+      "endLine": 11,
+      "loc": 7,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "fd32a368a6e3a8bc444b0998016bd3c5",
+      "shapeHash": "a7006ffd94f1fbb863e1787965317785"
+    },
+    {
+      "id": "sym:apps/web/src/routes/__root.tsx#Route",
+      "fileId": "file:apps/web/src/routes/__root.tsx",
+      "name": "Route",
+      "kind": "const",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 3,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "493b3c64aa48ad7601304077336fae18",
+      "shapeHash": "f143d124d36e94c8fa5901d06e03ee17"
+    },
+    {
+      "id": "sym:apps/web/src/routes/index.tsx#HomePage",
+      "fileId": "file:apps/web/src/routes/index.tsx",
+      "name": "HomePage",
+      "kind": "component",
+      "exported": false,
+      "signature": "()",
+      "startLine": 7,
+      "endLine": 14,
+      "loc": 8,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "d759eae095fad73be3e87600b83c1075",
+      "shapeHash": "f8b955a8d55a83c5daa8aa5b714ac3b7"
+    },
+    {
+      "id": "sym:apps/web/src/routes/index.tsx#Route",
+      "fileId": "file:apps/web/src/routes/index.tsx",
+      "name": "Route",
+      "kind": "const",
+      "exported": true,
+      "signature": "",
+      "startLine": 5,
+      "endLine": 5,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "50e0d93492826bd90bc812ba8e86ee9f",
+      "shapeHash": "5e3e78071be790470b170d6411f7d783"
+    },
+    {
+      "id": "sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx",
+      "name": "PostPage",
+      "kind": "component",
+      "exported": false,
+      "signature": "()",
+      "startLine": 7,
+      "endLine": 14,
+      "loc": 8,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "2218e81375d3e3ef6b719e3b955d1a7e",
+      "shapeHash": "dafc080e75306a066b9864246c27bd48"
+    },
+    {
+      "id": "sym:apps/web/src/routes/posts.$postId.tsx#Route",
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx",
+      "name": "Route",
+      "kind": "const",
+      "exported": true,
+      "signature": "",
+      "startLine": 5,
+      "endLine": 5,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "9547deb0ee7203cbc717b6281dec6703",
+      "shapeHash": "5e3e78071be790470b170d6411f7d783"
+    },
+    {
+      "id": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx",
+      "name": "ProfilePage",
+      "kind": "component",
+      "exported": false,
+      "signature": "()",
+      "startLine": 6,
+      "endLine": 8,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "0aea25c6b5571a1371322af864c4b964",
+      "shapeHash": "54388dfa9576cbd259c99310a0c8143b"
+    },
+    {
+      "id": "sym:apps/web/src/routes/settings/profile.tsx#Route",
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx",
+      "name": "Route",
+      "kind": "const",
+      "exported": true,
+      "signature": "",
+      "startLine": 4,
+      "endLine": 4,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "25f6045580e003826026d98d9ff9af68",
+      "shapeHash": "5e3e78071be790470b170d6411f7d783"
+    },
+    {
+      "id": "sym:packages/db/src/queries.ts#createPost",
+      "fileId": "file:packages/db/src/queries.ts",
+      "name": "createPost",
+      "kind": "function",
+      "exported": true,
+      "signature": "(input: { title: string; authorId: string })",
+      "startLine": 15,
+      "endLine": 17,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "19cb7a1b268c6af5691314cea035bb44",
+      "shapeHash": "7b50a0d8a39ec4c8ed2c7386c749ef4d"
+    },
+    {
+      "id": "sym:packages/db/src/queries.ts#getPost",
+      "fileId": "file:packages/db/src/queries.ts",
+      "name": "getPost",
+      "kind": "function",
+      "exported": true,
+      "signature": "(id: string)",
+      "startLine": 11,
+      "endLine": 13,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "45463092bc7d67e7934f72af09ba2690",
+      "shapeHash": "d05895bd756312c60a6588ea2e79f696"
+    },
+    {
+      "id": "sym:packages/db/src/queries.ts#listPosts",
+      "fileId": "file:packages/db/src/queries.ts",
+      "name": "listPosts",
+      "kind": "function",
+      "exported": true,
+      "signature": "()",
+      "startLine": 7,
+      "endLine": 9,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "e59b93fa1a4f31de6cc91a3c14bb8a9a",
+      "shapeHash": "b1af1dd673e81692d066db883e2d0ec1"
+    },
+    {
+      "id": "sym:packages/db/src/schema.ts#posts",
+      "fileId": "file:packages/db/src/schema.ts",
+      "name": "posts",
+      "kind": "const",
+      "exported": true,
+      "signature": "",
+      "startLine": 8,
+      "endLine": 13,
+      "loc": 6,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "96e08878a9203b4b5d31980abbee6f6b",
+      "shapeHash": "fa023f80c823f2df67a2d3648b797eb6"
+    },
+    {
+      "id": "sym:packages/db/src/schema.ts#users",
+      "fileId": "file:packages/db/src/schema.ts",
+      "name": "users",
+      "kind": "const",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 6,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "6e1557e0e52b5e01cccb7e0c3cca711b",
+      "shapeHash": "a0391c86b72d35b1de912a36cfa4ed5a"
+    },
+    {
+      "id": "sym:packages/ui/src/button.tsx#Button",
+      "fileId": "file:packages/ui/src/button.tsx",
+      "name": "Button",
+      "kind": "component",
+      "exported": true,
+      "signature": "({ label, onClick }: { label: string; onClick?: () => void })",
+      "startLine": 1,
+      "endLine": 7,
+      "loc": 7,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "0e439a2d9d4ca227e68cbd5b384e7f11",
+      "shapeHash": "2669208887a3e01284627baa4ead52ca"
+    },
+    {
+      "id": "sym:packages/ui/src/card.tsx#Card",
+      "fileId": "file:packages/ui/src/card.tsx",
+      "name": "Card",
+      "kind": "component",
+      "exported": true,
+      "signature": "({ title }: { title: string })",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "5460dfb423cfa82c5dd1e6efb0a1ee2f",
+      "shapeHash": "af5df38522efa39121efa25df5134d87"
+    },
+    {
+      "id": "sym:packages/ui/src/internal.ts#INTERNAL_PADDING",
+      "fileId": "file:packages/ui/src/internal.ts",
+      "name": "INTERNAL_PADDING",
+      "kind": "const",
+      "exported": true,
+      "signature": "",
+      "startLine": 2,
+      "endLine": 2,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "c86085a25a6272bd8f6a6ff3013a791b",
+      "shapeHash": "287a67281d1cfff082d49df03d811ab4"
+    },
+    {
+      "id": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "fileId": "file:packages/utils/src/date.ts",
+      "name": "formatRelativeDate",
+      "kind": "function",
+      "exported": true,
+      "signature": "(date: Date, now: Date = new Date()): string",
+      "startLine": 1,
+      "endLine": 11,
+      "loc": 11,
+      "complexity": 4,
+      "stmtCount": 12,
+      "exactHash": "b3a2569c57ad6ce3a47213705e72cbde",
+      "shapeHash": "ee6b2e3bd22eb8f336b2d0171755b3a0"
+    },
+    {
+      "id": "sym:packages/utils/src/slug.ts#SLUG_VERSION",
+      "fileId": "file:packages/utils/src/slug.ts",
+      "name": "SLUG_VERSION",
+      "kind": "const",
+      "exported": true,
+      "signature": "",
+      "startLine": 11,
+      "endLine": 11,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "dde0ac16a8090b2b31a982fdbeb9c3ec",
+      "shapeHash": "3c90e9c916bcc348a4da5137ba4cd487"
+    },
+    {
+      "id": "sym:packages/utils/src/slug.ts#slugify",
+      "fileId": "file:packages/utils/src/slug.ts",
+      "name": "slugify",
+      "kind": "function",
+      "exported": false,
+      "signature": "(input: string): string",
+      "startLine": 2,
+      "endLine": 9,
+      "loc": 8,
+      "complexity": 1,
+      "stmtCount": 6,
+      "exactHash": "8443c45ca4363d0363ffaab88cb18427",
+      "shapeHash": "7807c63975879dc5e3fd5ecef8e77794"
+    },
+    {
+      "id": "sym:packages/utils/src/time.ts#parseTimestamp",
+      "fileId": "file:packages/utils/src/time.ts",
+      "name": "parseTimestamp",
+      "kind": "function",
+      "exported": true,
+      "signature": "(value: Date, current: Date = new Date()): string",
+      "startLine": 2,
+      "endLine": 12,
+      "loc": 11,
+      "complexity": 4,
+      "stmtCount": 12,
+      "exactHash": "1082d71e737ed67257c8097c84ab9f38",
+      "shapeHash": "ee6b2e3bd22eb8f336b2d0171755b3a0"
+    }
+  ],
+  "edges": [
+    {
+      "src": "file:apps/api/src/app.ts",
+      "dst": "ext:hono",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/api/src/app.ts:1"
+      ],
+      "fileId": "file:apps/api/src/app.ts"
+    },
+    {
+      "src": "file:apps/api/src/app.ts",
+      "dst": "file:packages/db/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "apps/api/src/app.ts:2"
+      ],
+      "fileId": "file:apps/api/src/app.ts"
+    },
+    {
+      "src": "file:apps/api/src/app.ts",
+      "dst": "sym:apps/api/src/app.ts#app",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "apps/api/src/app.ts:6",
+        "apps/api/src/app.ts:11"
+      ],
+      "fileId": "file:apps/api/src/app.ts"
+    },
+    {
+      "src": "file:apps/api/src/app.ts",
+      "dst": "sym:apps/api/src/app.ts#app",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/api/src/app.ts"
+    },
+    {
+      "src": "file:apps/api/src/app.ts",
+      "dst": "sym:apps/api/src/app.ts#app",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/api/src/app.ts"
+    },
+    {
+      "src": "file:apps/api/src/app.ts",
+      "dst": "sym:packages/db/src/queries.ts#createPost",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/api/src/app.ts:13"
+      ],
+      "fileId": "file:apps/api/src/app.ts"
+    },
+    {
+      "src": "file:apps/api/src/app.ts",
+      "dst": "sym:packages/db/src/queries.ts#getPost",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/api/src/app.ts:7"
+      ],
+      "fileId": "file:apps/api/src/app.ts"
+    },
+    {
+      "src": "file:apps/api/src/index.ts",
+      "dst": "file:apps/api/src/app.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/api/src/index.ts"
+    },
+    {
+      "src": "file:apps/api/src/index.ts",
+      "dst": "file:apps/api/src/router.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/api/src/index.ts"
+    },
+    {
+      "src": "file:apps/api/src/index.ts",
+      "dst": "sym:apps/api/src/app.ts#app",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/api/src/index.ts"
+    },
+    {
+      "src": "file:apps/api/src/index.ts",
+      "dst": "sym:apps/api/src/router.ts#router",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/api/src/index.ts"
+    },
+    {
+      "src": "file:apps/api/src/router.ts",
+      "dst": "ext:@orpc/server",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/api/src/router.ts:1"
+      ],
+      "fileId": "file:apps/api/src/router.ts"
+    },
+    {
+      "src": "file:apps/api/src/router.ts",
+      "dst": "file:packages/db/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "apps/api/src/router.ts:2"
+      ],
+      "fileId": "file:apps/api/src/router.ts"
+    },
+    {
+      "src": "file:apps/api/src/router.ts",
+      "dst": "sym:apps/api/src/router.ts#router",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/api/src/router.ts"
+    },
+    {
+      "src": "file:apps/api/src/router.ts",
+      "dst": "sym:apps/api/src/router.ts#router",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/api/src/router.ts"
+    },
+    {
+      "src": "file:apps/web/src/components/Header.tsx",
+      "dst": "sym:apps/web/src/components/Header.tsx#Header",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/components/Header.tsx"
+    },
+    {
+      "src": "file:apps/web/src/components/Header.tsx",
+      "dst": "sym:apps/web/src/components/Header.tsx#Header",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/components/Header.tsx"
+    },
+    {
+      "src": "file:apps/web/src/components/PostList.tsx",
+      "dst": "ext:react",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/components/PostList.tsx:1"
+      ],
+      "fileId": "file:apps/web/src/components/PostList.tsx"
+    },
+    {
+      "src": "file:apps/web/src/components/PostList.tsx",
+      "dst": "file:apps/web/src/hooks/useDebounce.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/components/PostList.tsx:2"
+      ],
+      "fileId": "file:apps/web/src/components/PostList.tsx"
+    },
+    {
+      "src": "file:apps/web/src/components/PostList.tsx",
+      "dst": "file:apps/web/src/lib/slug.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/components/PostList.tsx:3"
+      ],
+      "fileId": "file:apps/web/src/components/PostList.tsx"
+    },
+    {
+      "src": "file:apps/web/src/components/PostList.tsx",
+      "dst": "sym:apps/web/src/components/PostList.tsx#PostList",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/components/PostList.tsx"
+    },
+    {
+      "src": "file:apps/web/src/components/PostList.tsx",
+      "dst": "sym:apps/web/src/components/PostList.tsx#PostList",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/components/PostList.tsx"
+    },
+    {
+      "src": "file:apps/web/src/hooks/useDebounce.ts",
+      "dst": "ext:react",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "apps/web/src/hooks/useDebounce.ts:1"
+      ],
+      "fileId": "file:apps/web/src/hooks/useDebounce.ts"
+    },
+    {
+      "src": "file:apps/web/src/hooks/useDebounce.ts",
+      "dst": "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/hooks/useDebounce.ts"
+    },
+    {
+      "src": "file:apps/web/src/hooks/useDebounce.ts",
+      "dst": "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/hooks/useDebounce.ts"
+    },
+    {
+      "src": "file:apps/web/src/lib/slug.ts",
+      "dst": "sym:apps/web/src/lib/slug.ts#slugify",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/lib/slug.ts"
+    },
+    {
+      "src": "file:apps/web/src/lib/slug.ts",
+      "dst": "sym:apps/web/src/lib/slug.ts#slugify",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/lib/slug.ts"
+    },
+    {
+      "src": "file:apps/web/src/routes/__root.tsx",
+      "dst": "ext:@tanstack/react-router",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "apps/web/src/routes/__root.tsx:1"
+      ],
+      "fileId": "file:apps/web/src/routes/__root.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/__root.tsx",
+      "dst": "sym:apps/web/src/routes/__root.tsx#RootLayout",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/__root.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/__root.tsx",
+      "dst": "sym:apps/web/src/routes/__root.tsx#Route",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/__root.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/__root.tsx",
+      "dst": "sym:apps/web/src/routes/__root.tsx#Route",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/__root.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/index.tsx",
+      "dst": "ext:@tanstack/react-router",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/index.tsx:1"
+      ],
+      "fileId": "file:apps/web/src/routes/index.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/index.tsx",
+      "dst": "file:apps/web/src/components/PostList.tsx",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/index.tsx:3"
+      ],
+      "fileId": "file:apps/web/src/routes/index.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/index.tsx",
+      "dst": "file:packages/ui/src/button.tsx",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/index.tsx:2"
+      ],
+      "fileId": "file:apps/web/src/routes/index.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/index.tsx",
+      "dst": "sym:apps/web/src/routes/index.tsx#HomePage",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/index.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/index.tsx",
+      "dst": "sym:apps/web/src/routes/index.tsx#Route",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/index.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/index.tsx",
+      "dst": "sym:apps/web/src/routes/index.tsx#Route",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/index.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "ext:@tanstack/react-router",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/posts.$postId.tsx:1"
+      ],
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "file:packages/db/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/posts.$postId.tsx:3"
+      ],
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "file:packages/utils/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/posts.$postId.tsx:2"
+      ],
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "sym:apps/web/src/routes/posts.$postId.tsx#Route",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "sym:apps/web/src/routes/posts.$postId.tsx#Route",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/settings/profile.tsx",
+      "dst": "ext:@tanstack/react-router",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/settings/profile.tsx:1"
+      ],
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/settings/profile.tsx",
+      "dst": "file:packages/ui/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/settings/profile.tsx:2"
+      ],
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/settings/profile.tsx",
+      "dst": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/settings/profile.tsx",
+      "dst": "sym:apps/web/src/routes/settings/profile.tsx#Route",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/settings/profile.tsx",
+      "dst": "sym:apps/web/src/routes/settings/profile.tsx#Route",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+    },
+    {
+      "src": "file:packages/db/src/index.ts",
+      "dst": "file:packages/db/src/queries.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/index.ts"
+    },
+    {
+      "src": "file:packages/db/src/index.ts",
+      "dst": "file:packages/db/src/schema.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/index.ts"
+    },
+    {
+      "src": "file:packages/db/src/index.ts",
+      "dst": "sym:packages/db/src/queries.ts#createPost",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/index.ts"
+    },
+    {
+      "src": "file:packages/db/src/index.ts",
+      "dst": "sym:packages/db/src/queries.ts#getPost",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/index.ts"
+    },
+    {
+      "src": "file:packages/db/src/index.ts",
+      "dst": "sym:packages/db/src/queries.ts#listPosts",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/index.ts"
+    },
+    {
+      "src": "file:packages/db/src/index.ts",
+      "dst": "sym:packages/db/src/schema.ts#posts",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/index.ts"
+    },
+    {
+      "src": "file:packages/db/src/index.ts",
+      "dst": "sym:packages/db/src/schema.ts#users",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/index.ts"
+    },
+    {
+      "src": "file:packages/db/src/queries.ts",
+      "dst": "ext:drizzle-orm",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "packages/db/src/queries.ts:1",
+        "packages/db/src/queries.ts:2"
+      ],
+      "fileId": "file:packages/db/src/queries.ts"
+    },
+    {
+      "src": "file:packages/db/src/queries.ts",
+      "dst": "file:packages/db/src/schema.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "packages/db/src/queries.ts:3"
+      ],
+      "fileId": "file:packages/db/src/queries.ts"
+    },
+    {
+      "src": "file:packages/db/src/queries.ts",
+      "dst": "sym:packages/db/src/queries.ts#createPost",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/queries.ts"
+    },
+    {
+      "src": "file:packages/db/src/queries.ts",
+      "dst": "sym:packages/db/src/queries.ts#createPost",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/queries.ts"
+    },
+    {
+      "src": "file:packages/db/src/queries.ts",
+      "dst": "sym:packages/db/src/queries.ts#getPost",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/queries.ts"
+    },
+    {
+      "src": "file:packages/db/src/queries.ts",
+      "dst": "sym:packages/db/src/queries.ts#getPost",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/queries.ts"
+    },
+    {
+      "src": "file:packages/db/src/queries.ts",
+      "dst": "sym:packages/db/src/queries.ts#listPosts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/queries.ts"
+    },
+    {
+      "src": "file:packages/db/src/queries.ts",
+      "dst": "sym:packages/db/src/queries.ts#listPosts",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/queries.ts"
+    },
+    {
+      "src": "file:packages/db/src/schema.ts",
+      "dst": "ext:drizzle-orm",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 3,
+      "evidence": [
+        "packages/db/src/schema.ts:1"
+      ],
+      "fileId": "file:packages/db/src/schema.ts"
+    },
+    {
+      "src": "file:packages/db/src/schema.ts",
+      "dst": "sym:packages/db/src/schema.ts#posts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/schema.ts"
+    },
+    {
+      "src": "file:packages/db/src/schema.ts",
+      "dst": "sym:packages/db/src/schema.ts#posts",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/schema.ts"
+    },
+    {
+      "src": "file:packages/db/src/schema.ts",
+      "dst": "sym:packages/db/src/schema.ts#users",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/schema.ts"
+    },
+    {
+      "src": "file:packages/db/src/schema.ts",
+      "dst": "sym:packages/db/src/schema.ts#users",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/schema.ts"
+    },
+    {
+      "src": "file:packages/ui/src/button.tsx",
+      "dst": "sym:packages/ui/src/button.tsx#Button",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/button.tsx"
+    },
+    {
+      "src": "file:packages/ui/src/button.tsx",
+      "dst": "sym:packages/ui/src/button.tsx#Button",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/button.tsx"
+    },
+    {
+      "src": "file:packages/ui/src/card.tsx",
+      "dst": "sym:packages/ui/src/card.tsx#Card",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/card.tsx"
+    },
+    {
+      "src": "file:packages/ui/src/card.tsx",
+      "dst": "sym:packages/ui/src/card.tsx#Card",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/card.tsx"
+    },
+    {
+      "src": "file:packages/ui/src/index.ts",
+      "dst": "file:packages/ui/src/button.tsx",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/index.ts"
+    },
+    {
+      "src": "file:packages/ui/src/index.ts",
+      "dst": "file:packages/ui/src/card.tsx",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/index.ts"
+    },
+    {
+      "src": "file:packages/ui/src/index.ts",
+      "dst": "sym:packages/ui/src/button.tsx#Button",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/index.ts"
+    },
+    {
+      "src": "file:packages/ui/src/index.ts",
+      "dst": "sym:packages/ui/src/card.tsx#Card",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/index.ts"
+    },
+    {
+      "src": "file:packages/ui/src/internal.ts",
+      "dst": "sym:packages/ui/src/internal.ts#INTERNAL_PADDING",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/internal.ts"
+    },
+    {
+      "src": "file:packages/ui/src/internal.ts",
+      "dst": "sym:packages/ui/src/internal.ts#INTERNAL_PADDING",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/internal.ts"
+    },
+    {
+      "src": "file:packages/utils/src/date.ts",
+      "dst": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/date.ts"
+    },
+    {
+      "src": "file:packages/utils/src/date.ts",
+      "dst": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/date.ts"
+    },
+    {
+      "src": "file:packages/utils/src/index.ts",
+      "dst": "file:packages/utils/src/date.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/index.ts"
+    },
+    {
+      "src": "file:packages/utils/src/index.ts",
+      "dst": "file:packages/utils/src/time.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/index.ts"
+    },
+    {
+      "src": "file:packages/utils/src/index.ts",
+      "dst": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/index.ts"
+    },
+    {
+      "src": "file:packages/utils/src/index.ts",
+      "dst": "sym:packages/utils/src/time.ts#parseTimestamp",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/index.ts"
+    },
+    {
+      "src": "file:packages/utils/src/slug.ts",
+      "dst": "sym:packages/utils/src/slug.ts#SLUG_VERSION",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/slug.ts"
+    },
+    {
+      "src": "file:packages/utils/src/slug.ts",
+      "dst": "sym:packages/utils/src/slug.ts#SLUG_VERSION",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/slug.ts"
+    },
+    {
+      "src": "file:packages/utils/src/slug.ts",
+      "dst": "sym:packages/utils/src/slug.ts#slugify",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/slug.ts"
+    },
+    {
+      "src": "file:packages/utils/src/time.ts",
+      "dst": "sym:packages/utils/src/time.ts#parseTimestamp",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/time.ts"
+    },
+    {
+      "src": "file:packages/utils/src/time.ts",
+      "dst": "sym:packages/utils/src/time.ts#parseTimestamp",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/time.ts"
+    },
+    {
+      "src": "sym:apps/api/src/router.ts#router",
+      "dst": "sym:packages/db/src/queries.ts#createPost",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/api/src/router.ts:7"
+      ],
+      "fileId": "file:apps/api/src/router.ts"
+    },
+    {
+      "src": "sym:apps/api/src/router.ts#router",
+      "dst": "sym:packages/db/src/queries.ts#listPosts",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/api/src/router.ts:6"
+      ],
+      "fileId": "file:apps/api/src/router.ts"
+    },
+    {
+      "src": "sym:apps/web/src/components/PostList.tsx#PostList",
+      "dst": "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "kind": "uses_hook",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/components/PostList.tsx:7"
+      ],
+      "fileId": "file:apps/web/src/components/PostList.tsx"
+    },
+    {
+      "src": "sym:apps/web/src/components/PostList.tsx#PostList",
+      "dst": "sym:apps/web/src/lib/slug.ts#slugify",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/components/PostList.tsx:11"
+      ],
+      "fileId": "file:apps/web/src/components/PostList.tsx"
+    },
+    {
+      "src": "sym:apps/web/src/routes/index.tsx#HomePage",
+      "dst": "sym:apps/web/src/components/PostList.tsx#PostList",
+      "kind": "renders",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/index.tsx:10"
+      ],
+      "fileId": "file:apps/web/src/routes/index.tsx"
+    },
+    {
+      "src": "sym:apps/web/src/routes/index.tsx#HomePage",
+      "dst": "sym:packages/ui/src/button.tsx#Button",
+      "kind": "renders",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/index.tsx:11"
+      ],
+      "fileId": "file:apps/web/src/routes/index.tsx"
+    },
+    {
+      "src": "sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "dst": "sym:apps/web/src/routes/posts.$postId.tsx#Route",
+      "kind": "uses_hook",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/posts.$postId.tsx:8"
+      ],
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+    },
+    {
+      "src": "sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "dst": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/posts.$postId.tsx:11"
+      ],
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+    },
+    {
+      "src": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "dst": "sym:packages/ui/src/card.tsx#Card",
+      "kind": "renders",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/settings/profile.tsx:7"
+      ],
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+    },
+    {
+      "src": "sym:packages/utils/src/slug.ts#SLUG_VERSION",
+      "dst": "sym:packages/utils/src/slug.ts#slugify",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "packages/utils/src/slug.ts:11"
+      ],
+      "fileId": "file:packages/utils/src/slug.ts"
+    },
+    {
+      "src": "ws:@acme/api",
+      "dst": "file:apps/api/src/app.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/api/src/app.ts"
+    },
+    {
+      "src": "ws:@acme/api",
+      "dst": "file:apps/api/src/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/api/src/index.ts"
+    },
+    {
+      "src": "ws:@acme/api",
+      "dst": "file:apps/api/src/router.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/api/src/router.ts"
+    },
+    {
+      "src": "ws:@acme/api",
+      "dst": "ws:@acme/db",
+      "kind": "depends_on",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/api/package.json"
+    },
+    {
+      "src": "ws:@acme/db",
+      "dst": "file:packages/db/src/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/index.ts"
+    },
+    {
+      "src": "ws:@acme/db",
+      "dst": "file:packages/db/src/queries.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/queries.ts"
+    },
+    {
+      "src": "ws:@acme/db",
+      "dst": "file:packages/db/src/schema.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/db/src/schema.ts"
+    },
+    {
+      "src": "ws:@acme/ui",
+      "dst": "file:packages/ui/src/button.tsx",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/button.tsx"
+    },
+    {
+      "src": "ws:@acme/ui",
+      "dst": "file:packages/ui/src/card.tsx",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/card.tsx"
+    },
+    {
+      "src": "ws:@acme/ui",
+      "dst": "file:packages/ui/src/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/index.ts"
+    },
+    {
+      "src": "ws:@acme/ui",
+      "dst": "file:packages/ui/src/internal.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/ui/src/internal.ts"
+    },
+    {
+      "src": "ws:@acme/utils",
+      "dst": "file:packages/utils/src/date.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/date.ts"
+    },
+    {
+      "src": "ws:@acme/utils",
+      "dst": "file:packages/utils/src/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/index.ts"
+    },
+    {
+      "src": "ws:@acme/utils",
+      "dst": "file:packages/utils/src/slug.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/slug.ts"
+    },
+    {
+      "src": "ws:@acme/utils",
+      "dst": "file:packages/utils/src/time.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:packages/utils/src/time.ts"
+    },
+    {
+      "src": "ws:@acme/web",
+      "dst": "file:apps/web/src/components/Header.tsx",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/components/Header.tsx"
+    },
+    {
+      "src": "ws:@acme/web",
+      "dst": "file:apps/web/src/components/PostList.tsx",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/components/PostList.tsx"
+    },
+    {
+      "src": "ws:@acme/web",
+      "dst": "file:apps/web/src/hooks/useDebounce.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/hooks/useDebounce.ts"
+    },
+    {
+      "src": "ws:@acme/web",
+      "dst": "file:apps/web/src/lib/slug.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/lib/slug.ts"
+    },
+    {
+      "src": "ws:@acme/web",
+      "dst": "file:apps/web/src/routes/__root.tsx",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/__root.tsx"
+    },
+    {
+      "src": "ws:@acme/web",
+      "dst": "file:apps/web/src/routes/index.tsx",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/index.tsx"
+    },
+    {
+      "src": "ws:@acme/web",
+      "dst": "file:apps/web/src/routes/posts.$postId.tsx",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+    },
+    {
+      "src": "ws:@acme/web",
+      "dst": "file:apps/web/src/routes/settings/profile.tsx",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+    },
+    {
+      "src": "ws:@acme/web",
+      "dst": "ws:@acme/ui",
+      "kind": "depends_on",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/package.json"
+    },
+    {
+      "src": "ws:@acme/web",
+      "dst": "ws:@acme/utils",
+      "kind": "depends_on",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:apps/web/package.json"
+    }
+  ]
+}

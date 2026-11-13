@@ -2,8 +2,9 @@ import { useMemo } from "react";
 import "./map3d.css";
 import type { FilterPanelProps } from "../slots.ts";
 import { currentScheme } from "../theme.ts";
+import { getBool, setBool } from "../views/filterUtils.ts";
+import { workspaceColorAt } from "../workspacePalette.ts";
 import { summarizeIslands } from "./layout.ts";
-import { workspaceColor } from "./palette.ts";
 import { mapUi, prefersReducedMotion, useMapUi } from "./ui.ts";
 
 const LEVELS = [
@@ -13,22 +14,13 @@ const LEVELS = [
 ] as const;
 
 /** Left-panel controls for the 3D map: level, hide tests, auto-rotate, reset camera, and the workspace legend. */
-export function MapPanel({ nodes, filters, onFiltersChange }: FilterPanelProps) {
+export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange }: FilterPanelProps) {
   const ui = useMapUi();
-  const level = filters.level ?? "dirs";
-  const hideTests = filters.tests !== "show";
+  const level = route?.level === "workspaces" || route?.level === "files" ? route.level : "dirs";
+  const hideTests = getBool(filters, "hideTests", true);
   const islands = useMemo(() => summarizeIslands(nodes), [nodes]);
   const scheme = currentScheme();
   const reduced = prefersReducedMotion();
-
-  const patch = (next: Record<string, string | null>) => {
-    const out = { ...filters };
-    for (const [k, v] of Object.entries(next)) {
-      if (v === null) delete out[k];
-      else out[k] = v;
-    }
-    onFiltersChange(out);
-  };
 
   return (
     <div className="map3d-panel">
@@ -40,7 +32,7 @@ export function MapPanel({ nodes, filters, onFiltersChange }: FilterPanelProps) 
               type="radio"
               name="map3d-level"
               checked={level === l.id}
-              onChange={() => patch({ level: l.id === "dirs" ? null : l.id })}
+              onChange={() => onRouteChange?.({ level: l.id === "dirs" ? null : l.id })}
             />
             {l.label}
           </label>
@@ -50,7 +42,7 @@ export function MapPanel({ nodes, filters, onFiltersChange }: FilterPanelProps) 
         <input
           type="checkbox"
           checked={hideTests}
-          onChange={(e) => patch({ tests: e.target.checked ? null : "show" })}
+          onChange={(e) => onFiltersChange(setBool(filters, "hideTests", e.target.checked, true))}
         />
         Hide tests
       </label>
@@ -79,7 +71,7 @@ export function MapPanel({ nodes, filters, onFiltersChange }: FilterPanelProps) 
             >
               <span
                 className="kind-dot"
-                style={{ background: workspaceColor(i.index, scheme) }}
+                style={{ background: workspaceColorAt(i.index, scheme) }}
                 aria-hidden="true"
               />
               <span className="map3d-legend-name">{i.label}</span>

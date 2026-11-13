@@ -29,9 +29,10 @@ test("3D map: islands, labels and bundled arcs on fixture data", async ({ page }
   mkdirSync(shots, { recursive: true });
   await page.screenshot({ path: resolve(shots, "map-3d.png") });
 
-  // Legend click focuses an island and opens the inspector for the workspace.
+  // Legend click selects the island (`sel`, not the view's `focus`) and opens the inspector for the workspace.
   await legend.click();
-  await expect(page).toHaveURL(/focus=ws%3A%40acme%2Fweb/);
+  await expect(page).toHaveURL(/sel=ws%3A%40acme%2Fweb/);
+  await expect(page).not.toHaveURL(/focus=/);
   await expect(page.getByRole("complementary", { name: "Inspector" })).toBeVisible();
 
   // Level switch refetches with the level param.

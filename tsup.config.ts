@@ -1,4 +1,3 @@
-import { copyFileSync } from "node:fs";
 import { defineConfig } from "tsup";
 
 export default defineConfig({
@@ -12,9 +11,4 @@ export default defineConfig({
   platform: "node",
   clean: true,
   external: ["better-sqlite3", "sqlite-vec", "oxc-parser", "oxc-resolver"],
-  // store/db.ts reads schema.sql next to the running file at runtime (new URL("./schema.sql", import.meta.url)),
-  // which for the bundles is plugin/dist/. tsup does not copy it, so do it here.
-  onSuccess: async () => {
-    copyFileSync("packages/core/src/store/schema.sql", "plugin/dist/schema.sql");
-  },
 });
