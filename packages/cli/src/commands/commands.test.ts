@@ -151,3 +151,110 @@ describe("gantry heal", () => {
     expect(run(fx.dir, ["heal", "--from", "deadbeef"]).out).toMatch(/\(full re-index\)/);
   });
 });
+
+describe("gantry search / node", () => {
+  it("search 'relative date' lists formatRelativeDate first, as a table and as JSON", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const t = run(fx.dir, ["search", "relative date"]);
+    expect(t.err).toBe("");
+    expect(t.code).toBe(0);
+    const lines = t.out.trimEnd().split("\n");
+    expect(lines[0]).toMatch(/^NAME\s+KIND\s+LOCATION\s+SCORE$/);
+    expect(lines[1]).toMatch(/^formatRelativeDate\s+function\s+packages\/utils\/src\/date\.ts:1\s+\d/);
+    expect(t.out).not.toContain("\u001b[");
+
+    const j = JSON.parse(run(fx.dir, ["search", "relative date", "--json"]).out);
+    expect(j[0]).toMatchObject({ name: "formatRelativeDate", kind: "function" });
+    expect(run(fx.dir, ["search", "zzzqqq"]).out).toBe("No matches\n");
+    expect(JSON.parse(run(fx.dir, ["search", "date", "--kind", "const", "--json"]).out)).toEqual([]);
+    expect(run(fx.dir, ["search", "date", "--kind", "bogus"]).code).toBe(1);
+  });
+
+  it("node path:line --json returns the symbol and neighbors grouped by edge kind", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const r = run(fx.dir, ["node", "packages/utils/src/date.ts:5", "--json"]);
+    expect(r.code).toBe(0);
+    const info = JSON.parse(r.out);
+    expect(info.node).toMatchObject({
+      name: "formatRelativeDate",
+      kind: "function",
+      path: "packages/utils/src/date.ts",
+    });
+    expect(info.node.minhash).toBeUndefined();
+    expect(info.neighbors["contains:in"]).toContain("file:packages/utils/src/date.ts");
+    expect(typeof info.fanIn).toBe("number");
+
+    const text = run(fx.dir, ["node", "packages/utils/src/date.ts:5"]);
+    expect(text.out).toContain("formatRelativeDate (function, exported)");
+    expect(text.out).toMatch(/EDGE\s+NODE/);
+    expect(run(fx.dir, ["node", "packages/utils/src/date.ts:999"]).code).toBe(1);
+  });
+
+  it("lookups heal and refresh first: a new uncommitted file is searchable without init", async () => {
+    const fx = await fixture("single-pkg");
+    writeFileSync(join(fx.dir, "brand-new.ts"), "export function brandNewThing() { return 1; }\n");
+    const r = run(fx.dir, ["search", "brand new thing", "--json"]);
+    expect(r.code).toBe(0);
+    expect(JSON.parse(r.out)[0]).toMatchObject({ name: "brandNewThing" });
+  });
+
+  it.each([["search", "x"], ["node", "x"], ["usage"], ["config", "get", "precommit.mode"]])(
+    "%s exits 2 outside a git repository",
+    (...args) => {
+      const dir = mkdtempSync(join(tmpdir(), "gantry-nogit-"));
+      try {
+        const r = run(dir, args);
+        expect(r.code).toBe(2);
+        expect(r.err).toContain("Not a git repository");
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
+});
+
+describe("gantry usage", () => {
+  it("prints an empty table and [] as JSON in M1", async () => {
+    const fx = await fixture("single-pkg");
+    const t = run(fx.dir, ["usage"]);
+    expect(t.code).toBe(0);
+    expect(t.out.trimEnd().split("\n")).toHaveLength(1);
+    expect(t.out).toMatch(/^TASK\s+MODEL\s+RUNS/);
+    expect(JSON.parse(run(fx.dir, ["usage", "--json"]).out)).toEqual([]);
+  });
+});
+
+describe("gantry config", () => {
+  it("sets and gets a value, persisting it in the project config", async () => {
+    const fx = await fixture("single-pkg");
+    expect(run(fx.dir, ["config", "get", "precommit.mode"]).out).toBe("off\n");
+    const s = run(fx.dir, ["config", "set", "precommit.mode", "timeboxed"]);
+    expect(s.err).toBe("");
+    expect(s.code).toBe(0);
+    expect(run(fx.dir, ["config", "get", "precommit.mode"]).out).toBe("timeboxed\n");
+    expect(run(fx.dir, ["config", "set", "precommit.budgetMs", "1234"]).code).toBe(0);
+    expect(run(fx.dir, ["config", "get", "precommit.budgetMs"]).out).toBe("1234\n");
+    expect(run(fx.dir, ["config", "set", "exclude", '["a/**","b"]']).code).toBe(0);
+    expect(JSON.parse(run(fx.dir, ["config", "get", "exclude"]).out)).toEqual(["a/**", "b"]);
+    expect(JSON.parse(run(fx.dir, ["config", "get", "precommit"]).out)).toMatchObject({
+      mode: "timeboxed",
+      budgetMs: 1234,
+    });
+    expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
+  });
+
+  it("rejects invalid values and unknown keys with a clear message and leaves the config alone", async () => {
+    const fx = await fixture("single-pkg");
+    const bad = run(fx.dir, ["config", "set", "precommit.mode", "sometimes"]);
+    expect(bad.code).toBe(1);
+    expect(bad.err).toMatch(/Invalid value for precommit\.mode/);
+    expect(run(fx.dir, ["config", "get", "precommit.mode"]).out).toBe("off\n");
+    const num = run(fx.dir, ["config", "set", "precommit.budgetMs", "-5"]);
+    expect(num.code).toBe(1);
+    expect(num.err).toMatch(/Invalid value for precommit\.budgetMs/);
+    const unknown = run(fx.dir, ["config", "set", "nope.key", "1"]);
+    expect(unknown.code).toBe(1);
+    expect(unknown.err).toContain("Unknown config key: nope.key");
+    expect(run(fx.dir, ["config", "get", "nope"]).code).toBe(1);
+  });
+});
