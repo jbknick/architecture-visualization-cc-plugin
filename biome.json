@@ -4,6 +4,7 @@
     "includes": [
       "**",
       "!**/fixtures",
+      "!**/evals/private",
       "!**/dist",
       "!**/__snapshots__",
       "!**/node_modules",
