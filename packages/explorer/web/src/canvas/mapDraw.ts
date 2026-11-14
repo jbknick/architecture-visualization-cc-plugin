@@ -1,7 +1,7 @@
 // Drawing and hit testing for the project map: workspace boxes, the treemap inside them, routed workspace links
 // and the links of the selected cell. Everything is drawn on one 2D canvas; cells smaller than two pixels and
 // cells outside the viewport are skipped, which keeps 30k-function maps smooth.
-import { kindTier, type TreeNode } from "./hierarchy.ts";
+import { GROUP_KIND, kindTier, type TreeNode } from "./hierarchy.ts";
 import {
   actualInner,
   type Cam,
@@ -45,6 +45,8 @@ export interface DrawEnv {
   bright: Set<number> | null;
   links: CellLink[];
   hoverEdge: string | null;
+  /** Folder strips that are partly scrolled out stick to this y (0, or lower to keep clear of the breadcrumb). */
+  stickyTop?: number;
 }
 
 export interface EdgeHit {
@@ -57,6 +59,8 @@ export interface EdgeHit {
   declared: boolean;
   declaredOnly: boolean;
   pts: [number, number][];
+  /** The routed polyline itself (screen px, as drawn), for tests. */
+  route: [number, number][];
   width: number;
 }
 
@@ -71,13 +75,18 @@ export interface DrawResult {
   /** The text drawn as each workspace's title (name lines joined, or the text beside the box). */
   titleTexts: Map<number, string>;
   /** Count pills that were drawn: the link key, the number shown (import count) and the full text. */
-  pills: { key: string; count: string; text: string }[];
+  pills: { key: string; count: string; text: string; x: number; y: number; w: number; h: number }[];
+  /** The text printed on every folder strip and file cell: `cellW` is the cell's width on screen. */
+  labels: { id: string; kind: "folder" | "file"; cellW: number; lines: string[] }[];
 }
 
 export const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 /** Cells smaller than this on screen (either side) are not drawn. */
 export const MIN_CELL_PX = 2;
 const MIN_TITLE_PX = 11;
+/** Up to this many visible arrows, every arrow gets a count pill; above it only the heaviest few do. */
+export const MAX_NUMBERED_ARROWS = 40;
+const PILL_MINOR_PX = 10;
 /** Strength of the file mosaic at the Folders level, against the file cells of the Files level. */
 const MOSAIC_ALPHA = 0.45;
 
@@ -155,8 +164,8 @@ function strokeRounded(ctx: CanvasRenderingContext2D, pts: Pt[], radius: number)
 function arrowHead(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, size: number): void {
   ctx.beginPath();
   ctx.moveTo(x, y);
-  ctx.lineTo(x - Math.cos(angle - 0.42) * size, y - Math.sin(angle - 0.42) * size);
-  ctx.lineTo(x - Math.cos(angle + 0.42) * size, y - Math.sin(angle + 0.42) * size);
+  ctx.lineTo(x - Math.cos(angle - 0.4) * size, y - Math.sin(angle - 0.4) * size);
+  ctx.lineTo(x - Math.cos(angle + 0.4) * size, y - Math.sin(angle + 0.4) * size);
   ctx.closePath();
   ctx.fill();
 }
@@ -180,10 +189,15 @@ function pointAlong(pts: Pt[], fraction: number): Pt {
 const overlaps = (a: Rect, b: Rect, gap = 0): boolean =>
   a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
 
-/** Width in px of an edge: sqrt of the weight, clamped. */
+/** Width in px of an edge: grows with the square root of the weight, at most 8 (lanes are 10px apart). */
 export function edgeWidth(weight: number): number {
-  return Math.min(9, Math.max(1, 0.8 + 0.4 * Math.sqrt(weight)));
+  return Math.min(8, Math.max(1, 0.8 + 0.3 * Math.sqrt(weight)));
 }
+
+/** Workspace boxes smaller than this on screen show their title and counts only; the tiles appear on zoom. */
+export const TINY_BOX_W = 160;
+export const TINY_BOX_H = 90;
+export const isTinyBox = (r: { w: number; h: number }): boolean => r.w < TINY_BOX_W || r.h < TINY_BOX_H;
 
 /** The deepest cell under a screen point (cells under two pixels are not pickable), or null. */
 export function pickCell(scene: Scene, geo: MapGeometry, cam: Camera, px: number, py: number): number | null {
@@ -200,6 +214,7 @@ export function pickCell(scene: Scene, geo: MapGeometry, cam: Camera, px: number
     }
   }
   if (cur === -1) return null;
+  if (isTinyBox(rect)) return cur; // its tiles are not drawn, so they are not pickable either
   for (;;) {
     const kids = (tree.nodes[cur] as TreeNode).children;
     if (kids.length === 0) break;
@@ -226,6 +241,49 @@ export function pickCell(scene: Scene, geo: MapGeometry, cam: Camera, px: number
   return cur;
 }
 
+/**
+ * The workspace and the folders (those that are drawn, outermost first) that contain a screen point: the "you are
+ * here" path of the breadcrumb. Empty when the point is outside every box. Stops at files and at "(other)" groups.
+ */
+export function locatePath(scene: Scene, geo: MapGeometry, cam: Camera, px: number, py: number): number[] {
+  const tree = scene.tree;
+  const has = (r: Rect): boolean => px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
+  let cur = -1;
+  let rect: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  for (const r of scene.roots) {
+    const rr = rootRect(geo, r, cam);
+    if (has(rr)) {
+      cur = r;
+      rect = rr;
+      break;
+    }
+  }
+  if (cur === -1) return [];
+  const path = [cur];
+  if (isTinyBox(rect)) return path;
+  for (;;) {
+    const norm = normInner(scene, geo, cur);
+    const act = actualInner(scene, geo, cur, rect, cam.scale);
+    let next = -1;
+    let nextRect = rect;
+    for (const c of (tree.nodes[cur] as TreeNode).children) {
+      const cr = mapChild(geo, c, norm, act);
+      if (has(cr)) {
+        next = c;
+        nextRect = cr;
+        break;
+      }
+    }
+    if (next === -1) break;
+    const node = tree.nodes[next] as TreeNode;
+    if (kindTier(node.kind) !== 1 || node.kind === GROUP_KIND) break;
+    if (!scene.skipped[next]) path.push(next);
+    cur = next;
+    rect = nextRect;
+  }
+  return path;
+}
+
 export function drawMap(env: DrawEnv): DrawResult {
   const { ctx, w, h, scene, geo, theme, cam } = env;
   const tree = scene.tree;
@@ -237,6 +295,7 @@ export function drawMap(env: DrawEnv): DrawResult {
     titles: new Map(),
     titleTexts: new Map(),
     pills: [],
+    labels: [],
   };
   ctx.clearRect(0, 0, w, h);
   ctx.textBaseline = "top";
@@ -275,7 +334,8 @@ export function drawMap(env: DrawEnv): DrawResult {
         colour,
         box: m(light ? 0.08 : 0.13),
         folder: light ? [m(0.3), m(0.38)] : [m(0.32), m(0.44)],
-        band: light ? [m(0.5), m(0.6), m(0.7)] : [m(0.5), m(0.6), m(0.7)],
+        // Solid bands, darker than the tiles under them (light) or the folder fills (dark).
+        band: light ? [m(0.62), m(0.72), m(0.8)] : [m(0.58), m(0.68), m(0.78)],
         file: light ? [m(0.18), m(0.27)] : [m(0.2), m(0.32)],
         sep: light ? hexToRgba("#ffffff", 0.95) : hexToRgba("#06080b", 0.85),
         ink: labelInk(colour, theme.scheme),
@@ -301,23 +361,31 @@ export function drawMap(env: DrawEnv): DrawResult {
 
   const measureAt = (weight: number, text: string, font: number) =>
     measure(`${weight} ${font}px ${FONT}`, text);
-  const drawKids = (i: number, r: Rect, root: number, tint: Tint): void => {
+  const stickyTop = env.stickyTop ?? 0;
+  const drawKids = (i: number, r: Rect, root: number, tint: Tint, top: number): void => {
     const kids = (tree.nodes[i] as TreeNode).children;
     if (kids.length === 0) return;
     const norm = normInner(scene, geo, i);
     const act = actualInner(scene, geo, i, r, cam.scale);
     for (let k = 0; k < kids.length; k++) {
       const c = kids[k] as number;
-      drawCell(c, mapChild(geo, c, norm, act), root, tint, k);
+      drawCell(c, mapChild(geo, c, norm, act), root, tint, k, top);
     }
   };
 
-  const drawCell = (i: number, r: Rect, root: number, tint: Tint, sib: number): void => {
+  /** The folder glyph in front of a strip's name: a small tab on a body. */
+  const folderGlyph = (gx: number, gy: number, colour: string): void => {
+    ctx.fillStyle = colour;
+    ctx.fillRect(gx, gy, 5, 2);
+    ctx.fillRect(gx, gy + 2, 11, 7);
+  };
+
+  const drawCell = (i: number, r: Rect, root: number, tint: Tint, sib: number, top: number): void => {
     const { x, y, w: pw, h: ph } = r;
     if (pw < MIN_CELL_PX || ph < MIN_CELL_PX) return;
     if (x > w || y > h || x + pw < 0 || y + ph < 0) return;
     if (scene.skipped[i]) {
-      drawKids(i, r, root, tint);
+      drawKids(i, r, root, tint, top);
       return;
     }
     const node = tree.nodes[i] as TreeNode;
@@ -370,49 +438,114 @@ export function drawMap(env: DrawEnv): DrawResult {
     // Labels stick to the left edge of the canvas while their cell is partly scrolled out of view.
     const vx = Math.max(x, 0);
     const vw = Math.min(x + pw, w) - vx;
+    let kidsTop = top;
+    let stuckStrip: (() => void) | null = null;
     if (cls === 1) {
-      // Folder strip: the name (last path segment, plus any skipped folders below) and the function count.
+      // Folder strip: a solid band with a folder glyph, the name in bold (last path segment, plus any skipped
+      // folders below) and the function count when it fits. The strip sticks to the top edge while its folder is
+      // partly scrolled out of view; strips of nested folders stack below it.
       if (head > 0) {
-        const depth = Math.min(3, Math.max(1, scene.depth[i] as number));
-        ctx.fillStyle = tint.band[depth - 1] as string;
-        ctx.fillRect(x + 1, y + 1, pw - 2, head - 1);
-        const fs = Math.min(12, head - 4);
-        const title = folderTitle(scene, i);
-        const full = `${title} · ${(scene.functions[i] ?? 0).toLocaleString("en-US")} fn`;
-        const font = `600 ${fs}px ${FONT}`;
-        const m = (t: string) => measure(font, t);
-        const text =
-          fitCellLabel(m, full, vw - 2, head - 1, fs, 2, false) ??
-          fitCellLabel(m, title, vw - 2, head - 1, fs, 2);
-        if (text) {
-          ctx.font = font;
-          ctx.fillStyle = tint.ink;
-          ctx.fillText(text, vx + 5, y + 1 + (head - 1 - fs) / 2 + 0.5);
-        }
+        const sy = Math.min(Math.max(y, top), y + ph - head);
+        const stuck = sy > y + 0.5;
+        if (stuck) kidsTop = sy + head;
+        const paintStrip = (): void => {
+          ctx.globalAlpha = dimmed(i) ? 0.3 : 1;
+          const depth = Math.min(3, Math.max(1, scene.depth[i] as number));
+          ctx.fillStyle = tint.band[depth - 1] as string;
+          ctx.fillRect(x + 1, sy + 1, pw - 2, head - 1);
+          const title = folderTitle(scene, i);
+          const count = `${(scene.functions[i] ?? 0).toLocaleString("en-US")} fn`;
+          const maxLines = head >= 30 ? 2 : 1;
+          // The count after the name first, then the name alone; 11px, then 10px; wrapped when the strip is tall.
+          // A word is cut in two only when nothing else fits, and the glyph goes before the name is cut.
+          let chosen: { lines: string[]; fs: number } | null = null;
+          let glyph = true;
+          for (const [withGlyph, split] of [
+            [true, false],
+            [false, false],
+            [true, true],
+            [false, true],
+          ] as const) {
+            const avail = vw - (withGlyph ? 19 : 5) - 4;
+            for (const text of split ? [title] : [`${title} · ${count}`, title]) {
+              for (const fs of [11, 10]) {
+                const m = (t: string) => measure(`700 ${fs}px ${FONT}`, t);
+                if (!split && text.split(/[ \-_/.·]+/).some((word) => m(word) > avail)) continue;
+                const lines = wrapText(m, text, avail);
+                if (lines.length <= maxLines && lines.every((t) => m(t) <= avail + 0.5)) {
+                  chosen = { lines, fs };
+                  glyph = withGlyph;
+                  break;
+                }
+              }
+              if (chosen) break;
+            }
+            if (chosen) break;
+          }
+          const tx = vx + (glyph ? 19 : 5);
+          if (!chosen) {
+            // Last resort (a narrow cell or a very long name): the ends of the name.
+            const t = fitCellLabel(
+              (u) => measure(`700 10px ${FONT}`, u),
+              title,
+              vw - 19 - 4 + 6,
+              head - 1,
+              10,
+              3,
+            );
+            if (t) chosen = { lines: [t], fs: 10 };
+            glyph = true;
+          }
+          if (chosen) {
+            result.labels.push({ id: node.id, kind: "folder", cellW: pw, lines: chosen.lines });
+            const lh = chosen.fs * 1.15;
+            ctx.font = `700 ${chosen.fs}px ${FONT}`;
+            ctx.fillStyle = tint.ink;
+            const y0 = sy + 1 + (head - 1 - chosen.lines.length * lh) / 2;
+            chosen.lines.forEach((line, k) => {
+              ctx.fillText(line, tx, y0 + k * lh + (lh - chosen.fs) / 2);
+            });
+          }
+          if (glyph && (chosen || pw >= 30)) folderGlyph(vx + 6, sy + 1 + (head - 1 - 9) / 2, tint.ink);
+        };
+        // A stuck strip is painted after the tiles under it, so they do not cover it.
+        if (stuck) stuckStrip = paintStrip;
+        else paintStrip();
       }
     } else if (container) {
-      // A file that holds function chips: its name in a slim strip.
+      // A file that holds function chips: its name in a slim strip, regular weight, no band.
       if (head > 0) {
-        const label = fitFileLabel((t, f) => measureAt(600, t, f), name, vw, head, 3);
+        const label = fitFileLabel((t, f) => measureAt(400, t, f), name, vw, head, 3);
         if (label) {
-          ctx.font = `600 ${label.font}px ${FONT}`;
+          ctx.font = `400 ${label.font}px ${FONT}`;
           ctx.fillStyle = tint.ink;
           ctx.fillText(label.lines[0] as string, vx + 3, y + (head - label.font) / 2);
         }
       }
     } else {
-      // A file cell: the name at 10 to 11px, wrapped onto two lines when that is what it takes.
-      const label = fitFileLabel((t, f) => measureAt(600, t, f), name, vw, ph, 3);
+      // A file cell: the whole name at 10 to 11px in regular weight (on two lines when that is what it takes), and
+      // a second small line with its function count when the cell has room. A name that does not fit gets no
+      // label: zooming in reveals it.
+      const label = fitFileLabel((t, f) => measureAt(400, t, f), name, vw, ph, 3);
       if (label) {
-        ctx.font = `600 ${label.font}px ${FONT}`;
+        result.labels.push({ id: node.id, kind: "file", cellW: pw, lines: label.lines });
+        ctx.font = `400 ${label.font}px ${FONT}`;
         ctx.fillStyle = tint.ink;
+        const lh = label.font * 1.15;
         label.lines.forEach((line, k) => {
-          ctx.fillText(line, vx + 3, y + 2 + k * label.font * 1.15);
+          ctx.fillText(line, vx + 3, y + 2 + k * lh);
         });
+        const used = 2 + label.lines.length * lh;
+        if (pw >= 120 && ph >= 34 && used + 11 <= ph - 1) {
+          ctx.font = `400 10px ${FONT}`;
+          ctx.fillStyle = theme.scheme === "light" ? "#3d4756" : theme.muted;
+          ctx.fillText(`${(scene.functions[i] ?? 0).toLocaleString("en-US")} fn`, vx + 3, y + used + 1);
+        }
       }
     }
 
-    if (container && pw >= 6 && ph >= 6) drawKids(i, r, root, tint);
+    if (container && pw >= 6 && ph >= 6) drawKids(i, r, root, tint, kidsTop);
+    (stuckStrip as (() => void) | null)?.();
   };
 
   // 1. Workspace boxes and their treemaps.
@@ -431,7 +564,7 @@ export function drawMap(env: DrawEnv): DrawResult {
     ctx.lineWidth = 2;
     ctx.strokeStyle = hexToRgba(tint.colour, 0.9);
     ctx.stroke();
-    drawKids(r, rb, r, tint);
+    if (!isTinyBox(rb)) drawKids(r, rb, r, tint, stickyTop);
   }
   ctx.globalAlpha = 1;
 
@@ -538,8 +671,10 @@ function drawTitle(
   const isRepoRoot = scene.nodes[i]?.id === "ws:.";
   // The title block is at most `WS_HEAD_MAX` px tall whatever the zoom: it fills the header the cells leave free,
   // or the whole box when there is nothing inside to leave room for.
-  const head = headPx(scene, geo, i, box.w, box.h, cam.scale);
-  const leaf = (scene.tree.nodes[i] as TreeNode).children.length === 0;
+  // A tiny box (no tiles drawn) keeps its title and counts and uses the whole box for them.
+  const tiny = isTinyBox(box);
+  const head = tiny ? 0 : headPx(scene, geo, i, box.w, box.h, cam.scale);
+  const leaf = (scene.tree.nodes[i] as TreeNode).children.length === 0 || tiny;
   const availH = (head > 0 ? head : leaf ? Math.min(box.h, WS_HEAD_MAX + 12) : 0) - 7;
   const availW = box.w - 20;
   ctx.globalAlpha = 1;
@@ -703,8 +838,22 @@ function drawWsEdges(
     const ib = hl !== null && (b.src === hl || b.dst === hl) ? 1 : 0;
     return ia - ib || a.weight - b.weight;
   });
-  const pills: { key: string; pts: Pt[]; lines: string[]; two: string[]; short: string; strong: boolean }[] =
-    [];
+  interface PillSpec {
+    key: string;
+    pts: Pt[];
+    lines: string[];
+    two: string[];
+    short: string;
+    strong: boolean;
+    /** Low-weight link: a smaller, lighter pill. */
+    minor: boolean;
+    /** Where along the line the pill prefers to sit (0 = source, 1 = arrowhead). */
+    pref: number;
+  }
+  const pills: PillSpec[] = [];
+  // A diagram with few arrows numbers every one of them; a busy one numbers the heaviest only.
+  const everyArrow = shown.length <= MAX_NUMBERED_ARROWS;
+  const pairs = new Set(shown.map((e) => `${e.src}>${e.dst}`));
 
   for (const e of ordered) {
     const a = tree.nodes[e.src] as TreeNode;
@@ -731,7 +880,7 @@ function drawWsEdges(
     const dim = hl !== null && !incident;
     const selectedCell = env.selected !== null && env.selected !== hl; // a cell is selected: ws links recede
     let alpha = baseAlpha;
-    if (faint) alpha = 0.3;
+    if (faint) alpha = 0.42;
     if (e.declaredOnly) alpha = 0.35;
     if (incident || hovered) alpha = 0.95;
     if (dim) alpha = 0.07;
@@ -745,7 +894,8 @@ function drawWsEdges(
       if (Math.hypot(last[0] - prev[0], last[1] - prev[1]) > 0.5) break;
     }
     const ang = Math.atan2(last[1] - prev[1], last[0] - prev[0]);
-    const head = Math.max(9, width * 2.3 + 5);
+    // At least 9px long so it reads, at most 15px so neighbouring ports (10px apart) keep their own heads.
+    const head = Math.min(15, Math.max(9, width * 1.6 + 5));
     const shaft = pts.slice(0, -1);
     const back = Math.min(head * 0.8, Math.hypot(last[0] - prev[0], last[1] - prev[1]) * 0.9);
     shaft.push([last[0] - Math.cos(ang) * back, last[1] - Math.sin(ang) * back]);
@@ -771,9 +921,10 @@ function drawWsEdges(
       declared: e.declared,
       declaredOnly: e.declaredOnly,
       pts: densify(pts, 12),
+      route: pts,
       width,
     });
-    if (hl !== null ? incident : top.has(`${e.src}>${e.dst}`)) {
+    if (hl !== null ? incident : everyArrow || top.has(`${e.src}>${e.dst}`)) {
       const A = nodeTitle(scene, e.src);
       const B = nodeTitle(scene, e.dst);
       const count = e.declaredOnly
@@ -787,26 +938,40 @@ function drawWsEdges(
         two: [`${A} → ${B}`, count],
         short: e.declaredOnly ? "declared" : e.weight.toLocaleString("en-US"),
         strong: incident,
+        minor: !incident && !e.declaredOnly && real.length >= 3 && e.weight <= faintBelow,
+        // The two directions of a pair run in parallel lanes: each pill sits near its own source, so the number
+        // belongs to one lane (and one arrowhead) only.
+        pref: pairs.has(`${e.dst}>${e.src}`) ? 0.3 : 0.5,
       });
     }
   }
 
-  // Count pills. Strongest first; each takes the free spot nearest the middle of its line.
+  // Count pills. Heaviest first; each takes the free spot nearest its preferred place on its own line, so no two
+  // pills overlap and none covers a box (titles are inside boxes or placed clear of the pills).
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
-  const pillFont = `700 ${MIN_TITLE_PX}px ${FONT}`;
   const wide = hl !== null;
+  const lineInk = theme.scheme === "light" ? "#566175" : "#aab4c5";
   for (const p of pills.reverse()) {
+    const fontPx = p.minor ? PILL_MINOR_PX : MIN_TITLE_PX;
+    const pillFont = `700 ${fontPx}px ${FONT}`;
     // One line with both names and the count, else two lines, else just the count.
     const variants = wide ? [p.lines, p.two, [p.short]] : [[p.short]];
+    const len = polylineLength(p.pts);
+    const offsets: number[] = [0];
+    for (let k = 1; k <= 28; k++) offsets.push(k * 0.03, -k * 0.03);
     let done = false;
     for (const lines of variants) {
       const tw = Math.max(...lines.map((t) => measure(pillFont, t)));
-      const pw = tw + 12;
-      const ph = lines.length * (MIN_TITLE_PX + 3) + 5;
-      const len = polylineLength(p.pts);
-      const fractions = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.18, 0.82, 0.1, 0.9];
-      for (const f of fractions) {
+      const pw = tw + (p.minor ? 8 : 12);
+      const lh = fontPx + 3;
+      const ph = lines.length * lh + (p.minor ? 3 : 5);
+      for (const o of offsets) {
+        const f = p.pref + o;
+        if (f < 0.04 || f > 0.96) continue;
+        // Keep clear of the ports: an arrowhead and a bend sit within a few px of each end.
+        const along = f * len;
+        if (len > 70 && (along < 18 || len - along < 26)) continue;
         const c = pointAlong(p.pts, f);
         const rect: Rect = { x: c[0] - pw / 2, y: c[1] - ph / 2, w: pw, h: ph };
         if (len < 12 || !free(rect)) continue;
@@ -814,15 +979,25 @@ function drawWsEdges(
         roundRect(ctx, rect.x, rect.y, rect.w, rect.h, Math.min(ph / 2, 11));
         ctx.fillStyle = theme.surface;
         ctx.fill();
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = p.strong ? theme.accent : theme.scheme === "light" ? "#566175" : "#aab4c5";
+        ctx.lineWidth = p.minor ? 1 : 1.5;
+        ctx.strokeStyle = p.strong ? theme.accent : lineInk;
+        ctx.globalAlpha = p.minor && !p.strong ? 0.7 : 1;
         ctx.stroke();
         ctx.font = pillFont;
-        ctx.fillStyle = theme.text;
-        result.pills.push({ key: p.key, count: p.short, text: lines.join(" | ") });
-        lines.forEach((text, k) => {
-          ctx.fillText(text, c[0], rect.y + 2.5 + (k + 0.5) * (MIN_TITLE_PX + 3) + 0.5);
+        ctx.fillStyle = p.minor && !p.strong ? theme.muted : theme.text;
+        result.pills.push({
+          key: p.key,
+          count: p.short,
+          text: lines.join(" | "),
+          x: rect.x,
+          y: rect.y,
+          w: rect.w,
+          h: rect.h,
         });
+        lines.forEach((text, k) => {
+          ctx.fillText(text, c[0], rect.y + (p.minor ? 1.5 : 2.5) + (k + 0.5) * lh + 0.5);
+        });
+        ctx.globalAlpha = 1;
         done = true;
         break;
       }

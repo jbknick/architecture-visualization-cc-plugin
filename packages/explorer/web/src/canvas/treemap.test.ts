@@ -208,10 +208,12 @@ describe("file name labels", () => {
     expect(wrapped?.lines).toHaveLength(2);
     expect(wrapped?.lines.join("")).toBe("customerInvoiceRepository");
     for (const l of wrapped?.lines ?? []) expect(at(l, wrapped?.font ?? 11)).toBeLessThanOrEqual(100 - 6);
-    // One line of height: no wrapping, so the middle is cut (the old rule).
-    const flat = fitFileLabel(at, "customerInvoiceRepository", 100, 13);
-    expect(flat?.lines).toHaveLength(1);
-    expect(flat?.lines[0]).toContain("…");
+    // One line of height and a narrow cell: no label at all (zooming in reveals the name).
+    expect(fitFileLabel(at, "customerInvoiceRepository", 100, 13)).toBeNull();
+    // A wide cell may still show the ends of a name that does not fit.
+    const wide = fitFileLabel(at, "customerInvoiceRepositoryFactoryImplementation", 150, 13);
+    expect(wide?.lines).toHaveLength(1);
+    expect(wide?.lines[0]).toContain("…");
   });
 
   it("wrapTwoLines balances the lines and returns null when no split fits", () => {
