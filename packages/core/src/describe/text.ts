@@ -33,3 +33,26 @@ export function hasControl(s: string): boolean {
 export function wordCount(s: string): number {
   return s.split(/\s+/).filter(Boolean).length;
 }
+
+/**
+ * Splits prose into the pieces the shape and grounding rules judge: whitespace chunks, split again at `<>()[],`.
+ * A leading or trailing apostrophe and a trailing `'s` are dropped, as are trailing full stops and colons; dots,
+ * slashes, hyphens and colons inside a piece stay (they make a piece non-plain, see identifiers.ts).
+ */
+export function tokenize(text: string): string[] {
+  const out: string[] = [];
+  for (const chunk of text.split(/\s+/)) {
+    if (chunk === "") continue;
+    for (const piece of chunk.split(/[<>()[\],]+/)) {
+      let p = piece.replace(/^'+/, "").replace(/'s$/i, "").replace(/'+$/, "");
+      p = p.replace(/[.:;]+$/, "");
+      if (p !== "") out.push(p);
+    }
+  }
+  return out;
+}
+
+/** At most 12 characters of any token of 16 or more, then an ellipsis; keeps opaque strings out of failure details. */
+export function echoToken(token: string): string {
+  return token.length >= 16 ? `${token.slice(0, 12)}…` : token.slice(0, 40);
+}
