@@ -539,3 +539,19 @@ test("large scenario: the layout/timing chip appears only with ?debug=1", async 
   await page.goto("/?debug=1#/project-map?level=workspaces&scenario=large");
   await expect(canvas(page).locator(".gc-status")).toContainText("treemap");
 });
+
+test("mock scenarios: header and status bar describe the scenario; the Debug tab needs ?debug=1", async ({
+  page,
+}) => {
+  await page.goto("/#/project-map?level=workspaces&scenario=large");
+  await expect(canvas(page).locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".repo-name")).toHaveText("acme-platform-monorepo");
+  await expect(page.getByText("11 workspaces")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Debug: workspaces" })).toHaveCount(0);
+  await expect(page.getByRole("tab")).toHaveCount(3);
+  await page.goto("/?debug=1#/project-map?level=workspaces&scenario=large");
+  await expect(page.getByRole("tab", { name: "Debug: workspaces" })).toBeVisible();
+  // The route keeps working when typed, without the opt-in.
+  await page.goto("/#/debug");
+  await expect(page.getByRole("tab", { name: "Debug: workspaces" })).toHaveAttribute("aria-selected", "true");
+});

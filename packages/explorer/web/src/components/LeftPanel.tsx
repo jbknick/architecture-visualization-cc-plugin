@@ -1,4 +1,4 @@
-import type { Filters, GraphEdge, GraphNode } from "../api.ts";
+import type { Filters, GraphEdge, GraphNode, ViewData } from "../api.ts";
 import type { Route } from "../route.ts";
 import { getFilterPanel } from "../slots.ts";
 import { KINDS } from "../theme.ts";
@@ -9,6 +9,7 @@ interface Props {
   viewId: string | null;
   nodes: GraphNode[];
   edges: GraphEdge[];
+  data?: ViewData | null;
   filters: Filters;
   onFiltersChange: (filters: Filters) => void;
   route?: Route;
@@ -21,6 +22,7 @@ export function LeftPanel({
   viewId,
   nodes,
   edges,
+  data,
   filters,
   onFiltersChange,
   route,
@@ -32,7 +34,10 @@ export function LeftPanel({
   // The ego view colours by workspace and lists them in its own panel; the 3D map has its own "how to read it"
   // block and workspace list (kind colours never appear in either).
   const showKindLegend =
-    viewId !== "ego" && viewId !== "map-3d" && (viewId !== "project-map" || route?.level === "symbols");
+    viewId !== "ego" &&
+    viewId !== "map-3d" &&
+    viewId !== "duplicates" &&
+    (viewId !== "project-map" || route?.level === "symbols");
   return (
     <aside className={`left ${open ? "" : "is-collapsed"}`} aria-label="Filters">
       <button
@@ -53,6 +58,7 @@ export function LeftPanel({
               viewId={viewId}
               nodes={nodes}
               edges={edges}
+              data={data}
               filters={filters}
               onFiltersChange={onFiltersChange}
               route={route}

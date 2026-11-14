@@ -85,9 +85,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
+  // Mock-only: a `scenario` flag in the hash makes the mock's /api/meta describe that scenario's data.
+  const scenario = state.route.filters.scenario;
+  const scenarioView = scenario ? (state.route.view ?? undefined) : undefined;
   useEffect(() => {
     const controller = new AbortController();
-    api.meta(controller.signal).then(
+    api.meta(controller.signal, scenario, scenarioView).then(
       (meta) => dispatch({ type: "meta", meta }),
       (err: unknown) => {
         if (!controller.signal.aborted) {
@@ -96,7 +99,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
     );
     return () => controller.abort();
-  }, []);
+  }, [scenario, scenarioView]);
 
   // With no view in the hash, land on the project map when the server has it, else the first enabled view.
   const enabledViews = state.meta?.views.filter((v) => v.enabled) ?? [];

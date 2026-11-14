@@ -21,9 +21,11 @@ describe("graph canvas slot", () => {
   });
 
   it("is registered for every 2D layout hint and keeps the list one click away", async () => {
-    for (const hint of ["nested-elk", "elk-layered", "radial", "force", "tree-lr", "columns", "clusters"]) {
+    for (const hint of ["nested-elk", "elk-layered", "radial", "force", "tree-lr", "columns"]) {
       expect(getCanvas(hint)).toBe(CanvasHost);
     }
+    // The duplicates view is a ranked list with a detail pane, so "clusters" has its own renderer.
+    expect(getCanvas("clusters")).not.toBe(CanvasHost);
     expect(getCanvas("3d")).not.toBe(CanvasHost);
 
     vi.stubGlobal("WebGL2RenderingContext", class {});

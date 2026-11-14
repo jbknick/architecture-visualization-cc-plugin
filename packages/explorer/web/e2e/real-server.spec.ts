@@ -228,3 +228,46 @@ test("graph canvas: the treemap layout is the same after a reload; PUT /api/layo
   });
   expect(status).toBe(403);
 });
+
+test("duplicates: lists the fixture's near pair with a side-by-side, and a dismissed pair stays gone after a reload", async ({
+  page,
+}) => {
+  mkdirSync(shots, { recursive: true });
+  await page.goto(url);
+  await page.getByRole("tab", { name: "Duplicates" }).click();
+  await expect(page).toHaveURL(/#\/duplicates/);
+  const groups = page.getByRole("list", { name: "Duplicate groups, biggest first" });
+  await expect(groups.getByRole("button")).toHaveCount(2);
+  await expect(page.getByText(/^2 groups · 4 functions/)).toBeVisible();
+  // Without `gantry embed` only identical and nearly identical code is found, and the page says so.
+  await expect(page.getByRole("note")).toContainText("Only identical and nearly identical code was checked");
+
+  // The exact pair: slugify in apps/web and in packages/utils; the keep candidate is the shared package's.
+  const slug = groups.getByRole("button").filter({ hasText: "slugify" });
+  await expect(slug).toContainText("Identical");
+  // The near pair: formatRelativeDate and parseTimestamp, both in packages/utils.
+  const near = groups.getByRole("button").filter({ hasText: "formatRelativeDate" });
+  await expect(near).toContainText("Nearly identical");
+  await near.click();
+  const cards = page.getByRole("list", { name: "Copies in this group" });
+  await expect(cards.getByText("Keep this one")).toHaveCount(1);
+  await expect(cards.getByText(/packages\/utils\/src\/date\.ts:1/)).toBeVisible();
+  await expect(cards.getByText(/packages\/utils\/src\/time\.ts:2/)).toBeVisible();
+  const compare = page.getByRole("region", { name: /Compare parseTimestamp with formatRelativeDate/ });
+  await expect(compare.getByText("Loading source…")).toHaveCount(0);
+  await expect(compare).toContainText("diffMs");
+  await expect(compare).toContainText("delta");
+  await expect(compare.locator('[data-diff="true"]').first()).toBeVisible();
+  await page.mouse.move(2, 2);
+  await page.screenshot({ path: join(shots, "duplicates-fixture.png") });
+
+  // "Not a duplicate" hides the pair, and a reload (fresh data from the server) keeps it hidden.
+  await cards.getByRole("button", { name: "Not a duplicate" }).click();
+  await page.getByPlaceholder(/same shape/).fill("different on purpose");
+  await page.getByRole("button", { name: "Hide this pair" }).click();
+  await expect(groups.getByRole("button")).toHaveCount(1);
+  await page.reload();
+  await expect(groups.getByRole("button")).toHaveCount(1);
+  await expect(groups.getByRole("button").filter({ hasText: "formatRelativeDate" })).toHaveCount(0);
+  await expect(groups.getByRole("button").filter({ hasText: "slugify" })).toHaveCount(1);
+});

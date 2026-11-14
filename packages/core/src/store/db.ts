@@ -36,6 +36,15 @@ const MIGRATIONS: Migration[] = [
       applyVecMigration(db);
     },
   },
+  {
+    // files.directives: JSON array of leading directive strings ("use client"), NULL on older rows (spec section 9).
+    version: 3,
+    apply(db) {
+      // Idempotent: a database whose schema_version was reset already has the column.
+      const cols = db.prepare("PRAGMA table_info(files)").all() as { name: string }[];
+      if (!cols.some((c) => c.name === "directives")) db.exec("ALTER TABLE files ADD COLUMN directives TEXT");
+    },
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;

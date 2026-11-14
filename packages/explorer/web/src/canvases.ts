@@ -6,6 +6,7 @@ import { Canvas3D } from "./canvas3d/index.tsx";
 import { MapPanel } from "./canvas3d/MapPanel.tsx";
 import { ListCanvas } from "./components/ListCanvas.tsx";
 import { registerCanvas, registerFilterPanel, setDefaultCanvas } from "./slots.ts";
+import { DuplicatesCanvas } from "./views/DuplicatesCanvas.tsx";
 
 setDefaultCanvas(ListCanvas);
 registerCanvas("list", ListCanvas);
@@ -28,3 +29,6 @@ for (const hint of [
 ]) {
   registerCanvas(hint, CanvasHost);
 }
+
+// The duplicates view is a ranked list with a detail pane, not a graph: it takes over the "clusters" hint.
+registerCanvas("clusters", DuplicatesCanvas);

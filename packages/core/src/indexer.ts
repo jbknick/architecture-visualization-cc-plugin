@@ -301,6 +301,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
         contentHash: e.contentHash as string,
         mtimeMs: Math.round(e.mtimeMs),
         deleted: false,
+        ...(pf.directives && pf.directives.length > 0 ? { directives: pf.directives } : {}),
       };
       const old = layer === "main" && !rebuildFts ? oldFtsIds("main", e.id) : [];
       store.replaceFile(layer, file, symbols, edges);
@@ -469,6 +470,7 @@ export function dumpGraph(store: Store): {
     path: f.path,
     workspaceId: f.workspaceId,
     contentHash: f.contentHash,
+    ...(f.directives && f.directives.length > 0 ? { directives: f.directives } : {}),
   }));
   // minhash is omitted: it is 64 words per symbol and is fully determined by the source.
   const symbols = store.effectiveSymbols().map(({ minhash: _m, ...s }) => s);

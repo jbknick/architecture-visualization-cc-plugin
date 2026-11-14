@@ -73,10 +73,94 @@ export interface Meta {
   views: ViewInfo[];
 }
 
-export interface ViewData {
+export type DupTier = "exact" | "near" | "code_vector" | "semantic";
+
+export interface DupAdvice {
+  situation: number;
+  action: string;
+  inline: boolean;
+}
+
+export interface DupMember {
+  id: string;
+  name: string;
+  kind: string;
+  path: string;
+  line: number;
+  endLine: number;
+  loc: number;
+  workspaceId: string | null;
+  exported: boolean;
+  /** Distinct functions that call, render or use it. */
+  fanIn: number;
+  /** How the member relates to the keep candidate; null on the keep candidate itself. */
+  tier: DupTier | null;
+  /** 0..1 similarity to the keep candidate; null when it could not be measured. */
+  score: number | null;
+  keep: boolean;
+  advice?: DupAdvice;
+}
+
+export interface DupCluster {
+  id: string;
+  /** The loosest link inside the group. */
+  tier: DupTier;
+  tiers: Record<DupTier, number>;
+  size: number;
+  loc: number;
+  rank: number;
+  keep: string;
+  keepReason: string;
+  workspaces: string[];
+  members: DupMember[];
+  links: { a: string; b: string; tier: DupTier }[];
+}
+
+export interface DupWorkspace {
+  id: string;
+  name: string;
+  shortLabel: string;
+  kind: string;
+}
+
+export interface DupSkipInfo {
+  tier: DupTier;
+  reason: "vectors_unavailable" | "not_embedded" | "no_description";
+  message: string;
+}
+
+export interface DupSplit {
+  workspaces: string[];
+  clusters: number;
+  functions: number;
+}
+
+export interface DupSummary {
+  clusters: number;
+  functions: number;
+  duplicateLines: number;
+  crossWorkspace: number;
+}
+
+/** The duplicates view's own fields, next to the usual nodes/edges. */
+export interface DuplicatesData {
+  clusters: DupCluster[];
+  summary: DupSummary;
+  splits: DupSplit[];
+  workspaces: DupWorkspace[];
+  skipped: DupSkipInfo[];
+}
+
+export interface ViewData extends Partial<DuplicatesData> {
   nodes: GraphNode[];
   edges: GraphEdge[];
   layoutHint: string;
+}
+
+export interface DismissResult {
+  dismissed: { a: string; b: string; reason: string };
+  summary: DupSummary;
+  clusters: { id: string; size: number }[];
 }
 
 /** The `node` object of /api/node. Symbols carry the full set; files and workspaces only some of it. */
@@ -186,7 +270,10 @@ export function encodeFilters(filters: Filters): string | undefined {
 }
 
 export const api = {
-  meta: (signal?: AbortSignal) => getJson<Meta>("/api/meta", {}, signal),
+  // `scenario` and `view` are mock-only: the mock answers with that scenario's repo name and counts (they differ
+  // between the 2D and 3D datasets). The real server ignores both.
+  meta: (signal?: AbortSignal, scenario?: string, view?: string) =>
+    getJson<Meta>("/api/meta", { scenario, view: scenario ? view : undefined }, signal),
 
   view: (id: string, opts: ViewOptions, signal?: AbortSignal) =>
     getJson<ViewData>(
@@ -218,6 +305,27 @@ export const api = {
       body: JSON.stringify({ positions }),
     });
     if (!res.ok) throw new ApiError(res.status, `layout save failed with ${res.status}`);
+  },
+
+  /** Marks two functions as "not a duplicate". Hidden for good, and in the duplicate guard too. */
+  dismiss: async (a: string, b: string, reason: string): Promise<DismissResult> => {
+    const res = await fetch("/api/dismiss", {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ a, b, reason }),
+    });
+    if (!res.ok) {
+      let detail = "";
+      try {
+        const body = (await res.json()) as { error?: unknown };
+        if (typeof body.error === "string") detail = body.error;
+      } catch {
+        // not JSON
+      }
+      throw new ApiError(res.status, detail || `dismiss failed with ${res.status}`);
+    }
+    return (await res.json()) as DismissResult;
   },
 
   node: (id: string, signal?: AbortSignal) =>

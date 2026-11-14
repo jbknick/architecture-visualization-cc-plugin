@@ -52,6 +52,8 @@ export interface ParsedFile {
   /** Source range per symbol id as UTF-16 string offsets: `source.slice(start, end)` is the body. */
   bodies: Map<string, { start: number; end: number }>;
   errors: string[];
+  /** Leading directive prologue strings, e.g. `["use client"]`. Absent on results cached before v2. */
+  directives?: string[];
 }
 
 interface Draft {
@@ -760,6 +762,12 @@ export function parseSource(repoRelPath: string, source: string): ParsedFile {
     const lines = new LineTable(source);
     const parsed = parseRecovering(repoRelPath, source, langOf(repoRelPath), lines);
     result.errors = parsed.errors;
+    const directives: string[] = [];
+    for (const st of parsed.body) {
+      if (st.type !== "ExpressionStatement" || typeof st.directive !== "string") break;
+      directives.push(st.directive);
+    }
+    if (directives.length > 0) result.directives = directives;
     const ex = new Extractor(source, lines);
     ex.run(parsed.body);
     result.imports.push(...ex.imports);

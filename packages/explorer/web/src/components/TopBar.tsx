@@ -1,9 +1,12 @@
+import { debugEnabled } from "../debug.ts";
 import { useStore } from "../store.tsx";
 import { SearchBox } from "./SearchBox.tsx";
 
 export function TopBar() {
   const { state, view, setView } = useStore();
   const { meta } = state;
+  // The "Debug: workspaces" view is a developer aid: its tab shows only with ?debug=1 (or while it is the open view).
+  const tabs = (meta?.views ?? []).filter((v) => v.id !== "debug" || v.id === view || debugEnabled());
   return (
     <header className="topbar">
       <div className="topbar-id">
@@ -17,7 +20,7 @@ export function TopBar() {
       </div>
       <nav aria-label="Views">
         <div className="tabs" role="tablist">
-          {(meta?.views ?? []).map((v) => (
+          {tabs.map((v) => (
             <button
               key={v.id}
               type="button"

@@ -4,6 +4,26 @@
 // package.json dependencies. Selected with the hash flag `scenario=large`; entirely synthetic and deterministic.
 import type { GraphEdge, GraphNode, ViewData, ViewLevel } from "../src/api.ts";
 
+/** What `/api/meta` reports as `counts`. */
+export type Counts = {
+  workspaces: number;
+  files: number;
+  symbols: number;
+  edges: number;
+};
+
+/** Real counts of the large dataset: workspaces, files, functions, and the import / call / package.json edges. */
+export function largeMapCounts(): Counts {
+  cache ??= build();
+  const all = [...cache.nodes.values()];
+  return {
+    workspaces: all.filter((n) => n.tier === 0).length,
+    files: all.filter((n) => n.tier === 2).length,
+    symbols: all.filter((n) => n.tier === 3).length,
+    edges: cache.fileImports.length + cache.calls.length + cache.declared.length,
+  };
+}
+
 const SCOPE = "@acme-platform-monorepo";
 
 interface Spec {

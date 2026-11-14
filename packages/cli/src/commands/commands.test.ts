@@ -181,7 +181,7 @@ describe("bundled CLI: vector tables and embeddings", () => {
     expect(r.code).toBe(0);
     const db = openBundleDb();
     try {
-      expect(db.getMeta("schema_version")).toBe("2");
+      expect(db.getMeta("schema_version")).toBe("3");
       expect(db.getMeta("vec_available")).toBe("1");
       expect(db.getMeta("embed_model")).toBe("jinaai/jina-embeddings-v2-base-code");
       expect(db.getMeta("embed_dim")).toBe("768");

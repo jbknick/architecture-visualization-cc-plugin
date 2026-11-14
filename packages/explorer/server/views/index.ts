@@ -1,5 +1,6 @@
 import type { ViewModule } from "../types.js";
 import { debugView } from "./debug.js";
+import { duplicatesView } from "./duplicates.js";
 import { egoView } from "./ego.js";
 import { map3dView } from "./map3d.js";
 import { projectMapView } from "./projectMap.js";
@@ -22,4 +23,5 @@ export function listViews(): ViewModule[] {
 registerView(debugView);
 registerView(projectMapView);
 registerView(egoView);
+registerView(duplicatesView);
 registerView(map3dView);
