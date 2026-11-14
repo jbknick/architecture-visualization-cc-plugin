@@ -59,6 +59,32 @@ describe("plugin manifest and MCP config", () => {
   });
 });
 
+describe("hooks/hooks.json", () => {
+  const hooks = (
+    json("hooks/hooks.json") as {
+      hooks: Record<string, { matcher?: string; hooks: Record<string, unknown>[] }[]>;
+    }
+  ).hooks;
+  const launcher = (name: string): string =>
+    `"${["$", "{CLAUDE_PLUGIN_ROOT}"].join("")}/bin/gantry" hook ${name}`;
+
+  it("declares exactly SessionStart and PostToolUse command hooks", () => {
+    expect(Object.keys(hooks).sort()).toEqual(["PostToolUse", "SessionStart"]);
+    expect(hooks.SessionStart).toEqual([
+      { hooks: [{ type: "command", command: launcher("session-start"), timeout: 30 }] },
+    ]);
+  });
+
+  it("runs post-tool-use for Write, Edit and MultiEdit with a 5 second timeout", () => {
+    expect(hooks.PostToolUse).toEqual([
+      {
+        matcher: "Write|Edit|MultiEdit",
+        hooks: [{ type: "command", command: launcher("post-tool-use"), timeout: 5 }],
+      },
+    ]);
+  });
+});
+
 describe("describer agent", () => {
   const { data, body } = frontmatter(read("agents/describer.md"));
 
