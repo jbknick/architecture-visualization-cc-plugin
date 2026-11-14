@@ -111,6 +111,10 @@ export default function Graph3D({ nodes, edges, focus, onSelect, onHover }: Canv
         <span>
           <strong>Arrow A → B</strong> = A imports from B (thicker = more imports)
         </span>
+        {" · "}
+        <span>
+          <strong>Number</strong> = imports, <strong>→</strong> points at the imported workspace
+        </span>
         {hideTests && (
           <>
             {" · "}

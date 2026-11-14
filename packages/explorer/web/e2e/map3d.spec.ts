@@ -117,7 +117,8 @@ for (const [level, file] of [
     expect(islands.map((b) => b.text.split(/\d/)[0]?.trim()).sort()).toEqual(SHORT_NAMES);
     for (const b of islands) {
       expect(b.fs, b.text).toBeGreaterThanOrEqual(level === "files" ? 9.5 : 12);
-      expect(b.text).toMatch(/\d+ functions · [\d,]+ files · (app|package)/);
+      expect(b.text).toMatch(/\d+ functions · [\d,]+ files · (app|package|\(repo root\))/);
+      expect(b.text).not.toContain("unknown");
     }
     const leaders = await page
       .locator(".m3-leader")
@@ -130,10 +131,49 @@ for (const [level, file] of [
         expect(hit, `${a.text} / ${b.text}`).toBe(false);
       }
     }
-    // Count pills on the heaviest arcs.
+    // Every arc has a count pill (16 import arcs, fewer than 40), each with its direction arrow.
     const pills = boxes.filter((b) => b.cls.includes("m3-arc"));
-    expect(pills.length).toBeGreaterThanOrEqual(5);
+    expect(pills.length).toBe(16);
     for (const p of pills) expect(p.text).toMatch(/^[\d,]+$/);
+    expect(await page.locator(".m3-arc:visible .m3-pa").count()).toBe(16);
+    // No island name block touches any island disc, arc pill or arrowhead.
+    const overlay = page.getByTestId("map3d-labels");
+    const discs = JSON.parse((await overlay.getAttribute("data-discs")) ?? "[]") as {
+      x: number;
+      y: number;
+      r: number;
+    }[];
+    const heads = JSON.parse((await overlay.getAttribute("data-heads")) ?? "[]") as number[][];
+    const host = (await page.getByTestId("map3d-canvas").boundingBox()) as { x: number; y: number };
+    expect(discs).toHaveLength(11);
+    for (const b of islands) {
+      const l = b.l - host.x;
+      const t = b.t - host.y;
+      const r = b.r - host.x;
+      const bt = b.b - host.y;
+      for (const d of discs) {
+        const nx = Math.min(Math.max(d.x, l), r);
+        const ny = Math.min(Math.max(d.y, t), bt);
+        expect(Math.hypot(nx - d.x, ny - d.y), `${b.text} over an island`).toBeGreaterThanOrEqual(d.r);
+      }
+      for (const h of heads) {
+        const hit =
+          l < (h[2] as number) && r > (h[0] as number) && t < (h[3] as number) && bt > (h[1] as number);
+        expect(hit, `${b.text} over an arrowhead`).toBe(false);
+      }
+    }
+    // The two opposite arcs between api and core are separate: two pills, two bows, far apart.
+    const api = "ws:@acme-platform-monorepo/api";
+    const core = "ws:@acme-platform-monorepo/core";
+    const pillAt = async (id: string) =>
+      page.locator(`.m3-arc[data-arc="${id}"]`).evaluate((e) => {
+        const r = e.getBoundingClientRect();
+        return { text: e.textContent ?? "", x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+    const ab = await pillAt(`${api}>${core}`);
+    const ba = await pillAt(`${core}>${api}`);
+    expect([ab.text, ba.text]).toEqual(["267", "3"]);
+    expect(Math.hypot(ab.x - ba.x, ab.y - ba.y)).toBeGreaterThan(40);
     // The always-visible key.
     const key = page.getByTestId("map3d-key");
     await expect(key).toContainText("Island = workspace (size = functions)");
@@ -141,19 +181,48 @@ for (const [level, file] of [
     await expect(key).toContainText("Tests hidden");
 
     if (level === "dirs") {
+      // Folders of the three big islands: 7 + 6 + 5 = 18 (the empty "(root)" folder of api is not drawn).
       const dirs = boxes.filter((b) => b.cls.includes("m3-dir"));
-      expect(dirs.length).toBeGreaterThanOrEqual(12); // at least 6 on each of the biggest two islands
+      expect(dirs.length).toBeGreaterThanOrEqual(17);
       for (const d of dirs) {
-        expect(d.text).toMatch(/ · [\d,]+ fn$/);
+        expect(d.text.replace("\n", " ")).toMatch(/ [\d,]+ fn$/);
         expect(d.text.startsWith("src/")).toBe(false);
+        expect(d.text).not.toContain("(root)");
+        expect(d.text).not.toMatch(/\b0 fn/);
       }
     }
     if (level === "files") {
       const clusters = boxes.filter((b) => b.cls.includes("m3-cluster"));
-      expect(clusters.length).toBeGreaterThanOrEqual(5);
-      for (const c of clusters) expect(c.text).toMatch(/ · [\d,]+ fn$/);
-      expect(boxes.filter((b) => b.cls.includes("m3-file")).length).toBeGreaterThanOrEqual(3);
-      // File names beyond the biggest three show on hover.
+      expect(clusters.length).toBeGreaterThanOrEqual(14);
+      for (const c of clusters) {
+        expect(c.text).toMatch(/ · [\d,]+ fn$/);
+        expect(c.text).not.toContain("(root)");
+      }
+      // The largest files of the big folders are named in full or without extension, never cut in the middle.
+      const names = boxes.filter((b) => b.cls.includes("m3-file"));
+      expect(names.length).toBeGreaterThanOrEqual(6);
+      for (const n of names) {
+        expect(n.text).toMatch(/^[\w.-]+ · [\d,]+ fn$/);
+        expect(n.text).not.toContain("…");
+      }
+      // No web of import lines by default.
+      expect(await page.getByTestId("map3d-labels").getAttribute("data-edges")).toBe("0");
+      // Hovering a file dot draws that file's imports as thin lines (dots are small: try the named ones in turn).
+      const dots = await page
+        .locator(".m3-file[data-dot]:visible")
+        .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.dot ?? ""));
+      let edges = 0;
+      for (const dot of dots) {
+        const [dx, dy] = dot.split(",").map(Number) as [number, number];
+        await page.mouse.move(host.x + dx - 3, host.y + dy - 3);
+        await page.mouse.move(host.x + dx, host.y + dy, { steps: 4 });
+        await page.waitForTimeout(300);
+        edges = Number(await page.getByTestId("map3d-labels").getAttribute("data-edges"));
+        if (edges > 0) break;
+      }
+      expect(edges).toBeGreaterThan(0);
+      await page.screenshot({ path: resolve(shots, "map-3d-large-files-file-hover.png") });
+      // Hovering an island reveals more file names.
       await page.getByRole("button", { name: /^api/ }).hover();
       await page.waitForTimeout(600);
       await page.screenshot({ path: resolve(shots, "map-3d-large-files-hover.png") });
@@ -173,13 +242,15 @@ for (const [level, file] of [
   });
 }
 
-test("3D map, large scenario: the left panel leads with the legend and scrolls to the last workspace", async ({
+test("3D map, large scenario: the workspace list fits at 900px, 'How to read it' collapses and scrolling still works", async ({
   page,
 }) => {
   await openLarge(page, "dirs");
   const left = page.getByRole("complementary", { name: "Filters" });
-  // The 3D legend is right under the level switch; no function-kind legend is shown for this view.
-  await expect(left.getByText("How to read it")).toBeVisible();
+  const toggle = left.getByRole("button", { name: /How to read it/ });
+  await expect(toggle).toBeVisible();
+  // 11 workspaces: the block starts collapsed to its one line, so the whole list is on screen without scrolling.
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await expect(left.getByText("Legend", { exact: true })).toHaveCount(0);
   const order = await left.evaluate((el) => {
     const y = (sel: string) => el.querySelector(sel)?.getBoundingClientRect().top ?? Number.NaN;
@@ -187,12 +258,21 @@ test("3D map, large scenario: the left panel leads with the legend and scrolls t
   });
   expect(order.levels).toBeLessThan(order.howto);
   expect(order.howto).toBeLessThan(order.list);
-  expect(await left.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  expect(await left.evaluate((el) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
   const last = left.locator(".map3d-legend-row").last();
-  await last.scrollIntoViewIfNeeded();
   const [row, panel] = await Promise.all([last.boundingBox(), left.boundingBox()]);
   expect((row?.y ?? 0) + (row?.height ?? 0)).toBeLessThanOrEqual((panel?.y ?? 0) + (panel?.height ?? 0) + 1);
-  await expect(last).toBeInViewport();
+  await expect(last).toBeInViewport({ ratio: 1 });
+  // Expanding shows the three keys; the list then scrolls, and the choice is remembered over a reload.
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(left.getByText(/Island = one workspace/)).toBeVisible();
+  expect(await left.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toBeInViewport({ ratio: 1 });
+  await page.reload();
+  await expect(page.locator(".map3d[data-ready='true']")).toBeVisible();
+  await expect(left.getByRole("button", { name: /How to read it/ })).toHaveAttribute("aria-expanded", "true");
 });
 
 test("3D map, large scenario, folders level (dark), hovering the web island", async ({ page }) => {

@@ -806,7 +806,7 @@ const m3Imports: { src: string; dst: string; w: number }[] = (() => {
 interface M3Ws {
   id: string;
   name: string;
-  kind: "app" | "package";
+  kind: "app" | "package" | "unknown";
   /** Workspace directory (the real server sends it as `path`). */
   dir: string;
 }
@@ -830,7 +830,7 @@ const SCOPE = "@acme-platform-monorepo";
 const ROOT_PKG = "acme-platform-monorepo-root-app";
 const LARGE_SPEC: {
   name: string;
-  kind: "app" | "package";
+  kind: "app" | "package" | "unknown";
   dir: string;
   files: number;
   fns: number;
@@ -874,7 +874,7 @@ const LARGE_SPEC: {
   { name: `${SCOPE}/ui-kit`, kind: "package", dir: "packages/ui-kit", files: 5, fns: 12, dirs: ["src"] },
   { name: `${SCOPE}/db-client`, kind: "package", dir: "packages/db-client", files: 4, fns: 9, dirs: ["src"] },
   { name: `${SCOPE}/testing`, kind: "package", dir: "packages/testing", files: 2, fns: 6, dirs: ["src"] },
-  { name: ROOT_PKG, kind: "package", dir: "tooling", files: 1, fns: 3, dirs: ["."] },
+  { name: ROOT_PKG, kind: "unknown", dir: "tooling", files: 1, fns: 3, dirs: ["."] },
   { name: "scripts", kind: "app", dir: "scripts", files: 1, fns: 1, dirs: ["."] },
 ];
 const WORDS = [
@@ -1006,6 +1006,14 @@ const M3_LARGE: M3Data = (() => {
       if (t.id !== f.id) out.set(`${f.id}|${t.id}`, 1 + (m3hash(`${f.id}${t.id}x`) % 3));
     }
   }
+  // One cycle: three imports back from core to api (against 267-ish the other way), so the pair has two arcs.
+  const coreFiles = byWs.get(id(wsName("core"))) as M3File[];
+  const apiFiles = byWs.get(id(wsName("api"))) as M3File[];
+  for (let k = 0; k < 3; k++) {
+    const src = coreFiles[k] as M3File;
+    const dst = apiFiles[(k * 7) % apiFiles.length] as M3File;
+    out.set(`${src.id}|${dst.id}`, 1);
+  }
   const imports = [...out].map(([k, w]) => {
     const [src, dst] = k.split("|") as [string, string];
     return { src, dst, w };
@@ -1028,6 +1036,17 @@ const M3_LARGE: M3Data = (() => {
     dec("config", "types"),
     dec("ui-kit", "logger"),
   ];
+  // Two type-only files at the root of api: a folder with no functions, which the 3D map must not draw.
+  const apiDir = LARGE_SPEC[0]?.dir ?? "apps/api";
+  for (const base of ["env.d", "globals.d"]) {
+    files.push({
+      id: `file:${apiDir}/${base}.ts`,
+      path: `${apiDir}/${base}.ts`,
+      ws: id(wsName("api")),
+      dir: ".",
+      fns: 0,
+    });
+  }
   return { ws, files, imports, declared };
 })();
 

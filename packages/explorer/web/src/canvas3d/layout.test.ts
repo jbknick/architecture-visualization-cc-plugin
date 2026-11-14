@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { map3dView } from "../../mock/fixture.ts";
 import {
+  ALL_PILLS,
   arcWidthPx,
+  arrowSpreadAngle,
   bestViewDir,
   computeLayout,
   folderCaption,
@@ -11,9 +13,16 @@ import {
   islandLabelPx,
   islandRadius,
   nodeRadius,
+  packCircles,
+  packFolders,
+  pillArcIds,
   positionHash,
+  spreadAngles,
   stripSharedSrc,
   summarizeIslands,
+  sunflower,
+  TOP_PILLS,
+  viewBasis,
 } from "./layout.ts";
 
 const files = map3dView("files");
@@ -387,5 +396,268 @@ describe("arrow data", () => {
     const d = Math.hypot(arc.p2.x - core.center.x, arc.p2.y - core.center.y, arc.p2.z - core.center.z);
     expect(d).toBeGreaterThan(core.radius);
     expect(d).toBeLessThan(core.radius + 4);
+  });
+});
+
+describe("circle packing", () => {
+  const items = [90, 60, 44, 30, 22, 14, 9, 5, 5, 2].map((f, i) => ({ id: `f${i}`, r: Math.sqrt(f) }));
+
+  it("never overlaps, keeps the padding, and is deterministic", () => {
+    const a = packCircles(items, 0.3);
+    const b = packCircles([...items].reverse(), 0.3);
+    expect(a.circles).toEqual(b.circles);
+    for (const [i, p] of a.circles.entries()) {
+      for (const q of a.circles.slice(i + 1)) {
+        expect(Math.hypot(p.x - q.x, p.y - q.y)).toBeGreaterThanOrEqual(p.r + q.r + 0.3 - 1e-6);
+      }
+      expect(Math.hypot(p.x, p.y) + p.r).toBeLessThanOrEqual(a.radius + 1e-6);
+    }
+  });
+
+  it("scales folders to fit the island: radius ~ sqrt(functions), inside, no overlap", () => {
+    const folders = [820, 400, 255, 120, 64, 33, 12, 3].map((f, i) => ({ key: `src/d${i}`, functions: f }));
+    const { circles } = packFolders(folders, 100);
+    const again = packFolders([...folders].reverse(), 100).circles;
+    const byId = (x: { id: string }, y: { id: string }) => (x.id < y.id ? -1 : 1);
+    expect([...circles].sort(byId)).toEqual([...again].sort(byId));
+    for (const [i, p] of circles.entries()) {
+      expect(Math.hypot(p.x, p.y) + p.r).toBeLessThanOrEqual(100 + 1e-6);
+      for (const q of circles.slice(i + 1)) {
+        expect(Math.hypot(p.x - q.x, p.y - q.y)).toBeGreaterThan(p.r + q.r);
+      }
+    }
+    // Radius follows sqrt(functions) for every folder above the floor.
+    const byKey = new Map(circles.map((c) => [c.id, c]));
+    const ratio = (key: string, fns: number) => (byKey.get(key)?.r ?? 0) / Math.sqrt(fns);
+    expect(ratio("src/d1", 400)).toBeCloseTo(ratio("src/d0", 820), 6);
+    expect(ratio("src/d4", 64)).toBeCloseTo(ratio("src/d0", 820), 6);
+  });
+
+  it("packs a single folder in the middle", () => {
+    const one = packFolders([{ key: "a", functions: 5 }], 50);
+    expect(one.circles).toHaveLength(1);
+    expect(one.circles[0]?.r).toBeCloseTo(50, 6);
+  });
+});
+
+describe("files as a sunflower inside a folder ring", () => {
+  const files = [41, 30, 22, 17, 9, 9, 5, 3, 2, 1, 1, 1].map((f, i) => ({ id: `file${i}`, functions: f }));
+
+  it("puts the biggest file in the middle, keeps every dot inside the ring and clear of its neighbours", () => {
+    const dots = sunflower(files, 60);
+    expect(dots[0]).toMatchObject({ id: "file0", x: 0, y: 0 });
+    for (const [i, p] of dots.entries()) {
+      expect(Math.hypot(p.x, p.y) + p.r).toBeLessThanOrEqual(60);
+      for (const q of dots.slice(i + 1)) expect(Math.hypot(p.x - q.x, p.y - q.y)).toBeGreaterThan(p.r + q.r);
+    }
+    expect((dots[0]?.r ?? 0) >= (dots[5]?.r ?? 0)).toBe(true);
+    expect(sunflower([...files].reverse(), 60)).toEqual(dots);
+  });
+
+  it("handles a folder with one file", () => {
+    expect(sunflower([{ id: "only", functions: 4 }], 40)).toEqual([{ id: "only", x: 0, y: 0, r: 20 }]);
+  });
+});
+
+type P3 = { x: number; y: number; z: number };
+
+describe("folder discs in the large mock", () => {
+  const dirs = large("dirs");
+  const files = large("files");
+
+  it("sit on a flat disc facing the default camera, inside the island, without overlap, at both levels", () => {
+    for (const l of [dirs, files]) {
+      for (const isl of l.islands) {
+        const cs = l.clusters.filter((c) => c.island === isl.id);
+        for (const [i, a] of cs.entries()) {
+          const off = {
+            x: a.center.x - isl.center.x,
+            y: a.center.y - isl.center.y,
+            z: a.center.z - isl.center.z,
+          };
+          expect(off.x * l.viewDir.x + off.y * l.viewDir.y + off.z * l.viewDir.z).toBeCloseTo(0, 6);
+          expect(Math.hypot(off.x, off.y, off.z) + a.radius).toBeLessThanOrEqual(isl.radius + 1e-6);
+          for (const b of cs.slice(i + 1)) {
+            const d = Math.hypot(a.center.x - b.center.x, a.center.y - b.center.y, a.center.z - b.center.z);
+            expect(d, `${isl.label}: ${a.key} / ${b.key}`).toBeGreaterThan(a.radius + b.radius);
+          }
+        }
+      }
+    }
+  });
+
+  it("puts every folder in the same place at the Folders and the Files level", () => {
+    expect(dirs.clusters.length).toBeGreaterThanOrEqual(18);
+    for (const c of dirs.clusters) {
+      const same = files.clusters.find((d) => d.id === c.id);
+      expect(same, c.id).toBeDefined();
+      expect(same?.center).toEqual(c.center);
+      expect(same?.radius).toBeCloseTo(c.radius, 9);
+      expect(same?.functions).toBe(c.functions);
+    }
+  });
+
+  it("does not draw folders without functions; they are only counted as empty", () => {
+    const api = dirs.islands.find((i) => i.label === "api");
+    expect(api?.emptyFolders).toBe(1);
+    const apiClusters = dirs.clusters.filter((c) => c.island === api?.id);
+    expect(apiClusters.some((c) => c.key === ".")).toBe(false);
+    expect(files.clusters.filter((c) => c.island === api?.id).some((c) => c.key === ".")).toBe(false);
+    for (const l of [dirs, files]) for (const c of l.clusters) expect(c.functions).toBeGreaterThan(0);
+    expect(api?.nodeIds.some((id) => id.endsWith(":."))).toBe(false);
+    expect(api?.nodeIds).toHaveLength(7);
+  });
+
+  it("keeps file dots inside their folder ring and clear of each other", () => {
+    for (const c of files.clusters) {
+      const dots = c.nodeIds.map((id) => ({
+        p: files.positions.get(id) as P3,
+        r: files.nodeRadius.get(id) as number,
+      }));
+      for (const [i, a] of dots.entries()) {
+        const fromCentre = Math.hypot(a.p.x - c.center.x, a.p.y - c.center.y, a.p.z - c.center.z);
+        expect(fromCentre + a.r).toBeLessThanOrEqual(c.radius + 1e-6);
+        for (const b of dots.slice(i + 1)) {
+          expect(Math.hypot(a.p.x - b.p.x, a.p.y - b.p.y, a.p.z - b.p.z)).toBeGreaterThan(a.r + b.r - 1e-6);
+        }
+      }
+    }
+  });
+
+  it("is deterministic across loads", () => {
+    expect(positionHash(large("files"))).toBe(positionHash(files));
+    expect(files.clusters).toEqual(large("files").clusters);
+  });
+});
+
+describe("arcs", () => {
+  const l = large("workspaces");
+  const id = (short: string) => l.islands.find((i) => i.label === short)?.id as string;
+  const { right, up } = viewBasis(l.viewDir);
+  const to2 = (p: P3) => ({
+    x: p.x * right.x + p.y * right.y + p.z * right.z,
+    y: p.x * up.x + p.y * up.y + p.z * up.z,
+  });
+
+  it("draws the two opposite links between a pair as two separate arcs, bowed to opposite sides", () => {
+    const ab = l.arcs.find((a) => a.src === id("api") && a.dst === id("core"));
+    const ba = l.arcs.find((a) => a.src === id("core") && a.dst === id("api"));
+    expect(ab?.weight).toBe(267);
+    expect(ba?.weight).toBe(3);
+    if (!ab || !ba) return;
+    expect(ab.reciprocal && ba.reciprocal).toBe(true);
+    // The peak of each bow (t = 0.5), seen from the default camera: opposite sides of the straight chord.
+    const peak = (a: typeof ab) => {
+      const q = (k: "x" | "y" | "z") => 0.25 * a.p0[k] + 0.5 * a.p1[k] + 0.25 * a.p2[k];
+      return to2({ x: q("x"), y: q("y"), z: q("z") });
+    };
+    const a = to2(l.islands.find((i) => i.id === id("api"))?.center as P3);
+    const b = to2(l.islands.find((i) => i.id === id("core"))?.center as P3);
+    const side = (p: { x: number; y: number }) =>
+      Math.sign((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x));
+    expect(side(peak(ab)) * side(peak(ba))).toBe(-1);
+    const chord = Math.hypot(b.x - a.x, b.y - a.y);
+    expect(Math.hypot(peak(ab).x - peak(ba).x, peak(ab).y - peak(ba).y)).toBeGreaterThan(0.2 * chord);
+  });
+
+  it("gives every arc its own end point on the rim of an island: arrowheads at least 12px apart", () => {
+    const pxPerUnit = 330 / l.extent;
+    for (const isl of l.islands) {
+      const ends = l.arcs
+        .filter((a) => !a.dependsOnly && (a.src === isl.id || a.dst === isl.id))
+        .map((a) => (a.dst === isl.id ? a.p2 : a.p0));
+      const angles = ends.map((p) => {
+        const d = to2({ x: p.x - isl.center.x, y: p.y - isl.center.y, z: p.z - isl.center.z });
+        return Math.atan2(d.y, d.x);
+      });
+      const need = Math.min(arrowSpreadAngle(isl.radius, l.extent), (Math.PI * 2) / Math.max(1, ends.length));
+      for (const [i, p] of angles.entries()) {
+        for (const q of angles.slice(i + 1)) {
+          let diff = Math.abs(p - q) % (Math.PI * 2);
+          diff = Math.min(diff, Math.PI * 2 - diff);
+          expect(diff, isl.label).toBeGreaterThanOrEqual(need - 1e-6);
+        }
+      }
+      // And in pixels (estimated at the default camera) the nearest two are about 12px or more apart.
+      if (ends.length >= 2) {
+        const min = Math.min(
+          ...angles.flatMap((p, i) =>
+            angles.slice(i + 1).map((q) => {
+              const d = Math.abs(p - q) % (Math.PI * 2);
+              return Math.min(d, Math.PI * 2 - d);
+            }),
+          ),
+        );
+        const px = 2 * isl.radius * Math.sin(min / 2) * pxPerUnit;
+        const ring = 2 * Math.PI * isl.radius * pxPerUnit;
+        expect(px, isl.label).toBeGreaterThanOrEqual(Math.min(12, ring / ends.length / 1.3));
+      }
+    }
+  });
+
+  it("spreads angles on a circle without moving well-spaced ones", () => {
+    const out = spreadAngles(
+      [
+        { key: "a", angle: 1 },
+        { key: "b", angle: 1.05 },
+        { key: "c", angle: 4 },
+      ],
+      0.5,
+    );
+    expect(Math.abs((out.get("a") as number) - (out.get("b") as number))).toBeGreaterThanOrEqual(0.5 - 1e-9);
+    expect(out.get("c")).toBeCloseTo(4, 9);
+  });
+
+  it("raises arcs so they stay out of the middle of the islands between their ends", () => {
+    let through = 0;
+    for (const a of l.arcs.filter((x) => !x.dependsOnly)) {
+      for (let k = 1; k < 20; k++) {
+        const t = k / 20;
+        const u = 1 - t;
+        const pt = to2({
+          x: u * u * a.p0.x + 2 * u * t * a.p1.x + t * t * a.p2.x,
+          y: u * u * a.p0.y + 2 * u * t * a.p1.y + t * t * a.p2.y,
+          z: u * u * a.p0.z + 2 * u * t * a.p1.z + t * t * a.p2.z,
+        });
+        for (const isl of l.islands) {
+          if (isl.id === a.src || isl.id === a.dst) continue;
+          const c = to2(isl.center);
+          if (Math.hypot(pt.x - c.x, pt.y - c.y) < isl.radius * 0.8) through++;
+        }
+      }
+    }
+    expect(through).toBe(0);
+  });
+
+  it("gives every arc a count pill when there are at most 40; above that only the heaviest", () => {
+    expect(l.arcs.length).toBeLessThanOrEqual(ALL_PILLS);
+    expect(pillArcIds(l.arcs).size).toBe(l.arcs.length);
+    const many = Array.from({ length: 45 }, (_, i) => ({
+      id: `a${i}`,
+      weight: i + 1,
+      dependsOnly: i % 9 === 0,
+    }));
+    const top = pillArcIds(many);
+    expect(top.size).toBe(TOP_PILLS);
+    expect(top.has("a44")).toBe(true);
+    expect(top.has("a0")).toBe(false);
+  });
+});
+
+describe("workspace type text", () => {
+  it('shows "(repo root)" instead of "unknown"', () => {
+    const node = (id: string, kind: string) => ({
+      id,
+      kind: "workspace",
+      label: id,
+      size: 3,
+      badges: [kind, "1 files", "3 functions"],
+    });
+    const s = summarizeIslands([node("ws:.", "unknown"), node("ws:a", "app")]);
+    expect(s.find((i) => i.id === "ws:.")?.wsKind).toBe("(repo root)");
+    expect(s.find((i) => i.id === "ws:a")?.wsKind).toBe("app");
+    expect(computeLayout({ nodes: [node("ws:.", "unknown")], edges: [] }).islands[0]?.wsKind).toBe(
+      "(repo root)",
+    );
   });
 });
