@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./map3d.css";
 import type { FilterPanelProps } from "../slots.ts";
 import { currentScheme } from "../theme.ts";
@@ -13,6 +13,27 @@ const LEVELS = [
   { id: "files", label: "Files" },
 ] as const;
 
+const HOWTO_KEY = "gantry.map3d.howto"; // "open" | "collapsed": the person's own choice
+const SEEN_KEY = "gantry.map3d.howto-seen"; // set after the first view; later visits start collapsed
+/** Up to this many workspaces the block starts open on a first visit; with more, the list needs the room. */
+const OPEN_FIRST_VIEW_MAX = 6;
+
+function readStore(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStore(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // private window or blocked storage: the block just starts in its default state next time
+  }
+}
+
 /** Left-panel controls for the 3D map: level, hide tests, auto-rotate, reset camera, and the workspace legend. */
 export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange }: FilterPanelProps) {
   const ui = useMapUi();
@@ -25,6 +46,16 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
   );
   const scheme = currentScheme();
   const reduced = prefersReducedMotion();
+  // "How to read it": open on a first visit to a small map, collapsed to one line afterwards; remembered.
+  const [seenBefore] = useState(() => readStore(SEEN_KEY) !== null);
+  const [choice, setChoice] = useState<boolean | null>(() => {
+    const saved = readStore(HOWTO_KEY);
+    return saved === "open" ? true : saved === "collapsed" ? false : null;
+  });
+  const howtoOpen = choice ?? (!seenBefore && islands.length <= OPEN_FIRST_VIEW_MAX);
+  useEffect(() => {
+    if (islands.length > 0) writeStore(SEEN_KEY, "1");
+  }, [islands.length]);
 
   return (
     <div className="map3d-panel">
@@ -43,42 +74,58 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
         ))}
       </fieldset>
       <section className="map3d-howto" aria-label="How to read this map">
-        <h3 className="panel-title">How to read it</h3>
-        <ul>
-          <li>
-            <span className="map3d-sw map3d-sw-island" aria-hidden="true" />
-            <span>
-              <strong>Island</strong> = one workspace. Size = number of functions. Colour = workspace, as in
-              the list below.
-            </span>
-          </li>
-          <li>
-            <svg className="map3d-sw map3d-sw-arrow" viewBox="0 0 26 10" aria-hidden="true">
-              <path d="M1 5 H17" stroke="currentColor" strokeWidth="2.4" fill="none" />
-              <path d="M16 0.8 L25 5 L16 9.2 Z" fill="currentColor" />
-            </svg>
-            <span>
-              <strong>Arrow A → B</strong> = A imports from B. Thicker = more imports; the number is the
-              import count.
-            </span>
-          </li>
-          <li>
-            <span className="map3d-sw map3d-sw-dot" aria-hidden="true" />
-            <span>
-              {level === "workspaces" && "Workspaces level: one sphere per workspace."}
-              {level === "dirs" && (
-                <>
-                  <strong>Sphere</strong> = folder (size = functions). Labels show name and functions.
-                </>
-              )}
-              {level === "files" && (
-                <>
-                  <strong>Sphere</strong> = file (size = functions), grouped by folder.
-                </>
-              )}
-            </span>
-          </li>
-        </ul>
+        <button
+          type="button"
+          className="map3d-howto-toggle"
+          aria-expanded={howtoOpen}
+          aria-controls="map3d-howto-body"
+          onClick={() => {
+            setChoice(!howtoOpen);
+            writeStore(HOWTO_KEY, howtoOpen ? "collapsed" : "open");
+          }}
+        >
+          <span className="map3d-howto-chevron" aria-hidden="true">
+            ▶
+          </span>
+          <span className="panel-title">How to read it</span>
+        </button>
+        {howtoOpen && (
+          <ul id="map3d-howto-body">
+            <li>
+              <span className="map3d-sw map3d-sw-island" aria-hidden="true" />
+              <span>
+                <strong>Island</strong> = one workspace. Size = number of functions. Colour = workspace, as in
+                the list below.
+              </span>
+            </li>
+            <li>
+              <svg className="map3d-sw map3d-sw-arrow" viewBox="0 0 26 10" aria-hidden="true">
+                <path d="M1 5 H17" stroke="currentColor" strokeWidth="2.4" fill="none" />
+                <path d="M16 0.8 L25 5 L16 9.2 Z" fill="currentColor" />
+              </svg>
+              <span>
+                <strong>Arrow A → B</strong> = A imports from B. Thicker = more imports. The number is the
+                import count; its small arrow points at the imported workspace.
+              </span>
+            </li>
+            <li>
+              <span className="map3d-sw map3d-sw-dot" aria-hidden="true" />
+              <span>
+                {level === "workspaces" && "Workspaces level: one sphere per workspace."}
+                {level === "dirs" && (
+                  <>
+                    <strong>Sphere</strong> = folder (size = functions). Labels show name and functions.
+                  </>
+                )}
+                {level === "files" && (
+                  <>
+                    <strong>Ring</strong> = folder; <strong>dot</strong> = file (size = functions).
+                  </>
+                )}
+              </span>
+            </li>
+          </ul>
+        )}
       </section>
       <label className="map3d-check">
         <input
