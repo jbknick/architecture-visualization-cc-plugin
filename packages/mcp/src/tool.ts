@@ -7,6 +7,8 @@ export interface ToolContext {
   paths: GantryPaths;
   store: Store;
   log: Logger;
+  /** The environment the server resolves paths with (also handed to a spawned `gantry map`). */
+  env: NodeJS.ProcessEnv;
   /** The embedding model if it is already cached on disk, else `undefined`. Never downloads. */
   getEmbedder(): Promise<Embedder | undefined>;
 }
