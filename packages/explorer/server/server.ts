@@ -3,12 +3,13 @@ import {
   chmodSync,
   createReadStream,
   existsSync,
+  linkSync,
   mkdirSync,
   readFileSync,
   realpathSync,
-  renameSync,
   rmSync,
   statSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -25,7 +26,25 @@ import {
 import { HttpError, handleApi } from "./api.js";
 import { MAX_DISMISS_BODY_BYTES, putDismiss } from "./dismiss.js";
 import { MAX_LAYOUT_BODY_BYTES, putLayout } from "./layout.js";
+import {
+  acquireLock,
+  createStateFile,
+  ExplorerAlreadyRunning,
+  type ExplorerState,
+  findRunningExplorer,
+  inspectExplorer,
+  removeStateFile,
+  stateFilePath,
+} from "./state.js";
 import { buildExplorerUrl } from "./url.js";
+
+export {
+  ExplorerAlreadyRunning,
+  type ExplorerState,
+  ExplorerUnresponsive,
+  findRunningExplorer,
+  stateFilePath,
+} from "./state.js";
 
 export interface ExplorerServerOptions {
   paths: GantryPaths;
@@ -50,16 +69,6 @@ export interface ExplorerServer {
   close(): Promise<void>;
 }
 
-export interface ExplorerState {
-  port: number;
-  token: string;
-  pid: number;
-  startedAt: string;
-}
-
-export const stateFilePath = (p: GantryPaths): string => path.join(p.dataDir, "explorer.json");
-
-/** Cookies are shared across ports on 127.0.0.1, so the name carries the port: two explorers never clobber each other. */
 export const cookieName = (port: number): string => `gantry_t_${port}`;
 
 /**
@@ -193,7 +202,25 @@ function serveStatic(res: ServerResponse, staticDir: string | undefined, pathnam
   createReadStream(real).pipe(res);
 }
 
+/**
+ * Starts the server. With a state file (the default) the whole start runs under `explorer.lock`, so concurrent
+ * starters take turns (this also keeps them from opening the database together) and a loser that finds a live
+ * explorer answers before it opens anything.
+ */
 export async function startExplorerServer(opts: ExplorerServerOptions): Promise<ExplorerServer> {
+  if (opts.writeStateFile === false) return startLocked(opts);
+  mkdirSync(opts.paths.dataDir, { recursive: true, mode: 0o700 });
+  const release = await acquireLock(opts.paths);
+  try {
+    const found = await inspectExplorer(opts.paths); // removes an unreadable file or one of a dead process
+    if (found.kind === "state") throw new ExplorerAlreadyRunning(found.state.port, found.state.pid);
+    return await startLocked(opts);
+  } finally {
+    release();
+  }
+}
+
+async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer> {
   const { paths } = opts;
   const ownsStore = !opts.store;
   const store = opts.store ?? openStore(paths.dbPath);
@@ -316,23 +343,28 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
   port = addr.port;
 
   const writeState = opts.writeStateFile !== false;
-  const file = stateFilePath(paths);
   if (writeState) {
     mkdirSync(paths.dataDir, { recursive: true, mode: 0o700 });
     const state: ExplorerState = { port, token, pid: process.pid, startedAt: new Date().toISOString() };
-    const tmp = `${file}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify(state), { mode: 0o600 });
-    renameSync(tmp, file);
-    chmodSync(file, 0o600);
-  }
-  const removeState = () => {
     try {
-      const cur = JSON.parse(readFileSync(file, "utf8")) as ExplorerState;
-      if (cur.token === token) rmSync(file, { force: true });
-    } catch {
-      // already gone
+      // The caller holds explorer.lock, so nobody else decides "no explorer runs" or writes explorer.json now.
+      for (let attempt = 0; ; attempt++) {
+        if (createStateFile(paths, state)) break;
+        const found = await inspectExplorer(paths); // removes an unreadable file or one of a dead process
+        if (found.kind === "state") throw new ExplorerAlreadyRunning(found.state.port, found.state.pid);
+        if (attempt >= 20) throw new Error("explorer.json exists but cannot be read or replaced");
+        if (found.kind === "young") await new Promise((r) => setTimeout(r, 100));
+      }
+    } catch (err) {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+        server.closeAllConnections();
+      });
+      if (ownsStore) store.close();
+      throw err;
     }
-  };
+  }
+  const removeState = () => removeStateFile(paths, token);
 
   let closed: Promise<void> | undefined;
   return {
@@ -363,41 +395,6 @@ export interface RunningExplorer {
   server?: ExplorerServer;
 }
 
-function processAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    return (err as NodeJS.ErrnoException).code === "EPERM";
-  }
-}
-
-/** Reads `explorer.json` and verifies the server really answers with that token; removes stale files. */
-export async function findRunningExplorer(paths: GantryPaths): Promise<ExplorerState | undefined> {
-  const file = stateFilePath(paths);
-  let state: ExplorerState;
-  try {
-    state = JSON.parse(readFileSync(file, "utf8")) as ExplorerState;
-  } catch {
-    return undefined;
-  }
-  const valid =
-    Number.isInteger(state.port) && typeof state.token === "string" && Number.isInteger(state.pid);
-  if (valid && processAlive(state.pid)) {
-    try {
-      const res = await fetch(`http://127.0.0.1:${state.port}/api/meta`, {
-        headers: { "x-gantry-token": state.token },
-        signal: AbortSignal.timeout(2000),
-      });
-      if (res.ok) return state;
-    } catch {
-      // not answering
-    }
-  }
-  rmSync(file, { force: true });
-  return undefined;
-}
-
 /** One server per worktree: reuse the one in `explorer.json` if it answers, else start a new one. */
 export async function startOrReuseExplorer(opts: ExplorerServerOptions): Promise<RunningExplorer> {
   const existing = await findRunningExplorer(opts.paths);
@@ -409,6 +406,23 @@ export async function startOrReuseExplorer(opts: ExplorerServerOptions): Promise
       reused: true,
     };
   }
-  const server = await startExplorerServer(opts);
+  let server: ExplorerServer;
+  try {
+    server = await startExplorerServer(opts);
+  } catch (err) {
+    // Lost the race for explorer.json: serve nothing, hand back the winner.
+    if (err instanceof ExplorerAlreadyRunning) {
+      const w = await findRunningExplorer(opts.paths);
+      if (w) {
+        return {
+          port: w.port,
+          token: w.token,
+          url: buildExplorerUrl({ port: w.port, token: w.token }),
+          reused: true,
+        };
+      }
+    }
+    throw err;
+  }
   return { port: server.port, token: server.token, url: server.url, reused: false, server };
 }

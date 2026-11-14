@@ -29,6 +29,11 @@ export interface Store {
   effectiveFiles(): FileRecord[];
   /** One file of the effective view (working over main), or undefined if absent or deleted. */
   effectiveFile(fileId: string): FileRecord | undefined;
+  /**
+   * Symbols whose name contains `text` (ASCII case-insensitive, literal), not in `excludeIds`, ordered by name then
+   * id, at most `limit`. The scan runs in SQL, so it stays cheap on large repositories.
+   */
+  effectiveSymbolsByName(text: string, excludeIds: string[], limit: number): SymbolRecord[];
   effectiveSymbols(filter?: { fileId?: string; kind?: SymbolKind[]; exported?: boolean }): SymbolRecord[];
   effectiveEdges(filter?: { src?: string; dst?: string; kind?: EdgeKind[] }): EdgeRecord[];
   getSymbol(id: string): SymbolRecord | undefined;
@@ -341,6 +346,14 @@ export function createStore(db: Database): Store {
         `WITH ${EFF_FILES} SELECT * FROM eff_files WHERE deleted = 0 ORDER BY id`,
       ).all() as FileRow[];
       return rows.map(toFile);
+    },
+    effectiveSymbolsByName(text, excludeIds, limit) {
+      const sql = `WITH ${EFF_FILES}
+        SELECT s.* FROM symbols s JOIN eff_files f ON f.id = s.file_id AND f.layer = s.layer
+        WHERE f.deleted = 0 AND instr(lower(s.name), lower(?)) > 0
+          AND s.id NOT IN (SELECT value FROM json_each(?))
+        ORDER BY s.name, s.id LIMIT ?`;
+      return (stmt(sql).all(text, JSON.stringify(excludeIds), limit) as SymbolRow[]).map(toSymbol);
     },
     effectiveSymbols(filter = {}) {
       const where: string[] = [];

@@ -13,6 +13,7 @@ const VIEW_LEVELS: readonly ViewLevel[] = ["workspaces", "dirs", "files", "symbo
 export const MAX_SOURCE_LINES = 400;
 export const SEARCH_LIMIT = 20;
 const SIGNATURE_MAX = 200;
+const MAX_QUERY_LEN = 200;
 
 export interface SearchHit {
   id: string;
@@ -211,19 +212,41 @@ async function search(ctx: ApiContext, raw: string): Promise<{ hits: SearchHit[]
   // The same hybrid search as `gantry_search`: keywords always, meaning only when the model is already cached.
   const embedder = await ctx.getEmbedder?.();
   const found = await hybridSearch(store, q, { limit: SEARCH_LIMIT, ...(embedder ? { embedder } : {}) });
-  return {
-    hits: found.map((h) => ({
-      id: h.id,
-      name: h.name,
-      kind: h.kind,
-      path: h.path,
-      line: h.line,
-      exported: store.getSymbol(h.id)?.exported ?? false,
-      signature: h.signature.slice(0, SIGNATURE_MAX),
-      score: Number(h.score.toFixed(5)),
-      untrusted_description: h.description,
-    })),
-  };
+  const hits: SearchHit[] = found.map((h) => ({
+    id: h.id,
+    name: h.name,
+    kind: h.kind,
+    path: h.path,
+    line: h.line,
+    exported: store.getSymbol(h.id)?.exported ?? false,
+    signature: h.signature.slice(0, SIGNATURE_MAX),
+    score: Number(h.score.toFixed(5)),
+    untrusted_description: h.description,
+  }));
+  // Case-insensitive substring pass (so `pp` finds `app`): symbols whose name contains the query and that the
+  // hybrid search did not return, ordered by name then id, up to the limit. They carry no score or description.
+  if (hits.length < SEARCH_LIMIT) {
+    const files = new Map(store.effectiveFiles().map((f) => [f.id, f]));
+    const extra = store.effectiveSymbolsByName(
+      q.slice(0, MAX_QUERY_LEN),
+      hits.map((h) => h.id),
+      SEARCH_LIMIT - hits.length,
+    );
+    for (const s of extra) {
+      hits.push({
+        id: s.id,
+        name: s.name,
+        kind: s.kind,
+        path: files.get(s.fileId)?.path ?? "",
+        line: s.startLine,
+        exported: s.exported,
+        signature: s.signature.slice(0, SIGNATURE_MAX),
+        score: 0,
+        untrusted_description: null,
+      });
+    }
+  }
+  return { hits };
 }
 
 function intParam(v: string | null, name: string): number | undefined {
