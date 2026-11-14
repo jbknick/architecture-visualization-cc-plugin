@@ -1,0 +1,110 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`M2 badges > snapshot: badged symbols of the project map (fixture) 1`] = `
+[
+  {
+    "badges": [
+      "exported",
+      "undescribed",
+    ],
+    "id": "sym:apps/web/src/components/Header.tsx#Header",
+  },
+  {
+    "badges": [
+      "exported",
+      "undescribed",
+    ],
+    "id": "sym:apps/web/src/components/PostList.tsx#PostList",
+  },
+  {
+    "badges": [
+      "exported",
+      "undescribed",
+    ],
+    "id": "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
+  },
+  {
+    "badges": [
+      "exported",
+      "dup",
+      "undescribed",
+    ],
+    "id": "sym:apps/web/src/lib/slug.ts#slugify",
+  },
+  {
+    "badges": [
+      "undescribed",
+    ],
+    "id": "sym:apps/web/src/routes/__root.tsx#RootLayout",
+  },
+  {
+    "badges": [
+      "undescribed",
+    ],
+    "id": "sym:apps/web/src/routes/index.tsx#HomePage",
+  },
+  {
+    "badges": [
+      "undescribed",
+    ],
+    "id": "sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
+  },
+  {
+    "badges": [
+      "undescribed",
+    ],
+    "id": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+  },
+  {
+    "badges": [
+      "exported",
+      "undescribed",
+    ],
+    "id": "sym:packages/db/src/queries.ts#createPost",
+  },
+  {
+    "badges": [
+      "exported",
+      "undescribed",
+    ],
+    "id": "sym:packages/db/src/queries.ts#getPost",
+  },
+  {
+    "badges": [
+      "exported",
+      "undescribed",
+    ],
+    "id": "sym:packages/db/src/queries.ts#listPosts",
+  },
+  {
+    "badges": [
+      "exported",
+      "undescribed",
+    ],
+    "id": "sym:packages/ui/src/card.tsx#Card",
+  },
+  {
+    "badges": [
+      "exported",
+      "dup",
+      "undescribed",
+    ],
+    "id": "sym:packages/utils/src/date.ts#formatRelativeDate",
+  },
+  {
+    "badges": [
+      "dup",
+      "undescribed",
+    ],
+    "id": "sym:packages/utils/src/slug.ts#slugify",
+  },
+  {
+    "badges": [
+      "exported",
+      "dup",
+      "misleading",
+    ],
+    "id": "sym:packages/utils/src/time.ts#parseTimestamp",
+  },
+]
+`;

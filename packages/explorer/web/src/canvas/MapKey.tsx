@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { BadgeKey } from "../components/BadgeKey.tsx";
 
 /** The key lines of the project map: what a box, a line and a number mean (and what the filters hid). */
 export function keyLines(level: string | null, hideTests: boolean, ranked = false): string[] {
@@ -59,6 +60,7 @@ export function MapKey({
           {lines.map((l) => (
             <div key={l}>{l}</div>
           ))}
+          {level === "symbols" && <BadgeKey />}
         </div>
       )}
     </div>

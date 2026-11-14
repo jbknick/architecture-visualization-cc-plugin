@@ -1,6 +1,7 @@
 import "./canvas.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type Filters, type GraphNode } from "../api.ts";
+import { badgeTipLines } from "../badges.ts";
 import { debugEnabled } from "../debug.ts";
 import { useRankView } from "../rankedFiles/store.ts";
 import { useRanked } from "../rankedFiles/useRanked.ts";
@@ -282,6 +283,7 @@ export function TreemapCanvas({
       pills: [],
       labels: [],
       markers: [],
+      badged: [],
     };
     let raf = 0;
     let anim = 0;
@@ -522,6 +524,7 @@ export function TreemapCanvas({
       if (node?.stats?.loc) bits.push(`${node.stats.loc.toLocaleString("en-US")} lines`);
       lines.push(bits.join(" · "));
       lines.push(node?.path ?? plain(n.id));
+      if (cls >= 3) lines.push(...badgeTipLines(node?.badges));
       return lines;
     };
     /** The tile of the rank marker under a point (markers sit on top of the tiles), or null. */
@@ -660,6 +663,7 @@ export function TreemapCanvas({
             colour: e.colour,
           };
         }),
+        badged: last.badged,
         regions: last.boxes.map((b) => ({ id: scene.nodes[b.index]?.id, x: b.x, y: b.y, w: b.w, h: b.h })),
       });
     };

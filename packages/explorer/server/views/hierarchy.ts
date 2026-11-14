@@ -1,5 +1,6 @@
 import type { FileRecord, SymbolRecord, WorkspaceRecord } from "@gantry/core";
 import type { GraphNode } from "../types.js";
+import { type BadgeIndex, symbolBadges } from "./badges.js";
 import { cmp, getOrInit } from "./options.js";
 
 /** Hierarchy tiers, shallowest first. `ext:*` nodes sit outside the hierarchy. */
@@ -45,6 +46,7 @@ export function buildHierarchy(
   workspaces: WorkspaceRecord[],
   files: FileRecord[],
   symbolsByFile: Map<string, SymbolRecord[]>,
+  badges?: BadgeIndex,
 ): Hierarchy {
   const byId = new Map<string, HNode>();
   const roots: HNode[] = [];
@@ -82,7 +84,7 @@ export function buildHierarchy(
           size: 1,
           path: f.path,
           stats: { functions: 1, loc: s.loc },
-          ...(s.exported ? { badges: ["exported"] } : {}),
+          ...symbolBadges(s, badges),
         },
         TIER.symbol,
         fileNode,

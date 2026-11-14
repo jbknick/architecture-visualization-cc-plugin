@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { BadgeKey } from "../components/BadgeKey.tsx";
 import type { Scheme } from "../theme.ts";
 import type { TreeNode } from "./hierarchy.ts";
 import type { Scene } from "./scene.ts";
@@ -77,6 +78,7 @@ export function Legend({ scene, scheme, level }: { scene: Scene; scheme: Scheme;
               </ul>
             </section>
           )}
+          <BadgeKey />
         </div>
       )}
     </aside>
