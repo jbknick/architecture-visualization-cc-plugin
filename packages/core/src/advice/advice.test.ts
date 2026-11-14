@@ -158,8 +158,9 @@ describe("adviseReuse on fixtures/pnpm-turbo", () => {
     const off = { renameSuggestions: false } as GantryConfig;
     const rename: Advice = {
       situation: 5,
-      action: "Consider renaming parseTimestamp to formatElapsed",
+      action: "Consider renaming parseTimestamp; see untrusted_suggested_name",
       inline: false,
+      untrusted_suggested_name: "formatElapsed",
     };
 
     it.each([

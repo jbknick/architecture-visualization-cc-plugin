@@ -13,7 +13,8 @@ import { cmp, entryPoints, normPath, packageJsonPath, SCRIPT_EXTS, targetCandida
  *               description?: Description | null, config?: GantryConfig): Advice[]
  *   importPathFor(ws: WorkspaceRecord, match: SymbolRecord, store?: Store): string | null
  *
- *   interface Advice { situation: 1 | 2 | 3 | 4 | 5 | 6; action: string; inline: boolean; importPath?: string }
+ *   interface Advice { situation: 1 | 2 | 3 | 4 | 5 | 6; action: string; inline: boolean; importPath?: string;
+ *     untrusted_suggested_name?: string }
  *
  * `callerPath` is repo-relative (posix); the caller need not be indexed. The result is ordered: the
  * primary advice (situation 1, 2, 3 or 4) first, then the rename suggestion (5) when it applies. It is
@@ -30,6 +31,11 @@ export interface Advice {
   action: string;
   inline: boolean;
   importPath?: string;
+  /**
+   * Situation 5 only. Model-written, so untrusted data about code (spec section 8): never merged into `action`
+   * or any other prose, and every consumer must keep it in a field of this name.
+   */
+  untrusted_suggested_name?: string;
 }
 
 interface Reach {
@@ -166,8 +172,9 @@ export function adviseReuse(
   if (config?.renameSuggestions === true && description?.nameFits === false && description.suggestedName) {
     out.push({
       situation: 5,
-      action: `Consider renaming ${match.name} to ${description.suggestedName}`,
+      action: `Consider renaming ${match.name}; see untrusted_suggested_name`,
       inline: false,
+      untrusted_suggested_name: description.suggestedName,
     });
   }
   return out;

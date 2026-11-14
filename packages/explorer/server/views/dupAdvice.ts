@@ -6,6 +6,8 @@ export interface MemberAdvice {
   situation: number;
   action: string;
   inline: boolean;
+  /** Model-written (spec section 8): data only, rendered as plain text and never merged into prose. */
+  untrusted_suggested_name?: string;
 }
 
 type AdviseReuse = (
@@ -14,7 +16,7 @@ type AdviseReuse = (
   match: SymbolRecord,
   description?: unknown,
   config?: GantryConfig,
-) => { situation: number; action: string; inline: boolean }[];
+) => MemberAdvice[];
 
 // The advice module (#29) lands separately. It is looked up by name so this view builds and runs without it.
 const ADVISE_KEY = "adviseReuse";
@@ -33,8 +35,17 @@ export function adviceFor(
   const fn = (core as unknown as Record<string, unknown>)[ADVISE_KEY];
   if (typeof fn !== "function") return undefined;
   try {
-    const first = (fn as AdviseReuse)(store, memberPath, keep, null, config)[0];
-    return first ? { situation: first.situation, action: first.action, inline: first.inline } : undefined;
+    const description = config.renameSuggestions ? core.descriptionOf(store, keep) : null;
+    const first = (fn as AdviseReuse)(store, memberPath, keep, description, config)[0];
+    if (!first) return undefined;
+    return {
+      situation: first.situation,
+      action: first.action,
+      inline: first.inline,
+      ...(first.untrusted_suggested_name === undefined
+        ? {}
+        : { untrusted_suggested_name: first.untrusted_suggested_name }),
+    };
   } catch {
     return undefined;
   }
