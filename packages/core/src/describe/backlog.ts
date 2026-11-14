@@ -319,3 +319,30 @@ export function estimate(store: Store, opts: { exportsFirst?: boolean } = {}): E
     rounds: Math.ceil(batches / BATCHES_PER_ROUND),
   };
 }
+
+export interface BacklogCounts {
+  total: number;
+  byStatus: { pending: number; claimed: number; failed: number };
+  /** Keys are the priorities present ("0", "1", "2"), each split by status; absent priorities are omitted. */
+  byPriority: Record<string, { pending: number; claimed: number; failed: number; total: number }>;
+}
+
+/** Counts of the backlog by status and by priority (spec section 10, `gantry backlog`). Read-only. */
+export function backlogCounts(store: Store): BacklogCounts {
+  const rows = store.db
+    .prepare(
+      "SELECT priority, status, COUNT(*) AS n FROM backlog GROUP BY priority, status ORDER BY priority, status",
+    )
+    .all() as { priority: number; status: "pending" | "claimed" | "failed"; n: number }[];
+  const out: BacklogCounts = { total: 0, byStatus: { pending: 0, claimed: 0, failed: 0 }, byPriority: {} };
+  for (const r of rows) {
+    out.total += r.n;
+    out.byStatus[r.status] += r.n;
+    const key = String(r.priority);
+    const p = out.byPriority[key] ?? { pending: 0, claimed: 0, failed: 0, total: 0 };
+    out.byPriority[key] = p;
+    p[r.status] += r.n;
+    p.total += r.n;
+  }
+  return out;
+}

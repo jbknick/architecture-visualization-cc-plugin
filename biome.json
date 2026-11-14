@@ -6,6 +6,8 @@
       "!**/fixtures",
       "!**/evals/private",
       "!**/dist",
+      "!plugin/agents",
+      "!plugin/skills",
       "!**/__snapshots__",
       "!**/wordlist.data.ts",
       "!**/node_modules",
