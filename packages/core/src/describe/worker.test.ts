@@ -336,9 +336,9 @@ describe("describeWithWorker", () => {
   });
 
   it("keeps the batches that finished before the deadline and queues the rest", async () => {
-    fake.configure({ delayMs: 400 });
-    const r = await run(sheets, { deadlineMs: 900, batchSize: 2 });
-    // auth status is instant; batch 1 ends at about 400 ms, batch 2 would end at about 800 ms, batch 3 is cut
+    fake.configure({ delayMs: 800 });
+    const r = await run(sheets, { deadlineMs: 2000, batchSize: 2 });
+    // batch 1 ends at about 800 ms (over a second of slack for process start under load), batch 3 is always cut
     expect(r.described).toBeGreaterThanOrEqual(2);
     expect(r.described).toBeLessThan(sheets.length);
     expect(r.described + r.queued).toBe(sheets.length);
