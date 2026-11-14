@@ -1,6 +1,5 @@
 import { posix } from "node:path";
 import type { GantryConfig } from "../config/index.js";
-import { USE_CLIENT_EVIDENCE } from "../resolve/index.js";
 import type { Store } from "../store/index.js";
 import type { Description, SymbolRecord, WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
@@ -107,9 +106,7 @@ export function importPathFor(ws: WorkspaceRecord, match: SymbolRecord, store?: 
 }
 
 function isClientFile(store: Store, fileId: string): boolean {
-  return store
-    .effectiveEdges({ src: fileId, dst: fileId, kind: ["imports"] })
-    .some((e) => e.evidence.includes(USE_CLIENT_EVIDENCE));
+  return store.effectiveFile(fileId)?.directives?.includes("use client") ?? false;
 }
 
 function isServerOnlyFile(store: Store, fileId: string): boolean {

@@ -27,6 +27,8 @@ export interface Store {
   markDeleted(layer: Layer, fileId: string): void;
   clearWorking(fileId?: string): void;
   effectiveFiles(): FileRecord[];
+  /** One file of the effective view (working over main), or undefined if absent or deleted. */
+  effectiveFile(fileId: string): FileRecord | undefined;
   effectiveSymbols(filter?: { fileId?: string; kind?: SymbolKind[]; exported?: boolean }): SymbolRecord[];
   effectiveEdges(filter?: { src?: string; dst?: string; kind?: EdgeKind[] }): EdgeRecord[];
   getSymbol(id: string): SymbolRecord | undefined;
@@ -58,6 +60,7 @@ interface FileRow {
   content_hash: string;
   mtime_ms: number;
   deleted: number;
+  directives?: string | null;
 }
 interface SymbolRow {
   id: string;
@@ -146,6 +149,18 @@ const toWorkspace = (r: WorkspaceRow): WorkspaceRecord => ({
   exportsMap: r.exports_map ? (JSON.parse(r.exports_map) as WorkspaceRecord["exportsMap"]) : null,
 });
 
+function parseDirectives(raw: string | null | undefined): { directives?: string[] } {
+  if (!raw) return {};
+  try {
+    const v: unknown = JSON.parse(raw);
+    if (Array.isArray(v) && v.length > 0)
+      return { directives: v.filter((x): x is string => typeof x === "string") };
+  } catch {
+    // malformed value: treat as no directives
+  }
+  return {};
+}
+
 const toFile = (r: FileRow): FileRecord => ({
   id: r.id,
   path: r.path,
@@ -153,6 +168,7 @@ const toFile = (r: FileRow): FileRecord => ({
   contentHash: r.content_hash,
   mtimeMs: r.mtime_ms,
   deleted: r.deleted === 1,
+  ...parseDirectives(r.directives),
 });
 
 export function createStore(db: Database): Store {
@@ -171,11 +187,21 @@ export function createStore(db: Database): Store {
 
   const putFile = (layer: Layer, f: FileRecord): void => {
     stmt(
-      `INSERT INTO files(id, layer, path, workspace_id, content_hash, mtime_ms, deleted)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO files(id, layer, path, workspace_id, content_hash, mtime_ms, deleted, directives)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id, layer) DO UPDATE SET path = excluded.path, workspace_id = excluded.workspace_id,
-         content_hash = excluded.content_hash, mtime_ms = excluded.mtime_ms, deleted = excluded.deleted`,
-    ).run(f.id, layer, f.path, f.workspaceId, f.contentHash, f.mtimeMs, f.deleted ? 1 : 0);
+         content_hash = excluded.content_hash, mtime_ms = excluded.mtime_ms, deleted = excluded.deleted,
+         directives = excluded.directives`,
+    ).run(
+      f.id,
+      layer,
+      f.path,
+      f.workspaceId,
+      f.contentHash,
+      f.mtimeMs,
+      f.deleted ? 1 : 0,
+      JSON.stringify(f.directives ?? []),
+    );
   };
 
   const deleteFileRows = (layer: Layer, fileId: string): void => {
@@ -303,6 +329,12 @@ export function createStore(db: Database): Store {
           deleteFileRows("working", fileId);
         }
       });
+    },
+    effectiveFile(fileId) {
+      const row = stmt(`WITH ${EFF_FILES} SELECT * FROM eff_files WHERE id = ? AND deleted = 0`).get(
+        fileId,
+      ) as FileRow | undefined;
+      return row ? toFile(row) : undefined;
     },
     effectiveFiles() {
       const rows = stmt(

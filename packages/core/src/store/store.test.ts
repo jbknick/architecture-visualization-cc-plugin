@@ -85,7 +85,7 @@ describe("openStore", () => {
     }
     expect(names).toContain("vec_descriptions"); // migration v2 (sqlite-vec loaded by openStore)
     expect(names).toContain("vec_code");
-    expect(store.getMeta("schema_version")).toBe("2");
+    expect(store.getMeta("schema_version")).toBe("3");
     expect(store.db.pragma("journal_mode", { simple: true })).toBe("wal");
     expect(store.db.pragma("busy_timeout", { simple: true })).toBe(5000);
     expect(store.db.pragma("foreign_keys", { simple: true })).toBe(1);
@@ -102,6 +102,47 @@ describe("openStore", () => {
     raw.prepare("UPDATE meta SET value = '1' WHERE key = 'schema_version'").run();
     raw.close();
     openStore(p).close();
+  });
+
+  it("migration v3 adds files.directives and round-trips it", () => {
+    const cols = (store.db.prepare("PRAGMA table_info(files)").all() as { name: string }[]).map(
+      (c) => c.name,
+    );
+    expect(cols).toContain("directives");
+    store.replaceFile("main", file("a.tsx", { directives: ["use client"] }), [], []);
+    store.replaceFile("main", file("b.ts"), [], []);
+    expect(store.effectiveFile("file:a.tsx")?.directives).toEqual(["use client"]);
+    expect(store.effectiveFile("file:b.ts")?.directives).toBeUndefined();
+    expect(store.effectiveFile("file:missing.ts")).toBeUndefined();
+    // A working row overrides main, and a deleted working row hides the file.
+    store.replaceFile("working", file("a.tsx"), [], []);
+    expect(store.effectiveFile("file:a.tsx")?.directives).toBeUndefined();
+    store.markDeleted("working", "file:a.tsx");
+    expect(store.effectiveFile("file:a.tsx")).toBeUndefined();
+  });
+
+  it("opens an existing v2 database, migrates it in place and keeps old rows", () => {
+    const p = join(dir, "v2.db");
+    const raw = new Database(p);
+    raw.exec(SCHEMA_V1);
+    raw.prepare("INSERT INTO meta(key, value) VALUES ('schema_version', '2')").run();
+    raw
+      .prepare(
+        "INSERT INTO files(id, layer, path, workspace_id, content_hash, mtime_ms, deleted) VALUES ('file:old.tsx', 'main', 'old.tsx', NULL, 'h', 1, 0)",
+      )
+      .run();
+    raw.close();
+    const s = openStore(p);
+    try {
+      expect(s.getMeta("schema_version")).toBe("3");
+      const f = s.effectiveFile("file:old.tsx");
+      expect(f?.path).toBe("old.tsx");
+      expect(f?.directives).toBeUndefined();
+      s.replaceFile("main", file("old.tsx", { directives: ["use client"] }), [], []);
+      expect(s.effectiveFile("file:old.tsx")?.directives).toEqual(["use client"]);
+    } finally {
+      s.close();
+    }
   });
 
   it("meta round-trips and overwrites", () => {
