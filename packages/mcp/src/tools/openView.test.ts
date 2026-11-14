@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -55,6 +55,31 @@ describe("gantry_open_view", () => {
     expect(existsSync(join(repo.paths.dataDir, "explorer.json"))).toBe(false);
   });
 
+  it.skipIf(!built)(
+    "does not write through a symlink planted at explorer.log",
+    async () => {
+      const { repo, client } = await setup();
+      const victim = join(repo.paths.dataDir, "..", "victim.txt");
+      writeFileSync(victim, "keep");
+      mkdirSync(repo.paths.logsDir, { recursive: true });
+      symlinkSync(victim, join(repo.paths.logsDir, "explorer.log"));
+      const r = await call(client, "gantry_open_view", { view: "ego" });
+      expect(r.isError).toBe(false);
+      expect(readFileSync(victim, "utf8")).toBe("keep");
+      rmSync(victim, { force: true });
+    },
+    15000,
+  );
+
+  it("rejects focus, t and view as filter keys", async () => {
+    const { repo, client } = await setup();
+    for (const key of ["focus", "t", "view"]) {
+      const r = await call(client, "gantry_open_view", { view: "ego", filters: { [key]: "x" } });
+      expect(r.json.error).toBe("reserved_filter_key");
+    }
+    expect(existsSync(join(repo.paths.dataDir, "explorer.json"))).toBe(false);
+  });
+
   // Exercises the bundled CLI, so it only runs after `pnpm build`.
   it.skipIf(!built)(
     "starts a detached explorer within 3 s, returns a working URL, then reuses it",
@@ -91,6 +116,9 @@ describe("gantry_open_view", () => {
       expect(url2.searchParams.get("t")).toBe(token);
       expect(url2.hash).toBe("#/duplicates");
       expect(silentLog.errors).toEqual([]);
+
+      // The log never holds the access token (the child prints no tokenised URL).
+      expect(readFileSync(join(repo.paths.logsDir, "explorer.log"), "utf8")).not.toContain(token);
     },
     15000,
   );

@@ -1,9 +1,25 @@
 import { type ChildProcess, execFileSync, spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolvePaths } from "@gantry/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+function spawnAsync(
+  cmd: string,
+  args: string[],
+  o: { cwd: string; env: NodeJS.ProcessEnv },
+): Promise<{ code: number | null; err: string }> {
+  return new Promise((resolve) => {
+    const c = spawn(cmd, args, { ...o, stdio: ["ignore", "ignore", "pipe"] });
+    let err = "";
+    c.stderr?.on("data", (d: Buffer) => {
+      err += d.toString();
+    });
+    c.on("exit", (code) => resolve({ code, err }));
+  });
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliJs = join(here, "..", "..", "..", "..", "plugin", "dist", "cli.js");
@@ -64,6 +80,71 @@ describe.skipIf(!built)("gantry map (bundled CLI)", () => {
     first.kill("SIGINT");
     expect(await exited).toBe(0);
   });
+
+  it("two concurrent starts leave one server; the loser exits 0 and prints no token", async () => {
+    const repo2 = join(tmp, "race");
+    execFileSync("git", ["init", "-q", repo2]);
+    const run = () =>
+      new Promise<{ code: number | null; out: string; child: ChildProcess }>((resolve) => {
+        const child = spawn("node", [cliJs, "map", "--no-open", "--no-url"], {
+          cwd: repo2,
+          env,
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        let out = "";
+        child.stdout?.on("data", (c: Buffer) => {
+          out += c.toString();
+        });
+        child.stderr?.on("data", (c: Buffer) => {
+          out += `[stderr] ${c.toString()}`;
+        });
+        child.on("exit", (code) => resolve({ code, out, child }));
+        setTimeout(() => resolve({ code: null, out, child }), 4000); // still serving
+      });
+    const [a, b] = await Promise.all([run(), run()]);
+    const serving = [a, b].filter((r) => r.code === null);
+    const exited = [a, b].filter((r) => r.code !== null);
+    try {
+      expect(serving).toHaveLength(1);
+      expect(exited).toHaveLength(1);
+      expect(exited[0]?.code, exited[0]?.out).toBe(0);
+      for (const r of [a, b]) expect(r.out).not.toContain("?t=");
+      const state = JSON.parse(
+        readFileSync(join(resolvePaths(repo2, env).dataDir, "explorer.json"), "utf8"),
+      ) as {
+        pid: number;
+      };
+      expect(state.pid).toBe(serving[0]?.child.pid);
+    } finally {
+      for (const r of serving) r.child.kill("SIGINT");
+    }
+  }, 15000);
+
+  it("starts against an explorer that is stopped fail with a message naming its pid and leave it alone", async () => {
+    const repo3 = join(tmp, "stopped");
+    execFileSync("git", ["init", "-q", repo3]);
+    const a = spawn("node", [cliJs, "map", "--no-open", "--no-url"], { cwd: repo3, env, stdio: "ignore" });
+    const file = join(resolvePaths(repo3, env).dataDir, "explorer.json");
+    try {
+      for (let i = 0; i < 100 && !existsSync(file); i++) await new Promise((r) => setTimeout(r, 50));
+      const before = readFileSync(file, "utf8");
+      process.kill(a.pid as number, "SIGSTOP");
+      const runs = await Promise.all(
+        Array.from({ length: 6 }, () =>
+          spawnAsync("node", [cliJs, "map", "--no-open", "--no-url"], { cwd: repo3, env }),
+        ),
+      );
+      for (const r of runs) {
+        expect(r.code).toBe(1);
+        expect(r.err).toContain(String(a.pid));
+        expect(r.err).not.toContain("    at "); // one line, no stack
+      }
+      expect(readFileSync(file, "utf8")).toBe(before);
+    } finally {
+      process.kill(a.pid as number, "SIGCONT");
+      a.kill("SIGINT");
+    }
+  }, 30000);
 
   it("rejects an invalid --port", () => {
     const r = spawnSync("node", [cliJs, "map", "--no-open", "--port", "abc"], {

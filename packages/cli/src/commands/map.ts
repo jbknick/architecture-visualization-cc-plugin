@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ensureDataDir, resolvePaths } from "@gantry/core";
 import { startOrReuseExplorer } from "@gantry/explorer";
-import type { Command } from "commander";
+import { type Command, Option } from "commander";
 
 /** Best-effort browser launch; never throws and never keeps the process alive. */
 export function openBrowser(url: string): void {
@@ -23,7 +23,13 @@ export function registerMap(program: Command): void {
     .description("Start the explorer server (or reuse the running one) and open it")
     .option("--port <port>", "port to bind on 127.0.0.1 (default: OS-assigned)")
     .option("--no-open", "do not open the browser")
-    .action(async (opts: { port?: string; open: boolean }) => {
+    .addOption(
+      new Option(
+        "--no-url",
+        "print the address without the access token (used when output goes to a log)",
+      ).hideHelp(),
+    )
+    .action(async (opts: { port?: string; open: boolean; url: boolean }) => {
       let port: number | undefined;
       if (opts.port !== undefined) {
         port = Number(opts.port);
@@ -39,8 +45,18 @@ export function registerMap(program: Command): void {
       const staticDir = join(dirname(fileURLToPath(import.meta.url)), "explorer");
       // Accepted for v1: the printed/opened URL carries `?t=<token>`, so the token is visible in process
       // arguments (`open <url>`) and browser history. The server strips it on first load and sets a cookie.
-      const running = await startOrReuseExplorer({ paths, port, staticDir });
-      process.stdout.write(`${running.url}\n`);
+      let running: Awaited<ReturnType<typeof startOrReuseExplorer>>;
+      try {
+        running = await startOrReuseExplorer({ paths, port, staticDir });
+      } catch (err) {
+        process.stderr.write(`gantry map: ${err instanceof Error ? err.message : String(err)}\n`);
+        process.exitCode = 1;
+        return;
+      }
+      // `--no-url`: the token never reaches a log file; the URL is in explorer.json (0600) for whoever needs it.
+      process.stdout.write(
+        opts.url ? `${running.url}\n` : `Explorer listening on http://127.0.0.1:${running.port}/\n`,
+      );
       if (opts.open) openBrowser(running.url);
       if (running.reused || !running.server) return; // the other process keeps serving
 
