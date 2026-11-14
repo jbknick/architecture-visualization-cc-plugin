@@ -204,7 +204,10 @@ CREATE VIRTUAL TABLE fts_symbols USING fts5(symbol_id UNINDEXED, name_tokens, su
 --   records meta.embed_model and meta.embed_dim; a changed model or dimension drops and recreates both tables and re-embeds.
 --   `openStore` loads sqlite-vec first and writes meta.vec_available (1 or 0); if it cannot load, migration v2 creates no
 --   tables, everything except vector search keeps working, and `ensureVecTables` creates them later where it can.
--- migration v3 (pages view): adapter_nodes(id, layer, kind, ws, label, file_id, data), PRIMARY KEY(id, layer)
+-- migration v3 (file directives, #105): ALTER TABLE files ADD COLUMN directives TEXT
+--   JSON array of the file's leading directive strings, e.g. ["use client"]. NULL (rows from before v3) and '[]' both mean none until the file is re-indexed.
+--   `FileRecord.directives` is absent when empty; `dumpGraph` adds `directives` to a file row only when non-empty.
+-- migration v4 (pages view; was v3 before #105 took v3): adapter_nodes(id, layer, kind, ws, label, file_id, data), PRIMARY KEY(id, layer)
 ```
 Effective view = working rows override main rows for the same file id; a working `files` row with `deleted=1` hides the main file. WAL mode; writers take an exclusive lock via `BEGIN IMMEDIATE` with a 5 s busy timeout.
 Backlog priority: exported functions and route/entry files 0, other exported 1, local 2.
@@ -308,6 +311,8 @@ Compare only within kind family (function/method together; component; hook). Ski
 ## 18. Reuse advice (deterministic)
 
 "Reachable" = exported from the package's `exports` map (or `main`/`types` when no map). Situations: (1) reachable and caller's workspace depends on it → `inline: true`, action "Import it: import { X } from '<pkg>'"; (2) reachable, not a dependency → suggestion "Add the dependency" unless it creates a workspace cycle or a server/client boundary crossing (`"use client"` / server-only markers); (3) not reachable → suggestion "Export it or move it to a shared package"; (4) lives in another app → suggestion "Move it to a shared package"; (5) `nameFits=false` → suggestion "Rename to <suggestedName>" (only if config `renameSuggestions` is true); (6) new import of an undeclared workspace or npm package, or deep import past `exports` → `inline: true`, action "Declare it in <pkg>/package.json".
+
+Implementation notes (#29): the advice reads only the index. Reachability follows the stored `exports` edges from each exports-map entry file (or `types`/`main`/`src/index`), so `importPathFor(ws, match, store?)` takes the store as an optional third argument. The `"use client"` directive is recorded by the parser (`ParsedFile.directives`) and stored in `files.directives` (section 9, migration v3; no edge is emitted, `adviseReuse` reads the column through `store.effectiveFile`); server-only means a `server-only` import (an `ext:server-only` edge, so the package must be declared or installed) or a `.server.ts` suffix. A boundary crossing is a client caller and a server-only match. `checkImports` treats a bare name as a tsconfig alias when the index resolved that import line to a file, and reports a deep import only for workspace packages that have an `exports` map.
 
 ## 19. Definition of done (every issue)
 

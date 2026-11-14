@@ -10,7 +10,7 @@ pnpm --filter @gantry/explorer perf   # opens the synthetic 30k-function graph i
 pnpm --filter @gantry/explorer mock   # serve the built UI plus the mock API on :4173
 ```
 
-Set `MOCK_PORT` if 4173 is taken. The real-server test copies `fixtures/pnpm-turbo` into a temp git repo, runs `gantry init` and `gantry map --no-open` with a temp `CLAUDE_PLUGIN_DATA`, and writes `docs/milestones/screenshots/{project-map,ego,duplicates}-fixture.png`.
+Set `MOCK_PORT` if 4173 is taken. The mock's `scenario=large|hub|hub-thin|dups` hash flag also changes `/api/meta` (repo name `acme-platform-monorepo` and counts computed from that scenario's data), so the header and status bar match the canvas. The "Debug: workspaces" tab is hidden unless the page is opened with `?debug=1` (or `localStorage.gantry.debug = "1"`); `#/debug` still works when typed. The real-server test copies `fixtures/pnpm-turbo` into a temp git repo, runs `gantry init` and `gantry map --no-open` with a temp `CLAUDE_PLUGIN_DATA`, and writes `docs/milestones/screenshots/{project-map,ego,duplicates}-fixture.png`.
 
 ## Layout
 

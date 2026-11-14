@@ -1,6 +1,7 @@
 import "./canvas.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type Filters, type GraphNode } from "../api.ts";
+import { debugEnabled } from "../debug.ts";
 import { useRankView } from "../rankedFiles/store.ts";
 import { useRanked } from "../rankedFiles/useRanked.ts";
 import type { CanvasProps } from "../slots.ts";
@@ -60,17 +61,6 @@ const STICKY_BELOW_CRUMB = 74;
 interface Crumb {
   index: number;
   label: string;
-}
-
-/** Debug text (layout strategy, timing, zoom level) is shown only with `?debug=1` or the `gantry.debug` flag. */
-export function debugEnabled(): boolean {
-  try {
-    if (/[?&]debug=1(&|$)/.test(`${window.location.search}&${window.location.hash.split("?")[1] ?? ""}`))
-      return true;
-    return window.localStorage.getItem("gantry.debug") === "1";
-  } catch {
-    return false;
-  }
 }
 
 function plain(id: string): string {
@@ -418,9 +408,12 @@ export function TreemapCanvas({
       const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
       if (ms <= 0 || reduced) {
         animTarget = null;
+        delete box.dataset.moving;
         setCam(target);
         return;
       }
+      // Test hook (README media, e2e): `data-moving` is present while a camera animation runs.
+      box.dataset.moving = "true";
       const step = (now: number) => {
         const t = Math.min(1, (now - t0) / ms);
         const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
@@ -433,7 +426,10 @@ export function TreemapCanvas({
           ty: from.ty + (target.ty - from.ty) * e,
         });
         if (t < 1) anim = requestAnimationFrame(step);
-        else animTarget = null;
+        else {
+          animTarget = null;
+          delete box.dataset.moving;
+        }
       };
       anim = requestAnimationFrame(step);
     };

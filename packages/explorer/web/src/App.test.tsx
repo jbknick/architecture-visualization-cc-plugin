@@ -18,8 +18,8 @@ describe("shell", () => {
     renderApp();
     expect(await screen.findByText("pnpm-turbo")).toBeTruthy();
     expect(screen.getByText("a1b2c3d")).toBeTruthy();
+    // The debug view's tab is hidden unless the page is opened with ?debug=1 (see the next test).
     expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
-      "Debug: workspaces",
       "Project map",
       "Function ego graph",
       "Duplicates",
@@ -28,6 +28,34 @@ describe("shell", () => {
     expect(await screen.findByText("5 workspaces")).toBeTruthy();
     expect(screen.getByText("9 files")).toBeTruthy();
     expect(screen.getByText("31 edges indexed")).toBeTruthy();
+  });
+
+  it("shows the Debug tab only when opted in (localStorage gantry.debug=1)", async () => {
+    window.localStorage.setItem("gantry.debug", "1");
+    try {
+      installMockFetch();
+      renderApp();
+      await screen.findByText("pnpm-turbo");
+      expect(screen.getAllByRole("tab")[0]?.textContent).toBe("Debug: workspaces");
+    } finally {
+      window.localStorage.removeItem("gantry.debug");
+    }
+  });
+
+  it("keeps the Debug tab while #/debug is the open view, even without the opt-in", async () => {
+    installMockFetch();
+    renderApp("#/debug");
+    await screen.findByText("pnpm-turbo");
+    expect(screen.getByRole("tab", { name: "Debug: workspaces" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("describes the active mock scenario in the header and status bar", async () => {
+    installMockFetch();
+    renderApp("#/project-map?level=workspaces&scenario=large");
+    expect(await screen.findByText("acme-platform-monorepo")).toBeTruthy();
+    expect(screen.queryByText("pnpm-turbo")).toBeNull();
+    expect(screen.queryByText("5 workspaces")).toBeNull();
+    expect(await screen.findByText("11 workspaces")).toBeTruthy();
   });
 
   it("hides the backlog and working-changes items when the server does not report them", async () => {

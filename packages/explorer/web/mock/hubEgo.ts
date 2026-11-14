@@ -5,6 +5,7 @@
 //                                               folders (at most 11 per folder), 20 in another over 16 files
 import type { GraphEdge, GraphNode, NodeDetail, ViewData } from "../src/api.ts";
 import { type GroupItem, type GroupPlan, planRows, type Row, type WorkspaceInfo } from "./egoRows.ts";
+import type { Counts } from "./largeMap.ts";
 
 export const hubFocus = "sym:packages/ui/src/DataTable/DataTable.tsx#DataTable";
 const CALLEE = "sym:packages/ui/src/DataTable/useTableState.ts#useTableState";
@@ -407,6 +408,18 @@ export function egoHub(
   pageRows = 14,
 ): ViewData {
   return build(scenario === "hub" ? HUB : THIN_SCN, expand, Math.max(8, Math.min(40, maxRows)), pageRows);
+}
+
+/** Real counts of an ego scenario's data (what `/api/meta` would report for a repo of that shape). */
+export function hubCounts(scenario: "hub" | "hub-thin"): Counts {
+  const s = scenario === "hub" ? HUB : THIN_SCN;
+  const files = new Set([...s.callers.map((c) => c.path), s.focusPath, s.calleePath]);
+  return {
+    workspaces: s.workspaces.length + 1,
+    files: files.size,
+    symbols: s.callers.length + 2,
+    edges: s.callers.length + 1,
+  };
 }
 
 /** `/api/node` for the scenarios' functions, so selecting one in the inspector works. */
