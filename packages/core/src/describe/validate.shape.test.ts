@@ -4,6 +4,7 @@ import { SECRET_SAMPLES } from "./corpus.attack.js";
 import { buildFactSheet } from "./factsheet.js";
 import { scanInjection } from "./filters.js";
 import { groundingNames, ungroundedTokens } from "./identifiers.js";
+import { itTiming, MUTATION_RUN } from "./itTiming.js";
 import { redactForFactSheet, scanSecrets } from "./secrets.js";
 import { DESCRIPTION_VERBS, shapeProblem } from "./shape.js";
 import { instructsSensitiveObject } from "./speech.js";
@@ -217,49 +218,53 @@ describe("buildFactSheet redacts secrets", () => {
 });
 
 // Timing assertion: retried because parallel builds on the same machine can stall one run.
-describe("every scanner finishes in under 50 ms on adversarial input at the caps", { retry: 2 }, () => {
-  const inputs = [
-    "a".repeat(400),
-    "a.".repeat(200),
-    "a-".repeat(200),
-    "a@".repeat(200),
-    "a at ".repeat(80),
-    `a${" ".repeat(398)}a`,
-    "ignore all ".repeat(36),
-    "-----BEGIN RSA PRIVATE KEY-----".repeat(13),
-    "x://u:".repeat(66),
-    'key="'.repeat(80),
-    "QUFB".repeat(100),
-    "API_KEY=".repeat(50),
-    "[a](".repeat(100),
-    "<".repeat(400),
-    "ab12 ".repeat(80),
-    "a:b@".repeat(100),
-  ];
-  const scanners: [string, (s: string) => unknown][] = [
-    ["scanSecrets", scanSecrets],
-    ["redactForFactSheet", redactForFactSheet],
-    ["shapeProblem", shapeProblem],
-    [
-      "ungroundedTokens",
-      (s) => ungroundedTokens(s, { names: new Set(), words: new Set(), secretWords: new Set() }),
-    ],
-    ["scanInjection", scanInjection],
-  ];
-  for (const [name, fn] of scanners) {
-    it(name, () => {
-      for (const s of inputs) {
+describe.skipIf(MUTATION_RUN)(
+  "every scanner finishes in under 50 ms on adversarial input at the caps",
+  { retry: 2 },
+  () => {
+    const inputs = [
+      "a".repeat(400),
+      "a.".repeat(200),
+      "a-".repeat(200),
+      "a@".repeat(200),
+      "a at ".repeat(80),
+      `a${" ".repeat(398)}a`,
+      "ignore all ".repeat(36),
+      "-----BEGIN RSA PRIVATE KEY-----".repeat(13),
+      "x://u:".repeat(66),
+      'key="'.repeat(80),
+      "QUFB".repeat(100),
+      "API_KEY=".repeat(50),
+      "[a](".repeat(100),
+      "<".repeat(400),
+      "ab12 ".repeat(80),
+      "a:b@".repeat(100),
+    ];
+    const scanners: [string, (s: string) => unknown][] = [
+      ["scanSecrets", scanSecrets],
+      ["redactForFactSheet", redactForFactSheet],
+      ["shapeProblem", shapeProblem],
+      [
+        "ungroundedTokens",
+        (s) => ungroundedTokens(s, { names: new Set(), words: new Set(), secretWords: new Set() }),
+      ],
+      ["scanInjection", scanInjection],
+    ];
+    for (const [name, fn] of scanners) {
+      itTiming(name, () => {
+        for (const s of inputs) {
+          const t0 = performance.now();
+          fn(s);
+          expect(performance.now() - t0, `${name} on ${s.slice(0, 12)}`).toBeLessThan(50);
+        }
+      });
+    }
+    itTiming("redactForFactSheet is linear on a 100k-character body", () => {
+      for (const unit of ["a.", "a-", "x://u:", "API_KEY=", 'key="', "-----BEGIN RSA PRIVATE KEY-----"]) {
         const t0 = performance.now();
-        fn(s);
-        expect(performance.now() - t0, `${name} on ${s.slice(0, 12)}`).toBeLessThan(50);
+        redactForFactSheet(unit.repeat(Math.ceil(100_000 / unit.length)));
+        expect(performance.now() - t0, unit).toBeLessThan(1500);
       }
     });
-  }
-  it("redactForFactSheet is linear on a 100k-character body", () => {
-    for (const unit of ["a.", "a-", "x://u:", "API_KEY=", 'key="', "-----BEGIN RSA PRIVATE KEY-----"]) {
-      const t0 = performance.now();
-      redactForFactSheet(unit.repeat(Math.ceil(100_000 / unit.length)));
-      expect(performance.now() - t0, unit).toBeLessThan(1500);
-    }
-  });
-});
+  },
+);

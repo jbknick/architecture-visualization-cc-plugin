@@ -112,11 +112,14 @@ function readsAsSentence(v: string): boolean {
   );
 }
 
-/** A prompt for the user, not a secret: starts with enter/type/your/... and names what is asked for ("Enter your password"). */
+/**
+ * A prompt for the user, not a secret: the whole value is an instruction to type a credential and ends on the credential
+ * noun ("Enter your password", "Please confirm the new passphrase here:"). Openers other than enter, type, confirm and
+ * re-enter ("Your ...", "Set ...", "New ...", "Choose ...") do not count: "Your Password Is Swordfish" is a secret.
+ */
 function isPlaceholderPrompt(v: string): boolean {
-  return (
-    /^(?:please\s+)?(?:enter|type|your|re-?enter|choose|confirm|set|new)\s/i.test(v) &&
-    /\b(?:password|passphrase|passcode|token|secret|key|pin|code|credentials?)\b/i.test(v)
+  return /^(?:please\s+)?(?:enter|type|confirm|re-?enter)\s+(?:(?:your|the|a|an)\s+)?(?:(?:new|current|old|access|api)\s+)?(?:password|passphrase|passcode|token|secret|key|pin|code|credentials?)(?:\s+here)?[.:]?$/i.test(
+    v.trim(),
   );
 }
 
@@ -304,21 +307,30 @@ export const SECRET_RULES: readonly SecretRule[] = [
     accept: (g) => {
       const v = g.v ?? "";
       const name = g.name ?? "";
-      if (v === MARKER || looksLikeMessageKey(v) || NON_SECRET_VALUES.has(v) || /^[/.#]/.test(v))
-        return false;
+      if (v === MARKER || NON_SECRET_VALUES.has(v) || /^[/.#]/.test(v)) return false;
       const earlier = ((g.pre ?? "").match(/,/g) ?? []).length;
       if (earlier >= 1) {
-        // not an HTTP method, a port, a host name, or the argument after an HTTP method
-        if (/^(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/.test(v) || /^\d{1,5}$/.test(v)) return false;
-        if (/^localhost$/i.test(v) || /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(v)) return false;
+        const parts = nameParts(name);
+        if (!parts.some((p) => LOGIN_WORDS.has(p)) || /\s/.test(v)) return false;
+        // `connect("db", "example.com")`: a host or port is not a secret. Only `connect` takes a host after a first
+        // argument; for login-style calls the second argument is the password, so `pass.word` stays redacted.
+        const connectOnly =
+          parts.includes("connect") && !parts.some((p) => p !== "connect" && LOGIN_WORDS.has(p));
+        if (connectOnly && (/^localhost$/i.test(v) || /^(?:[a-z0-9-]+\.)+[a-z]{2,10}$/i.test(v)))
+          return false;
+        if (/^\d{1,5}$/.test(v)) return false;
+        // an HTTP method is not a secret, and a plain lower-case word after one is a path or resource ("users")
+        if (/^(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/.test(v)) return false;
         if (
-          /"(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)"|'(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)'/.test(
-            g.pre ?? "",
-          )
+          /^[a-z]+$/.test(v) &&
+          /(?:^|,)\s*["'](?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)["']\s*,\s*$/.test(g.pre ?? "")
         )
           return false;
-        return nameParts(name).some((p) => LOGIN_WORDS.has(p)) && !/\s/.test(v);
+        // message keys (`auth.login_title`) have three parts or an underscore; a two-part word is a password
+        if (looksLikeMessageKey(v) && (/_/.test(v) || v.split(/[._:]/).length > 2)) return false;
+        return true;
       }
+      if (looksLikeMessageKey(v)) return false;
       return isCredentialName(name) && /\d/.test(v) && /[A-Za-z]/.test(v) && !/\s/.test(v);
     },
   },

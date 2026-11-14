@@ -3,6 +3,7 @@
 // agents, search-term handling and the credential-name rules (issue #22, spec section 8).
 import { describe, expect, it } from "vitest";
 import { groundingNames, ungroundedTokens } from "./identifiers.js";
+import { itTiming } from "./itTiming.js";
 import { ACTION_VERB_COUNT } from "./lexicon.js";
 import { isCredentialName, redactForFactSheet } from "./secrets.js";
 import { hasImperativeClause, shapeProblem } from "./shape.js";
@@ -67,20 +68,17 @@ describe("dictionary grounding", () => {
     expect(ungroundedTokens("pastebin-mirror", gb)).not.toEqual([]);
   });
 
-  it.skipIf(process.env.GANTRY_MUTATION_RUN !== undefined)(
-    "caps every scanned input before any regex runs",
-    () => {
-      const huge = sheet({
-        signature: "(a: string)".repeat(5000),
-        doc: "word ".repeat(100_000),
-        body: "x ".repeat(200_000),
-        callees: Array(10_000).fill("a.b"),
-      });
-      const t0 = performance.now();
-      groundingNames(huge);
-      expect(performance.now() - t0).toBeLessThan(100);
-    },
-  );
+  itTiming("caps every scanned input before any regex runs", () => {
+    const huge = sheet({
+      signature: "(a: string)".repeat(5000),
+      doc: "word ".repeat(100_000),
+      body: "x ".repeat(200_000),
+      callees: Array(10_000).fill("a.b"),
+    });
+    const t0 = performance.now();
+    groundingNames(huge);
+    expect(performance.now() - t0).toBeLessThan(100);
+  });
 
   it("rejects a token copied from the value of a credential name, even when it is an English word", () => {
     const leaky = sheet({ body: 'const secretWord = "swordfish"; const label = "cabbage";' });

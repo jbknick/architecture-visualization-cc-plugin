@@ -3,7 +3,7 @@
 // runs the describe tests, and reports whether a test failed ("killed") or not ("SURVIVED"). The edited file is
 // restored after every run, also on SIGINT, SIGTERM and SIGHUP. A baseline run must be green first, and a compile error, crash or timeout is reported as ERROR, never as a kill. Part of `pnpm check` since issue #108: a surviving mutation (a rule that no
 // test notices) fails the check. Usage: pnpm exec tsx scripts/describe-mutations.ts
-import { execSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -227,9 +227,18 @@ const lockFile = join(
   tmpdir(),
   `gantry-describe-mutation-${createHash("sha1").update(dir).digest("hex").slice(0, 12)}.json`,
 );
+interface Lock {
+  pid: number;
+  path: string;
+  original: string;
+  mutatedHash: string;
+}
+const sha256 = (text: string): string => createHash("sha256").update(text).digest("hex");
 let current: { path: string; original: string } | null = null;
+// Only a run that holds a mutation touches the lock file, so a refused or finished run never deletes another run's lock.
 const restore = (): void => {
-  if (current !== null) writeFileSync(current.path, current.original);
+  if (current === null) return;
+  writeFileSync(current.path, current.original);
   current = null;
   if (existsSync(lockFile)) unlinkSync(lockFile);
 };
@@ -245,13 +254,33 @@ process.on("exit", () => {
   restore();
 });
 
-// A SIGKILLed run cannot restore its file, so every mutation first saves the original to a lock file outside the tree;
-// the next run puts it back before doing anything else (the tree may hold uncommitted edits, so no dirty-tree check).
+// A SIGKILLed run cannot restore its file, so every mutation first saves the original, the process id and a hash of the
+// mutated text to a lock file outside the tree. On start: a lock whose process is alive means another run is in progress
+// (exit 3, so `pnpm check` fails loudly); a dead process's lock restores the file only if it still holds exactly the
+// mutated text (otherwise the file has newer edits and is left alone); either way the stale lock is removed.
+const LOCKED_EXIT = 3;
 if (existsSync(lockFile)) {
-  const stale = JSON.parse(readFileSync(lockFile, "utf8")) as { path: string; original: string };
-  writeFileSync(stale.path, stale.original);
+  const lock = JSON.parse(readFileSync(lockFile, "utf8")) as Lock;
+  let alive = false;
+  try {
+    process.kill(lock.pid, 0);
+    alive = lock.pid !== process.pid;
+  } catch (e) {
+    alive = (e as NodeJS.ErrnoException).code === "EPERM";
+  }
+  if (alive) {
+    console.log(`another mutation run (pid ${lock.pid}) is in progress; wait for it to finish and run again`);
+    process.exit(LOCKED_EXIT);
+  }
+  if (existsSync(lock.path) && sha256(readFileSync(lock.path, "utf8")) === lock.mutatedHash) {
+    writeFileSync(lock.path, lock.original);
+    console.log(`restored ${lock.path} from an interrupted run`);
+  } else {
+    console.log(
+      `warning: left ${lock.path} alone (an interrupted run's lock, but the file has changed since)`,
+    );
+  }
   unlinkSync(lockFile);
-  console.log(`restored ${stale.path} from an interrupted run`);
 }
 
 if ((await runTests()) !== "green") {
@@ -271,8 +300,10 @@ for (const m of run) {
     continue;
   }
   current = { path, original };
-  writeFileSync(lockFile, JSON.stringify(current));
-  writeFileSync(path, original.replace(m.find, m.replace));
+  const mutated = original.replace(m.find, m.replace);
+  const lock: Lock = { pid: process.pid, path, original, mutatedHash: sha256(mutated) };
+  writeFileSync(lockFile, JSON.stringify(lock));
+  writeFileSync(path, mutated);
   let outcome: Outcome;
   try {
     outcome = await runTests();

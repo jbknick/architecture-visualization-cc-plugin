@@ -2,6 +2,7 @@
 // arguments, and the four things it must stop redacting (i18n labels, commit SHAs, SRI hashes, routes).
 // Credential-looking strings are assembled from pieces so no whole key is stored in this file.
 import { describe, expect, it } from "vitest";
+import { itTiming } from "./itTiming.js";
 import { redactForFactSheet, scanSecrets } from "./secrets.js";
 
 const STRIPE = `${"sk"}_${"live"}_${"4eC39HqLyjWDarjtT1zdp7dc"}`;
@@ -51,7 +52,7 @@ describe("redactor catches (issue #108)", () => {
 
 describe("redactor leaves alone (issue #108)", () => {
   const same: [string, string][] = [
-    ["i18n label", `const messages = { password: "Enter your password", token: "Your access Token" };`],
+    ["i18n label", `const messages = { password: "Enter your password", token: "Enter your access token" };`],
     ["i18n key", `t("auth.password"); { passwordLabel: "Password" }`],
     ["commit sha after a word", "See commit 356a192b7913b04c54574d18c28d46e6395428ab for details."],
     ["commit sha in a url", "https://github.com/o/r/commit/356a192b7913b04c54574d18c28d46e6395428ab"],
@@ -126,6 +127,12 @@ describe("redactor leaves alone (issue #108)", () => {
       'const passphrase = "Correct Horse Battery For Me"',
       'token: "Enter The Dragon Now"',
       'secret: "Please Let Me In!"',
+      'password: "Your Password Is Swordfish"',
+      'DB_PASSWORD = "New Key For The Blue Door"',
+      'passphrase: "Your Secret Is Safe With Me"',
+      'secret: "Set The Code To Orange Dawn"',
+      'token: "Enter The Vault Now"',
+      'token: "Your Token Is Hunter2"',
     ])
       expect(redactForFactSheet(t), t).toContain("<redacted>");
   });
@@ -151,6 +158,25 @@ describe("redactor leaves alone (issue #108)", () => {
     expect(redactForFactSheet('const password = ["hun", "ter2x"].join()')).toContain("<redacted>");
   });
 
+  it("keeps only whole placeholder prompts that end on the credential noun", () => {
+    for (const t of [
+      'password: "Enter your password"',
+      'password: "Please confirm the new password."',
+      'token: "Type your access token here"',
+      'secret: "Re-enter the secret."',
+    ])
+      expect(redactForFactSheet(t), t).toBe(t);
+  });
+
+  it("redacts the argument after an HTTP method and a dotted password in a login call", () => {
+    for (const t of [
+      'login("GET", "hunter2pass")',
+      'auth("POST", "hunter2pass")',
+      'login("admin", "pass.word")',
+    ])
+      expect(redactForFactSheet(t), t).toContain("<redacted>");
+  });
+
   it("leaves hosts, ports and HTTP-method arguments alone", () => {
     for (const t of ['connect("localhost", "5432")', 'auth("GET", "users")', 'connect("db", "example.com")'])
       expect(redactForFactSheet(t), t).toBe(t);
@@ -164,30 +190,27 @@ describe("redactor leaves alone (issue #108)", () => {
 
 describe("redactor patterns stay linear", () => {
   // timing assertions are skipped in the mutation run (a slow machine would read as a kill)
-  it.skipIf(process.env.GANTRY_MUTATION_RUN !== undefined)(
-    "handles adversarial input at 100k characters in under 1.5 s",
-    () => {
-      const inputs: Record<string, string> = {
-        arrays: '["a",'.repeat(20_000),
-        "arrays closed": '["a", "b"] . join ( '.repeat(5_000),
-        calls: "login(".repeat(15_000),
-        "calls with literals": 'login("a", '.repeat(9_000),
-        env: "AB_".repeat(33_000),
-        "env eq": "A_B=".repeat(25_000),
-        flags: "--password ".repeat(9_000),
-        "flags eq": "-token=".repeat(14_000),
-        curl: "-u a:".repeat(20_000),
-        hex: "ab".repeat(50_000),
-        "hex spaced": "ab12 ".repeat(20_000),
-        route: "/ab-cd".repeat(16_000),
-      };
-      for (const [name, text] of Object.entries(inputs)) {
-        const t0 = performance.now();
-        redactForFactSheet(text);
-        scanSecrets(text.slice(0, 8000));
-        const dt = performance.now() - t0;
-        expect(dt, name).toBeLessThan(1500);
-      }
-    },
-  );
+  itTiming("handles adversarial input at 100k characters in under 1.5 s", () => {
+    const inputs: Record<string, string> = {
+      arrays: '["a",'.repeat(20_000),
+      "arrays closed": '["a", "b"] . join ( '.repeat(5_000),
+      calls: "login(".repeat(15_000),
+      "calls with literals": 'login("a", '.repeat(9_000),
+      env: "AB_".repeat(33_000),
+      "env eq": "A_B=".repeat(25_000),
+      flags: "--password ".repeat(9_000),
+      "flags eq": "-token=".repeat(14_000),
+      curl: "-u a:".repeat(20_000),
+      hex: "ab".repeat(50_000),
+      "hex spaced": "ab12 ".repeat(20_000),
+      route: "/ab-cd".repeat(16_000),
+    };
+    for (const [name, text] of Object.entries(inputs)) {
+      const t0 = performance.now();
+      redactForFactSheet(text);
+      scanSecrets(text.slice(0, 8000));
+      const dt = performance.now() - t0;
+      expect(dt, name).toBeLessThan(1500);
+    }
+  });
 });
