@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { type GantryPaths, heal, loadConfig, openStore, resolvePaths } from "@gantry/core";
+import { POST_TOOL_BUDGET_MS, parsePostToolInput, postToolUse } from "./postToolUse.js";
+import { sessionStart } from "./sessionStart.js";
 import { describeStaged, git, preCommit } from "./staged.js";
 
 export { preCommit };
@@ -50,21 +52,10 @@ function pushBacklog(paths: GantryPaths): number {
   }
 }
 
-function backlogCount(paths: GantryPaths): number {
-  const store = openStore(paths.dbPath);
-  try {
-    const r = store.db.prepare("SELECT COUNT(*) AS n FROM backlog WHERE status != 'failed'").get() as {
-      n: number;
-    };
-    return r.n;
-  } finally {
-    store.close();
-  }
-}
-
 /**
  * Runs one hook. Never throws and never writes to stdout except where the spec says so (session-start's
- * single line); the caller exits 0 regardless. Returns the stdout line, if any.
+ * single line, post-tool-use's JSON); the caller exits 0 regardless. Returns the stdout line, if any.
+ * `stdin` is the hook's input text (post-tool-use only).
  */
 export async function runHook(
   name: string,
@@ -72,12 +63,15 @@ export async function runHook(
   cwd: string = process.cwd(),
   env: NodeJS.ProcessEnv = process.env,
   errOut: (s: string) => void = (s) => void process.stderr.write(s),
+  stdin?: string,
 ): Promise<string | undefined> {
   if (env.GANTRY_WORKER === "1") return undefined;
   const startedAt = Date.now();
   let paths: GantryPaths;
+  const toolInput = name === "post-tool-use" ? parsePostToolInput(stdin) : undefined;
+  if (name === "post-tool-use" && !toolInput) return undefined;
   try {
-    paths = resolvePaths(cwd, env);
+    paths = resolvePaths(toolInput?.cwd ?? cwd, env);
   } catch {
     return undefined; // not a repo: nowhere to log, nothing to do
   }
@@ -99,24 +93,40 @@ export async function runHook(
         return undefined;
       }
       case "pre-commit": {
+        const printFindings = (lines: string[]): void => {
+          for (const l of lines) errOut(`${l}\n`);
+        };
         // `off` (the default) only enqueues; `timeboxed` and `strict` also run the headless describer.
         if (loadConfig(paths).precommit.mode === "off") {
-          await preCommit(paths);
+          await preCommit(paths, printFindings);
           return undefined;
         }
-        const r = await describeStaged(paths, { env, startedAt });
+        const r = await describeStaged(paths, { env, startedAt, onFindings: printFindings });
         if (r && r.undescribed > 0) errOut(`gantry: described ${r.described}, queued ${r.queued}\n`);
         return undefined;
       }
-      case "session-start": {
-        if (!fs.existsSync(paths.dbPath)) return "Gantry: no index for this repo yet. Run `gantry init`.";
-        await heal(paths);
-        const n = backlogCount(paths);
-        const threshold = loadConfig(paths).backlogReminderThreshold;
-        return n >= threshold ? `Gantry: ${n} functions are waiting for descriptions.` : undefined;
+      case "session-start":
+        return await sessionStart(paths);
+      case "post-tool-use": {
+        const budget = Number(env.GANTRY_POST_TOOL_BUDGET_MS);
+        const ms =
+          env.GANTRY_POST_TOOL_BUDGET_MS && Number.isFinite(budget) && budget >= 0
+            ? budget
+            : POST_TOOL_BUDGET_MS;
+        let timer: NodeJS.Timeout | undefined;
+        const late = new Promise<undefined>((resolve) => {
+          timer = setTimeout(() => resolve(undefined), ms);
+        });
+        const work = postToolUse(paths, toolInput as NonNullable<typeof toolInput>).catch((err) => {
+          logHook(paths, name, `error: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
+          return undefined;
+        });
+        const r = await Promise.race([work, late]);
+        clearTimeout(timer);
+        if (r === undefined && Date.now() - startedAt >= ms)
+          logHook(paths, name, `budget of ${ms} ms exceeded`);
+        return r;
       }
-      case "post-tool-use":
-        return undefined; // findings arrive with the M2 duplicate checks
       default:
         logHook(paths, name, "unknown hook name");
         return undefined;

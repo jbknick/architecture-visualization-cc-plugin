@@ -14,12 +14,14 @@ import {
   isSensitive,
   loadConfig,
   openStore,
+  parseSource,
   pathOfFileId,
   type Store,
   type SymbolRecord,
   syncBacklog,
   writeCatalogDebounced,
 } from "@gantry/core";
+import { changedSymbols, duplicateFindings, type Finding, formatLines, importFindings } from "./findings.js";
 
 const GIT_MAX_BUFFER = 512 * 1024 * 1024;
 
@@ -56,6 +58,7 @@ interface StagedContext {
 async function withStaged<T>(
   paths: GantryPaths,
   fn: (c: StagedContext) => Promise<T>,
+  onFindings?: (lines: string[]) => void,
 ): Promise<T | undefined> {
   const config = loadConfig(paths);
   const files = stagedPaths(paths.root).filter((p) => isIndexable(p, config));
@@ -77,6 +80,14 @@ async function withStaged<T>(
     await indexRepo(paths, { layer: "working", files: [...sources.keys()], sources, store: scratch });
     const s = scratch;
     const staged = [...sources.keys()].flatMap((p) => s.effectiveSymbols({ fileId: `file:${p}` }));
+    if (onFindings) {
+      try {
+        const lines = await stagedFindings(paths, { real, scratch: s, sources, staged });
+        if (lines.length > 0) onFindings(lines);
+      } catch {
+        // findings are advice; they never fail a commit
+      }
+    }
     return await fn({ real, scratch: s, sources, staged });
   } finally {
     scratch?.close();
@@ -85,10 +96,30 @@ async function withStaged<T>(
   }
 }
 
+/**
+ * Duplicate and import findings for the staged function-like symbols that are new or changed against the
+ * index (spec sections 11 and 14), as printable lines (same formatter as the PostToolUse hook, at most 10).
+ */
+async function stagedFindings(paths: GantryPaths, c: StagedContext): Promise<string[]> {
+  const config = loadConfig(paths);
+  const previous = new Map(c.real.effectiveSymbols().map((s) => [s.id, s.exactHash]));
+  const findings: Finding[] = await duplicateFindings(c.scratch, changedSymbols(c.staged, previous), config);
+  for (const [p, text] of [...c.sources].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    const head = git(paths.root, ["show", `HEAD:${p}`]);
+    const before = head.ok ? parseSource(p, head.out.toString("utf8")) : undefined;
+    for (const f of importFindings(c.scratch, p, parseSource(p, text), before)) {
+      findings.push({ ...f, action: `${p}: ${f.action}` });
+    }
+  }
+  return formatLines(findings, 10);
+}
+
 /** Pre-commit with `precommit.mode` off: index the staged blobs on a scratch copy of the store and enqueue undescribed functions. */
-export async function preCommit(paths: GantryPaths): Promise<number> {
-  const r = await withStaged(paths, async ({ real, sources, staged }) =>
-    syncBacklog(real, { root: paths.root, sources, symbols: staged }),
+export async function preCommit(paths: GantryPaths, onFindings?: (lines: string[]) => void): Promise<number> {
+  const r = await withStaged(
+    paths,
+    async ({ real, sources, staged }) => syncBacklog(real, { root: paths.root, sources, symbols: staged }),
+    onFindings,
   );
   return r?.enqueued ?? 0;
 }
@@ -110,6 +141,8 @@ export interface StagedDescribeOptions {
   env?: NodeJS.ProcessEnv;
   /** When the surrounding command started; the `timeboxed` budget counts from here. Default: now. */
   startedAt?: number;
+  /** Receives the printable duplicate/import findings for the staged symbols (pre-commit stderr). */
+  onFindings?: (lines: string[]) => void;
 }
 
 /**
@@ -126,67 +159,76 @@ export async function describeStaged(
   const startedAt = opts.startedAt ?? Date.now();
   if (env.GANTRY_WORKER === "1") return undefined; // a describer's own commit: never recurse
   const config = loadConfig(paths);
-  return withStaged(paths, async ({ real, scratch, sources, staged }) => {
-    const sync = syncBacklog(real, { root: paths.root, sources, symbols: staged });
+  return withStaged(
+    paths,
+    async ({ real, scratch, sources, staged }) => {
+      const sync = syncBacklog(real, { root: paths.root, sources, symbols: staged });
 
-    const isDescribed = real.db.prepare("SELECT 1 FROM descriptions WHERE content_key = ?");
-    const byKey = new Map<string, { sym: SymbolRecord; priority: number }>();
-    for (const sym of [...staged].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
-      if (!FUNCTION_LIKE_KINDS.includes(sym.kind) || sym.exactHash === "") continue;
-      const p = pathOfFileId(sym.fileId);
-      if (isSensitive(p)) continue;
-      const key = contentKey(sym.exactHash);
-      if (isDescribed.get(key)) continue;
-      const priority = backlogPriority(sym.kind, sym.exported, p);
-      const prev = byKey.get(key);
-      if (!prev || priority < prev.priority) byKey.set(key, { sym, priority });
-    }
-    const ordered = [...byKey].sort(
-      (a, b) => a[1].priority - b[1].priority || (a[1].sym.id < b[1].sym.id ? -1 : 1),
-    );
-    const chosen = ordered.slice(0, config.precommit.maxFunctions);
-
-    const sheets: FactSheet[] = [];
-    for (const [, { sym }] of chosen) {
-      const source = sources.get(pathOfFileId(sym.fileId));
-      if (source === undefined) continue;
-      try {
-        sheets.push(buildFactSheet(scratch, sym.id, source));
-      } catch {
-        // sensitive or vanished symbol: stays in the backlog untouched
+      const isDescribed = real.db.prepare("SELECT 1 FROM descriptions WHERE content_key = ?");
+      const byKey = new Map<string, { sym: SymbolRecord; priority: number }>();
+      for (const sym of [...staged].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
+        if (!FUNCTION_LIKE_KINDS.includes(sym.kind) || sym.exactHash === "") continue;
+        const p = pathOfFileId(sym.fileId);
+        if (isSensitive(p)) continue;
+        const key = contentKey(sym.exactHash);
+        if (isDescribed.get(key)) continue;
+        const priority = backlogPriority(sym.kind, sym.exported, p);
+        const prev = byKey.get(key);
+        if (!prev || priority < prev.priority) byKey.set(key, { sym, priority });
       }
-    }
+      const ordered = [...byKey].sort(
+        (a, b) => a[1].priority - b[1].priority || (a[1].sym.id < b[1].sym.id ? -1 : 1),
+      );
+      const chosen = ordered.slice(0, config.precommit.maxFunctions);
 
-    const result: StagedDescribeResult = {
-      enqueued: sync.enqueued,
-      undescribed: ordered.length,
-      described: 0,
-      queued: ordered.length,
-      failed: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      ms: 0,
-    };
-    if (sheets.length === 0) return result;
-
-    const deadlineMs =
-      config.precommit.mode === "strict"
-        ? Number.POSITIVE_INFINITY
-        : Math.max(0, config.precommit.budgetMs - (Date.now() - startedAt));
-    const r = await describeWithRetry(real, sheets, { task: "describe.precommit", deadlineMs, config, env });
-    result.described = r.described;
-    if (r.described > 0) {
-      try {
-        writeCatalogDebounced(real, paths); // same debounced catalog write as after an MCP submit
-      } catch {
-        // the catalog is a convenience; never fail a commit over it
+      const sheets: FactSheet[] = [];
+      for (const [, { sym }] of chosen) {
+        const source = sources.get(pathOfFileId(sym.fileId));
+        if (source === undefined) continue;
+        try {
+          sheets.push(buildFactSheet(scratch, sym.id, source));
+        } catch {
+          // sensitive or vanished symbol: stays in the backlog untouched
+        }
       }
-    }
-    result.failed = r.failed;
-    result.queued = Math.max(0, ordered.length - r.described);
-    result.inputTokens = r.inputTokens;
-    result.outputTokens = r.outputTokens;
-    result.ms = r.ms;
-    return result;
-  });
+
+      const result: StagedDescribeResult = {
+        enqueued: sync.enqueued,
+        undescribed: ordered.length,
+        described: 0,
+        queued: ordered.length,
+        failed: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        ms: 0,
+      };
+      if (sheets.length === 0) return result;
+
+      const deadlineMs =
+        config.precommit.mode === "strict"
+          ? Number.POSITIVE_INFINITY
+          : Math.max(0, config.precommit.budgetMs - (Date.now() - startedAt));
+      const r = await describeWithRetry(real, sheets, {
+        task: "describe.precommit",
+        deadlineMs,
+        config,
+        env,
+      });
+      result.described = r.described;
+      if (r.described > 0) {
+        try {
+          writeCatalogDebounced(real, paths); // same debounced catalog write as after an MCP submit
+        } catch {
+          // the catalog is a convenience; never fail a commit over it
+        }
+      }
+      result.failed = r.failed;
+      result.queued = Math.max(0, ordered.length - r.described);
+      result.inputTokens = r.inputTokens;
+      result.outputTokens = r.outputTokens;
+      result.ms = r.ms;
+      return result;
+    },
+    opts.onFindings,
+  );
 }
