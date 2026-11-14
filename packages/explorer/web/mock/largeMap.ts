@@ -71,6 +71,8 @@ const SPECS: Spec[] = [
       ["src/state", 2],
       ["src/pages", 4],
       ["src/styles", 1],
+      // A story-config folder beside `src` (about 3% of the functions): `src` still dominates the workspace.
+      [".storybook", 1],
     ],
     rootFiles: { names: ["vite.config.ts", "tailwind.config.ts", "playwright.config.ts"], fns: 2 },
   },
@@ -138,6 +140,8 @@ const IMPORT_RULES: [string, string, number][] = [
   ["web", "logger", 5],
   ["db-client", "types", 4],
   ["testing", "core", 3],
+  // The opposite direction of api -> core (640): the pair with imports both ways, for the two-lane routing.
+  ["core", "api", 3],
   ["scripts", "core", 2],
   ["root", "config", 1],
   ["logger", "types", 1],

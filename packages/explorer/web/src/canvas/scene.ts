@@ -67,39 +67,55 @@ export interface Scene {
 }
 
 /**
- * A workspace or folder with one child folder and a few loose files next to it (config files beside `src`):
- * when the files hold under `LOOSE_SHARE` of its functions they move into one synthetic "(root files)" group cell,
- * so the lone folder can be lifted (see `collapseChains`). File ids are unchanged; only their `parent` is.
+ * A workspace or folder where one child folder holds at least `1 - LOOSE_SHARE` (90%) of the functions, with other
+ * folders or files beside it (config files, story-config folders): everything beside the big folder moves into one
+ * synthetic trailing group cell, "(other)" (or "(root files)" when only files are gathered), so the big folder can be
+ * lifted (see `collapseChains`). Ids are unchanged; only the `parent` of the gathered nodes is. A group that is
+ * already there (the Folders level loads file cells later, in a second pass) takes the files that arrive.
  */
 export function withRootFileGroups(nodes: GraphNode[]): GraphNode[] {
   const kids = new Map<string, GraphNode[]>();
   for (const n of nodes) if (n.parent) kids.set(n.parent, [...(kids.get(n.parent) ?? []), n]);
-  const regroup = new Map<string, string>(); // file id -> group id
+  const regroup = new Map<string, string>(); // gathered node id -> group id
   const groups: GraphNode[] = [];
+  const isFolder = (k: GraphNode) => kindTier(k.kind) === TIER_DIR && k.kind !== GROUP_KIND;
   for (const x of nodes) {
     if (kindTier(x.kind) > TIER_DIR || x.kind === GROUP_KIND) continue;
     const list = kids.get(x.id) ?? [];
-    const folders = list.filter((k) => kindTier(k.kind) === TIER_DIR && k.kind !== GROUP_KIND);
-    const files = list.filter((k) => k.kind === "file");
-    if (folders.length !== 1 || files.length === 0 || folders.length + files.length !== list.length) continue;
-    const fileFns = files.reduce((sum, f) => sum + (f.stats?.functions ?? 0), 0);
-    const inFolder = folders[0]?.stats?.functions;
+    const folders = list.filter(isFolder);
+    if (folders.length === 0) continue;
+    const existing = list.find((k) => k.kind === GROUP_KIND);
+    // The biggest folder (ties: first by id) and everything beside it.
+    const main = folders.reduce((best, f) =>
+      (f.stats?.functions ?? 0) > (best.stats?.functions ?? 0) ? f : best,
+    );
+    const others = list.filter((k) => k !== main && k !== existing);
+    if (others.length === 0) continue; // a lone folder: `collapseChains` lifts it
+    const inMain = main.stats?.functions;
+    if (inMain === undefined) continue;
+    const othersFns = others.reduce((sum, k) => sum + (k.stats?.functions ?? 0), 0);
     const total = x.stats?.functions;
-    const loose = total !== undefined && inFolder !== undefined ? Math.max(0, total - inFolder) : fileFns;
-    const all = total ?? loose + (inFolder ?? 0);
-    if (all > 0 && loose / all >= LOOSE_SHARE) continue;
+    const all = total ?? inMain + othersFns;
+    const loose = total !== undefined ? Math.max(0, total - inMain) : othersFns;
+    if (all > 0 ? inMain / all < 1 - LOOSE_SHARE : folders.length !== 1) continue;
+    if (existing) {
+      for (const k of others) regroup.set(k.id, existing.id);
+      continue;
+    }
     const id = `rootfiles:${x.id}`;
+    const withFolders = others.some(isFolder);
+    const fileCount = others.reduce((sum, k) => sum + (k.stats?.files ?? (k.kind === "file" ? 1 : 0)), 0);
     groups.push({
       id,
       kind: GROUP_KIND,
-      label: "(root files)",
+      label: withFolders ? "(other)" : "(root files)",
       parent: x.id,
-      size: Math.max(1, files.length),
-      stats: { files: files.length, functions: loose },
+      size: Math.max(1, others.length),
+      stats: { files: fileCount, functions: loose },
     });
-    for (const f of files) regroup.set(f.id, id);
+    for (const k of others) regroup.set(k.id, id);
   }
-  if (groups.length === 0) return nodes;
+  if (groups.length === 0 && regroup.size === 0) return nodes;
   return [...nodes.map((n) => (regroup.has(n.id) ? { ...n, parent: regroup.get(n.id) } : n)), ...groups];
 }
 

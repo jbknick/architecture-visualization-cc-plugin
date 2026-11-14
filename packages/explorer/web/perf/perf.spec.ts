@@ -77,7 +77,8 @@ test("30k-function graph: layout off the main thread, pan/zoom fps", async ({ pa
   });
 
   const started = Date.now();
-  await page.goto("/#/perf");
+  // The layout/timing chip is debug text, shown only with ?debug=1; the report below reads it.
+  await page.goto("/?debug=1#/perf");
   const status = page.locator(".gc-status");
   await expect(page.locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 240_000 });
   const readyMs = Date.now() - started;

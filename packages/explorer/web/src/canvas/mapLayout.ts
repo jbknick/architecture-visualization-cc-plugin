@@ -6,14 +6,17 @@
 import ELK, { type ElkExtendedEdge, type ElkNode } from "elkjs/lib/elk.bundled.js";
 import { collapseChains, kindTier, type Tree, type TreeNode } from "./hierarchy.ts";
 import { WS_HEAD_MAX } from "./mapGeom.ts";
+import { GRID, type RouteLink, routeLinks } from "./mapRoute.ts";
 import { type Pt, routeAround } from "./route.ts";
 import { layoutTreemap, type TmNode } from "./treemap.ts";
 import type { LayoutInput, MapGeometry, Positions, Rect } from "./types.ts";
 
 export const DEFAULT_VIEWPORT = { w: 1200, h: 720 };
 /** Screen space the camera keeps free around the diagram (controls on top, status chip at the bottom). */
-export const FIT_INSETS = { top: 44, right: 24, bottom: 34, left: 24 };
+export const FIT_INSETS = { top: 48, right: 24, bottom: 52, left: 24 };
 
+/** Room kept free around the boxes for routes that run outside their bounding box, in px at the fit zoom. */
+const ROUTE_ROOM = 14;
 export const AREA_MIN = 8; // px² of box area per function, lower search bound
 export const AREA_MAX = 20000; // upper bound: a tiny repo does not need huge boxes
 /** Smallest box (px at the fit zoom): tiny workspaces stay clickable and keep their name and counts. */
@@ -97,10 +100,10 @@ export function layerPairs(
   return { kept, rest };
 }
 const VARIANTS: Variant[] = [
-  { direction: "RIGHT", gap: 40, layerGap: 44, layering: "LONGEST_PATH", box: 0.8 },
-  { direction: "RIGHT", gap: 40, layerGap: 44, layering: "NETWORK_SIMPLEX", box: 0.9, depth: 4 },
-  { direction: "RIGHT", gap: 40, layerGap: 44, layering: "NETWORK_SIMPLEX", box: 1.0, depth: 3 },
-  { direction: "DOWN", gap: 40, layerGap: 44, layering: "NETWORK_SIMPLEX", box: 1.6, depth: 4 },
+  { direction: "RIGHT", gap: 40, layerGap: 60, layering: "LONGEST_PATH", box: 0.8 },
+  { direction: "RIGHT", gap: 40, layerGap: 60, layering: "NETWORK_SIMPLEX", box: 0.9, depth: 4 },
+  { direction: "RIGHT", gap: 40, layerGap: 60, layering: "NETWORK_SIMPLEX", box: 1.0, depth: 3 },
+  { direction: "DOWN", gap: 40, layerGap: 60, layering: "NETWORK_SIMPLEX", box: 1.6, depth: 4 },
 ];
 
 /** Lines `text` needs when wrapped at `maxW` px, at about `em` px per character. */
@@ -224,12 +227,13 @@ export function boxSize(
   hasChildren: boolean,
   title = "",
   parts: readonly string[] = [],
+  minSide = 0,
 ): { w: number; h: number; head: number } {
   const a = Math.max(0, fn) * area;
   const w = Math.max(MIN_BOX_W, Math.sqrt(a * aspect));
   const head = headFor(w, title, parts);
   const minH = hasChildren ? head + MIN_BODY_H : head + 8;
-  const h = Math.max(a / w, minH, MIN_LEAF_H);
+  const h = Math.max(a / w, minH, MIN_LEAF_H, minSide);
   return { w: Math.round(w), h: Math.round(h), head };
 }
 
@@ -359,7 +363,22 @@ export async function layoutMap(
   const pairs = importPairs.length > 0 ? importPairs : declaredPairs;
   const extraBase = importPairs.length > 0 ? declaredPairs : [];
   const weightOf = (p: [number, number]) => pairWeight.get(`${p[0]}>${p[1]}`) ?? 0;
+  // Pairs with links both ways (30 one way, 3 the other): only the heavier direction orders the layers, the other
+  // is routed back along its own lane afterwards.
+  const layerable = pairs.filter((p) => {
+    const w = weightOf(p);
+    const r = weightOf([p[1], p[0]]);
+    return !(r > w || (r === w && r > 0 && p[0] > p[1]));
+  });
 
+  // A box needs room for a port per link on a side (one grid step apart), whatever its size.
+  const degIn = new Map<number, number>();
+  const degOut = new Map<number, number>();
+  for (const [a, b] of pairs) {
+    degOut.set(a, (degOut.get(a) ?? 0) + 1);
+    degIn.set(b, (degIn.get(b) ?? 0) + 1);
+  }
+  const portSide = (r: number): number => 16 + GRID * (Math.max(degIn.get(r) ?? 0, degOut.get(r) ?? 0) + 1);
   const fns = new Map(roots.map((r) => [r, fnOf(r)]));
   const filesGiven = new Map(input.nodes.map((n) => [n.id, n.files]));
   const files = Float64Array.from(tree.nodes, (n) => filesGiven.get(n.id) ?? 0);
@@ -375,6 +394,7 @@ export async function layoutMap(
           (tree.nodes[r] as TreeNode).children.length > 0,
           node?.title ?? "",
           node?.subtitle ?? [],
+          portSide(r),
         ),
       };
     });
@@ -382,11 +402,14 @@ export async function layoutMap(
   // For every option set: the biggest box area per function at which the whole diagram still fits the canvas.
   // The set whose biggest box ends up largest on screen wins (ties: the earlier set).
   const aspect = usableW / usableH;
-  const fits = (p: Placed) => p.width <= usableW && p.height <= usableH;
+  // The routes run up to a grid step outside the boxes' bounding box: keep that much room.
+  const fits = (p: Placed) => p.width <= usableW - ROUTE_ROOM && p.height <= usableH - ROUTE_ROOM;
   const solve = async (v: Variant) => {
     // Links the layered placement does not see (too many layers) are routed afterwards, with the declared ones.
     const split =
-      v.depth && roots.length <= 40 ? layerPairs(pairs, weightOf, v.depth) : { kept: pairs, rest: [] };
+      v.depth && roots.length <= 40
+        ? layerPairs(layerable, weightOf, v.depth)
+        : { kept: layerable, rest: [] };
     const layered = split.kept;
     let lo = AREA_MIN;
     let hi = AREA_MAX;
@@ -422,7 +445,36 @@ export async function layoutMap(
   }
   const bestPlans = best.plans;
   const placedBest = best.placed;
-  addExtraRoutes(placedBest, [...best.rest, ...extraBase]);
+  // Every link gets its own orthogonal route around the boxes (see `mapRoute.ts`); very large maps keep the elk
+  // routes and the visibility-graph fallback for the rest.
+  const allPairs = importPairs.length > 0 ? [...importPairs, ...declaredPairs] : declaredPairs;
+  if (roots.length <= 60 && allPairs.length <= 240) {
+    const links: RouteLink[] = allPairs.map(([a, b]) => ({
+      key: `${a}>${b}`,
+      a,
+      b,
+      weight: weightOf([a, b]),
+      declared: !pairWeight.has(`${a}>${b}`),
+    }));
+    placedBest.routes = routeLinks(placedBest.boxes, links);
+  } else addExtraRoutes(placedBest, [...best.rest, ...extraBase]);
+  let bx0 = 0;
+  let by0 = 0;
+  let bx1 = 0;
+  let by1 = 0;
+  for (const r of placedBest.boxes.values()) {
+    bx0 = Math.min(bx0, r.x);
+    by0 = Math.min(by0, r.y);
+    bx1 = Math.max(bx1, r.x + r.w);
+    by1 = Math.max(by1, r.y + r.h);
+  }
+  for (const pts of placedBest.routes.values())
+    for (const [px, py] of pts) {
+      bx0 = Math.min(bx0, px);
+      by0 = Math.min(by0, py);
+      bx1 = Math.max(bx1, px);
+      by1 = Math.max(by1, py);
+    }
 
   // Treemap inside every box, laid out in its normalized content rectangle (headers are added on screen).
   const skipped = collapseChains(
@@ -466,7 +518,7 @@ export async function layoutMap(
       rects,
       heads,
       routes,
-      bounds: { x: 0, y: 0, w: placedBest.width, h: placedBest.height },
+      bounds: { x: bx0, y: by0, w: bx1 - bx0, h: by1 - by0 },
     },
   };
 }

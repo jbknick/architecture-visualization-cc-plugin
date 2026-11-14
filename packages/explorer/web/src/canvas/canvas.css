@@ -186,6 +186,85 @@
 .gc-tooltip div {
   color: var(--muted);
 }
+/* The project map (TreemapCanvas): an opaque control bar, so labels never show through it, and room for the key. */
+.gc-map .gc-controls {
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+}
+.gc-map .gc-status {
+  bottom: 58px;
+}
+.gc-key {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: min(780px, calc(100% - 24px));
+  padding: 4px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.gc-key-toggle {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+}
+.gc-key-toggle:focus-visible,
+.gc-crumb button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.gc-key-body div + div {
+  color: var(--muted);
+}
+.gc-crumb {
+  position: absolute;
+  top: 44px;
+  left: 12px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: calc(100% - 200px);
+  padding: 2px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+}
+.gc-crumb button {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gc-crumb button:hover {
+  background: var(--surface-2);
+}
+.gc-crumb-sep {
+  color: var(--muted);
+}
 
 /* Ego bow-tie (BowtieCanvas): one 2D canvas filling the slot. */
 .bt-canvas {
