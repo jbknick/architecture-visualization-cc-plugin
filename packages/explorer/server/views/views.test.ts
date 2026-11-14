@@ -280,10 +280,13 @@ describe("scale", () => {
 
   const timed = (id: string, qs: string): { ms: number; r: ViewResult } => {
     const bc = { ...ctx, store: big };
-    const t = performance.now();
+    // CPU time of this thread's process, not wall time: the budget is about the code, and wall time balloons
+    // whenever other test files or builds are competing for cores.
+    const t = process.cpuUsage();
     const r = handleApi(bc, `/api/view/${id}`, new URLSearchParams(qs)) as ViewResult;
     JSON.stringify(r);
-    return { ms: performance.now() - t, r };
+    const d = process.cpuUsage(t);
+    return { ms: (d.user + d.system) / 1000, r };
   };
 
   /**

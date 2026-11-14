@@ -27,6 +27,21 @@ export interface Island {
   files: number;
 }
 
+/** A group of file nodes sharing a folder inside an island (Files level only). */
+export interface Cluster {
+  id: string;
+  island: string;
+  /** Folder key inside the workspace: up to two segments ("src/components"), "." for the workspace root. */
+  key: string;
+  center: Vec3;
+  radius: number;
+  functions: number;
+  files: number;
+  /** Rank by functions inside the island (0 = biggest folder). */
+  rank: number;
+  nodeIds: string[];
+}
+
 export interface Arc {
   id: string;
   src: string;
@@ -48,6 +63,8 @@ export interface Layout {
   nodeRadius: Map<string, number>;
   islands: Island[];
   arcs: Arc[];
+  /** Folder clusters of file nodes (empty at the Workspaces and Folders levels). */
+  clusters: Cluster[];
   /** Radius of the sphere around the origin that contains every island. */
   extent: number;
   /** Unit direction from the origin to the default camera: the angle that overlaps islands least on screen. */
@@ -77,15 +94,17 @@ export function seeded(seed: number): () => number {
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
-/** Sphere radius for a node: sqrt scale of the function count, clamped. */
+/** Sphere radius for a node: sqrt scale of the function count (area follows functions), clamped. */
 export function nodeRadius(size: number, kind: string): number {
   const s = Math.sqrt(Math.max(0, size));
-  return kind === "workspace" ? clamp(3 + s * 0.6, 3, 26) : clamp(1 + s * 0.5, 1, 6);
+  if (kind === "workspace") return clamp(3 + s * 0.6, 3, 26);
+  if (kind === "dir") return clamp(1.2 + s * 0.8, 1.2, 22);
+  return clamp(1.2 + s * 0.9, 1.2, 12);
 }
 
 /** On-screen height (px) of an island's name label: grows with sqrt of its function count, clamped. */
 export function islandLabelPx(functions: number): number {
-  return clamp(10 + 0.55 * Math.sqrt(Math.max(0, functions)), 12, 32);
+  return clamp(12 + 0.5 * Math.sqrt(Math.max(0, functions)), 12, 30);
 }
 
 /** Tube diameter (px) of an inter-island arc: sqrt of its import count, clamped. */
@@ -93,14 +112,28 @@ export function arcWidthPx(weight: number): number {
   return clamp(1.2 + Math.sqrt(Math.max(0, weight)) * 0.45, 1.5, 6);
 }
 
-/** Smallest island radius for a workspace with `functions` function-like symbols: sqrt scale with a floor. */
-export function islandFloorRadius(functions: number): number {
-  return 8 + 0.9 * Math.sqrt(Math.max(0, functions));
+/**
+ * Island radius, a function of the workspace's function count alone (never of what is drawn inside), so the
+ * Workspaces, Folders and Files levels share one picture.
+ */
+export function islandRadius(functions: number): number {
+  return 9 + 1.3 * Math.sqrt(Math.max(0, functions));
 }
 
-/** Required empty space between two island spheres: proportional to the larger radius, never below 6. */
+/** Required empty space between two island spheres: generous for small islands, so arrows and names fit. */
 export function islandGap(ra: number, rb: number): number {
-  return Math.max(10, 0.45 * Math.max(ra, rb));
+  return 22 + 0.3 * Math.max(ra, rb) + 0.6 * Math.min(ra, rb);
+}
+
+/** Drops a leading `src/` when every label has it ("src/lib" -> "lib"); otherwise returns the labels unchanged. */
+export function stripSharedSrc(labels: string[]): string[] {
+  if (labels.length === 0 || !labels.every((l) => l.startsWith("src/") && l.length > 4)) return labels;
+  return labels.map((l) => l.slice(4));
+}
+
+/** "components · 855 fn" */
+export function folderCaption(name: string, functions: number): string {
+  return `${name} · ${functions.toLocaleString("en-US")} fn`;
 }
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
@@ -163,23 +196,29 @@ function separate(bodies: Body[], gap: (a: Body, b: Body) => number, iterations:
   }
 }
 
-/** Lays one island's nodes out inside a sphere. Returns local positions and the island radius. */
-function layoutIsland(
+interface CloudResult {
+  pos: Map<string, Vec3>;
+  /** Largest distance from the origin to a sphere's far side. */
+  extent: number;
+}
+
+/** Force layout of a set of spheres: repulsion by size, springs along edges, then hard separation. */
+function layoutCloud(
   nodes: GraphNode[],
   edges: { a: string; b: string; w: number }[],
-  functions: number,
-): { pos: Map<string, Vec3>; radius: number } {
-  const floor = islandFloorRadius(functions);
+  radiusOf: (n: GraphNode) => number,
+  repel = 1,
+): CloudResult {
   const sorted = [...nodes].sort((a, b) => b.size - a.size || cmp(a.id, b.id));
   const pos = new Map<string, Vec3>();
   if (sorted.length === 1) {
     const only = sorted[0] as GraphNode;
     pos.set(only.id, { x: 0, y: 0, z: 0 });
-    return { pos, radius: Math.max(floor, nodeRadius(only.size, only.kind) * 1.5 + 3) };
+    return { pos, extent: radiusOf(only) };
   }
-  const radii = sorted.map((n) => nodeRadius(n.size, n.kind));
+  const radii = sorted.map(radiusOf);
   const volume = radii.reduce((a, r) => a + r * r * r, 0);
-  const target = Math.max(8, 2.1 * Math.cbrt(volume));
+  const target = Math.max(8, 2.1 * Math.cbrt(volume * repel));
   const bodies = sorted.map((n, i) => {
     const rand = seeded(fnv1a(n.id));
     const dir = fibonacci(i, sorted.length);
@@ -200,7 +239,7 @@ function layoutIsland(
         const dz = b.z - a.z;
         const d2 = dx * dx + dy * dy + dz * dz + 0.01;
         const d = Math.sqrt(d2);
-        const f = (14 * (a.r + b.r)) / d2; // repulsion, stronger for big nodes
+        const f = (14 * repel * (a.r + b.r)) / d2; // repulsion, stronger for big nodes
         const ux = dx / d;
         const uy = dy / d;
         const uz = dz / d;
@@ -245,10 +284,141 @@ function layoutIsland(
     }
   }
   separate(bodies, () => 0.8, n > 400 ? 20 : 60);
-  let radius = 0;
-  for (const b of bodies) radius = Math.max(radius, Math.hypot(b.x, b.y, b.z) + b.r);
+  let extent = 0;
+  for (const b of bodies) extent = Math.max(extent, Math.hypot(b.x, b.y, b.z) + b.r);
   for (const b of bodies) pos.set(b.id, { x: b.x, y: b.y, z: b.z });
-  return { pos, radius: Math.max(floor, radius * 1.12 + 3) };
+  return { pos, extent };
+}
+
+/** Folder key of a file or folded node inside its workspace: up to two directory segments, "." for the root. */
+export function folderKey(n: GraphNode, wsDir: string): string {
+  const path = n.path ?? n.id.replace(/^(file|more):/, "");
+  let rel = path;
+  if (wsDir !== "." && wsDir !== "") {
+    if (path === wsDir) rel = ".";
+    else if (path.startsWith(`${wsDir}/`)) rel = path.slice(wsDir.length + 1);
+  }
+  if (rel === ".") return ".";
+  const segs = rel.split("/");
+  if (n.kind !== "folded") segs.pop();
+  const key = segs.slice(0, 2).join("/");
+  return key || ".";
+}
+
+/** Longest directory prefix shared by all paths ("." when none). */
+function commonDir(paths: string[]): string {
+  if (paths.length === 0) return ".";
+  const dirs = paths.map((p) => p.split("/").slice(0, -1));
+  const first = dirs[0] as string[];
+  let n = first.length;
+  for (const d of dirs) {
+    let k = 0;
+    while (k < n && k < d.length && d[k] === first[k]) k++;
+    n = k;
+  }
+  return n === 0 ? "." : first.slice(0, n).join("/");
+}
+
+interface IslandInner {
+  pos: Map<string, Vec3>;
+  radii: Map<string, number>;
+  clusters: {
+    key: string;
+    center: Vec3;
+    radius: number;
+    functions: number;
+    files: number;
+    nodeIds: string[];
+  }[];
+}
+
+/**
+ * Lays one island's nodes out inside a sphere of the given radius (which was fixed by the function count alone).
+ * A lone node is one sphere in the middle; file nodes are grouped in one cluster per folder; folders form a cloud.
+ * Everything is scaled uniformly to fill about 90% of the sphere.
+ */
+function layoutInside(
+  nodes: GraphNode[],
+  edges: { a: string; b: string; w: number }[],
+  R: number,
+  wsDir: string,
+): IslandInner {
+  const radii = new Map<string, number>();
+  const pos = new Map<string, Vec3>();
+  const clusters: IslandInner["clusters"] = [];
+  const sorted = [...nodes].sort((a, b) => b.size - a.size || cmp(a.id, b.id));
+  if (sorted.length === 1) {
+    const only = sorted[0] as GraphNode;
+    pos.set(only.id, { x: 0, y: 0, z: 0 });
+    radii.set(only.id, R * 0.5);
+    return { pos, radii, clusters };
+  }
+  const rOf = (n: GraphNode): number => nodeRadius(n.size, n.kind);
+  const isFile = sorted.some((n) => n.kind === "file" || n.kind === "folded");
+  let extent = 0;
+  if (!isFile) {
+    const c = layoutCloud(sorted, edges, rOf);
+    for (const [id, p] of c.pos) pos.set(id, p);
+    extent = c.extent;
+  } else {
+    const groups = new Map<string, GraphNode[]>();
+    for (const n of sorted) {
+      const k = folderKey(n, wsDir);
+      groups.set(k, [...(groups.get(k) ?? []), n]);
+    }
+    const keys = [...groups.keys()].sort((a, b) => {
+      const fa = (groups.get(a) ?? []).reduce((s, n) => s + n.size, 0);
+      const fb = (groups.get(b) ?? []).reduce((s, n) => s + n.size, 0);
+      return fb - fa || cmp(a, b);
+    });
+    const clouds = keys.map((k) => {
+      const list = groups.get(k) as GraphNode[];
+      const ids = new Set(list.map((n) => n.id));
+      const inner = edges.filter((e) => ids.has(e.a) && ids.has(e.b));
+      return { key: k, list, cloud: layoutCloud(list, inner, rOf, 2.6) };
+    });
+    // Pack the folder clouds: biggest first, near the middle, never overlapping.
+    const bodies = clouds.map((c, i) => {
+      const dir = fibonacci(i, clouds.length);
+      const k = i === 0 ? 0 : c.cloud.extent * 2 + i * 1.5;
+      return body(c.key, { x: dir.x * k, y: dir.y * k, z: dir.z * k }, c.cloud.extent * 1.04);
+    });
+    for (let it = 0; it < 90; it++) {
+      for (const b of bodies) {
+        b.x *= 0.94;
+        b.y *= 0.94;
+        b.z *= 0.94;
+      }
+      separate(bodies, (a, b) => 3 + 0.3 * (a.r + b.r), 1);
+    }
+    separate(bodies, (a, b) => 3 + 0.3 * (a.r + b.r), 200);
+    const byKey = new Map(bodies.map((b) => [b.id, b]));
+    for (const c of clouds) {
+      const b = byKey.get(c.key) as Body;
+      for (const [id, p] of c.cloud.pos) pos.set(id, { x: p.x + b.x, y: p.y + b.y, z: p.z + b.z });
+      extent = Math.max(extent, Math.hypot(b.x, b.y, b.z) + b.r);
+      clusters.push({
+        key: c.key,
+        center: { x: b.x, y: b.y, z: b.z },
+        radius: b.r,
+        functions: c.list.reduce((s, n) => s + n.size, 0),
+        files: c.list.length,
+        nodeIds: c.list.map((n) => n.id),
+      });
+    }
+  }
+  // Fill the sphere (about 90% of it), shrinking big clouds and growing small ones, so spheres do not pile up.
+  const s = clamp((R * 0.9) / Math.max(extent, 1e-6), 0.15, 8);
+  for (const n of sorted) {
+    const p = pos.get(n.id) as Vec3;
+    pos.set(n.id, mul(p, s));
+    radii.set(n.id, rOf(n) * s);
+  }
+  for (const c of clusters) {
+    c.center = mul(c.center, s);
+    c.radius *= s;
+  }
+  return { pos, radii, clusters };
 }
 
 const sub = (a: Vec3, b: Vec3): Vec3 => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
@@ -264,14 +434,16 @@ const cross = (a: Vec3, b: Vec3): Vec3 => ({
   y: a.z * b.x - a.x * b.z,
   z: a.x * b.y - a.y * b.x,
 });
+const dot = (a: Vec3, b: Vec3): number => a.x * b.x + a.y * b.y + a.z * b.z;
 
 /**
- * Places island centres, deterministically and without overlap.
- * 1. The big islands ("hubs", radius >= 55% of the largest) sit on a ring/sphere around the origin, far enough
- *    apart that every pair keeps `islandGap`.
- * 2. Each remaining island ("satellite"), largest first, goes next to the placed island it imports from or to
- *    most, on the free spot closest to its linked neighbours.
- * 3. A last pairwise relaxation guarantees that no two spheres are closer than `r1 + r2 + islandGap`.
+ * Places island centres, deterministically and without overlap, mostly in one plane (z = 0) so that the default
+ * camera, which faces that plane, sees a map. The input is only (id, radius, links): function counts and the
+ * workspace-to-workspace import weights, never what is drawn inside an island.
+ * 1. Islands go in order of size. The biggest sits at the origin; each next one takes the free spot (on a ring
+ *    around an island it links to, or around any island) closest to its linked neighbours, with the required gap.
+ * 2. The plane is rotated so that its long axis is horizontal.
+ * 3. A shallow dome lifts the middle towards the camera, a secondary depth cue; it only ever increases distances.
  */
 function placeIslands(
   islands: { id: string; radius: number }[],
@@ -284,9 +456,6 @@ function placeIslands(
     return out;
   }
   const order = [...islands].sort((a, b) => b.radius - a.radius || cmp(a.id, b.id));
-  const maxR = (order[0] as { radius: number }).radius;
-  let hubCount = order.filter((i) => i.radius >= maxR * 0.55).length;
-  hubCount = Math.max(2, hubCount);
   const weight = new Map<string, Map<string, number>>();
   const addW = (a: string, b: string, w: number): void => {
     const m = weight.get(a) ?? new Map<string, number>();
@@ -299,76 +468,84 @@ function placeIslands(
   }
 
   const placed: Body[] = [];
-  const hubs = order.slice(0, hubCount);
-  if (hubs.length === 2) {
-    const [a, b] = hubs as [(typeof hubs)[number], (typeof hubs)[number]];
-    const d = a.radius + b.radius + islandGap(a.radius, b.radius) * 1.6;
-    placed.push(
-      body(a.id, { x: -d / 2, y: 0, z: 0 }, a.radius),
-      body(b.id, { x: d / 2, y: 0, z: 0 }, b.radius),
-    );
-  } else {
-    const dirs = hubs.map((_, i) => fibonacci(i, hubs.length));
-    let R = 0;
-    for (let i = 0; i < hubs.length; i++) {
-      for (let j = i + 1; j < hubs.length; j++) {
-        const a = hubs[i] as (typeof hubs)[number];
-        const b = hubs[j] as (typeof hubs)[number];
-        const chord = len(sub(dirs[i] as Vec3, dirs[j] as Vec3));
-        R = Math.max(R, (a.radius + b.radius + islandGap(a.radius, b.radius) * 1.6) / Math.max(chord, 1e-6));
-      }
-    }
-    for (const [i, h] of hubs.entries()) placed.push(body(h.id, mul(dirs[i] as Vec3, R), h.radius));
-  }
-
-  const candidates = Array.from({ length: 64 }, (_, i) => fibonacci(i, 64));
-  const free = (p: Vec3, r: number): boolean =>
-    placed.every((q) => Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z) >= q.r + r + islandGap(q.r, r) - 1e-6);
-  for (const sat of order.slice(hubCount)) {
-    const w = weight.get(sat.id);
+  const first = order[0] as (typeof order)[number];
+  placed.push(body(first.id, { x: 0, y: 0, z: 0 }, first.radius));
+  const ANGLES = 48;
+  const free = (x: number, y: number, r: number): boolean =>
+    placed.every((q) => Math.hypot(x - q.x, y - q.y) >= q.r + r + islandGap(q.r, r) - 1e-6);
+  for (const isl of order.slice(1)) {
+    const w = weight.get(isl.id);
     const linked = placed.filter((q) => (w?.get(q.id) ?? 0) > 0);
     const anchors = linked.length > 0 ? linked : placed;
     const total = linked.reduce((a, q) => a + (w?.get(q.id) ?? 0), 0);
-    let best: { p: Vec3; score: number } | null = null;
-    for (let slack = 1; best === null; slack *= 1.12) {
+    let mx = 0;
+    let my = 0;
+    let mm = 0;
+    for (const q of placed) {
+      mx += q.x * q.r * q.r;
+      my += q.y * q.r * q.r;
+      mm += q.r * q.r;
+    }
+    mx /= mm;
+    my /= mm;
+    let best: { x: number; y: number; score: number } | null = null;
+    for (let slack = 1; best === null; slack *= 1.1) {
       for (const anchor of anchors) {
-        const dist = (anchor.r + sat.radius + islandGap(anchor.r, sat.radius)) * slack;
-        for (const dir of candidates) {
-          const p = { x: anchor.x + dir.x * dist, y: anchor.y + dir.y * dist, z: anchor.z + dir.z * dist };
-          if (!free(p, sat.radius)) continue;
+        const dist = (anchor.r + isl.radius + islandGap(anchor.r, isl.radius)) * slack;
+        for (let k = 0; k < ANGLES; k++) {
+          const ang = (k / ANGLES) * Math.PI * 2;
+          const x = anchor.x + Math.cos(ang) * dist;
+          const y = anchor.y + Math.sin(ang) * dist;
+          if (!free(x, y, isl.radius)) continue;
           let score = 0;
           if (total > 0) {
-            for (const q of linked) {
-              score += ((w?.get(q.id) ?? 0) / total) * Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z);
-            }
-          } else score = Math.hypot(p.x, p.y, p.z);
-          score += 0.001 * Math.hypot(p.x, p.y, p.z);
-          if (best === null || score < best.score - 1e-9) best = { p, score };
+            for (const q of linked) score += ((w?.get(q.id) ?? 0) / total) * Math.hypot(x - q.x, y - q.y);
+          }
+          score += 0.35 * Math.hypot(x - mx, y - my);
+          if (best === null || score < best.score - 1e-9) best = { x, y, score };
         }
       }
     }
-    placed.push(body(sat.id, best.p, sat.radius));
+    placed.push(body(isl.id, { x: best.x, y: best.y, z: 0 }, isl.radius));
   }
   separate(placed, (a, b) => islandGap(a.r, b.r), 3000);
-  // A little breathing room: scaling about the origin only ever increases distances.
-  for (const b of placed) {
-    b.x *= 1.12;
-    b.y *= 1.12;
-    b.z *= 1.12;
-  }
-  // Centre on the mass-weighted middle so the orbit target is the middle of the picture.
+
+  // Centre on the mass-weighted middle, then rotate the principal axis onto x.
   let cx = 0;
   let cy = 0;
-  let cz = 0;
   let m = 0;
   for (const b of placed) {
-    const w = b.r * b.r;
-    cx += b.x * w;
-    cy += b.y * w;
-    cz += b.z * w;
-    m += w;
+    const wt = b.r * b.r;
+    cx += b.x * wt;
+    cy += b.y * wt;
+    m += wt;
   }
-  for (const b of placed) out.set(b.id, { x: b.x - cx / m, y: b.y - cy / m, z: b.z - cz / m });
+  cx /= m;
+  cy /= m;
+  let sxx = 0;
+  let syy = 0;
+  let sxy = 0;
+  for (const b of placed) {
+    const wt = b.r * b.r;
+    sxx += (b.x - cx) ** 2 * wt;
+    syy += (b.y - cy) ** 2 * wt;
+    sxy += (b.x - cx) * (b.y - cy) * wt;
+  }
+  const theta = Math.abs(sxy) < 1e-6 * (sxx + syy) ? 0 : 0.5 * Math.atan2(2 * sxy, sxx - syy);
+  const cs = Math.cos(-theta);
+  const sn = Math.sin(-theta);
+  let reach = 0;
+  const flat = placed.map((b) => {
+    const x = b.x - cx;
+    const y = b.y - cy;
+    const p = { id: b.id, x: x * cs - y * sn, y: x * sn + y * cs, r: b.r };
+    reach = Math.max(reach, Math.hypot(p.x, p.y) + b.r);
+    return p;
+  });
+  for (const p of flat) {
+    const d = Math.hypot(p.x, p.y) / Math.max(reach, 1);
+    out.set(p.id, { x: p.x, y: p.y, z: reach * 0.16 * (1 - Math.min(1, d * d)) });
+  }
   return out;
 }
 
@@ -376,8 +553,9 @@ function placeIslands(
 function arcPoints(a: Island, b: Island): { p0: Vec3; p1: Vec3; p2: Vec3 } {
   const dir = norm(sub(b.center, a.center));
   const forward = a.id < b.id;
-  const p0 = add(a.center, mul(dir, a.radius));
-  const p2 = sub(b.center, mul(dir, b.radius));
+  const p0 = add(a.center, mul(dir, a.radius + 1));
+  // Ends just outside the target island's surface, where the arrowhead's tip sits.
+  const p2 = sub(b.center, mul(dir, b.radius + 2));
   const mid = mul(add(p0, p2), 0.5);
   const span = len(sub(p2, p0));
   let out = sub(mid, mul(dir, dot(mid, dir)));
@@ -385,11 +563,9 @@ function arcPoints(a: Island, b: Island): { p0: Vec3; p1: Vec3; p2: Vec3 } {
   out = norm(out);
   const side = norm(cross(dir, out));
   const lateral = mul(side, (forward ? 1 : -1) * span * 0.07);
-  const p1 = add(add(mid, mul(out, span * 0.22 + 6)), lateral);
+  const p1 = add(add(mid, mul(out, span * 0.2 + 5)), lateral);
   return { p0, p1, p2 };
 }
-
-const dot = (a: Vec3, b: Vec3): number => a.x * b.x + a.y * b.y + a.z * b.z;
 
 /** Label, kind and counts for an island, from its workspace node (when the view sends one) and its members. */
 function islandInfo(
@@ -404,8 +580,8 @@ function islandInfo(
   return {
     label: meta?.label ?? "",
     wsKind: first && !/\d/.test(first) ? first : "package",
-    functions: count(/functions$/) ?? list.reduce((a, n) => a + n.size, 0),
-    files: count(/files$/) ?? list.length,
+    functions: count(/functions$/) ?? meta?.stats?.functions ?? list.reduce((a, n) => a + n.size, 0),
+    files: count(/files$/) ?? meta?.stats?.files ?? list.length,
   };
 }
 
@@ -438,35 +614,45 @@ export function summarizeIslands(nodes: GraphNode[]): IslandSummary[] {
   }));
 }
 
-/** Picks the camera direction (from a fixed candidate set) where the projected island discs overlap least. */
-function bestViewDir(islands: Island[]): Vec3 {
-  const candidates: Vec3[] = [];
-  for (let i = 0; i < 240; i++) {
-    const d = fibonacci(i, 240);
-    if (d.y > 0 && d.y < 0.9) candidates.push(d);
-  }
-  let best = { x: 0.35, y: 0.4, z: 0.85 };
-  let bestScore = Number.NEGATIVE_INFINITY;
-  for (const d of candidates) {
-    const right = norm(cross({ x: 0, y: 1, z: 0 }, d));
-    const up = cross(d, right);
-    let score = Number.POSITIVE_INFINITY;
-    for (let i = 0; i < islands.length; i++) {
-      for (let j = i + 1; j < islands.length; j++) {
-        const a = islands[i] as Island;
-        const b = islands[j] as Island;
-        const diff = sub(a.center, b.center);
-        const d2 = Math.hypot(dot(diff, right), dot(diff, up));
-        score = Math.min(score, (d2 - (a.radius + b.radius) * 1.2) / (a.radius + b.radius));
+/**
+ * Picks the default camera direction. The islands lie roughly in the z = 0 plane, so the candidates are a fixed
+ * set of directions in a cone around +z (with some tilt for depth). The winner has the least projected overlap
+ * between island discs; ties go to the widest smallest gap, then to the gentler tilt.
+ */
+export function bestViewDir(islands: { center: Vec3; radius: number }[]): Vec3 {
+  let best: { d: Vec3; overlap: number; gap: number; tilt: number } | null = null;
+  for (const tiltDeg of [12, 18, 24, 30, 36, 42]) {
+    for (let az = 0; az < 360; az += 30) {
+      const t = (tiltDeg * Math.PI) / 180;
+      const p = (az * Math.PI) / 180;
+      const d = { x: Math.sin(t) * Math.cos(p), y: Math.sin(t) * Math.sin(p), z: Math.cos(t) };
+      const right = norm(cross({ x: 0, y: 1, z: 0 }, d));
+      const up = cross(d, right);
+      let overlap = 0;
+      let gap = Number.POSITIVE_INFINITY;
+      for (let i = 0; i < islands.length; i++) {
+        for (let j = i + 1; j < islands.length; j++) {
+          const a = islands[i] as { center: Vec3; radius: number };
+          const b = islands[j] as { center: Vec3; radius: number };
+          const diff = sub(a.center, b.center);
+          const dist = Math.hypot(dot(diff, right), dot(diff, up));
+          const need = (a.radius + b.radius) * 1.08;
+          overlap += Math.max(0, need - dist);
+          gap = Math.min(gap, (dist - (a.radius + b.radius)) / (a.radius + b.radius));
+        }
       }
-    }
-    if (islands.length < 2) score = 0;
-    if (score > bestScore + 1e-9) {
-      bestScore = score;
-      best = d;
+      if (islands.length < 2) gap = 0;
+      // Favour a view from above (az 90) very slightly, so the same data always tilts the same way.
+      const tilt = tiltDeg + Math.abs(((az - 90 + 540) % 360) - 180) / 90;
+      const better =
+        best === null ||
+        overlap < best.overlap - 1e-6 ||
+        (Math.abs(overlap - best.overlap) <= 1e-6 &&
+          (gap > best.gap + 0.02 || (Math.abs(gap - best.gap) <= 0.02 && tilt < best.tilt)));
+      if (better) best = { d, overlap, gap, tilt };
     }
   }
-  return norm(best);
+  return norm(best?.d ?? { x: 0, y: 0.3, z: 0.95 });
 }
 
 export interface LayoutInput {
@@ -482,15 +668,9 @@ export function computeLayout({ nodes, edges }: LayoutInput): Layout {
   };
 
   // Groups: a workspace node is metadata when other nodes name it as parent; otherwise it is itself drawn.
-  const children = new Map<string, GraphNode[]>();
-  for (const n of nodes) {
-    if (n.parent) {
-      const list = children.get(n.parent) ?? [];
-      list.push(n);
-      children.set(n.parent, list);
-    }
-  }
-  const drawn: GraphNode[] = nodes.filter((n) => n.parent || !children.has(n.id));
+  const hasChildren = new Set<string>();
+  for (const n of nodes) if (n.parent) hasChildren.add(n.parent);
+  const drawn: GraphNode[] = nodes.filter((n) => n.parent || !hasChildren.has(n.id));
   const groupIds = [...new Set(drawn.map((n) => n.parent ?? n.id))].sort(cmp);
 
   const members = new Map<string, GraphNode[]>();
@@ -528,15 +708,11 @@ export function computeLayout({ nodes, edges }: LayoutInput): Layout {
     }
   }
 
-  const local = new Map<string, Map<string, Vec3>>();
-  const radii = new Map<string, number>();
-  for (const g of groupIds) {
-    const list = members.get(g) ?? [];
-    const r = layoutIsland(list, inside.get(g) ?? [], islandInfo(byId.get(g), list).functions);
-    local.set(g, r.pos);
-    radii.set(g, r.radius);
-  }
-
+  // Island size and placement come from workspace-level facts only (function counts, imports between workspaces).
+  const info = new Map(groupIds.map((g) => [g, islandInfo(byId.get(g), members.get(g) ?? [])]));
+  const radii = new Map(
+    groupIds.map((g) => [g, islandRadius((info.get(g) as { functions: number }).functions)]),
+  );
   const links = [...cross_.values()].map((c) => ({ a: c.src, b: c.dst, w: c.w }));
   const centers = placeIslands(
     groupIds.map((id) => ({ id, radius: radii.get(id) as number })),
@@ -545,27 +721,43 @@ export function computeLayout({ nodes, edges }: LayoutInput): Layout {
 
   const positions = new Map<string, Vec3>();
   const nodeR = new Map<string, number>();
+  const clusters: Cluster[] = [];
   const islands: Island[] = groupIds.map((id, index) => {
     const meta = byId.get(id);
     const center = centers.get(id) as Vec3;
     const list = members.get(id) ?? [];
+    const radius = radii.get(id) as number;
+    const wsDir = meta?.path ?? commonDir(list.map((n) => n.path ?? "").filter(Boolean));
+    const inner = layoutInside(list, inside.get(id) ?? [], radius, wsDir);
     for (const n of list) {
-      const p = (local.get(id) as Map<string, Vec3>).get(n.id) as Vec3;
-      positions.set(n.id, add(center, p));
-      nodeR.set(n.id, nodeRadius(n.size, n.kind));
+      positions.set(n.id, add(center, inner.pos.get(n.id) as Vec3));
+      nodeR.set(n.id, inner.radii.get(n.id) as number);
     }
-    const info = islandInfo(meta, list);
+    for (const [rankInIsland, c] of inner.clusters.entries()) {
+      clusters.push({
+        id: `dir:${id}:${c.key}`,
+        island: id,
+        key: c.key,
+        center: add(center, c.center),
+        radius: c.radius,
+        functions: c.functions,
+        files: c.files,
+        rank: rankInIsland,
+        nodeIds: c.nodeIds,
+      });
+    }
+    const inf = info.get(id) as ReturnType<typeof islandInfo>;
     return {
       id,
       label: meta?.shortLabel ?? meta?.label ?? id,
       fullLabel: meta?.label ?? id,
-      wsKind: info.wsKind,
+      wsKind: inf.wsKind,
       index,
       center,
-      radius: radii.get(id) as number,
+      radius,
       nodeIds: list.map((n) => n.id).sort(cmp),
-      functions: info.functions,
-      files: info.files,
+      functions: inf.functions,
+      files: inf.files,
     };
   });
   const islandById = new Map(islands.map((i) => [i.id, i]));
@@ -588,7 +780,7 @@ export function computeLayout({ nodes, edges }: LayoutInput): Layout {
 
   let extent = 0;
   for (const i of islands) extent = Math.max(extent, len(i.center) + i.radius);
-  return { positions, nodeRadius: nodeR, islands, arcs, extent, viewDir: bestViewDir(islands) };
+  return { positions, nodeRadius: nodeR, islands, arcs, clusters, extent, viewDir: bestViewDir(islands) };
 }
 
 /** Stable digest of the rounded positions; used to check that two loads draw the same picture. */
@@ -598,6 +790,15 @@ export function positionHash(layout: Layout): string {
   for (const id of ids) {
     const p = layout.positions.get(id) as Vec3;
     s += `${id}:${p.x.toFixed(3)},${p.y.toFixed(3)},${p.z.toFixed(3)};`;
+  }
+  return fnv1a(s).toString(16).padStart(8, "0");
+}
+
+/** Digest of island centres, radii and the default camera only: equal at every level for the same workspaces. */
+export function islandHash(layout: Layout): string {
+  let s = `${layout.viewDir.x.toFixed(4)},${layout.viewDir.y.toFixed(4)},${layout.viewDir.z.toFixed(4)};`;
+  for (const i of layout.islands) {
+    s += `${i.id}:${i.center.x.toFixed(3)},${i.center.y.toFixed(3)},${i.center.z.toFixed(3)},${i.radius.toFixed(3)};`;
   }
   return fnv1a(s).toString(16).padStart(8, "0");
 }

@@ -304,6 +304,8 @@ kbd {
   background: var(--surface);
   border-right: 1px solid var(--border);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
   position: relative;
 }
 .left-toggle {

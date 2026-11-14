@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CanvasProps } from "../slots.ts";
+import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
+import { getBool } from "../views/filterUtils.ts";
 import { fnv1a } from "./layout.ts";
 import { MapScene, type TipInfo } from "./scene.ts";
 import { mapUi, prefersReducedMotion, useMapUi } from "./ui.ts";
@@ -17,6 +19,7 @@ export default function Graph3D({ nodes, edges, focus, onSelect, onHover }: Canv
   const [tip, setTip] = useState<Tip | null>(null);
   const [ready, setReady] = useState(false);
   const ui = useMapUi();
+  const hideTests = getBool(useStore().state.route.filters, "hideTests", true);
   // The shell refetches the view on every focus change; only a real data change may re-layout and move the camera.
   const dataKey = useMemo(
     () =>
@@ -100,6 +103,21 @@ export default function Graph3D({ nodes, edges, focus, onSelect, onHover }: Canv
           ))}
         </div>
       )}
+      <p className="map3d-key" data-testid="map3d-key">
+        <span>
+          <strong>Island</strong> = workspace (size = functions)
+        </span>
+        {" · "}
+        <span>
+          <strong>Arrow A → B</strong> = A imports from B (thicker = more imports)
+        </span>
+        {hideTests && (
+          <>
+            {" · "}
+            <span>Tests hidden</span>
+          </>
+        )}
+      </p>
       {nodes.length === 0 && <p className="empty map3d-empty">Nothing to draw at this level.</p>}
     </div>
   );
