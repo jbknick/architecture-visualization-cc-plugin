@@ -39,6 +39,7 @@ export class ExplorerUnresponsive extends Error {
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 /** An unreadable file younger than this may be a writer in the middle of its work, so it is left alone. */
 const YOUNG_MS = 1500;
+const LOCK_STALE_MS = 10_000;
 
 export function processAlive(pid: number): boolean {
   try {
@@ -49,10 +50,14 @@ export function processAlive(pid: number): boolean {
   }
 }
 
-/** Removes `file` (never following a symlink) only if it is still the same file as `ino`. */
-function unlinkIfSame(file: string, ino: number): void {
+/** Identity of a file at one moment: inode, mtime and size, so a reused inode number alone does not match. */
+const idOf = (st: { ino: number; mtimeMs: number; size: number }): string =>
+  `${st.ino}:${st.mtimeMs}:${st.size}`;
+
+/** Removes `file` (never following a symlink) only if it is still the same file as `id` (from `idOf`). */
+function unlinkIfSame(file: string, id: string): void {
   try {
-    if (lstatSync(file).ino === ino) unlinkSync(file);
+    if (idOf(lstatSync(file)) === id) unlinkSync(file);
   } catch {
     // already gone
   }
@@ -61,8 +66,8 @@ function unlinkIfSame(file: string, ino: number): void {
 type Read =
   | { kind: "none" }
   | { kind: "young" }
-  | { kind: "stale"; ino: number }
-  | { kind: "state"; state: ExplorerState; ino: number };
+  | { kind: "stale"; ino: string }
+  | { kind: "state"; state: ExplorerState; ino: string };
 
 function readState(file: string): Read {
   let st: ReturnType<typeof lstatSync>;
@@ -72,7 +77,7 @@ function readState(file: string): Read {
     return { kind: "none" };
   }
   // A symlink (dangling or not) or a non-file is never followed or trusted.
-  if (!st.isFile()) return { kind: "stale", ino: st.ino };
+  if (!st.isFile()) return { kind: "stale", ino: idOf(st) };
   try {
     const state = JSON.parse(readFileSync(file, "utf8")) as ExplorerState;
     const valid =
@@ -81,11 +86,11 @@ function readState(file: string): Read {
       typeof state.token === "string" &&
       Number.isInteger(state.pid) &&
       state.pid > 0;
-    if (valid) return { kind: "state", state, ino: st.ino };
+    if (valid) return { kind: "state", state, ino: idOf(st) };
   } catch {
     // unparseable
   }
-  return Date.now() - st.mtimeMs < YOUNG_MS ? { kind: "young" } : { kind: "stale", ino: st.ino };
+  return Date.now() - st.mtimeMs < YOUNG_MS ? { kind: "young" } : { kind: "stale", ino: idOf(st) };
 }
 
 /**
@@ -120,8 +125,20 @@ export async function inspectExplorer(
       signal: AbortSignal.timeout(2000),
     });
     if (res.ok) return { kind: "state", state };
-  } catch {
-    // not answering
+    // 403: some other server owns that port (the token is not ours), so explorer.json is stale.
+    if (res.status === 403) {
+      unlinkIfSame(file, r.ino);
+      return { kind: "none" };
+    }
+  } catch (err) {
+    // ECONNREFUSED proves the explorer is gone (it writes explorer.json after `listen` and removes it before
+    // `close`; a stopped process still accepts connections), so a reused pid cannot block starts.
+    const code = ((err as { cause?: { code?: string } }).cause ?? {}).code;
+    if (code === "ECONNREFUSED") {
+      unlinkIfSame(file, r.ino);
+      return { kind: "none" };
+    }
+    // accepted but silent, or timed out: running, unresponsive
   }
   // The file may have been replaced while we waited; judge the current one.
   const now = readState(file);
@@ -141,8 +158,8 @@ export async function acquireLock(paths: GantryPaths, timeoutMs = 8000): Promise
       } finally {
         closeSync(fd);
       }
-      const ino = lstatSync(file).ino;
-      return () => unlinkIfSame(file, ino);
+      const id = idOf(lstatSync(file));
+      return () => unlinkIfSame(file, id);
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
     }
@@ -160,10 +177,13 @@ export async function acquireLock(paths: GantryPaths, timeoutMs = 8000): Promise
         // unreadable
       }
     }
+    // The lock is held for milliseconds (about 4 s at worst), so one older than LOCK_STALE_MS is abandoned even if
+    // its pid has been reused by an unrelated live process.
+    const age = Date.now() - st.mtimeMs;
     const dead =
-      Number.isInteger(owner) && owner > 0 ? !processAlive(owner) : Date.now() - st.mtimeMs > YOUNG_MS;
+      age > LOCK_STALE_MS || (Number.isInteger(owner) && owner > 0 ? !processAlive(owner) : age > YOUNG_MS);
     if (dead) {
-      unlinkIfSame(file, st.ino);
+      unlinkIfSame(file, idOf(st));
       continue;
     }
     if (Date.now() > deadline) {
@@ -200,7 +220,7 @@ export function createStateFile(paths: GantryPaths, state: ExplorerState): boole
     if (code === "EEXIST") return false;
     if (code !== "ENOTSUP" && code !== "EPERM" && code !== "EXDEV" && code !== "ENOSYS") throw err;
   } finally {
-    unlinkIfSame(tmp, lstatSync(tmp).ino);
+    unlinkIfSame(tmp, idOf(lstatSync(tmp)));
   }
   try {
     const out = openSync(file, "wx", 0o600);

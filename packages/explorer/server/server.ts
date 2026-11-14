@@ -202,7 +202,25 @@ function serveStatic(res: ServerResponse, staticDir: string | undefined, pathnam
   createReadStream(real).pipe(res);
 }
 
+/**
+ * Starts the server. With a state file (the default) the whole start runs under `explorer.lock`, so concurrent
+ * starters take turns (this also keeps them from opening the database together) and a loser that finds a live
+ * explorer answers before it opens anything.
+ */
 export async function startExplorerServer(opts: ExplorerServerOptions): Promise<ExplorerServer> {
+  if (opts.writeStateFile === false) return startLocked(opts);
+  mkdirSync(opts.paths.dataDir, { recursive: true, mode: 0o700 });
+  const release = await acquireLock(opts.paths);
+  try {
+    const found = await inspectExplorer(opts.paths); // removes an unreadable file or one of a dead process
+    if (found.kind === "state") throw new ExplorerAlreadyRunning(found.state.port, found.state.pid);
+    return await startLocked(opts);
+  } finally {
+    release();
+  }
+}
+
+async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer> {
   const { paths } = opts;
   const ownsStore = !opts.store;
   const store = opts.store ?? openStore(paths.dbPath);
@@ -328,10 +346,8 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
   if (writeState) {
     mkdirSync(paths.dataDir, { recursive: true, mode: 0o700 });
     const state: ExplorerState = { port, token, pid: process.pid, startedAt: new Date().toISOString() };
-    let release: (() => void) | undefined;
     try {
-      // Holding the lock, nobody else decides "no explorer runs" or writes explorer.json at the same time.
-      release = await acquireLock(paths);
+      // The caller holds explorer.lock, so nobody else decides "no explorer runs" or writes explorer.json now.
       for (let attempt = 0; ; attempt++) {
         if (createStateFile(paths, state)) break;
         const found = await inspectExplorer(paths); // removes an unreadable file or one of a dead process
@@ -346,8 +362,6 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
       });
       if (ownsStore) store.close();
       throw err;
-    } finally {
-      release?.();
     }
   }
   const removeState = () => removeStateFile(paths, token);

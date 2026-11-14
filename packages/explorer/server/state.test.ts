@@ -9,6 +9,7 @@ import {
   utimesSync,
   writeFileSync,
 } from "node:fs";
+import { createServer as createHttpServer } from "node:http";
 import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -133,5 +134,48 @@ describe("unusable explorer.json", () => {
     if (r.server) open.push(r.server);
     expect(readFileSync(target, "utf8")).toBe("keep");
     await expect(findRunningExplorer(paths)).resolves.toMatchObject({ token: r.token });
+  });
+});
+
+describe("reused pids", () => {
+  it("a live pid whose port refuses connections is treated as gone", async () => {
+    const port = await silentPort();
+    sinks.pop()?.close(); // now nothing listens there
+    await new Promise((r) => setTimeout(r, 50));
+    writeFileSync(
+      stateFilePath(paths),
+      JSON.stringify({ port, token: "x", pid: process.pid, startedAt: "" }),
+    );
+    const r = await start();
+    if (r.server) open.push(r.server);
+    expect(r.reused).toBe(false);
+    expect(JSON.parse(readFileSync(stateFilePath(paths), "utf8")).token).toBe(r.token);
+  });
+
+  it("a live pid whose port is another server answering 403 is treated as gone", async () => {
+    const other = createHttpServer((_req, res) => {
+      res.statusCode = 403;
+      res.end("{}");
+    });
+    await new Promise<void>((r) => other.listen(0, "127.0.0.1", r));
+    sinks.push(other as unknown as Server);
+    const port = (other.address() as { port: number }).port;
+    writeFileSync(
+      stateFilePath(paths),
+      JSON.stringify({ port, token: "x", pid: process.pid, startedAt: "" }),
+    );
+    const r = await start();
+    if (r.server) open.push(r.server);
+    expect(r.reused).toBe(false);
+  });
+
+  it("a lock older than 10 s is abandoned even when its pid is alive", async () => {
+    writeFileSync(lockFilePath(paths), String(process.pid));
+    const old = new Date(Date.now() - 11_000);
+    utimesSync(lockFilePath(paths), old, old);
+    const r = await start();
+    if (r.server) open.push(r.server);
+    expect(r.reused).toBe(false);
+    expect(existsSync(lockFilePath(paths))).toBe(false);
   });
 });

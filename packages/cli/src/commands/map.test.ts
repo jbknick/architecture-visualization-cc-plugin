@@ -95,6 +95,9 @@ describe.skipIf(!built)("gantry map (bundled CLI)", () => {
         child.stdout?.on("data", (c: Buffer) => {
           out += c.toString();
         });
+        child.stderr?.on("data", (c: Buffer) => {
+          out += `[stderr] ${c.toString()}`;
+        });
         child.on("exit", (code) => resolve({ code, out, child }));
         setTimeout(() => resolve({ code: null, out, child }), 4000); // still serving
       });
@@ -104,7 +107,7 @@ describe.skipIf(!built)("gantry map (bundled CLI)", () => {
     try {
       expect(serving).toHaveLength(1);
       expect(exited).toHaveLength(1);
-      expect(exited[0]?.code).toBe(0);
+      expect(exited[0]?.code, exited[0]?.out).toBe(0);
       for (const r of [a, b]) expect(r.out).not.toContain("?t=");
       const state = JSON.parse(
         readFileSync(join(resolvePaths(repo2, env).dataDir, "explorer.json"), "utf8"),
