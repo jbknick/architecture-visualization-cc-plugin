@@ -464,6 +464,7 @@ describe("static", () => {
       const res = await get(s.port, "/");
       expect(res.status).toBe(200);
       expect(res.body).toContain("not built");
+      expect(res.body).toContain("<title>Claude Code Architecture Visualisation Plugin</title>");
     } finally {
       await s.close();
     }

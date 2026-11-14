@@ -186,7 +186,10 @@ export function encodeFilters(filters: Filters): string | undefined {
 }
 
 export const api = {
-  meta: (signal?: AbortSignal) => getJson<Meta>("/api/meta", {}, signal),
+  // `scenario` and `view` are mock-only: the mock answers with that scenario's repo name and counts (they differ
+  // between the 2D and 3D datasets). The real server ignores both.
+  meta: (signal?: AbortSignal, scenario?: string, view?: string) =>
+    getJson<Meta>("/api/meta", { scenario, view: scenario ? view : undefined }, signal),
 
   view: (id: string, opts: ViewOptions, signal?: AbortSignal) =>
     getJson<ViewData>(

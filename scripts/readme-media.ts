@@ -3,8 +3,22 @@
 //   - the explorer's mock API with its synthetic `scenario=large` / `scenario=hub` data (web/mock).
 // Never point this at a private repo. Run: `pnpm build && pnpm readme:media` (or `pnpm tsx scripts/readme-media.ts`).
 // Options: --only <name,name>  regenerate just those PNGs (names without .png, or `gif`).
+//          --gif                also regenerate explorer-tour.gif. The GIF is NOT rewritten otherwise: its frames are
+//                              captured mid-animation (camera flight, 3D orbit), so it is not byte-stable between runs.
+// The PNGs are deterministic: every shot waits for the data (data-ready), the camera (no data-moving) and then for two
+// identical consecutive screenshots. A shot that differs from the committed PNG only by anti-aliasing noise (a few
+// levels per channel) leaves the file untouched, so two runs leave `git status --short docs/readme` empty.
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -28,11 +42,26 @@ const only = (() => {
   const v = i >= 0 ? process.argv[i + 1] : undefined;
   return v ? new Set(v.split(",")) : undefined;
 })();
-const want = (name: string) => !only || only.has(name);
+const withGif = process.argv.includes("--gif");
+const want = (name: string) => (name === "gif" ? withGif || !!only?.has("gif") : !only || only.has(name));
 
+// Software GL (SwiftShader) first: it renders the same pixels on every machine and run, which the double-run check
+// needs. Metal is only a fallback; its shots can differ by a few anti-aliasing levels between runs.
 const GL_ARGS = [
-  ["--use-gl=angle", "--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist"],
-  ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
+  [
+    "--use-gl=angle",
+    "--use-angle=swiftshader",
+    "--enable-unsafe-swiftshader",
+    "--ignore-gpu-blocklist",
+    "--disable-gpu-rasterization",
+  ],
+  [
+    "--use-gl=angle",
+    "--use-angle=metal",
+    "--enable-gpu",
+    "--ignore-gpu-blocklist",
+    "--disable-gpu-rasterization",
+  ],
 ];
 
 async function launch(): Promise<Browser> {
@@ -56,10 +85,17 @@ function sh(cmd: string, args: string[], opts: { cwd: string; env: NodeJS.Proces
 
 /** Mock explorer (built UI plus synthetic API). */
 async function startMock(port: number): Promise<ChildProcess> {
+  // A leftover mock from an earlier run would serve stale data and make the shots differ: refuse to reuse one.
+  const busy = await fetch(`http://127.0.0.1:${port}/api/meta`).then(
+    () => true,
+    () => false,
+  );
+  if (busy) throw new Error(`port ${port} is already serving: stop that mock or set MOCK_PORT`);
   const child = spawn("pnpm", ["exec", "tsx", "web/mock/server.ts"], {
     cwd: join(root, "packages/explorer"),
     env: { ...process.env, MOCK_PORT: String(port) },
     stdio: "ignore",
+    detached: true, // own process group: `pnpm exec tsx` leaves a grandchild that a plain kill would orphan
   });
   for (let i = 0; i < 100; i++) {
     try {
@@ -174,16 +210,54 @@ async function indexedPng(page: Page, png: Buffer): Promise<Buffer> {
   ]);
 }
 
+/**
+ * True when `next` shows the same picture as the PNG already on disk: same size and no pixel more than a few levels
+ * apart. Chromium's anti-aliasing of rounded corners (the native search input, for one) flips by a level or two between
+ * runs; rewriting the file for that would only churn the repo without changing what the picture shows.
+ */
+async function samePicture(page: Page, current: Buffer, next: Buffer): Promise<boolean> {
+  const helper = await page.context().newPage();
+  try {
+    return await helper.evaluate(
+      async ({ a, b }) => {
+        // (No named inner functions: tsx would inject a `__name` helper that does not exist in the page.)
+        const [x, y] = await Promise.all(
+          [a, b].map(async (data) => {
+            const bmp = await createImageBitmap(await (await fetch(`data:image/png;base64,${data}`)).blob());
+            const c = new OffscreenCanvas(bmp.width, bmp.height);
+            const g = c.getContext("2d") as OffscreenCanvasRenderingContext2D;
+            g.drawImage(bmp, 0, 0);
+            return g.getImageData(0, 0, bmp.width, bmp.height);
+          }),
+        );
+        if (!x || !y) return false;
+        if (x.width !== y.width || x.height !== y.height) return false;
+        for (let i = 0; i < x.data.length; i++) {
+          if (Math.abs((x.data[i] as number) - (y.data[i] as number)) > 8) return false;
+        }
+        return true;
+      },
+      { a: current.toString("base64"), b: next.toString("base64") },
+    );
+  } finally {
+    await helper.close();
+  }
+}
+
 async function save(page: Page, name: string) {
   mkdirSync(out, { recursive: true });
   const file = join(out, `${name}.png`);
-  let png = await page.screenshot();
+  let png = await page.screenshot({ animations: "disabled" });
   let note = "";
   if (png.length > 400 * 1024) {
     png = await indexedPng(page, png);
     note = " (256 colours)";
   }
-  writeFileSync(file, png);
+  if (existsSync(file) && (await samePicture(page, readFileSync(file), png))) {
+    note += " (unchanged)";
+  } else {
+    writeFileSync(file, png);
+  }
   const kb = Math.round(statSync(file).size / 1024);
   console.log(`${name}.png ${kb} KB${note}`);
   if (kb > 400) throw new Error(`${name}.png is ${kb} KB (limit 400)`);
@@ -193,35 +267,53 @@ const MAP = "http://127.0.0.1";
 const canvas = (page: Page) => page.getByTestId("graph-canvas");
 const surface = (page: Page) => canvas(page).locator(".gc-sigma");
 
+/** Wait until the 2D canvas camera is not animating (`data-moving` is set while a flight or zoom step runs). */
+async function cameraIdle(page: Page) {
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.locator(".gc-sigma:not([data-moving])").waitFor({ timeout: 30_000 });
+}
+
+/** Park the pointer away from the canvas, then wait until two consecutive screenshots are byte-identical. */
+async function settle(page: Page) {
+  await page.mouse.move(2, 2);
+  let prev: Buffer | undefined;
+  for (let i = 0; i < 60; i++) {
+    const png = await page.screenshot({ animations: "disabled" });
+    if (prev?.equals(png)) return;
+    prev = png;
+    await sleep(150);
+  }
+  throw new Error("the page never stopped changing");
+}
+
 async function openMap2d(page: Page, base: string, level: string, extra = "") {
   await page.goto(`${base}/#/project-map?level=${level}${extra}`);
   await page.locator(".gc-sigma[data-ready=true]").waitFor({ timeout: 30_000 });
   if (level === "dirs") await page.locator(".gc-sigma[data-mosaic=true]").waitFor({ timeout: 30_000 });
   await page.locator(".gc-sigma[data-ready=true]").waitFor();
-  await page.mouse.move(2, 2);
-  await sleep(800);
+  await cameraIdle(page);
+  await settle(page);
 }
 
 async function zoomTo(page: Page, id: string) {
   await canvas(page).evaluate((el, nodeId) => {
     el.dispatchEvent(new CustomEvent("gantry:zoom-to", { detail: { id: nodeId } }));
   }, id);
-  await sleep(1000);
-  await page.mouse.move(2, 2);
+  await cameraIdle(page);
+  await settle(page);
 }
 
 async function openCity(page: Page, base: string, level: string, extra = "") {
   await page.goto(`${base}/#/map-3d?level=${level}${extra}`);
   await page.getByTestId("map3d-canvas").locator("canvas").waitFor();
   await page.locator(".map3d[data-ready='true'][data-style='city']").waitFor({ timeout: 30_000 });
-  await sleep(1800);
+  await settle(page);
 }
 
 async function openEgo(page: Page, url: string) {
   await page.goto(url);
   await canvas(page).locator("canvas[data-ready=true]").waitFor({ timeout: 30_000 });
-  await page.mouse.move(2, 2);
-  await sleep(900);
+  await settle(page);
 }
 
 /** Zoom into the biggest workspace of the large mock, one more step, and pan into a folder (as the e2e does). */
@@ -238,14 +330,16 @@ async function zoomedFiles(page: Page) {
   if (!api || !box) throw new Error("api box missing");
   await page.mouse.move(box.x + api.x + 10, box.y + api.y + 10);
   await page.mouse.wheel(0, -420);
-  await sleep(1000);
+  await cameraIdle(page);
+  // Pan into a folder: the drag moves the camera synchronously with the pointer, so wait for the pointer to be up and
+  // the camera idle rather than a fixed time.
   await page.mouse.move(box.x + 700, box.y + 520);
   await page.mouse.down();
   await page.mouse.move(box.x + 560, box.y + 250, { steps: 10 });
   await page.mouse.up();
-  await page.mouse.move(2, 2);
-  await sleep(2000);
+  await cameraIdle(page);
   await canvas(page).getByTestId("map-crumb").waitFor();
+  await settle(page);
 }
 
 async function stills(browser: Browser, mockBase: string) {
@@ -301,8 +395,8 @@ async function fixtureStills(browser: Browser) {
         .getByRole("radio", { name: "Files" })
         .click();
       await page.locator(".gc-sigma[data-ready=true]").waitFor();
-      await page.mouse.move(2, 2);
-      await sleep(1000);
+      await cameraIdle(page);
+      await settle(page);
       await save(page, "fixture-project-map");
     }
     if (want("fixture-caller-graph")) {
@@ -318,8 +412,7 @@ async function fixtureStills(browser: Browser) {
       await page.keyboard.press("Enter");
       await page.getByRole("button", { name: "Graph" }).click();
       await canvas(page).locator("canvas[data-ready=true]").waitFor({ timeout: 30_000 });
-      await page.mouse.move(2, 2);
-      await sleep(1000);
+      await settle(page);
       await save(page, "fixture-caller-graph");
     }
     void base;
@@ -444,7 +537,7 @@ async function main() {
     if (want("gif")) await gif(browser, mockBase);
   } finally {
     await browser.close();
-    mock.kill("SIGTERM");
+    if (mock.pid) process.kill(-mock.pid, "SIGTERM");
   }
 }
 
