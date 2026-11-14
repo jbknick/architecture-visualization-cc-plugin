@@ -37,6 +37,8 @@ export function registerMap(program: Command): void {
       ensureDataDir(paths);
       // Bundled to plugin/dist/cli.js; the Vite build lives in plugin/dist/explorer/.
       const staticDir = join(dirname(fileURLToPath(import.meta.url)), "explorer");
+      // Accepted for v1: the printed/opened URL carries `?t=<token>`, so the token is visible in process
+      // arguments (`open <url>`) and browser history. The server strips it on first load and sets a cookie.
       const running = await startOrReuseExplorer({ paths, port, staticDir });
       process.stdout.write(`${running.url}\n`);
       if (opts.open) openBrowser(running.url);

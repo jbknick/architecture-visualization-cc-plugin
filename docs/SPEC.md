@@ -230,7 +230,7 @@ Backlog priority: exported functions and route/entry files 0, other exported 1, 
 
 ## 12. Git hooks install
 
-- Hooks: pre-commit, pre-push, post-checkout, post-merge, post-rewrite. Each is a 3-line sh script: `[ "$GANTRY_WORKER" = 1 ] && exit 0; "$HOME/.gantry/bin/gantry" hook <name> "$@" || true; exit 0`, plus chaining (below).
+- Hooks: pre-commit, pre-push, post-checkout, post-merge, post-rewrite. Each is a 3-line sh script: `[ "$GANTRY_WORKER" = 1 ] || "$HOME/.gantry/bin/gantry" hook <name> "$@" </dev/null || true`, then chaining (below), then `exit 0`. `GANTRY_WORKER=1` skips only the Gantry call, so a chained user hook still runs; Gantry's stdin is `/dev/null` so the chained hook still receives git's stdin.
 - If `core.hooksPath` is unset: write into `.git/hooks/` (use `git rev-parse --git-path hooks`); if a hook file already exists, rename it `<name>.gantry-prev` and chain to it.
 - If `core.hooksPath` is set (husky/lefthook): create `<dataDir>/hooks/` wrapper scripts that run Gantry then exec the original `<hooksPath>/<name>` with the same args, and set local `git config core.hooksPath <dataDir>/hooks`, saving the previous value in `meta.prev_hooks_path`.
 - Shim `~/.gantry/bin/gantry`: sh script with absolute paths to `node` and `plugin/dist/cli.js` resolved at install; if the target is missing it exits 0.

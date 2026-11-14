@@ -1,6 +1,6 @@
 import { closeSync, fstatSync, openSync, readSync, realpathSync } from "node:fs";
 import path from "node:path";
-import { isIndexable, isSensitive, MAX_FILE_BYTES, splitIdentifier } from "@gantry/core";
+import { ftsSearch, isIndexable, isSensitive, MAX_FILE_BYTES } from "@gantry/core";
 import { HttpError } from "./errors.js";
 import { getLayout } from "./layout.js";
 import type { ApiContext, ViewLevel, ViewParams } from "./types.js";
@@ -221,24 +221,11 @@ function search(ctx: ApiContext, raw: string): { hits: SearchHit[] } {
     });
   };
 
-  // Prefix-matched tokens over name_tokens and path. Tokens are alphanumeric only, so the MATCH string is safe.
-  const tokens = [...new Set([...splitIdentifier(q), ...(q.toLowerCase().match(/[a-z0-9]+/g) ?? [])])];
-  const ftsHits: string[] = [];
-  if (tokens.length > 0) {
-    const match = `{name_tokens path} : ${tokens.map((t) => `"${t}"*`).join(" ")}`;
-    try {
-      const rows = store.db
-        .prepare("SELECT symbol_id FROM fts_symbols WHERE fts_symbols MATCH ? ORDER BY rank LIMIT 200")
-        .all(match) as { symbol_id: string }[];
-      for (const r of rows) ftsHits.push(r.symbol_id);
-    } catch {
-      // malformed FTS expression: fall through to the substring search
-    }
-  }
+  // Prefix-matched tokens over name_tokens and path, shared with the CLI (core ftsSearch).
   const lower = q.toLowerCase();
   const all = store.effectiveSymbols();
   const byId = new Map(all.map((s) => [s.id, s]));
-  for (const id of ftsHits) add(byId.get(id));
+  for (const h of ftsSearch(store, q, { limit: 200 })) add(byId.get(h.id));
   for (const s of all) if (s.name.toLowerCase().includes(lower)) add(s);
 
   const rank = (name: string): number => {
@@ -279,6 +266,10 @@ function source(ctx: ApiContext, query: URLSearchParams) {
     throw new HttpError(403, "Path is not indexable");
   }
 
+  // Only files the index knows about: git-ignored files, nested repos and symlinked directories are not in it.
+  const indexed = new Set(ctx.store.effectiveFiles().map((f) => f.path));
+  if (!indexed.has(clean)) throw new HttpError(404, "File not found");
+
   const root = ctx.paths.root;
   let real: string;
   try {
@@ -295,6 +286,8 @@ function source(ctx: ApiContext, query: URLSearchParams) {
   if (isSensitive(resolvedRel) || !isIndexable(resolvedRel, ctx.config)) {
     throw new HttpError(403, "Path is not indexable");
   }
+  // A symlink must resolve to another indexed file, never to something the index does not know.
+  if (!indexed.has(resolvedRel)) throw new HttpError(404, "File not found");
 
   const fd = openSync(real, "r");
   let text: string;

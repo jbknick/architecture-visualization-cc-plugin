@@ -145,3 +145,38 @@ export function rectInsideHull(hull: readonly Pt2[], r: ScreenRect): boolean {
     return pos === 0 || neg === 0;
   });
 }
+
+const segDist = (p: Pt2, a: Pt2, b: Pt2): number => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const t =
+    dx === 0 && dy === 0
+      ? 0
+      : Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+};
+
+/**
+ * Shortest screen distance between a rectangle and a convex quad (0 when they touch or overlap). Used to keep a
+ * district's title within a few pixels of its slab.
+ */
+export function rectQuadDistance(r: ScreenRect, quad: readonly Pt2[]): number {
+  if (quadHitsRect(quad, r, 0)) return 0;
+  const corners: Pt2[] = [
+    [r.l, r.t],
+    [r.r, r.t],
+    [r.r, r.b],
+    [r.l, r.b],
+  ];
+  let best = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < 4; i++) {
+    const a = corners[i] as Pt2;
+    const b = corners[(i + 1) % 4] as Pt2;
+    for (let k = 0; k < quad.length; k++) {
+      const c = quad[k] as Pt2;
+      const d = quad[(k + 1) % quad.length] as Pt2;
+      best = Math.min(best, segDist(a, c, d), segDist(c, a, b));
+    }
+  }
+  return best;
+}

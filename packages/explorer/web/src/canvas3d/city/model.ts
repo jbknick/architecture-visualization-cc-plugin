@@ -10,6 +10,7 @@ import {
   type TreeNode,
 } from "../../canvas/hierarchy.ts";
 import { folderTitle, nodeTitle, type Scene, subtitleParts } from "../../canvas/scene.ts";
+import { isTinyWorkspace, TINY_STRIP } from "../../canvas/tiny.ts";
 import type { MapGeometry, Rect } from "../../canvas/types.ts";
 
 export type CityLevel = "workspaces" | "dirs" | "files";
@@ -148,6 +149,8 @@ export interface CityDistrict {
   /** "package · 1,715 functions · 261 files" */
   detail: string;
   kind: string;
+  /** A workspace with very few functions next to the biggest: the layout gave it a larger slab and a title strip. */
+  tiny: boolean;
 }
 
 export interface CityFolder {
@@ -298,6 +301,108 @@ export function archRadius(weight: number, extent: number): number {
   return u * Math.min(5, Math.max(1.3, 0.9 + 0.26 * Math.sqrt(Math.max(1, weight))));
 }
 
+type Pt2d = readonly [number, number];
+
+/** Least distance (layout units, about 14px on screen at the default camera) between two ends on a tiny slab. */
+const END_GAP_DEPTH = 34;
+const END_GAP_WIDTH = 26;
+/** How far a second or third lane of arch ends stands inside the slab. */
+const END_LANE_INSET = 30;
+
+/** Which edge of `r` the point `p` is nearest to. */
+function nearestSide(p: Pt2d, r: Rect): "left" | "right" | "top" | "bottom" {
+  const d = [
+    ["left", Math.abs(p[0] - r.x)],
+    ["right", Math.abs(p[0] - (r.x + r.w))],
+    ["top", Math.abs(p[1] - r.y)],
+    ["bottom", Math.abs(p[1] - (r.y + r.h))],
+  ] as const;
+  return d.reduce((a, b) => (b[1] < a[1] ? b : a))[0];
+}
+
+/**
+ * The layout puts every link end of a district on a coarse port grid. On a tiny district several ends share a few
+ * pixels, so their arrowheads sit on top of each other. This re-spreads the ends that touch a tiny district evenly
+ * along the edge they arrive on (ordered by where the other end lies, so the arches do not cross each other), and
+ * pulls them onto the slab (the layout's route ends at the box, whose lower part is the free title strip).
+ * Returns the changed routes by key; the other routes are the layout's.
+ */
+export function spreadTinyEnds(
+  scene: Scene,
+  geo: MapGeometry,
+  districts: readonly CityDistrict[],
+  districtOf: ReadonlyMap<number, number>,
+  showDeclared = false,
+): Map<string, Pt2d[]> {
+  const out = new Map<string, Pt2d[]>();
+  const tree = scene.tree;
+  const groups = new Map<
+    string,
+    { d: CityDistrict; side: string; ends: { key: string; at: 0 | 1; other: Pt2d }[] }
+  >();
+  const keys = new Set<string>();
+  for (const e of scene.wsEdges) {
+    if (e.declaredOnly && !showDeclared) continue;
+    const src = (tree.nodes[e.src] as TreeNode).id;
+    const dst = (tree.nodes[e.dst] as TreeNode).id;
+    keys.add(`${src}>${dst}`);
+  }
+  for (const key of [...keys].sort()) {
+    const route = geo.routes[key];
+    if (!route || route.length < 2) continue;
+    const [a, b] = key.split(">") as [string, string];
+    const ia = districts.find((d) => d.id === a);
+    const ib = districts.find((d) => d.id === b);
+    if (!ia || !ib || !districtOf.has(ia.idx) || !districtOf.has(ib.idx)) continue;
+    for (const at of [0, 1] as const) {
+      const d = at === 0 ? ia : ib;
+      const o = at === 0 ? ib : ia;
+      if (!d.tiny) continue;
+      const p = (at === 0 ? route[0] : route[route.length - 1]) as Pt2d;
+      const full: Rect = { ...d.rect, h: d.rect.h + TINY_STRIP };
+      const side = nearestSide(p, full);
+      const g = groups.get(`${d.id}|${side}`) ?? { d, side, ends: [] };
+      g.ends.push({ key, at, other: [o.rect.x + o.rect.w / 2, o.rect.y + o.rect.h / 2] });
+      groups.set(`${d.id}|${side}`, g);
+    }
+  }
+  for (const g of groups.values()) {
+    const r = g.d.rect;
+    const vertical = g.side === "left" || g.side === "right";
+    g.ends.sort(
+      (p, q) => (vertical ? p.other[1] - q.other[1] : p.other[0] - q.other[0]) || (p.key < q.key ? -1 : 1),
+    );
+    const n = g.ends.length;
+    // Ends one `gap` apart along the edge; more than fit stagger inwards in lanes (every `lanes`-th end in a lane).
+    const along = vertical ? r.h : r.w;
+    const cap = Math.max(1, Math.floor(along / (vertical ? END_GAP_DEPTH : END_GAP_WIDTH)));
+    const lanes = Math.min(3, Math.ceil(n / cap));
+    g.ends.forEach((end, k) => {
+      const base = out.get(end.key) ?? [...(geo.routes[end.key] as Pt2d[])];
+      const lane = k % lanes;
+      const inLane = Math.floor(k / lanes);
+      const laneN = Math.ceil((n - lane) / lanes);
+      // Lanes are offset by a share of the spacing so neighbours zigzag.
+      const frac = 0.12 + 0.76 * ((inLane + 0.5 + (lanes > 1 ? 0.5 * (lane / lanes - 0.33) : 0)) / laneN);
+      const pos = vertical ? r.y + r.h * frac : r.x + r.w * frac;
+      const inset = lane * END_LANE_INSET;
+      const i0 = end.at === 0 ? 0 : base.length - 1;
+      const i1 = end.at === 0 ? 1 : base.length - 2;
+      const move = (i: number, slabEdge: boolean): void => {
+        const q = base[i] as Pt2d;
+        const dx = g.side === "left" ? inset : g.side === "right" ? -inset : 0;
+        const dy = g.side === "top" ? inset : g.side === "bottom" ? -inset : 0;
+        if (vertical) base[i] = [q[0] + (slabEdge ? dx : 0), pos];
+        else base[i] = [pos, (g.side === "bottom" && slabEdge ? r.y + r.h : q[1]) + (slabEdge ? dy : 0)];
+      };
+      move(i0, true);
+      if (base.length >= 3) move(i1, false);
+      out.set(end.key, base);
+    });
+  }
+  return out;
+}
+
 /** Builds the city for one level from the 2D scene and its layout. */
 export function buildCity(scene: Scene, geo: MapGeometry, opts: CityOptions): City {
   const { tree } = scene;
@@ -350,6 +455,7 @@ export function buildCity(scene: Scene, geo: MapGeometry, opts: CityOptions): Ci
     Math.max(2, extent / 220),
   );
 
+  const maxFns = Math.max(0, ...scene.roots.map((i) => scene.functions[i] ?? 0));
   for (const r of scene.roots) {
     const node = scene.nodes[r];
     const rect = rectOf(geo, r);
@@ -374,6 +480,7 @@ export function buildCity(scene: Scene, geo: MapGeometry, opts: CityOptions): Ci
       title: nodeTitle(scene, r),
       detail: parts.join(" · "),
       kind: node.id === "ws:." ? "(repo root)" : (node.badges?.[0] ?? "package"),
+      tiny: scene.roots.length > 1 && isTinyWorkspace(fns, maxFns),
     };
     byId.set(d.id, { type: "district", i: districts.length });
     districtOf.set(r, districts.length);
@@ -475,11 +582,12 @@ export function buildCity(scene: Scene, geo: MapGeometry, opts: CityOptions): Ci
   // Arches: one per import link (declared-only ones on request), along the 2D route.
   const arches: CityArch[] = [];
   const topOf = (idx: number): number => districts[districtOf.get(idx) as number]?.slabTop ?? slabH;
+  const spread = spreadTinyEnds(scene, geo, districts, districtOf, opts.showDeclared);
   for (const e of scene.wsEdges) {
     if (e.declaredOnly && !opts.showDeclared) continue;
     const src = (tree.nodes[e.src] as TreeNode).id;
     const dst = (tree.nodes[e.dst] as TreeNode).id;
-    const route = geo.routes[`${src}>${dst}`];
+    const route = spread.get(`${src}>${dst}`) ?? geo.routes[`${src}>${dst}`];
     if (!route || route.length < 2 || !districtOf.has(e.src) || !districtOf.has(e.dst)) continue;
     const p = archPath(route, origin, grid, topOf(e.src), topOf(e.dst), extent);
     const last = p.pts.length - 1;

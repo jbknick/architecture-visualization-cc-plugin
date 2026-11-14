@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import type { GraphEdge, GraphNode } from "../api.ts";
 
 export type MapStyle = "city" | "islands";
-export type CameraView = "angled" | "top" | "reset";
+export type CameraView = "angled" | "top" | "reset" | "small";
 
 const STYLE_KEY = "gantry.map3d.style";
 
@@ -45,6 +45,8 @@ export interface MapUi {
   styleNonce: number;
   /** City style: the project-map data the city is built from, shared with the panel (list of largest files, legend). */
   cityData: { nodes: GraphNode[]; edges: GraphEdge[] } | null;
+  /** City style: how many tiny districts the city has (the "Focus small workspaces" button needs at least one). */
+  smallCount: number;
 }
 
 export function prefersReducedMotion(): boolean {
@@ -62,6 +64,7 @@ let state: MapUi = {
   cameraNonce: 0,
   styleNonce: 0,
   cityData: null,
+  smallCount: 0,
 };
 const listeners = new Set<() => void>();
 
@@ -89,6 +92,7 @@ export const mapUi = {
   setCameraView: (cameraView: CameraView) => set({ cameraView, cameraNonce: state.cameraNonce + 1 }),
   touchStyle: () => set({ styleNonce: state.styleNonce + 1 }),
   setCityData: (cityData: MapUi["cityData"]) => set({ cityData }),
+  setSmallCount: (smallCount: number) => (state.smallCount === smallCount ? undefined : set({ smallCount })),
   /** Select an island and fly the camera to it. */
   focusIsland: (island: string) => set({ island, flyNonce: state.flyNonce + 1 }),
   /** Select or clear an island without moving the camera. */

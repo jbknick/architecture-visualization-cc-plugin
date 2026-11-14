@@ -85,6 +85,7 @@ export default function CityCanvas({ focus, onSelect, onHover }: CanvasProps) {
       scene.current = null;
       s.dispose();
       mapUi.setCityData(null);
+      mapUi.setSmallCount(0);
     };
   }, []);
 
@@ -145,6 +146,7 @@ export default function CityCanvas({ focus, onSelect, onHover }: CanvasProps) {
     scene.current?.setRanked(ranked.files);
     scene.current?.setSelected(focus);
     mapUi.selectIsland(scene.current?.districtOf(focus) ?? null);
+    mapUi.setSmallCount(scene.current?.smallCount() ?? 0);
   }, [city]);
 
   useEffect(() => {
@@ -163,7 +165,7 @@ export default function CityCanvas({ focus, onSelect, onHover }: CanvasProps) {
   useEffect(() => {
     if (ui.cameraNonce === seenCamera.current) return;
     seenCamera.current = ui.cameraNonce;
-    scene.current?.setView(ui.cameraView === "top" ? "top" : ui.cameraView === "reset" ? "reset" : "angled");
+    scene.current?.setView(ui.cameraView);
     if (ui.cameraView === "reset") handlers.current.onSelect(null);
   }, [ui.cameraNonce, ui.cameraView]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: fires per request (nonce)

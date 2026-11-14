@@ -28,6 +28,89 @@ interface DistrictProbe {
   wh: number;
   quad: [number, number][];
   title: [number, number, number, number] | null;
+  tiny?: boolean;
+}
+
+interface EndProbe {
+  key: string;
+  district: string;
+  kind: "head" | "tail";
+  x: number;
+  y: number;
+}
+
+async function ends(page: Page): Promise<EndProbe[]> {
+  const raw = (await page.getByTestId("map3d-labels").getAttribute("data-ends")) ?? "[]";
+  return JSON.parse(raw) as EndProbe[];
+}
+
+/** Distance (px) from a point to a segment. */
+function segDist(p: number[], a: number[], b: number[]): number {
+  const dx = (b[0] as number) - (a[0] as number);
+  const dy = (b[1] as number) - (a[1] as number);
+  const t = Math.max(
+    0,
+    Math.min(
+      1,
+      (((p[0] as number) - (a[0] as number)) * dx + ((p[1] as number) - (a[1] as number)) * dy) /
+        (dx * dx + dy * dy || 1),
+    ),
+  );
+  return Math.hypot(
+    (p[0] as number) - ((a[0] as number) + t * dx),
+    (p[1] as number) - ((a[1] as number) + t * dy),
+  );
+}
+
+/**
+ * Distance (px) between a district's title rectangle and its projected slab (the quad: stricter than the quad's
+ * bounding rectangle); 0 when they touch.
+ */
+function titleGap(d: DistrictProbe): number {
+  const t = d.title as [number, number, number, number];
+  const q = d.quad as number[][];
+  const corners = [
+    [t[0], t[1]],
+    [t[2], t[1]],
+    [t[2], t[3]],
+    [t[0], t[3]],
+  ];
+  let best = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < 4; i++)
+    for (let k = 0; k < 4; k++) {
+      const a = corners[i] as number[];
+      const b = corners[(i + 1) % 4] as number[];
+      const c = q[k] as number[];
+      const e = q[(k + 1) % 4] as number[];
+      best = Math.min(best, segDist(a, c, e), segDist(c, a, b));
+    }
+  // Overlapping counts as touching (a corner of one inside the other).
+  const inside = (p: number[], poly: number[][]): boolean => {
+    let pos = 0;
+    let neg = 0;
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i] as number[];
+      const b = poly[(i + 1) % poly.length] as number[];
+      const c =
+        ((b[0] as number) - (a[0] as number)) * ((p[1] as number) - (a[1] as number)) -
+        ((b[1] as number) - (a[1] as number)) * ((p[0] as number) - (a[0] as number));
+      if (c > 0) pos++;
+      else if (c < 0) neg++;
+    }
+    return pos === 0 || neg === 0;
+  };
+  if (
+    q.some(
+      (p) =>
+        (p[0] as number) >= t[0] &&
+        (p[0] as number) <= t[2] &&
+        (p[1] as number) >= t[1] &&
+        (p[1] as number) <= t[3],
+    ) ||
+    corners.some((p) => inside(p as number[], q))
+  )
+    return 0;
+  return best;
 }
 
 async function districts(page: Page): Promise<DistrictProbe[]> {
@@ -143,6 +226,153 @@ for (const [level, name] of [
     if (first && level !== "workspaces") expect(worldKey(ds)).toEqual(first);
   });
 }
+
+for (const level of ["workspaces", "dirs", "files"] as const) {
+  test(`city, large scenario, ${level} level: small workspaces have their title next to the slab and arrowheads apart`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: "light" });
+    await openCity(page, level);
+    const ds = await districts(page);
+    const tiny = ds.filter((d) => d.tiny);
+    // The mock's eight small workspaces (the repo-root one has 17 functions: also tiny next to 1,700).
+    expect(tiny.length).toBeGreaterThanOrEqual(7);
+    // True when a point of the title rectangle lies on the other district's (convex) slab quad.
+    const onSlab = (t: number[], o: DistrictProbe): boolean => {
+      const q = o.quad as [number, number][];
+      for (let i = 0; i <= 8; i++)
+        for (let j = 0; j <= 4; j++) {
+          const x = (t[0] as number) + ((t[2] as number) - (t[0] as number)) * (i / 8);
+          const y = (t[1] as number) + ((t[3] as number) - (t[1] as number)) * (j / 4);
+          let pos = 0;
+          let neg = 0;
+          for (let k = 0; k < 4; k++) {
+            const a = q[k] as [number, number];
+            const b = q[(k + 1) % 4] as [number, number];
+            const c = (b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]);
+            if (c > 0) pos++;
+            else if (c < 0) neg++;
+          }
+          if (pos === 0 || neg === 0) return true;
+        }
+      return false;
+    };
+    for (const d of tiny) {
+      expect(d.title, d.id).not.toBeNull();
+      expect(titleGap(d), `${d.id} title gap`).toBeLessThanOrEqual(24);
+      // Not over another district's slab.
+      for (const o of ds)
+        if (o.id !== d.id) expect(onSlab(d.title as number[], o), `${d.id} over ${o.id}`).toBe(false);
+    }
+    // Not over a count pill or a flag.
+    const pills = await page.locator(".c3-pill:visible").evaluateAll((els) =>
+      els.map((e) => {
+        const r = e.getBoundingClientRect();
+        return [r.left, r.top, r.right, r.bottom];
+      }),
+    );
+    const cv = await canvasBox(page);
+    for (const d of tiny)
+      for (const p of pills)
+        expect(
+          boxesOverlap(
+            [
+              ((d.title as number[])[0] as number) + cv.x,
+              ((d.title as number[])[1] as number) + cv.y,
+              ((d.title as number[])[2] as number) + cv.x,
+              ((d.title as number[])[3] as number) + cv.y,
+            ],
+            p as number[],
+          ),
+          `${d.id} title over a pill`,
+        ).toBe(false);
+    for (const f of await flags(page))
+      for (const d of tiny) {
+        const t = d.title as number[];
+        expect(
+          f.x + 10 < (t[0] as number) ||
+            f.x - 10 > (t[2] as number) ||
+            f.y + 10 < (t[1] as number) ||
+            f.y - 10 > (t[3] as number),
+          `${d.id} over flag ${f.rank}`,
+        ).toBe(true);
+      }
+    // Arrowheads on the same small district are at least 14px apart.
+    const e = await ends(page);
+    const heads = e.filter((x) => x.kind === "head");
+    expect(heads.length).toBeGreaterThan(8);
+    for (const [i, a] of heads.entries())
+      for (const b of heads.slice(i + 1))
+        if (a.district === b.district)
+          expect(Math.hypot(a.x - b.x, a.y - b.y), `${a.key} / ${b.key}`).toBeGreaterThanOrEqual(14);
+    // Their counts are readable (pills are shown for every arch, see the district tests).
+    expect(await page.locator(".c3-pill:visible").count()).toBe(23);
+  });
+}
+
+test("city, large scenario: Focus small workspaces frames the small districts; Reset camera returns", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await openCity(page, "workspaces");
+  const slabW = (d: DistrictProbe) =>
+    ((d.quad[1] as number[])[0] as number) - ((d.quad[0] as number[])[0] as number);
+  const before = await districts(page);
+  const tinyBefore = before.filter((d) => d.tiny);
+  await page.getByRole("button", { name: "Focus small workspaces" }).click();
+  await page.waitForTimeout(1400);
+  const after = await districts(page);
+  const tinyAfter = after.filter((d) => d.tiny);
+  const box = await canvasBox(page);
+  // The tiny districts are bigger on screen and all in frame; their titles stay next to them.
+  const mean = (ds: DistrictProbe[]) => ds.reduce((s, d) => s + slabW(d), 0) / ds.length;
+  expect(mean(tinyAfter)).toBeGreaterThan(mean(tinyBefore) * 1.15);
+  for (const d of tinyAfter) {
+    for (const p of d.quad) {
+      expect(p[0]).toBeGreaterThan(0);
+      expect(p[0]).toBeLessThan(box.width);
+      expect(p[1]).toBeGreaterThan(0);
+      expect(p[1]).toBeLessThan(box.height);
+    }
+    expect(titleGap(d), `${d.id} title gap`).toBeLessThanOrEqual(24);
+  }
+  const heads = (await ends(page)).filter((x) => x.kind === "head");
+  for (const [i, a] of heads.entries())
+    for (const b of heads.slice(i + 1))
+      if (a.district === b.district) expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(14);
+  mkdirSync(shots, { recursive: true });
+  await page.screenshot({ path: resolve(shots, "map-3d-city-small-focus.png") });
+  await page.getByRole("button", { name: "Reset camera" }).click();
+  await page.waitForTimeout(1400);
+  const reset = await districts(page);
+  expect(reset.map((d) => (d.quad[0] as number[]).map(Math.round))).toEqual(
+    before.map((d) => (d.quad[0] as number[]).map(Math.round)),
+  );
+});
+
+test("city, large scenario: double-clicking a small district frames the small districts", async ({
+  page,
+}) => {
+  await openCity(page, "workspaces");
+  const box = await canvasBox(page);
+  const before = await districts(page);
+  const t = before.find((d) => d.id.endsWith("/ui-kit")) as DistrictProbe;
+  const cx = t.quad.reduce((s, p) => s + (p[0] as number), 0) / 4;
+  const cy = t.quad.reduce((s, p) => s + (p[1] as number), 0) / 4;
+  await page.mouse.dblclick(box.x + cx, box.y + cy - 4);
+  await page.waitForTimeout(1400);
+  await expect(page).toHaveURL(/sel=ws%3A%40acme-platform-monorepo%2Fui-kit/);
+  const after = await districts(page);
+  const w = (d: DistrictProbe) =>
+    ((d.quad[1] as number[])[0] as number) - ((d.quad[0] as number[])[0] as number);
+  const a = after.find((d) => d.id === t.id) as DistrictProbe;
+  expect(w(a)).toBeGreaterThan(w(t) * 1.05);
+  // The other small districts are in frame too (not just the one that was clicked).
+  for (const d of after.filter((x) => x.tiny)) {
+    expect((d.quad[0] as number[])[0]).toBeGreaterThan(0);
+    expect((d.quad[1] as number[])[0]).toBeLessThan(box.width);
+  }
+});
 
 test("city, large scenario, files level: flags are numbered like the list, apart from each other, and hovering a row lights one", async ({
   page,
@@ -377,7 +607,7 @@ test("city, large scenario, folders level: hovering a folder shows its path, fun
   await openCity(page, "dirs");
   const box = await canvasBox(page);
   // The centre of a caption lies on its folder's block.
-  const cap = page.locator(".c3-cap:visible").first();
+  const cap = page.locator(".c3-cap:visible", { hasText: "routes" }).first();
   const r = (await cap.boundingBox()) as { x: number; y: number; width: number; height: number };
   const x = r.x - box.x + r.width / 2;
   const y = r.y - box.y + r.height + 6;

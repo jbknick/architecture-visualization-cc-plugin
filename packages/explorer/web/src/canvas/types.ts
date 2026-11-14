@@ -45,6 +45,11 @@ export interface LayoutInput {
    * would move its neighbours. The 3D city sets it so its districts stay put when the level changes.
    */
   stableBoxes?: boolean;
+  /**
+   * Tiny workspaces (see `tiny.ts`) get a larger minimum slab and a free strip under it for their title; their
+   * rectangle in the geometry is the slab. The 3D city sets it; the 2D map never does.
+   */
+  tinyBoxes?: boolean;
 }
 
 /** Geometry of a hierarchical map (workspace boxes with a treemap inside). Indexed like the sorted-id tree. */
