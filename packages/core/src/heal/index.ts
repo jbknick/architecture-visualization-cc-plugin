@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/index.js";
 import { isIndexable } from "../discover/index.js";
+import { rebuildSimilarEdges } from "../dup/index.js";
 import { indexRepo } from "../indexer.js";
 import type { GantryPaths } from "../paths/index.js";
 import { openStore, type Store } from "../store/index.js";
@@ -225,6 +226,8 @@ export async function heal(
       }
       store.setMeta("head_sha", newSha);
     }
+    // Derived edges follow the main layer; exact and near only (vector edges are rebuilt by `gantry embed`).
+    if (changed > 0) await rebuildSimilarEdges(store, { tiers: ["exact", "near"] });
     return done(changed, full);
   });
 }

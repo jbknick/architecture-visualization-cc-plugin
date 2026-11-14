@@ -6,6 +6,7 @@ import {
   heal,
   indexRepo,
   openStore,
+  rebuildSimilarEdges,
   resolvePaths,
   SECONDS_PER_FUNCTION_SEQUENTIAL,
   syncBacklog,
@@ -54,6 +55,7 @@ export function registerInit(program: Command): void {
         const store = openStore(paths.dbPath);
         try {
           syncBacklog(store, { root: paths.root });
+          await rebuildSimilarEdges(store);
           for (const line of summaryLines(r, paths.dataDir)) process.stdout.write(`${line}\n`);
           if (opts.estimate) {
             const exportsFirst = opts.exportsFirst === true;

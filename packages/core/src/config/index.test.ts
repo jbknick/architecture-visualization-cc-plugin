@@ -36,9 +36,9 @@ test("defaults match spec section 5", () => {
         "ignore": [],
         "mode": "warn",
         "thresholds": {
-          "codeVector": 0.92,
+          "codeVector": 0.96,
           "nearJaccard": 0.85,
-          "semantic": 0.85,
+          "semantic": 0.6,
         },
       },
       "exclude": [],

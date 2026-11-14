@@ -31,6 +31,12 @@ export interface Store {
   effectiveEdges(filter?: { src?: string; dst?: string; kind?: EdgeKind[] }): EdgeRecord[];
   getSymbol(id: string): SymbolRecord | undefined;
   fts: { upsert(symbolId: string, row: FtsRow): void; remove(symbolId: string): void };
+  /**
+   * Changes whenever the files, symbols or edges seen through this store may have changed: writes made
+   * through this store (a local counter) and writes made by other connections (`PRAGMA data_version`).
+   * Caches built from the index (the duplicate engine's LSH index) key on it.
+   */
+  generation(): string;
 }
 
 /**
@@ -161,6 +167,7 @@ export function createStore(db: Database): Store {
   };
 
   const tx = <T>(fn: () => T): T => db.transaction(fn).immediate();
+  let localWrites = 0;
 
   const putFile = (layer: Layer, f: FileRecord): void => {
     stmt(
@@ -216,7 +223,11 @@ export function createStore(db: Database): Store {
       const rows = stmt("SELECT * FROM workspaces ORDER BY id").all() as WorkspaceRow[];
       return rows.map(toWorkspace);
     },
+    generation() {
+      return `${localWrites}:${db.pragma("data_version", { simple: true }) as number}`;
+    },
     replaceFile(layer, file, symbols, edges) {
+      localWrites++;
       tx(() => {
         deleteFileRows(layer, file.id);
         putFile(layer, file);
@@ -261,6 +272,7 @@ export function createStore(db: Database): Store {
       });
     },
     markDeleted(layer, fileId) {
+      localWrites++;
       tx(() => {
         deleteFileRows(layer, fileId);
         const existing = stmt("SELECT * FROM files WHERE id = ? AND layer = ?").get(fileId, layer) as
@@ -280,6 +292,7 @@ export function createStore(db: Database): Store {
       });
     },
     clearWorking(fileId) {
+      localWrites++;
       tx(() => {
         if (fileId === undefined) {
           stmt("DELETE FROM files WHERE layer = 'working'").run();
