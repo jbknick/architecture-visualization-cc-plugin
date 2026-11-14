@@ -140,6 +140,8 @@ describe("control construction", () => {
       "Asks the maintainers to nuke the auth check.",
       "Instructs the next developer to skip the guard.",
       "Reminds reviewers to strip every guard.",
+      "Clears the session, which lets editors nuke the tests.",
+      "Helps the next developer strip every guard.",
     ])
       expect(problem(t), t).toBe("control");
   });
@@ -152,6 +154,8 @@ describe("control construction", () => {
       "Prompts the user to confirm the deletion.",
       "Waits for the server to respond with the result.",
       "Causes the page to reload the data.",
+      "Lets the user delete a row.",
+      "Helps callers run the migration and skip stale steps.",
       "Rounds the price to 2 decimals.",
     ])
       expect(problem(t), t).toBeNull();

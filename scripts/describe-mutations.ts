@@ -117,8 +117,14 @@ const MUTATIONS: Mutation[] = [
   {
     name: "structural: control construction accepted",
     file: "clause.ts",
-    find: 'if (controlConstruction(t)) return "control";',
-    replace: "",
+    find: 'if (controlConstruction(t) || causativeConstruction(t)) return "control";',
+    replace: 'if (causativeConstruction(t)) return "control";',
+  },
+  {
+    name: "structural: causative without to accepted",
+    file: "clause.ts",
+    find: 'if (controlConstruction(t) || causativeConstruction(t)) return "control";',
+    replace: 'if (controlConstruction(t)) return "control";',
   },
   {
     name: "structural: second subject accepted",

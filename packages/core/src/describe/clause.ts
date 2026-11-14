@@ -327,6 +327,32 @@ function controlConstruction(t: readonly Tok[]): boolean {
   return false;
 }
 
+const CAUSATIVE_GOVERNORS: ReadonlySet<string> = set("lets let helps help makes make has have");
+
+/**
+ * Rule 4b: a causative without `to` ("which lets editors nuke the tests"): causative verb, a noun phrase that is not an
+ * ordinary program noun, a content word and an object. "Lets the user delete a row" passes.
+ */
+function causativeConstruction(t: readonly Tok[]): boolean {
+  for (let i = 2; i < t.length; i++) {
+    const verb = t[i] as Tok;
+    const head = t[i - 1] as Tok;
+    if (!isContent(verb) || !isContent(head) || !takesObject(t[i + 1]) || PLAIN_SUBJECT_HEADS.has(head.w))
+      continue;
+    let k = i - 2;
+    for (let m = 0; m < 3; m++) {
+      const x = t[k];
+      if (x === undefined || x.p !== undefined) break;
+      if (DETERMINERS.has(x.w) || NP_ADJECTIVES.has(x.w) || (isContent(x) && !CAUSATIVE_GOVERNORS.has(x.w)))
+        k--;
+      else break;
+    }
+    const gov = t[k];
+    if (gov !== undefined && gov.p === undefined && CAUSATIVE_GOVERNORS.has(gov.w)) return true;
+  }
+  return false;
+}
+
 const DEONTIC_ADJ = set(`
 required needed necessary mandatory recommended advised advisable suggested encouraged preferred wanted expected fine ok
 okay safe allowed permitted acceptable desirable sensible wise better best obligatory compulsory essential imperative
@@ -392,7 +418,7 @@ export function clauseProblem(body: string): ClauseProblem | null {
   const t = toks(body);
   if (bareWordAfterBoundary(t)) return "bare-word";
   if (obligation(t)) return "obligation";
-  if (controlConstruction(t)) return "control";
+  if (controlConstruction(t) || causativeConstruction(t)) return "control";
   if (secondSubject(t) || modalSubject(t)) return "second-subject";
   return null;
 }
