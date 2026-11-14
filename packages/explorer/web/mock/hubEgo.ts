@@ -1,12 +1,16 @@
-// Mock-only "hub" ego scenario (`#/ego?focus=<hubFocus>&scenario=hub`): a shared UI component with 221 callers in
-// three workspaces and one callee. Entirely synthetic. Grouping follows the real server's rules
-// (server/views/egoGroups.ts: a side over 24 nodes is grouped by workspace, then folder, then file; 3 or fewer
-// members stay individual; `expand` returns the members) so the screenshots show what the server would send.
+// Mock-only ego scenarios. Entirely synthetic. Both serve a shared UI component with 221 direct callers and one
+// callee, grouped by the real server's row budget (a copy of server/views/egoGroups.ts, see ./egoRows.ts):
+//   `#/ego?focus=<hubFocus>&scenario=hub`       callers concentrated in a few big folders (3 workspaces)
+//   `#/ego?focus=<thinFocus>&scenario=hub-thin` callers spread thinly: 201 in one workspace over 104 files in 30
+//                                               folders (at most 11 per folder), 20 in another over 16 files
 import type { GraphEdge, GraphNode, NodeDetail, ViewData } from "../src/api.ts";
+import { type GroupItem, type GroupPlan, planRows, type Row, type WorkspaceInfo } from "./egoRows.ts";
 
 export const hubFocus = "sym:packages/ui/src/DataTable/DataTable.tsx#DataTable";
 const CALLEE = "sym:packages/ui/src/DataTable/useTableState.ts#useTableState";
 const EGO_MAX = 400;
+export const thinFocus = "sym:packages/design-system-ui/src/components/Button/Button.tsx#Button";
+const THIN_CALLEE = "sym:packages/design-system-ui/src/components/Button/useButtonStyles.ts#useButtonStyles";
 
 interface Ws {
   id: string;
@@ -107,53 +111,185 @@ for (const ws of WS) {
   }
 }
 
-interface Group {
-  id: string;
-  label: string;
-  ws: Ws;
-  path: string;
-  members: Caller[];
-}
+// ---- the thin scenario: 201 callers in one workspace over 104 files in 30 folders, 20 in another over 16 files ----
 
-/** The server's grouping rules (see server/views/egoGroups.ts). */
-function plan(): { groups: Group[]; singles: Caller[] } {
-  const groups: Group[] = [];
-  const singles: Caller[] = [];
-  const emit = (g: Group) => (g.members.length <= 3 ? singles.push(...g.members) : groups.push(g));
-  for (const ws of WS) {
-    const mine = CALLERS.filter((c) => c.ws === ws);
-    if (mine.length <= 12) {
-      emit({ id: `group:in:1:${ws.id}`, label: ws.short, ws, path: ws.dir, members: mine });
-      continue;
-    }
-    const byFolder = new Map<string, Caller[]>();
-    for (const c of mine) {
-      const top = c.folder.split("/").slice(0, 2).join("/");
-      byFolder.set(top, [...(byFolder.get(top) ?? []), c]);
-    }
-    for (const [folder, members] of [...byFolder].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
-      const path = `${ws.dir}/${folder}`;
-      if (members.length <= 12) {
-        emit({ id: `group:in:1:dir:${path}`, label: `${ws.short} · ${folder}`, ws, path, members });
-        continue;
-      }
-      const byFile = new Map<string, Caller[]>();
-      for (const c of members) byFile.set(c.path, [...(byFile.get(c.path) ?? []), c]);
-      for (const [file, fm] of [...byFile].sort((a, b) => (a[0] < b[0] ? -1 : 1)))
-        emit({
-          id: `group:in:1:file:${file}`,
-          label: `${ws.short} · ${file.slice(ws.dir.length + 1)}`,
-          ws,
-          path: file,
-          members: fm,
-        });
+const THIN_WS: Ws[] = [
+  {
+    id: "ws:@acme-platform/customer-portal-web",
+    short: "customer-portal-web",
+    dir: "apps/customer-portal-web",
+    files: [],
+  },
+  {
+    id: "ws:@acme-platform/internal-admin-console",
+    short: "internal-admin-console",
+    dir: "apps/internal-admin-console",
+    files: [],
+  },
+];
+const THIN_UI: Ws = {
+  id: "ws:@acme-platform/design-system-ui",
+  short: "design-system-ui",
+  dir: "packages/design-system-ui",
+  files: [],
+};
+
+const THIN_FOLDERS = [
+  "components/review",
+  "components/billing/invoices",
+  "components/billing/payments",
+  "components/orders/list",
+  "components/orders/detail",
+  "components/customers",
+  "components/catalog",
+  "components/checkout",
+  "components/account",
+  "components/support",
+  "components/reports",
+  "components/onboarding/identity-verification/steps",
+  "components/onboarding/company-details",
+  "components/marketing",
+  "components/shared/layout",
+  "components/shared/forms",
+  "features/search",
+  "features/notifications",
+  "features/analytics/dashboards",
+  "features/analytics/exports",
+  "features/settings",
+  "features/inventory",
+  "pages/dashboard",
+  "pages/orders",
+  "pages/customers",
+  "pages/billing",
+  "pages/support",
+  "pages/reports",
+  "hooks",
+  "lib/tables",
+];
+const THIN_SIZES = [
+  11, 11, 11, 10, 10, 10, 9, 9, 9, 8, 8, 8, 8, 7, 7, 7, 7, 6, 6, 6, 6, 5, 5, 5, 5, 4, 4, 4, 3, 3,
+];
+const NOUNS = [
+  "composer",
+  "list",
+  "card",
+  "summary",
+  "toolbar",
+  "filters",
+  "header",
+  "footer",
+  "panel",
+  "table",
+  "dialog",
+  "form",
+];
+const SYMS = [
+  "Composer",
+  "List",
+  "Card",
+  "Summary",
+  "Toolbar",
+  "Filters",
+  "Header",
+  "Footer",
+  "Panel",
+  "Table",
+  "Dialog",
+  "Form",
+];
+const cap = (s: string): string => `${s.slice(0, 1).toUpperCase()}${s.slice(1)}`;
+
+function thinCallers(): Caller[] {
+  const sizes = [...THIN_SIZES];
+  let sum = sizes.reduce((a, b) => a + b, 0);
+  for (let i = 0; sum > 201; i = (i + 1) % sizes.length) {
+    if ((sizes[i] as number) > 3) {
+      (sizes[i] as number)--;
+      sum--;
     }
   }
-  return {
-    groups: groups.sort((a, b) => b.members.length - a.members.length || (a.id < b.id ? -1 : 1)),
-    singles,
-  };
+  // Files per folder: about one per two callers, adjusted to 104 files in all.
+  const nf = sizes.map((n) => Math.max(1, Math.min(n, Math.round(n / 2.1))));
+  let files = nf.reduce((a, b) => a + b, 0);
+  for (let i = 0; files !== 104; i = (i + 1) % nf.length) {
+    if (files < 104 && (nf[i] as number) < (sizes[i] as number)) {
+      (nf[i] as number)++;
+      files++;
+    } else if (files > 104 && (nf[i] as number) > 1) {
+      (nf[i] as number)--;
+      files--;
+    }
+  }
+  const ws = THIN_WS[0] as Ws;
+  const out: Caller[] = [];
+  THIN_FOLDERS.forEach((folder, f) => {
+    const stem = (folder.split("/").at(-1) as string).replace(/s$/, "");
+    for (let k = 0; k < (sizes[f] as number); k++) {
+      const file = k % (nf[f] as number);
+      const noun = (file + f) % NOUNS.length;
+      const path = `${ws.dir}/src/${folder}/${stem}-${NOUNS[noun]}.tsx`;
+      const name = `${cap(stem)}${SYMS[noun]}${k >= (nf[f] as number) ? k : ""}`;
+      out.push({
+        id: `sym:${path}#${name}`,
+        ws,
+        path,
+        folder,
+        name,
+        line: 10 + k * 12,
+        count: k % 5 === 0 ? 2 : 1,
+      });
+    }
+  });
+  const admin = THIN_WS[1] as Ws;
+  const dirs = ["users", "roles", "audit", "settings"];
+  for (let i = 0; i < 20; i++) {
+    const d = dirs[i % 4] as string;
+    const file = Math.min(i, 15);
+    const noun = (Math.floor(file / 4) + (i % 4)) % NOUNS.length;
+    const path = `${admin.dir}/src/pages/${d}/${d}-${NOUNS[noun]}${file >= 12 ? "-v2" : ""}.tsx`;
+    const name = `Admin${cap(d)}${SYMS[noun]}${i}`;
+    out.push({ id: `sym:${path}#${name}`, ws: admin, path, folder: `pages/${d}`, name, line: 8, count: 1 });
+  }
+  return out;
 }
+const THIN: Caller[] = thinCallers();
+
+// ---- the server's row budget over a scenario ---------------------------------------------------------------------
+
+interface Scenario {
+  focus: string;
+  focusLabel: string;
+  focusPath: string;
+  focusWs: Ws;
+  callee: string;
+  calleeLabel: string;
+  calleePath: string;
+  callers: Caller[];
+  workspaces: Ws[];
+}
+
+const HUB: Scenario = {
+  focus: hubFocus,
+  focusLabel: "DataTable",
+  focusPath: "packages/ui/src/DataTable/DataTable.tsx",
+  focusWs: { id: "ws:@acme/ui", short: "ui", dir: "packages/ui", files: [] },
+  callee: CALLEE,
+  calleeLabel: "useTableState",
+  calleePath: "packages/ui/src/DataTable/useTableState.ts",
+  callers: CALLERS,
+  workspaces: WS,
+};
+const THIN_SCN: Scenario = {
+  focus: thinFocus,
+  focusLabel: "Button",
+  focusPath: "packages/design-system-ui/src/components/Button/Button.tsx",
+  focusWs: THIN_UI,
+  callee: THIN_CALLEE,
+  calleeLabel: "useButtonStyles",
+  calleePath: "packages/design-system-ui/src/components/Button/useButtonStyles.ts",
+  callers: THIN,
+  workspaces: THIN_WS,
+};
 
 const fnNode = (c: Caller, extra: Partial<GraphNode>): GraphNode => ({
   id: c.id,
@@ -169,97 +305,89 @@ const fnNode = (c: Caller, extra: Partial<GraphNode>): GraphNode => ({
   ...extra,
 });
 
-export function egoHub(expand: string[]): ViewData {
-  const { groups, singles } = plan();
+function build(scn: Scenario, expand: string[], maxRows: number, pageRows: number): ViewData {
+  const info = new Map<string, WorkspaceInfo>(
+    scn.workspaces.map((w) => [w.id, { dir: w.dir, short: w.short }]),
+  );
+  const byId = new Map(scn.callers.map((c) => [c.id, c]));
+  const items: GroupItem[] = scn.callers.map((c) => ({ id: c.id, path: c.path, ws: c.ws.id }));
+  const { rows } = planRows("in", 1, items, info, {
+    maxRows,
+    pageRows,
+    expand: new Set(expand),
+    nodeBudget: EGO_MAX - 2,
+  });
   const nodes: GraphNode[] = [
     {
-      id: hubFocus,
+      id: scn.focus,
       kind: "component",
-      label: "DataTable",
+      label: scn.focusLabel,
       size: 1,
-      path: "packages/ui/src/DataTable/DataTable.tsx",
+      path: scn.focusPath,
       stats: { functions: 1, loc: 140 },
       badges: ["exported"],
-      workspace: "ws:@acme/ui",
+      workspace: scn.focusWs.id,
       side: "focus",
       hop: 0,
     },
     {
-      id: CALLEE,
+      id: scn.callee,
       kind: "hook",
-      label: "useTableState",
+      label: scn.calleeLabel,
       size: 1,
-      path: "packages/ui/src/DataTable/useTableState.ts",
+      path: scn.calleePath,
       stats: { functions: 1, loc: 62 },
-      workspace: "ws:@acme/ui",
+      workspace: scn.focusWs.id,
       side: "out",
       hop: 1,
     },
   ];
   const owner = new Map<string, string>(); // caller id -> node that stands for it
-  for (const s of singles) {
-    nodes.push(fnNode(s, {}));
-    owner.set(s.id, s.id);
-  }
-  let budget = EGO_MAX - nodes.length - groups.length;
-  const sorted = [...expand].sort();
-  for (const g of groups) {
-    const members = [...g.members].sort((a, b) =>
-      a.path < b.path ? -1 : a.path > b.path ? 1 : a.line - b.line,
-    );
-    const open = sorted.includes(g.id) && budget >= 2;
-    nodes.push({
-      id: g.id,
-      kind: "group",
-      label: g.label,
-      size: members.length,
-      path: g.path,
-      workspace: g.ws.id,
-      side: "in",
-      hop: 1,
-      stats: { members: members.length, files: new Set(members.map((m) => m.path)).size },
-      badges: [`${members.length} callers`],
-      members: members.map((m) => ({ id: m.id, label: m.name, path: m.path, line: m.line })),
-      ...(open ? { expanded: true } : {}),
-    });
-    if (!open) {
-      for (const m of members) owner.set(m.id, g.id);
-      continue;
+  const groupNode = (g: GroupPlan, parent: string | undefined, expanded: boolean): GraphNode => ({
+    id: g.id,
+    kind: "group",
+    label: g.label,
+    size: g.members.length,
+    path: g.path,
+    ...(g.ws ? { workspace: g.ws } : {}),
+    ...(parent ? { group: parent } : {}),
+    side: "in",
+    hop: 1,
+    stats: { members: g.members.length, files: g.files },
+    badges: [`${g.members.length} ${g.members.length === 1 ? "caller" : "callers"}`],
+    members: g.members.map((m) => {
+      const c = byId.get(m.id) as Caller;
+      return { id: c.id, label: c.name, path: c.path, line: c.line };
+    }),
+    ...(expanded ? { expanded: true } : {}),
+  });
+  const emit = (list: Row[], parent?: string) => {
+    for (const r of list) {
+      if ("item" in r) {
+        nodes.push(fnNode(byId.get(r.item.id) as Caller, parent ? { group: parent } : {}));
+        owner.set(r.item.id, r.item.id);
+      } else if (r.expanded) {
+        nodes.push(groupNode(r.group, parent, true));
+        emit(r.rows, r.group.id);
+      } else {
+        nodes.push(groupNode(r.group, parent, false));
+        for (const m of r.group.members) owner.set(m.id, r.group.id);
+      }
     }
-    const shown = members.length <= budget ? members : members.slice(0, budget - 1);
-    for (const m of shown) {
-      nodes.push(fnNode(m, { group: g.id }));
-      owner.set(m.id, m.id);
-    }
-    budget -= shown.length;
-    if (shown.length < members.length) {
-      const moreId = `more:in:1:${g.id}`;
-      nodes.push({
-        id: moreId,
-        kind: "more",
-        label: `+${members.length - shown.length} more`,
-        size: members.length - shown.length,
-        side: "in",
-        hop: 1,
-        group: g.id,
-        stats: { functions: members.length - shown.length },
-      });
-      for (const m of members.slice(shown.length)) owner.set(m.id, moreId);
-      budget -= 1;
-    }
-  }
+  };
+  emit(rows);
   const agg = new Map<string, GraphEdge>();
-  for (const c of CALLERS) {
+  for (const c of scn.callers) {
     const src = owner.get(c.id) as string;
-    const id = `${src}|calls|${hubFocus}`;
+    const id = `${src}|calls|${scn.focus}`;
     const e = agg.get(id);
     if (e) e.weight += c.count;
-    else agg.set(id, { id, src, dst: hubFocus, kind: "calls", weight: c.count, confidence: "high" });
+    else agg.set(id, { id, src, dst: scn.focus, kind: "calls", weight: c.count, confidence: "high" });
   }
-  agg.set(`${hubFocus}|calls|${CALLEE}`, {
-    id: `${hubFocus}|calls|${CALLEE}`,
-    src: hubFocus,
-    dst: CALLEE,
+  agg.set(`${scn.focus}|calls|${scn.callee}`, {
+    id: `${scn.focus}|calls|${scn.callee}`,
+    src: scn.focus,
+    dst: scn.callee,
     kind: "calls",
     weight: 1,
     confidence: "high",
@@ -271,10 +399,21 @@ export function egoHub(expand: string[]): ViewData {
   };
 }
 
-/** `/api/node` for the hub's functions, so selecting one in the inspector works. */
+/** The mock's ego response for `scenario=hub` / `hub-thin`; `maxRows` and `pageRows` are the real server's options. */
+export function egoHub(
+  expand: string[],
+  scenario: "hub" | "hub-thin" = "hub",
+  maxRows = 18,
+  pageRows = 14,
+): ViewData {
+  return build(scenario === "hub" ? HUB : THIN_SCN, expand, Math.max(8, Math.min(40, maxRows)), pageRows);
+}
+
+/** `/api/node` for the scenarios' functions, so selecting one in the inspector works. */
 export function hubNode(id: string): NodeDetail | null {
-  const c = CALLERS.find((x) => x.id === id);
-  if (!c && id !== hubFocus && id !== CALLEE) return null;
+  const c = [...CALLERS, ...THIN].find((x) => x.id === id);
+  const known = new Set([hubFocus, CALLEE, thinFocus, THIN_CALLEE]);
+  if (!c && !known.has(id)) return null;
   const name = c ? c.name : (id.split("#")[1] ?? id);
   const path = c ? c.path : (id.slice(4).split("#")[0] ?? "");
   return {
@@ -289,8 +428,8 @@ export function hubNode(id: string): NodeDetail | null {
       loc: 11,
     },
     signature: `function ${name}(props)`,
-    fan_in: id === hubFocus ? CALLERS.length : 0,
-    fan_out: id === hubFocus ? 1 : 1,
+    fan_in: id === hubFocus ? CALLERS.length : id === thinFocus ? THIN.length : 0,
+    fan_out: 1,
     neighbors: {},
     untrusted_description: null,
   };

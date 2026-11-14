@@ -3,6 +3,8 @@ import { weightOf } from "../canvas/bowtieLayout.ts";
 
 /** The server's node cap for the ego view (server/views/ego.ts `EGO_MAX_NODES`). */
 export const EGO_MAX_NODES = 400;
+/** Rows an expanded group shows before the rest moves to a "+N more" row (server option `pageRows`). */
+export const EGO_PAGE_ROWS = 14;
 
 /** Group ids the route asks the server to expand: the `expand` filter, `|` separated. */
 export function expandedIds(filters: Filters): string[] {
@@ -60,7 +62,8 @@ export function summarizeEgo(nodes: readonly GraphNode[]): EgoSummary {
       (a, b) =>
         (a.side === b.side ? 0 : a.side === "in" ? -1 : 1) || b.size - a.size || (a.id < b.id ? -1 : 1),
     );
-  const extra = groups.reduce((s, g) => s + (g.expanded ? 0 : g.size - 1), 0);
+  // An expansion shows at most one page of rows (server option `pageRows`, 14 by default).
+  const extra = groups.reduce((s, g) => s + (g.expanded ? 0 : Math.min(g.size, EGO_PAGE_ROWS) - 1), 0);
   return { callers: side("in"), callees: side("out"), groups, nodesIfAllExpanded: nodes.length + extra };
 }
 

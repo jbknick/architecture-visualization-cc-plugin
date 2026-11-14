@@ -1,7 +1,20 @@
 import type { FileRecord, SymbolRecord } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { GraphEdge, GraphNode, ViewModule } from "../types.js";
-import { type GroupItem, type GroupPlan, planGroups, type WorkspaceInfo } from "./egoGroups.js";
+import {
+  clampInt,
+  EGO_PAGE_DEFAULT,
+  EGO_PAGE_MAX,
+  EGO_PAGE_MIN,
+  EGO_ROWS_DEFAULT,
+  EGO_ROWS_MAX,
+  EGO_ROWS_MIN,
+  type GroupItem,
+  type GroupPlan,
+  planRows,
+  type Row,
+  type WorkspaceInfo,
+} from "./egoGroups.js";
 import { shortWorkspaceLabels } from "./labels.js";
 import { cmp, getOrInit, optBool, optInt, optList } from "./options.js";
 
@@ -27,12 +40,14 @@ interface Link {
  * the focus. A file focus works on file nodes: symbol-level edges are lifted to their files. Layout hint
  * `bowtie`: callers in columns left of the focus, callees right of it.
  *
- * Grouping: a side at one hop with more than 24 nodes is grouped by workspace (a workspace group over 12
- * members by top-level folder, a folder group over 12 by file; groups of 3 or fewer stay individual). A group
- * is one node `group:<side>:<hop>:<ws:... | dir:... | file:...>` (kind `group`, `members` lists what is inside)
- * with aggregated edges. `expand=<group id>|<group id>` (a filter) returns those groups' members instead.
+ * Rows: a side at one hop has at most `maxRows` rows (option, 8-40, default 18) however its nodes are spread. A
+ * side with more nodes is shown as groups: workspace, then folder, then file (see egoGroups.ts), small siblings
+ * merged into one "other callers" row. A group is one node `group:<side>:<hop>:<ws:... | dir:... | file:... |
+ * rest:<parent> | more:<group>:<offset>>` (kind `group`, `members` lists what is inside) with aggregated edges.
+ * `expand=<group id>|<group id>` (a filter) replaces those groups by their children, at most `pageRows` (option,
+ * default 14) rows each, the rest behind a "+N more" group that expands to the next page.
  * Past 400 nodes the farthest ring that does not fit collapses into `+K more` nodes (kind `more`), one per side
- * and file; rings beyond it are dropped. An expansion that would pass 400 shows what fits plus a `+K more`.
+ * and file; rings beyond it are dropped. An expansion that would pass 400 nodes is skipped.
  */
 export const egoView: ViewModule = {
   id: "ego",
@@ -54,6 +69,9 @@ export const egoView: ViewModule = {
     }
     const kinds = new Set(kindList);
     const highOnly = optBool(params, "highConfidence", false);
+    const maxRows = clampInt(optInt(params, "maxRows"), EGO_ROWS_MIN, EGO_ROWS_MAX, EGO_ROWS_DEFAULT);
+    const pageRows = clampInt(optInt(params, "pageRows"), EGO_PAGE_MIN, EGO_PAGE_MAX, EGO_PAGE_DEFAULT);
+    const expand = new Set(optList(params, "expand") ?? []);
 
     const files = new Map<string, FileRecord>(store.effectiveFiles().map((f) => [f.id, f]));
     const symbols = new Map<string, SymbolRecord>();
@@ -173,27 +191,34 @@ export const egoView: ViewModule = {
     };
     nodes.set(focus, { ...makeNode(focus), side: "focus", hop: 0 });
 
-    // Units placed on the canvas: an individual node or a group of nodes, per (side, hop).
-    interface Unit {
+    // Rows placed on the canvas: per (side, hop), a tree of individual nodes and groups.
+    interface Bucket {
       side: "in" | "out";
       hop: number;
-      id: string;
-      group?: GroupPlan;
+      rows: Row[];
     }
-    const placed: Unit[] = [];
-    const groupSort = (a: GroupPlan, b: GroupPlan): number =>
-      b.members.length - a.members.length || cmp(a.id, b.id);
-    const unitsFor = (sd: "in" | "out", h: number, ids: string[]): Unit[] => {
+    const placed: Bucket[] = [];
+    const groupNodeCount = (rows: Row[]): number =>
+      rows.reduce((n, r) => n + 1 + ("group" in r && r.expanded ? groupNodeCount(r.rows) : 0), 0);
+    const bucketFor = (
+      sd: "in" | "out",
+      h: number,
+      ids: string[],
+      expanding: boolean,
+      room: number,
+    ): Bucket => {
       const items: GroupItem[] = ids.map((id) => ({
         id,
         path: fileOf(id)?.path ?? id,
         ws: wsOf(id) ?? null,
       }));
-      const { groups, singles } = planGroups(sd, h, items, wsInfo);
-      return [
-        ...singles.map((it) => ({ side: sd, hop: h, id: it.id })),
-        ...[...groups].sort(groupSort).map((g) => ({ side: sd, hop: h, id: g.id, group: g })),
-      ];
+      const { rows } = planRows(sd, h, items, wsInfo, {
+        maxRows,
+        pageRows,
+        expand: expanding ? expand : new Set(),
+        nodeBudget: room,
+      });
+      return { side: sd, hop: h, rows };
     };
 
     const memberOf = new Map<string, string>(); // collapsed node id -> its group / "+K more" node id
@@ -203,16 +228,19 @@ export const egoView: ViewModule = {
       const ring = rings[h] as string[];
       if (ring.length === 0) continue;
       const reserve = ringsAfter(h) ? 2 : 0;
-      const units = (["in", "out"] as const).flatMap((sd) =>
-        unitsFor(
+      const sides = (["in", "out"] as const).map((sd) =>
+        bucketFor(
           sd,
           h,
           ring.filter((id) => side.get(id) === sd),
+          false,
+          0,
         ),
       );
-      if (used + units.length <= EGO_MAX_NODES - reserve) {
-        placed.push(...units);
-        used += units.length;
+      const count = sides.reduce((n, b) => n + b.rows.length, 0);
+      if (used + count <= EGO_MAX_NODES - reserve) {
+        placed.push(...sides);
+        used += count;
         continue;
       }
       // Collapse this ring per (side, file); merge the smallest groups per side if there are too many.
@@ -257,16 +285,20 @@ export const egoView: ViewModule = {
       for (const m of ids) memberOf.set(m, id);
     }
 
-    // Expanded groups show their members as individual nodes while the 400-node budget lasts; what does not
-    // fit stays behind a "+K more" node inside the group.
-    const expand = new Set(optList(params, "expand") ?? []);
-    const memberList = (g: GroupPlan): GroupItem[] =>
-      [...g.members].sort((a, b) => cmp(a.path, b.path) || cmp(a.id, b.id));
+    // Expanded groups: re-plan the buckets with the expansions, while the 400-node budget lasts.
     let budget = EGO_MAX_NODES - used;
-    const groupNode = (u: Unit, g: GroupPlan): GraphNode => {
-      const files = new Set(g.members.map((m) => m.path)).size;
+    if (expand.size > 0) {
+      for (let i = 0; i < placed.length; i++) {
+        const b = placed[i] as Bucket;
+        const ids = rings[b.hop]?.filter((id) => side.get(id) === b.side) ?? [];
+        const again = bucketFor(b.side, b.hop, ids, true, budget);
+        budget -= groupNodeCount(again.rows) - b.rows.length;
+        placed[i] = again;
+      }
+    }
+    const groupNode = (sd: "in" | "out", h: number, g: GroupPlan, parent?: string): GraphNode => {
       const word =
-        u.side === "in"
+        sd === "in"
           ? g.members.length === 1
             ? "caller"
             : "callers"
@@ -278,13 +310,14 @@ export const egoView: ViewModule = {
         kind: "group",
         label: g.label,
         size: g.members.length,
-        side: u.side,
-        hop: u.hop,
+        side: sd,
+        hop: h,
         path: g.path,
         ...(g.ws ? { workspace: g.ws } : {}),
-        stats: { members: g.members.length, files },
+        ...(parent ? { group: parent } : {}),
+        stats: { members: g.members.length, files: g.files },
         badges: [`${g.members.length} ${word}`],
-        members: memberList(g).map((m) => {
+        members: g.members.map((m) => {
           const line = lineOf(m.id);
           return {
             id: m.id,
@@ -295,31 +328,29 @@ export const egoView: ViewModule = {
         }),
       };
     };
-    for (const u of placed) {
-      const g = u.group;
-      if (!g) {
-        nodes.set(u.id, { ...makeNode(u.id), side: u.side, hop: u.hop });
-        continue;
-      }
-      // An expanded group stays as a header node (`expanded: true`, no edges); its members follow as nodes.
-      const n = g.members.length;
-      if (expand.has(g.id) && budget >= 2) {
-        const ordered = memberList(g);
-        const full = n <= budget;
-        const shown = full ? ordered : ordered.slice(0, budget - 1);
-        nodes.set(g.id, { ...groupNode(u, g), expanded: true });
-        for (const m of shown) nodes.set(m.id, { ...makeNode(m.id), side: u.side, hop: u.hop, group: g.id });
-        if (!full) {
-          const rest = ordered.slice(shown.length).map((m) => m.id);
-          addMore(`more:${u.side}:${u.hop}:${g.id}`, u.side, u.hop, rest, g.path);
-          (nodes.get(`more:${u.side}:${u.hop}:${g.id}`) as GraphNode).group = g.id;
+    const emit = (sd: "in" | "out", h: number, rows: Row[], parent?: string): void => {
+      for (const r of rows) {
+        if ("item" in r) {
+          nodes.set(r.item.id, {
+            ...makeNode(r.item.id),
+            side: sd,
+            hop: h,
+            ...(parent ? { group: parent } : {}),
+          });
+          continue;
         }
-        budget -= shown.length + (full ? 0 : 1);
-        continue;
+        const g = r.group;
+        if (!r.expanded) {
+          nodes.set(g.id, groupNode(sd, h, g, parent));
+          for (const m of g.members) memberOf.set(m.id, g.id);
+          continue;
+        }
+        // An expanded group stays as a header node (`expanded: true`, no edges); its rows follow as nodes.
+        nodes.set(g.id, { ...groupNode(sd, h, g, parent), expanded: true });
+        emit(sd, h, r.rows, g.id);
       }
-      nodes.set(g.id, groupNode(u, g));
-      for (const m of g.members) memberOf.set(m.id, g.id);
-    }
+    };
+    for (const b of placed) emit(b.side, b.hop, b.rows);
 
     const ref = (id: string): string | undefined => (nodes.has(id) ? id : memberOf.get(id));
     const agg = new Map<string, GraphEdge>();

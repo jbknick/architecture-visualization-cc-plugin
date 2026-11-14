@@ -453,7 +453,14 @@ function projectMap(q: ParsedQuery): ViewData | { error: string; status: number 
 function ego(q: ParsedQuery): ViewData | { error: string; status: number } {
   if (!q.focus) return { status: 400, error: "ego requires focus=<symbol or file id>" };
   // Mock-only flag: `#/ego?focus=<hubFocus>&scenario=hub` serves the 221-caller hub (mock/hubEgo.ts).
-  if (q.options.scenario === "hub") return egoHub(optList(q.options, "expand") ?? []);
+  // `scenario=hub-thin` is the same hub with the callers spread thinly over many files and folders.
+  if (q.options.scenario === "hub" || q.options.scenario === "hub-thin")
+    return egoHub(
+      optList(q.options, "expand") ?? [],
+      q.options.scenario,
+      Number(q.options.maxRows) || undefined,
+      Number(q.options.pageRows) || undefined,
+    );
   if (!symbolById.has(q.focus) && !fileById.has(q.focus))
     return { status: 404, error: `Unknown focus: ${q.focus}` };
   const hops = q.hops ?? 2;

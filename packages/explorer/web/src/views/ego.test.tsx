@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { hubFocus } from "../../mock/hubEgo.ts";
+import { egoHub, hubFocus } from "../../mock/hubEgo.ts";
 import type { GraphNode } from "../api.ts";
 import "../canvases.ts";
 import { installMockFetch, renderApp } from "../testUtils.tsx";
@@ -80,9 +80,10 @@ describe("ego summary", () => {
     ];
     const s = summarizeEgo(nodes);
     expect(s.callers.count).toBe(300);
-    expect(s.nodesIfAllExpanded).toBe(3 + 299);
+    expect(s.nodesIfAllExpanded).toBe(3 + 13); // an expansion shows one page (14 rows) at most
     expect(s.nodesIfAllExpanded).toBeLessThanOrEqual(EGO_MAX_NODES);
-    expect(summarizeEgo([...nodes, group("g3", 200)]).nodesIfAllExpanded).toBeGreaterThan(EGO_MAX_NODES);
+    const many = Array.from({ length: 40 }, (_, i) => group(`h${i}`, 300));
+    expect(summarizeEgo([...nodes, ...many]).nodesIfAllExpanded).toBeGreaterThan(EGO_MAX_NODES);
   });
 
   it("drops a shared npm scope from workspace names", () => {
@@ -92,31 +93,44 @@ describe("ego summary", () => {
 });
 
 describe("ego panel on the hub scenario", () => {
-  it("summarises the sides in plain words and lists the groups", async () => {
+  const firstExpand = (groups: HTMLElement): HTMLElement =>
+    within(groups).getAllByRole("button", { name: /^Expand (?!all)/ })[0] as HTMLElement;
+
+  it("summarises the sides in plain words and lists the groups with their full labels", async () => {
     installMockFetch();
     renderApp(hub);
     expect(await screen.findByText(/^221 callers in 3 workspaces · \d+ files$/)).toBeTruthy();
     expect(screen.getByText("1 callee")).toBeTruthy();
     const groups = screen.getByRole("region", { name: "Groups" });
-    expect(within(groups).getAllByRole("button", { name: /^Expand / }).length).toBeGreaterThanOrEqual(10);
-    expect(within(groups).getByText("web · src/hooks")).toBeTruthy();
+    expect(within(groups).getAllByRole("button", { name: /^Expand (?!all)/ }).length).toBeGreaterThanOrEqual(
+      8,
+    );
+    // A row says what it is, in words, and is not cut short.
+    expect(within(groups).getAllByText(/ — \d+ callers in \d+ files$/).length).toBeGreaterThan(0);
+    expect(groups.textContent).not.toContain("…");
     expect((within(groups).getByRole("button", { name: "Collapse all" }) as HTMLButtonElement).disabled).toBe(
       true,
     );
-    // Colour key: one row per workspace.
+    // Colour key: one row per workspace, short names, the workspace with the most callers first.
     const key = screen.getByRole("region", { name: "Workspace colours" });
-    expect(within(key).getByText("web")).toBeTruthy();
-    expect(within(key).getByText("marketing")).toBeTruthy();
+    const names = within(key)
+      .getAllByRole("listitem")
+      .map((li) => li.textContent ?? "");
+    expect(names).toHaveLength(4); // the three caller workspaces and the callee's
+    expect(names[0]).toMatch(/^web\d+$/);
+    expect(key.textContent).toContain("marketing");
+    expect(key.textContent).not.toContain("@acme");
   });
 
   it("expanding a group puts it in the hash route; collapse all clears it", async () => {
     const { calls } = installMockFetch();
     renderApp(hub);
     const groups = await screen.findByRole("region", { name: "Groups" });
-    const toggle = within(groups).getByRole("button", { name: "Expand web · src/hooks" });
+    const toggle = firstExpand(groups);
+    const label = (toggle.getAttribute("aria-label") ?? "").replace(/^Expand /, "");
     fireEvent.click(toggle);
-    const id = "group:in:1:dir:apps/web/src/hooks";
-    await waitFor(() => expect(hashParams().get("expand")).toBe(id));
+    await waitFor(() => expect(hashParams().get("expand")).toMatch(/^group:in:1:/));
+    const id = hashParams().get("expand") as string;
     // The server (here: the mock) is asked for it, and the panel now offers to collapse it.
     await waitFor(() => {
       const last = calls.filter((c) => c.startsWith("/api/view/ego")).at(-1) ?? "";
@@ -124,39 +138,45 @@ describe("ego panel on the hub scenario", () => {
         expand: id,
       });
     });
-    expect(await screen.findByRole("button", { name: "Collapse web · src/hooks" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: `Collapse ${label}` })).toBeTruthy();
     expect(screen.getByText(/^221 callers in 3 workspaces/)).toBeTruthy();
 
     // A second group, then Collapse all.
-    fireEvent.click(within(groups).getByRole("button", { name: "Expand admin · src/components" }));
+    fireEvent.click(firstExpand(groups));
     await waitFor(() => expect(hashParams().get("expand")?.split("|")).toHaveLength(2));
     fireEvent.click(within(groups).getByRole("button", { name: "Collapse all" }));
     await waitFor(() => expect(hashParams().has("expand")).toBe(false));
   });
 
-  it("Expand all opens every group and survives a reload of the route", async () => {
+  it("Expand all opens every group on the side", async () => {
     installMockFetch();
     renderApp(hub);
     const groups = await screen.findByRole("region", { name: "Groups" });
     const expandAll = within(groups).getByRole("button", { name: "Expand all" }) as HTMLButtonElement;
     await waitFor(() => expect(expandAll.disabled).toBe(false));
+    const before = within(groups).getAllByRole("button", { name: /^Expand (?!all)/ }).length;
     fireEvent.click(expandAll);
-    await waitFor(() => expect(hashParams().get("expand")?.split("|").length).toBeGreaterThanOrEqual(10));
-    // Everything is individual now: no collapsed group is left, and every caller has a row.
-    await waitFor(() => expect(screen.queryAllByRole("button", { name: /^Expand (?!all)/ })).toHaveLength(0));
-    expect(screen.getByText(/^221 callers in 3 workspaces/)).toBeTruthy();
+    await waitFor(() => expect(hashParams().get("expand")?.split("|").length).toBe(before));
+    expect(await screen.findByText(/^221 callers in 3 workspaces/)).toBeTruthy();
+    expect(
+      within(groups).getAllByRole("button", { name: /^Collapse (?!all)/ }).length,
+    ).toBeGreaterThanOrEqual(before);
   });
 
-  it("a group's inspector lists its members; picking one expands the group and selects it", async () => {
+  it("a group's inspector lists its members; picking one opens the group and selects it", async () => {
     installMockFetch();
-    const id = "group:in:1:dir:apps/web/src/hooks";
-    renderApp(`${hub}&sel=${encodeURIComponent(id)}`);
+    const rows = egoHub([], "hub", 19).nodes.filter((n) => n.kind === "group");
+    const target = rows.find(
+      (n) => (n.members?.length ?? 0) >= 4 && (n.members?.length ?? 0) < 8,
+    ) as GraphNode;
+    expect(target).toBeTruthy();
+    renderApp(`${hub}&sel=${encodeURIComponent(target.id)}`);
     const inspector = await screen.findByRole("complementary", { name: "Inspector" });
     const members = await within(inspector).findByRole("region", { name: "Group members" });
-    expect(within(members).getAllByRole("listitem")).toHaveLength(4);
+    expect(within(members).getAllByRole("listitem")).toHaveLength(target.members?.length ?? 0);
     const first = within(members).getAllByRole("button")[0] as HTMLElement;
     fireEvent.click(first);
-    await waitFor(() => expect(hashParams().get("expand")).toBe(id));
-    await waitFor(() => expect(hashParams().get("sel")).toMatch(/^sym:apps\/web\/src\/hooks\/useExportRows/));
+    await waitFor(() => expect(hashParams().get("expand")).toBe(target.id));
+    await waitFor(() => expect(hashParams().get("sel")).toBe(target.members?.[0]?.id));
   });
 });

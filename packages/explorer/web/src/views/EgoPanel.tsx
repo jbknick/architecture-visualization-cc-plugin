@@ -125,7 +125,9 @@ function WorkspaceKey({ nodes }: { nodes: FilterPanelProps["nodes"] }) {
     return m;
   }, [nodes]);
   // Only workspaces that have callers or callees (the focus's own is not coloured).
-  const rows = [...ranks].filter(([id]) => (counts.get(id) ?? 0) > 0);
+  const rows = [...ranks]
+    .filter(([id]) => (counts.get(id) ?? 0) > 0)
+    .sort((a, b) => (counts.get(b[0]) ?? 0) - (counts.get(a[0]) ?? 0) || (a[0] < b[0] ? -1 : 1));
   if (rows.length < 2) return null;
   const scheme = currentScheme();
   return (

@@ -6,7 +6,15 @@ import { useStore } from "../store.tsx";
 import { kindColor, type Scheme } from "../theme.ts";
 import { toggleExpanded } from "../views/egoGroups.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
-import { type BowtieLayout, layoutBowtie, type Placed, weightOf, workspaceRanks } from "./bowtieLayout.ts";
+import {
+  type BowtieLayout,
+  DEFAULT_VIEW,
+  layoutBowtie,
+  type Placed,
+  TOP_MARGIN,
+  weightOf,
+  workspaceRanks,
+} from "./bowtieLayout.ts";
 import { type CanvasTheme, hexToRgba, readTheme } from "./style.ts";
 
 interface Camera {
@@ -31,11 +39,20 @@ interface DrawnLabel {
   h: number;
 }
 
+interface DrawnRect {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 const MIN_K = 0.05;
 const MAX_K = 3;
-const FIT_MAX_K = 1.2;
-/** Individual rows show their label from this on-screen row height. */
-export const LABEL_MIN_ROW_PX = 14;
+const FIT_MAX_K = 1.15;
+/** Rows below this on-screen height (zoomed far out) lose their label. */
+export const LABEL_MIN_ROW_PX = 12;
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -69,20 +86,35 @@ function fitMiddle(ctx: CanvasRenderingContext2D, text: string, maxW: number): s
 }
 
 /**
- * The rectangle an item is drawn in, in world units. The focus never gets smaller than about 0.9 of its natural
- * size on screen, and rows in a column with few nodes keep a readable height (there is room for them).
+ * Shorter wordings of a group label, longest first: the whole label, without the workspace in front of the folder,
+ * without "in N files". The first that fits is drawn; only when none does is the last one cut in the middle.
  */
-export function worldRect(
-  p: Placed,
-  k: number,
-  columnCount: number,
-): { x: number; y: number; w: number; h: number } {
+export function labelForms(label: string): string[] {
+  const forms = [label];
+  const add = (f: string) => {
+    if (f !== forms[forms.length - 1] && f.length > 0) forms.push(f);
+  };
+  const noWs = label.includes(" › ") ? label.slice(label.indexOf(" › ") + 3) : label;
+  add(noWs);
+  const noFiles = noWs.replace(/ in [\d,]+ files?$/, "");
+  add(noFiles);
+  if (label.includes(" · ")) add(label.slice(label.indexOf(" · ") + 3).replace(/ in [\d,]+ files?$/, ""));
+  const name = noFiles.split(" — ")[0] ?? noFiles;
+  add(name);
+  return forms;
+}
+
+function fitForms(ctx: CanvasRenderingContext2D, forms: string[], maxW: number): string {
+  for (const f of forms) if (ctx.measureText(f).width <= maxW) return f;
+  return fitMiddle(ctx, forms[forms.length - 1] as string, maxW);
+}
+
+/**
+ * The rectangle an item is drawn in, in world units. The focus never gets smaller than about 0.9 of its natural
+ * size on screen; everything else is drawn where the layout put it.
+ */
+export function worldRect(p: Placed, k: number): { x: number; y: number; w: number; h: number } {
   let { x, y, w, h } = p;
-  if ((p.type === "row" || p.type === "more") && columnCount <= 12 && h * k < 17) {
-    const nh = 17 / k;
-    y -= (nh - h) / 2;
-    h = nh;
-  }
   if (p.type === "focus") {
     const g = clamp(0.9 / k, 1, 2.2);
     if (g > 1) {
@@ -135,9 +167,16 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
   const [theme, setTheme] = useState<CanvasTheme>(() => readTheme(null));
   const [tip, setTip] = useState<Tip | null>(null);
 
-  const layout = useMemo<BowtieLayout>(() => layoutBowtie(nodes, edges), [nodes, edges]);
+  const [view, setView] = useState({ w: 0, h: 0 });
+  const layout = useMemo<BowtieLayout>(
+    () => layoutBowtie(nodes, edges, view.w > 0 ? view : DEFAULT_VIEW),
+    [nodes, edges, view],
+  );
   const ranks = useMemo(() => workspaceRanks(nodes), [nodes]);
-  const layoutKey = useMemo(() => layout.items.map((p) => p.node.id).join("\n"), [layout]);
+  const layoutKey = useMemo(
+    () => `${view.w}x${view.h}\n${layout.items.map((p) => p.node.id).join("\n")}`,
+    [layout, view],
+  );
 
   const cam = useRef<Camera>({ cx: 0, cy: 0, k: 1 });
   const size = useRef({ w: 800, h: 600 });
@@ -145,6 +184,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
   const blockView = useRef<string | null>(null); // an expanded group the camera is framing (reframed on resize)
   const hover = useRef<string | null>(null);
   const drawn = useRef<DrawnLabel[]>([]);
+  const drawnRects = useRef<DrawnRect[]>([]);
   const raf = useRef(0);
   const anim = useRef(0);
   const pending = useRef<{ id: string; expand: boolean } | null>(null);
@@ -210,42 +250,42 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
     const sy = (wy: number) => (wy - c.cy) * k + H / 2;
     const dark = T.scheme === "dark";
     const labels: DrawnLabel[] = [];
+    const rects: DrawnRect[] = [];
     const active = hover.current ?? sel;
-    const groupOf = (id: string) => L.byId.get(id)?.block;
+    const groupOf = (id: string) => L.byId.get(id)?.blocks.at(-1);
     const activeEdge = (src: string, dst: string) =>
       active !== null &&
       (src === active || dst === active || groupOf(src) === active || groupOf(dst) === active);
     const visible = (p: Placed) =>
       sx(p.x + p.w) > -20 && sx(p.x) < W + 20 && sy(p.y + p.h) > -20 && sy(p.y) < H + 20;
 
-    // Expanded-group backgrounds.
-    const heads = L.items.filter((p) => p.type === "head");
-    for (const hd of heads) {
-      const last = L.items.filter((p) => p.block === hd.node.id).at(-1);
-      const bottom = last ? last.y + last.h : hd.y + hd.h;
+    // Outlines of expanded groups.
+    for (const o of L.outlines) {
+      const hd = L.byId.get(o.id);
+      if (!hd) continue;
       const col = colorOf(hd.node, T.scheme, R);
-      const x = sx(hd.x - 6);
-      const y = sy(hd.y - 6);
-      const w = (hd.w + 12) * k;
-      const h = (bottom - hd.y + 12) * k;
+      const x = sx(o.x);
+      const y = sy(o.y);
+      const w = o.w * k;
+      const h = o.h * k;
       if (x > W || x + w < 0 || y > H || y + h < 0) continue;
-      roundRect(ctx, x, y, w, h, 12 * k);
+      roundRect(ctx, x, y, w, h, 10 * k);
       ctx.fillStyle = hexToRgba(col, dark ? 0.1 : 0.07);
       ctx.fill();
-      ctx.strokeStyle = hexToRgba(col, 0.45);
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = hexToRgba(col, 0.6);
+      ctx.lineWidth = 1.25;
       ctx.stroke();
     }
 
-    // Edges. Where several edges meet one side of a node they are spread along it (ordered by where they come
-    // from), so a hub's fan of edges does not pinch into one point.
+    // Edges. One curve per edge (the server already merges the callers of a row into it). Where several edges meet
+    // one side of a node they enter at evenly spaced ports, ordered by where they come from.
     const edgeInk = dark ? "#aab4c5" : "#475569";
-    const wsOfEnd = (src: string, dst: string): GraphNode | undefined => {
+    const endpoint = (src: string, dst: string): GraphNode | undefined => {
       const a = L.byId.get(src)?.node;
       const b = L.byId.get(dst)?.node;
       return a?.side === "focus" ? b : a;
     };
-    const rectOf = (p: Placed) => worldRect(p, k, L.columns[p.col]?.count ?? 0);
+    const rectOf = (p: Placed) => worldRect(p, k);
     interface Seg {
       e: (typeof E)[number];
       forward: boolean;
@@ -253,9 +293,10 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
       dr: ReturnType<typeof rectOf>;
       y0: number;
       y1: number;
+      maxW: number;
     }
     const segs: Seg[] = [];
-    const ends = new Map<string, { seg: Seg; end: 0 | 1; other: number }[]>();
+    const ends = new Map<string, { seg: Seg; end: 0 | 1; other: number; id: string }[]>();
     for (const e of E) {
       const s = L.byId.get(e.src);
       const d = L.byId.get(e.dst);
@@ -263,11 +304,11 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
       const sr = rectOf(s);
       const dr = rectOf(d);
       const forward = s.x + s.w / 2 <= d.x + d.w / 2;
-      const seg: Seg = { e, forward, sr, dr, y0: sr.y + sr.h / 2, y1: dr.y + dr.h / 2 };
+      const seg: Seg = { e, forward, sr, dr, y0: sr.y + sr.h / 2, y1: dr.y + dr.h / 2, maxW: 7 };
       segs.push(seg);
       const push = (key: string, end: 0 | 1, other: number) => {
         const list = ends.get(key) ?? [];
-        list.push({ seg, end, other });
+        list.push({ seg, end, other, id: e.id });
         ends.set(key, list);
       };
       push(`${e.src}|${forward ? "r" : "l"}`, 0, dr.y + dr.h / 2);
@@ -275,17 +316,18 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
     }
     const fan = new Map<Seg, [number, number]>();
     for (const [key, list] of ends) {
-      if (list.length < 2) continue;
-      const node = L.byId.get(key.slice(0, key.lastIndexOf("|")));
-      if (!node) continue;
-      const r = rectOf(node);
-      list.sort((p, q) => p.other - q.other);
-      const span = Math.max(0, r.h * 0.76);
+      const placed = L.byId.get(key.slice(0, key.lastIndexOf("|")));
+      if (!placed) continue;
+      const r = rectOf(placed);
+      list.sort((p, q) => p.other - q.other || (p.id < q.id ? -1 : 1));
+      const pad = placed.type === "focus" ? Math.min(14, r.h * 0.14) : r.h * 0.2;
+      const span = r.h - 2 * pad;
       list.forEach((it, i) => {
-        const y = r.y + r.h * 0.12 + (list.length === 1 ? span / 2 : (span * i) / (list.length - 1));
+        const y = r.y + pad + (span * (i + 0.5)) / list.length;
         const cur = fan.get(it.seg) ?? [it.seg.y0, it.seg.y1];
         cur[it.end] = y;
         fan.set(it.seg, cur);
+        it.seg.maxW = Math.min(it.seg.maxW, Math.max(1.4, (span / list.length) * k * 0.9));
       });
     }
     const arrivals = new Map<string, number>();
@@ -295,7 +337,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
     }
     const labelEdges = E.length <= 14;
     const pills: { x: number; y: number; text: string; col: string }[] = [];
-    const bigArrows: { x: number; y: number; dir: number; col: string; alpha: number; hot: boolean }[] = [];
+    const shared = new Map<string, { x: number; y: number; dir: number; hot: boolean }>();
     for (const sg of segs) {
       const { e, forward, sr, dr } = sg;
       const [fy0, fy1] = fan.get(sg) ?? [sg.y0, sg.y1];
@@ -311,37 +353,40 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
       )
         continue;
       const dir = forward ? 1 : -1;
-      const off = Math.max(36, Math.abs(x1 - x0) * 0.5) * dir;
+      const off = Math.max(30, Math.abs(x1 - x0) * 0.5) * dir;
       const hot = activeEdge(e.src, e.dst);
-      const endNode = wsOfEnd(e.src, e.dst);
+      const endNode = endpoint(e.src, e.dst);
       const col = endNode ? colorOf(endNode, T.scheme, R) : edgeInk;
-      const alpha = active === null ? 0.5 : hot ? 0.95 : 0.07;
-      const width = clamp(0.9 + 0.55 * Math.sqrt(Math.max(1, e.weight)), 0.9, 7) * clamp(k, 0.6, 1.3);
+      const alpha = active === null ? 0.55 : hot ? 0.95 : 0.08;
+      const width =
+        Math.min(sg.maxW, clamp(1 + 0.8 * Math.sqrt(Math.max(1, e.weight)), 1, 6)) * clamp(k, 0.7, 1.2);
       ctx.beginPath();
       ctx.moveTo(x0, y0);
       ctx.bezierCurveTo(x0 + off, y0, x1 - off, y1, x1, y1);
       ctx.strokeStyle = hot ? T.accent : hexToRgba(col, alpha);
-      if (hot) ctx.globalAlpha = 0.9;
       ctx.lineWidth = hot ? Math.max(width, 2) : width;
       ctx.setLineDash(e.confidence === "low" ? [6, 4] : []);
-      ctx.lineCap = "round";
+      ctx.lineCap = "butt";
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.globalAlpha = 1;
-      // Arrowhead at the callee end, pointing in the call direction. A busy node gets one shared arrowhead.
-      if ((arrivals.get(`${e.dst}|${forward ? "l" : "r"}`) ?? 0) > 6) {
-        const mid = (dr.y + dr.h / 2 - 0) as number;
-        if (!bigArrows.some((b) => b.x === x1 && b.dir === dir))
-          bigArrows.push({ x: x1, y: sy(mid), dir, col: edgeInk, alpha: active === null ? 0.9 : 0.5, hot });
+      // Arrowhead at the callee end. Where several edges arrive (the focus card), one shared arrowhead.
+      const dstItem = L.byId.get(e.dst);
+      const side = forward ? "l" : "r";
+      if (dstItem?.type === "focus" || (arrivals.get(`${e.dst}|${side}`) ?? 0) > 1) {
+        const key = `${e.dst}|${side}`;
+        const cur = shared.get(key);
+        const cy = sy(dr.y + dr.h / 2);
+        if (!cur) shared.set(key, { x: x1, y: cy, dir, hot });
+        else cur.hot ||= hot;
       } else {
-        const len = 7 + Math.min(width, 5) * 1.6;
-        const half = 3.2 + Math.min(width, 5) * 0.7;
+        const len = 8 + Math.min(width, 5) * 1.3;
+        const half = 3.4 + Math.min(width, 5) * 0.6;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x1 - dir * len, y1 - half);
         ctx.lineTo(x1 - dir * len, y1 + half);
         ctx.closePath();
-        ctx.fillStyle = hot ? T.accent : hexToRgba(col, Math.min(1, alpha + 0.25));
+        ctx.fillStyle = hot ? T.accent : hexToRgba(col, Math.min(1, alpha + 0.3));
         ctx.fill();
       }
       const grouped = L.byId.get(e.src)?.node.kind === "group" || L.byId.get(e.dst)?.node.kind === "group";
@@ -354,13 +399,13 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
         pills.push({ x: bx, y: by, text: String(e.weight), col });
       }
     }
-    for (const b of bigArrows) {
+    for (const b of shared.values()) {
       ctx.beginPath();
       ctx.moveTo(b.x + 1, b.y);
-      ctx.lineTo(b.x - b.dir * 15, b.y - 8);
-      ctx.lineTo(b.x - b.dir * 15, b.y + 8);
+      ctx.lineTo(b.x - b.dir * 16, b.y - 9);
+      ctx.lineTo(b.x - b.dir * 16, b.y + 9);
       ctx.closePath();
-      ctx.fillStyle = b.hot ? T.accent : hexToRgba(b.col, b.alpha);
+      ctx.fillStyle = b.hot ? T.accent : hexToRgba(edgeInk, active === null ? 0.95 : 0.6);
       ctx.fill();
     }
 
@@ -369,11 +414,12 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
     for (const p of L.items) {
       if (!visible(p)) continue;
       const n = p.node;
-      const wr = worldRect(p, k, L.columns[p.col]?.count ?? 0);
+      const wr = worldRect(p, k);
       const x = sx(wr.x);
       const y = sy(wr.y);
       const w = wr.w * k;
       const h = wr.h * k;
+      rects.push({ id: n.id, type: p.type, x: x, y: y, w: w, h: h });
       const isSel = sel === n.id;
       const isHot = hover.current === n.id;
       const dimmed = active !== null && !isSel && !isHot && !(adj.get(active)?.has(n.id) ?? false);
@@ -425,7 +471,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
         if (n.path) {
           ctx.fillStyle = T.muted;
           ctx.font = `${pxText(11.5, 10, 12.5)}px ${MONO}`;
-          const path = fitText(ctx, `${n.path}`, maxW);
+          const path = fitMiddle(ctx, `${n.path}`, maxW);
           ctx.fillText(path, x + padX, y + h * 0.84);
         }
       } else if (p.type === "group" || p.type === "head") {
@@ -445,7 +491,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
           ctx.lineWidth = 2;
           ctx.stroke();
         }
-        const fs = pxText(13, 11, 14.5);
+        const fs = pxText(12.5, 11, 14);
         const caretW = fs * 0.9;
         const padL = Math.max(10, r * 0.9);
         // Caret: right-pointing when collapsed, down-pointing when expanded.
@@ -483,7 +529,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
         ctx.fillStyle = T.text;
         ctx.font = `600 ${fs}px ${FONT}`;
         const lx = x + padL + caretW + 8;
-        const text = fitMiddle(ctx, n.label, chipX - lx - 8);
+        const text = fitForms(ctx, labelForms(n.label), chipX - lx - 8);
         ctx.fillText(text, lx, y + h / 2 + 0.5);
         labels.push({ id: n.id, text, x: lx, y: y + h / 2 - fs / 2, w: ctx.measureText(text).width, h: fs });
         ctx.textBaseline = "alphabetic";
@@ -568,14 +614,23 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
     ctx.font = `700 11px ${FONT}`;
+    const spans = new Map<string, { side: "in" | "out"; hop: number; x0: number; x1: number }>();
     for (const col of L.columns) {
       if (col.side === "focus") continue;
+      const key = `${col.side}${col.hop}`;
+      const cur = spans.get(key);
+      if (cur) {
+        cur.x0 = Math.min(cur.x0, col.x);
+        cur.x1 = Math.max(cur.x1, col.x + col.w);
+      } else spans.set(key, { side: col.side, hop: col.hop, x0: col.x, x1: col.x + col.w });
+    }
+    for (const sp of spans.values()) {
       const count = L.items
-        .filter((p) => p.side === col.side && p.hop === col.hop)
+        .filter((p) => p.side === sp.side && p.hop === sp.hop)
         .reduce((s, p) => s + weightOf(p.node), 0);
-      const cx = sx(col.x + col.w / 2);
+      const cx = sx((sp.x0 + sp.x1) / 2);
       if (cx < -120 || cx > W + 120) continue;
-      const title = columnTitle(col.side, col.hop, count);
+      const title = columnTitle(sp.side, sp.hop, count);
       const tw = ctx.measureText(title).width + 20;
       roundRect(ctx, cx - tw / 2, 44, tw, 22, 11);
       ctx.fillStyle = hexToRgba(T.accent, dark ? 0.2 : 0.1);
@@ -585,6 +640,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
     }
     ctx.textAlign = "left";
     drawn.current = labels;
+    drawnRects.current = rects;
   }, [colorOf]);
 
   const schedule = useCallback(() => {
@@ -623,7 +679,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
     (r: { x0: number; y0: number; x1: number; y1: number }, maxK: number): Camera => {
       const { w, h } = size.current;
       const padX = 28;
-      const top = 72;
+      const top = TOP_MARGIN;
       const bottom = 24;
       const k = clamp(
         Math.min((w - 2 * padX) / Math.max(1, r.x1 - r.x0), (h - top - bottom) / Math.max(1, r.y1 - r.y0)),
@@ -640,7 +696,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
       const b = live.current.layout.bounds;
       moved.current = false;
       blockView.current = null;
-      goTo(cameraFor({ x0: b.x0, y0: b.y0 + 30, x1: b.x1, y1: b.y1 }, FIT_MAX_K), ms);
+      goTo(cameraFor(b, FIT_MAX_K), ms);
     },
     [cameraFor, goTo],
   );
@@ -656,7 +712,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
       if (p.type === "head") {
         let r = { x0: p.x, y0: p.y, x1: p.x + p.w, y1: p.y + p.h };
         for (const m of L.items) {
-          if (m.block !== id) continue;
+          if (!m.blocks.includes(id)) continue;
           r = {
             x0: Math.min(r.x0, m.x),
             y0: r.y0,
@@ -666,8 +722,8 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
         }
         // Keep the focus in frame with the block. When the whole picture is readable at its fit zoom, show all of it.
         const b = L.bounds;
-        const all = cameraFor({ x0: b.x0, y0: b.y0 + 30, x1: b.x1, y1: b.y1 }, FIT_MAX_K);
-        if (all.k >= 0.58) {
+        const all = cameraFor(b, FIT_MAX_K);
+        if (all.k >= 0.8) {
           moved.current = false;
           goTo(all, ms);
           return;
@@ -722,6 +778,11 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
     const measure = () => {
       const r = wrap.getBoundingClientRect();
       size.current = { w: Math.max(200, r.width), h: Math.max(200, r.height) };
+      setView((v) => {
+        const w = Math.round(size.current.w);
+        const h = Math.round(size.current.h);
+        return v.w === w && v.h === h ? v : { w, h };
+      });
       const blk = blockView.current;
       if (blk && live.current.layout.byId.has(blk)) showItem(blk, 0);
       else if (!moved.current) fitAll(0);
@@ -807,6 +868,14 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
           w: Math.round(l.w),
           h: Math.round(l.h),
         })),
+        rects: drawnRects.current.map((r) => ({
+          id: r.id,
+          type: r.type,
+          x: Math.round(r.x),
+          y: Math.round(r.y),
+          w: Math.round(r.w),
+          h: Math.round(r.h * 10) / 10,
+        })),
       });
     };
     el.addEventListener("gantry:zoom-to", zoom);
@@ -837,7 +906,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
     const items = live.current.layout.items;
     for (let i = items.length - 1; i >= 0; i--) {
       const p = items[i] as Placed;
-      const r = worldRect(p, c.k, live.current.layout.columns[p.col]?.count ?? 0);
+      const r = worldRect(p, c.k);
       if (wx >= r.x && wx <= r.x + r.w && wy >= r.y && wy <= r.y + r.h) return p;
     }
     return null;

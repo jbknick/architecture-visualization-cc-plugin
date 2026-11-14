@@ -87,7 +87,7 @@ function GroupMembers({ node }: { node: GraphNode }) {
       <p className="muted">
         {node.expanded
           ? "This group is expanded: its members are shown one by one."
-          : "Pick a member to expand this group and see it on its own."}
+          : "Pick a member to open this group and see that member's details."}
       </p>
       <ul className="member-list">
         {members.map((m) => (
