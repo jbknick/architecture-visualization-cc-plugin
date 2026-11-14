@@ -317,7 +317,10 @@ export async function refreshWorking(
       }
     }
 
-    if (targets.size > 0) await indexRepo(paths, { layer: "working", files: [...targets], store });
+    if (targets.size > 0) {
+      await indexRepo(paths, { layer: "working", files: [...targets], store });
+      refreshDescriptionFts(store); // re-indexed rows start without their description columns
+    }
     dropRedundantWorking(store);
     store.setMeta("last_refresh_at", new Date().toISOString());
 

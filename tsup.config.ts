@@ -1,3 +1,4 @@
+import { cpSync } from "node:fs";
 import { defineConfig } from "tsup";
 
 export default defineConfig({
@@ -10,6 +11,10 @@ export default defineConfig({
   target: "node22",
   platform: "node",
   clean: true,
+  // The headless worker reads its system prompt from <bundle dir>/prompts/ (same relative path as in the source tree).
+  onSuccess: async () => {
+    cpSync("packages/core/src/describe/prompts", "plugin/dist/prompts", { recursive: true });
+  },
   external: [
     "better-sqlite3",
     "sqlite-vec",
