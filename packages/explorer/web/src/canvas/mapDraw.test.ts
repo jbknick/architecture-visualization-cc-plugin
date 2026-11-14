@@ -2,12 +2,15 @@
 import { describe, expect, it } from "vitest";
 import { buildHierarchy } from "../../mock/hierarchy.ts";
 import { projectMapLarge } from "../../mock/largeMap.ts";
+import { workspaceColorAt } from "../workspacePalette.ts";
+import { kindTier } from "./hierarchy.ts";
 import { computeLayout } from "./layout.ts";
 import { distanceToPolyline, drawMap, edgeWidth, pickCell, rectOf } from "./mapDraw.ts";
+import { headPx, screenRectOf } from "./mapGeom.ts";
 import { FIT_INSETS } from "./mapLayout.ts";
 import { segmentHitsBox } from "./route.ts";
-import { buildScene, layoutInputFor, nodeTitle, subtitleParts } from "./scene.ts";
-import { readTheme } from "./style.ts";
+import { buildScene, folderTitle, layoutInputFor, nodeTitle, subtitleParts } from "./scene.ts";
+import { contrastRatio, inkAgainst, readTheme } from "./style.ts";
 
 async function laidOut() {
   const { nodes, edges } = buildHierarchy();
@@ -70,6 +73,34 @@ describe("titles and edge widths", () => {
     expect(nodeTitle(scene, ws)).toBe("api");
     // 1,700 functions in 260 files from the workspace node, not the 1 file / 3 functions loaded below it.
     expect(subtitleParts(scene, ws)).toEqual(["app", "1,700 functions", "260 files"]);
+  });
+
+  it("names the repo-root workspace's type '(repo root)' where the others show app / package", () => {
+    const scene = buildScene(
+      [
+        {
+          id: "ws:.",
+          kind: "workspace",
+          label: "acme-root",
+          size: 1,
+          badges: ["app"],
+          stats: { files: 9, functions: 17 },
+        },
+        {
+          id: "ws:pkg",
+          kind: "workspace",
+          label: "pkg",
+          size: 1,
+          badges: ["package"],
+          stats: { files: 2, functions: 5 },
+        },
+      ],
+      [],
+    );
+    const root = scene.tree.index.get("ws:.") as number;
+    const pkg = scene.tree.index.get("ws:pkg") as number;
+    expect(subtitleParts(scene, root)).toEqual(["(repo root)", "17 functions", "9 files"]);
+    expect(subtitleParts(scene, pkg)[0]).toBe("package");
   });
 
   it("grows with the square root of the weight, clamped", () => {
@@ -135,7 +166,7 @@ describe("count pills", () => {
 
 describe("the large mock, drawn at the fit zoom of a 1180 x 812 canvas", () => {
   const VIEW = { w: 1180, h: 812 };
-  async function drawLarge(level: "workspaces" | "dirs" | "files", showDeclared = false) {
+  async function drawLarge(level: "workspaces" | "dirs" | "files", showDeclared = false, zoom = 1) {
     const view = projectMapLarge({ focus: null, level, options: {} });
     if ("error" in view) throw new Error(view.error);
     const scene = buildScene(view.nodes, view.edges, "nested-elk");
@@ -145,10 +176,16 @@ describe("the large mock, drawn at the fit zoom of a 1180 x 812 canvas", () => {
     const aw = VIEW.w - FIT_INSETS.left - FIT_INSETS.right;
     const ah = VIEW.h - FIT_INSETS.top - FIT_INSETS.bottom;
     const scale = Math.min(aw / (b.w + 6), ah / (b.h + 6));
-    const cam = {
+    const fit = {
       scale,
       tx: FIT_INSETS.left + (aw - (b.w + 6) * scale) / 2 - (b.x - 3) * scale,
       ty: FIT_INSETS.top + (ah - (b.h + 6) * scale) / 2 - (b.y - 3) * scale,
+    };
+    // Zoomed about the middle of the canvas.
+    const cam = {
+      scale: fit.scale * zoom,
+      tx: VIEW.w / 2 - (VIEW.w / 2 - fit.tx) * zoom,
+      ty: VIEW.h / 2 - (VIEW.h / 2 - fit.ty) * zoom,
     };
     const result = drawMap({
       ctx: stubContext(),
@@ -166,7 +203,7 @@ describe("the large mock, drawn at the fit zoom of a 1180 x 812 canvas", () => {
       links: [],
       hoverEdge: null,
     });
-    return { scene, result, cam };
+    return { scene, result, cam, geo: out.map };
   }
   const overlap = (a: { x: number; y: number; w: number; h: number }, b: typeof a) =>
     a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -182,6 +219,37 @@ describe("the large mock, drawn at the fit zoom of a 1180 x 812 canvas", () => {
       for (let b = a + 1; b < result.pills.length; b++)
         expect(overlap(p, result.pills[b] as typeof p), `${p.key} / ${result.pills[b]?.key}`).toBe(false);
     }
+  });
+
+  it("puts every pill on its own route and clear of the other routes, except where a channel is full", async () => {
+    const { result } = await drawLarge("workspaces");
+    const report: string[] = [];
+    for (const p of result.pills) {
+      const own = result.edgeHits.find((e) => e.key === p.key);
+      if (!own) throw new Error(`no route for ${p.key}`);
+      const cx = p.x + p.w / 2;
+      const cy = p.y + p.h / 2;
+      // On its own route (the pill is centred on a straight stretch of it).
+      expect(distanceToPolyline(cx, cy, own.route), `${p.key} is on its route`).toBeLessThan(1);
+      for (const other of result.edgeHits) {
+        if (other.key === p.key) continue;
+        for (let s = 1; s < other.route.length; s++) {
+          const a = other.route[s - 1] as [number, number];
+          const b = other.route[s] as [number, number];
+          // Orthogonal segments: the stroke touches the pill when the ranges overlap on both axes.
+          const x0 = Math.min(a[0], b[0]) - other.width / 2;
+          const x1 = Math.max(a[0], b[0]) + other.width / 2;
+          const y0 = Math.min(a[1], b[1]) - other.width / 2;
+          const y1 = Math.max(a[1], b[1]) + other.width / 2;
+          if (x0 < p.x + p.w && x1 > p.x && y0 < p.y + p.h && y1 > p.y)
+            report.push(`${p.key.slice(26)} / ${other.key.slice(26)} ${p.count}`);
+        }
+      }
+    }
+    // At most two links of this crowded diagram have no clean stretch anywhere (their channel is a bundle of
+    // lanes): their pills cover as little of the other lines as they can. Every other pill is clear of all lines.
+    const crowded = new Set(report.map((r) => r.split(" ").pop()));
+    expect(crowded.size).toBeLessThanOrEqual(2);
   });
 
   it("numbers only the heaviest arrows above 40 (declared dependencies shown: 54 arrows)", async () => {
@@ -239,27 +307,88 @@ describe("the large mock, drawn at the fit zoom of a 1180 x 812 canvas", () => {
     }
   });
 
-  it("gives each incoming arrow its own port, at least 8px apart, and arrowheads of at least 9px", async () => {
-    const { result } = await drawLarge("workspaces");
+  it("gives each link its own port, at least 12px apart, and arrowheads of at least 11px", async () => {
+    const { result, cam } = await drawLarge("workspaces");
     const ends = new Map<number, [number, number][]>();
+    const starts = new Map<number, [number, number][]>();
     for (const e of result.edgeHits) {
       const list = ends.get(e.dst) ?? [];
       list.push(e.route[e.route.length - 1] as [number, number]);
       ends.set(e.dst, list);
-      const a = e.route[e.route.length - 2] as [number, number];
-      const z = e.route[e.route.length - 1] as [number, number];
-      expect(
-        Math.hypot(z[0] - a[0], z[1] - a[1]),
-        `${e.key}: last leg holds the arrowhead`,
-      ).toBeGreaterThanOrEqual(9);
+      const out = starts.get(e.src) ?? [];
+      out.push(e.route[0] as [number, number]);
+      starts.set(e.src, out);
+      expect(e.head, `${e.key}: arrowhead`).toBeGreaterThanOrEqual(11);
     }
-    for (const list of ends.values())
+    for (const list of [...ends.values(), ...starts.values()])
       for (let i = 0; i < list.length; i++)
         for (let j = i + 1; j < list.length; j++) {
           const p = list[i] as [number, number];
           const q = list[j] as [number, number];
-          expect(Math.hypot(p[0] - q[0], p[1] - q[1])).toBeGreaterThanOrEqual(8);
+          expect(Math.hypot(p[0] - q[0], p[1] - q[1])).toBeGreaterThanOrEqual(12 * cam.scale - 0.5);
         }
+  });
+
+  it("colours every line, arrowhead and pill by the importing workspace, and never fades the light ones", async () => {
+    const { scene, result } = await drawLarge("workspaces", true);
+    const bySource = new Map<number, Set<string>>();
+    for (const e of result.edgeHits) {
+      bySource.set(e.src, (bySource.get(e.src) ?? new Set()).add(e.colour));
+      expect(e.width, `${e.key} width`).toBeGreaterThanOrEqual(1.25);
+      expect(e.alpha, `${e.key} opacity`).toBeGreaterThanOrEqual(0.55);
+    }
+    // One colour per source workspace, a different one for each.
+    for (const set of bySource.values()) expect(set.size).toBe(1);
+    const colours = [...bySource.values()].map((s) => [...s][0]);
+    expect(new Set(colours).size).toBe(bySource.size);
+    expect(bySource.size).toBeGreaterThanOrEqual(8);
+    expect(scene.roots.length).toBe(11);
+  });
+
+  it("keeps the link ink readable on both themes (3:1 for lines, 4.5:1 for the numbers)", () => {
+    for (const scheme of ["light", "dark"] as const) {
+      const theme = { ...readTheme(null), scheme };
+      const bg = scheme === "light" ? "#f3f4f7" : "#0f1217";
+      const surface = scheme === "light" ? "#ffffff" : "#171b22";
+      for (let k = 0; k < 12; k++) {
+        const colour = workspaceColorAt(k, scheme);
+        const line = inkAgainst(colour, bg, scheme, 3);
+        const text = inkAgainst(colour, surface, scheme, 4.5);
+        expect(contrastRatio(line, bg), `${scheme} ${k} line`).toBeGreaterThanOrEqual(3);
+        expect(contrastRatio(text, surface), `${scheme} ${k} text`).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(theme.scheme).toBe(scheme);
+    }
+  });
+
+  it("shows a folder strip only when it can show the whole folder name, and never cuts the name", async () => {
+    let strips = 0;
+    for (const zoom of [1, 2, 4, 9]) {
+      const { scene, geo, cam, result } = await drawLarge("dirs", false, zoom);
+      for (let i = 0; i < scene.tree.nodes.length; i++) {
+        const node = scene.tree.nodes[i];
+        if (!node || kindTier(node.kind) !== 1 || scene.skipped[i]) continue;
+        const r = screenRectOf(scene, geo, cam, i);
+        if (r.x > VIEW.w || r.y > VIEW.h || r.x + r.w < 0 || r.y + r.h < 0 || r.w < 2 || r.h < 2) continue;
+        const head = headPx(scene, geo, i, r.w, r.h, cam.scale);
+        const label = result.labels.find((l) => l.id === node.id && l.kind === "folder");
+        if (head === 0) {
+          // No strip, no glyph, no name: the tiles stay and the name shows on hover.
+          expect(label, `${node.id} has no strip but a label`).toBeUndefined();
+          continue;
+        }
+        strips++;
+        expect(label, `${node.id} has a strip with no name`).toBeDefined();
+        const shown = (label?.lines ?? [])
+          .join(" ")
+          .replace(/( ·)? [\d,]+ fn$/, "")
+          .replace(/\s+/g, "");
+        expect(shown, node.id).toBe(folderTitle(scene, i).replace(/\s+/g, ""));
+        expect(shown).not.toContain("…");
+        expect(shown).not.toContain("...");
+      }
+    }
+    expect(strips).toBeGreaterThan(20);
   });
 
   it("never cuts a folder name that has 90px or more, and never prints a file name with an ellipsis", async () => {

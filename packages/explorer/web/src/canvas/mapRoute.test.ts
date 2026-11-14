@@ -4,7 +4,7 @@ import { projectMapLarge } from "../../mock/largeMap.ts";
 import { buildTree } from "./hierarchy.ts";
 import { computeLayout } from "./layout.ts";
 import { distanceToPolyline } from "./mapDraw.ts";
-import { GRID, routeLinks } from "./mapRoute.ts";
+import { GRID, routeCrossings, routeLinks } from "./mapRoute.ts";
 import { type Pt, segmentHitsBox } from "./route.ts";
 import type { LayoutInput, Rect } from "./types.ts";
 
@@ -79,6 +79,14 @@ describe("routeLinks", () => {
   });
 });
 
+async function largeMap() {
+  const inp = largeInput("workspaces");
+  const out = await computeLayout(inp);
+  if (!out.map) throw new Error("no map geometry");
+  const real = new Set(inp.edges.filter((e) => e.kind !== "depends_on").map((e) => `${e.src}>${e.dst}`));
+  return { map: out.map, tree: buildTree(inp.nodes, { boxWorkspaces: true }), real };
+}
+
 describe("routes on the large mock", () => {
   it("never pass through a box, are orthogonal, and use ports at least 8px apart", async () => {
     const inp = largeInput("workspaces");
@@ -125,5 +133,107 @@ describe("routes on the large mock", () => {
           expect(d === 0 || d >= 8, `${id}: ports ${p} and ${q}`).toBe(true);
         }
     }
+  });
+
+  it("keeps the ports of the import links at least 12px apart (one lane step)", async () => {
+    const { map, real } = await largeMap();
+    const ports = new Map<string, Pt[]>();
+    for (const key of Object.keys(map.routes).filter((k) => real.has(k))) {
+      const pts = map.routes[key] as Pt[];
+      const [a, b] = key.split(">") as [string, string];
+      ports.set(a, [...(ports.get(a) ?? []), pts[0] as Pt]);
+      ports.set(b, [...(ports.get(b) ?? []), pts[pts.length - 1] as Pt]);
+    }
+    for (const [id, list] of ports)
+      for (let i = 0; i < list.length; i++)
+        for (let j = i + 1; j < list.length; j++) {
+          const p = list[i] as Pt;
+          const q = list[j] as Pt;
+          expect(Math.hypot(p[0] - q[0], p[1] - q[1]), `${id}: ports ${p} and ${q}`).toBeGreaterThanOrEqual(
+            12,
+          );
+        }
+  });
+
+  it("has no crossings between routes that share a channel and keep the same order at both ends", async () => {
+    const { map, real } = await largeMap();
+    // The links drawn by default: imports (declared-only links are an opt-in extra).
+    const keys = Object.keys(map.routes).filter((k) => real.has(k));
+    const route = (k: string) => map.routes[k] as Pt[];
+    let sharing = 0;
+    let ordered = 0;
+    for (let i = 0; i < keys.length; i++)
+      for (let j = i + 1; j < keys.length; j++) {
+        const a = route(keys[i] as string);
+        const b = route(keys[j] as string);
+        for (let s = 1; s < a.length; s++)
+          for (let t = 1; t < b.length; t++) {
+            const [p0, p1] = [a[s - 1] as Pt, a[s] as Pt];
+            const [q0, q1] = [b[t - 1] as Pt, b[t] as Pt];
+            const h = p0[1] === p1[1];
+            if (h !== (q0[1] === q1[1])) continue;
+            const lat = h ? 1 : 0;
+            const ax = h ? 0 : 1;
+            if (Math.abs((q0[lat] as number) - (p0[lat] as number)) > 2 * GRID) continue;
+            const lo = Math.max(
+              Math.min(p0[ax] as number, p1[ax] as number),
+              Math.min(q0[ax] as number, q1[ax] as number),
+            );
+            const hi = Math.min(
+              Math.max(p0[ax] as number, p1[ax] as number),
+              Math.max(q0[ax] as number, q1[ax] as number),
+            );
+            if (hi - lo < 2 * GRID) continue; // a shared channel: parallel, close, overlapping for a stretch
+            sharing++;
+            // Where each route comes from at the two ends of the stretch: the lateral position of the leg that
+            // joins its segment there (or of the segment itself, at the start or end of the route).
+            const side = (pts: Pt[], idx: number, high: boolean): number => {
+              const sp = pts[idx - 1] as Pt;
+              const sq = pts[idx] as Pt;
+              const lowFirst = (sp[ax] as number) <= (sq[ax] as number);
+              const atStart = high ? !lowFirst : lowFirst; // is that end of the segment its first point?
+              const end = (atStart ? sp : sq)[ax] as number;
+              if (high ? end > hi : end < lo) return sp[lat] as number; // the route runs on past the stretch
+              const neighbour = atStart ? pts[idx - 2] : pts[idx + 1];
+              return (neighbour ?? sp)[lat] as number;
+            };
+            const order = (high: boolean) => Math.sign(side(b, t, high) - side(a, s, high));
+            if (order(false) === 0 || order(true) === 0 || order(false) !== order(true)) continue;
+            ordered++;
+            // Same order at both ends: no segment of either route may cross the other inside the channel.
+            const cross = (u0: Pt, u1: Pt, route2: Pt[]): number => {
+              let n = 0;
+              const uh = u0[1] === u1[1];
+              for (let k = 1; k < route2.length; k++) {
+                const [v0, v1] = [route2[k - 1] as Pt, route2[k] as Pt];
+                if (uh === (v0[1] === v1[1])) continue;
+                const [h0, h1, w0, w1] = uh ? [u0, u1, v0, v1] : [v0, v1, u0, u1];
+                if (
+                  Math.min(h0[0], h1[0]) < w0[0] &&
+                  w0[0] < Math.max(h0[0], h1[0]) &&
+                  Math.min(w0[1], w1[1]) < h0[1] &&
+                  h0[1] < Math.max(w0[1], w1[1])
+                )
+                  n++;
+              }
+              return n;
+            };
+            expect(
+              cross(p0, p1, b) + cross(q0, q1, a),
+              `${keys[i]} and ${keys[j]} cross inside the channel they share`,
+            ).toBe(0);
+          }
+      }
+    expect(sharing).toBeGreaterThan(0);
+    expect(ordered).toBeGreaterThan(0);
+  });
+
+  it("crosses little overall", async () => {
+    const { map, real } = await largeMap();
+    const n = routeCrossings(
+      new Map((Object.entries(map.routes) as [string, Pt[]][]).filter(([k]) => real.has(k))),
+    );
+    console.log("route crossings on the large mock:", n);
+    expect(n).toBeLessThanOrEqual(20); // 32 before the ports were ordered by the direction their routes leave
   });
 });

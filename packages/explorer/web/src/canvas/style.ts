@@ -19,6 +19,36 @@ export function labelInk(colour: string, scheme: Scheme): string {
   return scheme === "light" ? mix(colour, "#000000", 0.5) : mix(colour, "#ffffff", 0.6);
 }
 
+/** WCAG relative luminance of a #rrggbb colour. */
+export function luminance(hex: string): number {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const lin = (v: number): number => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+}
+
+/** WCAG contrast ratio of two #rrggbb colours (1 to 21). */
+export function contrastRatio(a: string, b: string): number {
+  const la = luminance(a);
+  const lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+/**
+ * `colour` moved toward black (light theme) or white (dark theme) in small steps, only as far as it takes to reach
+ * `min` contrast against `bg`. A colour that already has the contrast is returned as it is, so the hue survives.
+ */
+export function inkAgainst(colour: string, bg: string, scheme: Scheme, min: number): string {
+  const toward = scheme === "light" ? "#000000" : "#ffffff";
+  for (let k = 0; k <= 20; k++) {
+    const c = k === 0 ? colour : mix(toward, colour, k / 20);
+    if (contrastRatio(c, bg) >= min) return c;
+  }
+  return toward;
+}
+
 export function hexToRgba(hex: string, alpha: number): string {
   const h = hex.replace("#", "");
   const n = Number.parseInt(h.length === 3 ? h.replace(/./g, "$&$&") : h, 16);

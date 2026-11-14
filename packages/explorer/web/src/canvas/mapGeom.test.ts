@@ -7,7 +7,9 @@ import { pickCell } from "./mapDraw.ts";
 import {
   actualInner,
   DIR_STRIP_MAX,
+  DIR_STRIP_TWO,
   FILE_STRIP_MAX,
+  folderStrip,
   headPx,
   mapChild,
   normInner,
@@ -156,5 +158,38 @@ describe("picking is exact with screen-space headers", () => {
       expect(cr.x + cr.w).toBeLessThanOrEqual(inner.x + inner.w + 1e-6);
       expect(cr.y + cr.h).toBeLessThanOrEqual(inner.y + inner.h + 1e-6);
     }
+  });
+});
+
+describe("folder strips", () => {
+  it("show the whole name (and the count when it fits), or nothing at all", () => {
+    // Fits on one line with the count.
+    const one = folderStrip("routes", "12 fn", 140, 40);
+    expect(one?.lines).toEqual(["routes · 12 fn"]);
+    expect(one?.glyph).toBe(true);
+    // Wraps at the hyphen onto two lines in a tall cell, the count after the name.
+    const two = folderStrip("participants-pause", "9 fn", 100, 60);
+    expect(two?.lines.join(" ")).toContain("participants-");
+    expect(two?.lines.length).toBeLessThanOrEqual(2);
+    expect(two?.head).toBe(DIR_STRIP_TWO);
+    // A word wider than the strip is never broken or ellipsized: no strip, no glyph.
+    expect(folderStrip("participants-pause-resume", "9 fn", 72, 60)).toBeNull();
+    // A cell that is too short for two lines gets one line or nothing.
+    expect(folderStrip("participants-pause-resume-controller", "9 fn", 150, 40)).toBeNull();
+    // Too small for any strip.
+    expect(folderStrip("a", "1 fn", 60, 40)).toBeNull();
+    expect(folderStrip("a", "1 fn", 100, 20)).toBeNull();
+    // Whatever it returns holds the name whole.
+    for (const w of [70, 80, 100, 140, 220])
+      for (const h of [28, 40, 60]) {
+        const s = folderStrip("participants-pause", "9 fn", w, h);
+        if (s)
+          expect(
+            s.lines
+              .join("")
+              .replace(/ · 9 fn|9 fn/, "")
+              .replace(/\s/g, ""),
+          ).toBe("participants-pause");
+      }
   });
 });

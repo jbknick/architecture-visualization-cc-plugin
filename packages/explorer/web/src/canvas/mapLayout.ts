@@ -378,7 +378,7 @@ export async function layoutMap(
     degOut.set(a, (degOut.get(a) ?? 0) + 1);
     degIn.set(b, (degIn.get(b) ?? 0) + 1);
   }
-  const portSide = (r: number): number => 16 + GRID * (Math.max(degIn.get(r) ?? 0, degOut.get(r) ?? 0) + 1);
+  const portSide = (r: number): number => 16 + GRID * Math.max(degIn.get(r) ?? 0, degOut.get(r) ?? 0, 1);
   const fns = new Map(roots.map((r) => [r, fnOf(r)]));
   const filesGiven = new Map(input.nodes.map((n) => [n.id, n.files]));
   const files = Float64Array.from(tree.nodes, (n) => filesGiven.get(n.id) ?? 0);
@@ -468,8 +468,15 @@ export async function layoutMap(
     bx1 = Math.max(bx1, r.x + r.w);
     by1 = Math.max(by1, r.y + r.h);
   }
-  for (const pts of placedBest.routes.values())
+  // The fit follows the boxes and the import routes. Declared-only routes (hidden by default) may run a little
+  // beyond it when they must detour; they must not shrink the picture.
+  for (const [key, pts] of placedBest.routes)
     for (const [px, py] of pts) {
+      if (
+        !pairWeight.has(key) &&
+        (px < bx0 - ROUTE_ROOM || py < by0 - ROUTE_ROOM || px > bx1 + ROUTE_ROOM || py > by1 + ROUTE_ROOM)
+      )
+        continue;
       bx0 = Math.min(bx0, px);
       by0 = Math.min(by0, py);
       bx1 = Math.max(bx1, px);

@@ -150,6 +150,7 @@ export function TreemapCanvas({
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
   const [tick, setTick] = useState(0);
   const [crumbs, setCrumbs] = useState<Crumb[] | null>(null);
+  const [zoomedIn, setZoomedIn] = useState(false);
   const layoutViewport = useRef<{ w: number; h: number } | null>(null);
   const ui = useMapView();
   const debug = useMemo(debugEnabled, []);
@@ -277,6 +278,8 @@ export function TreemapCanvas({
     let anim = 0;
     let stickyTop = 0;
     let crumbKey = "";
+    let zoomedPast = false;
+    setZoomedIn(false);
     let hoverEdge: EdgeHit | null = null;
     /** Where the running camera animation ends; repeated zoom steps build on it, not on the half-way state. */
     let animTarget: Camera | null = null;
@@ -299,6 +302,15 @@ export function TreemapCanvas({
       w: geo.bounds.w + 6,
       h: geo.bounds.h + 6,
     });
+
+    /** The key sits over the canvas: count pills and titles keep clear of it. */
+    const keyRects = (): Rect[] => {
+      const el = wrapRef.current?.querySelector(".gc-key");
+      if (!el) return [];
+      const k = el.getBoundingClientRect();
+      const c = canvas.getBoundingClientRect();
+      return [{ x: k.left - c.left, y: k.top - c.top, w: k.width, h: k.height }];
+    };
 
     const draw = () => {
       raf = 0;
@@ -329,7 +341,13 @@ export function TreemapCanvas({
         links: l.links,
         hoverEdge: l.hoverEdge,
         stickyTop,
+        reserved: keyRects(),
       });
+      const pastFit = cam.scale > fitScale * ZOOMED_PAST_FIT;
+      if (pastFit !== zoomedPast) {
+        zoomedPast = pastFit;
+        setZoomedIn(pastFit);
+      }
       // "You are here": the workspace and folders at the centre of the canvas, while zoomed in or when the
       // workspace title has scrolled out of view.
       const path = locatePath(scene, geo, cam, w / 2, h / 2);
@@ -603,7 +621,15 @@ export function TreemapCanvas({
         stickyTop,
         edges: last.edgeHits.map((e) => {
           const mid = e.pts[Math.floor(e.pts.length / 2)] as [number, number];
-          return { key: e.key, x: mid[0], y: mid[1], weight: e.weight, route: e.route, width: e.width };
+          return {
+            key: e.key,
+            x: mid[0],
+            y: mid[1],
+            weight: e.weight,
+            route: e.route,
+            width: e.width,
+            colour: e.colour,
+          };
         }),
         regions: last.boxes.map((b) => ({ id: scene.nodes[b.index]?.id, x: b.x, y: b.y, w: b.w, h: b.h })),
       });
@@ -702,6 +728,7 @@ export function TreemapCanvas({
     setTick((t) => t + 1);
   }, []);
 
+  const redrawNow = useCallback(() => engine.current?.redraw(), []);
   const busy = !layout || layout.key !== sceneKey;
   const scheme = theme.scheme ?? currentScheme();
 
@@ -765,7 +792,12 @@ export function TreemapCanvas({
           ))}
         </nav>
       )}
-      <MapKey level={route.level} hideTests={getBool(route.filters, "hideTests", true)} />
+      <MapKey
+        level={route.level}
+        hideTests={getBool(route.filters, "hideTests", true)}
+        zoomed={zoomedIn}
+        onToggle={redrawNow}
+      />
       {!panelLegend && <Legend scene={scene} scheme={scheme} level={level} />}
       {(error || busy || debug) && (
         <div className="gc-status" aria-live="polite">
