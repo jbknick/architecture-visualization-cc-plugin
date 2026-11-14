@@ -1,0 +1,99 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildFactSheet > matches the snapshot for five fixture functions 1`] = `
+[
+  {
+    "body": "export function formatRelativeDate(date: Date, now: Date = new Date()): string {
+  const diffMs = now.getTime() - date.getTime();
+  const seconds = Math.floor(diffMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) return \`\${days}d ago\`;
+  if (hours > 0) return \`\${hours}h ago\`;
+  if (minutes > 0) return \`\${minutes}m ago\`;
+  return "just now";
+}",
+    "callees": [],
+    "contentKey": "b3a2569c57ad6ce3a47213705e72cbde:p1",
+    "doc": null,
+    "id": "sym:packages/utils/src/date.ts#formatRelativeDate",
+    "kind": "function",
+    "path": "packages/utils/src/date.ts",
+    "returnType": "string",
+    "signature": "(date: Date, now: Date = new Date()): string",
+  },
+  {
+    "body": "function slugify(input: string): string {
+  const lower = input.toLowerCase();
+  const trimmed = lower.trim();
+  const dashed = trimmed.replace(/\\s+/g, "-");
+  const clean = dashed.replace(/[^a-z0-9-]/g, "");
+  const collapsed = clean.replace(/-+/g, "-");
+  return collapsed.replace(/^-|-$/g, "");
+}",
+    "callees": [],
+    "contentKey": "8443c45ca4363d0363ffaab88cb18427:p1",
+    "doc": "Internal helper: intentionally not exported from the package.",
+    "id": "sym:packages/utils/src/slug.ts#slugify",
+    "kind": "function",
+    "path": "packages/utils/src/slug.ts",
+    "returnType": "string",
+    "signature": "(input: string): string",
+  },
+  {
+    "body": "export function useDebounce<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+  return debounced;
+}",
+    "callees": [],
+    "contentKey": "fe11dc180c411abe1732cda74471fd55:p1",
+    "doc": null,
+    "id": "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
+    "kind": "hook",
+    "path": "apps/web/src/hooks/useDebounce.ts",
+    "returnType": "T",
+    "signature": "<T>(value: T, delayMs: number): T",
+  },
+  {
+    "body": "export async function createPost(input: { title: string; authorId: string }) {
+  return db.insert(posts).values({ id: crypto.randomUUID(), createdAt: Date.now(), ...input });
+}",
+    "callees": [],
+    "contentKey": "19cb7a1b268c6af5691314cea035bb44:p1",
+    "doc": null,
+    "id": "sym:packages/db/src/queries.ts#createPost",
+    "kind": "function",
+    "path": "packages/db/src/queries.ts",
+    "returnType": null,
+    "signature": "(input: { title: string; authorId: string })",
+  },
+  {
+    "body": "export function PostList() {
+  const [query, setQuery] = useState("");
+  const debounced = useDebounce(query, 250);
+  return (
+    <div>
+      <input value={query} onChange={(e) => setQuery(e.target.value)} />
+      <p>{slugify(debounced)}</p>
+    </div>
+  );
+}",
+    "callees": [
+      "slugify",
+      "useDebounce",
+    ],
+    "contentKey": "78a2d1af4e92db59e2fe0ed2784659e8:p1",
+    "doc": null,
+    "id": "sym:apps/web/src/components/PostList.tsx#PostList",
+    "kind": "component",
+    "path": "apps/web/src/components/PostList.tsx",
+    "returnType": null,
+    "signature": "()",
+  },
+]
+`;
