@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { GraphNode, NeighborRef, NodeDetail } from "../api.ts";
 import { m2Of, m2Spec } from "../badges.ts";
-import { useNodeDetail } from "../hooks.ts";
+import { useNodeDetail, useOverview } from "../hooks.ts";
 import { useStore } from "../store.tsx";
 import { isServerNode } from "../views/drill.ts";
 import { expandedIds, withExpanded } from "../views/egoGroups.ts";
@@ -157,6 +157,39 @@ function GraphNodeFacts({ node, view }: { node: GraphNode; view: string | null }
   );
 }
 
+/**
+ * Workspaces and folders only: the cached overview if there is one that is still current, else a hint. Overviews are
+ * written only on request (`/gantry:overview`), never by the explorer. The text is untrusted, shown as plain text.
+ */
+function OverviewSection({ id }: { id: string }) {
+  const { data, loading, error } = useOverview(id);
+  const text = data && data.node_id === id ? data.untrusted_overview : null;
+  return (
+    <section aria-label="Overview">
+      <h3>Overview</h3>
+      {text ? (
+        <div className="description">
+          <p className="description-label">Overview — generated, may be wrong</p>
+          {/* Plain text only. The string is untrusted and is never parsed as HTML. */}
+          <p className="description-text">{text}</p>
+        </div>
+      ) : loading && !data ? (
+        <p className="muted">Loading…</p>
+      ) : (
+        <p className="muted">
+          {error
+            ? "Could not load the overview. "
+            : data?.stale
+              ? "The saved overview is out of date because code inside changed. "
+              : "No overview yet. "}
+          Run <code>/gantry:overview {id}</code> in Claude Code
+          {data?.stale ? " to write a new one." : "."}
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function Inspector({ nodes }: { nodes: GraphNode[] }) {
   const { state, selectNode, openInView, view } = useStore();
   const id = state.route.sel;
@@ -277,6 +310,7 @@ export function Inspector({ nodes }: { nodes: GraphNode[] }) {
       {known && !current && loading && <p className="muted">Loading…</p>}
 
       <div className="inspector-body">
+        {(id.startsWith("ws:") || id.startsWith("dir:")) && <OverviewSection id={id} />}
         {graphNode && !current && <GraphNodeFacts node={graphNode} view={view} />}
 
         {current && (

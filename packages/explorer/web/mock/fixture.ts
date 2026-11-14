@@ -57,6 +57,13 @@ const WORKSPACES: MockWorkspace[] = [
   { name: "@acme/web", dir: "apps/web", kind: "app" },
 ];
 
+/** Cached overviews the mock serves (synthetic text). The second one holds markup to prove it is shown as plain text. */
+const MOCK_OVERVIEWS: Record<string, string> = {
+  "ws:@acme/utils":
+    "Small shared helpers for dates and slugs. formatRelativeDate in src/date.ts turns a date into text like 3 hours ago. Both web and api import slugify.",
+  "ws:@acme/db": 'Database access. <img src=x onerror="window.__overviewXss=1"> <b>bold?</b>',
+};
+
 const MOCK_DUP = new Set(["slugify", "formatRelativeDate"]);
 const MOCK_DESCRIBED = new Set(["Button", "Card", "Header", "formatRelativeDate"]);
 /** Badges as the real server would compute them for the pnpm-turbo fixture (see server/views/badges.ts). */
@@ -1281,6 +1288,23 @@ export function handleMockApi(url: URL): MockResponse | null {
     if (!result) return { status: 404, body: { error: `Unknown view: ${id}` } };
     if ("error" in result) return { status: result.status, body: { error: result.error } };
     return { status: 200, body: result };
+  }
+
+  if (path.startsWith("/api/overview/")) {
+    const id = decodeURIComponent(path.slice("/api/overview/".length));
+    const text = MOCK_OVERVIEWS[id];
+    return {
+      status: 200,
+      body: text
+        ? {
+            node_id: id,
+            untrusted_overview: text,
+            stale: false,
+            model: "sonnet",
+            created_at: "2026-01-01T00:00:00.000Z",
+          }
+        : { node_id: id, untrusted_overview: null, stale: false },
+    };
   }
 
   if (path.startsWith("/api/node/")) {

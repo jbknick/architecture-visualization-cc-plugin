@@ -200,6 +200,14 @@ export interface NodeDetail {
   untrusted_description: string | null;
 }
 
+/** `/api/overview/:id` for a workspace or folder. Never generates anything; `null` means none is cached or it is stale. */
+export interface OverviewDetail {
+  node_id: string;
+  /** Model-written text about untrusted code. Untrusted: render as plain text only. */
+  untrusted_overview: string | null;
+  stale: boolean;
+}
+
 export interface SearchHit {
   id: string;
   name: string;
@@ -336,6 +344,9 @@ export const api = {
 
   node: (id: string, signal?: AbortSignal) =>
     getJson<NodeDetail>(`/api/node/${encodeURIComponent(id)}`, {}, signal),
+
+  overview: (id: string, signal?: AbortSignal) =>
+    getJson<OverviewDetail>(`/api/overview/${encodeURIComponent(id)}`, {}, signal),
 
   search: async (q: string, signal?: AbortSignal): Promise<SearchHit[]> =>
     (await getJson<{ hits: SearchHit[] }>("/api/search", { q }, signal)).hits,

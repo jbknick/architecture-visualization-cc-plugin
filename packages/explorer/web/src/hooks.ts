@@ -3,6 +3,7 @@ import {
   api,
   type Filters,
   type NodeDetail,
+  type OverviewDetail,
   type SearchHit,
   type SourceSlice,
   type ViewData,
@@ -73,6 +74,10 @@ export function useViewData(
 
 export function useNodeDetail(id: string | null): Loadable<NodeDetail> {
   return useLoad(id, (signal) => api.node(id ?? "", signal));
+}
+
+export function useOverview(id: string | null): Loadable<OverviewDetail> {
+  return useLoad(id, (signal) => api.overview(id ?? "", signal));
 }
 
 export function useSource(path: string | null, start: number, end: number): Loadable<SourceSlice> {
