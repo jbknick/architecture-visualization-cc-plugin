@@ -44,9 +44,11 @@ describe("assertThrowawayClone", () => {
     const { dir } = makeRepo();
     expect(isUnderTmp(dir)).toBe(true);
     expect(() => assertThrowawayClone(dir, false)).not.toThrow();
-    expect(isUnderTmp(here)).toBe(false);
-    expect(() => assertThrowawayClone(here, false)).toThrow(THROWAWAY_FLAG);
-    expect(() => assertThrowawayClone(here, true)).not.toThrow();
+    // A fixed path outside every temp root: the repo checkout itself may live under /tmp (it does in CI-like clones).
+    const outside = "/nonexistent-gantry-checkout/repo";
+    expect(isUnderTmp(outside)).toBe(false);
+    expect(() => assertThrowawayClone(outside, false)).toThrow(THROWAWAY_FLAG);
+    expect(() => assertThrowawayClone(outside, true)).not.toThrow();
   });
 
   it("does not treat the temp dir itself or a sibling with the same prefix as inside it", () => {
