@@ -31,7 +31,7 @@ importers:
         specifier: ^26.6.6
         version: 26.6.6
       gifenc:
-        specifier: ^1.0.3
+        specifier: 1.0.3
         version: 1.0.3
       tsup:
         specifier: ^9.0.0
