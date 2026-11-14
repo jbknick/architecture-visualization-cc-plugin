@@ -15,7 +15,7 @@ export interface Island {
   label: string;
   /** The full workspace name, for tooltips. */
   fullLabel: string;
-  /** app / package / unknown, from the workspace node's first badge. */
+  /** app / package / "(repo root)", from the workspace node's first badge ("unknown" is shown as "(repo root)"). */
   wsKind: string;
   /** Index in the sorted island list; selects the colour. */
   index: number;
@@ -25,9 +25,11 @@ export interface Island {
   nodeIds: string[];
   functions: number;
   files: number;
+  /** Folders without any function: not drawn, only counted in the tooltip ("+N empty"). */
+  emptyFolders: number;
 }
 
-/** A group of file nodes sharing a folder inside an island (Files level only). */
+/** A folder inside an island: one disc of the circle packing (Folders level: the sphere; Files level: the ring). */
 export interface Cluster {
   id: string;
   island: string;
@@ -52,6 +54,10 @@ export interface Arc {
   bindings?: number;
   /** True when the arc only comes from package.json `depends_on`, not from imports. */
   dependsOnly: boolean;
+  /** True when the opposite direction between the same two islands exists too (the two arcs bow to opposite sides). */
+  reciprocal: boolean;
+  /** Which side of its chord the arc bows to (+1 or -1, relative to the camera-facing normal of the chord). */
+  side: 1 | -1;
   /** Quadratic Bezier: from, control, to. */
   p0: Vec3;
   p1: Vec3;
@@ -63,7 +69,7 @@ export interface Layout {
   nodeRadius: Map<string, number>;
   islands: Island[];
   arcs: Arc[];
-  /** Folder clusters of file nodes (empty at the Workspaces and Folders levels). */
+  /** Folder discs (empty at the Workspaces level; one per folder with functions, in packing order). */
   clusters: Cluster[];
   /** Radius of the sphere around the origin that contains every island. */
   extent: number;
@@ -138,14 +144,6 @@ export function folderCaption(name: string, functions: number): string {
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
-/** Evenly spread directions on a sphere. */
-function fibonacci(i: number, n: number): Vec3 {
-  const y = n === 1 ? 0 : 1 - (2 * (i + 0.5)) / n;
-  const r = Math.sqrt(Math.max(0, 1 - y * y));
-  const phi = i * 2.399963229728653;
-  return { x: Math.cos(phi) * r, y, z: Math.sin(phi) * r };
-}
-
 interface Body {
   id: string;
   x: number;
@@ -196,100 +194,6 @@ function separate(bodies: Body[], gap: (a: Body, b: Body) => number, iterations:
   }
 }
 
-interface CloudResult {
-  pos: Map<string, Vec3>;
-  /** Largest distance from the origin to a sphere's far side. */
-  extent: number;
-}
-
-/** Force layout of a set of spheres: repulsion by size, springs along edges, then hard separation. */
-function layoutCloud(
-  nodes: GraphNode[],
-  edges: { a: string; b: string; w: number }[],
-  radiusOf: (n: GraphNode) => number,
-  repel = 1,
-): CloudResult {
-  const sorted = [...nodes].sort((a, b) => b.size - a.size || cmp(a.id, b.id));
-  const pos = new Map<string, Vec3>();
-  if (sorted.length === 1) {
-    const only = sorted[0] as GraphNode;
-    pos.set(only.id, { x: 0, y: 0, z: 0 });
-    return { pos, extent: radiusOf(only) };
-  }
-  const radii = sorted.map(radiusOf);
-  const volume = radii.reduce((a, r) => a + r * r * r, 0);
-  const target = Math.max(8, 2.1 * Math.cbrt(volume * repel));
-  const bodies = sorted.map((n, i) => {
-    const rand = seeded(fnv1a(n.id));
-    const dir = fibonacci(i, sorted.length);
-    const k = target * (0.3 + 0.7 * Math.cbrt(rand()));
-    return body(n.id, { x: dir.x * k, y: dir.y * k, z: dir.z * k }, radii[i] as number);
-  });
-  const byId = new Map(bodies.map((b) => [b.id, b]));
-  const n = bodies.length;
-  const ticks = clamp(Math.round(6e7 / (n * n)), 20, 140);
-  for (let t = 0; t < ticks; t++) {
-    const cool = 1 - t / ticks;
-    for (let i = 0; i < n; i++) {
-      const a = bodies[i] as Body;
-      for (let j = i + 1; j < n; j++) {
-        const b = bodies[j] as Body;
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const dz = b.z - a.z;
-        const d2 = dx * dx + dy * dy + dz * dz + 0.01;
-        const d = Math.sqrt(d2);
-        const f = (14 * repel * (a.r + b.r)) / d2; // repulsion, stronger for big nodes
-        const ux = dx / d;
-        const uy = dy / d;
-        const uz = dz / d;
-        a.vx -= ux * f;
-        a.vy -= uy * f;
-        a.vz -= uz * f;
-        b.vx += ux * f;
-        b.vy += uy * f;
-        b.vz += uz * f;
-      }
-    }
-    for (const e of edges) {
-      const a = byId.get(e.a);
-      const b = byId.get(e.b);
-      if (!a || !b) continue;
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const dz = b.z - a.z;
-      const d = Math.hypot(dx, dy, dz) + 0.01;
-      const rest = a.r + b.r + 3;
-      const f = (d - rest) * 0.012 * Math.min(3, 1 + Math.log2(1 + e.w) * 0.3);
-      a.vx += (dx / d) * f;
-      a.vy += (dy / d) * f;
-      a.vz += (dz / d) * f;
-      b.vx -= (dx / d) * f;
-      b.vy -= (dy / d) * f;
-      b.vz -= (dz / d) * f;
-    }
-    for (const a of bodies) {
-      a.vx -= a.x * 0.03;
-      a.vy -= a.y * 0.03;
-      a.vz -= a.z * 0.03;
-      a.vx *= 0.82;
-      a.vy *= 0.82;
-      a.vz *= 0.82;
-      const speed = Math.hypot(a.vx, a.vy, a.vz);
-      const cap = 3 + 6 * cool;
-      const k = speed > cap ? cap / speed : 1;
-      a.x += a.vx * k;
-      a.y += a.vy * k;
-      a.z += a.vz * k;
-    }
-  }
-  separate(bodies, () => 0.8, n > 400 ? 20 : 60);
-  let extent = 0;
-  for (const b of bodies) extent = Math.max(extent, Math.hypot(b.x, b.y, b.z) + b.r);
-  for (const b of bodies) pos.set(b.id, { x: b.x, y: b.y, z: b.z });
-  return { pos, extent };
-}
-
 /** Folder key of a file or folded node inside its workspace: up to two directory segments, "." for the root. */
 export function folderKey(n: GraphNode, wsDir: string): string {
   const path = n.path ?? n.id.replace(/^(file|more):/, "");
@@ -300,7 +204,7 @@ export function folderKey(n: GraphNode, wsDir: string): string {
   }
   if (rel === ".") return ".";
   const segs = rel.split("/");
-  if (n.kind !== "folded") segs.pop();
+  if (n.kind !== "folded" && n.kind !== "dir") segs.pop();
   const key = segs.slice(0, 2).join("/");
   return key || ".";
 }
@@ -319,6 +223,176 @@ function commonDir(paths: string[]): string {
   return n === 0 ? "." : first.slice(0, n).join("/");
 }
 
+export interface PackedCircle {
+  id: string;
+  x: number;
+  y: number;
+  r: number;
+}
+
+/**
+ * Deterministic circle packing on a flat disc. Circles go biggest first; each takes the spot (tangent to two
+ * placed circles, or to one) closest to the centroid of what is already placed that overlaps nothing, with `pad`
+ * of clear space between neighbours. The result is re-centred on the (approximately) smallest enclosing circle,
+ * whose radius is returned. No randomness: the same input always gives the same picture.
+ */
+export function packCircles(
+  items: { id: string; r: number }[],
+  pad: number,
+): { circles: PackedCircle[]; radius: number } {
+  const sorted = [...items].sort((a, b) => b.r - a.r || cmp(a.id, b.id));
+  const placed: PackedCircle[] = [];
+  const fits = (x: number, y: number, r: number): boolean =>
+    placed.every((q) => Math.hypot(x - q.x, y - q.y) >= q.r + r + pad - 1e-9);
+  for (const it of sorted) {
+    if (placed.length === 0) {
+      placed.push({ id: it.id, x: 0, y: 0, r: it.r });
+      continue;
+    }
+    let mx = 0;
+    let my = 0;
+    let mm = 0;
+    for (const q of placed) {
+      mx += q.x * q.r * q.r;
+      my += q.y * q.r * q.r;
+      mm += q.r * q.r;
+    }
+    mx /= mm;
+    my /= mm;
+    let best: { x: number; y: number; score: number } | null = null;
+    const consider = (x: number, y: number): void => {
+      if (!fits(x, y, it.r)) return;
+      const score = Math.hypot(x - mx, y - my);
+      if (
+        best === null ||
+        score < best.score - 1e-9 ||
+        (Math.abs(score - best.score) <= 1e-9 && (x < best.x || (x === best.x && y < best.y)))
+      )
+        best = { x, y, score };
+    };
+    for (const a of placed) {
+      const da = a.r + it.r + pad;
+      for (let k = 0; k < 16; k++) {
+        const t = (k / 16) * Math.PI * 2;
+        consider(a.x + Math.cos(t) * da, a.y + Math.sin(t) * da);
+      }
+    }
+    for (let i = 0; i < placed.length; i++) {
+      const a = placed[i] as PackedCircle;
+      for (let j = i + 1; j < placed.length; j++) {
+        const b = placed[j] as PackedCircle;
+        const da = a.r + it.r + pad;
+        const db = b.r + it.r + pad;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 1e-9 || d > da + db || d < Math.abs(da - db)) continue;
+        const k = (da * da - db * db + d * d) / (2 * d);
+        const h = Math.sqrt(Math.max(0, da * da - k * k));
+        const px = a.x + (dx * k) / d;
+        const py = a.y + (dy * k) / d;
+        consider(px + (-dy * h) / d, py + (dx * h) / d);
+        consider(px - (-dy * h) / d, py - (dx * h) / d);
+      }
+    }
+    const spot = best as { x: number; y: number } | null;
+    // Unreachable in practice (a tangent spot to one circle always exists), but never lose a circle.
+    placed.push(spot ? { id: it.id, x: spot.x, y: spot.y, r: it.r } : { id: it.id, x: 1e3, y: 0, r: it.r });
+  }
+  // Re-centre on the minimax centre: walk towards the farthest circle with shrinking steps.
+  let cx = 0;
+  let cy = 0;
+  for (const q of placed) {
+    cx += q.x;
+    cy += q.y;
+  }
+  cx /= placed.length;
+  cy /= placed.length;
+  const reach = (): { r: number; q: PackedCircle } => {
+    let far = placed[0] as PackedCircle;
+    let r = -1;
+    for (const q of placed) {
+      const d = Math.hypot(q.x - cx, q.y - cy) + q.r;
+      if (d > r) {
+        r = d;
+        far = q;
+      }
+    }
+    return { r, q: far };
+  };
+  for (let it = 0; it < 80; it++) {
+    const { r, q } = reach();
+    const d = Math.hypot(q.x - cx, q.y - cy);
+    if (d < 1e-9) break;
+    const step = ((r - q.r) * 0.5) / (1 + it * 0.35);
+    cx += ((q.x - cx) / d) * Math.min(step, d);
+    cy += ((q.y - cy) / d) * Math.min(step, d);
+  }
+  const radius = reach().r;
+  return { circles: placed.map((q) => ({ ...q, x: q.x - cx, y: q.y - cy })), radius };
+}
+
+/** Smallest folder radius, as a fraction of the biggest folder's. */
+const FOLDER_FLOOR = 0.14;
+
+/**
+ * Folder discs of one island: radius proportional to sqrt(functions) (floored so tiny folders stay visible),
+ * packed without overlap and scaled to fit a disc of radius `fit`. Both the Folders and the Files level call this
+ * with the same (key, functions) list, so the folders sit in the same places at both levels.
+ */
+export function packFolders(
+  folders: { key: string; functions: number }[],
+  fit: number,
+): { circles: PackedCircle[]; scale: number } {
+  const fmax = Math.max(1, ...folders.map((f) => f.functions));
+  const floor = FOLDER_FLOOR * Math.sqrt(fmax);
+  const items = folders.map((f) => ({ id: f.key, r: Math.max(floor, Math.sqrt(Math.max(0, f.functions))) }));
+  const pad = 0.07 * Math.max(...items.map((i) => i.r));
+  const { circles, radius } = packCircles(items, pad);
+  const scale = fit / Math.max(radius, 1e-9);
+  return {
+    circles: circles.map((c) => ({ id: c.id, x: c.x * scale, y: c.y * scale, r: c.r * scale })),
+    scale,
+  };
+}
+
+/**
+ * Files of one folder as a sunflower (Vogel spiral) inside a ring of radius `rho`: biggest file in the middle,
+ * dot radius proportional to sqrt(functions), never larger than what keeps it clear of its nearest neighbour.
+ */
+export function sunflower(files: { id: string; functions: number }[], rho: number): PackedCircle[] {
+  const sorted = [...files].sort((a, b) => b.functions - a.functions || cmp(a.id, b.id));
+  const n = sorted.length;
+  if (n === 0) return [];
+  if (n === 1) return [{ id: (sorted[0] as { id: string }).id, x: 0, y: 0, r: 0.5 * rho }];
+  const inner = 0.82 * rho;
+  const c = inner / (Math.sqrt(n - 1) + 0.5);
+  const pts = sorted.map((f, i) => ({
+    id: f.id,
+    f: f.functions,
+    x: c * Math.sqrt(i) * Math.cos(i * 2.399963229728653),
+    y: c * Math.sqrt(i) * Math.sin(i * 2.399963229728653),
+  }));
+  const fmax = Math.max(1, (sorted[0] as { functions: number }).functions);
+  const k = (0.75 * c) / Math.sqrt(fmax);
+  return pts.map((p, i) => {
+    let nn = Number.POSITIVE_INFINITY;
+    for (let j = 0; j < n; j++) {
+      const q = pts[j] as typeof p;
+      if (j !== i) nn = Math.min(nn, Math.hypot(p.x - q.x, p.y - q.y));
+    }
+    const bound = 0.48 * nn;
+    const want = Math.max(0.18 * c, k * Math.sqrt(Math.max(0, p.f)));
+    return { id: p.id, x: p.x, y: p.y, r: Math.min(bound, want) };
+  });
+}
+
+/** Screen axes of a camera looking along `-d` (same convention as `bestViewDir`). */
+export function viewBasis(d: Vec3): { right: Vec3; up: Vec3 } {
+  const right = norm(cross({ x: 0, y: 1, z: 0 }, d));
+  return { right, up: cross(d, right) };
+}
+
 interface IslandInner {
   pos: Map<string, Vec3>;
   radii: Map<string, number>;
@@ -334,89 +408,74 @@ interface IslandInner {
 
 /**
  * Lays one island's nodes out inside a sphere of the given radius (which was fixed by the function count alone).
- * A lone node is one sphere in the middle; file nodes are grouped in one cluster per folder; folders form a cloud.
- * Everything is scaled uniformly to fill about 90% of the sphere.
+ * Everything lies on one flat disc through the island centre that faces the default camera.
+ * - a lone node is one sphere in the middle;
+ * - folders (Folders level) are discs packed without overlap, radius ~ sqrt(functions);
+ * - files (Files level) sit in the same folder discs, as sunflower dots, the biggest file in the middle.
  */
 function layoutInside(
   nodes: GraphNode[],
-  edges: { a: string; b: string; w: number }[],
   R: number,
   wsDir: string,
+  basis: { right: Vec3; up: Vec3 },
 ): IslandInner {
   const radii = new Map<string, number>();
   const pos = new Map<string, Vec3>();
   const clusters: IslandInner["clusters"] = [];
+  const at = (x: number, y: number): Vec3 => add(mul(basis.right, x), mul(basis.up, y));
   const sorted = [...nodes].sort((a, b) => b.size - a.size || cmp(a.id, b.id));
+  if (sorted.length === 0) return { pos, radii, clusters };
   if (sorted.length === 1) {
     const only = sorted[0] as GraphNode;
     pos.set(only.id, { x: 0, y: 0, z: 0 });
     radii.set(only.id, R * 0.5);
     return { pos, radii, clusters };
   }
-  const rOf = (n: GraphNode): number => nodeRadius(n.size, n.kind);
-  const isFile = sorted.some((n) => n.kind === "file" || n.kind === "folded");
-  let extent = 0;
-  if (!isFile) {
-    const c = layoutCloud(sorted, edges, rOf);
-    for (const [id, p] of c.pos) pos.set(id, p);
-    extent = c.extent;
-  } else {
-    const groups = new Map<string, GraphNode[]>();
-    for (const n of sorted) {
-      const k = folderKey(n, wsDir);
-      groups.set(k, [...(groups.get(k) ?? []), n]);
-    }
-    const keys = [...groups.keys()].sort((a, b) => {
-      const fa = (groups.get(a) ?? []).reduce((s, n) => s + n.size, 0);
-      const fb = (groups.get(b) ?? []).reduce((s, n) => s + n.size, 0);
-      return fb - fa || cmp(a, b);
-    });
-    const clouds = keys.map((k) => {
-      const list = groups.get(k) as GraphNode[];
-      const ids = new Set(list.map((n) => n.id));
-      const inner = edges.filter((e) => ids.has(e.a) && ids.has(e.b));
-      return { key: k, list, cloud: layoutCloud(list, inner, rOf, 2.6) };
-    });
-    // Pack the folder clouds: biggest first, near the middle, never overlapping.
-    const bodies = clouds.map((c, i) => {
-      const dir = fibonacci(i, clouds.length);
-      const k = i === 0 ? 0 : c.cloud.extent * 2 + i * 1.5;
-      return body(c.key, { x: dir.x * k, y: dir.y * k, z: dir.z * k }, c.cloud.extent * 1.04);
-    });
-    for (let it = 0; it < 90; it++) {
-      for (const b of bodies) {
-        b.x *= 0.94;
-        b.y *= 0.94;
-        b.z *= 0.94;
-      }
-      separate(bodies, (a, b) => 3 + 0.3 * (a.r + b.r), 1);
-    }
-    separate(bodies, (a, b) => 3 + 0.3 * (a.r + b.r), 200);
-    const byKey = new Map(bodies.map((b) => [b.id, b]));
-    for (const c of clouds) {
-      const b = byKey.get(c.key) as Body;
-      for (const [id, p] of c.cloud.pos) pos.set(id, { x: p.x + b.x, y: p.y + b.y, z: p.z + b.z });
-      extent = Math.max(extent, Math.hypot(b.x, b.y, b.z) + b.r);
-      clusters.push({
-        key: c.key,
-        center: { x: b.x, y: b.y, z: b.z },
-        radius: b.r,
-        functions: c.list.reduce((s, n) => s + n.size, 0),
-        files: c.list.length,
-        nodeIds: c.list.map((n) => n.id),
-      });
-    }
-  }
-  // Fill the sphere (about 90% of it), shrinking big clouds and growing small ones, so spheres do not pile up.
-  const s = clamp((R * 0.9) / Math.max(extent, 1e-6), 0.15, 8);
+  const groups = new Map<string, GraphNode[]>();
   for (const n of sorted) {
-    const p = pos.get(n.id) as Vec3;
-    pos.set(n.id, mul(p, s));
-    radii.set(n.id, rOf(n) * s);
+    const k = folderKey(n, wsDir);
+    groups.set(k, [...(groups.get(k) ?? []), n]);
   }
-  for (const c of clusters) {
-    c.center = mul(c.center, s);
-    c.radius *= s;
+  const folders = [...groups].map(([key, list]) => ({
+    key,
+    list,
+    functions: list.reduce((s, n) => s + n.size, 0),
+  }));
+  const isFiles = sorted.some((n) => n.kind === "file" || n.kind === "folded");
+  const discs =
+    folders.length === 1
+      ? [{ id: (folders[0] as (typeof folders)[number]).key, x: 0, y: 0, r: R * 0.8 }]
+      : packFolders(
+          folders.map((f) => ({ key: f.key, functions: f.functions })),
+          R * 0.9,
+        ).circles;
+  const byKey = new Map(discs.map((d) => [d.id, d]));
+  const order = [...folders].sort((a, b) => b.functions - a.functions || cmp(a.key, b.key));
+  for (const f of order) {
+    const d = byKey.get(f.key) as PackedCircle;
+    if (!isFiles) {
+      for (const n of f.list) {
+        pos.set(n.id, at(d.x, d.y));
+        radii.set(n.id, d.r);
+      }
+    } else {
+      const dots = sunflower(
+        f.list.map((n) => ({ id: n.id, functions: n.size })),
+        d.r,
+      );
+      for (const p of dots) {
+        pos.set(p.id, at(d.x + p.x, d.y + p.y));
+        radii.set(p.id, p.r);
+      }
+    }
+    clusters.push({
+      key: f.key,
+      center: at(d.x, d.y),
+      radius: d.r,
+      functions: f.functions,
+      files: f.list.length,
+      nodeIds: f.list.map((n) => n.id),
+    });
   }
   return { pos, radii, clusters };
 }
@@ -549,22 +608,203 @@ function placeIslands(
   return out;
 }
 
-/** The bundled arc between two islands, bowed away from the scene centre and shifted sideways per direction. */
-function arcPoints(a: Island, b: Island): { p0: Vec3; p1: Vec3; p2: Vec3 } {
-  const dir = norm(sub(b.center, a.center));
-  const forward = a.id < b.id;
-  const p0 = add(a.center, mul(dir, a.radius + 1));
-  // Ends just outside the target island's surface, where the arrowhead's tip sits.
-  const p2 = sub(b.center, mul(dir, b.radius + 2));
-  const mid = mul(add(p0, p2), 0.5);
-  const span = len(sub(p2, p0));
-  let out = sub(mid, mul(dir, dot(mid, dir)));
-  if (len(out) < 1e-6) out = cross(dir, { x: 0, y: 1, z: 0 });
-  out = norm(out);
-  const side = norm(cross(dir, out));
-  const lateral = mul(side, (forward ? 1 : -1) * span * 0.07);
-  const p1 = add(add(mid, mul(out, span * 0.2 + 5)), lateral);
-  return { p0, p1, p2 };
+/** Up to this many visible arcs every arc gets a count pill; above it only the heaviest TOP_PILLS do. */
+export const ALL_PILLS = 40;
+export const TOP_PILLS = 8;
+
+/** Ids of the arcs that get a count pill: all of them when there are at most ALL_PILLS, else the heaviest few. */
+export function pillArcIds(arcs: { id: string; weight: number; dependsOnly: boolean }[]): Set<string> {
+  if (arcs.length <= ALL_PILLS) return new Set(arcs.map((a) => a.id));
+  return new Set(
+    arcs
+      .filter((a) => !a.dependsOnly)
+      .sort((a, b) => b.weight - a.weight || cmp(a.id, b.id))
+      .slice(0, TOP_PILLS)
+      .map((a) => a.id),
+  );
+}
+
+/** On-screen distance (px) kept between two arrowheads that end on the same island (and between arc starts). */
+export const ARROW_SPREAD_PX = 14;
+/** Rough pixels per world unit at the default camera, used to turn pixel gaps into angles at layout time. */
+export function pxPerUnit(extent: number): number {
+  return 330 / Math.max(extent, 1);
+}
+
+/** Minimum angle (radians) between two arc ends on a rim of world radius `radius`. */
+export function arrowSpreadAngle(radius: number, extent: number): number {
+  return clamp(ARROW_SPREAD_PX / (Math.max(radius, 1) * pxPerUnit(extent)), 0.12, 1.1);
+}
+
+/**
+ * Spreads angles around a circle so that neighbours are at least `sep` apart, moving each as little as it can.
+ * Returns the new angle per key (same order of keys; ties broken by key so it is deterministic).
+ */
+export function spreadAngles(items: { key: string; angle: number }[], sep: number): Map<string, number> {
+  const n = items.length;
+  const out = new Map<string, number>();
+  if (n === 0) return out;
+  const gap = Math.min(sep, (Math.PI * 2) / n);
+  const wrap = (a: number): number => {
+    let x = a % (Math.PI * 2);
+    if (x < 0) x += Math.PI * 2;
+    return x;
+  };
+  const sorted = items
+    .map((i) => ({ key: i.key, a: wrap(i.angle) }))
+    .sort((p, q) => p.a - q.a || cmp(p.key, q.key));
+  for (let it = 0; it < 400; it++) {
+    let moved = false;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const a = sorted[i] as (typeof sorted)[number];
+      const b = sorted[j] as (typeof sorted)[number];
+      let diff = b.a - a.a;
+      if (j === 0) diff += Math.PI * 2;
+      if (n > 1 && diff < gap - 1e-9) {
+        const push = (gap - diff) / 2;
+        a.a -= push;
+        b.a += push;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  for (const s of sorted) out.set(s.key, s.a);
+  return out;
+}
+
+interface RawArc {
+  id: string;
+  src: string;
+  dst: string;
+  dependsOnly: boolean;
+}
+
+/**
+ * Routes every arc as a quadratic Bezier, seen from the default camera:
+ * 1. a bow side and height per arc: the two arcs of a reciprocal pair bow to opposite sides of their chord; any
+ *    other arc takes the lowest bow that clears the islands in between, on the side facing away from the middle;
+ * 2. arc starts and arrowhead tips on one island's rim are spread so that no two are closer than
+ *    ARROW_SPREAD_PX on screen;
+ * 3. the control point is recomputed for the final chord.
+ */
+function routeArcs(
+  raw: RawArc[],
+  islands: Island[],
+  viewDir: Vec3,
+  extent: number,
+): Map<string, { p0: Vec3; p1: Vec3; p2: Vec3; side: 1 | -1; reciprocal: boolean }> {
+  const byId = new Map(islands.map((i) => [i.id, i]));
+  const { right, up } = viewBasis(viewDir);
+  const to2 = (p: Vec3): { x: number; y: number } => ({ x: dot(p, right), y: dot(p, up) });
+  const pairs = new Set(raw.map((a) => `${a.src}\u0000${a.dst}`));
+  const quad = (p0: Vec3, p1: Vec3, p2: Vec3, t: number): Vec3 => {
+    const u = 1 - t;
+    return add(add(mul(p0, u * u), mul(p1, 2 * u * t)), mul(p2, t * t));
+  };
+  interface Plan {
+    arc: RawArc;
+    a: Island;
+    b: Island;
+    reciprocal: boolean;
+    side: 1 | -1;
+    h: number;
+  }
+  const plans: Plan[] = [];
+  const sorted = [...raw].sort((x, y) =>
+    x.dependsOnly === y.dependsOnly ? cmp(x.id, y.id) : x.dependsOnly ? 1 : -1,
+  );
+  for (const arc of sorted) {
+    const a = byId.get(arc.src) as Island;
+    const b = byId.get(arc.dst) as Island;
+    const reciprocal = pairs.has(`${arc.dst}\u0000${arc.src}`);
+    const dir = norm(sub(b.center, a.center));
+    const p0 = add(a.center, mul(dir, a.radius + 1));
+    const p2 = sub(b.center, mul(dir, b.radius + 2));
+    const span = len(sub(p2, p0));
+    const mid = mul(add(p0, p2), 0.5);
+    const n3 = norm(cross(viewDir, dir)); // screen-plane normal of the chord ("left of travel" or its mirror)
+    const mid2 = to2(mid);
+    const n2 = { x: dot(n3, right), y: dot(n3, up) };
+    const away = mid2.x * n2.x + mid2.y * n2.y >= 0 ? 1 : -1;
+    const sides: (1 | -1)[] = reciprocal ? [1] : away === 1 ? [1, -1] : [-1, 1];
+    const heights = reciprocal ? [0.16, 0.22, 0.3, 0.4] : [0.12, 0.18, 0.26, 0.36, 0.46, 0.58, 0.7];
+    let best: { side: 1 | -1; h: number; cost: number } | null = null;
+    for (const [si, side] of sides.entries()) {
+      for (const [hi, hh] of heights.entries()) {
+        const p1 = add(mid, mul(n3, side * hh * span * 2));
+        let pen = 0;
+        for (let k = 1; k < 30; k++) {
+          const q = to2(quad(p0, p1, p2, k / 30));
+          for (const o of islands) {
+            if (o.id === a.id || o.id === b.id) continue;
+            const c = to2(o.center);
+            pen += Math.max(0, o.radius * 1.08 + 4 - Math.hypot(q.x - c.x, q.y - c.y));
+          }
+        }
+        const cost = pen * 100 + hi * 6 + si * 14;
+        if (best === null || cost < best.cost - 1e-9) best = { side, h: hh, cost };
+      }
+    }
+    const pick = best as { side: 1 | -1; h: number };
+    plans.push({ arc, a, b, reciprocal, side: pick.side, h: pick.h });
+  }
+
+  // Spread starts and tips around each island's rim (declared-only arcs, hidden by default, keep their chord ends).
+  type End = { key: string; angle: number; off: number; isStart: boolean; plan: Plan };
+  const ends = new Map<string, End[]>();
+  const push = (island: string, e: End): void => {
+    const l = ends.get(island) ?? [];
+    l.push(e);
+    ends.set(island, l);
+  };
+  for (const pl of plans) {
+    if (pl.arc.dependsOnly) continue;
+    const ca = to2(pl.a.center);
+    const cb = to2(pl.b.center);
+    const chord = { x: cb.x - ca.x, y: cb.y - ca.y };
+    const cl = Math.hypot(chord.x, chord.y) || 1;
+    const u = { x: chord.x / cl, y: chord.y / cl };
+    // Screen direction of the bow side (n3 projected).
+    const n3 = norm(cross(viewDir, norm(sub(pl.b.center, pl.a.center))));
+    const bow = { x: dot(n3, right) * pl.side, y: dot(n3, up) * pl.side };
+    const bl = Math.hypot(bow.x, bow.y) || 1;
+    const lean = 0.5 + pl.h; // the higher the bow, the more the arc leaves and arrives sideways
+    const at = (dx: number, dy: number): number =>
+      Math.atan2(dy + (bow.y / bl) * lean, dx + (bow.x / bl) * lean);
+    push(pl.a.id, { key: `${pl.arc.id}#s`, angle: at(u.x, u.y), off: 1, isStart: true, plan: pl });
+    push(pl.b.id, { key: `${pl.arc.id}#e`, angle: at(-u.x, -u.y), off: 2, isStart: false, plan: pl });
+  }
+  const startOf = new Map<string, Vec3>();
+  const endOf = new Map<string, Vec3>();
+  for (const [iid, list] of ends) {
+    const isl = byId.get(iid) as Island;
+    const spread = spreadAngles(
+      list.map((e) => ({ key: e.key, angle: e.angle })),
+      arrowSpreadAngle(isl.radius, extent),
+    );
+    for (const e of list) {
+      const ang = spread.get(e.key) as number;
+      const dir = add(mul(right, Math.cos(ang)), mul(up, Math.sin(ang)));
+      const p = add(isl.center, mul(dir, isl.radius + e.off));
+      (e.isStart ? startOf : endOf).set(e.plan.arc.id, p);
+    }
+  }
+
+  const out = new Map<string, { p0: Vec3; p1: Vec3; p2: Vec3; side: 1 | -1; reciprocal: boolean }>();
+  for (const pl of plans) {
+    const dir = norm(sub(pl.b.center, pl.a.center));
+    const p0 = startOf.get(pl.arc.id) ?? add(pl.a.center, mul(dir, pl.a.radius + 1));
+    const p2 = endOf.get(pl.arc.id) ?? sub(pl.b.center, mul(dir, pl.b.radius + 2));
+    const chord = sub(p2, p0);
+    const span = len(chord);
+    const n3 = norm(cross(viewDir, norm(chord)));
+    const mid = mul(add(p0, p2), 0.5);
+    const p1 = add(mid, mul(n3, pl.side * pl.h * span * 2));
+    out.set(pl.arc.id, { p0, p1, p2, side: pl.side, reciprocal: pl.reciprocal });
+  }
+  return out;
 }
 
 /** Label, kind and counts for an island, from its workspace node (when the view sends one) and its members. */
@@ -579,7 +819,7 @@ function islandInfo(
   const first = meta?.badges?.[0];
   return {
     label: meta?.label ?? "",
-    wsKind: first && !/\d/.test(first) ? first : "package",
+    wsKind: first && !/\d/.test(first) ? (first === "unknown" ? "(repo root)" : first) : "package",
     functions: count(/functions$/) ?? meta?.stats?.functions ?? list.reduce((a, n) => a + n.size, 0),
     files: count(/files$/) ?? meta?.stats?.files ?? list.length,
   };
@@ -681,8 +921,7 @@ export function computeLayout({ nodes, edges }: LayoutInput): Layout {
     members.set(g, list);
   }
 
-  // Node-level edges split into inside-island springs and cross-island totals.
-  const inside = new Map<string, { a: string; b: string; w: number }[]>();
+  // Node-level edges: only the totals between islands matter for the layout (arcs).
   const cross_ = new Map<
     string,
     { src: string; dst: string; w: number; imports: number; bindings: number }
@@ -691,21 +930,15 @@ export function computeLayout({ nodes, edges }: LayoutInput): Layout {
     const ga = groupOf(e.src);
     const gb = groupOf(e.dst);
     if (!ga || !gb) continue;
-    if (ga === gb) {
-      if (e.src === e.dst) continue;
-      const list = inside.get(ga) ?? [];
-      list.push({ a: e.src, b: e.dst, w: e.bindings ?? e.weight });
-      inside.set(ga, list);
-    } else {
-      const key = `${ga}\u0000${gb}`;
-      const c = cross_.get(key) ?? { src: ga, dst: gb, w: 0, imports: 0, bindings: 0 };
-      c.w += e.weight;
-      if (e.kind !== "depends_on") {
-        c.imports += e.weight;
-        c.bindings += e.bindings ?? e.weight;
-      }
-      cross_.set(key, c);
+    if (ga === gb) continue;
+    const key = `${ga}\u0000${gb}`;
+    const c = cross_.get(key) ?? { src: ga, dst: gb, w: 0, imports: 0, bindings: 0 };
+    c.w += e.weight;
+    if (e.kind !== "depends_on") {
+      c.imports += e.weight;
+      c.bindings += e.bindings ?? e.weight;
     }
+    cross_.set(key, c);
   }
 
   // Island size and placement come from workspace-level facts only (function counts, imports between workspaces).
@@ -719,16 +952,28 @@ export function computeLayout({ nodes, edges }: LayoutInput): Layout {
     links,
   );
 
+  // The default camera depends on the islands alone; folders and files are laid out on a disc facing it.
+  const viewDir = bestViewDir(
+    groupIds.map((id) => ({ center: centers.get(id) as Vec3, radius: radii.get(id) as number })),
+  );
+  const basis = viewBasis(viewDir);
+
   const positions = new Map<string, Vec3>();
   const nodeR = new Map<string, number>();
   const clusters: Cluster[] = [];
   const islands: Island[] = groupIds.map((id, index) => {
     const meta = byId.get(id);
     const center = centers.get(id) as Vec3;
-    const list = members.get(id) ?? [];
+    const all = members.get(id) ?? [];
     const radius = radii.get(id) as number;
-    const wsDir = meta?.path ?? commonDir(list.map((n) => n.path ?? "").filter(Boolean));
-    const inner = layoutInside(list, inside.get(id) ?? [], radius, wsDir);
+    const wsDir = meta?.path ?? commonDir(all.map((n) => n.path ?? "").filter(Boolean));
+    // Folders and files without a single function are not drawn (they only count towards "+N empty").
+    const hasFns = (n: GraphNode): boolean => n.kind === "workspace" || n.size > 0;
+    const list = all.filter(hasFns);
+    const keptKeys = new Set(list.map((n) => folderKey(n, wsDir)));
+    const emptyKeys = new Set(all.filter((n) => !list.includes(n)).map((n) => folderKey(n, wsDir)));
+    for (const k of keptKeys) emptyKeys.delete(k);
+    const inner = layoutInside(list, radius, wsDir, basis);
     for (const n of list) {
       positions.set(n.id, add(center, inner.pos.get(n.id) as Vec3));
       nodeR.set(n.id, inner.radii.get(n.id) as number);
@@ -758,29 +1003,33 @@ export function computeLayout({ nodes, edges }: LayoutInput): Layout {
       nodeIds: list.map((n) => n.id).sort(cmp),
       functions: inf.functions,
       files: inf.files,
+      emptyFolders: emptyKeys.size,
     };
   });
-  const islandById = new Map(islands.map((i) => [i.id, i]));
-
-  const arcs: Arc[] = [...cross_.values()]
-    .sort((a, b) => cmp(a.src + a.dst, b.src + b.dst))
-    .map((c) => {
-      const a = islandById.get(c.src) as Island;
-      const b = islandById.get(c.dst) as Island;
-      return {
-        id: `${c.src}>${c.dst}`,
-        src: c.src,
-        dst: c.dst,
-        weight: c.imports > 0 ? c.imports : c.w,
-        dependsOnly: c.imports === 0,
-        ...(c.imports > 0 && c.bindings !== c.imports ? { bindings: c.bindings } : {}),
-        ...arcPoints(a, b),
-      };
-    });
 
   let extent = 0;
   for (const i of islands) extent = Math.max(extent, len(i.center) + i.radius);
-  return { positions, nodeRadius: nodeR, islands, arcs, clusters, extent, viewDir: bestViewDir(islands) };
+  const ordered = [...cross_.values()].sort((a, b) => cmp(a.src + a.dst, b.src + b.dst));
+  const routes = routeArcs(
+    ordered.map((c) => ({ id: `${c.src}>${c.dst}`, src: c.src, dst: c.dst, dependsOnly: c.imports === 0 })),
+    islands,
+    viewDir,
+    extent,
+  );
+  const arcs: Arc[] = ordered.map((c) => {
+    const route = routes.get(`${c.src}>${c.dst}`) as NonNullable<ReturnType<typeof routes.get>>;
+    return {
+      id: `${c.src}>${c.dst}`,
+      src: c.src,
+      dst: c.dst,
+      weight: c.imports > 0 ? c.imports : c.w,
+      dependsOnly: c.imports === 0,
+      ...(c.imports > 0 && c.bindings !== c.imports ? { bindings: c.bindings } : {}),
+      ...route,
+    };
+  });
+
+  return { positions, nodeRadius: nodeR, islands, arcs, clusters, extent, viewDir };
 }
 
 /** Stable digest of the rounded positions; used to check that two loads draw the same picture. */

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { map3dView } from "../../mock/fixture.ts";
 import type { ViewLevel } from "../api.ts";
 import { emptyRoute } from "../route.ts";
@@ -8,6 +8,10 @@ import { installMockFetch, renderApp } from "../testUtils.tsx";
 import { Canvas3D } from "./index.tsx";
 import { MapPanel } from "./MapPanel.tsx";
 import { mapUi } from "./ui.ts";
+
+beforeEach(() => {
+  window.localStorage.clear();
+});
 
 afterEach(() => {
   cleanup();
@@ -81,6 +85,37 @@ describe("MapPanel", () => {
     expect(howto.textContent).toContain("Island = one workspace");
     expect(howto.textContent).toContain("Arrow A → B = A imports from B");
     expect(howto.textContent).toContain("folder");
+  });
+
+  it('collapses "How to read it" to one line, remembers the choice, and starts collapsed after the first view', () => {
+    setup();
+    const toggle = screen.getByRole("button", { name: /How to read it/ });
+    expect(toggle.getAttribute("aria-expanded")).toBe("true"); // first view, 5 workspaces: open
+    expect(document.querySelector(".map3d-howto ul")).not.toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector(".map3d-howto ul")).toBeNull();
+    expect(window.localStorage.getItem("gantry.map3d.howto")).toBe("collapsed");
+    cleanup();
+    setup(); // remembered
+    expect(screen.getByRole("button", { name: /How to read it/ }).getAttribute("aria-expanded")).toBe(
+      "false",
+    );
+    fireEvent.click(screen.getByRole("button", { name: /How to read it/ }));
+    expect(window.localStorage.getItem("gantry.map3d.howto")).toBe("open");
+    cleanup();
+    setup();
+    expect(screen.getByRole("button", { name: /How to read it/ }).getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("starts collapsed on a second visit, with no saved choice", () => {
+    setup(); // first view marks the visit as seen
+    expect(window.localStorage.getItem("gantry.map3d.howto-seen")).toBe("1");
+    cleanup();
+    setup();
+    expect(screen.getByRole("button", { name: /How to read it/ }).getAttribute("aria-expanded")).toBe(
+      "false",
+    );
   });
 
   it("hides tests by default and toggles the filter", () => {
