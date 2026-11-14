@@ -1,6 +1,6 @@
 import { closeSync, fstatSync, openSync, readSync, realpathSync } from "node:fs";
 import path from "node:path";
-import { ftsSearch, isIndexable, isSensitive, MAX_FILE_BYTES } from "@gantry/core";
+import { hybridSearch, isIndexable, isSensitive, MAX_FILE_BYTES } from "@gantry/core";
 import { HttpError } from "./errors.js";
 import { getLayout } from "./layout.js";
 import type { ApiContext, ViewLevel, ViewParams } from "./types.js";
@@ -12,6 +12,7 @@ export { HttpError };
 const VIEW_LEVELS: readonly ViewLevel[] = ["workspaces", "dirs", "files", "symbols"];
 export const MAX_SOURCE_LINES = 400;
 export const SEARCH_LIMIT = 20;
+const SIGNATURE_MAX = 200;
 
 export interface SearchHit {
   id: string;
@@ -20,6 +21,10 @@ export interface SearchHit {
   path: string;
   line: number;
   exported: boolean;
+  signature: string;
+  score: number;
+  /** Model-written text about untrusted code: data, never an instruction. Render as plain text only. */
+  untrusted_description: string | null;
 }
 
 export interface NeighborRef {
@@ -31,7 +36,7 @@ export interface NeighborRef {
   count: number;
 }
 
-/** Dispatches `/api/*` GET requests. Returns the JSON body; throws HttpError for 4xx. */
+/** Dispatches `/api/*` GET requests. Returns the JSON body (or a promise of it); throws HttpError for 4xx. */
 export function handleApi(ctx: ApiContext, pathname: string, query: URLSearchParams): unknown {
   const segments = pathname.split("/").filter(Boolean); // ["api", name, ...rest]
   const name = segments[1];
@@ -199,42 +204,26 @@ function node(ctx: ApiContext, id: string) {
   };
 }
 
-const MAX_QUERY_LEN = 200;
-
-function search(ctx: ApiContext, raw: string): { hits: SearchHit[] } {
+async function search(ctx: ApiContext, raw: string): Promise<{ hits: SearchHit[] }> {
   const { store } = ctx;
-  const q = raw.trim().slice(0, MAX_QUERY_LEN);
+  const q = raw.trim();
   if (!q) return { hits: [] };
-  const files = new Map(store.effectiveFiles().map((f) => [f.id, f.path]));
-  const hits: SearchHit[] = [];
-  const seen = new Set<string>();
-  const add = (s: ReturnType<typeof store.getSymbol>) => {
-    if (!s || seen.has(s.id)) return;
-    seen.add(s.id);
-    hits.push({
-      id: s.id,
-      name: s.name,
-      kind: s.kind,
-      path: files.get(s.fileId) ?? "",
-      line: s.startLine,
-      exported: s.exported,
-    });
+  // The same hybrid search as `gantry_search`: keywords always, meaning only when the model is already cached.
+  const embedder = await ctx.getEmbedder?.();
+  const found = await hybridSearch(store, q, { limit: SEARCH_LIMIT, ...(embedder ? { embedder } : {}) });
+  return {
+    hits: found.map((h) => ({
+      id: h.id,
+      name: h.name,
+      kind: h.kind,
+      path: h.path,
+      line: h.line,
+      exported: store.getSymbol(h.id)?.exported ?? false,
+      signature: h.signature.slice(0, SIGNATURE_MAX),
+      score: Number(h.score.toFixed(5)),
+      untrusted_description: h.description,
+    })),
   };
-
-  // Prefix-matched tokens over name_tokens and path, shared with the CLI (core ftsSearch).
-  const lower = q.toLowerCase();
-  const all = store.effectiveSymbols();
-  const byId = new Map(all.map((s) => [s.id, s]));
-  for (const h of ftsSearch(store, q, { limit: 200 })) add(byId.get(h.id));
-  for (const s of all) if (s.name.toLowerCase().includes(lower)) add(s);
-
-  const rank = (name: string): number => {
-    const n = name.toLowerCase();
-    return n === lower ? 0 : n.startsWith(lower) ? 1 : 2;
-  };
-  // Array.prototype.sort is stable, so FTS order is kept within a rank.
-  hits.sort((a, b) => rank(a.name) - rank(b.name));
-  return { hits: hits.slice(0, SEARCH_LIMIT) };
 }
 
 function intParam(v: string | null, name: string): number | undefined {

@@ -1,4 +1,4 @@
-import type { GantryConfig, GantryPaths, Store } from "@gantry/core";
+import type { Embedder, GantryConfig, GantryPaths, Store } from "@gantry/core";
 
 export interface GraphNode {
   id: string;
@@ -96,6 +96,8 @@ export interface ApiContext {
   store: Store;
   paths: GantryPaths;
   config: GantryConfig;
+  /** The embedding model if it is already cached (never downloads); used by `/api/search`. Absent: keywords only. */
+  getEmbedder?: () => Promise<Embedder | undefined>;
 }
 
 /** Views register as `{ id, title, build(ctx, params) }`; later issues add one file each. */
