@@ -4,6 +4,7 @@ import {
   embedPending,
   ensureDataDir,
   openStore,
+  rebuildSimilarEdges,
   resolvePaths,
   type Store,
 } from "@gantry/core";
@@ -61,6 +62,8 @@ export async function runEmbed(
         process.stderr.write(`${progressLine(p)}\n`);
       },
     });
+    // New code vectors make new code_vector `similar_to` edges possible.
+    if (result.code > 0) await rebuildSimilarEdges(store);
     return { ...result, interrupted: ac.signal.aborted };
   } finally {
     process.off("SIGINT", onSigint);
