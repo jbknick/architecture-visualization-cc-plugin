@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import type { GantryPaths } from "../paths/index.js";
@@ -101,7 +102,7 @@ function defaults(): GantryConfig {
     duplicates: {
       mode: "warn",
       ignore: [],
-      thresholds: { nearJaccard: 0.85, codeVector: 0.92, semantic: 0.85 },
+      thresholds: { nearJaccard: 0.85, codeVector: 0.96, semantic: 0.6 },
     },
     backlogReminderThreshold: 100,
     renameSuggestions: false,
@@ -178,4 +179,16 @@ export function saveProjectConfig(p: GantryPaths, patch: DeepPartial<GantryConfi
   fs.writeFileSync(tmp, `${JSON.stringify(nextProject, null, 2)}\n`, { mode: 0o600 });
   fs.renameSync(tmp, p.configPath);
   return result.data;
+}
+
+/**
+ * Config for the data directory that holds `dbPath` (`<dataDir>/gantry.db`), without resolving git paths.
+ * For library code that only has a store (the duplicate engine reads thresholds on every call).
+ */
+export function loadConfigForDb(dbPath: string, env: NodeJS.ProcessEnv = process.env): GantryConfig {
+  const home = env.HOME || os.homedir();
+  return loadConfig({
+    configPath: path.join(path.dirname(dbPath), "config.json"),
+    globalConfigPath: path.join(home, ".gantry", "config.json"),
+  } as GantryPaths);
 }

@@ -30,11 +30,13 @@ export {
   resetEmbedderForTests,
 } from "./model.js";
 export {
+  allVectors,
   applyVecMigration,
   blobToVec,
   EMBED_DIM,
   EMBED_MODEL_ID,
   ensureVecTables,
+  getVector,
   knn,
   loadVec,
   putVectors,

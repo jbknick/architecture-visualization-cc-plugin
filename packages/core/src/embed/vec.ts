@@ -132,6 +132,35 @@ export function putVectors(
   });
 }
 
+/** The stored vector for `contentKey`, or undefined (no vectors, no such row, table missing). */
+export function getVector(store: Store, table: VecTable, contentKey: string): Float32Array | undefined {
+  if (!vecAvailable(store) || !VEC_TABLES.includes(table)) return undefined;
+  try {
+    const row = store.db.prepare(`SELECT embedding FROM ${table} WHERE content_key = ?`).get(contentKey) as
+      | { embedding: Buffer }
+      | undefined;
+    return row ? blobToVec(row.embedding) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Every stored vector of `table` by content key (one scan; for batch jobs such as the similar_to rebuild). */
+export function allVectors(store: Store, table: VecTable): Map<string, Float32Array> {
+  const out = new Map<string, Float32Array>();
+  if (!vecAvailable(store) || !VEC_TABLES.includes(table)) return out;
+  try {
+    const rows = store.db.prepare(`SELECT content_key, embedding FROM ${table}`).all() as {
+      content_key: string;
+      embedding: Buffer;
+    }[];
+    for (const r of rows) out.set(r.content_key, blobToVec(r.embedding));
+  } catch {
+    // table missing: no vectors
+  }
+  return out;
+}
+
 /**
  * K nearest vectors of `vector` in `table`, nearest first. `distance` is the cosine distance from vec0
  * (`1 - cosine`); `cosine` is the similarity. Returns [] when vectors are unavailable or the table is
