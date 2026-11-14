@@ -7,6 +7,8 @@ export * from "./indexer.js";
 export * from "./parse/index.js";
 export * from "./paths/index.js";
 export * from "./resolve/index.js";
+export * from "./search/index.js";
 export * from "./store/index.js";
 export * from "./types.js";
+export * from "./usage/index.js";
 export * from "./workspace/index.js";
