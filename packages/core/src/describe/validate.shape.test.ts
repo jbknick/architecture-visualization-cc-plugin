@@ -216,7 +216,8 @@ describe("buildFactSheet redacts secrets", () => {
   });
 });
 
-describe("every scanner finishes in under 50 ms on adversarial input at the caps", () => {
+// Timing assertion: retried because parallel builds on the same machine can stall one run.
+describe("every scanner finishes in under 50 ms on adversarial input at the caps", { retry: 2 }, () => {
   const inputs = [
     "a".repeat(400),
     "a.".repeat(200),

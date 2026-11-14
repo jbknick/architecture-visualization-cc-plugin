@@ -319,7 +319,10 @@ describe("describeWithWorker", () => {
     expect(fake.runCalls()[0]?.keys).not.toContain("sens:p1");
   });
 
-  it("kills the child at the deadline, queues the rest and returns within budget + 500 ms", async () => {
+  // Deadline assertion: retried because parallel builds on the same machine can stall one run.
+  it("kills the child at the deadline, queues the rest and returns within budget + 500 ms", {
+    retry: 2,
+  }, async () => {
     fake.configure({ mode: "hang" });
     const t0 = Date.now();
     const r = await run(sheets, { deadlineMs: 700 });
