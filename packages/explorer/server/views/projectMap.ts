@@ -2,6 +2,7 @@ import type { EdgeRecord, SymbolKind, SymbolRecord } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { GraphEdge, GraphNode, ViewLevel, ViewModule, ViewParams } from "../types.js";
 import { addImportEdge, type ImportTally, importGraphEdge, newImportTally } from "./aggregate.js";
+import { buildBadgeIndex } from "./badges.js";
 import { buildHierarchy, type HNode, TIER } from "./hierarchy.js";
 import { shortWorkspaceLabels } from "./labels.js";
 import { cmp, getOrInit, isTestPath, optBool, optList } from "./options.js";
@@ -70,6 +71,7 @@ export const projectMapView: ViewModule = {
       wsAllowed ? workspaces.filter((w) => wsAllowed.has(w.id)) : workspaces,
       files,
       symbolsByFile,
+      buildBadgeIndex(store),
     );
 
     // Which nodes are returned.

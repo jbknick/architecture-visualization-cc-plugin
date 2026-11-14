@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { GraphNode, NeighborRef, NodeDetail } from "../api.ts";
+import { m2Of, m2Spec } from "../badges.ts";
 import { useNodeDetail } from "../hooks.ts";
 import { useStore } from "../store.tsx";
 import { isServerNode } from "../views/drill.ts";
@@ -146,7 +147,7 @@ function GraphNodeFacts({ node, view }: { node: GraphNode; view: string | null }
       {node.badges && node.badges.length > 0 && (
         <ul className="badges" aria-label="Badges">
           {node.badges.map((b) => (
-            <li key={b} className="badge">
+            <li key={b} className={`badge${m2Spec(b) ? ` badge-${b}` : ""}`} title={m2Spec(b)?.help}>
               {b}
             </li>
           ))}
@@ -222,6 +223,15 @@ export function Inspector({ nodes }: { nodes: GraphNode[] }) {
           </button>
         </div>
         {kind && <KindBadge kind={kind} />}
+        {isSymbol && current && m2Of(graphNode?.badges).length > 0 && (
+          <ul className="badges" aria-label="Function badges">
+            {m2Of(graphNode?.badges).map((b) => (
+              <li key={b.name} className={`badge badge-${b.name}`} title={b.help}>
+                {b.name}
+              </li>
+            ))}
+          </ul>
+        )}
         {path && (
           <button type="button" className="path-btn" onClick={copy} title="Copy path and line">
             <code>

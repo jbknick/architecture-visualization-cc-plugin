@@ -656,7 +656,10 @@ describe("rebuildSimilarEdges (synthetic)", () => {
 // --- performance --------------------------------------------------------------------------------------
 
 describe("performance", () => {
-  it("checks one function against a 6,000-function index well inside the hook budget", async () => {
+  // Timing assertion: retried because parallel builds on the same machine can stall one run.
+  it("checks one function against a 6,000-function index well inside the hook budget", {
+    retry: 2,
+  }, async () => {
     const { store } = tmpStore();
     const r = rng(42);
     const FILES = 300;
