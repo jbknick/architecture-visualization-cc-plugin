@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
+import { registerHeal } from "./commands/heal.js";
 import { registerIndex } from "./commands/index.js";
 import { registerInit } from "./commands/init.js";
 import { registerMap } from "./commands/map.js";
@@ -12,6 +13,7 @@ const { version } = JSON.parse(readFileSync(pluginJson, "utf8")) as { version: s
 
 const program = new Command().name("gantry").version(version);
 registerInit(program);
+registerHeal(program);
 registerIndex(program);
 registerMap(program);
 await program.parseAsync();
