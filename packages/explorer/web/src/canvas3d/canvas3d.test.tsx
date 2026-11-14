@@ -33,6 +33,9 @@ describe("WebGL fallback", () => {
     expect(await screen.findByText("3D view needs WebGL")).toBeTruthy();
     expect(screen.getByLabelText("Hide tests")).toBeTruthy();
     expect(screen.getByRole("tab", { name: "3D map" }).getAttribute("aria-selected")).toBe("true");
+    // The function-kind legend does not apply to this view; the panel has its own "how to read it" block.
+    expect(screen.queryByText("Legend")).toBeNull();
+    expect(screen.getByText("How to read it")).toBeTruthy();
   });
 });
 
@@ -62,6 +65,22 @@ describe("MapPanel", () => {
     expect(onRouteChange).toHaveBeenCalledWith({ level: "files" });
     fireEvent.click(screen.getByLabelText("Workspaces"));
     expect(onRouteChange).toHaveBeenLastCalledWith({ level: "workspaces" });
+  });
+
+  it("puts the legend (island, arrow, sphere) right under the level switch, before the toggles", () => {
+    setup();
+    const levels = document.querySelector(".map3d-levels") as Element;
+    const howto = document.querySelector(".map3d-howto") as Element;
+    const hide = screen.getByLabelText("Hide tests");
+    const list = document.querySelector(".map3d-legend") as Element;
+    const precedes = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(precedes(levels, howto)).toBe(true);
+    expect(precedes(howto, hide)).toBe(true);
+    expect(precedes(howto, list)).toBe(true);
+    expect(howto.textContent).toContain("Island = one workspace");
+    expect(howto.textContent).toContain("Arrow A → B = A imports from B");
+    expect(howto.textContent).toContain("folder");
   });
 
   it("hides tests by default and toggles the filter", () => {

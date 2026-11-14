@@ -143,3 +143,168 @@
   font-size: 11px;
   color: var(--muted);
 }
+
+/* Always-visible key, bottom-left of the canvas. */
+.map3d-key {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 4;
+  max-width: min(440px, calc(100% - 24px));
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+.map3d-key strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Label overlay: DOM text placed in screen space every frame by scene.ts. */
+.m3-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+.m3-leaders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.m3-leader {
+  stroke: var(--m3-leader);
+  stroke-width: 1;
+  fill: none;
+}
+.m3-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  white-space: nowrap;
+  color: var(--m3-fg);
+  background: var(--m3-bg);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.25;
+  padding: 2px 6px;
+  font-weight: 500;
+}
+.m3-island {
+  padding: 3px 9px 4px;
+  border: 1.5px solid currentColor;
+  border-radius: 9px;
+  text-align: center;
+  max-width: 230px;
+}
+.m3-name {
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  max-width: 12em;
+  margin: 0 auto;
+}
+.m3-cap {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.82;
+  white-space: nowrap;
+}
+.m3-arc {
+  padding: 1px 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border: 1px solid var(--m3-leader);
+  border-radius: 999px;
+}
+.m3-dir,
+.m3-file {
+  font-size: 11.5px;
+  padding: 1px 5px;
+}
+.m3-file {
+  font-weight: 400;
+  font-size: 11px;
+}
+.m3-cluster {
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  opacity: 0.72;
+  text-shadow:
+    0 0 3px var(--m3-bg),
+    0 0 3px var(--m3-bg),
+    0 0 6px var(--m3-bg);
+}
+.m3-hover {
+  font-weight: 700;
+  border: 1px solid var(--m3-leader);
+}
+
+.map3d-howto {
+  display: grid;
+  gap: 6px;
+}
+.map3d-howto h3 {
+  margin: 0;
+}
+.map3d-howto ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.map3d-howto li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: start;
+}
+.map3d-howto strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.map3d-sw {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+}
+.map3d-sw-island {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  background: var(--accent-soft);
+}
+.map3d-sw-arrow {
+  width: 26px;
+  height: 10px;
+  margin-top: 6px;
+}
+.map3d-sw-dot {
+  width: 10px;
+  height: 10px;
+  margin: 6px 0 0 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}

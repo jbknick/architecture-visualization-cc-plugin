@@ -1,9 +1,10 @@
 // Imperative three.js side of the 3D map. 3d-force-graph supplies the renderer, orbit camera, picking and node
 // objects; everything else (islands, bundled arcs, particles, faint intra-island links) is added to its scene.
 // Positions are frozen: the force engine never runs (cooldownTicks 0), the layout comes from layout.ts.
+// Text is not drawn in WebGL: names, captions, folder labels and count pills are DOM elements in an overlay that
+// is placed in screen space every frame (see `layoutLabels`), so they stay crisp and a constant size.
 import ForceGraph3D, { type ForceGraph3DInstance, type NodeObject } from "3d-force-graph";
 import * as THREE from "three";
-import SpriteText from "three-spritetext";
 import type { GraphEdge, GraphNode } from "../api.ts";
 import type { Scheme } from "../theme.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
@@ -11,9 +12,11 @@ import {
   type Arc,
   arcWidthPx,
   computeLayout,
+  folderCaption,
   type Island,
   islandLabelPx,
   type Layout,
+  stripSharedSrc,
   type Vec3,
 } from "./layout.ts";
 import { type SceneTheme, sceneTheme } from "./palette.ts";
@@ -37,13 +40,13 @@ export interface SceneOptions {
 type N = NodeObject & { id: string; gnode: GraphNode };
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 interface NodeEntry {
   node: GraphNode;
   island: string;
   color: THREE.Color;
   material: THREE.MeshLambertMaterial;
-  label: LabelItem | null;
 }
 
 interface IslandEntry {
@@ -52,10 +55,8 @@ interface IslandEntry {
   shell: THREE.Mesh;
   halo: THREE.Mesh;
   ring: THREE.LineLoop;
-  labels: SpriteText[];
   pick: THREE.Mesh;
-  name: LabelItem;
-  sub: LabelItem;
+  label: Lbl;
 }
 
 interface ArcEntry {
@@ -66,34 +67,85 @@ interface ArcEntry {
   radius: number;
   /** False for declared-dependency-only arcs while "Show declared dependencies" is off. */
   visible: boolean;
+  pill: Lbl;
+  /** Rank by weight among import arcs (0 = heaviest). */
+  rank: number;
 }
 
-type LabelKind = "name" | "sub" | "node" | "arc" | "hover";
+type LabelKind = "island" | "dir" | "cluster" | "file" | "arc" | "hover";
 
-/** One text sprite taking part in screen-space de-collision. */
-interface LabelItem {
-  sprite: SpriteText;
-  /** On-screen height in pixels at full size. */
-  px: number;
-  aspect: number;
+/** One DOM label (plus an optional leader line in the SVG layer) taking part in screen-space de-collision. */
+interface Lbl {
+  el: HTMLElement;
+  leader: SVGLineElement | null;
   kind: LabelKind;
   /** Island the label belongs to (arcs: null). */
   island: string | null;
-  /** Higher wins a collision within a kind (islands: function count). */
+  /** Higher is placed first within a kind (function count). */
   prio: number;
-  arc?: ArcEntry;
+  /** Rank among the same kind inside its island (0 = biggest). */
+  rank: number;
+  /** Measured size in CSS pixels at scale 1. */
+  w: number;
+  h: number;
   nodeId?: string;
+  world?: THREE.Vector3;
+  worldR?: number;
+  arc?: ArcEntry;
+  /** Arc pills: size of the long "A → B: N imports" form. */
+  fullW?: number;
+  fullH?: number;
+  shortText?: string;
+  fullText?: string;
+  dim?: boolean;
+  last?: string;
+  shown: boolean;
+  /** Frame number in which the label was last placed. */
+  seen: number;
 }
 
-/** Island labels may shrink to this fraction of their size before they are hidden instead. */
-const SHRINK_STEPS = [1, 0.85, 0.72] as const;
-const MIN_LABEL_PX = 10.5;
-/** An island must be at least this many pixels in radius on screen to show its "N functions" line unprompted. */
-const SUB_MIN_RADIUS_PX = 100;
-const NODE_LABEL_MIN_RADIUS_PX = 70;
-const FILE_LABELS_PER_ISLAND = 8;
+interface Rect {
+  l: number;
+  t: number;
+  r: number;
+  b: number;
+}
+
+/** Shade offsets by folder rank inside an island (Files level): lighter or darker than the island colour. */
+const SHADES = [0, 0.3, -0.22, 0.5, -0.38, 0.14, -0.1, 0.4] as const;
+const PAD = 3;
+const MARGIN = 5;
+/** Folders per big island labelled by default (Folders level); more when the island is hovered or selected. */
+const FOLDER_LABELS_BIG = 8;
+const FOLDER_LABELS_SMALL = 3;
+const FOLDER_CANDIDATES_BIG = 12;
+const FOLDER_CANDIDATES_SMALL = 4;
+/** Files level: cluster (folder) captions and file names per big island. */
+const CLUSTER_LABELS_BIG = 5;
+const FILE_LABELS_BIG = 3;
+const FILE_CANDIDATES = 14;
+const COUNT_PILLS = 6;
+/** An island is "big" (name block on top of it) when its radius is at least this fraction of the largest. */
+const BIG_FRACTION = 0.5;
 
 const v3 = (p: Vec3): THREE.Vector3 => new THREE.Vector3(p.x, p.y, p.z);
+
+const kindOrder = (k: LabelKind): number => (k === "dir" ? 0 : k === "cluster" ? 1 : 2);
+
+const overlaps = (a: Rect, b: Rect): boolean => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t;
+
+function rectHitsDisc(r: Rect, d: { x: number; y: number; r: number }): boolean {
+  const nx = clamp(d.x, r.l, r.r);
+  const ny = clamp(d.y, r.t, r.b);
+  return Math.hypot(nx - d.x, ny - d.y) < d.r;
+}
+
+function ellipsize(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const keep = max - 1;
+  const head = Math.ceil(keep * 0.55);
+  return `${text.slice(0, head)}…${text.slice(text.length - (keep - head))}`;
+}
 
 function dotTexture(): THREE.Texture {
   const c = document.createElement("canvas");
@@ -136,8 +188,10 @@ export class MapScene {
   private showDeclared = false;
   private level: "workspaces" | "dirs" | "files" = "dirs";
   private userMoved = false;
-  private labelItems: LabelItem[] = [];
-  private hoverLabel: LabelItem | null = null;
+  private labels: Lbl[] = [];
+  private hoverLabel: Lbl | null = null;
+  private readonly overlay: HTMLDivElement;
+  private readonly svg: SVGSVGElement;
   private lastClick = { id: "", t: 0 };
   private raf = 0;
   private moveRaf = 0;
@@ -176,6 +230,14 @@ export class MapScene {
       .onNodeClick((n) => this.handleNodeClick(n as N))
       .onBackgroundClick(() => this.handleBackgroundClick());
     this.graph.scene().add(this.extras);
+    this.overlay = document.createElement("div");
+    this.overlay.className = "m3-overlay";
+    this.overlay.setAttribute("data-testid", "map3d-labels");
+    this.svg = document.createElementNS(SVG_NS, "svg");
+    this.svg.setAttribute("class", "m3-leaders");
+    this.overlay.appendChild(this.svg);
+    el.appendChild(this.overlay);
+    this.applyOverlayTheme();
     const dom = this.graph.renderer().domElement;
     dom.addEventListener("pointermove", this.onPointerMove);
     dom.addEventListener("pointerleave", this.onPointerLeave);
@@ -202,7 +264,15 @@ export class MapScene {
     this.scheme = scheme;
     this.theme = sceneTheme(scheme);
     this.graph.backgroundColor(this.theme.background);
+    this.applyOverlayTheme();
     if (this.layout) this.rebuild(this.layout);
+  }
+
+  private applyOverlayTheme(): void {
+    const s = this.overlay.style;
+    s.setProperty("--m3-fg", this.theme.labelText);
+    s.setProperty("--m3-bg", this.theme.labelBg);
+    s.setProperty("--m3-leader", this.scheme === "dark" ? "rgba(243,245,249,0.55)" : "rgba(18,21,28,0.5)");
   }
 
   setData(nodes: GraphNode[], edges: GraphEdge[]): Layout {
@@ -215,6 +285,7 @@ export class MapScene {
       : nodes.some((n) => n.kind === "dir")
         ? "dirs"
         : "workspaces";
+    this.overlay.setAttribute("data-level", this.level);
     this.userMoved = false;
     this.refDist = this.fitDistance();
     this.rebuild(layout);
@@ -252,7 +323,7 @@ export class MapScene {
 
   resetCamera(animate = true): void {
     this.userMoved = false;
-    const d = this.layout?.viewDir ?? { x: 0.3, y: 0.4, z: 0.85 };
+    const d = this.layout?.viewDir ?? { x: 0.1, y: 0.3, z: 0.95 };
     const dist = this.fitDistance();
     this.graph.cameraPosition(
       { x: d.x * dist, y: d.y * dist, z: d.z * dist },
@@ -289,12 +360,12 @@ export class MapScene {
         for (const [sx, sy] of corners) {
           p.copy(v3(isl.center))
             .addScaledVector(right, sx * isl.radius)
-            .addScaledVector(up, sy * isl.radius * 1.3) // headroom for the island label above the sphere
+            .addScaledVector(up, sy * isl.radius * 1.25) // headroom for names above and callouts around
             .project(cam);
           m = Math.max(m, Math.abs(p.x), Math.abs(p.y));
         }
       }
-      dist = Math.max(layout.extent * 0.6, dist * (m / 0.9));
+      dist = Math.max(layout.extent * 0.6, dist * (m / 0.8));
     }
     return dist;
   }
@@ -340,6 +411,7 @@ export class MapScene {
     dom.removeEventListener("pointermove", this.onPointerMove);
     dom.removeEventListener("pointerleave", this.onPointerLeave);
     this.clearExtras();
+    this.overlay.remove();
     this.unitSphere.dispose();
     this.dot?.dispose();
     this.graph.graphData({ nodes: [], links: [] });
@@ -389,7 +461,11 @@ export class MapScene {
   }
 
   private clearExtras(): void {
-    this.labelItems = [];
+    for (const l of this.labels) {
+      l.el.remove();
+      l.leader?.remove();
+    }
+    this.labels = [];
     this.hoverLabel = null;
     this.extras.traverse((o) => {
       const m = o as THREE.Mesh;
@@ -410,32 +486,50 @@ export class MapScene {
     return new THREE.Color(workspaceColorAt(i.index, this.scheme));
   }
 
-  /** Labels keep a constant on-screen size: `layoutLabels` rescales and de-collides them every frame. */
-  private label(
-    text: string,
-    px: number,
+  /** A DOM label; its size is measured once everything is attached (`measureLabels`). */
+  private makeLabel(
     kind: LabelKind,
     island: string | null,
     prio: number,
-    extra: Partial<LabelItem> = {},
-  ): LabelItem {
-    const s = new SpriteText(text, 10, this.theme.labelText); // padding is relative to this height; real size is set per frame
-    s.backgroundColor = this.theme.labelBg;
-    s.fontWeight = kind === "name" || kind === "arc" ? "700" : "500";
-    s.padding = [3, 1.5];
-    s.borderRadius = 3;
-    s.material.depthWrite = false;
-    s.material.depthTest = false;
-    s.raycast = () => {}; // labels never intercept the pointer
-    const item: LabelItem = { sprite: s, px, aspect: s.scale.x / s.scale.y, kind, island, prio, ...extra };
-    this.labelItems.push(item);
-    return item;
+    rank: number,
+    build: (el: HTMLElement) => void,
+    opts: { leader?: boolean; color?: string; cls?: string } = {},
+  ): Lbl {
+    const el = document.createElement("div");
+    el.className = `m3-label m3-${kind}${opts.cls ? ` ${opts.cls}` : ""}`;
+    el.style.visibility = "hidden";
+    build(el);
+    this.overlay.appendChild(el);
+    let leader: SVGLineElement | null = null;
+    if (opts.leader !== false) {
+      leader = document.createElementNS(SVG_NS, "line");
+      leader.setAttribute("class", "m3-leader");
+      if (opts.color) leader.style.stroke = opts.color;
+      leader.style.visibility = "hidden";
+      this.svg.appendChild(leader);
+    }
+    const lbl: Lbl = { el, leader, kind, island, prio, rank, w: 0, h: 0, shown: false, seen: -1 };
+    this.labels.push(lbl);
+    return lbl;
+  }
+
+  private measureLabels(): void {
+    for (const l of this.labels) {
+      if (l.w > 0) continue;
+      l.w = l.el.offsetWidth;
+      l.h = l.el.offsetHeight;
+      if (l.kind === "arc" && l.fullText !== undefined && l.shortText !== undefined) {
+        l.el.textContent = l.fullText;
+        l.fullW = l.el.offsetWidth;
+        l.fullH = l.el.offsetHeight;
+        l.el.textContent = l.shortText;
+      }
+    }
   }
 
   private rebuild(layout: Layout): void {
     this.clearExtras();
     this.entries = new Map();
-    const nodeLabelCount = new Map<string, Set<string>>();
     const byIsland = new Map<string, GraphNode[]>();
     const islandOf = new Map<string, Island>();
     for (const isl of layout.islands) {
@@ -450,19 +544,11 @@ export class MapScene {
       byIsland.set(isl.id, list);
       graphNodes.push({ id, gnode: node, x: p.x, y: p.y, z: p.z, fx: p.x, fy: p.y, fz: p.z } as N);
     }
-    for (const [iid, list] of byIsland) {
-      // The island label already names a lone node, so only multi-node islands get per-node labels.
-      if (list.length < 2) continue;
-      const top = [...list].sort((a, b) => b.size - a.size || (a.id < b.id ? -1 : 1));
-      const n =
-        this.level === "files" ? FILE_LABELS_PER_ISLAND : clamp(Math.round(Math.sqrt(list.length)), 2, 6);
-      nodeLabelCount.set(iid, new Set(top.slice(0, n).map((x) => x.id)));
-    }
-    this.pendingLabels = nodeLabelCount;
     this.islandOfNode = islandOf;
     this.graph.graphData({ nodes: graphNodes, links: [] });
+    const maxR = Math.max(1, ...layout.islands.map((i) => i.radius));
 
-    // Islands: translucent shell + back-face halo + equator ring + big always-facing label.
+    // Islands: translucent shell + back-face halo + equator ring; the name block is a DOM label.
     for (const isl of layout.islands) {
       const color = this.islandColor(isl);
       const shell = new THREE.Mesh(
@@ -492,29 +578,29 @@ export class MapScene {
       group.position.copy(v3(isl.center));
       group.add(halo, shell, ring);
 
-      // Name above the sphere's top; the "N functions" line stacks above it (see layoutLabels). Size follows
-      // the island's importance (sqrt of its function count).
-      const nameItem = this.label(isl.label, islandLabelPx(isl.functions), "name", isl.id, isl.functions);
-      const name = nameItem.sprite;
-      name.color = this.scheme === "dark" ? "#ffffff" : "#0b0e14";
-      name.borderColor = `#${color.getHexString()}`;
-      name.borderWidth = 1.2;
-      const subItem = this.label(
-        `${isl.functions} functions · ${isl.files} files · ${isl.wsKind}`,
-        15,
-        "sub",
+      // One block: the name (size follows importance) and a smaller caption, in the same rounded box.
+      const hex = `#${color.getHexString()}`;
+      const label = this.makeLabel(
+        "island",
         isl.id,
         isl.functions,
+        0,
+        (el) => {
+          el.style.borderColor = hex;
+          el.setAttribute("data-island", isl.id);
+          el.setAttribute("data-big", isl.radius >= maxR * BIG_FRACTION ? "true" : "false");
+          const name = document.createElement("div");
+          name.className = "m3-name";
+          name.style.fontSize = `${islandLabelPx(isl.functions).toFixed(1)}px`;
+          name.textContent = isl.label;
+          const cap = document.createElement("div");
+          cap.className = "m3-cap";
+          cap.textContent = `${isl.functions.toLocaleString("en-US")} functions · ${isl.files.toLocaleString("en-US")} files · ${isl.wsKind}`;
+          el.append(name, cap);
+          el.title = isl.fullLabel;
+        },
+        { color: hex },
       );
-      const sub = subItem.sprite;
-      name.center.set(0.5, -0.15);
-      sub.center.set(0.5, -0.15);
-      name.position.set(0, isl.radius, 0);
-      sub.position.set(0, isl.radius, 0);
-      for (const s of [name, sub]) {
-        s.renderOrder = 20;
-        group.add(s);
-      }
       // Invisible pick sphere so the pointer can hit an island between its nodes.
       const pick = new THREE.Mesh(
         new THREE.SphereGeometry(isl.radius, 16, 12),
@@ -522,18 +608,38 @@ export class MapScene {
       );
       group.add(pick);
       this.extras.add(group);
-      this.islandEntries.set(isl.id, {
-        island: isl,
-        color,
-        shell,
-        halo,
-        ring,
-        labels: [name, sub],
-        pick,
-        name: nameItem,
-        sub: subItem,
-      });
+      this.islandEntries.set(isl.id, { island: isl, color, shell, halo, ring, pick, label });
     }
+
+    // Files level: one faint bubble per folder, and a slightly different shade per folder, so groups read.
+    this.clusterRank = new Map();
+    const perIsland = new Map<string, number>();
+    for (const c of layout.clusters) perIsland.set(c.island, (perIsland.get(c.island) ?? 0) + 1);
+    for (const c of layout.clusters) {
+      for (const id of c.nodeIds) this.clusterRank.set(id, c.rank);
+      if ((perIsland.get(c.island) ?? 0) < 2) continue;
+      const color = this.islandEntries.get(c.island)?.color;
+      if (!color) continue;
+      const bubble = new THREE.Mesh(
+        new THREE.SphereGeometry(c.radius, 24, 16),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.11, depthWrite: false }),
+      );
+      bubble.position.copy(v3(c.center));
+      const edge = new THREE.Mesh(
+        new THREE.SphereGeometry(c.radius, 24, 16),
+        new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 0.16,
+          side: THREE.BackSide,
+          depthWrite: false,
+        }),
+      );
+      edge.position.copy(bubble.position);
+      this.extras.add(bubble, edge);
+    }
+
+    this.buildNodeLabels(layout, byIsland, maxR);
 
     // Faint links inside islands: one LineSegments for all of them.
     const linkPos: number[] = [];
@@ -555,47 +661,71 @@ export class MapScene {
       this.extras.add(this.links);
     }
 
-    // Bundled arcs between islands.
+    // Bundled arcs between islands, with arrowheads just outside the target island.
+    const headLen = this.px(17);
     for (const arc of layout.arcs) {
       const src = this.islandEntries.get(arc.src);
       const dst = this.islandEntries.get(arc.dst);
       if (!src || !dst) continue;
       const curve = new THREE.QuadraticBezierCurve3(v3(arc.p0), v3(arc.p1), v3(arc.p2));
       const radius = this.px(arcWidthPx(arc.weight) / 2);
-      const geo = new THREE.TubeGeometry(curve, 56, radius, 8, false);
+      // The tube stops where the arrowhead's base starts, so the head is the visible end of the arc.
+      const total = curve.getLength();
+      const tEnd = clamp(1 - headLen / Math.max(total, 1e-6), 0.5, 0.98);
+      const pts: THREE.Vector3[] = [];
+      for (let i = 0; i <= 40; i++) pts.push(curve.getPoint((tEnd * i) / 40));
+      const tubeCurve = new THREE.CatmullRomCurve3(pts, false, "centripetal");
+      const geo = new THREE.TubeGeometry(tubeCurve, 56, radius, 8, false);
       const colors: number[] = [];
       const ringVerts = 9;
       const c = new THREE.Color();
       for (let i = 0; i <= 56; i++) {
-        c.copy(src.color).lerp(dst.color, i / 56);
+        c.copy(src.color).lerp(dst.color, (i / 56) * tEnd);
         for (let k = 0; k < ringVerts; k++) colors.push(c.r, c.g, c.b);
       }
       geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
       const mesh = new THREE.Mesh(
         geo,
-        new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.4 }),
+        new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5 }),
       );
       const tangent = curve.getTangent(1).normalize();
+      const headR = Math.max(this.px(6.5), radius * 2.4);
       const head = new THREE.Mesh(
-        new THREE.ConeGeometry(radius * 2, radius * 5, 12),
-        new THREE.MeshBasicMaterial({ color: dst.color, transparent: true, opacity: 0.9 }),
+        new THREE.ConeGeometry(headR, headLen, 20),
+        new THREE.MeshBasicMaterial({ color: dst.color, transparent: true, opacity: 1 }),
       );
-      head.position.copy(curve.getPoint(1).addScaledVector(tangent, -radius * 2.5));
+      head.position.copy(curve.getPoint(1).addScaledVector(tangent, -headLen / 2));
       head.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
       this.extras.add(mesh, head);
-      const ae: ArcEntry = { arc, mesh, head, curve, radius, visible: true };
-      this.syncArcVisibility(ae);
-      this.arcEntries.push(ae);
-      // "A → B: N imports" at the midpoint; only shown while an endpoint island is hovered or selected.
+      // Count pill ("319") on the heaviest arcs; the long "A → B: N imports" form while an endpoint is active.
       const from = src.island.label;
       const to = dst.island.label;
-      const text = `${from} → ${to}: ${arc.dependsOnly ? "declared dependency" : `${arc.weight} imports`}`;
-      const item = this.label(text, 13, "arc", null, arc.weight, { arc: ae });
-      item.sprite.center.set(0.5, 0.5);
-      item.sprite.position.copy(curve.getPoint(0.5));
-      item.sprite.renderOrder = 25;
-      this.extras.add(item.sprite);
+      const shortText = arc.dependsOnly ? "dep" : `${arc.weight.toLocaleString("en-US")}`;
+      const fullText = `${from} → ${to}: ${arc.dependsOnly ? "declared dependency" : `${arc.weight.toLocaleString("en-US")} imports`}`;
+      const pill = this.makeLabel(
+        "arc",
+        null,
+        arc.weight,
+        0,
+        (el) => {
+          el.textContent = shortText;
+          el.setAttribute("data-arc", arc.id);
+        },
+        { leader: false },
+      );
+      pill.shortText = shortText;
+      pill.fullText = fullText;
+      const ae: ArcEntry = { arc, mesh, head, curve, radius, visible: true, pill, rank: 999 };
+      pill.arc = ae;
+      this.syncArcVisibility(ae);
+      this.arcEntries.push(ae);
     }
+    [...this.arcEntries]
+      .filter((a) => !a.arc.dependsOnly)
+      .sort((a, b) => b.arc.weight - a.arc.weight || (a.arc.id < b.arc.id ? -1 : 1))
+      .forEach((a, i) => {
+        a.rank = i;
+      });
 
     // Directional particles: skipped under prefers-reduced-motion (the arrowheads still show direction).
     if (!this.reduced && this.arcEntries.length > 0) {
@@ -630,32 +760,97 @@ export class MapScene {
       this.extras.add(this.particles);
       this.updateParticles(0);
     }
+    this.measureLabels();
     this.applyHighlight();
   }
 
-  private pendingLabels = new Map<string, Set<string>>();
+  /**
+   * Folder labels (Folders level), folder-cluster captions and the biggest file names (Files level). They are
+   * created for the top candidates of each island; `layoutLabels` decides every frame which ones fit.
+   */
+  private buildNodeLabels(layout: Layout, byIsland: Map<string, GraphNode[]>, maxR: number): void {
+    const bigOf = (id: string): boolean =>
+      (this.islandEntries.get(id)?.island.radius ?? 0) >= maxR * BIG_FRACTION;
+    if (this.level === "dirs") {
+      for (const [iid, list] of byIsland) {
+        if (list.length < 2) continue; // the island name already names a lone folder
+        const big = bigOf(iid);
+        const top = [...list]
+          .sort((a, b) => b.size - a.size || (a.id < b.id ? -1 : 1))
+          .slice(0, big ? FOLDER_CANDIDATES_BIG : FOLDER_CANDIDATES_SMALL);
+        const names = stripSharedSrc(top.map((n) => n.label));
+        top.forEach((n, i) => {
+          const p = layout.positions.get(n.id);
+          if (!p) return;
+          const text = folderCaption(ellipsize(names[i] as string, 26), n.size);
+          const lbl = this.makeLabel("dir", iid, n.size, i, (el) => {
+            el.textContent = text;
+            el.title = `${n.label}: ${n.size.toLocaleString("en-US")} functions`;
+          });
+          lbl.nodeId = n.id;
+          lbl.world = v3(p);
+          lbl.worldR = layout.nodeRadius.get(n.id) ?? 2;
+        });
+      }
+    } else if (this.level === "files") {
+      const byCluster = new Map<string, typeof layout.clusters>();
+      for (const c of layout.clusters) byCluster.set(c.island, [...(byCluster.get(c.island) ?? []), c]);
+      for (const [iid, cs] of byCluster) {
+        if (cs.length < 2 || !bigOf(iid)) continue;
+        const top = [...cs].sort((a, b) => b.functions - a.functions || (a.key < b.key ? -1 : 1)).slice(0, 8);
+        const names = stripSharedSrc(top.map((c) => (c.key === "." ? "(root)" : c.key)));
+        top.forEach((c, i) => {
+          const lbl = this.makeLabel(
+            "cluster",
+            iid,
+            c.functions,
+            i,
+            (el) => {
+              el.textContent = folderCaption(ellipsize(names[i] as string, 24), c.functions);
+              el.title = `${c.key}: ${c.functions.toLocaleString("en-US")} functions in ${c.files} files`;
+            },
+            { leader: false },
+          );
+          lbl.world = v3(c.center);
+          lbl.worldR = c.radius;
+        });
+      }
+      for (const [iid, list] of byIsland) {
+        if (list.length < 2) continue;
+        const top = [...list]
+          .sort((a, b) => b.size - a.size || (a.id < b.id ? -1 : 1))
+          .slice(0, bigOf(iid) ? FILE_CANDIDATES : 4);
+        top.forEach((n, i) => {
+          const p = layout.positions.get(n.id);
+          if (!p) return;
+          const lbl = this.makeLabel("file", iid, n.size, i, (el) => {
+            el.textContent = ellipsize(n.label, 28);
+            el.title = n.path ?? n.label;
+          });
+          lbl.nodeId = n.id;
+          lbl.world = v3(p);
+          lbl.worldR = layout.nodeRadius.get(n.id) ?? 1;
+        });
+      }
+    }
+  }
+
   private islandOfNode = new Map<string, Island>();
+  private clusterRank = new Map<string, number>();
 
   private makeNodeObject(n: N): THREE.Object3D {
     const isl = this.islandOfNode.get(n.id) as Island;
     const color = this.islandColor(isl);
+    const shade = SHADES[(this.clusterRank.get(n.id) ?? 0) % SHADES.length] as number;
+    if (shade > 0) color.lerp(new THREE.Color("#ffffff"), shade);
+    else if (shade < 0) color.lerp(new THREE.Color("#000000"), -shade);
     const r = this.layout?.nodeRadius.get(n.id) ?? 2;
     const material = new THREE.MeshLambertMaterial({ color });
     const mesh = new THREE.Mesh(this.unitSphere, material);
     mesh.scale.setScalar(r);
     const group = new THREE.Group();
     group.add(mesh);
-    let label: LabelItem | null = null;
-    if (this.pendingLabels.get(isl.id)?.has(n.id)) {
-      label = this.label(n.gnode.label, clamp(11 + r * 0.5, 11, 14), "node", isl.id, n.gnode.size, {
-        nodeId: n.id,
-      });
-      label.sprite.center.set(0.5, -0.15);
-      label.sprite.position.set(0, r, 0);
-      label.sprite.renderOrder = 15;
-      group.add(label.sprite);
-    }
-    this.entries.set(n.id, { node: n.gnode, island: isl.id, color, material, label });
+    this.entries.set(n.id, { node: n.gnode, island: isl.id, color, material });
     return group;
   }
 
@@ -713,8 +908,8 @@ export class MapScene {
   private arcOpacity(ae: ArcEntry): { tube: number; head: number } {
     if (!ae.visible) return { tube: 0, head: 0 };
     const act = this.activeIsland();
-    if (!act) return { tube: 0.38, head: 0.5 };
-    return this.arcTouches(ae.arc, act) ? { tube: 1, head: 0.95 } : { tube: 0.035, head: 0.035 };
+    if (!act) return { tube: 0.5, head: 1 };
+    return this.arcTouches(ae.arc, act) ? { tube: 1, head: 1 } : { tube: 0.04, head: 0.08 };
   }
 
   private syncArcVisibility(ae: ArcEntry): void {
@@ -732,7 +927,9 @@ export class MapScene {
       c.copy(e.color);
       if (!lit) c.lerp(bg, 0.86);
       e.material.color.copy(c);
-      if (e.label) e.label.sprite.material.opacity = lit ? 1 : 0.15;
+    }
+    for (const l of this.labels) {
+      if (l.nodeId) l.dim = !!sel && !sel.nodes.has(l.nodeId);
     }
     this.applyIslandsAndArcs();
     if (this.links) {
@@ -768,7 +965,7 @@ export class MapScene {
             : 0.025;
       (ie.halo.material as THREE.MeshBasicMaterial).opacity = focused ? 0.22 : hot ? 0.2 : lit ? 0.1 : 0.03;
       (ie.ring.material as THREE.LineBasicMaterial).opacity = focused || hot ? 1 : lit ? 0.55 : 0.12;
-      for (const l of ie.labels) l.material.opacity = lit || hot ? 1 : 0.25;
+      ie.label.dim = !(lit || hot);
     }
     for (const ae of this.arcEntries) {
       const o = this.arcOpacity(ae);
@@ -916,112 +1113,319 @@ export class MapScene {
     this.layoutLabels();
   };
 
+  private frameNo = 0;
+
   /**
-   * Every frame: size each label to its on-screen pixel height, decide which labels are eligible (detail lines
-   * only for big or active islands, file labels only for the active island), then place them greedily by
-   * priority in screen space. A label that would overlap an already placed one shrinks a little, else is hidden.
-   * Order: the active (hovered or selected) island's labels and arcs, island names by function count, island
-   * detail lines, then file and folder labels.
+   * Every frame, in screen space. Order of placement (earlier wins a collision; nothing placed later may cover it):
+   * 1. the hovered node's name;
+   * 2. island blocks (name + caption as one unit): the active island first, then big islands on top of themselves
+   *    with a short tick, then small islands as callouts on a ring around the cluster with a leader line, so
+   *    every island always has a readable name attached to it;
+   * 3. arc labels: the long "A → B: N imports" form for the active island's arcs, else count pills on the
+   *    heaviest arcs;
+   * 4. folder labels beside their spheres (Folders), folder captions and the biggest file names (Files).
    */
   private layoutLabels(): void {
+    if (this.labels.length === 0 || !this.layout) return;
+    const frame = ++this.frameNo;
     const cam = this.graph.camera() as THREE.PerspectiveCamera;
     const W = this.el.clientWidth || 1200;
     const H = this.el.clientHeight || 800;
     cam.updateMatrixWorld();
-    const k = (2 * Math.tan(((cam.fov || 50) * Math.PI) / 360)) / H;
-    const active = this.activeIsland();
+    const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
+    const tmp = new THREE.Vector3();
+    const tmp2 = new THREE.Vector3();
+    const proj = (p: THREE.Vector3): { x: number; y: number; ok: boolean } => {
+      tmp.copy(p).project(cam);
+      return { x: ((tmp.x + 1) / 2) * W, y: ((1 - tmp.y) / 2) * H, ok: tmp.z > -1 && tmp.z < 1 };
+    };
+    const projR = (c: THREE.Vector3, R: number): { x: number; y: number; r: number; ok: boolean } => {
+      const a = proj(c);
+      const b = proj(tmp2.copy(c).addScaledVector(right, R));
+      return { x: a.x, y: a.y, r: Math.hypot(a.x - b.x, a.y - b.y), ok: a.ok };
+    };
     this.syncHoverLabel();
-    const world = new THREE.Vector3();
-    const ndc = new THREE.Vector3();
+    const active = this.activeIsland();
+    const sel = this.selection();
 
-    const eligible = (it: LabelItem): boolean => {
-      if (!it.sprite.parent) return false;
-      const isl = it.island ? this.islandEntries.get(it.island)?.island : undefined;
-      switch (it.kind) {
-        case "name":
-          return true;
-        case "sub":
-          if (it.island === active) return true;
-          return !!isl && this.islandScreenRadius(isl, cam, k) >= SUB_MIN_RADIUS_PX;
-        case "arc":
-          return !!it.arc?.visible && active !== null && this.arcTouches(it.arc.arc, active);
-        case "hover":
-          return this.hoverNode !== null;
-        default:
-          // file and folder labels
-          if (this.level === "files") return it.island === active;
-          if (it.island === active) return true;
-          return !!isl && this.islandScreenRadius(isl, cam, k) >= NODE_LABEL_MIN_RADIUS_PX;
+    const placed: Rect[] = [];
+    const rectOf = (x: number, y: number, w: number, h: number): Rect => ({
+      l: x - PAD,
+      t: y - PAD,
+      r: x + w + PAD,
+      b: y + h + PAD,
+    });
+    const inView = (x: number, y: number, w: number, h: number): boolean =>
+      x >= MARGIN && y >= MARGIN && x + w <= W - MARGIN && y + h <= H - MARGIN;
+    const isFree = (r: Rect): boolean => !placed.some((p) => overlaps(r, p));
+    const show = (
+      l: Lbl,
+      x: number,
+      y: number,
+      scale: number,
+      lead: [number, number, number, number] | null,
+      opacity = 1,
+    ): void => {
+      const key = `${Math.round(x)},${Math.round(y)},${scale},${opacity}`;
+      if (l.last !== key) {
+        l.el.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)${scale !== 1 ? ` scale(${scale})` : ""}`;
+        l.el.style.opacity = opacity === 1 ? "" : String(opacity);
+        l.last = key;
+      }
+      l.seen = frame;
+      if (l.leader) {
+        if (lead) {
+          l.leader.setAttribute("x1", lead[0].toFixed(1));
+          l.leader.setAttribute("y1", lead[1].toFixed(1));
+          l.leader.setAttribute("x2", lead[2].toFixed(1));
+          l.leader.setAttribute("y2", lead[3].toFixed(1));
+          l.leader.style.opacity = String(opacity);
+          l.leader.style.visibility = "visible";
+        } else l.leader.style.visibility = "hidden";
       }
     };
-    const tier = (it: LabelItem): number => {
-      if (it.kind === "hover" || it.kind === "arc") return 0;
-      if (it.kind === "node") return it.island === active ? 2 : 3;
-      if (it.island !== null && it.island === active) return 0;
-      return it.kind === "name" ? 1 : 2;
+    /** Leader from the edge of a disc to the nearest point of a rectangle (null when they touch). */
+    const leaderTo = (
+      c: { x: number; y: number; r: number },
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+    ): [number, number, number, number] | null => {
+      const nx = clamp(c.x, x, x + w);
+      const ny = clamp(c.y, y, y + h);
+      const d = Math.hypot(nx - c.x, ny - c.y);
+      if (d <= c.r + 2) return null;
+      return [c.x + ((nx - c.x) / d) * c.r, c.y + ((ny - c.y) / d) * c.r, nx, ny];
     };
 
-    this.labelItems = this.labelItems.filter((it) => it.sprite.parent !== null || it === this.hoverLabel);
-    const items = this.labelItems.filter(eligible);
-    for (const it of this.labelItems) if (!items.includes(it)) it.sprite.visible = false;
-    const rank = (it: LabelItem): number => (it.kind === "name" ? 0 : it.kind === "sub" ? 1 : 2);
-    items.sort(
-      (a, b) =>
-        tier(a) - tier(b) || b.prio - a.prio || rank(a) - rank(b) || (a.sprite.text < b.sprite.text ? -1 : 1),
-    );
-
-    interface Rect {
-      l: number;
-      r: number;
-      b: number;
-      t: number;
+    // 1. The hovered node.
+    const hl = this.hoverLabel;
+    if (hl && this.hoverNode && hl.world) {
+      const s = projR(hl.world, hl.worldR ?? 1);
+      if (s.ok) {
+        const x = clamp(s.x - hl.w / 2, MARGIN, W - MARGIN - hl.w);
+        const y = Math.max(MARGIN, s.y - Math.max(s.r, 2) - 6 - hl.h);
+        placed.push(rectOf(x, y, hl.w, hl.h));
+        show(hl, x, y, 1, null);
+      }
     }
-    const placed: Rect[] = [];
-    const PAD = 3;
-    const nameH = new Map<string, number>(); // placed height of an island's name label, for stacking its detail line
-    for (const it of items) {
-      it.sprite.getWorldPosition(world);
-      ndc.copy(world).project(cam);
-      if (ndc.z > 1 || ndc.z < -1) {
-        it.sprite.visible = false;
+
+    // 2. Island blocks.
+    const maxR = Math.max(1, ...this.layout.islands.map((i) => i.radius));
+    const scr = new Map<string, { x: number; y: number; r: number; ok: boolean }>();
+    for (const [id, ie] of this.islandEntries) scr.set(id, projR(v3(ie.island.center), ie.island.radius));
+    const isBig = (id: string): boolean =>
+      (this.islandEntries.get(id)?.island.radius ?? 0) >= maxR * BIG_FRACTION;
+    const order = [...this.islandEntries.values()]
+      .map((e) => e.island)
+      .sort(
+        (a, b) =>
+          Number(b.id === active) - Number(a.id === active) ||
+          Number(isBig(b.id)) - Number(isBig(a.id)) ||
+          b.functions - a.functions ||
+          (a.id < b.id ? -1 : 1),
+      );
+    const smalls = order.filter((i) => !isBig(i.id)).map((i) => scr.get(i.id) as { x: number; y: number });
+    const pool = smalls.length > 1 ? smalls : [...scr.values()];
+    const centroid = {
+      x: pool.reduce((a, p) => a + p.x, 0) / Math.max(1, pool.length),
+      y: pool.reduce((a, p) => a + p.y, 0) / Math.max(1, pool.length),
+    };
+    const TICK = 10;
+    const ANGLES = [0, 20, -20, 40, -40, 60, -60, 80, -80, 100, -100, 120, -120, 140, -140, 160, -160, 180];
+    const REACH = [12, 26, 44, 68, 96, 130, 170, 220];
+    for (const isl of order) {
+      const ie = this.islandEntries.get(isl.id) as IslandEntry;
+      const l = ie.label;
+      const s = scr.get(isl.id);
+      if (!s?.ok) continue;
+      const opacity = l.dim ? 0.4 : 1;
+      const scales = this.level === "files" ? [1, 0.9, 0.8] : [1];
+      let done = false;
+      for (const sc of scales) {
+        const w = l.w * sc;
+        const h = l.h * sc;
+        if (isBig(isl.id)) {
+          const cands = [
+            { x: s.x - w / 2, y: s.y - s.r - TICK - h },
+            { x: s.x - w / 2, y: s.y + s.r + TICK },
+            { x: s.x - w / 2, y: s.y - s.r * 0.55 - h / 2 },
+            { x: s.x - w / 2, y: s.y - h / 2 },
+          ];
+          for (const c of cands) {
+            const x = clamp(c.x, MARGIN, Math.max(MARGIN, W - MARGIN - w));
+            const y = clamp(c.y, MARGIN, Math.max(MARGIN, H - MARGIN - h));
+            const r = rectOf(x, y, w, h);
+            if (!isFree(r)) continue;
+            placed.push(r);
+            show(l, x, y, sc, leaderTo(s, x, y, w, h), opacity);
+            done = true;
+            break;
+          }
+        } else {
+          let dx0 = s.x - centroid.x;
+          let dy0 = s.y - centroid.y;
+          if (Math.hypot(dx0, dy0) < 4) {
+            dx0 = 0;
+            dy0 = -1;
+          }
+          const base = Math.atan2(dy0, dx0);
+          const others = order.filter((o) => o.id !== isl.id);
+          for (const pass of [0, 1, 2]) {
+            for (const g of REACH) {
+              for (const da of ANGLES) {
+                const a = base + (da * Math.PI) / 180;
+                const dx = Math.cos(a);
+                const dy = Math.sin(a);
+                const ex = s.x + dx * s.r;
+                const ey = s.y + dy * s.r;
+                const t = Math.min(
+                  w / 2 / Math.max(Math.abs(dx), 1e-3),
+                  h / 2 / Math.max(Math.abs(dy), 1e-3),
+                );
+                const x = ex + dx * (g + t) - w / 2;
+                const y = ey + dy * (g + t) - h / 2;
+                if (pass < 2 && !inView(x, y, w, h)) continue;
+                const r = rectOf(x, y, w, h);
+                if (pass < 2 && !isFree(r)) continue;
+                if (pass < 2) {
+                  const hitsDisc = others.some((o) => {
+                    if (pass === 1 && isBig(o.id)) return false;
+                    const os = scr.get(o.id);
+                    return !!os && rectHitsDisc(r, { x: os.x, y: os.y, r: os.r + 2 });
+                  });
+                  if (hitsDisc) continue;
+                }
+                placed.push(r);
+                show(l, x, y, sc, [ex, ey, ex + dx * g, ey + dy * g], opacity);
+                done = true;
+                break;
+              }
+              if (done) break;
+            }
+            if (done) break;
+          }
+        }
+        if (done) break;
+      }
+      if (!done) {
+        // Last resort: never leave an island unnamed. Put it above, overlapping if it must.
+        const x = clamp(s.x - l.w / 2, MARGIN, Math.max(MARGIN, W - MARGIN - l.w));
+        const y = clamp(s.y - s.r - TICK - l.h, MARGIN, Math.max(MARGIN, H - MARGIN - l.h));
+        placed.push(rectOf(x, y, l.w, l.h));
+        show(l, x, y, 1, leaderTo(s, x, y, l.w, l.h), opacity);
+      }
+    }
+
+    // 3. Arc labels.
+    const arcsToLabel = this.arcEntries
+      .filter((a) => {
+        if (!a.visible) return false;
+        if (active) return this.arcTouches(a.arc, active);
+        return !a.arc.dependsOnly && a.rank < COUNT_PILLS;
+      })
+      .sort((a, b) => b.arc.weight - a.arc.weight || (a.arc.id < b.arc.id ? -1 : 1));
+    for (const a of arcsToLabel) {
+      const l = a.pill;
+      const wantFull = active !== null;
+      const text = wantFull ? (l.fullText as string) : (l.shortText as string);
+      if (l.el.textContent !== text) l.el.textContent = text;
+      const w = wantFull ? (l.fullW ?? l.w) : l.w;
+      const h = wantFull ? (l.fullH ?? l.h) : l.h;
+      let done = false;
+      for (const dy of [0, -h - 2, h + 2]) {
+        for (const t of [0.5, 0.42, 0.58, 0.34, 0.66, 0.27, 0.73, 0.2, 0.8, 0.14, 0.86]) {
+          const p = proj(a.curve.getPoint(t));
+          if (!p.ok) continue;
+          const x = p.x - w / 2;
+          const y = p.y - h / 2 + dy;
+          const r = rectOf(x, y, w, h);
+          if (!inView(x, y, w, h) || !isFree(r)) continue;
+          placed.push(r);
+          show(l, x, y, 1, null);
+          done = true;
+          break;
+        }
+        if (done) break;
+      }
+    }
+
+    // 4. Folder labels, cluster captions and file names.
+    const cand = this.labels
+      .filter((l) => l.kind === "dir" || l.kind === "cluster" || l.kind === "file")
+      .filter((l) => {
+        if (l.dim || !l.island) return false;
+        const s = scr.get(l.island);
+        if (!s?.ok) return false;
+        const isActive = l.island === active;
+        const big = isBig(l.island);
+        if (l.kind === "dir")
+          return isActive || l.rank < (big ? FOLDER_LABELS_BIG : s.r >= 24 ? FOLDER_LABELS_SMALL : 0);
+        if (l.kind === "cluster") return isActive || l.rank < CLUSTER_LABELS_BIG;
+        return isActive ? l.rank < 12 : big && l.rank < FILE_LABELS_BIG;
+      })
+      .sort(
+        (a, b) =>
+          Number(b.island === active) - Number(a.island === active) ||
+          kindOrder(a.kind) - kindOrder(b.kind) ||
+          b.prio - a.prio ||
+          (a.el.textContent ?? "").localeCompare(b.el.textContent ?? ""),
+      );
+    for (const l of cand) {
+      if (!l.world) continue;
+      const c = projR(l.world, l.worldR ?? 1);
+      if (!c.ok) continue;
+      const w = l.w;
+      const h = l.h;
+      const opacity = l.kind === "cluster" ? 1 : 1;
+      if (l.kind === "cluster") {
+        const x = c.x - w / 2;
+        const y = c.y - h / 2;
+        const r = rectOf(x, y, w, h);
+        if (!inView(x, y, w, h) || !isFree(r)) continue;
+        placed.push(r);
+        show(l, x, y, 1, null, opacity);
         continue;
       }
-      const x = ((ndc.x + 1) / 2) * W;
-      const y = ((ndc.y + 1) / 2) * H; // y grows upward
-      const dist = cam.position.distanceTo(world);
-      const steps = it.kind === "name" || it.kind === "sub" ? SHRINK_STEPS : ([1] as const);
-      let done = false;
-      for (const f of steps) {
-        const hPx = it.px * f;
-        if (f < 1 && hPx < MIN_LABEL_PX) break;
-        const wPx = hPx * it.aspect;
-        // Detail lines stack above their island's name when it is shown.
-        const lift = it.kind === "sub" && it.island ? (nameH.get(it.island) ?? 0) : 0;
-        const cx = 0.5;
-        const cy = it.kind === "arc" ? 0.5 : -0.15 - lift / hPx;
-        const rect: Rect = {
-          l: x - cx * wPx - PAD,
-          r: x - cx * wPx + wPx + PAD,
-          b: y - cy * hPx - PAD,
-          t: y - cy * hPx + hPx + PAD,
-        };
-        const onScreen = rect.r >= 0 && rect.l <= W && rect.t >= 0 && rect.b <= H;
-        if (onScreen && placed.some((p) => rect.l < p.r && rect.r > p.l && rect.b < p.t && rect.t > p.b))
-          continue;
-        if (onScreen) placed.push(rect);
-        it.sprite.center.set(cx, cy);
-        it.sprite.scale.set(hPx * k * dist * it.aspect, hPx * k * dist, 1);
-        it.sprite.visible = true;
-        if (it.kind === "name" && it.island) nameH.set(it.island, hPx * 1.15 + PAD * 2 + 2);
-        done = true;
-        break;
+      const rr = Math.max(c.r, 2);
+      for (const off of [7, 20, 38]) {
+        const spots = [
+          { x: c.x + rr + off, y: c.y - h / 2 },
+          { x: c.x - rr - off - w, y: c.y - h / 2 },
+          { x: c.x - w / 2, y: c.y - rr - off - h },
+          { x: c.x - w / 2, y: c.y + rr + off },
+          { x: c.x + rr * 0.7 + off, y: c.y - rr * 0.7 - off - h },
+          { x: c.x + rr * 0.7 + off, y: c.y + rr * 0.7 + off },
+          { x: c.x - rr * 0.7 - off - w, y: c.y - rr * 0.7 - off - h },
+          { x: c.x - rr * 0.7 - off - w, y: c.y + rr * 0.7 + off },
+        ];
+        let done = false;
+        for (const sp of spots) {
+          const r = rectOf(sp.x, sp.y, w, h);
+          if (!inView(sp.x, sp.y, w, h) || !isFree(r)) continue;
+          placed.push(r);
+          show(l, sp.x, sp.y, 1, leaderTo({ x: c.x, y: c.y, r: rr }, sp.x, sp.y, w, h), opacity);
+          done = true;
+          break;
+        }
+        if (done) break;
       }
-      if (!done) it.sprite.visible = false;
     }
-  }
+    void sel;
 
-  private islandScreenRadius(isl: Island, cam: THREE.PerspectiveCamera, k: number): number {
-    return isl.radius / (cam.position.distanceTo(v3(isl.center)) * k);
+    for (const l of this.labels) {
+      if (l.seen === frame) {
+        if (!l.shown) {
+          l.el.style.visibility = "visible";
+          l.shown = true;
+        }
+      } else if (l.shown || l.el.style.visibility !== "hidden") {
+        l.el.style.visibility = "hidden";
+        if (l.leader) l.leader.style.visibility = "hidden";
+        l.shown = false;
+      }
+    }
   }
 
   /** The single label that follows the hovered node (any node, at any level). */
@@ -1031,20 +1435,17 @@ export class MapScene {
     const e = this.entries.get(id);
     const p = this.layout?.positions.get(id);
     if (!e || !p) return;
-    if (!this.hoverLabel) {
-      const item = this.label(e.node.label, 14, "hover", null, 1e9);
-      item.sprite.center.set(0.5, -0.15);
-      item.sprite.renderOrder = 30;
-      this.extras.add(item.sprite);
-      this.hoverLabel = item;
+    if (!this.hoverLabel)
+      this.hoverLabel = this.makeLabel("hover", null, 1e9, 0, () => {}, { leader: false });
+    const l = this.hoverLabel;
+    if (l.shortText !== e.node.label) {
+      l.shortText = e.node.label;
+      l.el.textContent = e.node.label;
+      l.w = 0;
+      this.measureLabels();
     }
-    const sp = this.hoverLabel.sprite;
-    if (sp.text !== e.node.label) {
-      sp.text = e.node.label;
-      this.hoverLabel.aspect = sp.scale.x / sp.scale.y;
-    }
-    const r = this.layout?.nodeRadius.get(id) ?? 2;
-    sp.position.set(p.x, p.y + r, p.z);
+    l.world = v3(p);
+    l.worldR = this.layout?.nodeRadius.get(id) ?? 2;
   }
 
   private updateParticles(time: number): void {
