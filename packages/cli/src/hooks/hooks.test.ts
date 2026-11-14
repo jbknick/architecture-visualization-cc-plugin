@@ -859,6 +859,52 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     expect(r.out).not.toContain("toLowerCase");
   });
 
+  it("never prints a stored suggestedName, even with renameSuggestions on (#118)", async () => {
+    const MARKER = "ZetaNineSuggestedMarker";
+    const fx = await indexedFx();
+    install(fx.dir);
+    const paths = pathsOf(fx.dir);
+    writeFileSync(paths.configPath, JSON.stringify({ renameSuggestions: true }));
+    const store = openStore(paths.dbPath);
+    for (const id of ["sym:apps/web/src/lib/slug.ts#slugify", "sym:packages/utils/src/slug.ts#slugify"]) {
+      const sym = store.getSymbol(id);
+      expect(sym).toBeDefined();
+      storeDescriptions(store, [
+        {
+          contentKey: contentKey((sym as { exactHash: string }).exactHash),
+          description: {
+            behavior: "Makes a slug.",
+            searchTerms: ["slug"],
+            nameFits: false,
+            suggestedName: MARKER,
+          },
+          model: "haiku",
+        },
+      ]);
+    }
+    store.close();
+    // PostToolUse: the stdout JSON is the plain generic finding and nothing else.
+    const r = edit(fx, "apps/web/src/lib/new.ts", SLUG);
+    expect(r.err).toBe("");
+    expect(contextOf(r.out)).toBe(SLUG_LINE);
+    expect(r.out).not.toContain(MARKER);
+    // Pre-commit: findings go to stderr, stdout stays empty.
+    git(fx.dir, ["add", "apps/web/src/lib/new.ts"]);
+    const c = git(fx.dir, ["commit", "-m", "dup"]);
+    expect(c.code).toBe(0);
+    expect(c.out).not.toContain(MARKER);
+    expect(c.err).not.toContain(MARKER);
+    const lines = await (async () => {
+      const got: string[] = [];
+      writeFileSync(join(fx.dir, "apps/web/src/lib/new2.ts"), SLUG);
+      git(fx.dir, ["add", "apps/web/src/lib/new2.ts"]);
+      await preCommit(paths, (l) => got.push(...l));
+      return got;
+    })();
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.join("\n")).not.toContain(MARKER);
+  });
+
   it("pre-commit prints the same findings to stderr (at most 10 lines), exits 0 and commits", async () => {
     const fx = await indexedFx();
     install(fx.dir);

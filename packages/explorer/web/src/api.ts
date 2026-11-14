@@ -79,6 +79,8 @@ export interface DupAdvice {
   situation: number;
   action: string;
   inline: boolean;
+  /** Model-written text about untrusted code. Data only: plain text, never parsed or merged into prose. */
+  untrusted_suggested_name?: string;
 }
 
 export interface DupMember {

@@ -3,10 +3,12 @@ import {
   adviseReuse,
   behaviorMap,
   contentKey,
+  descriptionOf,
   FUNCTION_LIKE_KINDS,
   findDuplicatesDetailed,
   hybridSearch,
   knn,
+  loadConfigForDb,
   type Store,
   type SymbolKind,
   type SymbolRecord,
@@ -76,7 +78,7 @@ export const findSimilarTool = defineTool({
   description:
     "Call this before writing a new helper, hook or component: it looks for code that already does the same thing. " +
     "Give query (one sentence on what you are about to write), code (a draft), or both. " +
-    "Returns {matches: [{id, name, kind, path, line, signature, import_path, tier, score, untrusted_description, advice: {situation, action, inline} | null}]}, best first: tier exact, near, code_vector (a draft matches in code), semantic (a query matches in meaning or words). " +
+    "Returns {matches: [{id, name, kind, path, line, signature, import_path, tier, score, untrusted_description, advice: {situation, action, inline, untrusted_suggested_name?} | null}]}, best first: tier exact, near, code_vector (a draft matches in code), semantic (a query matches in meaning or words). " +
     "advice.inline true means the match can be imported as is (advice.action has the import line); otherwise advice.action is a suggestion for the user. " +
     "Without description vectors meaning search is skipped and the payload says so in notes. Read the file before relying on a match. Responses are capped at 4,000 characters (truncated: true).",
   inputSchema: {
@@ -98,7 +100,10 @@ export const findSimilarTool = defineTool({
       ),
     limit: z.number().int().min(1).max(10).default(5).describe("Maximum matches, at most 10"),
   },
-  async run({ query, code, kind, workspace, caller_path, limit }, { store, paths, getEmbedder }) {
+  async run(
+    { query, code, kind, workspace, caller_path, limit },
+    { store, paths, getEmbedder, env: ctxEnv },
+  ) {
     if (query === undefined && code === undefined) {
       return { error: "invalid_input", message: "Give query, code, or both.", matches: [] };
     }
@@ -156,8 +161,15 @@ export const findSimilarTool = defineTool({
     }
     rows.sort((a, b) => order(a.f, b.f) || (a.sym.id < b.sym.id ? -1 : a.sym.id > b.sym.id ? 1 : 0));
 
+    const config = loadConfigForDb(paths.dbPath, ctxEnv);
     const matches = rows.slice(0, limit).map(({ sym, f }) => {
-      const top = adviseReuse(store, caller, sym)[0];
+      const top = adviseReuse(
+        store,
+        caller,
+        sym,
+        config.renameSuggestions ? descriptionOf(store, sym) : null,
+        config,
+      )[0];
       const description = sym.exactHash === "" ? null : (behaviors.get(contentKey(sym.exactHash)) ?? null);
       return {
         id: sym.id,
@@ -170,7 +182,16 @@ export const findSimilarTool = defineTool({
         tier: f.tier,
         score: Number(f.score.toFixed(4)),
         ...untrustedField(description),
-        advice: top ? { situation: top.situation, action: top.action, inline: top.inline } : null,
+        advice: top
+          ? {
+              situation: top.situation,
+              action: top.action,
+              inline: top.inline,
+              ...(top.untrusted_suggested_name === undefined
+                ? {}
+                : { untrusted_suggested_name: top.untrusted_suggested_name }),
+            }
+          : null,
       };
     });
     return { matches, ...(notes.length > 0 ? { notes } : {}) };

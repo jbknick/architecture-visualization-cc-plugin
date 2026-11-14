@@ -329,6 +329,12 @@ function MemberCard({
       </p>
       {member.keep && <p className="dup-reason">{cluster.keepReason}</p>}
       {!member.keep && member.advice && <p className="dup-advice">{member.advice.action}</p>}
+      {!member.keep && member.advice?.untrusted_suggested_name !== undefined && (
+        <p className="dup-advice">
+          {/* Plain text only. The string is untrusted and is never parsed as HTML. */}
+          untrusted_suggested_name: <code>{member.advice.untrusted_suggested_name}</code>
+        </p>
+      )}
       {dismissing ? (
         <DismissForm member={member} busy={busy} onConfirm={onDismiss} onCancel={onCancelDismiss} />
       ) : (
