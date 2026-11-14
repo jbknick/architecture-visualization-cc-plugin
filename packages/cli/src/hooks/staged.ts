@@ -18,6 +18,7 @@ import {
   type Store,
   type SymbolRecord,
   syncBacklog,
+  writeCatalogDebounced,
 } from "@gantry/core";
 
 const GIT_MAX_BUFFER = 512 * 1024 * 1024;
@@ -174,6 +175,13 @@ export async function describeStaged(
         : Math.max(0, config.precommit.budgetMs - (Date.now() - startedAt));
     const r = await describeWithRetry(real, sheets, { task: "describe.precommit", deadlineMs, config, env });
     result.described = r.described;
+    if (r.described > 0) {
+      try {
+        writeCatalogDebounced(real, paths); // same debounced catalog write as after an MCP submit
+      } catch {
+        // the catalog is a convenience; never fail a commit over it
+      }
+    }
     result.failed = r.failed;
     result.queued = Math.max(0, ordered.length - r.described);
     result.inputTokens = r.inputTokens;

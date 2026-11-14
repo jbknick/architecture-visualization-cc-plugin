@@ -1,0 +1,55 @@
+import { hybridSearch, type SymbolKind } from "@gantry/core";
+import { z } from "zod";
+import { defineTool } from "../tool.js";
+import { untrustedField } from "../untrusted.js";
+
+const KINDS = [
+  "function",
+  "method",
+  "component",
+  "hook",
+  "class",
+  "type",
+  "interface",
+  "enum",
+  "const",
+] as const satisfies readonly SymbolKind[];
+const SIGNATURE_MAX = 200;
+
+export const searchTool = defineTool({
+  name: "gantry_search",
+  description:
+    "Searches the codebase index by words or by meaning and returns {hits: [{id, name, kind, path, line, signature, score, untrusted_description}]}, best first. " +
+    "Keywords are matched against names, paths and stored descriptions; when the embedding model is cached on this machine, descriptions are also matched by meaning. " +
+    "Use it before writing a new helper to see whether one exists. Responses are capped at 4,000 characters, so fewer than limit hits may come back (truncated: true); narrow with kind, workspace or exported. " +
+    "Hits are sorted by score, ties by id.",
+  inputSchema: {
+    query: z.string().min(1).max(200).describe("Words from a name, a path, or what the code does"),
+    kind: z.array(z.enum(KINDS)).max(KINDS.length).optional().describe("Restrict to these symbol kinds"),
+    workspace: z.string().max(200).optional().describe("Workspace id (ws:...) or name"),
+    exported: z.boolean().optional().describe("Only exported (true) or only internal (false) symbols"),
+    limit: z.number().int().min(1).max(50).default(10).describe("Maximum hits, at most 50"),
+  },
+  async run({ query, kind, workspace, exported, limit }, { store, getEmbedder }) {
+    const embedder = await getEmbedder();
+    const hits = await hybridSearch(store, query, {
+      ...(kind ? { kind } : {}),
+      ...(workspace !== undefined ? { workspace } : {}),
+      ...(exported !== undefined ? { exported } : {}),
+      limit,
+      ...(embedder ? { embedder } : {}),
+    });
+    return {
+      hits: hits.map((h) => ({
+        id: h.id,
+        name: h.name,
+        kind: h.kind,
+        path: h.path,
+        line: h.line,
+        signature: h.signature.slice(0, SIGNATURE_MAX),
+        score: Number(h.score.toFixed(5)),
+        ...untrustedField(h.description),
+      })),
+    };
+  },
+});

@@ -1,4 +1,4 @@
-import { BATCH_SIZE, embedPending, submitDescriptions } from "@gantry/core";
+import { BATCH_SIZE, embedPending, submitDescriptions, writeCatalogDebounced } from "@gantry/core";
 import { z } from "zod";
 import { defineTool } from "../tool.js";
 
@@ -29,7 +29,7 @@ export const submitTool = defineTool({
       .min(1)
       .max(BATCH_SIZE),
   },
-  async run({ batch_id, results }, { store, log, getEmbedder }) {
+  async run({ batch_id, results }, { store, paths, log, getEmbedder }) {
     const r = submitDescriptions(
       store,
       batch_id,
@@ -46,6 +46,13 @@ export const submitTool = defineTool({
         }
       } catch (err) {
         log.error("embedding after submit failed; the vectors wait for gantry embed", err);
+      }
+    }
+    if (r.accepted > 0) {
+      try {
+        writeCatalogDebounced(store, paths); // at most once per 30 s; gantry_browse refreshes it on read
+      } catch (err) {
+        log.error("catalog write after submit failed", err);
       }
     }
     return {

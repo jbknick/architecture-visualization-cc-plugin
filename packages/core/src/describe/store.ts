@@ -1,8 +1,9 @@
 // The one write path for model-written descriptions, used by `submitDescriptions` (MCP describer tools) and by the
 // headless worker. Callers validate first (`validateDescription`); nothing here judges text.
+import { refreshDescriptionFts } from "../search/descfts.js";
 import type { Store } from "../store/index.js";
 import type { Description } from "../types.js";
-import { contentKey, FUNCTION_LIKE_KINDS, PROMPT_MAJOR } from "./factsheet.js";
+import { PROMPT_MAJOR } from "./factsheet.js";
 
 /** A function whose description failed validation this many times is parked as `failed` (spec section 8: `describe.retry`). */
 export const MAX_DESCRIBE_ATTEMPTS = 2;
@@ -51,7 +52,7 @@ export function storeDescriptions(
       if (r.changes > 0) written.set(a.contentKey, d);
       drop.run(a.contentKey);
     }
-    updateFts(store, written);
+    refreshDescriptionFts(store, { keys: new Set(written.keys()) });
     return stored;
   });
 }
@@ -74,24 +75,4 @@ export function recordDescribeFailure(store: Store, key: string, error: string):
     )
     .run(attempts, error, attempts >= MAX_DESCRIBE_ATTEMPTS ? "failed" : "pending", key);
   return attempts;
-}
-
-/** Writes the description columns of `fts_symbols` for every effective symbol whose content key was just stored. */
-function updateFts(store: Store, stored: Map<string, Description>): void {
-  if (stored.size === 0) return;
-  const select = store.db.prepare("SELECT name_tokens, path FROM fts_symbols WHERE symbol_id = ?");
-  for (const sym of store.effectiveSymbols({ kind: [...FUNCTION_LIKE_KINDS] })) {
-    if (sym.exactHash === "") continue;
-    const d = stored.get(contentKey(sym.exactHash));
-    if (!d) continue;
-    const row = select.get(sym.id) as { name_tokens: string; path: string } | undefined;
-    if (!row) continue; // the indexer writes the row; nothing to enrich yet
-    store.fts.upsert(sym.id, {
-      nameTokens: row.name_tokens,
-      suggestedName: d.suggestedName ?? "",
-      path: row.path,
-      behavior: d.behavior,
-      searchTerms: d.searchTerms.join(" "),
-    });
-  }
 }

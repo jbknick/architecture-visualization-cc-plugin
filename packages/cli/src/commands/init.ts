@@ -10,6 +10,7 @@ import {
   resolvePaths,
   SECONDS_PER_FUNCTION_SEQUENTIAL,
   syncBacklog,
+  writeCatalog,
 } from "@gantry/core";
 import type { Command } from "commander";
 import { runEmbed, summaryOf } from "./embed.js";
@@ -55,6 +56,7 @@ export function registerInit(program: Command): void {
         const store = openStore(paths.dbPath);
         try {
           syncBacklog(store, { root: paths.root });
+          writeCatalog(store, paths);
           await rebuildSimilarEdges(store);
           for (const line of summaryLines(r, paths.dataDir)) process.stdout.write(`${line}\n`);
           if (opts.estimate) {

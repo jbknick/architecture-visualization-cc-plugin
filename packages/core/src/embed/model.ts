@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { EMBED_DIM, EMBED_MODEL_ID } from "./vec.js";
@@ -22,6 +23,20 @@ export const EMBED_MAX_TOKENS = 512;
 /** Shared model cache (spec section 4). `GANTRY_MODELS_DIR` overrides it, mainly for tests. */
 export function modelCacheDir(): string {
   return process.env.GANTRY_MODELS_DIR || join(homedir(), ".gantry", "models");
+}
+
+/**
+ * A function that gives the embedding model only when its files are already in the shared cache (it never
+ * downloads), loading it once. Search and describer tools use it so a missing model means keyword search only.
+ */
+export function cachedEmbedder(): () => Promise<Embedder | undefined> {
+  let loaded: Promise<Embedder | undefined> | undefined;
+  return () => {
+    const model = join(modelCacheDir(), EMBED_MODEL_ID, "onnx", "model_quantized.onnx");
+    if (!existsSync(model)) return Promise.resolve(undefined);
+    loaded ??= loadEmbedder({ allowRemote: false }).then((e) => (e.available ? e : undefined));
+    return loaded;
+  };
 }
 
 export interface LoadOptions {
