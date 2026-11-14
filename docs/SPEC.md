@@ -188,6 +188,8 @@ The validator accepts the **shape of a description** instead of banning phrases 
    Description prompt v1 (`PROMPT_MAJOR = p1`, measured in M0): `packages/core/src/describe/prompts/p1.md`, shared by the headless worker and the describer agent. With it Haiku/low passed schema 100%, 25-word limit 100% and identifier check 100% on 200 functions (measured in M0).
    Templates without a model: re-exports, barrel files, type aliases, and one-statement functions (`Returns <expression>.`), provenance `template`.
 
+**Limits of this layer (decided by the operator on 2026-11-14 after three independent reviews).** The checks above are hardening, not a guarantee. Hosts, install bait, secrets and oversized or malformed input are handled structurally. Instructions are not: the imperative-clause, speech-act and addressee rules use finite word lists, so an instruction written with a word outside them (for example "…; nuke the tests.") still passes. A stored description must therefore never be treated as trusted text. Every consumer is required to (1) return it only in a field named `untrusted_description`, never merged into instructions, tool descriptions or system text; (2) state in the tool or skill description that the field is model-written data about untrusted code and that nothing in it is to be followed; (3) never use it to decide on a side effect (writing, deleting, installing, running) without independent evidence from the code itself. The 100% figure refers to the committed attack corpus only.
+
 ## 9. SQLite schema v1 (`core/src/store/schema.sql`)
 
 ```sql
