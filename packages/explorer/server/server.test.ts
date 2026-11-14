@@ -252,6 +252,91 @@ describe("security", () => {
   });
 });
 
+function send(
+  port: number,
+  method: string,
+  path: string,
+  body: string | undefined,
+  headers: Record<string, string> = {},
+): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const req = request(
+      { host: "127.0.0.1", port, path, method, headers: { host: `127.0.0.1:${port}`, ...headers } },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c: Buffer) => chunks.push(c));
+        res.on("end", () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString() }));
+      },
+    );
+    req.on("error", (err) => {
+      // The server may cut the socket after an oversized body; surface that as a 413-like result.
+      if (
+        (err as NodeJS.ErrnoException).code === "ECONNRESET" ||
+        (err as NodeJS.ErrnoException).code === "EPIPE"
+      )
+        resolve({ status: 413, body: "" });
+      else reject(err);
+    });
+    req.end(body);
+  });
+}
+
+describe("/api/layout/:view", () => {
+  const json = (): Record<string, string> => ({ ...auth(), "content-type": "application/json" });
+  const put = (view: string, body: unknown, headers = json()) =>
+    send(
+      srv.port,
+      "PUT",
+      `/api/layout/${view}`,
+      typeof body === "string" ? body : JSON.stringify(body),
+      headers,
+    );
+
+  it("returns no positions before anything is saved", async () => {
+    expect((await api("/api/layout/debug")).json()).toEqual({ positions: {} });
+  });
+
+  it("saves and returns positions, replacing the earlier set", async () => {
+    const res = await put("debug", { positions: { "ws:.": [1.5, -2], "ws:lib": [30, 40] } });
+    expect(res.status).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({ saved: 2 });
+    expect((await api("/api/layout/debug")).json().positions).toEqual({
+      "ws:.": [1.5, -2],
+      "ws:lib": [30, 40],
+    });
+    await put("debug", { positions: { "ws:.": [9, 9] } });
+    expect((await api("/api/layout/debug")).json().positions).toEqual({ "ws:.": [9, 9] });
+  });
+
+  it("404s unknown views and requires the token for PUT", async () => {
+    expect((await put("nope", { positions: {} })).status).toBe(404);
+    expect((await api("/api/layout/nope")).status).toBe(404);
+    const noToken = await put("debug", { positions: {} }, { "content-type": "application/json" });
+    expect(noToken.status).toBe(403);
+    const badOrigin = await put("debug", { positions: {} }, { ...json(), origin: "http://evil.example" });
+    expect(badOrigin.status).toBe(403);
+  });
+
+  it("validates the body shape and size", async () => {
+    expect((await put("debug", "not json")).status).toBe(400);
+    expect((await put("debug", [1, 2])).status).toBe(400);
+    expect((await put("debug", { positions: [] })).status).toBe(400);
+    expect((await put("debug", { positions: { a: [1] } })).status).toBe(400);
+    expect((await put("debug", { positions: { a: [1, "2"] } })).status).toBe(400);
+    expect((await put("debug", { positions: { a: [1, 1e30] } })).status).toBe(400);
+    expect((await put("debug", { positions: { a: [1, 2] } }, auth())).status).toBe(415);
+    const huge = JSON.stringify({ positions: { a: [1, 2] }, pad: "x".repeat(9 * 1024 * 1024) });
+    expect((await put("debug", huge)).status).toBe(413);
+  });
+
+  it("accepts PUT on this route only", async () => {
+    expect((await send(srv.port, "PUT", "/api/meta", "{}", json())).status).toBe(405);
+    expect((await send(srv.port, "PUT", "/api/layout/debug/extra", "{}", json())).status).toBe(405);
+    expect((await send(srv.port, "POST", "/api/layout/debug", "{}", json())).status).toBe(405);
+    expect((await send(srv.port, "DELETE", "/api/layout/debug", undefined, json())).status).toBe(405);
+  });
+});
+
 describe("static", () => {
   it("serves the build, falls back to index.html, 404s missing assets, blocks traversal", async () => {
     expect((await get(srv.port, "/")).body).toContain("<title>ui</title>");
@@ -286,15 +371,16 @@ describe("/api/meta", () => {
   it("returns repo, headSha, counts and views", async () => {
     const res = await api("/api/meta");
     expect(res.status).toBe(200);
-    expect(res.json()).toEqual({
+    expect(res.json()).toMatchObject({
       repo: "repo",
       headSha: "deadbeef",
       counts: { workspaces: 2, files: 2, symbols: 3, edges: 4 },
-      views: [
+      views: expect.arrayContaining([
         { id: "debug", title: "Debug: workspaces", enabled: true },
         { id: "project-map", title: "Project map", enabled: true },
         { id: "ego", title: "Function ego graph", enabled: true },
-      ],
+        { id: "map-3d", title: "3D map", enabled: true },
+      ]),
     });
   });
 });

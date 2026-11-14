@@ -4,6 +4,7 @@ import { App } from "./App.tsx";
 import { StoreProvider } from "./store.tsx";
 import { applyKindVariables, currentScheme } from "./theme.ts";
 import "./styles.css";
+import "./views/views.css";
 
 const media = window.matchMedia("(prefers-color-scheme: dark)");
 const applyScheme = () => applyKindVariables(document.documentElement, currentScheme());

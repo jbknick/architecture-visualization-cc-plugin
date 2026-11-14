@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { GraphNode } from "../api.ts";
 import type { CanvasProps } from "../slots.ts";
 import { KindBadge } from "./KindBadge.tsx";
 
@@ -15,8 +16,39 @@ const KEY_TARGET: Record<string, (cursor: number, count: number) => number> = {
   End: (_, count) => count - 1,
 };
 
+/**
+ * Reading order for the list: ego graphs go centre, callers (nearest first), callees (nearest first);
+ * hierarchies go parent before children. Anything else keeps the server's order.
+ */
+export function orderNodes(nodes: GraphNode[]): GraphNode[] {
+  if (nodes.some((n) => n.side)) {
+    const rank = (n: GraphNode) => (n.side === "focus" ? 0 : n.side === "in" ? 1 : 2);
+    return [...nodes].sort((a, b) => rank(a) - rank(b) || (a.hop ?? 0) - (b.hop ?? 0));
+  }
+  const ids = new Set(nodes.map((n) => n.id));
+  const children = new Map<string, GraphNode[]>();
+  const roots: GraphNode[] = [];
+  for (const n of nodes) {
+    if (n.parent && ids.has(n.parent)) {
+      const list = children.get(n.parent) ?? [];
+      list.push(n);
+      children.set(n.parent, list);
+    } else roots.push(n);
+  }
+  if (children.size === 0) return nodes;
+  const out: GraphNode[] = [];
+  const visit = (n: GraphNode, guard = 0) => {
+    out.push(n);
+    if (guard < 20) for (const c of children.get(n.id) ?? []) visit(c, guard + 1);
+  };
+  // Workspaces and other top-level nodes alphabetically by label; the server sorts by id, which puts folders first.
+  for (const r of [...roots].sort((a, b) => a.label.localeCompare(b.label))) visit(r);
+  return out;
+}
+
 /** Placeholder canvas: a windowed list of nodes. Rows beyond the viewport are never rendered. */
-export function ListCanvas({ nodes, edges, focus, onSelect, onHover }: CanvasProps) {
+export function ListCanvas({ nodes: rawNodes, edges, focus, onSelect, onHover, onDrill }: CanvasProps) {
+  const nodes = useMemo(() => orderNodes(rawNodes), [rawNodes]);
   const scroller = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [height, setHeight] = useState(FALLBACK_HEIGHT);
@@ -30,6 +62,21 @@ export function ListCanvas({ nodes, edges, focus, onSelect, onHover }: CanvasPro
     }
     return counts;
   }, [edges]);
+
+  // Indent children under their parent so the project map reads as a tree even in this placeholder.
+  const depth = useMemo(() => {
+    const parentOf = new Map(nodes.map((n) => [n.id, n.parent]));
+    const memo = new Map<string, number>();
+    const of = (id: string, guard = 0): number => {
+      const hit = memo.get(id);
+      if (hit !== undefined) return hit;
+      const p = parentOf.get(id);
+      const d = p && parentOf.has(p) && guard < 20 ? of(p, guard + 1) + 1 : 0;
+      memo.set(id, d);
+      return d;
+    };
+    return of;
+  }, [nodes]);
 
   useEffect(() => {
     const el = scroller.current;
@@ -91,7 +138,7 @@ export function ListCanvas({ nodes, edges, focus, onSelect, onHover }: CanvasPro
             } else if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               const node = nodes[cursor];
-              if (node) onSelect(node.id);
+              if (node) (e.shiftKey && onDrill ? onDrill : onSelect)(node.id);
             }
           }}
         >
@@ -113,12 +160,21 @@ export function ListCanvas({ nodes, edges, focus, onSelect, onHover }: CanvasPro
                     setCursor(index);
                     onSelect(node.id);
                   }}
+                  onDoubleClick={() => onDrill?.(node.id)}
                   onMouseEnter={() => onHover(node.id)}
                   onMouseLeave={() => onHover(null)}
                 >
-                  <span className="row-label">{node.label}</span>
+                  <span className="row-label" style={{ paddingLeft: depth(node.id) * 18 }}>
+                    {node.label}
+                  </span>
                   <KindBadge kind={node.kind} />
-                  <span className="row-meta">{degree.get(node.id) ?? 0} links</span>
+                  <span className="row-meta">
+                    {node.side
+                      ? node.side === "focus"
+                        ? "centre"
+                        : `${node.side === "in" ? "caller" : "callee"}, ${node.hop} away`
+                      : `${degree.get(node.id) ?? 0} links`}
+                  </span>
                 </div>
               );
             })}

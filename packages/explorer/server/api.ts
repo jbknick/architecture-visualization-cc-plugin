@@ -2,6 +2,7 @@ import { closeSync, fstatSync, openSync, readSync, realpathSync } from "node:fs"
 import path from "node:path";
 import { isIndexable, isSensitive, MAX_FILE_BYTES, splitIdentifier } from "@gantry/core";
 import { HttpError } from "./errors.js";
+import { getLayout } from "./layout.js";
 import type { ApiContext, ViewLevel, ViewParams } from "./types.js";
 import { getView, listViews } from "./views/index.js";
 import { parseOptions } from "./views/options.js";
@@ -45,6 +46,8 @@ export function handleApi(ctx: ApiContext, pathname: string, query: URLSearchPar
       return search(ctx, query.get("q") ?? "");
     case "source":
       return source(ctx, query);
+    case "layout":
+      return getLayout(ctx.store, decodeSegment(segments[2]));
     default:
       throw new HttpError(404, "Unknown API route");
   }

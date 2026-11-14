@@ -1,7 +1,9 @@
 import type { EdgeRecord, SymbolKind, SymbolRecord } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { GraphEdge, GraphNode, ViewLevel, ViewModule, ViewParams } from "../types.js";
+import { addImportEdge, type ImportTally, importGraphEdge, newImportTally } from "./aggregate.js";
 import { buildHierarchy, type HNode, TIER } from "./hierarchy.js";
+import { shortWorkspaceLabels } from "./labels.js";
 import { cmp, getOrInit, isTestPath, optBool, optList } from "./options.js";
 
 const LEVEL_TIER: Record<ViewLevel, number> = { workspaces: 0, dirs: 1, files: 2, symbols: 3 };
@@ -20,7 +22,8 @@ const SYMBOL_KINDS = new Set<string>([
 const USE_KINDS = new Set(["calls", "renders", "uses_hook"]);
 
 interface Agg {
-  imports: number;
+  /** Distinct file-level imports edges under the pair; see aggregate.ts. */
+  tally: ImportTally;
   uses: number;
   low: boolean;
 }
@@ -100,6 +103,11 @@ export const projectMapView: ViewModule = {
     const edges = store.effectiveEdges();
     const nodes = new Map<string, GraphNode>();
     for (const id of returned) nodes.set(id, (byId.get(id) as HNode).node);
+    // Same short names as the 3D map, computed over every workspace so a filter never changes them.
+    const shortLabels = shortWorkspaceLabels(workspaces.map((w) => w.name));
+    for (const n of nodes.values()) {
+      if (n.kind === "workspace") n.shortLabel = shortLabels.get(n.label) ?? n.label;
+    }
 
     // External packages: only in the unfocused map.
     const externalFiles = new Map<string, Set<string>>();
@@ -149,9 +157,12 @@ export const projectMapView: ViewModule = {
     ): void => {
       if (!src || !dst || src === dst || contains(src, dst) || contains(dst, src)) return;
       const key = `${src}\0${dst}`;
-      const a = getOrInit(agg, key, () => ({ src, dst, imports: 0, uses: 0, low: false }));
-      a[field] += 1;
-      if (e.confidence === "low") a.low = true;
+      const a = getOrInit(agg, key, () => ({ src, dst, tally: newImportTally(), uses: 0, low: false }));
+      if (field === "imports") addImportEdge(a.tally, e);
+      else {
+        a.uses += 1;
+        if (e.confidence === "low") a.low = true;
+      }
     };
     const wsOf = (fileId: string): string | undefined => {
       for (let h = byId.get(fileId); h; h = h.parent) if (h.tier === TIER.workspace) return h.node.id;
@@ -193,15 +204,17 @@ export const projectMapView: ViewModule = {
 
     const out: GraphEdge[] = [...dependsOn.values()];
     for (const a of agg.values()) {
-      const kind = a.imports > 0 ? "imports" : "uses";
-      const edge: GraphEdge = {
-        id: `${a.src}|${kind}|${a.dst}`,
-        src: a.src,
-        dst: a.dst,
-        kind,
-        weight: a.imports > 0 ? a.imports : a.uses,
-        confidence: a.low ? "low" : "high",
-      };
+      const edge: GraphEdge =
+        a.tally.imports > 0
+          ? importGraphEdge(a.src, a.dst, a.tally)
+          : {
+              id: `${a.src}|uses|${a.dst}`,
+              src: a.src,
+              dst: a.dst,
+              kind: "uses",
+              weight: a.uses,
+              confidence: a.low ? "low" : "high",
+            };
       if (a.uses > 0) edge.uses = a.uses;
       out.push(edge);
     }

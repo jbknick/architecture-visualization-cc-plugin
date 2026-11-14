@@ -4,6 +4,8 @@ export interface GraphNode {
   id: string;
   kind: string;
   label: string;
+  /** Workspace nodes only: `label` without the npm scope shared by most workspaces (see views/labels.ts). */
+  shortLabel?: string;
   parent?: string;
   size: number;
   color?: string;
@@ -16,6 +18,14 @@ export interface GraphNode {
   side?: "in" | "out" | "focus";
   /** Ego view only: distance from the focus in hops. */
   hop?: number;
+  /** Ego view only: id of the workspace the function or file belongs to (absent outside every workspace). */
+  workspace?: string;
+  /** Ego view group nodes (`kind: "group"`): the members, so a client can list them without another request. */
+  members?: GroupMember[];
+  /** Ego view group nodes: true when the group is expanded; its members follow as separate nodes. */
+  expanded?: boolean;
+  /** Ego view: id of the (expanded) group a node was listed under. */
+  group?: string;
   x?: number;
   y?: number;
 }
@@ -24,6 +34,15 @@ export interface NodeStats {
   files?: number;
   functions?: number;
   loc?: number;
+  /** Ego group nodes: how many functions (or files) the group stands for. */
+  members?: number;
+}
+
+export interface GroupMember {
+  id: string;
+  label: string;
+  path?: string;
+  line?: number;
 }
 
 export interface GraphEdge {
@@ -35,6 +54,8 @@ export interface GraphEdge {
   confidence: "high" | "low";
   /** Project map: number of call/render/hook edges between the same two nodes. */
   uses?: number;
+  /** Imports edges: imported names summed over the underlying file edges. Present only when it differs from `weight`. */
+  bindings?: number;
 }
 
 /** The canvas layouts defined by issue #36. */
@@ -46,6 +67,7 @@ export type LayoutHint =
   | "tree-lr"
   | "columns"
   | "clusters"
+  | "bowtie"
   | "force-3d";
 
 export type ViewLevel = "workspaces" | "dirs" | "files" | "symbols";

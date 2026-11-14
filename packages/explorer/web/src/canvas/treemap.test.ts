@@ -1,0 +1,289 @@
+// @vitest-environment node
+import { describe, expect, it } from "vitest";
+import {
+  breakPoints,
+  ellipsizeMiddle,
+  fitCellLabel,
+  fitFileLabel,
+  fitLargestFileLabel,
+  layoutTreemap,
+  squarify,
+  stripExtension,
+  TM_PAD,
+  type TmNode,
+  wrapLines,
+  wrapText,
+  wrapTwoLines,
+} from "./treemap.ts";
+import type { Rect } from "./types.ts";
+
+const area = (r: Rect) => r.w * r.h;
+const overlaps = (a: Rect, b: Rect) =>
+  a.x < b.x + b.w - 1e-6 && b.x < a.x + a.w - 1e-6 && a.y < b.y + b.h - 1e-6 && b.y < a.y + a.h - 1e-6;
+const inside = (inner: Rect, outer: Rect) =>
+  inner.x >= outer.x - 1e-6 &&
+  inner.y >= outer.y - 1e-6 &&
+  inner.x + inner.w <= outer.x + outer.w + 1e-6 &&
+  inner.y + inner.h <= outer.y + outer.h + 1e-6;
+
+const items = Array.from({ length: 40 }, (_, i) => ({ id: `n${i}`, weight: 1 + ((i * 7) % 13) }));
+
+describe("squarify", () => {
+  const rect = { x: 10, y: 20, w: 400, h: 250 };
+
+  it("gives every item an area proportional to its weight", () => {
+    const placed = squarify(items, rect);
+    const total = items.reduce((s, i) => s + i.weight, 0);
+    expect(placed).toHaveLength(items.length);
+    for (const p of placed) {
+      const w = (items.find((i) => i.id === p.id) as { weight: number }).weight;
+      expect(area(p.rect)).toBeCloseTo((w / total) * area(rect), 6);
+    }
+    expect(placed.reduce((s, p) => s + area(p.rect), 0)).toBeCloseTo(area(rect), 6);
+  });
+
+  it("never overlaps and stays inside the parent", () => {
+    const placed = squarify(items, rect);
+    for (let a = 0; a < placed.length; a++) {
+      expect(inside((placed[a] as { rect: Rect }).rect, rect)).toBe(true);
+      for (let b = a + 1; b < placed.length; b++) {
+        expect(overlaps((placed[a] as { rect: Rect }).rect, (placed[b] as { rect: Rect }).rect)).toBe(false);
+      }
+    }
+  });
+
+  it("is deterministic whatever the input order, with ties broken by id", () => {
+    const a = squarify(items, rect);
+    const b = squarify([...items].reverse(), rect);
+    expect(b).toEqual(a);
+    const ties = squarify(
+      [
+        { id: "b", weight: 2 },
+        { id: "a", weight: 2 },
+      ],
+      rect,
+    );
+    expect(ties.map((t) => t.id)).toEqual(["a", "b"]);
+  });
+
+  it("keeps cells reasonably square", () => {
+    const worst = Math.max(
+      ...squarify(items, rect).map((p) => Math.max(p.rect.w / p.rect.h, p.rect.h / p.rect.w)),
+    );
+    expect(worst).toBeLessThan(6);
+  });
+
+  it("handles one item, empty input and zero weights", () => {
+    expect(squarify([], rect)).toEqual([]);
+    expect(squarify([{ id: "x", weight: 0 }], rect)).toEqual([]);
+    expect(squarify([{ id: "x", weight: 5 }], rect)[0]?.rect).toEqual(rect);
+  });
+});
+
+function tree(): TmNode {
+  const file = (id: string, fns: number): TmNode => ({
+    id,
+    weight: Math.max(fns, 0.6),
+    head: 0,
+    children: [],
+  });
+  const dir = (id: string, children: TmNode[]): TmNode => ({ id, weight: 0, head: 16, children });
+  return {
+    id: "ws",
+    weight: 0,
+    head: 60,
+    children: [
+      dir("d1", [file("a", 40), file("b", 12), file("c", 0), file("d", 3)]),
+      dir("d2", [file("e", 30), dir("d3", [file("f", 9), file("g", 9)])]),
+      dir("d4", [file("h", 5)]),
+    ],
+  };
+}
+
+describe("layoutTreemap", () => {
+  const rect = { x: 0, y: 0, w: 640, h: 420 };
+
+  it("puts every child inside its parent, below the header, without sibling overlaps", () => {
+    const root = tree();
+    const out = layoutTreemap(root, rect);
+    const walk = (n: TmNode) => {
+      const r = out.rects.get(n.id) as Rect;
+      const head = out.heads.get(n.id) ?? 0;
+      const kids = n.children.map((c) => out.rects.get(c.id) as Rect);
+      for (const k of kids) {
+        expect(inside(k, r)).toBe(true);
+        if (head > 0) expect(k.y).toBeGreaterThanOrEqual(r.y + head - 1e-6);
+      }
+      for (let a = 0; a < kids.length; a++)
+        for (let b = a + 1; b < kids.length; b++)
+          expect(overlaps(kids[a] as Rect, kids[b] as Rect)).toBe(false);
+      n.children.forEach(walk);
+    };
+    walk(root);
+  });
+
+  it("sizes sibling areas in proportion to their weight, zero-function files included as thin cells", () => {
+    const out = layoutTreemap(tree(), rect);
+    const a = out.rects.get("a") as Rect;
+    const b = out.rects.get("b") as Rect;
+    const c = out.rects.get("c") as Rect;
+    const d = out.rects.get("d") as Rect;
+    expect(area(a) / area(b)).toBeCloseTo(40 / 12, 6);
+    expect(area(b) / area(d)).toBeCloseTo(12 / 3, 6);
+    expect(area(c)).toBeGreaterThan(0);
+    expect(area(c)).toBeLessThan(area(d));
+  });
+
+  it("is deterministic", () => {
+    const first = [...layoutTreemap(tree(), rect).rects];
+    const second = [...layoutTreemap(tree(), rect).rects];
+    expect(second).toEqual(first);
+  });
+
+  it("drops the header of a container that is too short for it and keeps the padding", () => {
+    const out = layoutTreemap(tree(), { x: 0, y: 0, w: 640, h: 80 });
+    expect(out.heads.get("ws")).toBe(0); // 80 < 2.2 * 60
+    const r = out.rects.get("d1") as Rect;
+    expect(r.y).toBeGreaterThanOrEqual(TM_PAD - 1e-6);
+  });
+});
+
+describe("label fit rule", () => {
+  // 6px per character keeps the arithmetic obvious.
+  const measure = (t: string) => t.length * 6;
+
+  it("draws a label only when it fits inside the cell at 10px or more", () => {
+    expect(fitCellLabel(measure, "button.tsx", 80, 16, 10)).toBe("button.tsx");
+    expect(fitCellLabel(measure, "button.tsx", 80, 11, 10)).toBeNull(); // too short for the font
+    expect(fitCellLabel(measure, "button.tsx", 80, 16, 9)).toBeNull(); // font below the floor
+    expect(fitCellLabel(measure, "button.tsx", 40, 16, 10)).toBeNull(); // too narrow, no ellipsis under 60px
+  });
+
+  it("ellipsizes the middle of long names only in cells of 60px or more", () => {
+    const long = "customerInvoiceRepositoryAdapter.ts";
+    const label = fitCellLabel(measure, long, 120, 16, 11) as string;
+    expect(label).toContain("…");
+    expect(measure(label)).toBeLessThanOrEqual(120 - 6);
+    expect(label.startsWith("customer")).toBe(true);
+    expect(label.endsWith(".ts")).toBe(true);
+    expect(fitCellLabel(measure, long, 59, 16, 11)).toBeNull();
+  });
+
+  it("ellipsizeMiddle keeps both ends and the requested length", () => {
+    expect(ellipsizeMiddle("abcdefghij", 20)).toBe("abcdefghij");
+    const e = ellipsizeMiddle("abcdefghijklmnop", 9);
+    expect(e).toHaveLength(9);
+    expect(e).toContain("…");
+  });
+
+  it("wrapText wraps at separators and never drops characters", () => {
+    const lines = wrapText(measure, "acme-platform-monorepo/db-client", 100);
+    expect(lines.length).toBeGreaterThan(1);
+    for (const l of lines) expect(measure(l)).toBeLessThanOrEqual(100);
+    expect(lines.join("").replace(/\s/g, "")).toBe("acme-platform-monorepo/db-client");
+    expect(wrapText(measure, "short", 100)).toEqual(["short"]);
+    expect(wrapText(measure, "unbreakablewordthatislong", 60).join("")).toBe("unbreakablewordthatislong");
+  });
+});
+
+describe("file name labels", () => {
+  // 6px per character at 11px, 5.5 at 10px.
+  const at = (t: string, f: number) => t.length * (f === 11 ? 6 : 5.5);
+
+  it("keeps a name that fits whole, at 11px, and at 10px before dropping anything", () => {
+    expect(fitFileLabel(at, "orderService.ts", 100, 16)).toEqual({ lines: ["orderService.ts"], font: 11 });
+    // 15 chars: 90px at 11px does not fit in 84, 82.5px at 10px does. Never ellipsized.
+    expect(fitFileLabel(at, "orderService.ts", 90, 16)).toEqual({ lines: ["orderService.ts"], font: 10 });
+  });
+
+  it("drops the extension before wrapping or ellipsizing", () => {
+    expect(fitFileLabel(at, "orderService.ts", 80, 16)).toEqual({ lines: ["orderService"], font: 11 });
+    expect(stripExtension("a.test.tsx")).toBe("a.test");
+    expect(stripExtension("README")).toBe("README");
+    expect(stripExtension("archive.longext")).toBe("archive.longext");
+  });
+
+  it("wraps at . - _ and camelCase onto two lines when the cell is tall enough, before ellipsizing", () => {
+    expect(breakPoints("customerInvoice.service.ts")).toEqual([8, 16, 24]);
+    expect(breakPoints("rate-limit_store")).toEqual([5, 11]);
+    const wrapped = fitFileLabel(at, "customerInvoiceRepository", 100, 28);
+    expect(wrapped?.lines).toHaveLength(2);
+    expect(wrapped?.lines.join("")).toBe("customerInvoiceRepository");
+    for (const l of wrapped?.lines ?? []) expect(at(l, wrapped?.font ?? 11)).toBeLessThanOrEqual(100 - 6);
+    // One line of height and a narrow cell: no label at all (zooming in reveals the name).
+    expect(fitFileLabel(at, "customerInvoiceRepository", 100, 13)).toBeNull();
+    // A wide cell may still show the ends of a name that does not fit.
+    const wide = fitFileLabel(at, "customerInvoiceRepositoryFactoryImplementation", 150, 13);
+    expect(wide?.lines).toHaveLength(1);
+    expect(wide?.lines[0]).toContain("…");
+  });
+
+  it("wrapTwoLines balances the lines and returns null when no split fits", () => {
+    expect(wrapTwoLines((t) => t.length * 6, "auditHandlerFactory", 80)).toEqual(["auditHandler", "Factory"]);
+    expect(wrapTwoLines((t) => t.length * 6, "abcdefghij", 40)).toBeNull();
+  });
+
+  it("gives nothing when the cell is too narrow or too short", () => {
+    expect(fitFileLabel(at, "orderService.ts", 8, 16)).toBeNull();
+    expect(fitFileLabel(at, "orderService.ts", 100, 9)).toBeNull();
+  });
+});
+
+describe("label of the largest file in a folder", () => {
+  // 6px per character at 11px, 5.5 at 10px, 5 at 9px.
+  const at = (t: string, f: number) => t.length * (f === 11 ? 6 : f === 10 ? 5.5 : 5);
+
+  it("wraps on as few lines as it takes (at most three) at . - _ and camelCase", () => {
+    const six = (t: string) => t.length * 6;
+    expect(wrapLines(six, "customerInvoiceRepositoryFactory", 110, 3)).toEqual([
+      "customerInvoice",
+      "RepositoryFactory",
+    ]);
+    const three = wrapLines(six, "customerInvoiceRepositoryFactory", 90, 3);
+    expect(three?.join("")).toBe("customerInvoiceRepositoryFactory");
+    expect(three).toHaveLength(3);
+  });
+
+  it("uses fewer lines when they are enough and null when three are not", () => {
+    expect(wrapLines((t) => t.length * 6, "auditHandler", 100, 3)).toEqual(["auditHandler"]);
+    expect(wrapLines((t) => t.length * 6, "abcdefghijklmnop", 40, 3)).toBeNull();
+  });
+
+  it("finds a three-line label where the ordinary rule gives up", () => {
+    const name = "customerInvoiceRepository.ts";
+    expect(fitFileLabel(at, name, 70, 40)).toBeNull();
+    const l = fitLargestFileLabel(at, name, 70, 40);
+    expect(l).not.toBeNull();
+    expect(l?.lines.length).toBeLessThanOrEqual(3);
+    expect(l?.font).toBeGreaterThanOrEqual(9);
+    expect(l?.lines.join("")).toMatch(/^customerInvoiceRepository(\.ts)?$/);
+    for (const line of l?.lines ?? []) expect(at(line, l?.font ?? 11)).toBeLessThanOrEqual(70 - 6);
+  });
+
+  it("gives no label (and no ellipsis) when even three lines at 9px do not fit", () => {
+    expect(fitLargestFileLabel(at, "customerInvoiceRepository.ts", 30, 40)).toBeNull();
+    expect(fitLargestFileLabel(at, "customerInvoiceRepository.ts", 70, 14)).toBeNull();
+  });
+});
+
+describe("layoutTreemap with a transparent single child", () => {
+  it("gives the transparent folder its parent's whole inner rectangle and lays its children out there", () => {
+    const file = (id: string): TmNode => ({ id, weight: 4, head: 0, children: [] });
+    const root: TmNode = {
+      id: "ws",
+      weight: 0,
+      head: 0,
+      children: [
+        { id: "src", weight: 0, head: 0, transparent: true, children: [file("a"), file("b"), file("c")] },
+      ],
+    };
+    const out = layoutTreemap(root, { x: 0, y: 0, w: 300, h: 200 });
+    const src = out.rects.get("src") as Rect;
+    expect(src.x).toBeCloseTo(TM_PAD, 6);
+    expect(src.y).toBeCloseTo(TM_PAD, 6);
+    expect(src.w).toBeCloseTo(300 - 2 * TM_PAD, 6);
+    expect(src.h).toBeCloseTo(200 - 2 * TM_PAD, 6);
+    const total = ["a", "b", "c"].reduce((sum, id) => sum + area(out.rects.get(id) as Rect), 0);
+    expect(total).toBeCloseTo(area(src), 4); // no padding of its own
+  });
+});
