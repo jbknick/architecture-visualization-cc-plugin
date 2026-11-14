@@ -301,6 +301,9 @@ export function wrapTwoLines(measure: (text: string) => number, text: string, ma
   return best;
 }
 
+/** File names are middle-ellipsized only in cells at least this wide; narrower ones show the whole name or nothing. */
+export const FILE_ELLIPSIS_CELL_W = 140;
+
 export interface FileLabel {
   lines: string[];
   font: number;
@@ -309,8 +312,8 @@ export interface FileLabel {
 /**
  * How to print a file name in a cell: 11px, then 10px. One line when the whole name fits, then one line without its
  * extension, then (when the cell is tall enough for two lines) two lines broken at `.`/`-`/`_`/camelCase
- * boundaries, and only then the old middle-ellipsis. A name that fits at 10px is never ellipsized. `measureAt`
- * gives the text width at a font size.
+ * boundaries, and only then, in cells at least 140px wide, a middle-ellipsis; otherwise no label. A name that fits
+ * at 10px is never ellipsized. `measureAt` gives the text width at a font size.
  */
 export function fitFileLabel(
   measureAt: (text: string, font: number) => number,
@@ -335,6 +338,9 @@ export function fitFileLabel(
       if (two) return { lines: two, font };
     }
   }
+  // The whole name does not fit on two lines: no label (zooming in shows it), unless the cell is wide enough
+  // for a middle-ellipsis that still says something.
+  if (cellW < FILE_ELLIPSIS_CELL_W) return null;
   const text = fitCellLabel((t) => measureAt(t, 10), bare, cellW, cellH, 10, padding);
   return text ? { lines: [text], font: 10 } : null;
 }

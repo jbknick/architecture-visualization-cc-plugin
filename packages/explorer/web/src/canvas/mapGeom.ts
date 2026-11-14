@@ -4,13 +4,18 @@
 // the current zoom, and a child is mapped from the normalized rectangle into that area. Drawing and picking use
 // the same functions, so a click always lands on what was drawn. No elk, no squarify at zoom time.
 import { kindTier, type TreeNode } from "./hierarchy.ts";
-import type { Scene } from "./scene.ts";
+import { folderTitle, type Scene } from "./scene.ts";
 import { TM_PAD } from "./treemap.ts";
 import type { MapGeometry, Rect } from "./types.ts";
 
 /** Workspace title block, folder strip and file-name strip: the tallest they get on screen, in px. */
 export const WS_HEAD_MAX = 44;
-export const DIR_STRIP_MAX = 20;
+export const DIR_STRIP_MAX = 34;
+/** A folder strip with one line of text, and with two (long names wrap before they are cut). */
+export const DIR_STRIP_ONE = 20;
+export const DIR_STRIP_TWO = 32;
+/** Room a folder strip keeps for its glyph and padding, in px: the name gets the width minus this. */
+export const DIR_STRIP_INSET = 22;
 export const FILE_STRIP_MAX = 16;
 /** A folder gets a header strip when it is at least this big on screen. */
 export const DIR_MIN_W = 70;
@@ -44,7 +49,11 @@ export function headPx(
   }
   if (tier === 1) {
     if ((scene.depth[i] as number) > MAX_STRIP_DEPTH || pw < DIR_MIN_W || ph < DIR_MIN_H) return 0;
-    return Math.min(DIR_STRIP_MAX, Math.max(14, ph * 0.3));
+    const one = Math.min(DIR_STRIP_ONE, Math.max(14, ph * 0.3));
+    // A name that cannot fit one line even at 10px gets a two-line strip when the cell is tall enough for it.
+    if (ph >= 54 && DIR_STRIP_TWO <= ph * 0.6 && folderTitle(scene, i).length * 6.2 > pw - DIR_STRIP_INSET)
+      return DIR_STRIP_TWO;
+    return one;
   }
   if (tier === 2 && node.children.length > 0) {
     if (pw < 40 || ph < 24) return 0;

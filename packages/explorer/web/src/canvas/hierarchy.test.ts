@@ -126,3 +126,59 @@ describe("lone folder with loose files next to it", () => {
     expect(big.skipped[big.tree.index.get("dir:w/src") as number]).toBe(0);
   });
 });
+
+describe("dominant folder with other folders and files beside it", () => {
+  const node = (id: string, kind: string, parent: string | undefined, fns: number) => ({
+    id,
+    kind,
+    label: id.split(/[:/]/).pop() ?? id,
+    parent,
+    size: 1,
+    stats: { functions: fns, files: 1 },
+  });
+  /** A workspace whose `src` holds `main` functions, next to a `.storybook` folder and a config file. */
+  const workspace = (main: number, rest: number) => [
+    node("ws:w", "workspace", undefined, main + rest),
+    node("dir:w/src", "dir", "ws:w", main),
+    node("dir:w/src/a", "dir", "dir:w/src", Math.ceil(main / 2)),
+    node("dir:w/src/b", "dir", "dir:w/src", Math.floor(main / 2)),
+    node("dir:w/.storybook", "dir", "ws:w", rest),
+    node("file:w/vite.config.ts", "file", "ws:w", 0),
+  ];
+
+  it("lifts a folder holding 100% of the functions and gathers the 0% siblings in one (other) group", () => {
+    const scene = buildScene(workspace(961, 0), [], "nested-elk");
+    const at = (id: string) => scene.tree.index.get(id) as number;
+    expect(scene.skipped[at("dir:w/src")]).toBe(1);
+    const group = at("rootfiles:ws:w");
+    expect(scene.tree.nodes[group]?.kind).toBe(GROUP_KIND);
+    expect(scene.nodes[group]?.label).toBe("(other)");
+    expect(scene.tree.nodes[at("dir:w/.storybook")]?.parent).toBe(group);
+    expect(scene.tree.nodes[at("file:w/vite.config.ts")]?.parent).toBe(group);
+    expect(scene.tree.nodes[at("dir:w/src/a")]?.parent).toBe(at("dir:w/src"));
+  });
+
+  it("lifts a folder holding 92% and keeps the 8% in the group", () => {
+    const scene = buildScene(workspace(92, 8), [], "nested-elk");
+    const at = (id: string) => scene.tree.index.get(id) as number;
+    expect(scene.skipped[at("dir:w/src")]).toBe(1);
+    expect(scene.functions[at("rootfiles:ws:w")]).toBe(8);
+  });
+
+  it("does not collapse at 80% / 20%", () => {
+    const scene = buildScene(workspace(80, 20), [], "nested-elk");
+    const at = (id: string) => scene.tree.index.get(id) as number;
+    expect(scene.skipped[at("dir:w/src")]).toBe(0);
+    expect(scene.tree.index.has("rootfiles:ws:w")).toBe(false);
+    expect(scene.tree.nodes[at("dir:w/.storybook")]?.parent).toBe(at("ws:w"));
+  });
+
+  it("puts files that arrive later (the Folders-level mosaic) into the group that is already there", () => {
+    const base = buildScene(workspace(961, 0).slice(0, 5), [], "nested-elk");
+    const files = [node("file:w/vite.config.ts", "file", "ws:w", 0)];
+    const scene = buildScene([...base.nodes, ...files], [], "nested-elk", { mosaic: true });
+    const at = (id: string) => scene.tree.index.get(id) as number;
+    expect(scene.tree.nodes[at("file:w/vite.config.ts")]?.parent).toBe(at("rootfiles:ws:w"));
+    expect(scene.skipped[at("dir:w/src")]).toBe(1);
+  });
+});
