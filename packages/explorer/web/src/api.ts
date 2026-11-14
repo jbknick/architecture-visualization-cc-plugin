@@ -205,6 +205,10 @@ export interface SearchHit {
   path: string;
   line: number;
   exported: boolean;
+  signature?: string;
+  score?: number;
+  /** Model-written text about untrusted code. Data only; the search box does not render it. */
+  untrusted_description?: string | null;
 }
 
 export interface SourceSlice {

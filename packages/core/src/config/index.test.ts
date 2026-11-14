@@ -43,7 +43,7 @@ test("defaults match spec section 5", () => {
       },
       "exclude": [],
       "precommit": {
-        "budgetMs": 8000,
+        "budgetMs": 20000,
         "maxFunctions": 50,
         "mode": "off",
       },

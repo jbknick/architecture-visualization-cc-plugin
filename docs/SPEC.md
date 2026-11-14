@@ -64,7 +64,7 @@ type TaskName =
   | "overview"
   | "explain";
 type GantryConfig = {
-  precommit: { mode: "off" | "timeboxed" | "strict"; budgetMs: number; maxFunctions: number }; // off, 8000, 50
+  precommit: { mode: "off" | "timeboxed" | "strict"; budgetMs: number; maxFunctions: number }; // off, 20000, 50
   routing: Record<TaskName, { model: "haiku" | "sonnet" | "opus"; effort: "low" | "medium" | "high" }>;
   exclude: string[]; // extra globs, added to built-ins
   workspaces: { overrides: Record<string, { kind?: "app" | "package" }> };
