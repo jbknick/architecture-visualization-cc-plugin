@@ -112,6 +112,14 @@ function readsAsSentence(v: string): boolean {
   );
 }
 
+/** A prompt for the user, not a secret: starts with enter/type/your/... and names what is asked for ("Enter your password"). */
+function isPlaceholderPrompt(v: string): boolean {
+  return (
+    /^(?:please\s+)?(?:enter|type|your|re-?enter|choose|confirm|set|new)\s/i.test(v) &&
+    /\b(?:password|passphrase|passcode|token|secret|key|pin|code|credentials?)\b/i.test(v)
+  );
+}
+
 /** Names whose last word says the value is text shown to a person (`passwordText`, `tokenCaption`). */
 const LABEL_NAME_WORDS = new Set(
   "label placeholder hint text message title caption prompt description tooltip helper".split(" "),
@@ -224,7 +232,15 @@ export const SECRET_RULES: readonly SecretRule[] = [
       if (looksLikeMessageKey(v) || NON_SECRET_VALUES.has(v)) return false;
       // A text for a person ("Enter your password") is not a secret, but only when the name says so or the value reads as
       // a sentence; a capitalised phrase behind a plain credential name stays redacted (`password = "Correct Horse Battery"`).
-      if (redact && ((isLabelName(g.name ?? "") && looksLikeLabel(v)) || readsAsSentence(v))) return false;
+      // A strong credential name (password, token, secret, ...) is redacted whatever the value reads like, except a
+      // placeholder prompt; the sentence exemption holds only for other names.
+      const name = g.name ?? "";
+      if (
+        redact &&
+        ((isLabelName(name) && looksLikeLabel(v)) ||
+          (readsAsSentence(v) && (!hasStrongWord(name) || isPlaceholderPrompt(v))))
+      )
+        return false;
       // `key: "Please enter your password"` is a label; a space in the value only counts for strong credential names.
       return !/\s/.test(v) || hasStrongWord(g.name ?? "");
     },
@@ -271,7 +287,7 @@ export const SECRET_RULES: readonly SecretRule[] = [
     // A secret assembled from an array of string literals and joined with an empty string. Redacted when the joined text is a
     // credential by itself or sits behind a credential name.
     name: "joined-literals",
-    re: /(?:(?<![\w$.-])(?<name>[A-Za-z_$][\w$.-]{0,60})["']?\s{0,20}[:=]\s{0,20})?\[(?<items>(?:\s{0,5}(?:"[^"\r\n]{0,80}"|'[^'\r\n]{0,80}')\s{0,5},){1,8}\s{0,5}(?:"[^"\r\n]{0,80}"|'[^'\r\n]{0,80}'))\s{0,5},?\s{0,5}\]\s{0,5}\.\s{0,5}join\(\s{0,5}(?:""|'')\s{0,5}\)/g,
+    re: /(?:(?<![\w$.-])(?<name>[A-Za-z_$][\w$.-]{0,60})["']?\s{0,20}[:=]\s{0,20})?\[(?<items>(?:\s{0,5}(?:"[^"\r\n]{0,80}"|'[^'\r\n]{0,80}')\s{0,5},){1,8}\s{0,5}(?:"[^"\r\n]{0,80}"|'[^'\r\n]{0,80}'))\s{0,5},?\s{0,5}\]\s{0,5}\.\s{0,5}join\(\s{0,5}(?:""|''|``)?\s{0,5}\)/g,
     accept: (g) => {
       const joined = joinedLiterals(g.items ?? "");
       if (joined.length < 4) return false;
@@ -291,20 +307,31 @@ export const SECRET_RULES: readonly SecretRule[] = [
       if (v === MARKER || looksLikeMessageKey(v) || NON_SECRET_VALUES.has(v) || /^[/.#]/.test(v))
         return false;
       const earlier = ((g.pre ?? "").match(/,/g) ?? []).length;
-      if (earlier >= 1) return nameParts(name).some((p) => LOGIN_WORDS.has(p)) && !/\s/.test(v);
+      if (earlier >= 1) {
+        // not an HTTP method, a port, a host name, or the argument after an HTTP method
+        if (/^(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/.test(v) || /^\d{1,5}$/.test(v)) return false;
+        if (/^localhost$/i.test(v) || /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(v)) return false;
+        if (
+          /"(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)"|'(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)'/.test(
+            g.pre ?? "",
+          )
+        )
+          return false;
+        return nameParts(name).some((p) => LOGIN_WORDS.has(p)) && !/\s/.test(v);
+      }
       return isCredentialName(name) && /\d/.test(v) && /[A-Za-z]/.test(v) && !/\s/.test(v);
     },
   },
   {
     // A credential given as a command-line argument: a password, token or key flag with its value, or curl's `-u` pair.
     name: "cli-credential",
-    re: /(?<![\w-])(?:--?(?:password|passwd|pwd|pass|token|secret|api-key|apikey|auth-token|access-token|client-secret|private-key|passphrase)(?:=|\s{1,3})(?<v>[^\s"'`;|&<>]{4,200})|-u\s{1,3}(?<u>[^\s:"'`$]{1,60}:[^\s"'`$]{4,100}))/g,
+    re: /(?<![\w-])(?:--?(?:password|passwd|pwd|pass|token|secret|api-key|apikey|auth-token|access-token|client-secret|private-key|passphrase)(?:=|\s{1,3})["']?(?<v>[^\s"'`;|&<>]{4,200})|(?<=\bcurl\s[^\n|;&]{0,80}?)-u\s{1,3}["']?(?<u>[^\s:"'`$]{1,60}:[^\s"'`$]{4,100})|(?<=\bmysql(?:dump|admin)?\s[^\n|;&]{0,80}?)-p(?<m>[^\s"'`$;|&<>-][^\s"'`;|&<>]{3,100}))/g,
     accept: (g) => {
-      const v = g.v ?? g.u ?? "";
-      return v !== MARKER && !/^[-$%{<@(]|^env:/i.test(v) && (g.u === undefined || /\d/.test(v));
+      const v = g.v ?? g.u ?? g.m ?? "";
+      return v !== MARKER && !/^[-$%{<@(]|^env:/i.test(v) && (g.m === undefined || !/^\d+$/.test(v));
     },
     replace: (m, g) => {
-      const v = g.v ?? g.u ?? "";
+      const v = g.v ?? g.u ?? g.m ?? "";
       const at = m.lastIndexOf(v);
       return at < 0 ? MARKER : m.slice(0, at) + MARKER + m.slice(at + v.length);
     },

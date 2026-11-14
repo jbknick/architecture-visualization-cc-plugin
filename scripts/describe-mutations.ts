@@ -3,11 +3,16 @@
 // runs the describe tests, and reports whether a test failed ("killed") or not ("SURVIVED"). The edited file is
 // restored after every run, also on SIGINT, SIGTERM and SIGHUP. A baseline run must be green first, and a compile error, crash or timeout is reported as ERROR, never as a kill. Part of `pnpm check` since issue #108: a surviving mutation (a rule that no
 // test notices) fails the check. Usage: pnpm exec tsx scripts/describe-mutations.ts
-import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { execSync, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const dir = join(import.meta.dirname, "..", "packages", "core", "src", "describe");
+// The three overrides exist for the interrupt test (packages/core/test/describe-mutations.test.ts): a scratch directory,
+// a stub test command and a cap on the number of mutations. Normal runs use none of them.
+const dir =
+  process.env.GANTRY_MUTATION_DIR ?? join(import.meta.dirname, "..", "packages", "core", "src", "describe");
 
 interface Mutation {
   name: string;
@@ -105,8 +110,8 @@ const MUTATIONS: Mutation[] = [
   {
     name: "redactor: joined literals no longer found",
     file: "secrets.ts",
-    find: "join\\(\\s{0,5}(?:\"\"|'')",
-    replace: "jxin\\(\\s{0,5}(?:\"\"|'')",
+    find: "join\\(\\s{0,5}(?:\"\"|''|",
+    replace: "jxin\\(\\s{0,5}(?:\"\"|''|",
   },
   {
     name: "redactor: positional credential arguments no longer found",
@@ -123,8 +128,8 @@ const MUTATIONS: Mutation[] = [
   {
     name: "redactor: curl -u pair no longer found",
     file: "secrets.ts",
-    find: "|-u\\s{1,3}(?<u>",
-    replace: "|-\\u0001u\\s{1,3}(?<u>",
+    find: "-u\\s{1,3}[\"']?(?<u>",
+    replace: "-\\u0001u\\s{1,3}[\"']?(?<u>",
   },
   {
     name: "redactor: commit ids redacted again",
@@ -135,8 +140,14 @@ const MUTATIONS: Mutation[] = [
   {
     name: "redactor: i18n labels redacted again",
     file: "secrets.ts",
-    find: 'if (redact && ((isLabelName(g.name ?? "") && looksLikeLabel(v)) || readsAsSentence(v))) return false;',
+    find: "(isLabelName(name) && looksLikeLabel(v)) ||",
     replace: "",
+  },
+  {
+    name: "redactor: sentence-like values behind strong credential names left alone",
+    file: "secrets.ts",
+    find: "(!hasStrongWord(name) || isPlaceholderPrompt(v))",
+    replace: "true",
   },
   {
     name: "redactor: SRI hashes and routes redacted again",
@@ -152,48 +163,106 @@ const MUTATIONS: Mutation[] = [
   },
 ];
 
-const TEST_CMD = "pnpm vitest run packages/core/src/describe --reporter=dot --bail=1";
+const TEST_CMD =
+  process.env.GANTRY_MUTATION_CMD ?? "pnpm vitest run packages/core/src/describe --reporter=dot --bail=1";
 type Outcome = "green" | "killed" | "error";
 let lastOutput = "";
+let child: ReturnType<typeof spawn> | null = null;
 
-/** Runs the describe tests. "killed" means a test failed; a compile error, crash or timeout is "error", not a kill. */
-function runTests(): Outcome {
+/**
+ * Runs the describe tests asynchronously, so the signal handlers below can run while a test is going. "killed" means a
+ * test failed; a compile error, crash or timeout is "error", not a kill. GANTRY_MUTATION_RUN tells tests to skip their
+ * timing assertions, which a slow machine could turn into a false kill.
+ */
+function runTests(): Promise<Outcome> {
+  return new Promise((resolve) => {
+    let out = "";
+    // detached: the child leads its own process group, so one kill reaches vitest and its workers
+    const c = spawn(TEST_CMD, {
+      shell: true,
+      detached: true,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, GANTRY_MUTATION_RUN: "1" },
+    });
+    child = c;
+    const timer = setTimeout(() => killChild(), 300_000);
+    c.stdout?.on("data", (d) => {
+      out += d;
+    });
+    c.stderr?.on("data", (d) => {
+      out += d;
+    });
+    c.on("error", () => {
+      clearTimeout(timer);
+      child = null;
+      resolve("error");
+    });
+    c.on("close", (status, signal) => {
+      clearTimeout(timer);
+      child = null;
+      if (status === 0) return resolve("green");
+      lastOutput = `status=${status} signal=${signal} ${out}`;
+      if (signal != null || status == null) return resolve("error"); // timeout or killed
+      // With --bail the run stops at the first failure, so there may be no summary. A file that did not load or
+      // compile is not a kill; anything else that exits non-zero is a failed test.
+      if (
+        /Transform failed|SyntaxError|ReferenceError|Failed to (?:load|resolve|parse)|error TS\d+/.test(out)
+      )
+        return resolve("error");
+      resolve("killed");
+    });
+  });
+}
+
+function killChild(): void {
+  if (child?.pid === undefined) return;
   try {
-    execSync(TEST_CMD, { stdio: "pipe", timeout: 300_000 });
-    return "green";
-  } catch (e) {
-    const err = e as { status?: number | null; signal?: string | null; stdout?: Buffer; stderr?: Buffer };
-    const out = `${err.stdout?.toString() ?? ""}\n${err.stderr?.toString() ?? ""}`;
-    lastOutput = `status=${err.status} signal=${err.signal} ${out}`;
-    if (err.signal != null || err.status == null) return "error"; // timeout or killed
-    // With --bail the run stops at the first failure, so there may be no summary. A file that did not load or
-    // compile is not a kill; anything else that exits non-zero is a failed test.
-    if (/Transform failed|SyntaxError|ReferenceError|Failed to (?:load|resolve|parse)|error TS\d+/.test(out))
-      return "error";
-    return "killed";
+    process.kill(-child.pid, "SIGKILL");
+  } catch {
+    // already gone
   }
 }
 
+const lockFile = join(
+  tmpdir(),
+  `gantry-describe-mutation-${createHash("sha1").update(dir).digest("hex").slice(0, 12)}.json`,
+);
 let current: { path: string; original: string } | null = null;
 const restore = (): void => {
   if (current !== null) writeFileSync(current.path, current.original);
   current = null;
+  if (existsSync(lockFile)) unlinkSync(lockFile);
 };
 for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
   process.on(sig, () => {
+    killChild();
     restore();
     process.exit(130);
   });
 }
-process.on("exit", restore);
+process.on("exit", () => {
+  killChild();
+  restore();
+});
 
-if (runTests() !== "green") {
+// A SIGKILLed run cannot restore its file, so every mutation first saves the original to a lock file outside the tree;
+// the next run puts it back before doing anything else (the tree may hold uncommitted edits, so no dirty-tree check).
+if (existsSync(lockFile)) {
+  const stale = JSON.parse(readFileSync(lockFile, "utf8")) as { path: string; original: string };
+  writeFileSync(stale.path, stale.original);
+  unlinkSync(lockFile);
+  console.log(`restored ${stale.path} from an interrupted run`);
+}
+
+if ((await runTests()) !== "green") {
   console.log("baseline: the describe tests are not green without any mutation; fix them first");
   process.exit(1);
 }
 
+const limit = Number(process.env.GANTRY_MUTATION_LIMIT ?? MUTATIONS.length);
+const run = MUTATIONS.slice(0, limit);
 let bad = 0;
-for (const m of MUTATIONS) {
+for (const m of run) {
   const path = join(dir, m.file);
   const original = readFileSync(path, "utf8");
   if (!original.includes(m.find)) {
@@ -202,10 +271,11 @@ for (const m of MUTATIONS) {
     continue;
   }
   current = { path, original };
+  writeFileSync(lockFile, JSON.stringify(current));
   writeFileSync(path, original.replace(m.find, m.replace));
   let outcome: Outcome;
   try {
-    outcome = runTests();
+    outcome = await runTests();
   } finally {
     restore();
   }
@@ -215,5 +285,5 @@ for (const m of MUTATIONS) {
     `${m.name}: ${outcome === "killed" ? "killed" : outcome === "green" ? "SURVIVED" : "ERROR (not a kill)"}`,
   );
 }
-console.log(`${MUTATIONS.length - bad} of ${MUTATIONS.length} mutations killed`);
+console.log(`${run.length - bad} of ${run.length} mutations killed`);
 process.exit(bad === 0 ? 0 : 1);

@@ -67,17 +67,20 @@ describe("dictionary grounding", () => {
     expect(ungroundedTokens("pastebin-mirror", gb)).not.toEqual([]);
   });
 
-  it("caps every scanned input before any regex runs", () => {
-    const huge = sheet({
-      signature: "(a: string)".repeat(5000),
-      doc: "word ".repeat(100_000),
-      body: "x ".repeat(200_000),
-      callees: Array(10_000).fill("a.b"),
-    });
-    const t0 = performance.now();
-    groundingNames(huge);
-    expect(performance.now() - t0).toBeLessThan(100);
-  });
+  it.skipIf(process.env.GANTRY_MUTATION_RUN !== undefined)(
+    "caps every scanned input before any regex runs",
+    () => {
+      const huge = sheet({
+        signature: "(a: string)".repeat(5000),
+        doc: "word ".repeat(100_000),
+        body: "x ".repeat(200_000),
+        callees: Array(10_000).fill("a.b"),
+      });
+      const t0 = performance.now();
+      groundingNames(huge);
+      expect(performance.now() - t0).toBeLessThan(100);
+    },
+  );
 
   it("rejects a token copied from the value of a credential name, even when it is an English word", () => {
     const leaky = sheet({ body: 'const secretWord = "swordfish"; const label = "cabbage";' });

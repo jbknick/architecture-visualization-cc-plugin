@@ -119,6 +119,43 @@ describe("redactor leaves alone (issue #108)", () => {
     expect(out).toContain("<redacted>");
   });
 
+  it("redacts sentence-like values behind strong credential names (review of #121)", () => {
+    for (const t of [
+      'password: "Mary Had A Little Lamb"',
+      'DB_PASSWORD = "Open The Pod Bay Doors"',
+      'const passphrase = "Correct Horse Battery For Me"',
+      'token: "Enter The Dragon Now"',
+      'secret: "Please Let Me In!"',
+    ])
+      expect(redactForFactSheet(t), t).toContain("<redacted>");
+  });
+
+  it("redacts quoted CLI values, mysql -p and curl -u without a digit", () => {
+    for (const t of [
+      'run --password "hunter2x"',
+      "run --password='hunter2x'",
+      'run --password="hunter2x"',
+      "run --token 'abcdwxyz'",
+      "mysql -u root -phuntertwo db",
+      "curl -u admin:letmein https://example.com",
+    ]) {
+      const r = redactForFactSheet(t);
+      expect(r, t).toContain("<redacted>");
+      expect(r, t).not.toMatch(/hunter2x|huntertwo|letmein|abcdwxyz/);
+    }
+    expect(redactForFactSheet("mysql -p3306 db")).toBe("mysql -p3306 db");
+  });
+
+  it("redacts empty-separator joins in backticks and with no argument", () => {
+    expect(redactForFactSheet('const password = ["hun", "ter2x"].join(``)')).toContain("<redacted>");
+    expect(redactForFactSheet('const password = ["hun", "ter2x"].join()')).toContain("<redacted>");
+  });
+
+  it("leaves hosts, ports and HTTP-method arguments alone", () => {
+    for (const t of ['connect("localhost", "5432")', 'auth("GET", "users")', 'connect("db", "example.com")'])
+      expect(redactForFactSheet(t), t).toBe(t);
+  });
+
   it("still redacts a label-shaped secret that is lower case or holds a digit", () => {
     expect(redactForFactSheet('password: "correct horse battery"')).toContain("<redacted>");
     expect(redactForFactSheet('password: "Correct horse 7 battery"')).toContain("<redacted>");
@@ -126,27 +163,31 @@ describe("redactor leaves alone (issue #108)", () => {
 });
 
 describe("redactor patterns stay linear", () => {
-  it("handles adversarial input at 100k characters in under 1.5 s", () => {
-    const inputs: Record<string, string> = {
-      arrays: '["a",'.repeat(20_000),
-      "arrays closed": '["a", "b"] . join ( '.repeat(5_000),
-      calls: "login(".repeat(15_000),
-      "calls with literals": 'login("a", '.repeat(9_000),
-      env: "AB_".repeat(33_000),
-      "env eq": "A_B=".repeat(25_000),
-      flags: "--password ".repeat(9_000),
-      "flags eq": "-token=".repeat(14_000),
-      curl: "-u a:".repeat(20_000),
-      hex: "ab".repeat(50_000),
-      "hex spaced": "ab12 ".repeat(20_000),
-      route: "/ab-cd".repeat(16_000),
-    };
-    for (const [name, text] of Object.entries(inputs)) {
-      const t0 = performance.now();
-      redactForFactSheet(text);
-      scanSecrets(text.slice(0, 8000));
-      const dt = performance.now() - t0;
-      expect(dt, name).toBeLessThan(1500);
-    }
-  });
+  // timing assertions are skipped in the mutation run (a slow machine would read as a kill)
+  it.skipIf(process.env.GANTRY_MUTATION_RUN !== undefined)(
+    "handles adversarial input at 100k characters in under 1.5 s",
+    () => {
+      const inputs: Record<string, string> = {
+        arrays: '["a",'.repeat(20_000),
+        "arrays closed": '["a", "b"] . join ( '.repeat(5_000),
+        calls: "login(".repeat(15_000),
+        "calls with literals": 'login("a", '.repeat(9_000),
+        env: "AB_".repeat(33_000),
+        "env eq": "A_B=".repeat(25_000),
+        flags: "--password ".repeat(9_000),
+        "flags eq": "-token=".repeat(14_000),
+        curl: "-u a:".repeat(20_000),
+        hex: "ab".repeat(50_000),
+        "hex spaced": "ab12 ".repeat(20_000),
+        route: "/ab-cd".repeat(16_000),
+      };
+      for (const [name, text] of Object.entries(inputs)) {
+        const t0 = performance.now();
+        redactForFactSheet(text);
+        scanSecrets(text.slice(0, 8000));
+        const dt = performance.now() - t0;
+        expect(dt, name).toBeLessThan(1500);
+      }
+    },
+  );
 });
