@@ -7,6 +7,7 @@
       "!**/evals/private",
       "!**/dist",
       "!**/__snapshots__",
+      "!**/wordlist.data.ts",
       "!**/node_modules",
       "!**/*.tsbuildinfo"
     ]
