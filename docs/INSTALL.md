@@ -44,4 +44,16 @@ This is the acceptance check for the plugin. It makes real model calls (Haiku) o
 7. Check the tool limit: in the session, ask `/agents` (or the transcript of a describer) and confirm it only called `gantry_claim_batch` and `gantry_submit_descriptions`.
 8. Record N, T1 - T0, functions per minute and the `failed` count in the PR.
 
+### Hooks check (PostToolUse and SessionStart)
+
+No model calls and no description run are needed for this one. Do it in the same scratch repo `$FX` with the plugin installed (the index must exist: run `"$G" init` first).
+
+1. Run `claude plugin validate plugin`; it must pass and list the hooks. In the session, `/hooks` shows `SessionStart` and `PostToolUse` entries from the `gantry` plugin.
+2. Start a new session in `$FX`. If you ran `"$G" init`, no line appears (or `Gantry: N functions await descriptions ...` when the backlog is at or above the threshold). In a repo that has no index, the line is `Gantry: run /gantry:init to index this repo`.
+3. Ask Claude: "Create `apps/web/src/lib/new.ts` with a `slugify(input: string): string` function that lowercases, trims, turns whitespace into dashes, strips anything outside a-z, 0-9 and dash, collapses repeated dashes and trims leading and trailing dashes." After the Write, Claude should say it saw a Gantry note and switch to `import { slugify } from './slug'` (or tell you it exists). The note itself is in the transcript (`ctrl+o`) as `Gantry: slugify (apps/web/src/lib/new.ts:1) looks like slugify in apps/web/src/lib/slug.ts:1 [exact 1.00]. Import it: ...` (the tier may be `near` if Claude words the function differently).
+4. Ask Claude to add `import { db } from "@acme/db"` to a file in `apps/web/src`. Expect `Gantry: Declare "@acme/db" in apps/web/package.json (line N)`.
+5. Ask for an unrelated edit (a new constant). Expect no Gantry text at all.
+6. `git -C "$FX" status --porcelain` shows only the files Claude wrote, nothing from Gantry. Run `git add -A && git commit -m t` after `"$G" hooks install`: the same findings appear on stderr in the Bash output and the commit succeeds.
+7. Time one hook run by hand: `time (echo '{"tool_name":"Write","tool_input":{"file_path":"'"$FX"'/apps/web/src/lib/new.ts"},"cwd":"'"$FX"'"}' | "$G" hook post-tool-use)`; record it in the PR.
+
 Clean up with `/plugin uninstall gantry@gantry-dev`, `/plugin marketplace remove gantry-dev` and `"$G" uninstall` in `$FX`.
