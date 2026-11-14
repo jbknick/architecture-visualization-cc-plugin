@@ -66,6 +66,32 @@ describe("3D layout", () => {
     expect(layout.arcs.reduce((a, x) => a + x.weight, 0)).toBe(total);
   });
 
+  it("labels arcs with imports (weight) and carries the imported-name total as bindings only when it differs", () => {
+    const n = (id: string, parent?: string) => ({
+      id,
+      kind: parent ? "file" : "workspace",
+      label: id,
+      size: 3,
+      parent,
+    });
+    const e = (id: string, src: string, dst: string, bindings?: number) => ({
+      id,
+      src,
+      dst,
+      kind: "imports",
+      weight: 1,
+      confidence: "high" as const,
+      ...(bindings === undefined ? {} : { bindings }),
+    });
+    const layout = computeLayout({
+      nodes: [n("ws:a"), n("ws:b"), n("f1", "ws:a"), n("f2", "ws:a"), n("g1", "ws:b")],
+      edges: [e("1", "f1", "g1", 4), e("2", "f2", "g1")],
+    });
+    const arc = layout.arcs.find((a) => a.src === "ws:a" && a.dst === "ws:b");
+    expect(arc?.weight).toBe(2);
+    expect(arc?.bindings).toBe(5);
+  });
+
   it("sizes nodes with a clamped sqrt scale", () => {
     expect(nodeRadius(0, "file")).toBeLessThan(nodeRadius(4, "file"));
     expect(nodeRadius(4, "file")).toBeLessThan(nodeRadius(100, "file"));
