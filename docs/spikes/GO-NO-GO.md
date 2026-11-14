@@ -6,7 +6,7 @@ VERDICT: GO
 
 Rule from the issue: GO only if descriptions are acceptable on at least one path (worker or subagent). Path A (the headless worker, verdict WORKER OK) passed the measurable description targets: 95.5% graded acceptable against a target of 85%, and 100% schema pass against a target of 98%. Path B (describer subagent) is not measured, which does not block GO because the rule needs only one path.
 
-Operator approval: PENDING. Nothing in this file is approved until the operator says "go" on issue #11.
+Operator approval: **GO, approved by Joseph on 2026-11-14** (in chat, recorded on issue #11). He also decided: the code normalizer keeps property names and well-known globals; the interactive describer-subagent run (Path B of #6) is waived and will be measured when the real describer agent exists (#27).
 
 ## Summary for the operator
 
@@ -14,7 +14,7 @@ The verdict is GO. The headless worker works with the spec recipe (WORKER OK), a
 
 Five decisions: (1) worker: WORKER OK, keep the timeboxed and strict pre-commit modes; (2) embeddings: Jina code model, 768 dimensions, initial thresholds code_vector 0.96 and semantic 0.60, to be re-fit in M2; (3) description prompt p1 is copied into the core package; (4) `renameSuggestions` stays off, since Haiku flagged none of the 23 misleading names; (5) estimates use about 950 input and 250 output tokens per function, about 0.96 s each.
 
-Not measured: describer subagent throughput (needs you, about 10 minutes), the Linux x64 sqlite-vec row, human-checked grades (a single Sonnet pass graded them), and nameFits precision.
+Not measured: describer subagent throughput (waived by the operator; to be measured in #27), the Linux x64 sqlite-vec row, human-checked grades (a single Sonnet pass graded them), and nameFits precision.
 
 Approving means: you accept the verdict and these values as M2 starting points, including the normalizer recommendation, and the downstream issue comments get posted. It changes no code. Thresholds and the Linux and subagent gaps remain open follow-ups.
 
