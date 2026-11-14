@@ -1,8 +1,10 @@
 import "./canvas.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { api, type Filters, type GraphNode } from "../api.ts";
 import type { CanvasProps } from "../slots.ts";
+import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
-import { kindTier, type TreeNode } from "./hierarchy.ts";
+import { GROUP_KIND, kindTier, type TreeNode } from "./hierarchy.ts";
 import { Legend } from "./Legend.tsx";
 import { runLayout } from "./layoutClient.ts";
 import {
@@ -18,7 +20,7 @@ import { worldRectOf } from "./mapGeom.ts";
 import { DEFAULT_VIEWPORT, FIT_INSETS } from "./mapLayout.ts";
 import { useMapView } from "./mapView.ts";
 import { hashPositions } from "./prng.ts";
-import { brightSet, layoutInputFor, type Scene, selectionLinks } from "./scene.ts";
+import { brightSet, buildScene, layoutInputFor, type Scene, selectionLinks } from "./scene.ts";
 import { type CanvasTheme, readTheme } from "./style.ts";
 import type { LayoutResult, Rect } from "./types.ts";
 import { type Level, levelForRatio } from "./zoom.ts";
@@ -38,13 +40,63 @@ interface Tooltip {
 
 const MAX_SCALE = 90;
 
+/** Debug text (layout strategy, timing, zoom level) is shown only with `?debug=1` or the `gantry.debug` flag. */
+export function debugEnabled(): boolean {
+  try {
+    if (/[?&]debug=1(&|$)/.test(`${window.location.search}&${window.location.hash.split("?")[1] ?? ""}`))
+      return true;
+    return window.localStorage.getItem("gantry.debug") === "1";
+  } catch {
+    return false;
+  }
+}
+
 function plain(id: string): string {
   return id.replace(/^(sym|file|ws|dir):/, "");
 }
 
+/** File nodes fetched in the background for the Folders-level mosaic, by request (focus + filters). */
+const mosaicCache = new Map<string, GraphNode[]>();
+
+/**
+ * Folders level: the response has no files, so ask once for the Files level and keep its file nodes, which fill
+ * the folders with a faint mosaic. Returns null until they are there (or when the request fails).
+ */
+function useMosaicFiles(
+  active: boolean,
+  view: string | null,
+  focus: string | null,
+  filters: Filters,
+): GraphNode[] | null {
+  const key = JSON.stringify([view, focus, filters]);
+  const [loaded, setLoaded] = useState<{ key: string; files: GraphNode[] } | null>(() => {
+    const hit = mosaicCache.get(key);
+    return hit ? { key, files: hit } : null;
+  });
+  useEffect(() => {
+    if (!active || !view) return;
+    const hit = mosaicCache.get(key);
+    if (hit) {
+      setLoaded({ key, files: hit });
+      return;
+    }
+    const controller = new AbortController();
+    api.view(view, { focus: focus ?? undefined, level: "files", filters }, controller.signal).then(
+      (data) => {
+        const files = data.nodes.filter((n) => n.kind === "file");
+        mosaicCache.set(key, files);
+        setLoaded({ key, files });
+      },
+      () => {}, // the mosaic is decoration: without it the folders stay plain
+    );
+    return () => controller.abort();
+  }, [active, view, focus, filters, key]);
+  return active && loaded?.key === key ? loaded.files : null;
+}
+
 /** The hierarchical map: workspace boxes in a layered diagram, a treemap inside each, drawn on one canvas. */
 export function TreemapCanvas({
-  scene,
+  scene: baseScene,
   nodes,
   edges,
   layoutHint,
@@ -54,6 +106,20 @@ export function TreemapCanvas({
   onDrill,
   panelLegend,
 }: TreemapCanvasProps) {
+  const { view, state } = useStore();
+  const { route } = state;
+  // Folders level: file cells arrive in the background and are drawn as a faint mosaic (see `useMosaicFiles`).
+  const wantMosaic =
+    route.level === "dirs" && layoutHint === "nested-elk" && !baseScene.nodes.some((n) => n.kind === "file");
+  const mosaicFiles = useMosaicFiles(wantMosaic, view, route.focus, route.filters);
+  const scene = useMemo(() => {
+    if (!mosaicFiles || mosaicFiles.length === 0) return baseScene;
+    const known = new Set(baseScene.nodes.map((n) => n.id));
+    const files = mosaicFiles.filter((f) => f.parent && known.has(f.parent) && !known.has(f.id));
+    return files.length === 0
+      ? baseScene
+      : buildScene([...baseScene.nodes, ...files], edges, layoutHint, { mosaic: true });
+  }, [baseScene, mosaicFiles, edges, layoutHint]);
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -65,6 +131,7 @@ export function TreemapCanvas({
   const [tick, setTick] = useState(0);
   const layoutViewport = useRef<{ w: number; h: number } | null>(null);
   const ui = useMapView();
+  const debug = useMemo(debugEnabled, []);
   const callbacks = useRef({ onSelect, onHover, onDrill });
   callbacks.current = { onSelect, onHover, onDrill };
   const internalSelect = useRef(false);
@@ -176,7 +243,14 @@ export function TreemapCanvas({
     const cam: Camera = { scale: 1, tx: 0, ty: 0 };
     let fitScale = 1;
     let userMoved = false;
-    let last: DrawResult = { edgeHits: [], boxes: [], hiddenTitles: new Set(), titles: new Map() };
+    let last: DrawResult = {
+      edgeHits: [],
+      boxes: [],
+      hiddenTitles: new Set(),
+      titles: new Map(),
+      titleTexts: new Map(),
+      pills: [],
+    };
     let raf = 0;
     let anim = 0;
     let hoverEdge: EdgeHit | null = null;
@@ -337,10 +411,23 @@ export function TreemapCanvas({
       }
       return best;
     };
+    /** The "(root files)" group is not a node of the repo: clicking it means its parent. */
+    const realId = (i: number): string => {
+      const n = tree.nodes[i] as TreeNode;
+      return n.kind === GROUP_KIND && n.parent !== -1 ? (tree.nodes[n.parent] as TreeNode).id : n.id;
+    };
     const describe = (i: number): string[] => {
       const n = tree.nodes[i] as TreeNode;
       const node = scene.nodes[i];
       const lines: string[] = [];
+      if (n.kind === GROUP_KIND) {
+        const paths = n.children.map((c) => scene.nodes[c]?.path ?? plain((tree.nodes[c] as TreeNode).id));
+        return [
+          `${paths.length} loose ${paths.length === 1 ? "file" : "files"} next to the folders`,
+          ...paths.slice(0, 12),
+          ...(paths.length > 12 ? [`and ${paths.length - 12} more`] : []),
+        ];
+      }
       const fn = scene.functions[i] ?? 0;
       const files = scene.files[i] ?? 0;
       const bits = [n.kind];
@@ -355,7 +442,7 @@ export function TreemapCanvas({
     const setHover = (i: number | null) => {
       if (live.current.hovered === i) return;
       live.current = { ...live.current, hovered: i };
-      callbacks.current.onHover(i === null ? null : (tree.nodes[i] as TreeNode).id);
+      callbacks.current.onHover(i === null ? null : realId(i));
       requestDraw();
     };
     const setHoverEdge = (key: string | null) => {
@@ -398,8 +485,10 @@ export function TreemapCanvas({
         setTooltip({
           x,
           y,
-          title: `${from} → ${to}: ${edge.weight.toLocaleString("en-US")} ${edge.noun}`,
-          lines: [],
+          title: edge.declaredOnly
+            ? `${from} → ${to}: declared dependency`
+            : `${from} → ${to}: ${edge.weight.toLocaleString("en-US")} ${edge.weight === 1 && edge.noun === "imports" ? "import" : edge.noun}`,
+          lines: edge.declared && !edge.declaredOnly ? ["also declared in package.json"] : [],
         });
         return;
       }
@@ -420,7 +509,7 @@ export function TreemapCanvas({
       const cell = pickCell(scene, geo, cam, x, y);
       internalSelect.current = true;
       if (cell === null && hoverEdge) return;
-      callbacks.current.onSelect(cell === null ? null : (tree.nodes[cell] as TreeNode).id);
+      callbacks.current.onSelect(cell === null ? null : realId(cell));
     };
     const onLeave = () => {
       setTooltip(null);
@@ -431,7 +520,7 @@ export function TreemapCanvas({
       const { x, y } = local(e);
       const cell = pickCell(scene, geo, cam, x, y);
       if (cell === null) return;
-      const id = (tree.nodes[cell] as TreeNode).id;
+      const id = realId(cell);
       if (callbacks.current.onDrill) callbacks.current.onDrill(id);
       else engine.current?.zoomTo(cell);
     };
@@ -458,6 +547,8 @@ export function TreemapCanvas({
         panelHover: live.current.panelHover === null ? null : scene.nodes[live.current.panelHover]?.id,
         hiddenTitles: [...last.hiddenTitles].map((i) => scene.nodes[i]?.id),
         titles: Object.fromEntries([...last.titles].map(([i, where]) => [scene.nodes[i]?.id, where])),
+        titleTexts: Object.fromEntries([...last.titleTexts].map(([i, t]) => [scene.nodes[i]?.id, t])),
+        pills: last.pills,
         edges: last.edgeHits.map((e) => {
           const mid = e.pts[Math.floor(e.pts.length / 2)] as [number, number];
           return { key: e.key, x: mid[0], y: mid[1], weight: e.weight };
@@ -489,6 +580,7 @@ export function TreemapCanvas({
 
     doFit(false);
     box.dataset.nodes = String(tree.nodes.length);
+    box.dataset.mosaic = String(scene.mosaic);
     requestDraw();
 
     return () => {
@@ -601,13 +693,15 @@ export function TreemapCanvas({
         </button>
       </div>
       {!panelLegend && <Legend scene={scene} scheme={scheme} level={level} />}
-      <div className="gc-status" aria-live="polite">
-        {error
-          ? `Layout failed: ${error}`
-          : busy
-            ? `Laying out ${nodes.length.toLocaleString("en-US")} nodes…`
-            : `${layout.strategy} · ${layout.ms} ms · ${level} zoom`}
-      </div>
+      {(error || busy || debug) && (
+        <div className="gc-status" aria-live="polite">
+          {error
+            ? `Layout failed: ${error}`
+            : busy
+              ? `Laying out ${nodes.length.toLocaleString("en-US")} nodes…`
+              : `${layout.strategy} · ${layout.ms} ms · ${level} zoom`}
+        </div>
+      )}
       {tooltip && (
         <div className="gc-tooltip" role="tooltip" style={{ left: tooltip.x + 14, top: tooltip.y + 14 }}>
           <strong>{tooltip.title}</strong>

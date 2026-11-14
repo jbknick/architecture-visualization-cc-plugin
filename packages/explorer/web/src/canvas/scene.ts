@@ -3,8 +3,11 @@ import type { GraphEdge, GraphNode } from "../api.ts";
 import {
   buildTree,
   collapseChains,
+  GROUP_KIND,
   kindTier,
+  LOOSE_SHARE,
   liftTo,
+  TIER_DIR,
   TIER_FILE,
   TIER_SYMBOL,
   TIER_WORKSPACE,
@@ -26,6 +29,8 @@ export interface WsEdge {
   dst: number;
   weight: number;
   declaredOnly: boolean;
+  /** The pair also has a `depends_on` link in package.json (it never adds to `weight`). */
+  declared: boolean;
   kind: string;
 }
 
@@ -54,6 +59,48 @@ export interface Scene {
   /** Edge indices incident to each node. */
   incident: Map<number, number[]>;
   hierarchical: boolean;
+  /**
+   * True at the Folders level when file nodes were loaded in the background only to fill folders with a faint
+   * mosaic: file cells are drawn without text and cannot be picked.
+   */
+  mosaic: boolean;
+}
+
+/**
+ * A workspace or folder with one child folder and a few loose files next to it (config files beside `src`):
+ * when the files hold under `LOOSE_SHARE` of its functions they move into one synthetic "(root files)" group cell,
+ * so the lone folder can be lifted (see `collapseChains`). File ids are unchanged; only their `parent` is.
+ */
+export function withRootFileGroups(nodes: GraphNode[]): GraphNode[] {
+  const kids = new Map<string, GraphNode[]>();
+  for (const n of nodes) if (n.parent) kids.set(n.parent, [...(kids.get(n.parent) ?? []), n]);
+  const regroup = new Map<string, string>(); // file id -> group id
+  const groups: GraphNode[] = [];
+  for (const x of nodes) {
+    if (kindTier(x.kind) > TIER_DIR || x.kind === GROUP_KIND) continue;
+    const list = kids.get(x.id) ?? [];
+    const folders = list.filter((k) => kindTier(k.kind) === TIER_DIR && k.kind !== GROUP_KIND);
+    const files = list.filter((k) => k.kind === "file");
+    if (folders.length !== 1 || files.length === 0 || folders.length + files.length !== list.length) continue;
+    const fileFns = files.reduce((sum, f) => sum + (f.stats?.functions ?? 0), 0);
+    const inFolder = folders[0]?.stats?.functions;
+    const total = x.stats?.functions;
+    const loose = total !== undefined && inFolder !== undefined ? Math.max(0, total - inFolder) : fileFns;
+    const all = total ?? loose + (inFolder ?? 0);
+    if (all > 0 && loose / all >= LOOSE_SHARE) continue;
+    const id = `rootfiles:${x.id}`;
+    groups.push({
+      id,
+      kind: GROUP_KIND,
+      label: "(root files)",
+      parent: x.id,
+      size: Math.max(1, files.length),
+      stats: { files: files.length, functions: loose },
+    });
+    for (const f of files) regroup.set(f.id, id);
+  }
+  if (groups.length === 0) return nodes;
+  return [...nodes.map((n) => (regroup.has(n.id) ? { ...n, parent: regroup.get(n.id) } : n)), ...groups];
 }
 
 /**
@@ -66,24 +113,44 @@ function buildWsEdges(tree: Tree, edges: readonly SceneEdge[]): WsEdge[] {
   const direct = edges.filter((e) => isRoot(e.src) && isRoot(e.dst));
   const source = direct.length > 0 ? direct : edges;
   const map = new Map<string, WsEdge>();
+  // Declared dependencies are tracked apart: an import count is the sum of the import edges only, whatever the
+  // order the edges arrive in.
+  const declaredWeight = new Map<string, number>();
   for (const e of source) {
     const a = liftTo(tree, e.src, TIER_WORKSPACE);
     const b = liftTo(tree, e.dst, TIER_WORKSPACE);
     if (a === b) continue;
     const key = `${a}>${b}`;
-    const cur = map.get(key) ?? { src: a, dst: b, weight: 0, declaredOnly: true, kind: e.kind };
+    const cur = map.get(key) ?? {
+      src: a,
+      dst: b,
+      weight: 0,
+      declaredOnly: true,
+      declared: false,
+      kind: e.kind,
+    };
     if (e.kind !== "depends_on") {
       cur.weight += e.weight;
       cur.declaredOnly = false;
       cur.kind = e.kind;
-    } else if (cur.declaredOnly) cur.weight = Math.max(cur.weight, e.weight);
+    } else {
+      cur.declared = true;
+      declaredWeight.set(key, Math.max(declaredWeight.get(key) ?? 0, e.weight));
+    }
     map.set(key, cur);
   }
+  for (const [key, e] of map) if (e.declaredOnly) e.weight = declaredWeight.get(key) ?? e.weight;
   return [...map.values()].sort((p, q) => q.weight - p.weight || p.src - q.src || p.dst - q.dst);
 }
 
 /** `hint` decides whether childless workspaces become boxes: only the nested hint (project map) does. */
-export function buildScene(nodes: GraphNode[], edges: GraphEdge[], hint = "nested-elk"): Scene {
+export function buildScene(
+  input: GraphNode[],
+  edges: GraphEdge[],
+  hint = "nested-elk",
+  opts: { mosaic?: boolean } = {},
+): Scene {
+  const nodes = hint === "nested-elk" ? withRootFileGroups(input) : input;
   const tree = buildTree(nodes, { boxWorkspaces: hint === "nested-elk" });
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const ordered = tree.nodes.map((n) => byId.get(n.id) as GraphNode);
@@ -130,7 +197,7 @@ export function buildScene(nodes: GraphNode[], edges: GraphEdge[], hint = "neste
     if (stats?.files !== undefined) files[i] = stats.files;
   });
 
-  const collapsed = collapseChains(tree, files);
+  const collapsed = collapseChains(tree, files, functions);
 
   const incident = new Map<number, number[]>();
   sceneEdges.forEach((e, k) => {
@@ -159,6 +226,7 @@ export function buildScene(nodes: GraphNode[], edges: GraphEdge[], hint = "neste
     wsEdges: tree.hierarchical ? buildWsEdges(tree, sceneEdges) : [],
     incident,
     hierarchical: tree.hierarchical,
+    mosaic: Boolean(opts.mosaic),
   };
 }
 

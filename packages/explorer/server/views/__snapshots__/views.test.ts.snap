@@ -158,6 +158,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
 {
   "edges": [
     {
+      "bindings": 2,
       "confidence": "high",
       "dst": "file:packages/db/src/index.ts",
       "id": "file:apps/api/src/app.ts|imports|file:packages/db/src/index.ts",
@@ -191,6 +192,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "weight": 1,
     },
     {
+      "bindings": 2,
       "confidence": "high",
       "dst": "file:packages/db/src/index.ts",
       "id": "file:apps/api/src/router.ts|imports|file:packages/db/src/index.ts",
@@ -350,6 +352,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "weight": 1,
     },
     {
+      "bindings": 4,
       "confidence": "high",
       "dst": "ws:@acme/db",
       "id": "ws:@acme/api|imports|ws:@acme/db",
@@ -921,6 +924,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "weight": 1,
     },
     {
+      "bindings": 2,
       "confidence": "high",
       "dst": "file:packages/db/src/index.ts",
       "id": "file:apps/api/src/app.ts|imports|file:packages/db/src/index.ts",
@@ -971,6 +975,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "weight": 1,
     },
     {
+      "bindings": 2,
       "confidence": "high",
       "dst": "file:packages/db/src/index.ts",
       "id": "file:apps/api/src/router.ts|imports|file:packages/db/src/index.ts",
@@ -1021,6 +1026,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "weight": 1,
     },
     {
+      "bindings": 2,
       "confidence": "high",
       "dst": "ext:react",
       "id": "file:apps/web/src/hooks/useDebounce.ts|imports|ext:react",
@@ -1029,6 +1035,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "weight": 1,
     },
     {
+      "bindings": 2,
       "confidence": "high",
       "dst": "ext:@tanstack/react-router",
       "id": "file:apps/web/src/routes/__root.tsx|imports|ext:@tanstack/react-router",
@@ -1117,6 +1124,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "weight": 1,
     },
     {
+      "bindings": 2,
       "confidence": "high",
       "dst": "ext:drizzle-orm",
       "id": "file:packages/db/src/queries.ts|imports|ext:drizzle-orm",
@@ -1133,6 +1141,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "weight": 1,
     },
     {
+      "bindings": 3,
       "confidence": "high",
       "dst": "ext:drizzle-orm",
       "id": "file:packages/db/src/schema.ts|imports|ext:drizzle-orm",
@@ -1235,6 +1244,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "weight": 1,
     },
     {
+      "bindings": 4,
       "confidence": "high",
       "dst": "ws:@acme/db",
       "id": "ws:@acme/api|imports|ws:@acme/db",
@@ -2061,6 +2071,7 @@ exports[`project-map > snapshot: workspaces level 1`] = `
       "weight": 1,
     },
     {
+      "bindings": 4,
       "confidence": "high",
       "dst": "ws:@acme/db",
       "id": "ws:@acme/api|imports|ws:@acme/db",
