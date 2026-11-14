@@ -400,6 +400,13 @@ describe("gantry config", () => {
     expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
   });
 
+  it("sets the optional worker.binary (the headless worker's claude path)", async () => {
+    const fx = await fixture("single-pkg");
+    expect(run(fx.dir, ["config", "set", "worker.binary", "/opt/claude/bin/claude"]).code).toBe(0);
+    expect(run(fx.dir, ["config", "get", "worker.binary"]).out).toBe("/opt/claude/bin/claude\n");
+    expect(run(fx.dir, ["config", "set", "worker.other", "1"]).code).toBe(1);
+  });
+
   it("rejects invalid values and unknown keys with a clear message and leaves the config alone", async () => {
     const fx = await fixture("single-pkg");
     const bad = run(fx.dir, ["config", "set", "precommit.mode", "sometimes"]);

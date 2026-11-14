@@ -48,7 +48,7 @@ const POSITIVE: [string, string, string][] = [
   ["zero-width split AWS key", `${FAKE.aws.slice(0, 6)}​${FAKE.aws.slice(6)}`, "aws-access-key"],
   ["fullwidth ghp key", FAKE.github.replace("ghp", "ｇｈｐ"), "github-token"],
   ["base64-wrapped aws key", `blob = ${b64(`key=${FAKE.aws} ok`)}`, "base64:aws-access-key"],
-  ["base64-wrapped github token", `${b64(FAKE.github + " end")}`, "base64:github-token"],
+  ["base64-wrapped github token", `${b64(`${FAKE.github} end`)}`, "base64:github-token"],
 ];
 
 describe("scanSecrets", () => {
