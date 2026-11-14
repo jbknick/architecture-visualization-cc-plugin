@@ -3,19 +3,20 @@
 import { useSyncExternalStore } from "react";
 import type { GraphEdge, GraphNode } from "../api.ts";
 
-export type MapStyle = "city" | "islands";
-export type CameraView = "angled" | "top" | "reset" | "small";
+export type MapStyle = "settlements" | "city" | "islands";
+export type CameraView = "angled" | "top" | "reset" | "small" | "street";
 
-const STYLE_KEY = "gantry.map3d.style";
+// A new key for the settlements default (#114): a choice remembered before it existed does not hide the new view.
+export const STYLE_KEY = "gantry.map3d.style.v2";
 
-/** The rendering style: `style=islands` in the hash, else the remembered choice, else the city (the default). */
+/** The rendering style: `style=city|islands` in the hash, else the remembered choice, else the settlements (default). */
 export function readStyle(filters: Record<string, string>): MapStyle {
-  if (filters.style === "islands") return "islands";
-  if (filters.style === "city") return "city";
+  if (filters.style === "islands" || filters.style === "city") return filters.style;
   try {
-    return window.localStorage.getItem(STYLE_KEY) === "islands" ? "islands" : "city";
+    const saved = window.localStorage.getItem(STYLE_KEY);
+    return saved === "islands" || saved === "city" ? saved : "settlements";
   } catch {
-    return "city";
+    return "settlements";
   }
 }
 

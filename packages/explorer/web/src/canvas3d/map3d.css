@@ -597,3 +597,148 @@
   font-size: 12.5px;
   line-height: 1.3;
 }
+
+/* Settlements (#114) */
+.s3-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+.s3-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  line-height: 1.2;
+  will-change: transform;
+}
+.s3-title {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 8px;
+  align-items: baseline;
+  padding: 3px 9px 4px 8px;
+  border-left: 4px solid var(--ws, var(--muted));
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--text);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.22);
+}
+.s3-title.is-dim {
+  opacity: 0.55;
+}
+.s3-title.is-focus {
+  outline: 2px solid var(--ws, var(--accent));
+}
+.s3-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+.s3-tier {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: end;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ws, var(--muted));
+}
+.s3-icon {
+  width: 22px;
+  height: 13px;
+}
+.s3-sub {
+  grid-column: 1 / span 2;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.s3-pill {
+  display: flex;
+  flex-direction: column;
+  padding: 1px 7px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+.s3-pill.s3-highway {
+  font-size: 13px;
+  border-width: 2px;
+  border-color: var(--text);
+}
+.s3-pill.s3-lane {
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.s3-pill.is-dim {
+  opacity: 0.35;
+}
+.s3-flow {
+  border-left: 3px solid var(--ws, var(--muted));
+  padding-left: 5px;
+}
+.s3-flow + .s3-flow {
+  font-weight: 500;
+  font-size: 0.88em;
+  color: var(--muted);
+}
+.s3-district {
+  padding: 0 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.s3-controls {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 4;
+  display: flex;
+  gap: 6px;
+}
+.s3-play {
+  padding: 4px 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.s3-play:hover {
+  border-color: var(--accent);
+}
+.s3-play:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.s3-howto li {
+  align-items: flex-start;
+}
+.s3-legend-icon {
+  flex: none;
+  width: 24px;
+  height: 14px;
+  margin-top: 2px;
+  color: var(--text);
+}
+.s3-tiers {
+  display: grid;
+  grid-template-columns: 24px;
+  gap: 3px;
+  flex: none;
+  color: var(--text);
+}
+.s3-tiers .s3-legend-icon {
+  margin-top: 0;
+}
