@@ -7,6 +7,8 @@ const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !
 
 /** Keys below these paths are free-form records, so unknown names are allowed there. */
 const OPEN_RECORDS = new Set(["workspaces.overrides"]);
+/** Optional keys that have no default, so they are absent from the effective config until set. */
+const OPTIONAL_KEYS = new Set(["worker.binary"]);
 
 function lookup(cfg: unknown, parts: string[]): { found: boolean; value?: unknown } {
   let cur: unknown = cfg;
@@ -84,9 +86,10 @@ export function registerConfig(program: Command): void {
         const parentParts = parts.slice(0, -1);
         const parent = lookup(loadConfig(paths), parentParts);
         const known =
-          parent.found &&
-          isObj(parent.value) &&
-          (leaf in parent.value || OPEN_RECORDS.has(parentParts.join(".")));
+          OPTIONAL_KEYS.has(key) ||
+          (parent.found &&
+            isObj(parent.value) &&
+            (leaf in parent.value || OPEN_RECORDS.has(parentParts.join("."))));
         if (!known) throw new Error(`Unknown config key: ${key}`);
 
         const patch: Obj = {};
