@@ -94,6 +94,9 @@ const ADDRESS_WORDS = new Set(
 const COMPOUND_SUFFIX =
   /^([a-z]{3,14})-(?:based|only|side|level|specific|aware|safe|free|like|wide|friendly|first|bound|ready|scoped|driven|encoded|decoded|readable|formatted|typed|named|sized|cased|sorted|separated|delimited|insensitive|sensitive|in|out|up|case|style)$/;
 const COMPOUND_PREFIX = /^(?:non|multi|cross|semi|anti|sub|inter|intra|pseudo)-([a-z]{3,16})$/;
+/** `prefix-verb`: "Lazy-loads", "Re-encodes", "Deep-copies": a productive verb prefix and an inflected ordinary verb form. */
+const VERB_PREFIXED =
+  /^(?:re|de|un|pre|co|lazy|eager|deep|shallow|soft|hard|fast|safe|auto|bulk|batch|half|full|double|single|cross|self|post|over|under|mis|dis|out|up|down|pass)-([a-z]{3,16}(?:s|ed|ing))$/;
 
 const FUNCTION_WORDS = new Set(
   "for by of to in on the up a an and or with at as is not over per out off from".split(" "),
@@ -282,6 +285,8 @@ export function isGrounded(token: string, g: Grounding): boolean {
   if (DECIMAL.test(token)) return false; // "8.8" can be a host; only a number the code itself holds (in names) counts
   const pre = COMPOUND_PREFIX.exec(lower);
   if (pre !== null && isWord(pre[1] as string)) return true;
+  const verbPre = VERB_PREFIXED.exec(lower);
+  if (verbPre !== null && isWord(verbPre[1] as string)) return true;
   const suf = COMPOUND_SUFFIX.exec(lower);
   if (suf !== null && isWord(suf[1] as string)) return true;
   const alnum =

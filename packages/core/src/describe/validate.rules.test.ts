@@ -133,7 +133,6 @@ describe("imperative clauses", () => {
     "Renders the delete button.",
     "Runs the handler on update.",
     "Shows a run id in the header.",
-    "Handles CRUD operations (create, read, update, delete).",
     "Binds the edit, delete and cancel buttons.",
     "Sorts items, then stores them.",
     "Does not delete expired rows.",

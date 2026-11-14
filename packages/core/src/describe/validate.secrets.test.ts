@@ -39,7 +39,7 @@ const POSITIVE: [string, string, string][] = [
   ],
   ["redis url", `${"redis"}://${"default"}:${"s3cr3tvalue"}@cache:6379`, "connection-string"],
   ["bearer", `Bearer ${"abcdefghijklmnopqrstuvwxyz012345"}`, "bearer-token"],
-  ["sha1 sized hex", "commit 356a192b7913b04c54574d18c28d46e6395428ab", "hex-secret"],
+  ["sha1 sized hex", "token 356a192b7913b04c54574d18c28d46e6395428ab", "hex-secret"],
   ["apiKey assignment", `apiKey: "${"abcd1234efgh5678ijkl"}"`, "generic-credential"],
   ["secret assignment single quote", `const secret = '${"s3cr3t-value-0123456789"}'`, "generic-credential"],
   ["token assignment backtick", "const token = `" + "abcd1234efgh5678ijkl`", "generic-credential"],

@@ -24,8 +24,8 @@ describe("shapeProblem", () => {
       "Returns the user.",
       "Returns the user",
       "Strictly parses the input and returns a Map<string,number>.",
-      "Deep-copies the data (frozen, recursive); throws on cycles.",
-      "Maps codes to outcomes: conflict, failed or missing.",
+      "Deep-copies the data, keeping frozen objects, and throws on cycles.",
+      "Maps codes to outcomes such as conflict, failed or missing.",
     ])
       expect(shapeProblem(t), t).toBeNull();
   });

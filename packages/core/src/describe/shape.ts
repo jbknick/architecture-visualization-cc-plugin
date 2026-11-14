@@ -3,6 +3,7 @@
 // in a restricted character set, with no second person, no deontic words and no labels or asides. Everything here is
 // linear in the input length (the caller has already capped it at 400 characters).
 
+import { type ClauseProblem, clauseProblem } from "./clause.js";
 import {
   CAUSATIVES,
   CLAUSE_TRIGGERS,
@@ -24,7 +25,8 @@ export type ShapeProblem =
   | "spaced-letters"
   | "first-word"
   | "addressing"
-  | "imperative-clause";
+  | "imperative-clause"
+  | ClauseProblem;
 
 /** Allowed in `behavior`: ASCII letters, digits, space and `, . ; ' - _ / ( ) < > [ ] $ : #` (the symbols serve grounded identifiers). */
 const ALLOWED_CHARS = /^[A-Za-z0-9 ,.;'\-_/()<>[\]$:#]*$/;
@@ -351,5 +353,5 @@ export function shapeProblem(behavior: string): ShapeProblem | null {
   if (!startsWithVerb(pieces)) return "first-word";
   if (addressingHits(text).length > 0) return "addressing";
   if (hasImperativeClause(body)) return "imperative-clause";
-  return null;
+  return clauseProblem(body);
 }

@@ -89,7 +89,7 @@ export const HONEST_BY_DESIGN_REJECTED: readonly { row: HonestRow; reason: strin
   { row: ["Checks whether the user must reset their password.", ["password expiry"]], reason: "shape" },
   {
     row: ["Opens a WebSocket to the server at localhost:8080 in development.", ["websocket"]],
-    reason: "identifier",
+    reason: "shape", // #108: a colon is rejected before the host is looked at (was "identifier")
   },
   { row: ["Pings 127.0.0.1 to check the local daemon is up.", ["health check"]], reason: "identifier" },
   { row: ["Applies a percent-encoded path like %2F%2E to the router.", ["path decoding"]], reason: "shape" },
