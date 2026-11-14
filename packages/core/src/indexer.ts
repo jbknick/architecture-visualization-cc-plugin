@@ -7,7 +7,7 @@ import { discoverFiles, isIndexable } from "./discover/index.js";
 import { hashSymbol } from "./hash/index.js";
 import { type ParsedFile, parseSource } from "./parse/index.js";
 import { ensureDataDir, type GantryPaths } from "./paths/index.js";
-import { createResolver } from "./resolve/index.js";
+import { createResolver, type SpecifierClass } from "./resolve/index.js";
 import { openStore, type Store, splitIdentifier } from "./store/index.js";
 import type { EdgeRecord, FileRecord, Layer, SymbolKind, SymbolRecord, WorkspaceRecord } from "./types.js";
 import { detectWorkspaces, workspaceForPath } from "./workspace/index.js";
@@ -18,6 +18,8 @@ export interface IndexResult {
   functionLike: number;
   edges: number;
   unresolved: { specifier: string; from: string }[];
+  /** Distinct (file, specifier) pairs by resolution class, for the whole run (used by the M1 benchmark). */
+  specifierCounts: Record<SpecifierClass, number>;
   parseErrors: { file: string; errors: string[] }[];
   ms: number;
 }
@@ -218,6 +220,15 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       functionLike: 0,
       edges: 0,
       unresolved: [],
+      specifierCounts: {
+        file: 0,
+        external: 0,
+        builtin: 0,
+        virtual: 0,
+        generated: 0,
+        excluded: 0,
+        unresolved: 0,
+      },
       parseErrors: [],
       ms: 0,
     };
@@ -345,9 +356,10 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     });
 
     const pathOf = (id: string): string => (id.startsWith("file:") ? id.slice(5) : id);
-    result.unresolved = resolver
-      .stats()
-      .unresolved.filter((u) => written.has(u.fromFileId) || full)
+    const stats = resolver.stats();
+    result.specifierCounts = stats.counts;
+    result.unresolved = stats.unresolved
+      .filter((u) => written.has(u.fromFileId) || full)
       .map((u) => ({ specifier: u.specifier, from: pathOf(u.fromFileId) }));
     result.parseErrors.sort((a, b) => cmp(a.file, b.file));
     result.ms = Math.round(performance.now() - t0);

@@ -13,6 +13,7 @@ export default defineConfig({
       "packages/*/test/**/*.test.ts",
       "packages/explorer/web/src/**/*.test.{ts,tsx}", // component tests opt into jsdom with a docblock
       "docs/spikes/**/*.test.ts",
+      "evals/**/*.test.ts",
     ],
   },
 });
