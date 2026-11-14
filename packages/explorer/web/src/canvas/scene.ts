@@ -323,7 +323,7 @@ export function layoutInputFor(
     focus,
     saved,
     viewport,
-    ...(stableTitles ? { stableBoxes: true } : {}),
+    ...(stableTitles ? { stableBoxes: true, tinyBoxes: true } : {}),
   };
 }
 

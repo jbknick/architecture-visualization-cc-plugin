@@ -13,6 +13,7 @@ import {
   placeFlags,
   quadHitsRect,
   rectInsideHull,
+  rectQuadDistance,
   rectsOverlap,
   type ScreenRect,
 } from "./labels.ts";
@@ -34,7 +35,7 @@ export interface CityOptions3D {
   reducedMotion: boolean;
 }
 
-export type CityView = "angled" | "top";
+export type CityView = "angled" | "top" | "small";
 
 type Hit =
   | { type: "district"; i: number }
@@ -46,6 +47,8 @@ const FOV = 30;
 const ELEVATION = (50 * Math.PI) / 180;
 const AZIMUTH = (-22 * Math.PI) / 180; // camera to the left of the front: the 2D map's left-to-right flow reads left to right
 const SVG_NS = "http://www.w3.org/2000/svg";
+/** A tiny district's title touches its slab or sits at most this far (screen px) from its projected rectangle. */
+export const TITLE_GAP_PX = 24;
 
 const mid = (a: Pt2, b: Pt2): Pt2 => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
 const hex = (c: string): THREE.Color => new THREE.Color(c);
@@ -315,6 +318,11 @@ export class CityScene {
     const dir = this.camera.position.clone().sub(this.controls.target).normalize();
     this.autoFit = false;
     this.animateTo(target.clone().add(dir.multiplyScalar(dist)), target, !this.opts.reducedMotion);
+  }
+
+  /** Number of tiny districts (the "Focus small workspaces" button is off when there are none). */
+  smallCount(): number {
+    return this.city?.districts.filter((d) => d.tiny).length ?? 0;
   }
 
   hasId(id: string): boolean {
@@ -604,7 +612,9 @@ export class CityScene {
     const d = city.districts.find((x) => x.idx === a.srcIdx);
     const color = d ? workspaceColorAt(d.colorIndex, this.theme.scheme) : "#888888";
     const mat = new THREE.MeshBasicMaterial({ color: hex(color), transparent: true, opacity: 0.92 });
-    const headR = Math.max(a.radius * 2.8, city.extent * 0.0115);
+    // Smaller heads where an arch ends on a tiny district, so the several heads there stay apart.
+    const toTiny = city.districts.some((x) => x.tiny && x.idx === a.dstIdx);
+    const headR = Math.max(a.radius * 2.8, city.extent * 0.0115) * (toTiny ? 0.7 : 1);
     const headH = headR * 3.2;
     const pts = a.pts.map((p) => new THREE.Vector3(p.x, p.y, p.z));
     const end = pts[pts.length - 1] as THREE.Vector3;
@@ -742,11 +752,10 @@ export class CityScene {
       const r = l.el.getBoundingClientRect();
       l.w = Math.ceil(r.width);
       l.h = Math.ceil(r.height);
-      const name = l.el.children[0] as HTMLElement;
-      const sub = l.el.children[1] as HTMLElement;
-      const subc = l.el.children[2] as HTMLElement;
-      const chrome = r.width - Math.max(name.offsetWidth, sub.offsetWidth);
-      l.cw = Math.ceil(chrome + Math.max(name.offsetWidth, subc.scrollWidth));
+      // The compact variant's real width: measure it as drawn.
+      l.el.classList.add("is-compact");
+      l.cw = Math.ceil(l.el.getBoundingClientRect().width);
+      l.el.classList.remove("is-compact");
     }
     for (const l of this.folderLbls) {
       const r = l.el.getBoundingClientRect();
@@ -907,7 +916,10 @@ export class CityScene {
     const corners: THREE.Vector3[] = [];
     const h = E * 0.07;
     const front = E * 0.035;
+    // "small": only the tiny districts, their title strips and the ends of the arches that reach them.
+    const small = view === "small" && (c?.districts ?? []).some((d) => d.tiny);
     for (const d of c?.districts ?? []) {
+      if (small && !d.tiny) continue;
       const b = d.box;
       for (const x of [b.cx - b.sx / 2, b.cx + b.sx / 2])
         for (const z of [b.cz - b.sz / 2, b.cz + b.sz / 2]) {
@@ -915,10 +927,18 @@ export class CityScene {
         }
       corners.push(new THREE.Vector3(b.cx - b.sx / 2, 0, b.cz + b.sz / 2 + front));
     }
-    for (const a of c?.arches ?? [])
+    for (const a of c?.arches ?? []) {
+      const tinyEnd = (i: number): boolean => Boolean(c?.districts.some((d) => d.tiny && d.idx === i));
+      const n = a.pts.length;
       a.pts.forEach((p, i) => {
-        if (i % 3 === 0 || i === a.pts.length - 1) corners.push(new THREE.Vector3(p.x, p.y, p.z));
+        if (small) {
+          // The part of the arch near its tiny end(s), so the arrowheads and a bit of the approach are in frame.
+          const near = (tinyEnd(a.srcIdx) && i <= n * 0.25) || (tinyEnd(a.dstIdx) && i >= n * 0.75);
+          if (!near || i % 2 !== 0) return;
+        } else if (i % 3 !== 0 && i !== n - 1) return;
+        corners.push(new THREE.Vector3(p.x, p.y, p.z));
       });
+    }
     if (corners.length === 0) corners.push(new THREE.Vector3(-50, 0, -50), new THREE.Vector3(50, 0, 50));
     let x0 = Number.POSITIVE_INFINITY;
     let x1 = Number.NEGATIVE_INFINITY;
@@ -1141,7 +1161,10 @@ export class CityScene {
     const id = this.idOf(p.hit);
     if (id) {
       this.cb.onSelect(id);
-      this.flyTo(id);
+      // A tiny district is hard to read from afar and a close fly-in would lose its neighbours: frame them all.
+      const e = this.city?.byId.get(id);
+      if (e?.type === "district" && this.city?.districts[e.i]?.tiny) this.setView("small");
+      else this.flyTo(id);
     }
   };
 
@@ -1237,7 +1260,10 @@ export class CityScene {
     }
 
     // 1. District titles: always shown. Candidates around the front-left corner, the camera side first.
-    const order = [...this.districtLbls].sort((p, q) => q.d.fns - p.d.fns || (p.d.id < q.d.id ? -1 : 1));
+    // Tiny districts first: their titles must sit right next to their slab, so they get first pick of the spots.
+    const order = [...this.districtLbls].sort(
+      (p, q) => Number(q.d.tiny) - Number(p.d.tiny) || q.d.fns - p.d.fns || (p.d.id < q.d.id ? -1 : 1),
+    );
     const titleRects = new Map<string, ScreenRect>();
     for (const l of order) {
       const q = quads.get(l.d.id) as { fl: Pt2; fr: Pt2; bl: Pt2; br: Pt2 };
@@ -1293,11 +1319,52 @@ export class CityScene {
       const tiny = Math.max(q.fr[0], q.br[0]) - Math.min(q.fl[0], q.bl[0]) < l.w * 0.8;
       const variants = tiny ? [true] : [false, true];
       let chosen: Spot | undefined;
+      let adjacent = false;
       let compact = variants[variants.length - 1] as boolean;
       for (const c of variants) {
         const w = c ? l.cw : l.w;
         const sets = near(w, l.h);
-        chosen =
+        if (l.d.tiny) {
+          // Next to the slab (touching or within TITLE_GAP_PX of its projected quad), the same side for every tiny
+          // district so neighbours form a tidy column: under the front-left corner first.
+          const quad: Pt2[] = [q.bl, q.br, q.fr, q.fl];
+          const near = (cd: Spot): boolean =>
+            rectQuadDistance({ l: cd.l, t: cd.t, r: cd.l + w, b: cd.t + l.h }, quad) <= TITLE_GAP_PX - 3;
+          const sl = Math.min(q.fl[0], q.bl[0]);
+          const sr = Math.max(q.fr[0], q.br[0]);
+          const st = Math.min(q.bl[1], q.br[1]);
+          const adj: Spot[] = [];
+          for (const mk of [
+            (gp: number): Spot => ({ l: q.fl[0], t: q.fl[1] + gp, ax: q.fl[0], ay: q.fl[1] }),
+            (gp: number): Spot => ({ l: q.fl[0] - w * 0.5, t: q.fl[1] + gp, ax: q.fl[0], ay: q.fl[1] }),
+            (gp: number): Spot => ({ l: q.fr[0] - w, t: q.fr[1] + gp, ax: q.fr[0], ay: q.fr[1] }),
+            (gp: number): Spot => ({ l: q.fr[0] + gp, t: q.fr[1] - l.h * 0.5, ax: q.fr[0], ay: q.fr[1] }),
+            (gp: number): Spot => ({ l: q.fl[0] - w - gp, t: q.fl[1] - l.h, ax: q.fl[0], ay: q.fl[1] }),
+            (gp: number): Spot => ({ l: q.bl[0], t: q.bl[1] - l.h - gp, ax: q.bl[0], ay: q.bl[1] }),
+            (gp: number): Spot => ({ l: q.br[0] - w, t: q.br[1] - l.h - gp, ax: q.br[0], ay: q.br[1] }),
+            (gp: number): Spot => ({ l: q.br[0] + gp, t: q.br[1] - l.h * 0.5, ax: q.br[0], ay: q.br[1] }),
+            (gp: number): Spot => ({ l: q.bl[0] - w - gp, t: q.bl[1], ax: q.bl[0], ay: q.bl[1] }),
+          ])
+            for (const gp of [0, 4, 10, 16]) adj.push(mk(gp));
+          let hit = adj.find((cd) => near(cd) && free(cd, w, l.h, false));
+          if (!hit) {
+            // Any free spot around the slab, the nearest first.
+            const dense: (Spot & { d: number })[] = [];
+            for (let ty = st - l.h - 20; ty <= Math.max(q.fl[1], q.fr[1]) + 20; ty += 6)
+              for (let lx = sl - w - 20; lx <= sr + 20; lx += 8) {
+                const cd: Spot = { l: lx, t: ty, ax: q.fl[0], ay: q.fl[1] };
+                const d = rectQuadDistance({ l: lx, t: ty, r: lx + w, b: ty + l.h }, quad);
+                if (d <= TITLE_GAP_PX - 3) dense.push({ ...cd, d });
+              }
+            dense.sort((p, r2) => p.d - r2.d || p.t - r2.t || p.l - r2.l);
+            hit = dense.find((cd) => free(cd, w, l.h, false));
+          }
+          if (hit) {
+            chosen = hit;
+            adjacent = true;
+          }
+        }
+        chosen ??=
           sets.outside.find((cd) => free(cd, w, l.h, false)) ?? sets.own.find((cd) => free(cd, w, l.h, true));
         if (chosen) {
           compact = c;
@@ -1361,7 +1428,7 @@ export class CityScene {
       }
       const nx = Math.min(Math.max(nearPt[0], r.l), r.r);
       const ny = Math.min(Math.max(nearPt[1], r.t), r.b);
-      if (best > 7) {
+      if (best > 7 && !adjacent) {
         l.leader.setAttribute("x1", String(nearPt[0]));
         l.leader.setAttribute("y1", String(nearPt[1]));
         l.leader.setAttribute("x2", String(nx));
@@ -1406,6 +1473,28 @@ export class CityScene {
       });
     });
 
+    // Where the arches meet a tiny district (screen px): arrowheads at the target end, dots at the source. Count pills keep
+    // off them, and the tests read them.
+    const ends: unknown[] = [];
+    for (const a of c.arches) {
+      const sd = c.districts.find((d) => d.idx === a.srcIdx);
+      const dd = c.districts.find((d) => d.idx === a.dstIdx);
+      if (dd?.tiny) {
+        const t = a.pts[a.pts.length - 1] as V3;
+        const p = this.px(t.x, t.y, t.z);
+        ends.push({ key: a.key, district: dd.id, kind: "head", x: p[0], y: p[1] });
+        placed.push({ l: p[0] - 9, t: p[1] - 9, r: p[0] + 9, b: p[1] + 9 });
+      }
+      if (sd?.tiny) {
+        const t = a.pts[0] as V3;
+        const p = this.px(t.x, t.y, t.z);
+        ends.push({ key: a.key, district: sd.id, kind: "tail", x: p[0], y: p[1] });
+        placed.push({ l: p[0] - 6, t: p[1] - 6, r: p[0] + 6, b: p[1] + 6 });
+      }
+    }
+    // Obstacles a count pill must never cover, whatever else is crowded: titles, flags and the key.
+    const hard = [...placed];
+
     // 3. Count pills at the apex nearest the source third; the long form for the arches of the focused district.
     const focus = this.focusDistrict();
     const pillInfo: unknown[] = [];
@@ -1440,6 +1529,29 @@ export class CityScene {
           pos = p;
           break;
         }
+      }
+      if (!pos) {
+        // Crowded: any spot along the arch clear of the titles and flags (a pill may then touch another pill).
+        for (const [dx, dy] of [
+          [0, 0],
+          [0, -(h + 3)],
+          [0, h + 3],
+          [w + 3, 0],
+          [-(w + 3), 0],
+          [0, -2 * (h + 3)],
+          [0, 2 * (h + 3)],
+        ] as const)
+          for (let i = 0; i < l.a.pts.length && !pos; i += 2) {
+            const pt = l.a.pts[i] as V3;
+            const p = this.px(pt.x, pt.y, pt.z);
+            const r: ScreenRect = {
+              l: p[0] + dx - w / 2,
+              t: p[1] + dy - h / 2,
+              r: p[0] + dx + w / 2,
+              b: p[1] + dy + h / 2,
+            };
+            if (inside(r) && !hard.some((q) => rectsOverlap(q, r, 2))) pos = [p[0] + dx, p[1] + dy];
+          }
       }
       if (!pos) {
         const pt = l.a.pts[l.a.pillAt[0] ?? 0] as V3;
@@ -1503,6 +1615,7 @@ export class CityScene {
       if (!done) hide(l.el);
     }
 
+    this.overlay.dataset.ends = JSON.stringify(ends);
     this.overlay.dataset.captions = String(shownCaps);
     this.overlay.dataset.flags = JSON.stringify(flagInfo);
     this.overlay.dataset.pills = JSON.stringify(pillInfo);
@@ -1516,6 +1629,7 @@ export class CityScene {
           wz: d.box.cz - d.box.sz / 2,
           ww: d.box.sx,
           wh: d.box.sz,
+          tiny: d.tiny,
           quad: [q.bl, q.br, q.fr, q.fl],
           title: r ? [r.l, r.t, r.r, r.b] : null,
         };
