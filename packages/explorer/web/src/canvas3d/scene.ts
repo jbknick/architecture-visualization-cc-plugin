@@ -879,7 +879,10 @@ export class MapScene {
       const from = this.islandEntries.get(a.src)?.island.fullLabel ?? a.src;
       const to = this.islandEntries.get(a.dst)?.island.fullLabel ?? a.dst;
       this.cb.onTip(
-        { title: `${from} → ${to}: ${a.dependsOnly ? "depends on" : `${a.weight} imports`}`, lines: [] },
+        {
+          title: `${from} → ${to}: ${a.dependsOnly ? "depends on" : `${a.weight} imports`}`,
+          lines: a.bindings !== undefined ? [`(${a.bindings} names imported)`] : [],
+        },
         x,
         y,
       );
