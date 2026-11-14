@@ -225,6 +225,10 @@ interface Edit {
   start: number;
   end: number;
   text: string;
+  /** Embedding-text renames only: the binding (or root name) this edit renames. Numbered by position later. */
+  ref?: Binding | string;
+  /** For `ref` edits: the identifier was a shorthand property, so the key must stay (`name: v1`). */
+  keepKey?: string;
 }
 
 interface Analysis {
@@ -266,6 +270,8 @@ class Walker {
   private shapeMute = 0;
   /** Identifier nodes that stand for both key and value of a shorthand property. */
   private readonly shorthandValues = new Set<Node>();
+  /** Names of the symbols being walked (function, class or variable); renamed in the embedding text only. */
+  private readonly rootNames = new Set<string>();
 
   private pushShape(s: string): void {
     if (this.shapeMute === 0) this.shape.push(s);
@@ -336,6 +342,8 @@ class Walker {
   }
 
   walkRoot(root: Node): void {
+    const n = rootName(root);
+    if (n !== null) this.rootNames.add(n);
     this.walk(root, null, "");
   }
 
@@ -389,6 +397,8 @@ class Walker {
       }
     }
     const isTemplate = t === "TemplateLiteral";
+    // Embedding text only: the whole template (text and substitutions) becomes "s", like a string.
+    if (isTemplate) this.edits.push({ start: node.start, end: node.end, text: '"s"' });
     if (isTemplate) {
       shapeToken = "TPL";
       this.pushShape(shapeToken);
@@ -459,15 +469,26 @@ class Walker {
     const b = this.lookup(name);
     if (!b) {
       this.tokens.push(`I:${name}`);
+      // The symbol's own name is not part of the hash tokens, but the embedding text renames it.
+      if (this.rootNames.has(name)) {
+        this.edits.push({
+          start: node.start,
+          end: node.start + name.length,
+          text: "",
+          ref: name,
+          keepKey: this.shorthandValues.has(node) ? name : undefined,
+        });
+      }
       return;
     }
     if (b.n === 0) b.n = ++this.counter;
-    const renamed = `$${b.n}`;
-    this.tokens.push(renamed);
+    this.tokens.push(`$${b.n}`);
     this.edits.push({
       start: node.start,
       end: node.start + name.length,
-      text: this.shorthandValues.has(node) ? `${name}: ${renamed}` : renamed,
+      text: "",
+      ref: b,
+      keepKey: this.shorthandValues.has(node) ? name : undefined,
     });
   }
 
@@ -493,6 +514,18 @@ class Walker {
       this.pushShape("Literal");
     }
   }
+}
+
+/** Declared name of a function, class or variable symbol root; null for anything else. */
+function rootName(root: Node): string | null {
+  if (root.type === "FunctionDeclaration" || root.type === "ClassDeclaration") {
+    return isNode(root.id) && typeof root.id.name === "string" ? root.id.name : null;
+  }
+  if (root.type === "VariableDeclaration") {
+    const d = Array.isArray(root.declarations) ? root.declarations[0] : undefined;
+    return isNode(d) && isNode(d.id) && d.id.type === "Identifier" ? (d.id.name as string) : null;
+  }
+  return null;
 }
 
 /** The property of `node` that holds `child` (by identity). */
@@ -588,8 +621,11 @@ export function minhashJaccard(a: Uint32Array, b: Uint32Array): number {
 }
 
 /**
- * Code text for the embedding tier: comments and layout dropped, local identifiers renamed as in
- * `exactHash`, string literals replaced by `"s"`.
+ * Code text for the embedding tier (spec section 17, normalizer approved on 2026-11-14): local
+ * identifiers (parameters, `const`/`let` names, the symbol's own name) become `v1, v2, …` in order of
+ * first appearance; comments and layout are dropped; string and template literals become `"s"`.
+ * Property names after `.` and identifiers not declared inside the symbol (well-known globals such as
+ * `Math`, imported helpers) are kept. The hash token streams are unaffected.
  */
 export function normalizeForEmbedding(
   source: string,
@@ -599,17 +635,29 @@ export function normalizeForEmbedding(
   const { a, located } = analyze(source, range, lang);
   if (!located) return a.tokens.join(" ");
   const parts: string[] = [];
+  const numbers = new Map<Binding | string, number>();
   for (const root of located.roots) {
     const edits: Edit[] = a.edits.filter((e) => e.start >= root.start && e.end <= root.end);
     for (const c of located.comments) {
       if (c.start >= root.start && c.end <= root.end) edits.push({ start: c.start, end: c.end, text: " " });
     }
-    edits.sort((x, y) => x.start - y.start);
+    // Outer span first at equal starts. An edit inside an already replaced span (a name inside a
+    // template literal) is skipped, so numbering only counts names that survive in the output.
+    edits.sort((x, y) => x.start - y.start || y.end - x.end);
     let out = "";
     let pos = root.start;
     for (const e of edits) {
       if (e.start < pos) continue;
-      out += located.source.slice(pos, e.start) + e.text;
+      let text = e.text;
+      if (e.ref !== undefined) {
+        let n = numbers.get(e.ref);
+        if (n === undefined) {
+          n = numbers.size + 1;
+          numbers.set(e.ref, n);
+        }
+        text = `${e.keepKey !== undefined ? `${e.keepKey}: ` : ""}v${n}`;
+      }
+      out += located.source.slice(pos, e.start) + text;
       pos = e.end;
     }
     out += located.source.slice(pos, root.end);

@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import Database from "better-sqlite3";
+import { applyVecMigration, loadVec } from "../embed/vec.js";
 import { createStore, type Store } from "./repo.js";
 import { SCHEMA_V1 } from "./schema.js";
 
@@ -25,6 +26,14 @@ const MIGRATIONS: Migration[] = [
     version: 1,
     apply(db) {
       db.exec(SCHEMA_V1);
+    },
+  },
+  {
+    // vec_descriptions and vec_code for the M0 embedding model (spec section 9). A no-op when
+    // sqlite-vec cannot be loaded; `ensureVecTables` creates the tables later where it can.
+    version: 2,
+    apply(db) {
+      applyVecMigration(db);
     },
   },
 ];
@@ -63,7 +72,11 @@ export function openStore(dbPath: string): Store {
     db.pragma("journal_mode = WAL");
     db.pragma("synchronous = NORMAL");
     db.pragma("foreign_keys = ON");
+    const vec = loadVec(db); // fail open: without sqlite-vec everything but vector search still works
     migrate(db);
+    db.prepare(
+      "INSERT INTO meta(key, value) VALUES ('vec_available', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    ).run(vec ? "1" : "0");
   } catch (err) {
     db.close();
     throw err;

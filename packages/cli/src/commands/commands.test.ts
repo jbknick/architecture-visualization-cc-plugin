@@ -1,16 +1,20 @@
 import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { openStore, type Store } from "@gantry/core";
 import { build } from "tsup";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -48,7 +52,14 @@ beforeAll(async () => {
     format: ["esm"],
     platform: "node",
     target: "node22",
-    external: ["better-sqlite3", "sqlite-vec", "oxc-parser", "oxc-resolver"],
+    external: [
+      "better-sqlite3",
+      "sqlite-vec",
+      "oxc-parser",
+      "oxc-resolver",
+      "@huggingface/transformers",
+      "onnxruntime-node",
+    ],
     esbuildOptions(o) {
       o.alias = { "@gantry/core": join(repoRoot, "packages/core/src/index.ts") };
     },
@@ -65,12 +76,12 @@ afterAll(async () => {
   for (const f of fixtures.splice(0)) await f.cleanup();
 });
 
-function run(cwd: string, args: string[]) {
+function run(cwd: string, args: string[], extraEnv: Record<string, string> = {}) {
   const r = spawnSync("node", [cli, ...args], {
     cwd,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
-    env: { ...process.env, HOME: join(dataDir, "home"), CLAUDE_PLUGIN_DATA: dataDir },
+    env: { ...process.env, HOME: join(dataDir, "home"), CLAUDE_PLUGIN_DATA: dataDir, ...extraEnv },
   });
   return { code: r.status, out: r.stdout, err: r.stderr };
 }
@@ -80,6 +91,11 @@ async function fixture(name: "single-pkg" | "pnpm-turbo" | "nx") {
   fixtures.push(fx);
   return fx;
 }
+
+/** A function with 9 statements, so it is above the code-embedding floor. */
+const BIG_FN =
+  "export function sumPositive(xs: number[]) {\n  let total = 0;\n  for (const x of xs) {\n    if (x > 0) {\n      total += x;\n    }\n  }\n  const avg = total / xs.length;\n  return { total, avg };\n}\n" +
+  "export function sumNegative(xs: number[]) {\n  let total = 0;\n  for (const x of xs) {\n    if (x < 0) {\n      total -= x;\n    }\n  }\n  const avg = total / xs.length;\n  return { total, avg };\n}\n";
 
 describe("gantry init", () => {
   it("indexes fixtures/pnpm-turbo, prints a summary and exits 0 without touching the repo", async () => {
@@ -144,6 +160,116 @@ describe("gantry init", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+});
+
+/** Opens the database the bundled CLI wrote last (each fixture repo has its own under the data dir). */
+function openBundleDb(): Store {
+  const repos = join(dataDir, "repos");
+  const dbs = readdirSync(repos)
+    .map((d) => join(repos, d, "gantry.db"))
+    .filter((d) => existsSync(d))
+    .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs); // the repo indexed last comes first
+  if (!dbs[0]) throw new Error("no gantry.db written");
+  return openStore(dbs[0]);
+}
+
+describe("bundled CLI: vector tables and embeddings", () => {
+  it("opens the store with migration v2 (sqlite-vec resolves from the bundle)", async () => {
+    const fx = await fixture("single-pkg");
+    const r = run(fx.dir, ["init"]);
+    expect(r.err).toBe("");
+    expect(r.code).toBe(0);
+    const db = openBundleDb();
+    try {
+      expect(db.getMeta("schema_version")).toBe("2");
+      expect(db.getMeta("vec_available")).toBe("1");
+      expect(db.getMeta("embed_model")).toBe("jinaai/jina-embeddings-v2-base-code");
+      expect(db.getMeta("embed_dim")).toBe("768");
+      const tables = (
+        db.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]
+      ).map((t) => t.name);
+      expect(tables).toContain("vec_descriptions");
+      expect(tables).toContain("vec_code");
+    } finally {
+      db.close();
+    }
+  });
+
+  const modelDir = join(process.env.HOME ?? "", ".gantry", "models");
+  const haveModel = existsSync(
+    join(modelDir, "jinaai/jina-embeddings-v2-base-code/onnx/model_quantized.onnx"),
+  );
+  it("does not embed by default: no model load, no vectors, no warning, even with no model cache", async () => {
+    const fx = await fixture("single-pkg");
+    writeFileSync(join(fx.dir, "src/embedme.ts"), BIG_FN);
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-m", "add embedme"]);
+    // A model dir that does not exist: any attempt to load the model would print a warning on stderr.
+    const t0 = Date.now();
+    const r = run(fx.dir, ["init"], { GANTRY_MODELS_DIR: join(dataDir, "no-models-here") });
+    const ms = Date.now() - t0;
+    expect(r.err).toBe("");
+    expect(r.code).toBe(0);
+    expect(ms).toBeLessThan(15_000);
+    const db = openBundleDb();
+    try {
+      expect(db.db.prepare("SELECT count(*) AS n FROM vec_code").get()).toEqual({ n: 0 });
+      expect(db.db.prepare("SELECT count(*) AS n FROM vec_descriptions").get()).toEqual({ n: 0 });
+    } finally {
+      db.close();
+    }
+  });
+
+  const eligibleCode = (db: Store): number =>
+    (
+      db.db
+        .prepare(
+          "SELECT count(DISTINCT exact_hash) AS n FROM symbols WHERE kind IN ('function','method','component','hook') AND stmt_count >= 3",
+        )
+        .get() as { n: number }
+    ).n;
+  const storedCode = (db: Store): number =>
+    (db.db.prepare("SELECT count(*) AS n FROM vec_code").get() as { n: number }).n;
+
+  it.skipIf(!haveModel)(
+    "gantry init --embed and gantry embed use the external transformers/onnxruntime packages and resume",
+    async () => {
+      const fx = await fixture("single-pkg");
+      writeFileSync(join(fx.dir, "src/embedme.ts"), BIG_FN);
+      fx.git(["add", "-A"]);
+      fx.git(["commit", "-m", "add embedme"]);
+      const env = { GANTRY_MODELS_DIR: modelDir };
+      expect(run(fx.dir, ["init"], env).code).toBe(0);
+      let db = openBundleDb();
+      const eligible = eligibleCode(db);
+      expect(eligible).toBeGreaterThan(1);
+      expect(storedCode(db)).toBe(0);
+      db.close();
+
+      const first = run(fx.dir, ["embed", "--limit", "1", "--json"], env);
+      expect(first.code).toBe(0);
+      // Template descriptions are embedded before code, so one vector of either kind was stored.
+      const j1 = JSON.parse(first.out) as { descriptions: number; code: number; stoppedBy: string };
+      expect(j1.descriptions + j1.code).toBe(1);
+      expect(j1.stoppedBy).toBe("limit");
+
+      const second = run(fx.dir, ["embed", "--json"], env);
+      expect(second.code).toBe(0);
+      expect(JSON.parse(second.out)).toMatchObject({
+        remaining: 0,
+        stoppedBy: "complete",
+      });
+      db = openBundleDb();
+      expect(storedCode(db)).toBe(eligible);
+      db.close();
+
+      // `init --embed` on an already complete store embeds nothing more and prints the summary.
+      const again = run(fx.dir, ["init", "--embed"], env);
+      expect(again.code).toBe(0);
+      expect(again.out).toContain("Embedded 0 code");
+    },
+    120_000,
+  );
 });
 
 describe("gantry index --dump", () => {

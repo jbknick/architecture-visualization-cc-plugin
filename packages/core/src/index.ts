@@ -9,6 +9,7 @@ export * from "./describe/secrets.js";
 export * from "./describe/templates.js";
 export * from "./describe/validate.js";
 export * from "./discover/index.js";
+export * from "./embed/index.js";
 export * from "./hash/index.js";
 export * from "./heal/index.js";
 export * from "./indexer.js";

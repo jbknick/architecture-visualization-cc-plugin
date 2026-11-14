@@ -11,6 +11,7 @@
     "build": "tsc -b && tsup && pnpm --filter @gantry/explorer build:web",
     "check": "biome check . && tsc -b --noEmit && vitest run",
     "fmt": "biome check --write .",
+    "readme:media": "tsx scripts/readme-media.ts",
     "test": "vitest run"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "@huggingface/transformers": "4.3.2",
     "@types/node": "^26.6.6",
     "better-sqlite3": "13.1.1",
+    "gifenc": "1.0.3",
     "oxc-parser": "^0.158.0",
     "oxc-resolver": "11.24.2",
     "sqlite-vec": "0.1.9",
