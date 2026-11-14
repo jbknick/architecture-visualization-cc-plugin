@@ -4,6 +4,8 @@
  */
 
 export const MAX_INIT_MS = 120_000;
+/** `gantry search` right after one edit (heal check + working refresh + query), issue #94. */
+export const MAX_REFRESH_MS = 1_000;
 export const MAX_UNRESOLVED_PCT = 5;
 
 export interface InitRun {
@@ -100,6 +102,12 @@ export function evaluate(r: BenchResults): DoneWhen[] {
       detail: `${fmtMs(wall)} median wall time`,
     },
     {
+      id: "refresh",
+      label: `Search after one edit (working refresh) in under ${fmtMs(MAX_REFRESH_MS)}`,
+      met: r.refreshMs < MAX_REFRESH_MS,
+      detail: fmtMs(r.refreshMs),
+    },
+    {
       id: "resolve",
       label: `Unresolved repo-internal imports under ${MAX_UNRESOLVED_PCT}%`,
       met: pct < MAX_UNRESOLVED_PCT,
@@ -168,7 +176,7 @@ export function resultsRows(r: BenchResults): string[][] {
       "Unresolved repo-internal imports",
       `${r.specifiers.unresolved} of ${internal} (${unresolvedPct(r.specifiers).toFixed(2)}%)`,
     ],
-    ["Generated or excluded (reported apart)", String(r.specifiers.generated + r.specifiers.excluded)],
+    ["Generated or not indexed (reported apart)", String(r.specifiers.generated + r.specifiers.excluded)],
     [`init wall time, median of ${r.runs} cold runs`, fmtMs(median(wall))],
     ["init wall time, all runs", wall.map(fmtMs).join(" / ")],
     ["Indexer-reported time, median", fmtMs(median(idx))],

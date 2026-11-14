@@ -5,6 +5,7 @@ import path from "node:path";
 import { loadConfig } from "./config/index.js";
 import { discoverFiles, isIndexable } from "./discover/index.js";
 import { hashSymbol } from "./hash/index.js";
+import { encodeParsed, LazyParsedMap, ParseCache } from "./parse/cache.js";
 import { type ParsedFile, parseSource } from "./parse/index.js";
 import { ensureDataDir, type GantryPaths } from "./paths/index.js";
 import { createResolver, type SpecifierClass } from "./resolve/index.js";
@@ -108,8 +109,9 @@ function readJsonHash(root: string, rel: string): { hash: string; mtimeMs: numbe
 /**
  * Discovery, parse, hash, resolve, store. Deterministic: files are processed in path order.
  *
- * Targeted runs (`files`) still parse every indexable file, because the resolver needs the whole
- * export graph to follow barrels. Only the targets are hashed and written, plus any other file
+ * Targeted runs (`files`) still need every file's parse result, because the resolver follows barrels
+ * through the whole export graph; unchanged files come from the parse cache (`parse/cache.ts`, keyed by
+ * path and content hash) instead of being parsed again. Only the targets are hashed and written, plus any other file
  * whose resolved edges differ from the effective ones already stored (importers of a file whose
  * symbols changed). `depends_on` edges are stored on a `files` row for each workspace
  * `package.json` (id `file:<dir>/package.json`) in the main layer, so effective views return them.
@@ -169,8 +171,26 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     const list = [...entries.values()].sort((a, b) => cmp(a.path, b.path));
     const read = await mapPool(list, READ_CONCURRENCY, (e) => readEntry(root, e, sources));
     const present = read.filter((e) => e.source !== undefined);
-    const parsed = new Map<string, ParsedFile>();
-    for (const e of present) parsed.set(e.id, parseSource(e.path, e.source as string));
+    const parsed = new LazyParsedMap();
+    const cache = ParseCache.open(paths.dataDir);
+    try {
+      const cached = cache?.loadAll();
+      const fresh: { path: string; hash: string; data: string }[] = [];
+      for (const e of present) {
+        const hit = cached?.get(e.path);
+        if (hit && hit.hash === e.contentHash) {
+          parsed.setRaw(e.id, hit.data);
+          continue;
+        }
+        const pf = parseSource(e.path, e.source as string);
+        parsed.set(e.id, pf);
+        fresh.push({ path: e.path, hash: e.contentHash as string, data: encodeParsed(pf) });
+      }
+      // Entries for paths that no longer exist are only pruned when this run saw the whole tree.
+      cache?.save(fresh, !opts.files && !sources ? new Set(present.map((e) => e.path)) : undefined);
+    } finally {
+      cache?.close();
+    }
 
     const resolver = createResolver({ root, workspaces, parsed });
     store.upsertWorkspaces(workspaces);

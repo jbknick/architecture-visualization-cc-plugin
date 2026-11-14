@@ -2,10 +2,13 @@
  * M1 regression benchmark (issue #20): performance, determinism and git-flow on a real repository.
  *
  * Usage: pnpm build && pnpm tsx evals/bench/m1.ts <repo> [--runs 3] [--calcom <path>] [--skip-tests]
+ *        [--i-know-this-is-a-throwaway-clone]
  *
  * Runs the built CLI (`plugin/dist/cli.js`) against <repo> with a throwaway data dir (CLAUDE_PLUGIN_DATA) per
  * cold run, so nothing is written to ~/.gantry. It does edit one tracked file in <repo> and stashes it
- * (`git stash push -u -m gantry-m1-bench`, restored by apply + drop), so point it at a throwaway clone.
+ * (`git stash push -u -m gantry-m1-bench-<nonce>`), so it refuses any <repo> outside the system temp dir
+ * unless --i-know-this-is-a-throwaway-clone is passed. The edit and the stash are always undone, also on
+ * Ctrl-C (see m1-safety.ts and the recovery notes in docs/milestones/M1.md).
  * Prints aggregate numbers only (counts, percentages, timings); never paths, symbols or graph content.
  * Exits non-zero if a done-when line is missed.
  */
@@ -24,12 +27,12 @@ import {
   type InitRun,
   parseSummary,
 } from "./m1-report.js";
+import { assertThrowawayClone, ProbeGuard, THROWAWAY_FLAG } from "./m1-safety.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const gantryRoot = resolve(here, "..", "..");
 const cli = join(gantryRoot, "plugin", "dist", "cli.js");
 const PROBE = "__gantryBenchProbe";
-const STASH_MSG = "gantry-m1-bench";
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(name);
@@ -39,11 +42,17 @@ function arg(name: string): string | undefined {
 const repoArg = process.argv[2];
 if (!repoArg || repoArg.startsWith("--")) {
   process.stderr.write(
-    "usage: pnpm tsx evals/bench/m1.ts <repo> [--runs 3] [--calcom <path>] [--skip-tests]\n",
+    `usage: pnpm tsx evals/bench/m1.ts <repo> [--runs 3] [--calcom <path>] [--skip-tests] [${THROWAWAY_FLAG}]\n`,
   );
   process.exit(2);
 }
 const repo = resolve(repoArg);
+try {
+  assertThrowawayClone(repo, process.argv.includes(THROWAWAY_FLAG));
+} catch (err) {
+  process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
+  process.exit(2);
+}
 const runs = Number(arg("--runs") ?? 3);
 const skipTests = process.argv.includes("--skip-tests");
 const calcomPath = arg("--calcom");
@@ -69,12 +78,6 @@ function gantry(
     maxBuffer: 512 * 1024 * 1024,
   });
   return { out: r.stdout, err: r.stderr, ms: performance.now() - t0, code: r.status ?? 1 };
-}
-
-function git(args: string[], cwd: string): string {
-  const r = spawnSync("git", args, { cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
-  if (r.status !== 0) throw new Error(`git ${args[0]} failed: ${r.stderr.trim()}`);
-  return r.stdout;
 }
 
 const sha256 = (s: string): string => createHash("sha256").update(s).digest("hex");
@@ -132,38 +135,36 @@ async function main(): Promise<number> {
   process.stderr.write("refresh and git-flow\n");
   const clean = storeDumpSha(dirA);
   if (clean.sha !== shaA) throw new Error("in-process dump differs from CLI dump of the same store");
-  if (git(["status", "--porcelain"], repo).trim() !== "") {
-    throw new Error("test bed has local changes; use a clean throwaway clone");
-  }
-  gantry(["search", PROBE], repo, dirA); // settle: heal check + refresh on the clean tree
-  const noop = gantry(["search", PROBE], repo, dirA);
-
   const candidates = clean.files.filter(
     (p) => /\.tsx?$/.test(p) && !/\.(test|spec)\./.test(p) && !p.endsWith(".d.ts"),
   );
   const target = candidates[Math.floor(candidates.length / 2)];
   if (!target) throw new Error("no editable source file found");
+  const guard = new ProbeGuard(repo, target);
+  guard.arm(); // refuses a dirty tree; restores the clone on Ctrl-C, SIGTERM and exit
+  gantry(["search", PROBE], repo, dirA); // settle: heal check + refresh on the clean tree
+  const noop = gantry(["search", PROBE], repo, dirA);
+
   let editVisible = false;
   let refreshMs = Number.NaN;
   let stashHealed = false;
   const abs = join(repo, target);
   try {
     appendFileSync(abs, `\nexport function ${PROBE}(): number {\n  return 1;\n}\n`);
+    guard.markEdited();
     const edited = gantry(["search", PROBE], repo, dirA);
     refreshMs = edited.ms;
     editVisible = edited.out.includes(PROBE);
 
-    git(["stash", "push", "-u", "-m", STASH_MSG], repo);
+    guard.stash();
     gantry(["search", PROBE], repo, dirA); // heal + refresh after the tree went back to clean
     const after = storeDumpSha(dirA);
     stashHealed = after.sha === clean.sha;
   } finally {
-    restoreStash();
-    // Applying the stash brings the probe edit back (or it never left); discard it so the clone ends clean.
-    if (git(["status", "--porcelain"], repo).trim() !== "") git(["checkout", "--", target], repo);
+    guard.restore();
+    guard.disarm();
   }
-  if (git(["status", "--porcelain"], repo).trim() !== "")
-    throw new Error("test bed is not clean after the run");
+  if (!guard.isClean()) throw new Error("test bed is not clean after the run");
 
   // Step 4: tests.
   let fullSuite: boolean | null = null;
@@ -209,16 +210,6 @@ async function main(): Promise<number> {
   };
   process.stdout.write(`${formatReport(results)}\n`);
   return exitCode(evaluate(results));
-}
-
-/** Applies and drops exactly the stash entry this script made (found by message), if it is still there. */
-function restoreStash(): void {
-  const list = git(["stash", "list", "--format=%H %gs"], repo).split("\n").filter(Boolean);
-  const idx = list.findIndex((l) => l.endsWith(`: ${STASH_MSG}`) || l.includes(STASH_MSG));
-  if (idx < 0) return;
-  const sha = (list[idx] as string).split(" ")[0] as string;
-  git(["stash", "apply", sha], repo);
-  git(["stash", "drop", `stash@{${idx}}`], repo);
 }
 
 main()

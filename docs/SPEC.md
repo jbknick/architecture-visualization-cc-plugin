@@ -45,7 +45,7 @@ architecture-visualization-cc-plugin/
 ## 4. Paths and data
 
 - Worktree root: `git rev-parse --show-toplevel`. `worktreeHash` = first 16 hex chars of sha256(realpath(root)).
-- Data dir: `${CLAUDE_PLUGIN_DATA}/repos/<worktreeHash>/` when `CLAUDE_PLUGIN_DATA` is set, else `~/.gantry/data/repos/<worktreeHash>/`. Contents: `gantry.db`, `config.json`, `catalog/`, `logs/`, `models/` (embedding model cache may live in `~/.gantry/models/` instead, shared).
+- Data dir: `${CLAUDE_PLUGIN_DATA}/repos/<worktreeHash>/` when `CLAUDE_PLUGIN_DATA` is set, else `~/.gantry/data/repos/<worktreeHash>/`. Contents: `gantry.db`, `parse-cache.db` (disposable per-file parse results keyed by path and content hash; a pure accelerator that is not part of the store schema and is safe to delete), `config.json`, `catalog/`, `logs/`, `models/` (embedding model cache may live in `~/.gantry/models/` instead, shared).
 - Global config: `~/.gantry/config.json`. Shim: `~/.gantry/bin/gantry`.
 - `core/paths`: `resolvePaths(cwd: string): GantryPaths` returning `{ root, worktreeHash, dataDir, dbPath, configPath, catalogDir, logsDir, globalConfigPath, shimPath }`.
 - Nested worktrees under the repo (e.g. `.claude/worktrees/*`) are excluded from discovery of the parent.

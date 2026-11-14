@@ -89,6 +89,12 @@ describe("m1 report", () => {
     expect(status(ok, "perf")).toBe(true);
   });
 
+  it("misses the refresh budget at 1,000 ms but not just under (NaN also misses)", () => {
+    expect(status(good({ refreshMs: 1000 }), "refresh")).toBe(false);
+    expect(status(good({ refreshMs: 999 }), "refresh")).toBe(true);
+    expect(status(good({ refreshMs: Number.NaN }), "refresh")).toBe(false);
+  });
+
   it("misses resolution at 5% but not under", () => {
     const at = { file: 95, unresolved: 5, generated: 0, excluded: 0 };
     const under = { file: 951, unresolved: 49, generated: 0, excluded: 0 };
@@ -123,7 +129,7 @@ describe("m1 report", () => {
     expect(text).toContain("10 of 1000 (1.00%)");
     expect(text).toContain("Cal.com shallow clone");
     expect(text).toContain("packages unresolved");
-    expect(text.match(/\[MET\]/g)?.length).toBe(5);
+    expect(text.match(/\[MET\]/g)?.length).toBe(6);
     expect(formatReport(good({ shaB: "b".repeat(64) }))).toContain("[MISSED]");
   });
 });
