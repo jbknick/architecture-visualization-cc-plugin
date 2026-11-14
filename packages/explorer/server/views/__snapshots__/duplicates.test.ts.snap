@@ -1,0 +1,281 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`duplicates view > snapshot: fixture clusters 1`] = `
+{
+  "clusters": [
+    {
+      "id": "cluster:sym:packages/utils/src/date.ts#formatRelativeDate",
+      "keep": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "keepReason": "In the shared package @acme/utils, exported, called by 1 function; the other copy can use it.",
+      "links": [
+        {
+          "a": "sym:packages/utils/src/date.ts#formatRelativeDate",
+          "b": "sym:packages/utils/src/time.ts#parseTimestamp",
+          "tier": "near",
+        },
+      ],
+      "loc": 22,
+      "members": [
+        {
+          "endLine": 11,
+          "exported": true,
+          "fanIn": 1,
+          "id": "sym:packages/utils/src/date.ts#formatRelativeDate",
+          "keep": true,
+          "kind": "function",
+          "line": 1,
+          "loc": 11,
+          "name": "formatRelativeDate",
+          "path": "packages/utils/src/date.ts",
+          "score": 1,
+          "tier": null,
+          "workspaceId": "ws:@acme/utils",
+        },
+        {
+          "advice": {
+            "action": "Import it: import { formatRelativeDate } from './date'",
+            "inline": true,
+            "situation": 1,
+          },
+          "endLine": 12,
+          "exported": true,
+          "fanIn": 0,
+          "id": "sym:packages/utils/src/time.ts#parseTimestamp",
+          "keep": false,
+          "kind": "function",
+          "line": 2,
+          "loc": 11,
+          "name": "parseTimestamp",
+          "path": "packages/utils/src/time.ts",
+          "score": 1,
+          "tier": "near",
+          "workspaceId": "ws:@acme/utils",
+        },
+      ],
+      "rank": 44,
+      "size": 2,
+      "tier": "near",
+      "tiers": {
+        "code_vector": 0,
+        "exact": 0,
+        "near": 1,
+        "semantic": 0,
+      },
+      "workspaces": [
+        "ws:@acme/utils",
+      ],
+    },
+    {
+      "id": "cluster:sym:apps/web/src/lib/slug.ts#slugify",
+      "keep": "sym:packages/utils/src/slug.ts#slugify",
+      "keepReason": "In the shared package @acme/utils, not exported yet, called by 1 function; the other copy can use it.",
+      "links": [
+        {
+          "a": "sym:apps/web/src/lib/slug.ts#slugify",
+          "b": "sym:packages/utils/src/slug.ts#slugify",
+          "tier": "exact",
+        },
+      ],
+      "loc": 16,
+      "members": [
+        {
+          "endLine": 9,
+          "exported": false,
+          "fanIn": 1,
+          "id": "sym:packages/utils/src/slug.ts#slugify",
+          "keep": true,
+          "kind": "function",
+          "line": 2,
+          "loc": 8,
+          "name": "slugify",
+          "path": "packages/utils/src/slug.ts",
+          "score": 1,
+          "tier": null,
+          "workspaceId": "ws:@acme/utils",
+        },
+        {
+          "advice": {
+            "action": "Export it from @acme/utils (add to exports map) or move it to a shared package",
+            "inline": false,
+            "situation": 3,
+          },
+          "endLine": 8,
+          "exported": true,
+          "fanIn": 1,
+          "id": "sym:apps/web/src/lib/slug.ts#slugify",
+          "keep": false,
+          "kind": "function",
+          "line": 1,
+          "loc": 8,
+          "name": "slugify",
+          "path": "apps/web/src/lib/slug.ts",
+          "score": 1,
+          "tier": "exact",
+          "workspaceId": "ws:@acme/web",
+        },
+      ],
+      "rank": 32,
+      "size": 2,
+      "tier": "exact",
+      "tiers": {
+        "code_vector": 0,
+        "exact": 1,
+        "near": 0,
+        "semantic": 0,
+      },
+      "workspaces": [
+        "ws:@acme/utils",
+        "ws:@acme/web",
+      ],
+    },
+  ],
+  "edges": [
+    {
+      "confidence": "high",
+      "dst": "sym:packages/utils/src/slug.ts#slugify",
+      "id": "sym:apps/web/src/lib/slug.ts#slugify|similar_to|sym:packages/utils/src/slug.ts#slugify",
+      "kind": "similar_to",
+      "src": "sym:apps/web/src/lib/slug.ts#slugify",
+      "weight": 1,
+    },
+    {
+      "confidence": "high",
+      "dst": "sym:packages/utils/src/time.ts#parseTimestamp",
+      "id": "sym:packages/utils/src/date.ts#formatRelativeDate|similar_to|sym:packages/utils/src/time.ts#parseTimestamp",
+      "kind": "similar_to",
+      "src": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "weight": 1,
+    },
+  ],
+  "layoutHint": "clusters",
+  "nodes": [
+    {
+      "id": "sym:apps/web/src/lib/slug.ts#slugify",
+      "kind": "function",
+      "label": "slugify",
+      "path": "apps/web/src/lib/slug.ts",
+      "size": 8,
+      "stats": {
+        "functions": 1,
+        "loc": 8,
+      },
+      "workspace": "ws:@acme/web",
+    },
+    {
+      "badges": [
+        "keep",
+      ],
+      "id": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "kind": "function",
+      "label": "formatRelativeDate",
+      "path": "packages/utils/src/date.ts",
+      "size": 11,
+      "stats": {
+        "functions": 1,
+        "loc": 11,
+      },
+      "workspace": "ws:@acme/utils",
+    },
+    {
+      "badges": [
+        "keep",
+      ],
+      "id": "sym:packages/utils/src/slug.ts#slugify",
+      "kind": "function",
+      "label": "slugify",
+      "path": "packages/utils/src/slug.ts",
+      "size": 8,
+      "stats": {
+        "functions": 1,
+        "loc": 8,
+      },
+      "workspace": "ws:@acme/utils",
+    },
+    {
+      "id": "sym:packages/utils/src/time.ts#parseTimestamp",
+      "kind": "function",
+      "label": "parseTimestamp",
+      "path": "packages/utils/src/time.ts",
+      "size": 11,
+      "stats": {
+        "functions": 1,
+        "loc": 11,
+      },
+      "workspace": "ws:@acme/utils",
+    },
+  ],
+  "skipped": [
+    {
+      "message": "Run gantry embed to also find renamed copies.",
+      "reason": "not_embedded",
+      "tier": "code_vector",
+    },
+    {
+      "message": "Run gantry embed to also find code that does the same thing in different words.",
+      "reason": "no_description",
+      "tier": "semantic",
+    },
+  ],
+  "splits": [
+    {
+      "clusters": 1,
+      "functions": 2,
+      "workspaces": [
+        "ws:@acme/utils",
+      ],
+    },
+    {
+      "clusters": 1,
+      "functions": 2,
+      "workspaces": [
+        "ws:@acme/utils",
+        "ws:@acme/web",
+      ],
+    },
+  ],
+  "summary": {
+    "clusters": 2,
+    "crossWorkspace": 1,
+    "duplicateLines": 19,
+    "functions": 4,
+  },
+  "workspaces": [
+    {
+      "id": "ws:.",
+      "kind": "unknown",
+      "name": "pnpm-turbo-root",
+      "shortLabel": "pnpm-turbo-root",
+    },
+    {
+      "id": "ws:@acme/api",
+      "kind": "app",
+      "name": "@acme/api",
+      "shortLabel": "api",
+    },
+    {
+      "id": "ws:@acme/db",
+      "kind": "package",
+      "name": "@acme/db",
+      "shortLabel": "db",
+    },
+    {
+      "id": "ws:@acme/ui",
+      "kind": "package",
+      "name": "@acme/ui",
+      "shortLabel": "ui",
+    },
+    {
+      "id": "ws:@acme/utils",
+      "kind": "package",
+      "name": "@acme/utils",
+      "shortLabel": "utils",
+    },
+    {
+      "id": "ws:@acme/web",
+      "kind": "app",
+      "name": "@acme/web",
+      "shortLabel": "web",
+    },
+  ],
+}
+`;

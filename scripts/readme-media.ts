@@ -1,6 +1,6 @@
 // Regenerates the README's screenshots and GIF in docs/readme/ from the running app on PUBLIC data only:
 //   - the real server (`gantry map`) on a temp copy of fixtures/pnpm-turbo, and
-//   - the explorer's mock API with its synthetic `scenario=large` / `scenario=hub` data (web/mock).
+//   - the explorer's mock API with its synthetic `scenario=large` / `scenario=hub` / `scenario=dups` data (web/mock).
 // Never point this at a private repo. Run: `pnpm build && pnpm readme:media` (or `pnpm tsx scripts/readme-media.ts`).
 // Options: --only <name,name>  regenerate just those PNGs (names without .png, or `gif`).
 //          --gif                also regenerate explorer-tour.gif. The GIF is NOT rewritten otherwise: its frames are
@@ -364,6 +364,22 @@ async function stills(browser: Browser, mockBase: string) {
   if (want("city-files")) {
     await openCity(page, mockBase, "files", "&scenario=large");
     await save(page, "city-files");
+  }
+  if (want("duplicates")) {
+    // The mock's `dups` scenario: 22 groups of copies over 7 made-up workspaces, first group open.
+    await page.goto(`${mockBase}/#/duplicates?scenario=dups`);
+    await page
+      .getByRole("list", { name: "Duplicate groups, biggest first" })
+      .getByRole("button")
+      .first()
+      .waitFor();
+    await page
+      .getByRole("region", { name: /Compare/ })
+      .getByText(/differing line/)
+      .waitFor();
+    await page.mouse.move(2, 2);
+    await sleep(500);
+    await save(page, "duplicates");
   }
   if (want("caller-graph")) {
     // The mock's `hub` scenario: one shared component with 221 callers, grouped by folder.

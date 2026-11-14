@@ -12,6 +12,7 @@ import type {
   ViewLevel,
 } from "../src/api.ts";
 import { generateSynthetic } from "../src/canvas/synthetic.ts";
+import { duplicatesDismiss, duplicatesSource, duplicatesView, rememberScenario } from "./dups.ts";
 import { buildHierarchy } from "./hierarchy.ts";
 import { egoHub, hubCounts, hubNode } from "./hubEgo.ts";
 import { type Counts, largeMapCounts, largeMapNode, projectMapLarge } from "./largeMap.ts";
@@ -24,6 +25,7 @@ export const meta: Meta = {
     { id: "debug", title: "Debug: workspaces", enabled: true },
     { id: "project-map", title: "Project map", enabled: true },
     { id: "ego", title: "Function ego graph", enabled: true },
+    { id: "duplicates", title: "Duplicates", enabled: true },
     { id: "map-3d", title: "3D map", enabled: true },
   ],
 };
@@ -1184,6 +1186,12 @@ export const mockLayouts = new Map<string, Record<string, [number, number]>>();
 let hierarchy: ReturnType<typeof buildHierarchy> | undefined;
 let synthetic: ReturnType<typeof generateSynthetic> | undefined;
 
+/** Mock of the write routes (`PUT /api/dismiss`); null for any other path. */
+export function handleMockWrite(url: URL, body: unknown): MockResponse | null {
+  if (url.pathname === "/api/dismiss") return duplicatesDismiss(body);
+  return null;
+}
+
 export interface MockResponse {
   status: number;
   body: unknown;
@@ -1244,6 +1252,7 @@ export function handleMockApi(url: URL): MockResponse | null {
   if (path.startsWith("/api/view/")) {
     const id = decodeURIComponent(path.slice("/api/view/".length));
     const q = parseQuery(url);
+    if (id === "duplicates") rememberScenario(q.options);
     const result =
       id === "debug"
         ? debugView()
@@ -1251,9 +1260,11 @@ export function handleMockApi(url: URL): MockResponse | null {
           ? projectMap(q)
           : id === "ego"
             ? ego(q)
-            : id === "map-3d"
-              ? map3dView(q)
-              : null;
+            : id === "duplicates"
+              ? duplicatesView(q.options)
+              : id === "map-3d"
+                ? map3dView(q)
+                : null;
     if (!result) return { status: 404, body: { error: `Unknown view: ${id}` } };
     if ("error" in result) return { status: result.status, body: { error: result.error } };
     return { status: 200, body: result };
@@ -1298,6 +1309,23 @@ export function handleMockApi(url: URL): MockResponse | null {
   }
 
   if (path === "/api/source") {
+    const dup = duplicatesSource(
+      url.searchParams.get("path") ?? "",
+      Number(url.searchParams.get("start") ?? 1),
+    );
+    if (dup) {
+      const start = Number(url.searchParams.get("start") ?? 1);
+      return {
+        status: 200,
+        body: {
+          path: url.searchParams.get("path"),
+          start,
+          end: start + dup.lines.length - 1,
+          total: start + dup.lines.length - 1,
+          lines: dup.lines,
+        },
+      };
+    }
     const text = sources[url.searchParams.get("path") ?? ""];
     if (text === undefined) return { status: 404, body: { error: "File not found" } };
     const start = Number(url.searchParams.get("start") ?? 1);

@@ -9,6 +9,9 @@ import {
   type ViewLevel,
 } from "./api.ts";
 
+/** Dispatch on `window` to fetch the current view again (after a write such as a dismissal). */
+export const RELOAD_VIEW_EVENT = "gantry:reload-view";
+
 export interface Loadable<T> {
   data: T | null;
   loading: boolean;
@@ -47,7 +50,13 @@ export function useViewData(
   view: string | null,
   params: { focus: string | null; level: ViewLevel | null; hops: number | null; filters: Filters },
 ): Loadable<ViewData> {
-  const key = view === null ? null : JSON.stringify([view, params]);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const onReload = () => setTick((t) => t + 1);
+    window.addEventListener(RELOAD_VIEW_EVENT, onReload);
+    return () => window.removeEventListener(RELOAD_VIEW_EVENT, onReload);
+  }, []);
+  const key = view === null ? null : JSON.stringify([view, params, tick]);
   return useLoad(key, (signal) =>
     api.view(
       view ?? "",
