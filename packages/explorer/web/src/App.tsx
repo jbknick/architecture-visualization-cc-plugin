@@ -100,6 +100,7 @@ export function App() {
         nodes={nodes}
         edges={edges}
         layoutHint={data.layoutHint}
+        data={data}
         focus={route.sel}
         onSelect={(id) => selectNode(id)}
         onHover={setHover}
@@ -116,6 +117,7 @@ export function App() {
         viewId={view}
         nodes={nodes}
         edges={edges}
+        data={needsFocus ? null : data}
         filters={route.filters}
         onFiltersChange={(filters) => navigate({ filters })}
         route={route}

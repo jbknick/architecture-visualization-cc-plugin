@@ -15,6 +15,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import path from "node:path";
 import { type GantryConfig, type GantryPaths, loadConfig, openStore, type Store } from "@gantry/core";
 import { HttpError, handleApi } from "./api.js";
+import { MAX_DISMISS_BODY_BYTES, putDismiss } from "./dismiss.js";
 import { MAX_LAYOUT_BODY_BYTES, putLayout } from "./layout.js";
 import { buildExplorerUrl } from "./url.js";
 
@@ -85,6 +86,7 @@ const MIME: Record<string, string> = {
 };
 
 const LAYOUT_ROUTE = /^\/api\/layout\/[^/]+$/;
+const DISMISS_ROUTE = "/api/dismiss";
 
 /** Reads a request body up to `limit` bytes; rejects with a 413 HttpError beyond that. */
 function readBody(req: IncomingMessage, limit: number): Promise<string> {
@@ -197,7 +199,8 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
       if (req.headers.host !== host) return void sendJson(res, 403, { error: "Bad Host" });
       const url = new URL(req.url ?? "/", `http://${host}`);
       const layoutPut = req.method === "PUT" && LAYOUT_ROUTE.test(url.pathname);
-      if (req.method !== "GET" && req.method !== "HEAD" && !layoutPut) {
+      const dismissPut = req.method === "PUT" && url.pathname === DISMISS_ROUTE;
+      if (req.method !== "GET" && req.method !== "HEAD" && !layoutPut && !dismissPut) {
         res.setHeader("allow", "GET, HEAD");
         return void sendJson(res, 405, { error: "Method not allowed" });
       }
@@ -212,20 +215,29 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
           (Array.isArray(header) ? header[0] : header) ?? parseCookies(req.headers.cookie)[cookieName(port)];
         if (!supplied || !safeEqual(supplied, token))
           return void sendJson(res, 403, { error: "Missing or bad token" });
-        if (layoutPut) {
-          let view: string;
-          try {
-            view = decodeURIComponent(url.pathname.slice("/api/layout/".length));
-          } catch {
-            return void sendJson(res, 400, { error: "Malformed id" });
+        if (layoutPut || dismissPut) {
+          let run: (body: unknown) => unknown;
+          let limit: number;
+          if (dismissPut) {
+            limit = MAX_DISMISS_BODY_BYTES;
+            run = (body) => putDismiss(ctx, body);
+          } else {
+            let view: string;
+            try {
+              view = decodeURIComponent(url.pathname.slice("/api/layout/".length));
+            } catch {
+              return void sendJson(res, 400, { error: "Malformed id" });
+            }
+            limit = MAX_LAYOUT_BODY_BYTES;
+            run = (body) => putLayout(store, view, body);
           }
           if (!String(req.headers["content-type"] ?? "").startsWith("application/json")) {
             return void sendJson(res, 415, { error: "Content-Type must be application/json" });
           }
-          readBody(req, MAX_LAYOUT_BODY_BYTES).then(
+          readBody(req, limit).then(
             (text) => {
               try {
-                sendJson(res, 200, putLayout(store, view, JSON.parse(text)));
+                sendJson(res, 200, run(JSON.parse(text)));
               } catch (err) {
                 if (err instanceof HttpError) return void sendJson(res, err.status, { error: err.message });
                 if (err instanceof SyntaxError) return void sendJson(res, 400, { error: "Invalid JSON" });

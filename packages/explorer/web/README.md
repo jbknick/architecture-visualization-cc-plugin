@@ -10,7 +10,7 @@ pnpm --filter @gantry/explorer perf   # opens the synthetic 30k-function graph i
 pnpm --filter @gantry/explorer mock   # serve the built UI plus the mock API on :4173
 ```
 
-Set `MOCK_PORT` if 4173 is taken. The real-server test copies `fixtures/pnpm-turbo` into a temp git repo, runs `gantry init` and `gantry map --no-open` with a temp `CLAUDE_PLUGIN_DATA`, and writes `docs/milestones/screenshots/{project-map,ego}-fixture.png`.
+Set `MOCK_PORT` if 4173 is taken. The real-server test copies `fixtures/pnpm-turbo` into a temp git repo, runs `gantry init` and `gantry map --no-open` with a temp `CLAUDE_PLUGIN_DATA`, and writes `docs/milestones/screenshots/{project-map,ego,duplicates}-fixture.png`.
 
 ## Layout
 
@@ -63,7 +63,7 @@ Register in `src/canvases.ts` (imported by `App.tsx`). `focus` is the focused no
 
 ## Graph canvas (`src/canvas/`)
 
-The canvas registered for `nested-elk`, `elk-layered`, `radial`, `force`, `tree-lr`, `bowtie` (the ego view, below), `columns`, `clusters` and the server hints `layered`, `tree`, `grid`. `CanvasHost` wraps it with a List / Graph toggle and lazy-loads it. `GraphCanvas.tsx` builds the scene and picks one of two renderers: hierarchical data (the project map: workspaces, folders, files, functions) gets the treemap canvas; flat graphs (ego, debug) keep the sigma canvas.
+The canvas registered for `nested-elk`, `elk-layered`, `radial`, `force`, `tree-lr`, `bowtie` (the ego view, below), `columns` and the server hints `layered`, `tree`, `grid`. `CanvasHost` wraps it with a List / Graph toggle and lazy-loads it. `GraphCanvas.tsx` builds the scene and picks one of two renderers: hierarchical data (the project map: workspaces, folders, files, functions) gets the treemap canvas; flat graphs (ego, debug) keep the sigma canvas.
 
 ### Project map: workspace boxes with a treemap inside
 
@@ -99,9 +99,18 @@ The `ego` view returns layoutHint `bowtie`, drawn by `canvas/BowtieCanvas.tsx` o
 - Drawing: the focus, groups and individual rows are all labelled (rows are never thinner than 18px). Group rows are pills with a caret and a count chip on the right. Colour is by workspace, indexed by the sorted workspace ids present (`workspacePalette.workspaceColorAt`), and the left panel lists the same colours (short names, most callers first); its group list uses the same labels and wraps. The kind is in the tooltip. Column titles ("Callers · 221", "Callees · 1") are pinned to the top. Test hooks on `[data-testid=graph-canvas]`: `gantry:zoom-to` (`detail: { id }`) and `gantry:probe` (writes the drawn labels and row rectangles to `data-probe`).
 - `scenario=hub` and `scenario=hub-thin` (mock only, like `scenario=large`): `mock/hubEgo.ts` serves a shared component with 221 callers and one callee, grouped by the server's row budget (`mock/egoRows.ts` is a copy of `server/views/egoGroups.ts`; `src/views/egoMock.test.ts` fails when they differ). `hub` has the callers in a few big folders (3 workspaces); `hub-thin` is shaped like a real monorepo hit: 201 callers in one workspace over 104 files in 30 folders (at most 11 per folder, most files with 1-3), 20 in another over 16 files, long scoped workspace names. `e2e/ego.spec.ts` checks the row budget, row heights and label overlap on both and writes `docs/milestones/screenshots/ego-hub-{grouped,expanded,dark}.png`, `ego-hub-thin-{grouped,expanded}.png` and `ego-small.png`.
 
+### Duplicates view (`clusters` layout hint)
+
+The `duplicates` view is a ranked list with a detail pane, not a graph, so `DuplicatesCanvas` (`src/views/DuplicatesCanvas.tsx`) is registered for `clusters` instead of `CanvasHost`. It reads the extra fields of the response through the canvas's `data` prop (`CanvasProps.data`, the whole `ViewData`; the filter panel gets the same as `FilterPanelProps.data`).
+
+- Server (`server/views/duplicates.ts`): groups are the connected components of the `similar_to` edges (minus dismissed pairs). Response: `{ nodes, edges, layoutHint: "clusters", clusters, summary: { clusters, functions, duplicateLines, crossWorkspace }, splits, workspaces, skipped }`. A cluster is `{ id, tier (loosest link), tiers (links per tier), size, loc, rank (size x loc), keep, keepReason, workspaces, members, links }`; a member is `{ id, name, kind, path, line, endLine, loc, workspaceId, exported, fanIn, tier, score, keep, advice? }` with `tier` and `score` measured against the keep candidate. The keep candidate is the member in a shared package (workspace kind `package`), then exported, then with the most callers, then by path. `advice` comes from `adviseReuse` in core (#29) when core exports it (`server/views/dupAdvice.ts` looks it up by name and returns nothing otherwise). Options: `tiers`, `workspaces`, `minSize`, `hideTests` (default true). `skipped` lists the vector tiers that could not run (for example "Run gantry embed to also find renamed copies.").
+- `PUT /api/dismiss { a, b, reason? }` (`server/dismiss.ts`): token, Host and Origin checked like every `/api` route, `application/json` only, body at most 4 KB, `a` and `b` existing symbol ids, `reason` at most 200 characters. Calls core `dismiss()` (stored in `dismissals`, so it survives restarts and also silences the duplicate check) and returns `{ dismissed, summary, clusters: [{ id, size }] }`. Core has no way to remove a dismissal, so the page has no "Undo".
+- Web: overview strip and workspace-split bar, the ranked list (`Identical`, `Nearly identical`, `Similar code`, `Similar meaning` in plain words, arrow keys move through it), cards for the selected group's copies, and `DupCompare` for the side-by-side source (`alignLines` in `dupModel.ts` aligns the two functions by lines, ignoring indentation; the lines come from `/api/source` and the same tokenizer as the inspector, rendered as text nodes). "Not a duplicate" calls `api.dismiss` and then asks the shell to refetch the view (`RELOAD_VIEW_EVENT`).
+- Mock: `mock/dups.ts`. `#/duplicates` serves two groups shaped like the fixture's (slugify, formatRelativeDate); `scenario=dups` serves 22 groups over 7 workspaces. `PUT /api/dismiss` works in the mock too. `e2e/duplicates.spec.ts` writes `duplicates-large.png` and `duplicates-large-dark.png` and checks that nothing overlaps; `e2e/real-server.spec.ts` writes `duplicates-fixture.png` from the real server.
+
 ## Filter slot
 
-`registerFilterPanel(viewId, Panel)`, where `Panel` receives `{ viewId, nodes, edges, filters, onFiltersChange, route, onRouteChange }`. `onFiltersChange` writes the hash filters and refetches the view; `onRouteChange({ focus, level, hops })` changes the view params. Views without a panel show "This view has no filters."
+`registerFilterPanel(viewId, Panel)`, where `Panel` receives `{ viewId, nodes, edges, data, filters, onFiltersChange, route, onRouteChange }`. `onFiltersChange` writes the hash filters and refetches the view; `onRouteChange({ focus, level, hops })` changes the view params. Views without a panel show "This view has no filters."
 
 `registerFocusRequired(viewId, Prompt)` marks a view that needs `focus` (the ego view): no request is sent until it is set, and `Prompt` fills the centre meanwhile. A canvas may also call the optional `onDrill(id)` prop on double-click.
 
