@@ -8,6 +8,7 @@ import { collapseChains, kindTier, type Tree, type TreeNode } from "./hierarchy.
 import { WS_HEAD_MAX } from "./mapGeom.ts";
 import { GRID, type RouteLink, routeLinks } from "./mapRoute.ts";
 import { type Pt, routeAround } from "./route.ts";
+import { isTinyWorkspace, TINY_MIN_H, TINY_MIN_W, TINY_STRIP } from "./tiny.ts";
 import { layoutTreemap, type TmNode } from "./treemap.ts";
 import type { LayoutInput, MapGeometry, Positions, Rect } from "./types.ts";
 
@@ -382,21 +383,30 @@ export async function layoutMap(
   const fns = new Map(roots.map((r) => [r, fnOf(r)]));
   const filesGiven = new Map(input.nodes.map((n) => [n.id, n.files]));
   const files = Float64Array.from(tree.nodes, (n) => filesGiven.get(n.id) ?? 0);
+  const maxFns = Math.max(0, ...fns.values());
+  const tinyOf = (r: number): boolean =>
+    input.tinyBoxes === true && roots.length > 1 && isTinyWorkspace(fns.get(r) as number, maxFns);
   const plansFor = (area: number, aspect: number): BoxPlan[] =>
     roots.map((r) => {
       const node = titles.get((tree.nodes[r] as TreeNode).id);
-      return {
-        index: r,
-        ...boxSize(
-          fns.get(r) as number,
-          area,
-          aspect,
-          input.stableBoxes === true || (tree.nodes[r] as TreeNode).children.length > 0,
-          node?.title ?? "",
-          node?.subtitle ?? [],
-          portSide(r),
-        ),
-      };
+      const size = boxSize(
+        fns.get(r) as number,
+        area,
+        aspect,
+        input.stableBoxes === true || (tree.nodes[r] as TreeNode).children.length > 0,
+        node?.title ?? "",
+        node?.subtitle ?? [],
+        portSide(r),
+      );
+      // A tiny workspace in the city: a bigger slab plus a strip under it for the title.
+      if (tinyOf(r))
+        return {
+          index: r,
+          ...size,
+          w: Math.max(size.w, TINY_MIN_W),
+          h: Math.max(size.h, TINY_MIN_H) + TINY_STRIP,
+        };
+      return { index: r, ...size };
     });
 
   // For every option set: the biggest box area per function at which the whole diagram still fits the canvas.
@@ -505,7 +515,11 @@ export async function layoutMap(
   };
   for (const plan of bestPlans) {
     const box = placedBest.boxes.get(plan.index) as Rect;
-    const out = layoutTreemap(tm(plan.index), box);
+    // A tiny workspace's treemap (and its rectangle) is the slab, the strip below stays free for the title.
+    const out = layoutTreemap(
+      tm(plan.index),
+      tinyOf(plan.index) ? { ...box, h: Math.max(1, box.h - TINY_STRIP) } : box,
+    );
     for (const [id, r] of out.rects) {
       const idx = tree.index.get(id) as number;
       rects.set([r.x, r.y, r.w, r.h], idx * 4);

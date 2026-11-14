@@ -3,9 +3,10 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { projectMapLarge } from "../../../mock/largeMap.ts";
 import { computeLayout } from "../../canvas/layout.ts";
 import { buildScene, layoutInputFor, type Scene } from "../../canvas/scene.ts";
+import { isTinyWorkspace, TINY_MIN_H, TINY_MIN_W, TINY_STRIP } from "../../canvas/tiny.ts";
 import type { MapGeometry, Rect } from "../../canvas/types.ts";
 import { rankFiles } from "../../rankedFiles/rank.ts";
-import { convexHull, FLAG_R, placeFlags, quadHitsRect, rectInsideHull } from "./labels.ts";
+import { convexHull, FLAG_R, placeFlags, quadHitsRect, rectInsideHull, rectQuadDistance } from "./labels.ts";
 import {
   type Box3,
   buildCity,
@@ -14,6 +15,7 @@ import {
   HeightGrid,
   makeHeightScale,
   rectToBox,
+  type V3,
 } from "./model.ts";
 
 const VIEWPORT = { w: 1160, h: 810 };
@@ -99,18 +101,70 @@ describe("height scale", () => {
 });
 
 describe("the city on the large mock", () => {
-  it("has 11 districts whose rectangles are the 2D map's workspace rectangles (within a few px: the city sizes every box as if it had contents)", () => {
+  it("has 11 districts laid out like the 2D map's workspaces: the same left-to-right arrangement and order of size for the big ones", () => {
     for (const level of ["workspaces", "dirs", "files"] as const) {
       const { plain, city } = get(level);
-      for (const d of city.districts) {
+      // The big districts keep their order of size (the tiny ones only take room from them).
+      const big = city.districts.filter((d) => !d.tiny);
+      for (const a of big)
+        for (const b of big)
+          if (rectOf(plain, a.idx).w > 1.3 * rectOf(plain, b.idx).w)
+            expect(a.rect.w, `${level} ${a.id} / ${b.id}`).toBeGreaterThan(b.rect.w);
+      // The arrangement: of two districts well apart in the 2D map, the one on the left stays on the left.
+      for (const a of city.districts)
+        for (const b of city.districts) {
+          const ra = rectOf(plain, a.idx);
+          const rb = rectOf(plain, b.idx);
+          if (rb.x - ra.x > 250) expect(b.rect.x, `${level} ${a.id} / ${b.id}`).toBeGreaterThan(a.rect.x);
+        }
+    }
+  });
+
+  it("flags the workspaces with very few functions as tiny and gives them a larger slab than the 2D map would", () => {
+    for (const level of ["workspaces", "dirs", "files"] as const) {
+      const { plain, city } = get(level);
+      const tiny = city.districts.filter((d) => d.tiny);
+      expect(tiny.map((d) => d.id.split("/").pop()).sort()).toEqual([
+        "config",
+        "db-client",
+        "logger",
+        "testing",
+        "types",
+        "ui-kit",
+        "ws:.",
+        "ws:scripts",
+      ]);
+      for (const d of tiny) {
+        expect(d.rect.w, `${level} ${d.id} w`).toBeGreaterThanOrEqual(TINY_MIN_W - 1);
+        expect(d.rect.h, `${level} ${d.id} h`).toBeGreaterThanOrEqual(TINY_MIN_H - 1);
+        // The 2D map keeps its own, smaller, minimum.
         const r = rectOf(plain, d.idx);
-        // The 2D map sizes a box with no contents (Workspaces level) a pixel or two smaller; the city does not.
-        const eps = 6;
-        expect(Math.abs(d.rect.x - r.x), `${level} ${d.id} x`).toBeLessThanOrEqual(eps);
-        expect(Math.abs(d.rect.y - r.y), `${level} ${d.id} y`).toBeLessThanOrEqual(eps);
-        expect(Math.abs(d.rect.w - r.w), `${level} ${d.id} w`).toBeLessThanOrEqual(3);
-        expect(Math.abs(d.rect.h - r.h), `${level} ${d.id} h`).toBeLessThanOrEqual(3);
+        expect(r.w * r.h).toBeLessThan(d.rect.w * d.rect.h);
       }
+      for (const d of city.districts.filter((x) => !x.tiny)) expect(d.fns).toBeGreaterThan(900);
+    }
+  });
+
+  it("asks for tiny boxes only in the city's layout input, never in the 2D map's", () => {
+    const { scene } = get("workspaces");
+    expect(layoutInputFor(scene, "nested-elk", null).tinyBoxes).toBeUndefined();
+    expect(layoutInputFor(scene, "nested-elk", null, undefined, VIEWPORT, true).tinyBoxes).toBe(true);
+  });
+
+  it("keeps a free strip under every tiny slab for its title (the slab is the layout box minus the strip)", () => {
+    const { city } = get("workspaces");
+    const rects = city.districts.map((d) => ({ id: d.id, tiny: d.tiny, r: d.rect }));
+    for (const t of rects.filter((d) => d.tiny)) {
+      const strip = { x: t.r.x, y: t.r.y + t.r.h, w: t.r.w, h: TINY_STRIP };
+      for (const o of rects)
+        if (o.id !== t.id)
+          expect(
+            o.r.x < strip.x + strip.w &&
+              o.r.x + o.r.w > strip.x &&
+              o.r.y < strip.y + strip.h &&
+              o.r.y + o.r.h > strip.y,
+            `${t.id} strip under ${o.id}`,
+          ).toBe(false);
     }
   });
 
@@ -208,14 +262,47 @@ describe("the city on the large mock", () => {
       const route = map.routes[a.key] as [number, number][];
       const first = a.pts[0] as (typeof a.pts)[number];
       const last = a.pts[a.pts.length - 1] as (typeof a.pts)[number];
-      expect(first.x).toBeCloseTo((route[0] as [number, number])[0] - city.origin.x, 6);
-      expect(first.z).toBeCloseTo((route[0] as [number, number])[1] - city.origin.y, 6);
-      expect(last.x).toBeCloseTo((route[route.length - 1] as [number, number])[0] - city.origin.x, 6);
+      // The ends on a tiny district are re-spread along its slab edge (next test); the others are the layout's.
+      const src = city.districts.find((d) => d.idx === a.srcIdx);
+      const dst = city.districts.find((d) => d.idx === a.dstIdx);
+      if (!src?.tiny) {
+        expect(first.x).toBeCloseTo((route[0] as [number, number])[0] - city.origin.x, 6);
+        expect(first.z).toBeCloseTo((route[0] as [number, number])[1] - city.origin.y, 6);
+      }
+      if (!dst?.tiny)
+        expect(last.x).toBeCloseTo((route[route.length - 1] as [number, number])[0] - city.origin.x, 6);
     }
     // The two directions of api <-> core are separate arches.
     const keys = city.arches.map((a) => a.key);
     expect(keys.some((k) => k.includes("api>") && k.endsWith("core"))).toBe(true);
     expect(keys.some((k) => k.includes("core>") && k.endsWith("api"))).toBe(true);
+  });
+
+  it("spreads the arch ends on a tiny district along its slab so they stay apart", () => {
+    for (const level of ["workspaces", "dirs", "files"] as const) {
+      const { city } = get(level);
+      for (const d of city.districts.filter((x) => x.tiny)) {
+        const ends: { x: number; z: number; key: string }[] = [];
+        for (const a of city.arches) {
+          if (a.dstIdx === d.idx) ends.push({ ...(a.pts[a.pts.length - 1] as V3), key: a.key });
+          if (a.srcIdx === d.idx) ends.push({ ...(a.pts[0] as V3), key: `${a.key}#tail` });
+        }
+        // On the slab (edge or a little inside), never in the title strip below it.
+        for (const e of ends) {
+          expect(e.x, `${level} ${d.id} ${e.key} x`).toBeGreaterThanOrEqual(d.box.cx - d.box.sx / 2 - 1);
+          expect(e.x).toBeLessThanOrEqual(d.box.cx + d.box.sx / 2 + 1);
+          expect(e.z).toBeGreaterThanOrEqual(d.box.cz - d.box.sz / 2 - 1);
+          expect(e.z).toBeLessThanOrEqual(d.box.cz + d.box.sz / 2 + 1);
+        }
+        // No two ends on top of each other (about 14px on screen at the default camera is 20+ world units).
+        for (const [i, a] of ends.entries())
+          for (const b of ends.slice(i + 1))
+            expect(
+              Math.hypot(a.x - b.x, a.z - b.z),
+              `${level} ${d.id} ${a.key} / ${b.key}`,
+            ).toBeGreaterThanOrEqual(20);
+      }
+    }
   });
 
   it("lifts every arch clear of the tallest building under its route", () => {
@@ -327,5 +414,33 @@ describe("screen geometry helpers", () => {
     expect(hull).toHaveLength(4);
     expect(rectInsideHull(hull, { l: 1, t: 1, r: 9, b: 9 })).toBe(true);
     expect(rectInsideHull(hull, { l: 1, t: 1, r: 11, b: 9 })).toBe(false);
+  });
+});
+
+describe("tiny workspaces", () => {
+  it("are those with at most 3% of the biggest workspace's functions (never when alone or when all are equal)", () => {
+    expect(isTinyWorkspace(32, 1700)).toBe(true);
+    expect(isTinyWorkspace(51, 1700)).toBe(true);
+    expect(isTinyWorkspace(52, 1700)).toBe(false);
+    expect(isTinyWorkspace(1700, 1700)).toBe(false);
+    expect(isTinyWorkspace(0, 0)).toBe(false);
+  });
+});
+
+describe("title next to the slab", () => {
+  const slab: [number, number][] = [
+    [100, 100],
+    [200, 80],
+    [220, 130],
+    [120, 150],
+  ];
+  it("is 0 when the title touches or overlaps the slab, else the gap in px", () => {
+    expect(rectQuadDistance({ l: 120, t: 150, r: 300, b: 190 }, slab)).toBe(0);
+    expect(rectQuadDistance({ l: 110, t: 100, r: 150, b: 120 }, slab)).toBe(0);
+    expect(rectQuadDistance({ l: 120, t: 160, r: 300, b: 200 }, slab)).toBeCloseTo(10, 6);
+  });
+  it("is measured to the quad, not to its bounding rectangle (a skewed slab leaves the corner empty)", () => {
+    const corner = { l: 60, t: 130, r: 99, b: 170 };
+    expect(rectQuadDistance(corner, slab)).toBeGreaterThan(1);
   });
 });

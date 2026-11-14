@@ -129,6 +129,15 @@ export function MapPanel({
           <button type="button" className="map3d-reset" onClick={() => mapUi.setCameraView("angled")}>
             Angled view
           </button>
+          <button
+            type="button"
+            className="map3d-reset"
+            disabled={ui.smallCount === 0}
+            title="Frame the districts with very few functions, with their names and arch ends"
+            onClick={() => mapUi.setCameraView("small")}
+          >
+            Focus small workspaces
+          </button>
           <button type="button" className="map3d-reset" onClick={() => mapUi.resetCamera()}>
             Reset camera
           </button>
