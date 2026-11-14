@@ -1,10 +1,12 @@
 export type { SearchHit } from "./api.js";
 export { HttpError, handleApi, MAX_SOURCE_LINES, SEARCH_LIMIT } from "./api.js";
 export {
+  cookieName,
   type ExplorerServer,
   type ExplorerServerOptions,
   type ExplorerState,
   findRunningExplorer,
+  HTML_CSP,
   type RunningExplorer,
   startExplorerServer,
   startOrReuseExplorer,

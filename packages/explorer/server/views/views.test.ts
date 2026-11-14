@@ -311,7 +311,7 @@ describe("scale", () => {
       const known = new Set(r.nodes.map((n) => n.id));
       for (const e of r.edges) expect(known.has(e.src) && known.has(e.dst) && e.src !== e.dst).toBe(true);
     }
-  });
+  }, 60_000); // the budget is CPU time; this wall-clock guard only has to survive a loaded machine
 
   it("ego caps at 400 nodes with +K more collapse nodes and answers in under 300 ms", () => {
     const qs = `focus=${encodeURIComponent("sym:pkgs/w0/src/d0/f0.ts#fn0")}&hops=4`;
@@ -322,7 +322,7 @@ describe("scale", () => {
     expect(r.nodes.some((n) => n.kind === "more" || n.kind === "group")).toBe(true);
     const known = new Set(r.nodes.map((n) => n.id));
     for (const e of r.edges) expect(known.has(e.src) && known.has(e.dst)).toBe(true);
-  });
+  }, 60_000);
 });
 
 describe("import counts agree between project-map and map-3d", () => {

@@ -18,6 +18,18 @@ test.use({
   launchOptions: { args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] },
 });
 
+// The server sends a restrictive CSP; the built app must run under it with nothing blocked.
+const cspProblems: string[] = [];
+test.beforeEach(({ page }) => {
+  page.on("console", (m) => {
+    if (/content security policy|violat/i.test(m.text())) cspProblems.push(m.text());
+  });
+  page.on("pageerror", (e) => cspProblems.push(String(e)));
+});
+test.afterEach(() => {
+  expect(cspProblems, "console CSP violations / page errors").toEqual([]);
+});
+
 let tmp = "";
 let server: ChildProcess | undefined;
 let url = "";
