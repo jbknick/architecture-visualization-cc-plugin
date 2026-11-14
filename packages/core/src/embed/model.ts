@@ -12,9 +12,12 @@ export interface Embedder {
   available?: boolean;
 }
 
-export const EMBED_BATCH_SIZE = 32;
-/** Longest text sent to the model, in characters. Longer bodies are cut: code beyond this adds cost, not signal. */
+/** Texts per model forward pass and per committed batch. Chosen from the realistic-body benchmark (see the PR for #23). */
+export const EMBED_BATCH_SIZE = 8;
+/** Safety cap on any text sent to the model, in characters; callers cut far earlier (`CODE_EMBED_MAX_CHARS`). */
 export const MAX_EMBED_CHARS = 8000;
+/** Tokenizer `max_length` (truncation is always on): one huge input can never exceed this many tokens. */
+export const EMBED_MAX_TOKENS = 512;
 
 /** Shared model cache (spec section 4). `GANTRY_MODELS_DIR` overrides it, mainly for tests. */
 export function modelCacheDir(): string {
@@ -25,6 +28,10 @@ export interface LoadOptions {
   cacheDir?: string;
   /** Allow downloading the model when it is not in the cache. Default true. */
   allowRemote?: boolean;
+  /** Texts per forward pass inside `embed`. Default `EMBED_BATCH_SIZE`. */
+  batchSize?: number;
+  /** Tokenizer `max_length`. Default `EMBED_MAX_TOKENS`. */
+  maxTokens?: number;
 }
 
 let warned = false;
@@ -55,14 +62,27 @@ export async function loadEmbedder(opts: LoadOptions = {}): Promise<Embedder> {
     env.cacheDir = opts.cacheDir ?? modelCacheDir();
     env.allowRemoteModels = opts.allowRemote ?? true;
     const extractor = await pipeline("feature-extraction", EMBED_MODEL_ID, { dtype: "q8" });
+    const batchSize = Math.max(1, opts.batchSize ?? EMBED_BATCH_SIZE);
+    const maxTokens = opts.maxTokens ?? EMBED_MAX_TOKENS;
+    // The pipeline tokenizes with `truncation: true` but no `max_length`, which falls back to the model's
+    // 8,192-token limit. Pin it so the cost per text is bounded.
+    const tokenizer = extractor.tokenizer as unknown as (
+      texts: string[],
+      o: Record<string, unknown>,
+    ) => unknown;
+    (extractor as unknown as { tokenizer: unknown }).tokenizer = Object.assign(
+      (texts: string[], o: Record<string, unknown>) =>
+        tokenizer(texts, { ...o, truncation: true, max_length: maxTokens }),
+      tokenizer,
+    );
     return {
       dim: EMBED_DIM,
       modelId: EMBED_MODEL_ID,
       available: true,
       async embed(texts) {
         const out: Float32Array[] = [];
-        for (let i = 0; i < texts.length; i += EMBED_BATCH_SIZE) {
-          const batch = texts.slice(i, i + EMBED_BATCH_SIZE).map((t) => t.slice(0, MAX_EMBED_CHARS));
+        for (let i = 0; i < texts.length; i += batchSize) {
+          const batch = texts.slice(i, i + batchSize).map((t) => t.slice(0, MAX_EMBED_CHARS));
           const t = await extractor(batch, { pooling: "mean", normalize: true });
           const data = t.data as Float32Array;
           const dim = t.dims[t.dims.length - 1] as number;

@@ -3,8 +3,6 @@ import { defineConfig } from "vitest/config";
 // vitest 5 dropped vitest.workspace.ts; tests are discovered across packages/* from source only.
 export default defineConfig({
   test: {
-    // The CLI tests run `gantry init`; never load or download the embedding model from them.
-    env: { GANTRY_EMBED: "0" },
     // Many tests spawn git or the bundled CLI. The 5 s default fails them whenever the machine is busy
     // (several builds or suites at once); 30 s still catches a real hang.
     testTimeout: 30_000,

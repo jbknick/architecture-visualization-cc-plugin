@@ -8,6 +8,7 @@ import { openStore, type Store } from "../store/index.js";
 import type { FileRecord, SymbolRecord } from "../types.js";
 import {
   blobToVec,
+  CODE_EMBED_MAX_CHARS,
   descriptionText,
   EMBED_DIM,
   EMBED_MODEL_ID,
@@ -15,6 +16,7 @@ import {
   embedPending,
   ensureVecTables,
   knn,
+  MIN_CODE_STMTS,
   offlineEmbedder,
   putVectors,
   storedKeys,
@@ -211,16 +213,25 @@ describe("embedPending", () => {
     addDescription("k1:p1", "Adds two numbers.", ["sum", "add"]);
     addDescription("k2:p1", "Reverses a string.", ["reverse"]);
     const emb = fakeEmbedder();
-    expect(await embedPending(store, { embedder: emb })).toEqual({ descriptions: 2, code: 0 });
+    expect(await embedPending(store, { embedder: emb })).toMatchObject({
+      descriptions: 2,
+      code: 0,
+      remaining: 0,
+      stoppedBy: "complete",
+    });
     expect(emb.calls.flat().sort()).toEqual(["Adds two numbers. sum add", "Reverses a string. reverse"]);
     expect(storedKeys(store, "vec_descriptions")).toEqual(new Set(["k1:p1", "k2:p1"]));
-    expect(await embedPending(store, { embedder: emb })).toEqual({ descriptions: 0, code: 0 });
+    expect(await embedPending(store, { embedder: emb })).toMatchObject({
+      descriptions: 0,
+      code: 0,
+      remaining: 0,
+    });
     expect(emb.calls).toHaveLength(1);
     const [q] = await emb.embed(["adds two numbers sum add"], "query");
     expect(knn(store, "vec_descriptions", q as Float32Array, 1)[0]?.contentKey).toBe("k1:p1");
   });
 
-  it("embeds normalized code of function-like symbols with stmtCount >= 6, once per contentKey", async () => {
+  it("embeds normalized code of function-like symbols with stmtCount >= 3, once per contentKey", async () => {
     const small = "export function tiny(a: number) {\n  return a + 1;\n}\n";
     const root = indexFiles({
       "src/a.ts": BIG("alpha") + small,
@@ -229,7 +240,7 @@ describe("embedPending", () => {
     });
     const emb = fakeEmbedder();
     const r = await embedPending(store, { embedder: emb, root });
-    expect(r).toEqual({ descriptions: 0, code: 2 });
+    expect(r).toMatchObject({ descriptions: 0, code: 2, remaining: 0, belowFloor: 1 });
     const texts = emb.calls.flat();
     expect(texts).toHaveLength(2);
     for (const t of texts) {
@@ -246,14 +257,19 @@ describe("embedPending", () => {
     expect((storedKeys(store, "vec_code") as Set<string>).has(key)).toBe(true);
   });
 
-  it("skips code when no root is given and honours the limit and batches of 32", async () => {
+  it("skips code when no root is given and honours the limit and batches of the default size", async () => {
     for (let i = 0; i < 70; i++)
       addDescription(`k${String(i).padStart(2, "0")}:p1`, `Does thing ${i}.`, ["t"]);
     const emb = fakeEmbedder();
-    expect(await embedPending(store, { embedder: emb })).toEqual({ descriptions: 70, code: 0 });
-    expect(emb.calls.map((c) => c.length)).toEqual([32, 32, 6]);
+    expect(await embedPending(store, { embedder: emb })).toMatchObject({ descriptions: 70, code: 0 });
+    expect(emb.calls.map((c) => c.length)).toEqual([8, 8, 8, 8, 8, 8, 8, 8, 6]);
     for (let i = 70; i < 90; i++) addDescription(`k${i}:p1`, `Does thing ${i}.`, ["t"]);
-    expect(await embedPending(store, { embedder: emb, limit: 5 })).toEqual({ descriptions: 5, code: 0 });
+    expect(await embedPending(store, { embedder: emb, limit: 5 })).toMatchObject({
+      descriptions: 5,
+      code: 0,
+      remainingDescriptions: 15,
+      stoppedBy: "limit",
+    });
   });
 
   it("changing the embedding model rebuilds every vector", async () => {
@@ -264,7 +280,7 @@ describe("embedPending", () => {
     expect(storedKeys(store, "vec_code").size).toBe(1);
     const two = fakeEmbedder(16, "model/two");
     const r = await embedPending(store, { embedder: two, root });
-    expect(r).toEqual({ descriptions: 1, code: 1 });
+    expect(r).toMatchObject({ descriptions: 1, code: 1 });
     expect(store.getMeta("embed_model")).toBe("model/two");
     expect(store.getMeta("embed_dim")).toBe("16");
     expect(two.calls.flat()).toHaveLength(2);
@@ -273,9 +289,10 @@ describe("embedPending", () => {
   it("offline embedder (zeros): returns zeros, stores nothing, consumers see no vectors", async () => {
     addDescription("k1:p1", "Adds two numbers.", ["sum"]);
     const root = indexFiles({ "src/a.ts": BIG("alpha") });
-    expect(await embedPending(store, { embedder: offlineEmbedder(), root })).toEqual({
+    expect(await embedPending(store, { embedder: offlineEmbedder(), root })).toMatchObject({
       descriptions: 0,
       code: 0,
+      stoppedBy: "unavailable",
     });
     expect(storedKeys(store, "vec_descriptions").size).toBe(0);
     expect(storedKeys(store, "vec_code").size).toBe(0);
@@ -302,5 +319,143 @@ describe("descriptionText", () => {
     expect(descriptionText("Does x.", '["a","b"]')).toBe("Does x. a b");
     expect(descriptionText("Does x.", "a b")).toBe("Does x. a b");
     expect(descriptionText("Does x.", null)).toBe("Does x.");
+  });
+});
+
+/** A function with `n` statements (`let`, `n - 2` additions, `return`) and a unique body (`tag` makes the hash differ). */
+function fn(name: string, n: number, opts: { exported?: boolean; tag?: string } = {}): string {
+  const lines = Array.from(
+    { length: Math.max(0, n - 2) },
+    (_, i) => `  total += ${i} * ${JSON.stringify(opts.tag ?? name)}.length;`,
+  );
+  return `${opts.exported === false ? "" : "export "}function ${name}(items: number[]) {\n  let total = 0;\n${lines.join("\n")}\n  return total;\n}\n`;
+}
+
+describe("embedPending: lazy, bounded, resumable", () => {
+  it("MIN_CODE_STMTS is 3 and functions below it are not embedded, with the count reported", async () => {
+    expect(MIN_CODE_STMTS).toBe(3);
+    const root = indexFiles({
+      "src/a.ts": fn("two", 2) + fn("three", 3) + fn("one", 1),
+    });
+    const emb = fakeEmbedder();
+    const r = await embedPending(store, { embedder: emb, root });
+    expect(r).toMatchObject({ code: 1, belowFloor: 2, remaining: 0 });
+    expect(emb.calls.flat()).toHaveLength(1);
+  });
+
+  it("cuts the normalized code to CODE_EMBED_MAX_CHARS", async () => {
+    expect(CODE_EMBED_MAX_CHARS).toBe(1500);
+    const root = indexFiles({ "src/a.ts": fn("huge", 400) + fn("short", 4) });
+    const emb = fakeEmbedder();
+    await embedPending(store, { embedder: emb, root });
+    const lens = emb.calls.flat().map((t) => t.length);
+    expect(Math.max(...lens)).toBe(CODE_EMBED_MAX_CHARS);
+    expect(Math.min(...lens)).toBeLessThan(CODE_EMBED_MAX_CHARS);
+  });
+
+  it("orders work by backlog priority: entry and exported first, local last", async () => {
+    const root = indexFiles({
+      "src/a.ts": fn("localOne", 4, { exported: false }),
+      "src/lib/b.ts": fn("exportedOne", 5),
+      "src/routes/r.ts": fn("routeOne", 6, { exported: false }),
+    });
+    const emb = fakeEmbedder();
+    await embedPending(store, { embedder: emb, root, batchSize: 1 });
+    // `+=` lines tell the functions apart: exported 3, route 4, local 2
+    const counts = emb.calls.flat().map((t) => (t.match(/\+=/g) ?? []).length);
+    expect(counts).toEqual([3, 4, 2]); // both priority 0 (path order), then the local function
+  });
+
+  it("is resumable: an error mid-run keeps committed batches and the next run embeds only the rest", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 7; i++) files[`src/f${i}.ts`] = fn(`f${i}`, 4, { tag: `t${i}` });
+    const root = indexFiles(files);
+    const good = fakeEmbedder();
+    let calls = 0;
+    const flaky: Embedder = {
+      ...good,
+      embed: async (t, k) => {
+        if (++calls === 3) throw new Error("boom");
+        return good.embed(t, k);
+      },
+    };
+    await expect(embedPending(store, { embedder: flaky, root, batchSize: 2 })).rejects.toThrow("boom");
+    expect(storedKeys(store, "vec_code").size).toBe(4); // two committed batches of 2
+    const again = fakeEmbedder();
+    const r = await embedPending(store, { embedder: again, root, batchSize: 2 });
+    expect(r).toMatchObject({ code: 3, remaining: 0, stoppedBy: "complete" });
+    expect(again.calls.flat()).toHaveLength(3);
+    expect(storedKeys(store, "vec_code").size).toBe(7);
+  });
+
+  it("reports progress after every committed batch", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 5; i++) files[`src/f${i}.ts`] = fn(`f${i}`, 4, { tag: `t${i}` });
+    const root = indexFiles(files);
+    const seen: { done: number; total: number; phase: string }[] = [];
+    await embedPending(store, {
+      embedder: fakeEmbedder(),
+      root,
+      batchSize: 2,
+      onProgress: (p) => seen.push({ done: p.done, total: p.total, phase: p.phase }),
+    });
+    expect(seen).toEqual([
+      { done: 2, total: 5, phase: "code" },
+      { done: 4, total: 5, phase: "code" },
+      { done: 5, total: 5, phase: "code" },
+    ]);
+  });
+
+  it("--budget: stops starting batches once the time budget is used", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 10; i++) files[`src/f${i}.ts`] = fn(`f${i}`, 4, { tag: `t${i}` });
+    const root = indexFiles(files);
+    let clock = 0;
+    const base = fakeEmbedder();
+    const slow: Embedder = {
+      ...base,
+      embed: async (t, k) => {
+        clock += 100; // each batch "takes" 100 ms
+        return base.embed(t, k);
+      },
+    };
+    const r = await embedPending(store, {
+      embedder: slow,
+      root,
+      batchSize: 1,
+      timeBudgetMs: 250,
+      now: () => clock,
+    });
+    expect(r.stoppedBy).toBe("budget");
+    expect(r.code).toBe(2); // 0 + 100 <= 250, 100 + 100 <= 250, 200 + 100 > 250
+    expect(r.remaining).toBe(8);
+    expect(clock).toBeLessThanOrEqual(250);
+  });
+
+  it("stops on an abort signal after the batch in flight and keeps what it stored", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 6; i++) files[`src/f${i}.ts`] = fn(`f${i}`, 4, { tag: `t${i}` });
+    const root = indexFiles(files);
+    const ac = new AbortController();
+    const r = await embedPending(store, {
+      embedder: fakeEmbedder(),
+      root,
+      batchSize: 2,
+      signal: ac.signal,
+      onProgress: (p) => {
+        if (p.done >= 2) ac.abort();
+      },
+    });
+    expect(r).toMatchObject({ code: 2, remaining: 4, stoppedBy: "aborted" });
+    expect(storedKeys(store, "vec_code").size).toBe(2);
+  });
+
+  it("does not load the shared model when nothing is pending", async () => {
+    const { resetEmbedderForTests } = await import("./index.js");
+    resetEmbedderForTests();
+    const root = indexFiles({ "src/a.ts": fn("tiny", 1) });
+    // No embedder passed and no pending work: must return without calling getEmbedder (which would warn or download).
+    const r = await embedPending(store, { root });
+    expect(r).toMatchObject({ code: 0, descriptions: 0, remaining: 0, belowFloor: 1 });
   });
 });

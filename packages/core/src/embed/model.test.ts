@@ -125,6 +125,7 @@ describe.skipIf(!cached)("real model (jina-embeddings-v2-base-code, q8)", () => 
     expect(desc).toBeGreaterThanOrEqual(0.9 - 0.02);
   }, 120_000);
 
+  // Short snippets only (25.7 ms each): real bodies cost more, see bench.test.ts for realistic sizes.
   // Opt-in (about 30 s): GANTRY_EMBED_BENCH=1 pnpm vitest run packages/core/src/embed/model.test.ts
   it.skipIf(process.env.GANTRY_EMBED_BENCH !== "1")(
     "embeds 1,000 code snippets in under 30 s (acceptance)",

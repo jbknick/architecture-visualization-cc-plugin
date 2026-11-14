@@ -50,7 +50,11 @@ describe("sqlite-vec unavailable (fail open)", () => {
         "INSERT INTO descriptions(content_key, behavior, search_terms) VALUES ('k:p1', 'Does x.', '[\"x\"]')",
       )
       .run();
-    expect(await embedPending(store, { embedder: offlineEmbedder() })).toEqual({ descriptions: 0, code: 0 });
+    expect(await embedPending(store, { embedder: offlineEmbedder() })).toMatchObject({
+      descriptions: 0,
+      code: 0,
+      stoppedBy: "unavailable",
+    });
     expect(() => putVectors(store, "vec_code", [])).not.toThrow();
   });
 });

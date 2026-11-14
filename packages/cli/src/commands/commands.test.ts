@@ -92,6 +92,11 @@ async function fixture(name: "single-pkg" | "pnpm-turbo" | "nx") {
   return fx;
 }
 
+/** A function with 9 statements, so it is above the code-embedding floor. */
+const BIG_FN =
+  "export function sumPositive(xs: number[]) {\n  let total = 0;\n  for (const x of xs) {\n    if (x > 0) {\n      total += x;\n    }\n  }\n  const avg = total / xs.length;\n  return { total, avg };\n}\n" +
+  "export function sumNegative(xs: number[]) {\n  let total = 0;\n  for (const x of xs) {\n    if (x < 0) {\n      total -= x;\n    }\n  }\n  const avg = total / xs.length;\n  return { total, avg };\n}\n";
+
 describe("gantry init", () => {
   it("indexes fixtures/pnpm-turbo, prints a summary and exits 0 without touching the repo", async () => {
     const fx = await fixture("pnpm-turbo");
@@ -194,38 +199,76 @@ describe("bundled CLI: vector tables and embeddings", () => {
   const haveModel = existsSync(
     join(modelDir, "jinaai/jina-embeddings-v2-base-code/onnx/model_quantized.onnx"),
   );
+  it("does not embed by default: no model load, no vectors, no warning, even with no model cache", async () => {
+    const fx = await fixture("single-pkg");
+    writeFileSync(join(fx.dir, "src/embedme.ts"), BIG_FN);
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-m", "add embedme"]);
+    // A model dir that does not exist: any attempt to load the model would print a warning on stderr.
+    const t0 = Date.now();
+    const r = run(fx.dir, ["init"], { GANTRY_MODELS_DIR: join(dataDir, "no-models-here") });
+    const ms = Date.now() - t0;
+    expect(r.err).toBe("");
+    expect(r.code).toBe(0);
+    expect(ms).toBeLessThan(15_000);
+    const db = openBundleDb();
+    try {
+      expect(db.db.prepare("SELECT count(*) AS n FROM vec_code").get()).toEqual({ n: 0 });
+      expect(db.db.prepare("SELECT count(*) AS n FROM vec_descriptions").get()).toEqual({ n: 0 });
+    } finally {
+      db.close();
+    }
+  });
+
+  const eligibleCode = (db: Store): number =>
+    (
+      db.db
+        .prepare(
+          "SELECT count(DISTINCT exact_hash) AS n FROM symbols WHERE kind IN ('function','method','component','hook') AND stmt_count >= 3",
+        )
+        .get() as { n: number }
+    ).n;
+  const storedCode = (db: Store): number =>
+    (db.db.prepare("SELECT count(*) AS n FROM vec_code").get() as { n: number }).n;
+
   it.skipIf(!haveModel)(
-    "gantry init embeds code through the external transformers/onnxruntime packages",
+    "gantry init --embed and gantry embed use the external transformers/onnxruntime packages and resume",
     async () => {
       const fx = await fixture("single-pkg");
-      // The fixtures only hold tiny functions; add one with 6+ statements (committed, so it is indexed).
-      writeFileSync(
-        join(fx.dir, "src/embedme.ts"),
-        "export function sumPositive(xs: number[]) {\n  let total = 0;\n  for (const x of xs) {\n    if (x > 0) {\n      total += x;\n    }\n  }\n  const avg = total / xs.length;\n  return { total, avg };\n}\n",
-      );
+      writeFileSync(join(fx.dir, "src/embedme.ts"), BIG_FN);
       fx.git(["add", "-A"]);
       fx.git(["commit", "-m", "add embedme"]);
-      const r = run(fx.dir, ["init"], { GANTRY_EMBED: "1", GANTRY_MODELS_DIR: modelDir });
-      expect(r.err).toBe("");
-      expect(r.code).toBe(0);
-      const db = openBundleDb();
-      try {
-        // Only symbols with stmtCount >= 6 are embedded; the fixture must have at least one.
-        const eligible = (
-          db.db
-            .prepare(
-              "SELECT count(DISTINCT exact_hash) AS n FROM symbols WHERE kind IN ('function','method','component','hook') AND stmt_count >= 6",
-            )
-            .get() as { n: number }
-        ).n;
-        const stored = (db.db.prepare("SELECT count(*) AS n FROM vec_code").get() as { n: number }).n;
-        expect(eligible).toBeGreaterThan(0);
-        expect(stored).toBe(eligible);
-      } finally {
-        db.close();
-      }
+      const env = { GANTRY_MODELS_DIR: modelDir };
+      expect(run(fx.dir, ["init"], env).code).toBe(0);
+      let db = openBundleDb();
+      const eligible = eligibleCode(db);
+      expect(eligible).toBeGreaterThan(1);
+      expect(storedCode(db)).toBe(0);
+      db.close();
+
+      const first = run(fx.dir, ["embed", "--limit", "1", "--json"], env);
+      expect(first.code).toBe(0);
+      // Template descriptions are embedded before code, so one vector of either kind was stored.
+      const j1 = JSON.parse(first.out) as { descriptions: number; code: number; stoppedBy: string };
+      expect(j1.descriptions + j1.code).toBe(1);
+      expect(j1.stoppedBy).toBe("limit");
+
+      const second = run(fx.dir, ["embed", "--json"], env);
+      expect(second.code).toBe(0);
+      expect(JSON.parse(second.out)).toMatchObject({
+        remaining: 0,
+        stoppedBy: "complete",
+      });
+      db = openBundleDb();
+      expect(storedCode(db)).toBe(eligible);
+      db.close();
+
+      // `init --embed` on an already complete store embeds nothing more and prints the summary.
+      const again = run(fx.dir, ["init", "--embed"], env);
+      expect(again.code).toBe(0);
+      expect(again.out).toContain("Embedded 0 code");
     },
-    90_000,
+    120_000,
   );
 });
 
