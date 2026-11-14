@@ -42,6 +42,44 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
           </label>
         ))}
       </fieldset>
+      <section className="map3d-howto" aria-label="How to read this map">
+        <h3 className="panel-title">How to read it</h3>
+        <ul>
+          <li>
+            <span className="map3d-sw map3d-sw-island" aria-hidden="true" />
+            <span>
+              <strong>Island</strong> = one workspace. Size = number of functions. Colour = workspace, as in
+              the list below.
+            </span>
+          </li>
+          <li>
+            <svg className="map3d-sw map3d-sw-arrow" viewBox="0 0 26 10" aria-hidden="true">
+              <path d="M1 5 H17" stroke="currentColor" strokeWidth="2.4" fill="none" />
+              <path d="M16 0.8 L25 5 L16 9.2 Z" fill="currentColor" />
+            </svg>
+            <span>
+              <strong>Arrow A → B</strong> = A imports from B. Thicker = more imports; the number is the
+              import count.
+            </span>
+          </li>
+          <li>
+            <span className="map3d-sw map3d-sw-dot" aria-hidden="true" />
+            <span>
+              {level === "workspaces" && "Workspaces level: one sphere per workspace."}
+              {level === "dirs" && (
+                <>
+                  <strong>Sphere</strong> = folder (size = functions). Labels show name and functions.
+                </>
+              )}
+              {level === "files" && (
+                <>
+                  <strong>Sphere</strong> = file (size = functions), grouped by folder.
+                </>
+              )}
+            </span>
+          </li>
+        </ul>
+      </section>
       <label className="map3d-check">
         <input
           type="checkbox"

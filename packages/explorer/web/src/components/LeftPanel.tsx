@@ -29,7 +29,8 @@ export function LeftPanel({
   const Panel = viewId ? getFilterPanel(viewId) : null;
   // The project map's panel already lists the workspaces with their colours; the kind colours only matter once
   // functions are drawn.
-  const showKindLegend = viewId !== "project-map" || route?.level === "symbols";
+  // The 3D map has its own "how to read it" block and workspace list (kind colours never appear there).
+  const showKindLegend = viewId !== "map-3d" && (viewId !== "project-map" || route?.level === "symbols");
   return (
     <aside className={`left ${open ? "" : "is-collapsed"}`} aria-label="Filters">
       <button
