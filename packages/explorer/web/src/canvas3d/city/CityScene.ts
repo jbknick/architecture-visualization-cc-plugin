@@ -231,6 +231,8 @@ export class CityScene {
     el.addEventListener("pointerdown", this.onDown);
     el.addEventListener("pointerup", this.onUp);
     el.addEventListener("dblclick", this.onDbl);
+    el.addEventListener("webglcontextlost", this.onContextLost);
+    el.addEventListener("webglcontextrestored", this.onContextRestored);
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(host);
     this.resize();
@@ -351,6 +353,8 @@ export class CityScene {
     el.removeEventListener("pointerdown", this.onDown);
     el.removeEventListener("pointerup", this.onUp);
     el.removeEventListener("dblclick", this.onDbl);
+    el.removeEventListener("webglcontextlost", this.onContextLost);
+    el.removeEventListener("webglcontextrestored", this.onContextRestored);
     this.controls.dispose();
     this.clearCity();
     for (const o of [this.outline, this.hoverOutline]) {
@@ -358,6 +362,8 @@ export class CityScene {
     }
     this.outline.geometry.dispose();
     this.renderer.dispose();
+    // Give the context back now rather than at garbage collection: browsers cap live WebGL contexts.
+    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
     this.overlay.remove();
   }
@@ -599,9 +605,11 @@ export class CityScene {
     // Labels.
     this.buildLabels(city);
     this.buildFlags();
-    this.camera.near = city.extent * 0.01;
-    this.camera.far = city.extent * 24;
-    this.camera.updateProjectionMatrix();
+    // Zoom is bounded and the clip planes follow the camera every frame (see `updateClipping`): a fixed far plane
+    // with unbounded zoom clipped every mesh while the DOM labels stayed (#114).
+    this.controls.minDistance = city.extent * 0.02;
+    this.controls.maxDistance = city.extent * 12;
+    this.updateClipping();
     this.updateOutline(this.outline, this.selectedId);
     this.updateOutline(this.hoverOutline, this.hoverFile, true);
     this.applyEmphasis();
@@ -1175,6 +1183,24 @@ export class CityScene {
     this.dirty = true;
   }
 
+  /** Near and far planes that contain the whole city from wherever the camera is. */
+  private updateClipping(): void {
+    const E = this.city?.extent ?? 100;
+    const dist = this.camera.position.distanceTo(this.controls.target);
+    this.camera.near = Math.max(E * 0.001, Math.min(dist * 0.02, E * 0.01));
+    this.camera.far = dist + E * 4;
+    this.camera.updateProjectionMatrix();
+  }
+
+  private readonly onContextLost = (e: Event): void => {
+    e.preventDefault();
+  };
+
+  /** The restored drawing buffer is empty: draw again now, not at the next pointer move that changes the hover. */
+  private readonly onContextRestored = (): void => {
+    this.invalidate();
+  };
+
   private loop = (): void => {
     if (this.disposed) return;
     this.raf = requestAnimationFrame(this.loop);
@@ -1193,6 +1219,7 @@ export class CityScene {
     if (!this.dirty) return;
     this.dirty = false;
     const t0 = performance.now();
+    this.updateClipping();
     this.renderer.render(this.scene, this.camera);
     this.placeLabels();
     const ms = performance.now() - t0;

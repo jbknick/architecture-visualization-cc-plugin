@@ -11,10 +11,10 @@ test.use({
   launchOptions: { args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] },
 });
 
-// The default 3D style: the code city on the 2D map's ground plan. Mock-only large scenario (3 huge workspaces and
-// 8 tiny ones), never real repo data.
+// The code city (style=city; the settlements are the default since #114): the 2D map's ground plan in 3D. Mock-only
+// large scenario (3 huge workspaces and 8 tiny ones), never real repo data.
 async function openCity(page: Page, level: string, extra = ""): Promise<void> {
-  await page.goto(`/#/map-3d?level=${level}&scenario=large${extra}`);
+  await page.goto(`/#/map-3d?level=${level}&scenario=large&style=city${extra}`);
   await expect(page.getByTestId("map3d-canvas").locator("canvas")).toBeVisible();
   await expect(page.locator(".map3d[data-ready='true'][data-style='city']")).toBeVisible();
   await page.waitForTimeout(1500);
@@ -551,11 +551,11 @@ test("city, large scenario: hovering a workspace in the list shows its arches wi
   expect(pills).toContain("web → core: 410 imports");
 });
 
-test("city: the style switch is in the hash (islands) and remembered; city is the default and leaves no trace", async ({
+test("city: the style switch is in the hash (city, islands) and remembered; settlements are the default and leave no trace", async ({
   page,
 }) => {
   await openCity(page, "dirs");
-  await expect(page).not.toHaveURL(/style=/);
+  await expect(page).toHaveURL(/style=city/);
   await expect(page.getByLabel("City")).toBeChecked();
   await page.getByLabel("Islands").click();
   await expect(page).toHaveURL(/style=islands/);
@@ -565,8 +565,13 @@ test("city: the style switch is in the hash (islands) and remembered; city is th
   await page.goto("/#/map-3d?level=dirs&scenario=large");
   await page.reload();
   await expect(page.locator(".map3d[data-ready='true']:not([data-style])")).toBeVisible();
-  await page.getByLabel("City").click();
+  await page.getByLabel("Settlements").click();
   await expect(page).not.toHaveURL(/style=/);
+  await expect(page.locator(".map3d[data-ready='true'][data-style='settlements']")).toBeVisible({
+    timeout: 20_000,
+  });
+  await page.getByLabel("City").click();
+  await expect(page).toHaveURL(/style=city/);
   await expect(page.locator(".map3d[data-ready='true'][data-style='city']")).toBeVisible({ timeout: 20_000 });
 });
 

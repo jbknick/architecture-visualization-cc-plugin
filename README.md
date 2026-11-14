@@ -1,16 +1,16 @@
 # Claude Code Architecture Visualisation Plugin
 
-A Claude Code plugin that indexes a TypeScript repository into a structural graph (workspaces, folders, files, functions, and the imports, calls and renders between them) and shows it in a local browser app: a 2D project map, a 3D city, a caller graph for any function, and a list of duplicated code. Monorepos come first (pnpm, npm/yarn workspaces, Nx, Turborepo).
+A Claude Code plugin that indexes a TypeScript repository into a structural graph (workspaces, folders, files, functions, and the imports, calls and renders between them) and shows it in a local browser app: a 2D project map, a 3D landscape of settlements joined by roads, a caller graph for any function, and a list of duplicated code. Monorepos come first (pnpm, npm/yarn workspaces, Nx, Turborepo).
 
 ![The 2D project map at Workspaces level: boxes are workspaces, arrows are imports between them](docs/readme/project-map-workspaces.png)
 
 This is early development. The indexer, the command line and the explorer views below work today. Descriptions written by a model for the whole repo (the server side exists, see [MCP server](#mcp-server)), the duplicate warnings in Claude Code (the engine behind them exists, see below), the search and browse MCP tools, the Claude Code hooks and the installable plugin package are not built yet (see [Status](#status)). The command, package scope, MCP server name, plugin id and data directory use the short identifier `gantry`.
 
-The screenshots on this page are the real app. The larger ones come from the explorer's mock API with a synthetic "large monorepo" scenario (made-up workspace names, about 3,700 functions); the small ones come from the real server running on `fixtures/pnpm-turbo` in this repo. Nothing here comes from a private repository. Re-create them with `pnpm readme:media` (the PNGs are deterministic; the GIF is rewritten only with `--gif`).
+The screenshots on this page are the real app. The larger ones come from the explorer's mock API with a synthetic "large monorepo" scenario (made-up workspace names, about 3,700 functions); the small ones come from the real server running on `fixtures/pnpm-turbo` in this repo. Nothing here comes from a private repository. Re-create them with `pnpm readme:media` (the PNGs are deterministic; the GIFs are rewritten only with `--gif`).
 
 ## What you can see
 
-![Switching the 2D levels, then orbiting the 3D city](docs/readme/explorer-tour.gif)
+![Switching the 2D levels, then the 3D settlements with their traffic](docs/readme/explorer-tour.gif)
 
 ### 2D project map
 
@@ -34,13 +34,33 @@ There is also a dark theme, which follows the browser's colour scheme:
 
 ![Project map, dark theme](docs/readme/project-map-dark.png)
 
-### 3D city
+### 3D settlements
 
-The same layout seen from an angle. Each district is a workspace and its ground area is its function count. The arches between districts are the imports, coloured by the importing workspace, with the number of importing files on them. Orbit with the mouse; "Top view" gives the 2D layout from above, and "Islands" is an alternative rendering.
+The 3D map shows the repo as a landscape. Each workspace is a settlement, and its size sets the tier: **village** (cottages, fields, a windmill), **town** (houses inside a wall, a church), **city** (blocks, cranes) or **metropolis** (a core of towers with suburbs round it). Tiers are ranked within the repo, and a workspace with fewer than 20 functions is always a village. Every file is one building: taller means more functions, wider means more lines. Its shape comes from the tier and from what the file is (a dome for a test, a water tower for config, a shop awning for a component, a columned porch for a route). Roofs and kerbs take the workspace's colour, as in the 2D map. Imports between workspaces are drawn as roads on the ground: a dirt lane for a few imports, a road, or a dual-carriageway highway for the heaviest. Vehicles and yellow arrows travel from the importing workspace to the imported one, and more imports means more traffic. The label on a road reads `A → B N`: A imports from B N times. The motion stops with "Pause life", stops when the tab is hidden, and is off when the system asks for reduced motion.
+
+![3D settlements: a metropolis, two cities, walled towns and villages, joined by roads and highways](docs/readme/settlements.png)
+
+"Street level" puts the camera in one of the metropolis's avenues, and clicking a workspace in the list flies to it:
+
+![Street level in the metropolis](docs/readme/settlements-street.png)
+
+![A walled town with its church, roads and traffic](docs/readme/settlements-town.png)
+
+![Traffic on the roads round a city](docs/readme/settlements-traffic.gif)
+
+In the dark theme it is night, with lit windows and street lights:
+
+![3D settlements at night](docs/readme/settlements-dark.png)
+
+The pnpm-turbo fixture: five small workspaces, so five villages.
+
+![The pnpm-turbo fixture as settlements](docs/readme/fixture-settlements.png)
+
+The older renderings are still one click away. "City" stands the 2D layout up in 3D: each district is a workspace with its ground area as its function count, and arches between districts carry the import counts. "Islands" is the first 3D rendering.
 
 ![3D city, Workspaces level](docs/readme/city-workspaces.png)
 
-At Files level every file is a building and its height is its function count. The numbered flags mark the largest files, matching the list on the left.
+At Files level of the city every file is a building and its height is its function count. The numbered flags mark the largest files, matching the list on the left.
 
 ![3D city, Files level, with numbered flags](docs/readme/city-files.png)
 
@@ -111,7 +131,7 @@ Progress by milestone. Issue lists are on the [milestones page](https://github.c
 | ---------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [M0 Spikes](https://github.com/jbknick/architecture-visualization-cc-plugin/milestone/1)             | Done, verdict GO | Headless Claude worker, oxc import graph, embedding model and description quality were measured. See [`docs/spikes/GO-NO-GO.md`](docs/spikes/GO-NO-GO.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | [M1 Structural graph](https://github.com/jbknick/architecture-visualization-cc-plugin/milestone/2)   | Done             | Workspace detection, file discovery, parsing, import resolution, hashing, SQLite store, `init`, `heal`, git hooks, search/node/usage/config. On a private TypeScript monorepo (1,531 files, 9,042 symbols, 41,817 edges): 0 parse errors, 0.28% of repo-internal imports unresolved, a cold index in about 7 s, identical output across runs. Details in [`docs/milestones/M1.md`](docs/milestones/M1.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| [M3 Explorer](https://github.com/jbknick/architecture-visualization-cc-plugin/milestone/4)           | Partly done      | Built: local server with a token, the 2D project map (four detail levels), the 3D city and islands, the function caller graph, the duplicates view (ranked groups, side-by-side source, "not a duplicate"), search, inspector, light and dark themes. Not built: duplicate badges on the maps, pages view, feature slices.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| [M3 Explorer](https://github.com/jbknick/architecture-visualization-cc-plugin/milestone/4)           | Partly done      | Built: local server with a token, the 2D project map (four detail levels), the 3D settlements (with the city and islands as alternative styles), the function caller graph, the duplicates view (ranked groups, side-by-side source, "not a duplicate"), search, inspector, light and dark themes. Not built: duplicate badges on the maps, pages view, feature slices.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | [M2 Reuse guard](https://github.com/jbknick/architecture-visualization-cc-plugin/milestone/3)        | In progress      | Built: the description backlog and template descriptions, the local embedding step (`gantry embed`), the duplicate engine (exact, near, code-vector and semantic tiers, plus `similar_to` links) with the explorer's Duplicates view, and the deterministic reuse advice (import it, add the dependency, export or move it, undeclared-import check). The description checks, and the `gantry` MCP server with lazy refresh and two describer tools (claim a batch of functions, submit descriptions), and the optional pre-commit describer (`precommit.mode` `timeboxed` or `strict`; runs `claude -p` headless, checks every description, logs usage). Not built: the describer agent that calls those tools, a command or hook that reports duplicates, the search, browse, similar-code and impact MCP tools, Claude Code hooks, plugin packaging and skills. |
 | [M4 Live working graph](https://github.com/jbknick/architecture-visualization-cc-plugin/milestone/5) | Not started      | The explorer updating as files change.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | [M5 Code review](https://github.com/jbknick/architecture-visualization-cc-plugin/milestone/6)        | Not started      | Blast radius of a change or pull request.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -153,7 +173,7 @@ pnpm install
 pnpm build    # tsc -b && tsup && the explorer web build; writes plugin/dist/
 pnpm check    # biome + tsc + vitest, the local quality gate
 pnpm fmt      # apply Biome fixes
-pnpm readme:media   # regenerate the screenshots in docs/readme/ (add --gif to redo the GIF too)
+pnpm readme:media   # regenerate the screenshots in docs/readme/ (add --gif to redo the GIFs too)
 ```
 
 [`docs/SPEC.md`](docs/SPEC.md) holds the contracts and the repo layout, and [`CLAUDE.md`](CLAUDE.md) the contribution rules. The explorer's own notes, including how to run it against the mock API, are in [`packages/explorer/web/README.md`](packages/explorer/web/README.md). `pnpm readme:media` needs Chromium for Playwright (`pnpm --filter @gantry/explorer exec playwright install chromium`).
