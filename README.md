@@ -6,7 +6,7 @@ A Claude Code plugin that indexes a TypeScript repository into a structural grap
 
 This is early development. The indexer, the command line and the explorer views below work today. Descriptions written by a model, the duplicate warnings in Claude Code (the engine behind them exists, see below), the MCP tools, the Claude Code hooks and the installable plugin package are not built yet (see [Status](#status)). The command, package scope, MCP server name, plugin id and data directory use the short identifier `gantry`.
 
-The screenshots on this page are the real app. The larger ones come from the explorer's mock API with a synthetic "large monorepo" scenario (made-up workspace names, about 3,700 functions); the small ones come from the real server running on `fixtures/pnpm-turbo` in this repo. Nothing here comes from a private repository. Re-create them with `pnpm readme:media`.
+The screenshots on this page are the real app. The larger ones come from the explorer's mock API with a synthetic "large monorepo" scenario (made-up workspace names, about 3,700 functions); the small ones come from the real server running on `fixtures/pnpm-turbo` in this repo. Nothing here comes from a private repository. Re-create them with `pnpm readme:media` (the PNGs are deterministic; the GIF is rewritten only with `--gif`).
 
 ## What you can see
 
@@ -131,7 +131,7 @@ pnpm install
 pnpm build    # tsc -b && tsup && the explorer web build; writes plugin/dist/
 pnpm check    # biome + tsc + vitest, the local quality gate
 pnpm fmt      # apply Biome fixes
-pnpm readme:media   # regenerate the screenshots and GIF in docs/readme/
+pnpm readme:media   # regenerate the screenshots in docs/readme/ (add --gif to redo the GIF too)
 ```
 
 [`docs/SPEC.md`](docs/SPEC.md) holds the contracts and the repo layout, and [`CLAUDE.md`](CLAUDE.md) the contribution rules. The explorer's own notes, including how to run it against the mock API, are in [`packages/explorer/web/README.md`](packages/explorer/web/README.md). `pnpm readme:media` needs Chromium for Playwright (`pnpm --filter @gantry/explorer exec playwright install chromium`).

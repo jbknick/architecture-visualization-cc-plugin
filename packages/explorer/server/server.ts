@@ -132,7 +132,7 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(data);
 }
 
-const PLACEHOLDER = `<!doctype html><meta charset="utf-8"><title>Gantry</title><body style="font-family:system-ui;padding:2rem"><h1>Gantry explorer</h1><p>The explorer UI is not built yet. The JSON API is available under <code>/api/</code>.</p>`;
+const PLACEHOLDER = `<!doctype html><meta charset="utf-8"><title>Claude Code Architecture Visualisation Plugin</title><body style="font-family:system-ui;padding:2rem"><h1>Claude Code Architecture Visualisation Plugin</h1><p>The explorer UI is not built yet. The JSON API is available under <code>/api/</code>.</p>`;
 
 function serveStatic(res: ServerResponse, staticDir: string | undefined, pathname: string): void {
   const respondPlaceholder = () => {
