@@ -292,7 +292,18 @@ describe("(2) -> (4): server/client boundary", () => {
     });
   });
 
-  it("parses the directive and stores a marker the advice can read", () => {
+  it("stores the directive on the file row and emits no self import edge", () => {
+    expect(ix.store.effectiveFile("file:apps/api/src/client.tsx")?.directives).toEqual(["use client"]);
+    expect(ix.store.effectiveFile("file:apps/api/src/server.ts")?.directives).toBeUndefined();
+    const selfImports = ix.store.effectiveEdges({ kind: ["imports"] }).filter((e) => e.src === e.dst);
+    expect(selfImports).toEqual([]);
+    const raw = ix.store.db
+      .prepare("SELECT COUNT(*) AS n FROM edges WHERE kind = 'imports' AND src = dst")
+      .get();
+    expect(raw).toEqual({ n: 0 });
+  });
+
+  it("parses the directive the indexer stores", () => {
     expect(parseSource("a.tsx", '"use client";\nexport const a = 1;\n').directives).toEqual(["use client"]);
     expect(parseSource("a.ts", "export const a = 1;\n").directives).toBeUndefined();
     expect(

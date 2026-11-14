@@ -93,6 +93,8 @@ export interface FileRecord {
   contentHash: string;
   mtimeMs: number;
   deleted: boolean;
+  /** Leading directive prologue strings (`"use client"`). Absent or empty means none; rows indexed before migration v3 have none until re-indexed. */
+  directives?: string[];
 }
 /** One row of `fts_symbols` (the symbol id is the key passed to `fts.upsert`). */
 export interface FtsRow {
