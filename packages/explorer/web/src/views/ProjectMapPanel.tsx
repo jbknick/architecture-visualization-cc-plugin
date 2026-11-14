@@ -190,7 +190,8 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
               </>
             ) : (
               <p className="muted">
-                Showing the whole repo. Double-click a workspace, folder or file to look inside it.
+                {ui.zoomedInto ? `Zoomed into ${ui.zoomedInto}. ` : "Showing the whole repo. "}
+                Double-click a workspace, folder or file to look inside it.
               </p>
             )}
           </section>

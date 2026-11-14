@@ -4,9 +4,11 @@ import { api, type Filters, type GraphNode } from "../api.ts";
 import type { CanvasProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
+import { getBool } from "../views/filterUtils.ts";
 import { GROUP_KIND, kindTier, type TreeNode } from "./hierarchy.ts";
 import { Legend } from "./Legend.tsx";
 import { runLayout } from "./layoutClient.ts";
+import { MapKey } from "./MapKey.tsx";
 import {
   type Camera,
   type CellLink,
@@ -14,13 +16,22 @@ import {
   distanceToPolyline,
   drawMap,
   type EdgeHit,
+  locatePath,
   pickCell,
 } from "./mapDraw.ts";
-import { worldRectOf } from "./mapGeom.ts";
+import { rootRect, worldRectOf } from "./mapGeom.ts";
 import { DEFAULT_VIEWPORT, FIT_INSETS } from "./mapLayout.ts";
-import { useMapView } from "./mapView.ts";
+import { mapView, useMapView } from "./mapView.ts";
 import { hashPositions } from "./prng.ts";
-import { brightSet, buildScene, layoutInputFor, type Scene, selectionLinks } from "./scene.ts";
+import {
+  brightSet,
+  buildScene,
+  folderTitle,
+  layoutInputFor,
+  nodeTitle,
+  type Scene,
+  selectionLinks,
+} from "./scene.ts";
 import { type CanvasTheme, readTheme } from "./style.ts";
 import type { LayoutResult, Rect } from "./types.ts";
 import { type Level, levelForRatio } from "./zoom.ts";
@@ -39,6 +50,15 @@ interface Tooltip {
 }
 
 const MAX_SCALE = 90;
+/** The camera counts as zoomed in past this multiple of the fit zoom (the breadcrumb shows). */
+const ZOOMED_PAST_FIT = 1.12;
+/** Folder strips stick this far from the top while the breadcrumb is shown (it sits below the List/Graph toggle). */
+const STICKY_BELOW_CRUMB = 74;
+
+interface Crumb {
+  index: number;
+  label: string;
+}
 
 /** Debug text (layout strategy, timing, zoom level) is shown only with `?debug=1` or the `gantry.debug` flag. */
 export function debugEnabled(): boolean {
@@ -129,6 +149,7 @@ export function TreemapCanvas({
   const [level, setLevel] = useState<Level>("far");
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
   const [tick, setTick] = useState(0);
+  const [crumbs, setCrumbs] = useState<Crumb[] | null>(null);
   const layoutViewport = useRef<{ w: number; h: number } | null>(null);
   const ui = useMapView();
   const debug = useMemo(debugEnabled, []);
@@ -250,9 +271,12 @@ export function TreemapCanvas({
       titles: new Map(),
       titleTexts: new Map(),
       pills: [],
+      labels: [],
     };
     let raf = 0;
     let anim = 0;
+    let stickyTop = 0;
+    let crumbKey = "";
     let hoverEdge: EdgeHit | null = null;
     /** Where the running camera animation ends; repeated zoom steps build on it, not on the half-way state. */
     let animTarget: Camera | null = null;
@@ -304,7 +328,32 @@ export function TreemapCanvas({
         bright: l.bright,
         links: l.links,
         hoverEdge: l.hoverEdge,
+        stickyTop,
       });
+      // "You are here": the workspace and folders at the centre of the canvas, while zoomed in or when the
+      // workspace title has scrolled out of view.
+      const path = locatePath(scene, geo, cam, w / 2, h / 2);
+      let shown: Crumb[] | null = null;
+      if (path.length > 0) {
+        const ws = rootRect(geo, path[0] as number, cam);
+        const titleOut = ws.y < -4 || ws.x < -4;
+        if (cam.scale > fitScale * ZOOMED_PAST_FIT || titleOut)
+          shown = path.slice(0, 4).map((i, k) => ({
+            index: i,
+            label: k === 0 ? nodeTitle(scene, i) : folderTitle(scene, i),
+          }));
+      }
+      const nextKey = shown ? shown.map((c) => `${c.index}:${c.label}`).join("|") : "";
+      if (nextKey !== crumbKey) {
+        crumbKey = nextKey;
+        setCrumbs(shown);
+        mapView.setZoomedInto(shown ? shown.map((c) => c.label).join(" › ") : null);
+      }
+      const nextSticky = shown ? STICKY_BELOW_CRUMB : 0;
+      if (nextSticky !== stickyTop) {
+        stickyTop = nextSticky;
+        requestDraw();
+      }
       const next = levelForRatio(fitScale / cam.scale);
       if (box.dataset.level !== next) {
         box.dataset.level = next;
@@ -422,8 +471,9 @@ export function TreemapCanvas({
       const lines: string[] = [];
       if (n.kind === GROUP_KIND) {
         const paths = n.children.map((c) => scene.nodes[c]?.path ?? plain((tree.nodes[c] as TreeNode).id));
+        const withFolders = n.children.some((c) => kindTier((tree.nodes[c] as TreeNode).kind) === 1);
         return [
-          `${paths.length} loose ${paths.length === 1 ? "file" : "files"} next to the folders`,
+          `${paths.length} ${withFolders ? "folders and files" : "loose files"} next to the main folder`,
           ...paths.slice(0, 12),
           ...(paths.length > 12 ? [`and ${paths.length - 12} more`] : []),
         ];
@@ -549,9 +599,11 @@ export function TreemapCanvas({
         titles: Object.fromEntries([...last.titles].map(([i, where]) => [scene.nodes[i]?.id, where])),
         titleTexts: Object.fromEntries([...last.titleTexts].map(([i, t]) => [scene.nodes[i]?.id, t])),
         pills: last.pills,
+        crumb: crumbKey === "" ? null : crumbKey.split("|").map((c) => c.slice(c.indexOf(":") + 1)),
+        stickyTop,
         edges: last.edgeHits.map((e) => {
           const mid = e.pts[Math.floor(e.pts.length / 2)] as [number, number];
-          return { key: e.key, x: mid[0], y: mid[1], weight: e.weight };
+          return { key: e.key, x: mid[0], y: mid[1], weight: e.weight, route: e.route, width: e.width };
         }),
         regions: last.boxes.map((b) => ({ id: scene.nodes[b.index]?.id, x: b.x, y: b.y, w: b.w, h: b.h })),
       });
@@ -585,6 +637,7 @@ export function TreemapCanvas({
 
     return () => {
       delete box.dataset.ready;
+      mapView.setZoomedInto(null);
       cancelAnimationFrame(raf);
       cancelAnimationFrame(anim);
       clearTimeout(relayoutTimer);
@@ -653,7 +706,7 @@ export function TreemapCanvas({
   const scheme = theme.scheme ?? currentScheme();
 
   return (
-    <div className="gc" ref={wrapRef} data-testid="graph-canvas">
+    <div className="gc gc-map" ref={wrapRef} data-testid="graph-canvas">
       <canvas ref={canvasRef} className="gc-under" />
       <div
         ref={boxRef}
@@ -692,6 +745,27 @@ export function TreemapCanvas({
           Re-layout
         </button>
       </div>
+      {crumbs && (
+        <nav className="gc-crumb" aria-label="You are here" data-testid="map-crumb">
+          {crumbs.map((c, k) => (
+            <span key={c.index} style={{ display: "inline-flex", alignItems: "center" }}>
+              {k > 0 && (
+                <span className="gc-crumb-sep" aria-hidden="true">
+                  ›
+                </span>
+              )}
+              <button
+                type="button"
+                title={`Zoom to ${c.label}`}
+                onClick={() => engine.current?.zoomTo(c.index)}
+              >
+                {c.label}
+              </button>
+            </span>
+          ))}
+        </nav>
+      )}
+      <MapKey level={route.level} hideTests={getBool(route.filters, "hideTests", true)} />
       {!panelLegend && <Legend scene={scene} scheme={scheme} level={level} />}
       {(error || busy || debug) && (
         <div className="gc-status" aria-live="polite">

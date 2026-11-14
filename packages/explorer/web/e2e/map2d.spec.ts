@@ -20,8 +20,9 @@ interface Probe {
   titles: Record<string, "inside" | "beside" | "hidden">;
   titleTexts: Record<string, string>;
   pills: { key: string; count: string; text: string }[];
+  crumb: string[] | null;
   regions: { id: string; x: number; y: number; w: number; h: number }[];
-  edges: { key: string; x: number; y: number; weight: number }[];
+  edges: { key: string; x: number; y: number; weight: number; route: [number, number][]; width: number }[];
 }
 
 async function probe(page: Page): Promise<Probe> {
@@ -89,8 +90,15 @@ for (const scheme of ["light", "dark"] as const) {
     await page.mouse.move(box.x + api.x + 10, box.y + api.y + 10);
     await page.mouse.wheel(0, -420);
     await page.waitForTimeout(500);
+    // Pan down into the folder: the workspace title scrolls out of view, folder strips stick to the top, and the
+    // breadcrumb says where the canvas centre is.
+    await page.mouse.move(box.x + 700, box.y + 520);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 560, box.y + 250, { steps: 10 });
+    await page.mouse.up();
     await page.mouse.move(2, 2);
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(400);
+    await expect(canvas(page).getByTestId("map-crumb")).toBeVisible();
     await page.screenshot({
       path: resolve(shots, `map-2d-large-zoomed${scheme === "dark" ? "-dark" : ""}.png`),
     });
@@ -128,9 +136,9 @@ test("large scenario: the whole diagram fits the canvas and every workspace titl
     expect(p.regions).toHaveLength(11);
     for (const r of p.regions) {
       expect(r.x, `${level} ${r.id}`).toBeGreaterThanOrEqual(0);
-      expect(r.y).toBeGreaterThanOrEqual(44 - 1); // below the strip with the controls
+      expect(r.y).toBeGreaterThanOrEqual(48 - 1); // below the strip with the controls
       expect(r.x + r.w).toBeLessThanOrEqual(box.width);
-      expect(r.y + r.h).toBeLessThanOrEqual(box.height - 34 + 1); // above the status chip
+      expect(r.y + r.h).toBeLessThanOrEqual(box.height - 52 + 1); // above the key
     }
     // Every title sits inside its box (a title that did not fit would be beside it or hidden).
     expect(Object.values(p.titles), level).toHaveLength(11);
@@ -162,7 +170,7 @@ test("large scenario: the diagram fills the canvas and the biggest workspace is 
     const wide = (x1 - x0) / box.width;
     const tall = (y1 - y0) / box.height;
     expect(Math.max(wide, tall), `${level}: ${wide.toFixed(2)} x ${tall.toFixed(2)}`).toBeGreaterThanOrEqual(
-      0.88,
+      0.85,
     );
     expect(wide * tall, level).toBeGreaterThanOrEqual(0.6);
     const biggest = Math.max(...regions.map((r) => r.w));
@@ -193,11 +201,11 @@ test("large scenario: hovering a workspace row outlines its box, clicking the ro
 test("large scenario: declared-only dependencies are hidden until the toggle is on", async ({ page }) => {
   await openLarge(page, "dirs");
   const before = (await probe(page)).edges.length;
-  expect(before).toBe(22); // the real import links only
+  expect(before).toBe(23); // the real import links only (api -> core and back are two arrows)
   await page.getByLabel("Show declared dependencies").check();
   await page.waitForTimeout(300);
   const after = (await probe(page)).edges.length;
-  expect(after).toBe(53); // plus the 31 declared-only ones
+  expect(after).toBe(54); // plus the 31 declared-only ones
   await page.getByLabel("Show declared dependencies").uncheck();
 });
 
@@ -267,6 +275,143 @@ test("large scenario: every count pill shows the import weight of its pair, neve
   await page.waitForTimeout(300);
   await check("core highlighted");
   await page.getByLabel("Show declared dependencies").uncheck();
+});
+
+test("large scenario: the key says what boxes, arrows and numbers mean, and can be collapsed", async ({
+  page,
+}) => {
+  await openLarge(page, "workspaces");
+  const key = canvas(page).getByTestId("map-key");
+  await expect(key).toBeVisible();
+  await expect(key).toContainText("Box = workspace (area = functions)");
+  await expect(key).toContainText("A → B = A imports from B");
+  await expect(key).toContainText("number = files importing · thicker = more");
+  await expect(key).toContainText("Tests hidden");
+  await expect(key).not.toContainText("Tiles = folders / files");
+  // At most two lines of text, in the bottom-left corner.
+  const lines = await key.locator(".gc-key-body > div").count();
+  expect(lines).toBeLessThanOrEqual(2);
+  const kb = await key.boundingBox();
+  const sb = await surface(page).boundingBox();
+  if (!kb || !sb) throw new Error("no key or canvas");
+  expect(kb.x - sb.x).toBeLessThan(20);
+  expect(sb.y + sb.height - (kb.y + kb.height)).toBeLessThan(20);
+  expect(kb.height).toBeLessThan(48);
+  await page.getByLabel("Hide tests").click();
+  await expect(key).not.toContainText("Tests hidden");
+  await page.getByLabel("Hide tests").click();
+  await expect(key).toContainText("Tests hidden");
+  await page.getByRole("radio", { name: "Folders" }).click();
+  await expect(key).toContainText("Tiles = folders / files (area = functions)");
+  await key.getByRole("button", { name: /Key/ }).click();
+  await expect(key.locator(".gc-key-body")).toHaveCount(0);
+  await key.getByRole("button", { name: /Key/ }).click();
+  await expect(key.locator(".gc-key-body")).toHaveCount(1);
+});
+
+test("large scenario: every arrow has its own count pill, opposite arrows run in separate lanes, no link crosses a box", async ({
+  page,
+}) => {
+  await openLarge(page, "workspaces");
+  const p = await probe(page);
+  expect(p.edges).toHaveLength(23);
+  // One pill per arrow, none overlapping another or a box.
+  expect(p.pills).toHaveLength(23);
+  for (const e of p.edges)
+    expect(
+      p.pills.some((x) => x.key === e.key),
+      e.key,
+    ).toBe(true);
+  const hit = (a: { x: number; y: number; w: number; h: number }, b: typeof a) =>
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const rects = p.pills as unknown as { key: string; x: number; y: number; w: number; h: number }[];
+  for (let i = 0; i < rects.length; i++) {
+    for (const r of p.regions) expect(hit(rects[i] as (typeof rects)[number], r), rects[i]?.key).toBe(false);
+    for (let j = i + 1; j < rects.length; j++)
+      expect(hit(rects[i] as (typeof rects)[number], rects[j] as (typeof rects)[number])).toBe(false);
+  }
+  // The two directions of api <-> core are two lanes at least 10px apart, each with its own pill and arrowhead.
+  const id = (n: string) => `ws:@acme-platform-monorepo/${n}`;
+  const fwd = p.edges.find((e) => e.key === `${id("api")}>${id("core")}`);
+  const back = p.edges.find((e) => e.key === `${id("core")}>${id("api")}`);
+  if (!fwd || !back) throw new Error("api <-> core arrows missing");
+  const dist = (x: number, y: number, pts: [number, number][]) => {
+    let best = Number.POSITIVE_INFINITY;
+    for (let k = 1; k < pts.length; k++) {
+      const [x0, y0] = pts[k - 1] as [number, number];
+      const [x1, y1] = pts[k] as [number, number];
+      const len2 = (x1 - x0) ** 2 + (y1 - y0) ** 2;
+      const t =
+        len2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - x0) * (x1 - x0) + (y - y0) * (y1 - y0)) / len2));
+      best = Math.min(best, Math.hypot(x - (x0 + t * (x1 - x0)), y - (y0 + t * (y1 - y0))));
+    }
+    return best;
+  };
+  for (const [x, y] of fwd.route) expect(dist(x, y, back.route)).toBeGreaterThanOrEqual(9.5);
+  expect(fwd.route.at(-1)).not.toEqual(back.route.at(-1));
+  // No link segment enters the interior of a workspace box other than its source and target, at any level.
+  for (const level of ["workspaces", "dirs", "files"]) {
+    await openLarge(page, level);
+    const q = await probe(page);
+    for (const e of q.edges) {
+      const [from, to] = e.key.split(">") as [string, string];
+      for (const r of q.regions) {
+        if (r.id === from || r.id === to) continue;
+        for (let k = 1; k < e.route.length; k++) {
+          const [x0, y0] = e.route[k - 1] as [number, number];
+          const [x1, y1] = e.route[k] as [number, number];
+          const lo = { x: Math.min(x0, x1), y: Math.min(y0, y1) };
+          const hi = { x: Math.max(x0, x1), y: Math.max(y0, y1) };
+          // Segments are axis-aligned: the interior test is a rectangle overlap.
+          const inside = lo.x < r.x + r.w - 1 && hi.x > r.x + 1 && lo.y < r.y + r.h - 1 && hi.y > r.y + 1;
+          expect(inside, `${level}: ${e.key} through ${r.id}`).toBe(false);
+        }
+      }
+    }
+  }
+});
+
+test("large scenario: zoomed in, a breadcrumb names the workspace and folder, and the left panel says so", async ({
+  page,
+}) => {
+  await openLarge(page, "files");
+  await expect(canvas(page).getByTestId("map-crumb")).toHaveCount(0);
+  await expect(page.getByText("Showing the whole repo.")).toBeVisible();
+  await zoomTo(page, "dir:apps/api/src/routes");
+  const crumb = canvas(page).getByTestId("map-crumb");
+  await expect(crumb).toBeVisible();
+  await expect(crumb).toContainText("api");
+  await expect(crumb).toContainText("routes");
+  await expect(page.getByText(/Zoomed into api › routes/)).toBeVisible();
+  // Clicking a crumb zooms to that box: the workspace crumb shows the whole workspace again.
+  const before = (await probe(page)).scale;
+  await crumb.getByRole("button", { name: "api" }).click();
+  await page.waitForTimeout(900);
+  expect((await probe(page)).scale).toBeLessThan(before);
+  // Fit goes back to the whole repo.
+  await page.getByRole("button", { name: "Fit" }).click();
+  await page.waitForTimeout(700);
+  await expect(canvas(page).getByTestId("map-crumb")).toHaveCount(0);
+  await expect(page.getByText("Showing the whole repo.")).toBeVisible();
+});
+
+test("large scenario: the controls have an opaque background and tiny workspaces show title and counts only", async ({
+  page,
+}) => {
+  await openLarge(page, "files");
+  const bg = await canvas(page)
+    .locator(".gc-controls")
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(bg).not.toBe("rgba(0, 0, 0, 0)");
+  expect(bg).not.toBe("transparent");
+  // A box under 160 x 90 on screen draws no tiles: hovering inside it gives the workspace, not a tile.
+  const { regions } = await probe(page);
+  const tiny = regions.find((r) => r.id === "ws:@acme-platform-monorepo/ui-kit");
+  const box = await surface(page).boundingBox();
+  if (!tiny || !box) throw new Error("ui-kit box missing");
+  expect(tiny.w).toBeLessThan(160);
+  await page.mouse.move(box.x + tiny.x + tiny.w / 2, box.y + tiny.y + tiny.h - 6);
+  await expect(page.getByRole("tooltip")).toContainText("workspace");
 });
 
 test("large scenario: the layout/timing chip appears only with ?debug=1", async ({ page }) => {

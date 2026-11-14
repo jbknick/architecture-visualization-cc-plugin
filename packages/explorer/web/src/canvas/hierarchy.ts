@@ -7,9 +7,9 @@ export const TIER_DIR = 1;
 export const TIER_FILE = 2;
 export const TIER_SYMBOL = 3;
 
-/** Kind of the synthetic cell that gathers the loose files next to a collapsed lone folder ("(root files)"). */
+/** Kind of the synthetic cell that gathers everything beside a dominant folder ("(other)", or "(root files)"). */
 export const GROUP_KIND = "group";
-/** A lone folder is lifted when the files beside it hold less than this share of the container's functions. */
+/** A folder is lifted when everything beside it holds at most this share of the container's functions. */
 export const LOOSE_SHARE = 0.1;
 
 export interface TreeNode {

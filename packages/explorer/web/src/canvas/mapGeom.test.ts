@@ -118,6 +118,9 @@ describe("picking is exact with screen-space headers", () => {
         if (scene.skipped[i]) continue;
         const r = screenRectOf(scene, geo, cam, i);
         if (Math.min(r.w, r.h) < 6) continue;
+        // Tiles of a tiny box (under 160 x 90 on screen) are not drawn, so they are not pickable either.
+        const root = screenRectOf(scene, geo, cam, (scene.tree.nodes[i] as TreeNode).root);
+        if (root.w < 160 || root.h < 90) continue;
         // The centre of a cell is the cell, or something drawn on top of it (its own children).
         const picked = pickCell(scene, geo, cam, r.x + r.w / 2, r.y + r.h / 2);
         expect(picked).not.toBeNull();

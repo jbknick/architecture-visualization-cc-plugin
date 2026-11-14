@@ -238,7 +238,7 @@ describe("map layout of a large monorepo (3 big workspaces, 8 tiny, scoped names
     const span = (lo: number, hi: number) => (hi - lo) * scale;
     const w = span(Math.min(...boxes.map((b) => b.x)), Math.max(...boxes.map((b) => b.x + b.w)));
     const h = span(Math.min(...boxes.map((b) => b.y)), Math.max(...boxes.map((b) => b.y + b.h)));
-    expect(Math.max(w / viewport.w, h / viewport.h)).toBeGreaterThanOrEqual(0.88);
+    expect(Math.max(w / viewport.w, h / viewport.h)).toBeGreaterThanOrEqual(0.85); // the key below and the controls above take 100px
   });
 
   it("gives a file with zero functions a thin but visible cell", async () => {
