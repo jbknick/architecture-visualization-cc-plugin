@@ -89,7 +89,7 @@ export const BUILTIN_EXCLUDES: readonly string[] = [
 
 function defaults(): GantryConfig {
   return {
-    precommit: { mode: "off", budgetMs: 8000, maxFunctions: 50 },
+    precommit: { mode: "off", budgetMs: 20000, maxFunctions: 50 },
     routing: {
       "describe.init": { model: "haiku", effort: "low" },
       "describe.sync": { model: "haiku", effort: "low" },
