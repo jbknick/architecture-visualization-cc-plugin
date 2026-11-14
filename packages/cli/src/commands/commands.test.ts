@@ -1,5 +1,13 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -126,5 +134,20 @@ describe("gantry index --dump", () => {
   it("rejects an invalid --layer with exit 1", async () => {
     const fx = await fixture("single-pkg");
     expect(run(fx.dir, ["index", "--layer", "nope"]).code).toBe(1);
+  });
+});
+
+describe("gantry heal", () => {
+  it("reports an incremental heal after a commit and a no-op afterwards", async () => {
+    const fx = await fixture("pnpm-turbo");
+    expect(run(fx.dir, ["init"]).code).toBe(0);
+    writeFileSync(join(fx.dir, "packages/utils/src/extra.ts"), "export const extra = 1;\n");
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-q", "-m", "extra"]);
+    const a = run(fx.dir, ["heal"]);
+    expect(a.code).toBe(0);
+    expect(a.out).toMatch(/^Healed 1 file \(incremental\) in \d+ ms$/m);
+    expect(run(fx.dir, ["heal"]).out).toMatch(/^Healed 0 files \(incremental\)/m);
+    expect(run(fx.dir, ["heal", "--from", "deadbeef"]).out).toMatch(/\(full re-index\)/);
   });
 });
