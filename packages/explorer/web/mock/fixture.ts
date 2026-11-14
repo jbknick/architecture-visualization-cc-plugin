@@ -800,6 +800,8 @@ interface M3Ws {
   id: string;
   name: string;
   kind: "app" | "package";
+  /** Workspace directory (the real server sends it as `path`). */
+  dir: string;
 }
 interface M3Data {
   ws: M3Ws[];
@@ -810,13 +812,15 @@ interface M3Data {
 }
 
 const M3_SMALL: M3Data = {
-  ws: M3_WS.map((w) => ({ id: `ws:${w.name}`, name: w.name, kind: w.kind })),
+  ws: M3_WS.map((w) => ({ id: `ws:${w.name}`, name: w.name, kind: w.kind, dir: WS_DIR[w.name] ?? "." })),
   files: m3Files,
   imports: m3Imports,
   declared: [],
 };
 
 const SCOPE = "@acme-platform-monorepo";
+/** A 31-character unscoped repo-root workspace name: labels must wrap or middle-ellipsize it. */
+const ROOT_PKG = "acme-platform-monorepo-root-app";
 const LARGE_SPEC: {
   name: string;
   kind: "app" | "package";
@@ -863,7 +867,7 @@ const LARGE_SPEC: {
   { name: `${SCOPE}/ui-kit`, kind: "package", dir: "packages/ui-kit", files: 5, fns: 12, dirs: ["src"] },
   { name: `${SCOPE}/db-client`, kind: "package", dir: "packages/db-client", files: 4, fns: 9, dirs: ["src"] },
   { name: `${SCOPE}/testing`, kind: "package", dir: "packages/testing", files: 2, fns: 6, dirs: ["src"] },
-  { name: "tooling", kind: "package", dir: "tooling", files: 1, fns: 3, dirs: ["."] },
+  { name: ROOT_PKG, kind: "package", dir: "tooling", files: 1, fns: 3, dirs: ["."] },
   { name: "scripts", kind: "app", dir: "scripts", files: 1, fns: 1, dirs: ["."] },
 ];
 const WORDS = [
@@ -912,7 +916,7 @@ const SUFFIX = [
 ];
 
 const M3_LARGE: M3Data = (() => {
-  const ws: M3Ws[] = LARGE_SPEC.map((w) => ({ id: `ws:${w.name}`, name: w.name, kind: w.kind }));
+  const ws: M3Ws[] = LARGE_SPEC.map((w) => ({ id: `ws:${w.name}`, name: w.name, kind: w.kind, dir: w.dir }));
   const files: M3File[] = [];
   for (const w of LARGE_SPEC) {
     const wsid = `ws:${w.name}`;
@@ -956,7 +960,7 @@ const M3_LARGE: M3Data = (() => {
     files.push(...mine);
   }
   const id = (n: string): string => `ws:${n}`;
-  const wsName = (n: string): string => (n === "tooling" || n === "scripts" ? n : `${SCOPE}/${n}`);
+  const wsName = (n: string): string => (n === ROOT_PKG || n === "scripts" ? n : `${SCOPE}/${n}`);
   const rules: [string, string, number][] = [
     ["api", "core", 2],
     ["api", "types", 1],
@@ -974,7 +978,7 @@ const M3_LARGE: M3Data = (() => {
     ["db-client", "types", 1],
     ["testing", "core", 1],
     ["scripts", "core", 1],
-    ["tooling", "config", 1],
+    [ROOT_PKG, "config", 1],
   ].map(([a, b, n]) => [id(wsName(a as string)), id(wsName(b as string)), n as number]);
   const byWs = new Map<string, M3File[]>();
   for (const f of files) byWs.set(f.ws, [...(byWs.get(f.ws) ?? []), f]);
@@ -1010,9 +1014,9 @@ const M3_LARGE: M3Data = (() => {
     dec("db-client", "logger"),
     dec("testing", "types"),
     dec("testing", "logger"),
-    dec("scripts", "tooling"),
+    dec("scripts", ROOT_PKG),
     dec("scripts", "config"),
-    dec("tooling", "types"),
+    dec(ROOT_PKG, "types"),
     dec("api", "ui-kit"),
     dec("config", "types"),
     dec("ui-kit", "logger"),
@@ -1060,11 +1064,14 @@ export function map3dView(q: ParsedQuery | string): ViewData {
       label: w.name,
       shortLabel: short.get(w.name) ?? w.name,
       size: fns,
+      path: w.dir,
+      stats: { files: fs.length, functions: fns },
       badges: [w.kind, `${fs.length} files`, `${fns} functions`],
     };
   });
   const nodeOf = new Map<string, string>();
   const nodes: GraphNode[] = [...wsNodes];
+  const wsDirOf = (id: string): string => data.ws.find((w) => w.id === id)?.dir ?? ".";
   if (level === "workspaces") {
     for (const f of data.files) nodeOf.set(f.id, f.ws);
   } else if (level === "files") {
@@ -1076,6 +1083,8 @@ export function map3dView(q: ParsedQuery | string): ViewData {
         label: f.path.slice(f.path.lastIndexOf("/") + 1),
         parent: f.ws,
         size: f.fns,
+        path: f.path,
+        stats: { functions: f.fns },
         badges: [`${f.fns} functions`],
       });
     }
@@ -1090,9 +1099,12 @@ export function map3dView(q: ParsedQuery | string): ViewData {
         label: f.dir === "." ? "(root)" : f.dir,
         parent: f.ws,
         size: 0,
+        path: f.dir === "." ? wsDirOf(f.ws) : `${wsDirOf(f.ws)}/${f.dir}`,
         badges: [],
       };
       d.size += f.fns;
+      d.stats = { files: (d.stats?.files ?? 0) + 1, functions: d.size };
+      d.badges = [`${d.stats.files} files`, `${d.size} functions`];
       dirs.set(id, d);
     }
     nodes.push(...dirs.values());

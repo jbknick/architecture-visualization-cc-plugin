@@ -181,7 +181,8 @@ test("graph canvas: the treemap layout is the same after a reload; PUT /api/layo
   await page.goto(url);
   await expect(page.locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 30_000 });
   // The project map's layout follows from the data (box area from function counts), so nothing is saved.
-  await expect(page.locator(".gc-status")).toContainText("treemap/layered");
+  // The layout/timing chip is debug text: hidden unless ?debug=1.
+  await expect(page.locator(".gc-status")).toHaveCount(0);
   const hash = () =>
     page.locator(".gc-sigma").evaluate((el) => {
       el.dispatchEvent(new CustomEvent("gantry:probe"));

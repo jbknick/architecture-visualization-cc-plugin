@@ -194,3 +194,32 @@ describe("synthetic generator and position hashing", () => {
     expect(hashPositions(p)).not.toBe(hashPositions({ a: [1, 2], b: [3, 5] }));
   });
 });
+
+describe("workspace link counts", () => {
+  const ws = ["a", "b"].map((n) => ({ id: `ws:${n}`, kind: "workspace", label: n, size: 3 }));
+  const imports = { id: "ws:a|imports|ws:b", src: "ws:a", dst: "ws:b", kind: "imports", weight: 319 };
+  const declared = { id: "ws:a|depends_on|ws:b", src: "ws:a", dst: "ws:b", kind: "depends_on", weight: 1 };
+
+  it("counts only the imports, whatever order the edges come in", () => {
+    for (const edges of [
+      [declared, imports],
+      [imports, declared],
+    ]) {
+      const link = buildScene(
+        ws,
+        edges.map((e) => ({ ...e, confidence: "high" as const })),
+        "nested-elk",
+      ).wsEdges;
+      expect(link).toHaveLength(1);
+      expect(link[0]?.weight).toBe(319);
+      expect(link[0]?.declaredOnly).toBe(false);
+      expect(link[0]?.declared).toBe(true);
+    }
+  });
+
+  it("keeps a declared-only pair as a dashed link with the declared flag and no import count", () => {
+    const link = buildScene(ws, [{ ...declared, confidence: "high" as const }], "nested-elk").wsEdges;
+    expect(link[0]?.declaredOnly).toBe(true);
+    expect(link[0]?.declared).toBe(true);
+  });
+});

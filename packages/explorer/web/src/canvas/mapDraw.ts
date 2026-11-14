@@ -53,6 +53,9 @@ export interface EdgeHit {
   dst: number;
   weight: number;
   noun: string;
+  /** The pair has a declared (package.json) dependency as well. */
+  declared: boolean;
+  declaredOnly: boolean;
   pts: [number, number][];
   width: number;
 }
@@ -65,12 +68,18 @@ export interface DrawResult {
   hiddenTitles: Set<number>;
   /** Where each workspace title went: inside its box, beside it, or nowhere (shown on hover only). */
   titles: Map<number, "inside" | "beside" | "hidden">;
+  /** The text drawn as each workspace's title (name lines joined, or the text beside the box). */
+  titleTexts: Map<number, string>;
+  /** Count pills that were drawn: the link key, the number shown (import count) and the full text. */
+  pills: { key: string; count: string; text: string }[];
 }
 
 export const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 /** Cells smaller than this on screen (either side) are not drawn. */
 export const MIN_CELL_PX = 2;
 const MIN_TITLE_PX = 11;
+/** Strength of the file mosaic at the Folders level, against the file cells of the Files level. */
+const MOSAIC_ALPHA = 0.45;
 
 type Pt = [number, number];
 
@@ -207,6 +216,7 @@ export function pickCell(scene: Scene, geo: MapGeometry, cam: Camera, px: number
       }
     }
     if (next === -1 || Math.min(nextRect.w, nextRect.h) < MIN_CELL_PX) break;
+    if (scene.mosaic && kindTier((tree.nodes[next] as TreeNode).kind) === 2) break; // decorative, not pickable
     cur = next;
     rect = nextRect;
   }
@@ -220,7 +230,14 @@ export function drawMap(env: DrawEnv): DrawResult {
   const { ctx, w, h, scene, geo, theme, cam } = env;
   const tree = scene.tree;
   const light = theme.scheme === "light";
-  const result: DrawResult = { edgeHits: [], boxes: [], hiddenTitles: new Set(), titles: new Map() };
+  const result: DrawResult = {
+    edgeHits: [],
+    boxes: [],
+    hiddenTitles: new Set(),
+    titles: new Map(),
+    titleTexts: new Map(),
+    pills: [],
+  };
   ctx.clearRect(0, 0, w, h);
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
@@ -327,6 +344,19 @@ export function drawMap(env: DrawEnv): DrawResult {
       return;
     }
 
+    if (scene.mosaic && cls === 2 && !container) {
+      // Folders level: files are only a faint mosaic that shows how big and how dense a folder is.
+      ctx.globalAlpha = (dimmed(i) ? 0.3 : 1) * MOSAIC_ALPHA;
+      ctx.fillStyle = tint.file[sib & 1] as string;
+      ctx.fillRect(x, y, pw, ph);
+      if (pw >= 4 && ph >= 4) {
+        ctx.strokeStyle = tint.sep;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, y + 0.5, pw - 1, ph - 1);
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
     ctx.fillStyle = (cls === 1 ? tint.folder : tint.file)[sib & 1] as string;
     ctx.fillRect(x, y, pw, ph);
     if (pw >= 4 && ph >= 4) {
@@ -500,11 +530,12 @@ function drawTitle(
   measure: (font: string, text: string) => number,
   placed: Rect[],
   free: (r: Rect, ignoreBox?: number) => boolean,
-  forced: boolean,
+  _forced: boolean,
 ): void {
   const { ctx, scene, theme, cam, geo } = env;
-  const name = nodeTitle(scene, i);
-  const sub = subtitleParts(scene, i);
+  const realName = nodeTitle(scene, i);
+  const baseSub = subtitleParts(scene, i);
+  const isRepoRoot = scene.nodes[i]?.id === "ws:.";
   // The title block is at most `WS_HEAD_MAX` px tall whatever the zoom: it fills the header the cells leave free,
   // or the whole box when there is nothing inside to leave room for.
   const head = headPx(scene, geo, i, box.w, box.h, cam.scale);
@@ -513,11 +544,22 @@ function drawTitle(
   const availW = box.w - 20;
   ctx.globalAlpha = 1;
 
-  const layout = (nameFont: number, parts: string[]) => {
+  /** The name on at most `maxLines` lines of `availW`; the last line ends in an ellipsis when the name is longer. */
+  const nameLinesFor = (fontStr: string, name: string, maxLines: number): string[] => {
+    const m = (t: string) => measure(fontStr, t);
+    const lines = wrapText(m, name, availW);
+    if (lines.length <= maxLines) return lines;
+    const kept = lines.slice(0, maxLines);
+    let last = `${(kept[maxLines - 1] as string).replace(/[-_/. ]+$/, "")}…`;
+    while (last.length > 2 && m(last) > availW) last = `${last.slice(0, -2)}…`;
+    kept[maxLines - 1] = last;
+    return kept;
+  };
+  const layout = (name: string, nameFont: number, parts: string[], maxNameLines: number) => {
     const subFont = Math.min(12, Math.max(10, Math.round(nameFont * 0.7)));
     const nameFontStr = `700 ${nameFont}px ${FONT}`;
     const subFontStr = `500 ${subFont}px ${FONT}`;
-    const nameLines = wrapText((t) => measure(nameFontStr, t), name, availW);
+    const nameLines = nameLinesFor(nameFontStr, name, maxNameLines);
     // Sub line: as many " · " parts per line as fit.
     const subLines: string[] = [];
     let cur = "";
@@ -529,31 +571,52 @@ function drawTitle(
       } else cur = next;
     }
     if (cur) subLines.push(cur);
-    const height = nameLines.length * nameFont * 1.2 + 3 + subLines.length * subFont * 1.25;
+    const height =
+      nameLines.length * nameFont * 1.2 + (subLines.length > 0 ? 3 + subLines.length * subFont * 1.25 : 0);
     const wide = subLines.some((t) => measure(subFontStr, t) > availW);
-    return { nameFont, subFont, nameFontStr, subFontStr, nameLines, subLines, height, wide };
+    const truncated = nameLines.length === maxNameLines && nameLines.some((t) => t.endsWith("…"));
+    return { nameFont, subFont, nameFontStr, subFontStr, nameLines, subLines, height, wide, truncated };
   };
 
-  // Full detail line first, then the same with "fn" for "functions", then without the leading kind ("package").
-  const short = sub.map((p) => p.replace(/ functions?$/, " fn"));
-  const variants: [string[], number][] = [
-    [sub, 12],
-    [short, 11],
-    [short.length > 2 ? short.slice(1) : short, 11],
-  ];
-  let chosen: ReturnType<typeof layout> | null = null;
-  if (availH > 0) {
-    for (const [parts, floor] of variants) {
-      for (let f = 18; f >= floor && !chosen; f--) {
-        const l = layout(f, parts);
+  /** Tries the title inside the box: full detail line first, shorter ones next, then smaller type, then no detail. */
+  const fitInside = (name: string, sub: string[], allowEllipsis: boolean) => {
+    if (availH <= 0) return null;
+    const short = sub.map((p) => p.replace(/ functions?$/, " fn"));
+    const noKind = short.length > 2 ? short.slice(1) : short;
+    // [detail parts, smallest name font, most name lines]
+    const tries: [string[], number, number][] = [
+      [sub, 12, 9],
+      [short, 11, 9],
+      [noKind, 11, 9],
+      [noKind, 10, 2], // two lines at 10px
+      [[], 10, 2], // name only
+    ];
+    for (const [parts, floor, lines] of tries) {
+      for (let f = 18; f >= floor; f--) {
+        const l = layout(name, f, parts, lines);
+        if (l.truncated && !allowEllipsis) continue;
         if (l.height <= availH && !l.wide && l.nameLines.every((t) => measure(l.nameFontStr, t) <= availW))
-          chosen = l;
+          return l;
       }
-      if (chosen) break;
     }
+    return null;
+  };
+
+  // 1. The name as is; 2. for the repo root: "(repo root)" with the name moved to the detail line;
+  // 3. the name cut to two lines.
+  let name = realName;
+  let chosen = fitInside(name, baseSub, false);
+  if (!chosen && isRepoRoot) {
+    name = "(repo root)";
+    chosen = fitInside(name, [realName, ...baseSub], true);
+  }
+  if (!chosen) {
+    name = realName;
+    chosen = fitInside(name, baseSub, true);
   }
   if (chosen) {
     result.titles.set(i, "inside");
+    result.titleTexts.set(i, chosen.nameLines.join(" "));
     let y = box.y + 5;
     ctx.fillStyle = tint.ink;
     ctx.font = chosen.nameFontStr;
@@ -561,7 +624,7 @@ function drawTitle(
       ctx.fillText(line, box.x + 10, y);
       y += chosen.nameFont * 1.2;
     }
-    y += 3;
+    if (chosen.subLines.length > 0) y += 3;
     ctx.font = chosen.subFontStr;
     ctx.fillStyle = theme.scheme === "light" ? "#3d4756" : theme.muted;
     for (const line of chosen.subLines) {
@@ -571,9 +634,16 @@ function drawTitle(
     return;
   }
 
-  // Too small for its title: beside the box if there is free space, else only on hover.
+  // Too small for its title: beside the box if there is free space. A box never goes without a name: when no
+  // spot is free the title goes on the box itself, over its cells, on a halo.
   const font = `700 ${MIN_TITLE_PX + 1}px ${FONT}`;
-  const text = `${name} · ${(scene.functions[i] ?? 0).toLocaleString("en-US")} fn`;
+  const fn = (scene.functions[i] ?? 0).toLocaleString("en-US");
+  const fullText = `${isRepoRoot ? `(repo root) ${realName}` : realName} · ${fn} fn`;
+  const rootText = `(repo root) · ${fn} fn`;
+  const maxTextW = Math.max(120, Math.min(300, env.w - 16));
+  let text = fullText;
+  if (measure(font, text) > maxTextW && isRepoRoot) text = rootText;
+  while (measure(font, text) > maxTextW && text.length > 6) text = `${text.slice(0, -4)}…`;
   const tw = measure(font, text);
   const bw = tw + 8;
   const candidates: Rect[] = [
@@ -583,15 +653,13 @@ function drawTitle(
     { x: box.x + box.w - bw, y: box.y + box.h + 3, w: bw, h: 18 },
     { x: box.x + box.w + 4, y: box.y, w: bw, h: 18 },
     { x: box.x - bw - 4, y: box.y, w: bw, h: 18 },
+    { x: box.x + box.w + 4, y: box.y + box.h - 18, w: bw, h: 18 },
+    { x: box.x - bw - 4, y: box.y + box.h - 18, w: bw, h: 18 },
   ];
   const spot = candidates.find((r) => free(r, i));
-  if (!spot && !forced) {
-    result.hiddenTitles.add(i);
-    result.titles.set(i, "hidden");
-    return;
-  }
-  result.titles.set(i, spot ? "beside" : "hidden");
-  const at = spot ?? candidates[0] ?? { x: box.x, y: box.y - 20, w: tw + 8, h: 18 };
+  result.titles.set(i, spot ? "beside" : "inside");
+  result.titleTexts.set(i, text);
+  const at = spot ?? { x: box.x + 2, y: box.y + 2, w: bw, h: 18 };
   placed.push(at);
   const halo = hexToRgba(theme.scheme === "light" ? "#ffffff" : theme.surface, 0.9);
   ctx.font = font;
@@ -635,7 +703,8 @@ function drawWsEdges(
     const ib = hl !== null && (b.src === hl || b.dst === hl) ? 1 : 0;
     return ia - ib || a.weight - b.weight;
   });
-  const pills: { pts: Pt[]; lines: string[]; two: string[]; short: string; strong: boolean }[] = [];
+  const pills: { key: string; pts: Pt[]; lines: string[]; two: string[]; short: string; strong: boolean }[] =
+    [];
 
   for (const e of ordered) {
     const a = tree.nodes[e.src] as TreeNode;
@@ -699,6 +768,8 @@ function drawWsEdges(
       dst: e.dst,
       weight: e.weight,
       noun: e.declaredOnly ? "declared dependency" : noun,
+      declared: e.declared,
+      declaredOnly: e.declaredOnly,
       pts: densify(pts, 12),
       width,
     });
@@ -709,11 +780,12 @@ function drawWsEdges(
         ? "declared"
         : `${e.weight.toLocaleString("en-US")} ${e.weight === 1 ? "import" : "imports"}`;
       pills.push({
+        key,
         pts,
         lines: [`${A} → ${B}: ${count}`],
         // Narrow channel: the same words on two lines.
         two: [`${A} → ${B}`, count],
-        short: e.weight.toLocaleString("en-US"),
+        short: e.declaredOnly ? "declared" : e.weight.toLocaleString("en-US"),
         strong: incident,
       });
     }
@@ -747,6 +819,7 @@ function drawWsEdges(
         ctx.stroke();
         ctx.font = pillFont;
         ctx.fillStyle = theme.text;
+        result.pills.push({ key: p.key, count: p.short, text: lines.join(" | ") });
         lines.forEach((text, k) => {
           ctx.fillText(text, c[0], rect.y + 2.5 + (k + 0.5) * (MIN_TITLE_PX + 3) + 0.5);
         });

@@ -14,9 +14,28 @@ interface Spec {
   fns: number;
   /** Folders relative to the workspace dir, parents before children. Files live in the ones with a weight. */
   dirs: [string, number][];
+  /** Config files that sit directly in the workspace dir next to its folders (names, one function each or so). */
+  rootFiles?: { names: string[]; fns: number };
 }
 
+/** The repo-root workspace (`ws:.`) is named like the repository: 31 characters, no npm scope. */
+const ROOT_NAME = "acme-platform-monorepo-root-app";
+const wsId = (name: string): string => (name === ROOT_NAME ? "ws:." : `ws:${name}`);
+
 const SPECS: Spec[] = [
+  {
+    name: ROOT_NAME,
+    kind: "app",
+    dir: ".",
+    files: 6,
+    fns: 14,
+    dirs: [
+      ["src", 0],
+      ["src/lib", 5],
+      ["src/commands", 4],
+    ],
+    rootFiles: { names: ["eslint.config.js", "release.config.ts", "turbo.config.ts"], fns: 1 },
+  },
   {
     name: `${SCOPE}/api`,
     kind: "app",
@@ -53,6 +72,7 @@ const SPECS: Spec[] = [
       ["src/pages", 4],
       ["src/styles", 1],
     ],
+    rootFiles: { names: ["vite.config.ts", "tailwind.config.ts", "playwright.config.ts"], fns: 2 },
   },
   {
     name: `${SCOPE}/core`,
@@ -71,6 +91,7 @@ const SPECS: Spec[] = [
       ["src/validation", 3],
       ["src/db", 2],
     ],
+    rootFiles: { names: ["tsup.config.ts", "vitest.config.ts"], fns: 2 },
   },
   { name: `${SCOPE}/types`, kind: "package", dir: "packages/types", files: 3, fns: 32, dirs: [["src", 1]] },
   { name: `${SCOPE}/logger`, kind: "package", dir: "packages/logger", files: 3, fns: 24, dirs: [["src", 1]] },
@@ -78,13 +99,13 @@ const SPECS: Spec[] = [
   { name: `${SCOPE}/ui-kit`, kind: "package", dir: "packages/ui-kit", files: 5, fns: 12, dirs: [["src", 1]] },
   { name: `${SCOPE}/db-client`, kind: "package", dir: "packages/db-client", files: 4, fns: 9, dirs: [] },
   { name: `${SCOPE}/testing`, kind: "package", dir: "packages/testing", files: 2, fns: 6, dirs: [] },
-  { name: "tooling", kind: "package", dir: "tooling", files: 1, fns: 3, dirs: [] },
   { name: "scripts", kind: "app", dir: "scripts", files: 1, fns: 1, dirs: [] },
 ];
 
 /** Workspace order used for the dependency direction: earlier depends on later. */
 const ORDER = [
   "scripts",
+  "root",
   "web",
   "api",
   "testing",
@@ -92,12 +113,11 @@ const ORDER = [
   "db-client",
   "core",
   "logger",
-  "tooling",
   "config",
   "types",
 ];
 const fullName = (short: string): string =>
-  short === "tooling" || short === "scripts" ? short : `${SCOPE}/${short}`;
+  short === "root" ? ROOT_NAME : short === "scripts" ? short : `${SCOPE}/${short}`;
 
 /** [from, to, number of file-to-file import links]. */
 const IMPORT_RULES: [string, string, number][] = [
@@ -119,7 +139,7 @@ const IMPORT_RULES: [string, string, number][] = [
   ["db-client", "types", 4],
   ["testing", "core", 3],
   ["scripts", "core", 2],
-  ["tooling", "config", 1],
+  ["root", "config", 1],
   ["logger", "types", 1],
   ["db-client", "logger", 1],
   ["ui-kit", "logger", 1],
@@ -214,9 +234,10 @@ function build(): Data {
   const shorts = shortLabels(SPECS.map((s) => s.name));
 
   for (const spec of SPECS) {
-    const wsId = `ws:${spec.name}`;
+    const id = wsId(spec.name);
+    const prefix = spec.dir === "." ? "" : `${spec.dir}/`;
     add({
-      id: wsId,
+      id,
       kind: "workspace",
       label: spec.name,
       shortLabel: shorts.get(spec.name) ?? spec.name,
@@ -228,12 +249,12 @@ function build(): Data {
     for (const [rel] of spec.dirs) {
       const parentRel = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : null;
       add({
-        id: `dir:${spec.dir}/${rel}`,
+        id: `dir:${prefix}${rel}`,
         kind: "dir",
         label: parentRel ? rel.slice(parentRel.length + 1) : rel,
         size: 1,
-        path: `${spec.dir}/${rel}`,
-        parent: parentRel ? `dir:${spec.dir}/${parentRel}` : wsId,
+        path: `${prefix}${rel}`,
+        parent: parentRel ? `dir:${prefix}${parentRel}` : id,
         tier: 1,
       });
     }
@@ -276,10 +297,14 @@ function build(): Data {
       fns[idx] = (fns[idx] as number) + 1;
       left--;
     }
-    // Tiny workspaces: every file with a function, if there are enough to go round.
+    // Config files next to the workspace's folders (one small file each).
+    for (const name of spec.rootFiles?.names ?? []) {
+      paths.push({ rel: name, dir: null });
+      fns.push(spec.rootFiles?.fns ?? 1);
+    }
     const ids: string[] = [];
     paths.forEach((p, i) => {
-      const path = `${spec.dir}/${p.rel}`;
+      const path = `${prefix}${p.rel}`;
       const fileId = `file:${path}`;
       ids.push(fileId);
       const n = fns[i] as number;
@@ -289,7 +314,7 @@ function build(): Data {
         label: p.rel.slice(p.rel.lastIndexOf("/") + 1),
         size: 1,
         path,
-        parent: p.dir ? `dir:${spec.dir}/${p.dir}` : wsId,
+        parent: p.dir ? `dir:${prefix}${p.dir}` : id,
         stats: { files: 1, functions: n, loc: n * 14 },
         tier: 2,
       });
@@ -319,7 +344,7 @@ function build(): Data {
         });
       }
     });
-    filesOfWs.set(wsId, ids);
+    filesOfWs.set(id, ids);
   }
 
   // Roll counts up (children before parents).
@@ -338,7 +363,7 @@ function build(): Data {
     n.size = Math.max(1, sum.functions);
     return sum;
   };
-  for (const spec of SPECS) roll(`ws:${spec.name}`);
+  for (const spec of SPECS) roll(wsId(spec.name));
 
   // File-to-file imports: cross-workspace by rule, plus two local imports per file.
   const links = new Set<string>();
@@ -351,9 +376,9 @@ function build(): Data {
   };
   const imported: [string, string][] = [];
   for (const [from, to, count] of IMPORT_RULES) {
-    const a = filesOfWs.get(`ws:${fullName(from)}`) as string[];
-    const b = filesOfWs.get(`ws:${fullName(to)}`) as string[];
-    imported.push([`ws:${fullName(from)}`, `ws:${fullName(to)}`]);
+    const a = filesOfWs.get(wsId(fullName(from))) as string[];
+    const b = filesOfWs.get(wsId(fullName(to))) as string[];
+    imported.push([wsId(fullName(from)), wsId(fullName(to))]);
     const cap = Math.min(count, a.length * b.length);
     for (let made = 0, k = 0; made < cap && k < cap * 40; k++) {
       const src = a[hash(`${from}>${to}:a${k}`) % a.length] as string;
@@ -391,10 +416,7 @@ function build(): Data {
   const candidates: [string, string][] = [];
   for (let i = 0; i < ORDER.length; i++)
     for (let j = i + 1; j < ORDER.length; j++) {
-      const pair: [string, string] = [
-        `ws:${fullName(ORDER[i] as string)}`,
-        `ws:${fullName(ORDER[j] as string)}`,
-      ];
+      const pair: [string, string] = [wsId(fullName(ORDER[i] as string)), wsId(fullName(ORDER[j] as string))];
       if (!importedPairs.has(`${pair[0]}>${pair[1]}`)) candidates.push(pair);
     }
   candidates.sort((p, q) => hash(p.join()) - hash(q.join()));

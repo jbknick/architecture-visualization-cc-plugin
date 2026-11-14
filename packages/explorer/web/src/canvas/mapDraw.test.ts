@@ -2,8 +2,9 @@
 import { describe, expect, it } from "vitest";
 import { buildHierarchy } from "../../mock/hierarchy.ts";
 import { computeLayout } from "./layout.ts";
-import { edgeWidth, pickCell, rectOf } from "./mapDraw.ts";
+import { drawMap, edgeWidth, pickCell, rectOf } from "./mapDraw.ts";
 import { buildScene, layoutInputFor, nodeTitle, subtitleParts } from "./scene.ts";
+import { readTheme } from "./style.ts";
 
 async function laidOut() {
   const { nodes, edges } = buildHierarchy();
@@ -74,5 +75,56 @@ describe("titles and edge widths", () => {
     expect(edgeWidth(640)).toBeLessThanOrEqual(9);
     expect(edgeWidth(1_000_000)).toBe(9);
     expect(edgeWidth(0)).toBe(1);
+  });
+});
+
+/** A 2D context that records nothing: text is measured at 6px per character, every other call is a no-op. */
+function stubContext(): CanvasRenderingContext2D {
+  const state: Record<string, unknown> = {};
+  return new Proxy(state, {
+    get: (t, key: string) =>
+      key === "measureText" ? (text: string) => ({ width: text.length * 6 }) : (t[key] ?? (() => {})),
+    set: (t, key: string, value) => {
+      t[key] = value;
+      return true;
+    },
+  }) as unknown as CanvasRenderingContext2D;
+}
+
+describe("count pills", () => {
+  it("print the import count of a pair that also has a declared dependency, not the sum", async () => {
+    const ws = ["a", "b"].map((n) => ({
+      id: `ws:${n}`,
+      kind: "workspace",
+      label: n,
+      size: 3,
+      stats: { functions: 40, files: 4 },
+    }));
+    const edges = [
+      { id: "d", src: "ws:a", dst: "ws:b", kind: "depends_on", weight: 1, confidence: "high" as const },
+      { id: "i", src: "ws:a", dst: "ws:b", kind: "imports", weight: 319, confidence: "high" as const },
+    ];
+    const scene = buildScene(ws, edges, "nested-elk");
+    const out = await computeLayout(layoutInputFor(scene, "nested-elk", null));
+    if (!out.map) throw new Error("no map geometry");
+    const result = drawMap({
+      ctx: stubContext(),
+      w: out.map.bounds.w + 100,
+      h: out.map.bounds.h + 100,
+      scene,
+      geo: out.map,
+      theme: readTheme(null),
+      cam: { scale: 1, tx: 40, ty: 40 },
+      selected: null,
+      hovered: null,
+      highlightWs: null,
+      showDeclared: true,
+      bright: null,
+      links: [],
+      hoverEdge: null,
+    });
+    expect(result.edgeHits).toHaveLength(1);
+    expect(result.edgeHits[0]?.weight).toBe(319);
+    expect(result.pills.map((p) => p.count)).toEqual(["319"]);
   });
 });

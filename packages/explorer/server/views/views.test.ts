@@ -280,10 +280,13 @@ describe("scale", () => {
 
   const timed = (id: string, qs: string): { ms: number; r: ViewResult } => {
     const bc = { ...ctx, store: big };
-    const t = performance.now();
+    // CPU time of this thread's process, not wall time: the budget is about the code, and wall time balloons
+    // whenever other test files or builds are competing for cores.
+    const t = process.cpuUsage();
     const r = handleApi(bc, `/api/view/${id}`, new URLSearchParams(qs)) as ViewResult;
     JSON.stringify(r);
-    return { ms: performance.now() - t, r };
+    const d = process.cpuUsage(t);
+    return { ms: (d.user + d.system) / 1000, r };
   };
 
   /**
@@ -319,5 +322,65 @@ describe("scale", () => {
     expect(r.nodes.some((n) => n.kind === "more" || n.kind === "group")).toBe(true);
     const known = new Set(r.nodes.map((n) => n.id));
     for (const e of r.edges) expect(known.has(e.src) && known.has(e.dst)).toBe(true);
+  });
+});
+
+describe("import counts agree between project-map and map-3d", () => {
+  const importWeights = (r: ViewResult, project: (id: string) => string | undefined) => {
+    const out = new Map<string, number>();
+    for (const e of r.edges) {
+      if (e.kind !== "imports") continue;
+      const a = project(e.src);
+      const b = project(e.dst);
+      if (!a || !b || a === b) continue;
+      out.set(`${a} -> ${b}`, (out.get(`${a} -> ${b}`) ?? 0) + e.weight);
+    }
+    return out;
+  };
+  const asObj = (m: Map<string, number>) => Object.fromEntries([...m].sort());
+  const wsOf = (r: ViewResult) => {
+    const parent = new Map(r.nodes.map((n) => [n.id, n.parent]));
+    return (id: string): string | undefined => {
+      let cur: string | undefined = id;
+      while (cur && !cur.startsWith("ws:")) cur = parent.get(cur);
+      return cur;
+    };
+  };
+  // Both views drop test files by default; map-3d also drops generated files, so switch that off.
+  const m3 = (level: string) => view("map-3d", `level=${level}&filters=hideGenerated=false`);
+  const wsPairs = () => asObj(importWeights(view("project-map", "level=workspaces"), (id) => id));
+
+  it("workspace pairs have identical weights", () => {
+    const pm = view("project-map", "level=workspaces");
+    const td = m3("workspaces");
+    expect(Object.keys(wsPairs()).length).toBeGreaterThan(0);
+    expect(asObj(importWeights(td, (id) => id))).toEqual(wsPairs());
+    const byId = (r: ViewResult) =>
+      Object.fromEntries(r.edges.filter((e) => e.kind === "imports").map((e) => [e.id, e.weight]));
+    expect(byId(td)).toEqual(byId(pm));
+  });
+
+  it("folder-level edges add up to the same workspace-pair weights in both views", () => {
+    for (const r of [view("project-map", "level=dirs"), m3("dirs")]) {
+      // The project map also carries workspace-to-workspace roll-up edges at this level; they would count twice.
+      const folders = {
+        ...r,
+        edges: r.edges.filter((e) => !e.src.startsWith("ws:") && !e.dst.startsWith("ws:")),
+      };
+      expect(asObj(importWeights(folders, wsOf(r)))).toEqual(wsPairs());
+    }
+  });
+
+  it("file-level cross-workspace edges add up too, and each file pair weighs 1", () => {
+    const td = m3("files");
+    expect(asObj(importWeights(td, wsOf(td)))).toEqual(wsPairs());
+    for (const e of td.edges.filter((x) => x.kind === "imports")) expect(e.weight).toBe(1);
+  });
+
+  it("depends_on stays a separate edge from imports", () => {
+    const td = m3("workspaces");
+    const dep = td.edges.find((e) => e.kind === "depends_on");
+    expect(dep?.id).toContain("|depends_on|");
+    expect(new Set(td.edges.map((e) => e.id)).size).toBe(td.edges.length);
   });
 });

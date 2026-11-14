@@ -54,6 +54,8 @@ export interface GraphEdge {
   confidence: "high" | "low";
   /** Project map: number of call/render/hook edges between the same two nodes. */
   uses?: number;
+  /** Imports edges: imported names summed over the underlying file edges. Present only when it differs from `weight`. */
+  bindings?: number;
 }
 
 /** The canvas layouts defined by issue #36. */
