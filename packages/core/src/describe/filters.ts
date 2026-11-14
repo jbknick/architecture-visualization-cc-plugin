@@ -38,7 +38,7 @@ export const IMPERATIVE_PATTERNS: readonly ImperativePattern[] = [
   {
     // Hosts spelled so that no dotted token exists: "hxxp", "example[.]com", "attacker dot sh".
     name: "obfuscated-host",
-    re: /\bhxxps?\b|\[\s*\.\s*\]|\(\s*\.\s*\)|[[(]\s*dot\s*[\])]|\b[a-z0-9-]{1,30}\s+dot\s+(?:com|org|net|io|sh|dev|app|ru|cn|xyz|zip|us|de|pw|co|ai|info|biz|me|tv|cc|tk|ly|gg|top|site|online|link|click|cloud|tech)\b/i,
+    re: /\bhxxps?\b|\[\s*\.\s*\]|\(\s*\.\s*\)|[[(]\s*dot\s*[\])]|\b[a-z0-9-]{1,30}\s+dot\s+(?:(?!(?:is|in|on|of|or|as|at|it|by|and|the|for|per|are|was|has|get|set|can|may|not|see|use|one|all|a|an)\b)[a-z]{2,3}|info|biz|site|online|link|click|cloud|tech|dev|app|zip|mov|top|club|shop|store|work)\b/i,
   },
   { name: "markdown-link", re: /\[[^\]]{0,100}[A-Za-z]{3}[^\]]{0,100}\]\(|!\[/ },
   { name: "url-scheme", re: /\b[a-z][a-z0-9+.-]{1,15}:\/\//i },

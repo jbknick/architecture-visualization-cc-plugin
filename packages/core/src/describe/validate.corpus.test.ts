@@ -1,8 +1,13 @@
-// Measured acceptance for the description validators (issue #22, part F): the attack corpus must be rejected in
-// full, the honest corpus must be accepted at 97% or better, and validation must stay fast.
+// Measured acceptance for the description validators (issue #22, final round): both attack corpora must be rejected in
+// full, the honest corpora must be accepted at 97% or better, the held-out set at 90% or better, real model output at
+// 95% or better (when the private set is present), and validation must stay fast.
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { FactSheet } from "../types.js";
 import { ATTACK_CORPUS, attackSheet } from "./corpus.attack.js";
+import { ATTACK_CORPUS_2, RESIDUAL_CLAIMS } from "./corpus.attack2.js";
+import { HONEST_HELDOUT } from "./corpus.heldout.js";
 import {
   HONEST_ALL,
   HONEST_BY_DESIGN_REJECTED,
@@ -10,6 +15,8 @@ import {
   HONEST_REVIEW,
   type HonestRow,
 } from "./corpus.honest.js";
+import { fullSheet, HONEST_FINAL, HONEST_REVIEW_2, type HonestFull } from "./corpus.honest2.js";
+import { sheet as sessionSheet } from "./validate.fixtures.js";
 import { validateDescription } from "./validate.js";
 
 function honestSheet(idents: readonly string[] = []): FactSheet {
@@ -28,11 +35,49 @@ function honestSheet(idents: readonly string[] = []): FactSheet {
 }
 
 const honestRaw = (row: HonestRow) => ({ behavior: row[0], searchTerms: [...row[1]], nameFits: true });
+const fullRaw = (row: HonestFull) => {
+  const raw: Record<string, unknown> = {
+    behavior: row[4],
+    searchTerms: [...row[5]],
+    nameFits: row[6] === undefined,
+  };
+  if (row[6] !== undefined) raw.suggestedName = row[6];
+  return raw;
+};
+
+type AnyAttack = {
+  cls: string;
+  behavior: string;
+  terms?: readonly string[];
+  name?: string;
+  reason?: string;
+  sheet?: FactSheet;
+};
+
+function runAttacks(corpus: readonly AnyAttack[], defaultSheet: () => FactSheet): string[] {
+  const passed: string[] = [];
+  for (const c of corpus) {
+    const raw: Record<string, unknown> = {
+      behavior: c.behavior,
+      searchTerms: c.terms ? [...c.terms] : ["user lookup"],
+      nameFits: c.name === undefined,
+    };
+    if (c.name !== undefined) raw.suggestedName = c.name;
+    const r = validateDescription(raw, c.sheet ?? defaultSheet());
+    if (r.ok) passed.push(`${c.cls}: ${c.behavior.slice(0, 60)} ${JSON.stringify(c.terms ?? c.name ?? "")}`);
+    else if (c.reason !== undefined && r.reason !== c.reason)
+      passed.push(`${c.cls}: wanted ${c.reason}, got ${r.reason} for ${c.behavior.slice(0, 40)}`);
+    // a failure detail never repeats a secret or a long opaque token in full
+    if (!r.ok) expect(r.detail.length).toBeLessThan(400);
+  }
+  return passed;
+}
 
 describe("attack corpus", () => {
-  it("has at least 120 cases covering every class", () => {
-    expect(ATTACK_CORPUS.length).toBeGreaterThanOrEqual(120);
-    const classes = new Set(ATTACK_CORPUS.map((c) => c.cls));
+  it("has at least 350 cases covering every class", () => {
+    const all = [...ATTACK_CORPUS, ...ATTACK_CORPUS_2];
+    expect(all.length).toBeGreaterThanOrEqual(350);
+    const classes = new Set(all.map((c) => c.cls));
     for (const c of [
       "imperative",
       "addressed",
@@ -46,58 +91,101 @@ describe("attack corpus", () => {
       "secret",
       "split-secret",
       "terms",
+      "r2-clause",
+      "r2-terms",
+      "r2-strip",
+      "r2-name",
+      "r2-bait",
+      "r2-hostile-sheet",
+      "r2-chars",
+      "gen-clause",
+      "gen-speech",
+      "gen-permission",
+      "gen-subject",
+      "gen-bait",
+      "gen-host",
+      "gen-file",
+      "secret-copy",
     ]) {
       expect(classes.has(c), c).toBe(true);
     }
   });
 
-  it("rejects 100% of the cases", () => {
-    const passed: string[] = [];
-    for (const c of ATTACK_CORPUS) {
-      const raw: Record<string, unknown> = {
-        behavior: c.behavior,
-        searchTerms: c.terms ? [...c.terms] : ["user lookup"],
-        nameFits: c.name === undefined,
-      };
-      if (c.name !== undefined) raw.suggestedName = c.name;
-      const r = validateDescription(raw, attackSheet());
-      if (r.ok)
-        passed.push(`${c.cls}: ${c.behavior.slice(0, 50)} ${JSON.stringify(c.terms ?? c.name ?? "")}`);
-      else if (c.reason !== undefined && r.reason !== c.reason)
-        passed.push(`${c.cls}: wanted ${c.reason}, got ${r.reason} for ${c.behavior.slice(0, 40)}`);
-      // a failure detail never repeats a secret or a long opaque token in full
-      if (!r.ok) expect(r.detail.length).toBeLessThan(400);
-    }
+  it("rejects 100% of the first-round cases", () => {
+    const passed = runAttacks(ATTACK_CORPUS, () => attackSheet());
     const rate = (100 * (ATTACK_CORPUS.length - passed.length)) / ATTACK_CORPUS.length;
-    console.log(`attack corpus: ${ATTACK_CORPUS.length} cases, rejected ${rate.toFixed(1)}%`);
+    console.log(`attack corpus 1: ${ATTACK_CORPUS.length} cases, rejected ${rate.toFixed(1)}%`);
     expect(passed, passed.join("\n")).toEqual([]);
+  });
+
+  it("rejects 100% of the second review's cases and their variants", () => {
+    const passed = runAttacks(ATTACK_CORPUS_2, () => sessionSheet());
+    const rate = (100 * (ATTACK_CORPUS_2.length - passed.length)) / ATTACK_CORPUS_2.length;
+    console.log(`attack corpus 2: ${ATTACK_CORPUS_2.length} cases, rejected ${rate.toFixed(1)}%`);
+    expect(passed, passed.join("\n")).toEqual([]);
+  });
+
+  it("lists the accepted residual risk next to the corpus", () => {
+    expect(RESIDUAL_CLAIMS.length).toBeGreaterThan(0);
   });
 });
 
 describe("honest corpus", () => {
-  it("has at least 200 rows including the review's descriptions", () => {
-    expect(HONEST_ALL.length).toBeGreaterThanOrEqual(200);
+  const all = (): { label: string; behavior: string; ok: boolean; why: string }[] => {
+    const out: { label: string; behavior: string; ok: boolean; why: string }[] = [];
+    for (const row of HONEST_ALL) {
+      const r = validateDescription(honestRaw(row), honestSheet(row[2]));
+      out.push({ label: "main", behavior: row[0], ok: r.ok, why: r.ok ? "" : `[${r.reason}] ${r.detail}` });
+    }
+    for (const [label, rows] of [
+      ["review2", HONEST_REVIEW_2],
+      ["final", HONEST_FINAL],
+    ] as const) {
+      for (const row of rows) {
+        const r = validateDescription(fullRaw(row), fullSheet(row));
+        out.push({ label, behavior: row[4], ok: r.ok, why: r.ok ? "" : `[${r.reason}] ${r.detail}` });
+      }
+    }
+    return out;
+  };
+
+  it("has at least 300 rows, 130 of them with full fact sheets", () => {
+    expect(HONEST_ALL.length + HONEST_REVIEW_2.length + HONEST_FINAL.length).toBeGreaterThanOrEqual(300);
+    expect(HONEST_REVIEW_2.length).toBeGreaterThanOrEqual(60);
+    expect(HONEST_FINAL.length).toBeGreaterThanOrEqual(60);
     expect(HONEST_REVIEW.length + HONEST_BY_DESIGN_REJECTED.length).toBeGreaterThanOrEqual(65);
   });
 
   it("accepts at least 97%, printing every rejected row with its reason", () => {
-    const rejected: string[] = [];
-    for (const row of HONEST_ALL) {
-      const r = validateDescription(honestRaw(row), honestSheet(row[2]));
-      if (!r.ok) rejected.push(`[${r.reason}] ${r.detail} | ${row[0]} | ${JSON.stringify(row[1])}`);
-    }
-    const rate = (100 * (HONEST_ALL.length - rejected.length)) / HONEST_ALL.length;
+    const rows = all();
+    const rejected = rows.filter((r) => !r.ok);
+    const rate = (100 * (rows.length - rejected.length)) / rows.length;
     console.log(
-      `honest corpus: ${HONEST_ALL.length} rows, accepted ${rate.toFixed(1)}%, rejected ${rejected.length}`,
+      `honest corpus: ${rows.length} rows, accepted ${rate.toFixed(1)}%, rejected ${rejected.length}`,
     );
-    for (const line of rejected) console.log(`  rejected ${line}`);
+    for (const r of rejected) console.log(`  rejected (${r.label}) ${r.why} | ${r.behavior}`);
     expect(rate).toBeGreaterThanOrEqual(97);
   });
 
-  it("accepts the review rows and the main rows each at 97% or better", () => {
-    for (const rows of [HONEST_REVIEW, HONEST_MAIN]) {
-      const bad = rows.filter((row) => !validateDescription(honestRaw(row), honestSheet(row[2])).ok);
-      expect(100 * (1 - bad.length / rows.length)).toBeGreaterThanOrEqual(95);
+  it("accepts each part (review rows, main rows, review 2, final) at 95% or better", () => {
+    const rows = all();
+    for (const label of ["main", "review2", "final"]) {
+      const part = rows.filter((r) => r.label === label);
+      expect(100 * (part.filter((r) => r.ok).length / part.length), label).toBeGreaterThanOrEqual(95);
+    }
+  });
+
+  it("accepts the sentences the issue names", () => {
+    const sheet = honestSheet(["formatPrice"]);
+    for (const [behavior, terms] of [
+      ["Formats an amount in cents as a price in US dollars.", ["price format"]],
+      ["Requeues every failed job and returns how many were added back.", ["requeue jobs"]],
+      ["Archives the project instead of removing the row.", ["archive project"]],
+      ["Asks the user to confirm deletion.", ["confirm dialog"]],
+      ["Lets the user pick which AI agent handles the ticket.", ["agent routing"]],
+    ] as const) {
+      const r = validateDescription({ behavior, searchTerms: [...terms], nameFits: true }, sheet);
+      expect(r, behavior).toMatchObject({ ok: true });
     }
   });
 
@@ -106,6 +194,52 @@ describe("honest corpus", () => {
       const r = validateDescription(honestRaw(row), honestSheet(row[2]));
       expect(r, row[0]).toMatchObject({ ok: false, reason });
     }
+  });
+});
+
+describe("held-out honest set", () => {
+  it("accepts at least 90% of 60 descriptions written after the tuning was finished", () => {
+    expect(HONEST_HELDOUT.length).toBeGreaterThanOrEqual(60);
+    const rejected: string[] = [];
+    for (const row of HONEST_HELDOUT) {
+      const r = validateDescription(fullRaw(row), fullSheet(row));
+      if (!r.ok) rejected.push(`[${r.reason}] ${r.detail} | ${row[4]}`);
+    }
+    const rate = (100 * (HONEST_HELDOUT.length - rejected.length)) / HONEST_HELDOUT.length;
+    console.log(`held-out: ${HONEST_HELDOUT.length} rows, accepted ${rate.toFixed(1)}%`);
+    for (const line of rejected) console.log(`  rejected ${line}`);
+    expect(rate).toBeGreaterThanOrEqual(90);
+  });
+});
+
+describe("real model output (private, counts only)", () => {
+  const privateDir = process.env.GANTRY_PRIVATE_DIR ?? join(process.cwd(), "evals", "private");
+  const present = existsSync(join(privateDir, "describe-out", "path-a"));
+  it.skipIf(!present)("accepts at least 95% of the stored descriptions", async () => {
+    const storePath = "../../../../docs/spikes/describe/store.js";
+    const { loadLabelled, loadCalls, descriptionsFrom, outDir } = (await import(
+      /* @vite-ignore */ storePath
+    )) as {
+      loadLabelled: () => { factSheet: { contentKey: string } }[];
+      loadCalls: (dir: string, kind: string) => unknown;
+      descriptionsFrom: (calls: unknown) => Map<string, unknown>;
+      outDir: string;
+    };
+    const rows = loadLabelled();
+    const descs = descriptionsFrom(loadCalls(join(outDir, "path-a"), "call"));
+    let total = 0;
+    let accepted = 0;
+    for (const row of rows) {
+      const d = descs.get(row.factSheet.contentKey);
+      if (d === undefined) continue;
+      total++;
+      if (validateDescription(d, row.factSheet as unknown as FactSheet).ok) accepted++;
+    }
+    console.log(
+      `real output: ${total} descriptions, accepted ${accepted} (${((100 * accepted) / total).toFixed(1)}%)`,
+    );
+    expect(total).toBeGreaterThanOrEqual(150);
+    expect(100 * (accepted / total)).toBeGreaterThanOrEqual(95);
   });
 });
 
@@ -149,6 +283,11 @@ describe("performance", () => {
       "<<<": "<".repeat(400),
       hex: "ab12".repeat(100),
       "KEY=": "API_KEY=".repeat(50),
+      "then delete": "then delete ".repeat(33),
+      "tells agent": "tells the agent ".repeat(25),
+      "to to": "to fetch and ".repeat(30),
+      "; ;": "; delete the ".repeat(30),
+      "1 1 1": "1 ".repeat(200),
     };
     let worst = 0;
     for (const [k, s] of Object.entries(filler)) {
@@ -178,5 +317,17 @@ describe("performance", () => {
       expect(performance.now() - t0).toBeLessThan(5);
       expect(r).toMatchObject({ ok: false, reason: "length" });
     }
+  });
+
+  it("scans a fact sheet at the grounding caps in under 50 ms", () => {
+    const big = honestSheet(["fetchUser"]);
+    big.signature = `(${"a: string, ".repeat(100)})`;
+    big.doc = "word ".repeat(400);
+    big.body = "const x = foo.bar(baz);\n".repeat(400);
+    const raw = honestRaw(HONEST_MAIN[0] as HonestRow);
+    validateDescription(raw, big);
+    const t0 = performance.now();
+    validateDescription(raw, big);
+    expect(performance.now() - t0).toBeLessThan(50);
   });
 });

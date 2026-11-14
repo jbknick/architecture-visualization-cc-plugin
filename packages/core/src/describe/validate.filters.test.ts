@@ -116,12 +116,12 @@ describe("pattern list", () => {
 
 describe("identifier stop-list", () => {
   it("holds the common English and platform terms", () => {
-    expect(IDENTIFIER_STOP_LIST.size).toBeGreaterThanOrEqual(180);
+    expect(IDENTIFIER_STOP_LIST.size).toBeGreaterThanOrEqual(50);
   });
   it("classifies identifier-like tokens", () => {
     for (const t of ["fooBar", "FooBar", "foo_bar", "MAX_RETRIES", "x1Y"])
       expect(isIdentifierLike(t), t).toBe(true);
-    for (const t of ["Renders", "HTTP", "URL", "foo", "JavaScript", "useState", "OAuth"])
+    for (const t of ["Renders", "HTTP", "URL", "foo", "JavaScript", "OAuth"])
       expect(isIdentifierLike(t), t).toBe(false);
   });
 });

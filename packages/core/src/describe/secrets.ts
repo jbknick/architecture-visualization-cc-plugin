@@ -12,31 +12,69 @@ export interface SecretRule {
   accept?: (groups: Record<string, string>) => boolean;
   /** Anchored on a vendor prefix or fixed shape, so it is also run on text with spaces and hyphens between alphanumerics removed. */
   collapsible?: boolean;
+  /** Custom replacement used by the redactor instead of redacting the `v` group. */
+  replace?: (match: string, groups: Record<string, string>) => string;
 }
 
 const B64 = "A-Za-z0-9+/_-";
 const MARKER = "<redacted>";
 
-/** Words that make a name a credential name. */
+/** Words that make a name a credential name on their own. */
 const CREDENTIAL_WORDS = new Set(
-  "key secret token password passwd pwd passphrase credential credentials auth authorization apikey accesskey privatekey".split(
+  "password passwd pwd pass secret token credential credentials apikey passphrase".split(" "),
+);
+/** `key` makes a name a credential name only next to one of these (`apiKey`, `SECRET_KEY`, `signingKey`; not `sortKey`). */
+const KEY_COMPANIONS = new Set(
+  "api secret access private signing sign auth encryption master license".split(" "),
+);
+/** A last word that says the value describes the credential and is not one (`tokenType`, `passwordLabel`). */
+const DESCRIPTOR_WORDS = new Set(
+  "type name kind label url path header prefix endpoint expiry expires ttl count length pattern regex dir file field placeholder hint message title error mode status".split(
     " ",
   ),
 );
-/** Segments of an UPPER_SNAKE environment variable name that make it a credential. */
-const ENV_WORDS = new Set("API SECRET TOKEN KEY PASSWORD PASSWD PWD CREDENTIAL CREDENTIALS AUTH".split(" "));
-
 /** Names for which a value with spaces (a passphrase) is still a credential. */
 const STRONG_WORDS = new Set("secret token password passwd pwd passphrase credential credentials".split(" "));
 
-function lastNameWord(name: string): string {
-  const words = name.split(/[-_.]|(?<=[a-z0-9])(?=[A-Z])/);
-  return (words[words.length - 1] ?? "").toLowerCase();
+/** Lower-case words of a name: `dbPass`, `DB_PASSWORD`, `api-key` and `a.b.token` give their parts. */
+export function nameParts(name: string): string[] {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[\s_.$-]+/)
+    .filter(Boolean);
 }
 
-/** Values that are identifiers or message keys, not secrets: `forgotPassword`, `auth.login_title`. */
-function looksLikeName(v: string): boolean {
-  return /^[a-z]+(?:[A-Z][a-z]+)*$/.test(v) || /^[a-z]+(?:[._:-][a-z]+)+$/.test(v);
+/** True when `name` (an identifier or a quoted key) names a credential: password, secret, token, api key, ... */
+export function isCredentialName(name: string): boolean {
+  const parts = nameParts(name);
+  if (parts.length === 0) return false;
+  const last = parts[parts.length - 1] as string;
+  if (parts.length > 1 && DESCRIPTOR_WORDS.has(last)) return false;
+  if (parts.some((p) => CREDENTIAL_WORDS.has(p))) return true;
+  return parts.includes("key") && parts.some((p) => KEY_COMPANIONS.has(p));
+}
+
+function hasStrongWord(name: string): boolean {
+  return nameParts(name).some((p) => STRONG_WORDS.has(p));
+}
+
+/** Option values that are keywords of an API, not secrets (`credentials: "same-origin"`). */
+const NON_SECRET_VALUES = new Set([
+  "same-origin",
+  "include",
+  "omit",
+  "none",
+  "true",
+  "false",
+  "null",
+  "undefined",
+]);
+
+/** Values that are message keys, not secrets: `auth.login_title`, `errors:password`. */
+function looksLikeMessageKey(v: string): boolean {
+  return /^[a-z]+(?:[._:][a-z_]+)+$/.test(v);
 }
 
 export const SECRET_RULES: readonly SecretRule[] = [
@@ -105,8 +143,9 @@ export const SECRET_RULES: readonly SecretRule[] = [
   { name: "jwt", re: /\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}(?:\.[A-Za-z0-9_-]*)?/g, collapsible: true },
   {
     name: "connection-string",
-    // scheme://user:password@host ; whatever precedes the secret, including a redaction marker, is part of the value.
-    re: /\b[a-z][a-z0-9+.-]{0,15}:\/\/[^\s:@/'"`]{1,100}:(?<v>[^\s@/'"`]{1,200})@/gi,
+    // A URL with a password in its user-info part (any scheme, user may be empty); whatever precedes the secret,
+    // including a redaction marker, is part of the value.
+    re: /\b[a-z][a-z0-9+.-]{0,15}:\/\/[^\s:@/'"`]{0,100}:(?<v>[^\s@/'"`]{1,200})@/gi,
     accept: (g) => g.v !== MARKER,
   },
   {
@@ -115,29 +154,66 @@ export const SECRET_RULES: readonly SecretRule[] = [
   },
   { name: "bearer-token", re: /\bBearer\s{1,5}(?<v>[A-Za-z0-9._~+/=-]{20,})/g },
   {
-    // `name = "value"` / `name: "value"` / `"name": "value"` where the last word of name is a credential word.
+    // `name = "value"` / `name: "value"` / `"name": "value"` where the name is a credential name; the value is any
+    // string literal of four characters or more, in any letter case. Interpolated templates are left alone.
     name: "generic-credential",
-    re: /(?<name>[A-Za-z_$][\w$.-]{0,60})["']?\s{0,20}[:=]\s{0,20}["'`](?<v>[^"'`\r\n]{8,})/g,
+    re: /(?<![\w$.-])(?<name>[A-Za-z_$][\w$.-]{0,60})["']?\s{0,20}[:=]\s{0,20}(?<q>["'`])(?<v>[^"'`\r\n]{4,200})/g,
     accept: (g) => {
-      const word = lastNameWord(g.name ?? "");
       const v = g.v ?? "";
-      if (!CREDENTIAL_WORDS.has(word) || v === MARKER || looksLikeName(v)) return false;
+      if (v === MARKER || !isCredentialName(g.name ?? "")) return false;
+      if (g.q === "`" && v.includes("${")) return false;
+      if (looksLikeMessageKey(v) || NON_SECRET_VALUES.has(v)) return false;
       // `key: "Please enter your password"` is a label; a space in the value only counts for strong credential names.
-      return !/\s/.test(v) || STRONG_WORDS.has(word);
+      return !/\s/.test(v) || hasStrongWord(g.name ?? "");
     },
   },
   {
-    // Environment style: API_KEY=value, DB_PASSWORD: value. An UPPER_SNAKE name with a credential segment.
-    name: "env-credential",
-    re: /\b(?<name>[A-Z][A-Z0-9_]{0,60})(?<sep>[ \t]{0,3}[=:][ \t]{0,3})(?<v>[^\s"'`;,(){}]{8,200})/g,
+    // A credential name assigned two or more string literals joined with plus: every literal is part of the secret.
+    name: "concatenated-credential",
+    re: /(?<![\w$.-])(?<head>(?<name>[A-Za-z_$][\w$.-]{0,60})["']?\s{0,20}[:=]\s{0,20})(?:"[^"\r\n]{0,200}"|'[^'\r\n]{0,200}')(?:\s{0,5}\+\s{0,5}(?:"[^"\r\n]{0,200}"|'[^'\r\n]{0,200}')){1,4}/g,
+    accept: (g) => isCredentialName(g.name ?? ""),
+    replace: (_m, g) => `${g.head}"${MARKER}"`,
+  },
+  {
+    // Unquoted values: shell style (NAME=value in capitals) and YAML style (name: value with a digit in the value).
+    name: "unquoted-credential",
+    re: /(?<![\w$.-])(?<name>[A-Za-z_$][\w$.-]{0,60})(?<sep>=|:[ \t]{1,3})(?<v>[^\s"'`;,(){}[\]=]{4,200})/g,
     accept: (g) => {
       const v = g.v ?? "";
-      if (v === MARKER || /^(?:process\.|import\.meta|env\.|\$|<redacted>$)/.test(v)) return false;
-      if (!(g.name ?? "").split("_").some((w) => ENV_WORDS.has(w))) return false;
-      // `KEY=value` (no spaces, `=`) is shell style; with spaces or `:` it is code, so ask for a random-looking value.
-      return g.sep === "=" || /\d/.test(v);
+      const name = g.name ?? "";
+      if (v === MARKER || /^(?:process\.|import\.meta|env\.|this\.|\$|@|\/)/.test(v)) return false;
+      if (!isCredentialName(name)) return false;
+      if (/^[A-Z][A-Z0-9_]*$/.test(name) && g.sep === "=") return true; // shell style: API_KEY=value
+      // Lower-case or camelCase names: a random-looking value (it holds a digit and a letter, no call or member chain).
+      return /\d/.test(v) && /[A-Za-z]/.test(v) && !/[A-Za-z]\.[A-Za-z]/.test(v);
     },
   },
+  { name: "age-secret-key", re: /\bAGE-SECRET-KEY-1[A-Z0-9]{20,}/g, collapsible: true },
+  {
+    name: "basic-auth-header",
+    re: /\bBasic\s{1,5}(?<v>[A-Za-z0-9+/]{8,}={0,2})/g,
+    accept: (g) => /\d|=|[A-Z].*[A-Z]/.test(g.v ?? ""),
+  },
+  {
+    name: "cookie-session",
+    re: /(?<![\w-])(?<cn>[A-Za-z_.-]{0,20}(?:session|sess|sid|auth|jwt|token)[A-Za-z_.-]{0,10})=(?<v>[A-Za-z0-9%._~+/=<>-]{16,})/gi,
+    accept: (g) => g.v !== MARKER,
+  },
+  { name: "pypi-token", re: /\bpypi-[A-Za-z0-9_-]{40,}/g, collapsible: true },
+  { name: "linear-key", re: /\blin_(?:api|oauth)_[A-Za-z0-9]{30,}/g, collapsible: true },
+  { name: "notion-token", re: /\b(?:secret_|ntn_)[A-Za-z0-9]{36,}/g, collapsible: true },
+  { name: "telegram-bot-token", re: /\b\d{8,10}:[A-Za-z0-9_-]{35}\b/g, collapsible: true },
+  {
+    name: "discord-webhook",
+    re: /discord(?:app)?\.com\/api\/webhooks\/\d{6,}\/[A-Za-z0-9_-]{20,}/g,
+    collapsible: true,
+  },
+  { name: "sentry-dsn", re: /:\/\/(?<v>[0-9a-f]{20,})@/g },
+  { name: "google-access-token", re: /\bya29\.[A-Za-z0-9_-]{20,}/g, collapsible: true },
+  { name: "stripe-publishable", re: /\bpk_(?:live|test)_[A-Za-z0-9]{10,}/g, collapsible: true },
+  { name: "airtable-token", re: /\bpat[A-Za-z0-9]{14}\.[0-9a-f]{40,}/g, collapsible: true },
+  { name: "rubygems-token", re: /\brubygems_[0-9a-f]{40,}/g, collapsible: true },
+  { name: "square-access", re: /\bsq0(?:atp|csp)-[A-Za-z0-9_-]{20,}/g, collapsible: true },
 ];
 
 const ENTROPY_TOKEN = /[A-Za-z0-9+/=_-]{32,}/g;
@@ -279,6 +355,7 @@ function redactWith(text: string, rules: readonly SecretRule[]): string {
       const last = args[args.length - 1];
       const groups = typeof last === "object" && last !== null ? (last as Record<string, string>) : undefined;
       if (rule.accept !== undefined && !rule.accept(groups ?? {})) return match;
+      if (rule.replace !== undefined) return rule.replace(match, groups ?? {});
       const v = groups?.v;
       if (v === undefined) return MARKER;
       const at = match.lastIndexOf(v);

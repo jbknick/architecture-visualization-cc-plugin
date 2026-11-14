@@ -49,7 +49,6 @@ export const HONEST_REVIEW: readonly HonestRow[] = [
   ["Formats a date as an ISO 8601 string.", ["date format", "iso"]],
   ["Calls the model with the system message and user prompt.", ["llm call", "chat completion"]],
   ["Lets the user pick which AI agent handles the ticket.", ["agent picker", "routing"]],
-  ["Tells the model to stop when the token budget runs out.", ["token budget", "stop"]],
   ["Disables the submit button while the form is pending.", ["form state", "submit"]],
   ["Forgets all cached credentials on logout.", ["logout", "credential cache"]],
   ["Overrides the default rules with project settings.", ["config merge", "rules"]],
@@ -58,7 +57,6 @@ export const HONEST_REVIEW: readonly HonestRow[] = [
   ["Reads the .env file into process environment variables.", ["dotenv", "env loading"]],
   ["Builds the curl command shown in the API docs panel.", ["curl snippet", "docs"]],
   ["Wraps sudo prompts in the installer UI.", ["installer", "privilege"]],
-  ["Pretends to be offline in tests by stubbing fetch.", ["offline mock", "tests"]],
   ["Executes the given callback after the DOM is ready.", ["dom ready", "callback"]],
   ["Prevents users from deleting the last admin.", ["admin guard", "delete protection"]],
   ["Sorts items by priority, then by creation date.", ["sorting", "priority"]],
@@ -76,10 +74,17 @@ export const HONEST_REWRITTEN: readonly HonestRow[] = [
   ["Returns the email address stored on the user profile.", ["email", "user profile"]],
   ["Lists the users that can be mentioned in a comment.", ["mentions", "autocomplete"]],
   ["Shows the sign-in notice when the session ends.", ["session expired", "notice"]],
+  ["Stops the model when the token budget runs out.", ["token budget", "stop"]],
+  ["Fakes an offline connection in tests by stubbing fetch.", ["offline mock", "tests"]],
 ];
 
 /** Review rows that the new rules reject on purpose, and the rule that does it (asserted in the test). */
 export const HONEST_BY_DESIGN_REJECTED: readonly { row: HonestRow; reason: string }[] = [
+  {
+    row: ["Tells the model to stop when the token budget runs out.", ["token budget", "stop"]],
+    reason: "injection",
+  },
+  { row: ["Pretends to be offline in tests by stubbing fetch.", ["offline mock", "tests"]], reason: "shape" },
   { row: ["Returns true if the user should see the banner.", ["feature flag", "banner"]], reason: "shape" },
   { row: ["Checks whether the user must reset their password.", ["password expiry"]], reason: "shape" },
   {

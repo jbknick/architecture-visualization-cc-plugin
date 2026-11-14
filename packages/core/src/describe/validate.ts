@@ -7,8 +7,10 @@ import type { Description, FactSheet } from "../types.js";
 import { scanInjection } from "./filters.js";
 import {
   describeUngrounded,
+  type Grounding,
   groundingNames,
   isGrounded,
+  secretTokens,
   splitIdentifierWords,
   ungroundedTokens,
 } from "./identifiers.js";
@@ -24,14 +26,10 @@ import {
   MIN_TERMS,
 } from "./schema.js";
 import { scanSecrets } from "./secrets.js";
-import {
-  addressingHits,
-  hasDisallowedCharacters,
-  instructsProtectedObject,
-  shapeProblem,
-  startsWithDirective,
-} from "./shape.js";
+import { addressingHits, hasDisallowedCharacters, shapeProblem } from "./shape.js";
+import { sensitivePhrases, speechProblem, wordsOf } from "./speech.js";
 import { tokenize, wordCount } from "./text.js";
+import { isStopWord } from "./wordlist.js";
 
 export type ValidationFailureReason = "schema" | "length" | "shape" | "identifier" | "injection" | "secret";
 export type ValidationRepair = "behavior-truncated" | "search-terms-stripped";
@@ -107,36 +105,115 @@ function hardCapViolation(raw: unknown): string | null {
   return null;
 }
 
-type TermVerdict = { ok: true } | { ok: false; reason: ValidationFailureReason; detail: string };
+/** `weak` verdicts are benign (too many words) and only drop the term; every other failure rejects the description. */
+type TermVerdict =
+  | { ok: true }
+  | { ok: false; weak?: boolean; reason: ValidationFailureReason; detail: string };
 
-function judgeTerm(term: string, names: ReadonlySet<string>): TermVerdict {
+/** Terms that open with a shell command or an override verb. */
+const COMMAND_STARTS = new Set("prefer avoid please npm pnpm yarn npx pip curl wget sudo chmod".split(" "));
+
+const DESTRUCTIVE = new Set(
+  "delete remove disable bypass ignore disregard override wipe erase drop kill disables".split(" "),
+);
+const PROTECTIVE = new Set(
+  "tests test auth authentication authorization checks check validation security instructions rules guard guards permissions hooks ci lint".split(
+    " ",
+  ),
+);
+
+/** "curl snippet", "npm script": a shell name followed by what it is a name for. */
+const SHELL_NOUNS = new Set(
+  "command commands snippet snippets request requests example examples flags flag options option output header headers script scripts package packages registry install".split(
+    " ",
+  ),
+);
+
+function judgeTerm(term: string, g: Grounding): TermVerdict {
   if (hasDisallowedCharacters(term)) return { ok: false, reason: "shape", detail: "disallowed characters" };
   const tokens = tokenize(term);
-  if (tokens.length === 0 || tokens.length > MAX_TERM_WORDS)
-    return { ok: false, reason: "shape", detail: `a term must hold 1 to ${MAX_TERM_WORDS} words` };
+  if (tokens.length === 0) return { ok: false, reason: "shape", detail: "empty term" };
+  if (tokens.length > MAX_TERM_WORDS)
+    return {
+      ok: false,
+      weak: true,
+      reason: "shape",
+      detail: `a term must hold 1 to ${MAX_TERM_WORDS} words`,
+    };
   const lower = tokens.map((t) => t.toLowerCase());
   if (addressingHits(term).length > 0) return { ok: false, reason: "injection", detail: "addressing words" };
-  if (startsWithDirective(lower) || instructsProtectedObject(lower))
+  if (lower.length === 1 && (lower[0] === "disregard" || lower[0] === "forget"))
     return { ok: false, reason: "injection", detail: "directive term" };
+  if (COMMAND_STARTS.has(lower[0] as string) && !(SHELL_NOUNS.has(lower[1] ?? "") && lower.length === 2))
+    return { ok: false, reason: "injection", detail: "directive term" };
+  const sp = speechProblem(term);
+  if (sp !== null) return { ok: false, reason: "injection", detail: sp };
+  const tw = wordsOf(term);
+  if (tokens.length >= 3 && sensitivePhrases(tw).length > 0)
+    return { ok: false, reason: "injection", detail: "imperative term" };
+  // Two words: only a destructive verb with a protective object ("delete tests"); "skip weekends", "run tests" are search terms.
+  if (tokens.length === 2 && DESTRUCTIVE.has(tw[0] as string) && PROTECTIVE.has(tw[1] as string))
+    return { ok: false, reason: "injection", detail: "imperative term" };
+  if (lower.every((t) => isStopWord(t)))
+    return { ok: false, reason: "shape", detail: "a term of function words only" };
+  // An identifier that spells an instruction ("deleteAllTests") is judged by its words.
+  const split = tokens.flatMap((t) => (/[a-z][A-Z]|_/.test(t) ? splitIdentifierWords(t) : [t]));
+  if (split.length !== tokens.length) {
+    const sw = split.map((t) => t.toLowerCase());
+    if (sensitivePhrases(sw).length > 0)
+      return { ok: false, reason: "injection", detail: "imperative identifier" };
+    const fs = scanInjection(sw.join(" "));
+    if (fs.reject.length > 0) return { ok: false, reason: "injection", detail: fs.reject.join(", ") };
+  }
   const f = scanInjection(term);
   if (f.reject.length > 0) return { ok: false, reason: "injection", detail: f.reject.join(", ") };
-  const bad = tokens.filter((t) => !isGrounded(t, names));
+  if (secretTokens(term, g).length > 0) return { ok: false, reason: "secret", detail: "a credential value" };
+  const bad = tokens.filter((t) => !isGrounded(t, g));
   if (bad.length > 0) return { ok: false, reason: "identifier", detail: describeUngrounded(bad) };
   return { ok: true };
 }
 
-function judgeName(name: string, names: ReadonlySet<string>): TermVerdict {
+/** Instruction phrases that span search terms, or fill a term of three words or more ("remove auth" + "check"). */
+function termsTogetherInstruct(terms: readonly string[]): boolean {
+  const words: string[] = [];
+  const owner: number[] = [];
+  terms.forEach((t, k) => {
+    for (const w of wordsOf(t)) {
+      words.push(w);
+      owner.push(k);
+    }
+  });
+  // A destructive verb standing alone as a term, next to a term that names protective code ("auth", "check", "remove").
+  const alone = terms.findIndex((t) => {
+    const tw = wordsOf(t);
+    return tw.length === 1 && DESTRUCTIVE.has(tw[0] as string);
+  });
+  if (alone >= 0 && words.some((w, i) => owner[i] !== alone && PROTECTIVE.has(w))) return true;
+  for (const { from, to } of sensitivePhrases(words)) {
+    if (owner[from] !== owner[to]) return true;
+    if (words.filter((_, i) => owner[i] === owner[from]).length >= 3) return true;
+  }
+  return false;
+}
+
+function judgeName(name: string, g: Grounding): TermVerdict {
   const words = splitIdentifierWords(name);
   const lower = words.map((w) => w.toLowerCase());
-  if (!names.has(name)) {
-    const bad = words.filter((w) => !isGrounded(w, names));
+  const whole = g.names.has(name);
+  if (!whole) {
+    const bad = words.filter((w) => !isGrounded(w, g));
     if (bad.length > 0) return { ok: false, reason: "identifier", detail: describeUngrounded(bad) };
   }
   if (lower.some((w) => NAME_ADDRESSING.has(w)))
     return { ok: false, reason: "injection", detail: "addressing words" };
-  if (instructsProtectedObject(lower)) return { ok: false, reason: "injection", detail: "directive name" };
+  if (sensitivePhrases(lower).some((p) => p.from === 0))
+    return { ok: false, reason: "injection", detail: "directive name" };
+  const sp = speechProblem(lower.join(" "));
+  if (sp !== null) return { ok: false, reason: "injection", detail: sp };
   const f = scanInjection(words.join(" "));
   if (f.reject.length > 0) return { ok: false, reason: "injection", detail: f.reject.join(", ") };
+  if (secretTokens(words.join(" "), g).length > 0)
+    return { ok: false, reason: "secret", detail: "a credential value" };
   return { ok: true };
 }
 
@@ -196,10 +273,14 @@ export function validateDescription(
   // (5) shape of behavior, judged on the full text the model wrote (a payload in the truncated-away tail still counts).
   const problem = shapeProblem(original);
   if (problem !== null) return fail("shape", `behavior: ${problem}`);
+  const speech = speechProblem(original);
+  if (speech !== null) return fail("injection", `behavior: ${speech}`);
 
-  // (6) grounding: every unusual token must be a name from the fact sheet or on a committed list.
-  const names = groundingNames(sheet);
-  const ungrounded = ungroundedTokens(original, names);
+  // (6) grounding: every token must be an ordinary word, a small number, or come from the fact sheet.
+  const g = groundingNames(sheet);
+  if (secretTokens(original, g).length > 0)
+    return fail("secret", "behavior repeats a credential value from the code");
+  const ungrounded = ungroundedTokens(original, g);
   if (ungrounded.length > 0) return fail("identifier", `behavior ${describeUngrounded(ungrounded)}`);
 
   // (7) injection filter, defence in depth: behavior, and behavior with every term appended (instructions split
@@ -210,23 +291,27 @@ export function validateDescription(
   if (/(?=[0-9a-f]{0,11}\d)[0-9a-f]{12}/i.test(d.searchTerms.join("").replace(/[^A-Za-z0-9]/g, "")))
     return fail("identifier", "searchTerms together hold a long hexadecimal run");
 
+  // Search terms: a term rejected for an instruction-like reason (imperative, addressee, modal, ungrounded token,
+  // secret) rejects the whole description. Only benign weak cases (more than four words) are dropped.
   const terms: string[] = [];
-  let firstTermFailure: { reason: ValidationFailureReason; detail: string } | null = null;
+  const dropped: string[] = [];
   for (const t of d.searchTerms) {
-    const v = judgeTerm(t, names);
+    const v = judgeTerm(t, g);
     if (v.ok) terms.push(t.trim());
-    else firstTermFailure ??= v;
+    else if (v.weak === true) dropped.push(t);
+    else return fail(v.reason, `searchTerms: ${v.detail}`);
   }
-  if (terms.length === 0 && firstTermFailure !== null)
-    return fail(firstTermFailure.reason, `searchTerms: ${firstTermFailure.detail}`);
-  if (terms.length < d.searchTerms.length) repairs.push("search-terms-stripped");
+  if (terms.length === 0) return fail("shape", "searchTerms: no usable term");
+  if (dropped.length > 0) repairs.push("search-terms-stripped");
   // Terms that each passed may still spell something together ("do" + "not", "skip" + "the tests").
   const kept = terms.join(" ");
-  if (addressingHits(kept).length > 0 || instructsProtectedObject(tokenize(kept.toLowerCase())))
+  if (addressingHits(kept).length > 0 || termsTogetherInstruct(terms))
     return fail("injection", "searchTerms together: addressing or directive words");
+  const joinedSpeech = speechProblem(`${original} ${kept}`);
+  if (joinedSpeech !== null) return fail("injection", `behavior and terms: ${joinedSpeech}`);
 
   if (d.suggestedName !== undefined) {
-    const v = judgeName(d.suggestedName, names);
+    const v = judgeName(d.suggestedName, g);
     if (!v.ok) return fail(v.reason, `suggestedName: ${v.detail}`);
   }
 

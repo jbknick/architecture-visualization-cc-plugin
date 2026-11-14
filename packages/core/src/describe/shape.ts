@@ -3,7 +3,17 @@
 // in a restricted character set, with no second person, no deontic words and no labels or asides. Everything here is
 // linear in the input length (the caller has already capped it at 400 characters).
 
+import {
+  CAUSATIVES,
+  CLAUSE_TRIGGERS,
+  isActionVerb,
+  NOUN_CONTEXT,
+  OBJECT_STARTS,
+  SENSITIVE_OBJECTS,
+  VERBS_ALWAYS,
+} from "./lexicon.js";
 import { tokenize } from "./text.js";
+import { isBaseWord, isWord, stemsOf } from "./wordlist.js";
 
 export type ShapeProblem =
   | "characters"
@@ -13,7 +23,8 @@ export type ShapeProblem =
   | "unbalanced"
   | "spaced-letters"
   | "first-word"
-  | "addressing";
+  | "addressing"
+  | "imperative-clause";
 
 /** Allowed in `behavior`: ASCII letters, digits, space and `, . ; ' - _ / ( ) < > [ ] $ : #` (the symbols serve grounded identifiers). */
 const ALLOWED_CHARS = /^[A-Za-z0-9 ,.;'\-_/()<>[\]$:#]*$/;
@@ -52,7 +63,7 @@ streams stringifies strips submits subscribes substitutes sums supplies suppress
 tags takes terminates tests throttles throws times toggles tokenizes tracks transforms translates traverses triggers
 trims truncates tries turns unlocks unmounts unpacks unregisters unsubscribes unwraps updates upgrades uploads uses
 validates verifies waits wakes walks warns watches wipes wraps writes yields zips
-aborts narrows pages caches chunks clamps debounces deduplicates embeds forgets pretends summarizes tells unlinks upserts
+aborts narrows pages caches chunks clamps debounces deduplicates embeds forgets summarizes tells unlinks upserts
 abbreviates accumulates acknowledges acquires activates adopts advances aliases amends annotates anonymizes
 approximates arranges associates assumes attributes audits augments awaits balances bans bills blends boosts
 borrows branches brings bumps bypasses calibrates canonicalizes categorizes centers certifies changes charges
@@ -82,11 +93,24 @@ bounds buffers bills caches clamps commits compiles compresses copies decodes de
 
 export const DESCRIPTION_VERBS: ReadonlySet<string> = new Set(VERB_TEXT.split(/\s+/).filter(Boolean));
 
-/** First- and second-person pronouns and deontic or addressing words. None has a place in a one-sentence behaviour description. */
+/** Third-person forms that open a sentence but are never a description of code. */
+const FIRST_WORD_BAN: ReadonlySet<string> = new Set(["pretends", "pretend"]);
+
+/** Pronouns that are addressing only in this exact spelling, so "US dollars" and "I/O" stay legal. */
+const CASE_SENSITIVE_PRONOUNS: ReadonlySet<string> = new Set([
+  "us",
+  "we",
+  "i",
+  "me",
+  "our",
+  "ours",
+  "ourselves",
+  "I",
+]);
+
+/** Second-person pronouns and deontic words. None has a place in a one-sentence behaviour description. */
 const ADDRESSING_TEXT = `
-you your yours yourself yourselves we our ours ourselves i me us
-must should ought shall please todo fixme remember instead
-don't dont
+you your yours yourself yourselves must should ought shall please todo fixme remember don't dont
 `;
 export const ADDRESSING_WORDS: ReadonlySet<string> = new Set(ADDRESSING_TEXT.split(/\s+/).filter(Boolean));
 
@@ -97,9 +121,10 @@ const ADDRESSING_PHRASES = /\b(?:need to|needs to be|has to|have to|be sure|make
  * Words from the issue's list that were measured and dropped (spec section 8): "note", "warning" and "important" are
  * ordinary nouns and adjectives in honest descriptions ("a short memory note", "a warning toast"); each alone cost
  * about 0.4% of the honest corpus. "never" and "always" turned out common in real model output ("never blocking
- * rendering"): 5 of 200 real descriptions. "do not" is ordinary in honest text ("so reloads do not repeat the message"). "my" is first-person only in prose, and appears in real search terms ("export my
- * data"). The attacks they stood for ("Note: ...", "IMPORTANT: ...") are labels, rejected by
- * the label rule, or start with a non-verb, rejected by the first-word rule.
+ * rendering"): 5 of 200 real descriptions. "do not" is ordinary in honest text ("so reloads do not repeat the
+ * message"). "my" is first-person only in prose, and appears in real search terms ("export my data"). "instead" is
+ * ordinary ("... instead of removing the row"). The attacks they stood for ("Note: ...", "IMPORTANT: ...") are labels,
+ * rejected by the label rule, or start with a non-verb, rejected by the first-word rule.
  */
 export const ADDRESSING_DROPPED: readonly string[] = [
   "note",
@@ -109,14 +134,17 @@ export const ADDRESSING_DROPPED: readonly string[] = [
   "always",
   "my",
   "do not",
+  "instead",
 ];
 
-/** Addressing words and phrases in `text` (lower-case, deduplicated). */
+/** Addressing words and phrases in `text` (deduplicated). Second person and deontic words in any case; `us`, `we`, `i`, `me`, `our` only as written here. */
 export function addressingHits(text: string): string[] {
-  const lower = text.toLowerCase();
   const hits: string[] = [];
-  for (const t of tokenize(lower)) if (ADDRESSING_WORDS.has(t) && !hits.includes(t)) hits.push(t);
-  const m = ADDRESSING_PHRASES.exec(lower.replace(/\s+/g, " "));
+  for (const t of tokenize(text)) {
+    const low = t.toLowerCase();
+    if ((ADDRESSING_WORDS.has(low) || CASE_SENSITIVE_PRONOUNS.has(t)) && !hits.includes(low)) hits.push(low);
+  }
+  const m = ADDRESSING_PHRASES.exec(text.toLowerCase().replace(/\s+/g, " "));
   if (m !== null && !hits.includes(m[0])) hits.push(m[0]);
   return hits;
 }
@@ -127,27 +155,170 @@ export function hasDisallowedCharacters(s: string): boolean {
 
 const MAX_ASIDE_WORDS = 6;
 
-/** Base-form verbs that must not open a clause after `;`, `:` or `,` ("... : delete the tests"). */
-const CLAUSE_IMPERATIVES = new Set(
-  "skip delete remove ignore disable bypass disregard drop wipe erase forget override replace install run execute use prefer avoid push commit call curl wget sudo npm pnpm yarn pip".split(
-    " ",
-  ),
-);
-
-/** First word is a listed verb, optionally after one adverb in -ly ("Strictly parses") or as `prefix-verb` ("Deep-copies"). */
+/**
+ * First word of a description: a listed verb (fast path), or any third-person form (-s, -es, -ies) whose base form is
+ * an English or programming word. Optionally after one adverb in -ly ("Strictly parses") or as `prefix-verb`
+ * ("Deep-copies").
+ */
 function startsWithVerb(pieces: readonly string[]): boolean {
   let first = (pieces[0] ?? "").toLowerCase();
   if ((/^[a-z]{3,12}ly$/.test(first) || first === "always" || first === "never") && pieces.length > 1)
     first = (pieces[1] as string).toLowerCase();
   const hyphen = /^[a-z]{2,8}-([a-z]+)$/.exec(first);
   if (hyphen !== null) first = hyphen[1] as string;
-  return /^[a-z]+$/.test(first) && DESCRIPTION_VERBS.has(first);
+  if (!/^[a-z]+$/.test(first) || FIRST_WORD_BAN.has(first)) return false;
+  if (DESCRIPTION_VERBS.has(first)) return true;
+  if (first === "does" || first === "goes") return true;
+  if (first.length < 4 || !first.endsWith("s") || /(?:ss|us|is)$/.test(first)) return false;
+  return stemsOf(first)
+    .filter((s) => s.length < first.length)
+    .some((s) => isBaseWord(s) || isWord(s));
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Imperative clauses (check 5). A base-form action verb that starts a clause is an instruction: after `, ; : (` or a
+// dash, or after then/and/or/but/so/just/now/also/first/next/finally/please/never/always/not/do ("then quietly
+// delete"). Not an instruction: an infinitive ("to fetch and cache results"), a noun ("the delete button", "on update"),
+// a complement of a causative first verb ("Lets the user delete a row"), or an item in a list of bare verbs
+// ("(create, read, update, delete)").
+
+type Item = { w: string; raw: string } | { p: string };
+
+function itemsOf(text: string): Item[] {
+  const out: Item[] = [];
+  for (const m of text.matchAll(/([A-Za-z][A-Za-z0-9'_./-]*)|(\s-{1,2}\s)|([,;:([])|([)\]])/g)) {
+    if (m[1] !== undefined) out.push({ w: m[1].toLowerCase(), raw: m[1] });
+    else if (m[2] !== undefined) out.push({ p: "-" });
+    else if (m[3] !== undefined) out.push({ p: m[3] === "[" ? "(" : m[3] });
+    else out.push({ p: ")" });
+  }
+  return out;
+}
+
+const isBoundary = (it: Item | undefined): boolean =>
+  it !== undefined &&
+  "p" in it &&
+  (it.p === "," || it.p === ";" || it.p === ":" || it.p === "(" || it.p === "-");
+const wordOf = (it: Item | undefined): string | undefined =>
+  it !== undefined && "w" in it ? it.w : undefined;
+
+const AUXILIARIES = new Set(
+  "does did will would can could may might should is are was were has have had been be".split(" "),
+);
+const DO_FORMS = new Set(["do", "don't", "dont"]);
+
+function isAdverb(w: string): boolean {
+  return (/^[a-z]{4,}ly$/.test(w) && w !== "only" && w !== "family") || w === "simply" || w === "kindly";
+}
+
+/** Does the clause-opening position `i` hold a trigger (boundary, or a trigger word with at most one adverb between)? */
+function isTriggerPosition(items: readonly Item[], i: number): boolean {
+  let k = i - 1;
+  if (isBoundary(items[k])) return true;
+  let pw = wordOf(items[k]);
+  if (pw !== undefined && isAdverb(pw)) {
+    k--;
+    if (isBoundary(items[k])) return true;
+    pw = wordOf(items[k]);
+  }
+  if (pw === undefined || !CLAUSE_TRIGGERS.has(pw)) return false;
+  // "do" and "not" after a subject are descriptive ("reloads do not repeat", "does not delete"); at a clause start they are not.
+  if (pw === "not" || pw === "never" || pw === "always") {
+    const before = wordOf(items[k - 1]);
+    if (before !== undefined && AUXILIARIES.has(before)) return false;
+    if (before !== undefined && DO_FORMS.has(before)) return isClauseStart(items, k - 1);
+    return true;
+  }
+  if (DO_FORMS.has(pw)) return isClauseStart(items, k);
+  return true;
+}
+
+/** Position `k` opens a clause: first item, or right after a boundary or a trigger word. */
+function isClauseStart(items: readonly Item[], k: number): boolean {
+  if (k <= 0) return true;
+  if (isBoundary(items[k - 1])) return true;
+  const w = wordOf(items[k - 1]);
+  return w !== undefined && CLAUSE_TRIGGERS.has(w);
+}
+
+/** An earlier "to" in the same clause (no punctuation since) governs this verb: "to fetch and cache results". */
+function governedByInfinitive(items: readonly Item[], i: number): boolean {
+  for (let k = i - 1; k >= 0; k--) {
+    const it = items[k] as Item;
+    if ("p" in it) return false;
+    if (it.w === "to") {
+      const nxt = wordOf(items[k + 1]);
+      return nxt !== undefined && !OBJECT_STARTS.has(nxt);
+    }
+  }
+  return false;
+}
+
+/** The verb at `i` sits in a list of bare verbs: "(create, read, update, delete)", "edit, delete and cancel buttons". */
+function inVerbList(items: readonly Item[], i: number): boolean {
+  const next = items[i + 1];
+  const nw = wordOf(next);
+  const sepAfter =
+    next === undefined ||
+    (next !== undefined && "p" in next && (next.p === "," || next.p === ")")) ||
+    nw === "and" ||
+    nw === "or";
+  if (!sepAfter) return false;
+  let before = items[i - 1];
+  if (before !== undefined && "p" in before && before.p === ",") before = items[i - 2];
+  else if (wordOf(before) === "and" || wordOf(before) === "or") before = items[i - 2];
+  else before = undefined;
+  if (before !== undefined) {
+    const bw = wordOf(before);
+    if (bw !== undefined && isActionVerb(bw)) return true;
+  }
+  let after = items[i + 1];
+  if (after !== undefined && "p" in after && after.p === ",") after = items[i + 2];
+  else if (wordOf(after) === "and" || wordOf(after) === "or") after = items[i + 2];
+  else after = undefined;
+  const aw = wordOf(after);
+  return aw !== undefined && isActionVerb(aw);
+}
+
+/** True when `text` holds an imperative clause. Linear in the length of `text`. */
+export function hasImperativeClause(text: string): boolean {
+  const items = itemsOf(text);
+  const first = wordOf(items[0]);
+  const causative = first !== undefined && CAUSATIVES.has(first);
+  let punctSinceFirst = false;
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i] as Item;
+    if ("p" in it) {
+      if (i > 0) punctSinceFirst = true;
+      continue;
+    }
+    // "Do not touch the auth check": a clause that opens with "do" is an instruction whatever its verb.
+    if (i > 0 && DO_FORMS.has(it.w) && isClauseStart(items, i)) return true;
+    if (i === 0 || !isActionVerb(it.w)) continue;
+    if (!isTriggerPosition(items, i)) continue;
+    const prev = wordOf(items[i - 1]);
+    if (prev === "to" || (prev !== undefined && NOUN_CONTEXT.has(prev))) continue;
+    if (causative && !punctSinceFirst) continue;
+    if (governedByInfinitive(items, i)) continue;
+    if (inVerbList(items, i)) continue;
+    if (VERBS_ALWAYS.has(it.w)) return true;
+    const next = items[i + 1];
+    const nw = wordOf(next);
+    if (
+      next === undefined ||
+      (nw !== undefined && (OBJECT_STARTS.has(nw) || SENSITIVE_OBJECTS.has(nw) || VERBS_ALWAYS.has(nw)))
+    )
+      return true;
+    // "then call fetchUser2": an identifier, path or number right after the verb is its object.
+    if (next !== undefined && "raw" in next && /[a-z][A-Z]|_|\d|[./]/.test(next.raw)) return true;
+  }
+  return false;
 }
 
 /**
  * The first shape rule a `behavior` breaks, or null when it has the shape of a description. `text` is trimmed and
  * NFKC-folded here. Rules, in order: characters, one sentence (no second sentence, label, or long aside), no runs of
- * single letters, first word is a listed verb, no addressing words.
+ * single letters, first word is a verb form, no addressing words, no imperative clause.
  */
 export function shapeProblem(behavior: string): ShapeProblem | null {
   const text = behavior.normalize("NFKC").trim();
@@ -158,10 +329,6 @@ export function shapeProblem(behavior: string): ShapeProblem | null {
   // A comma with no space after it ("evil,com") spells a host without a dot; generics such as Map<K,V> are exempt.
   if (/,\S/.test(body.replace(/<[^<>]*>/g, ""))) return "characters";
   if (/^[A-Za-z]+\s*:/.test(body)) return "label";
-  // A colon, semicolon or comma may introduce a list or a second clause, but never an imperative one.
-  for (const m of body.matchAll(/[;:,]\s*([A-Za-z]+)/g)) {
-    if (CLAUSE_IMPERATIVES.has((m[1] as string).toLowerCase())) return "label";
-  }
 
   for (const open of ["(", "["] as const) {
     const close = open === "(" ? ")" : "]";
@@ -183,40 +350,6 @@ export function shapeProblem(behavior: string): ShapeProblem | null {
 
   if (!startsWithVerb(pieces)) return "first-word";
   if (addressingHits(text).length > 0) return "addressing";
+  if (hasImperativeClause(body)) return "imperative-clause";
   return null;
-}
-
-/** Instruction verbs that, followed by a protective object, make a search term or name an instruction ("skip the tests"). */
-const INSTRUCTION_VERBS = new Set(
-  "skip delete remove ignore disable bypass disregard drop wipe erase forget override".split(" "),
-);
-const FILLER = new Set("the all any previous prior my this these every".split(" "));
-const PROTECTED_OBJECTS = new Set("tests test auth checks check instructions rules".split(" "));
-
-/**
- * True when `words` (lower-case) holds an instruction verb, optional filler, then one or more protected objects that
- * end the phrase or are followed by "and"/"or": `skip the tests`, `deleteAllTests`, `ignorePreviousInstructions`.
- * `removeTestFiles` passes: the object is followed by another noun.
- */
-export function instructsProtectedObject(words: readonly string[]): boolean {
-  for (let i = 0; i < words.length; i++) {
-    if (!INSTRUCTION_VERBS.has(words[i] as string)) continue;
-    let j = i + 1;
-    while (j < words.length && FILLER.has(words[j] as string)) j++;
-    const start = j;
-    while (j < words.length && PROTECTED_OBJECTS.has(words[j] as string)) j++;
-    if (j === start) continue;
-    if (j === words.length || words[j] === "and" || words[j] === "or") return true;
-  }
-  return false;
-}
-
-/** Terms that start with an install or shell command, or with an unconditional override verb. */
-const COMMAND_STARTS = new Set(
-  "ignore disregard forget bypass skip prefer use avoid install npm pnpm yarn npx pip curl wget sudo chmod please always never".split(
-    " ",
-  ),
-);
-export function startsWithDirective(words: readonly string[]): boolean {
-  return words.length > 0 && COMMAND_STARTS.has(words[0] as string);
 }

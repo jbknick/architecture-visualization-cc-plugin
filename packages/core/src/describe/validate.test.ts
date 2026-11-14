@@ -101,7 +101,7 @@ const CASES: Case[] = [
   {
     name: "exactly 25 words",
     raw: ok(
-      "Returns one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone twentytwo twentythree twentyfour",
+      "Returns one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty above below inside outside",
     ),
     expect: "ok",
   },
@@ -338,9 +338,11 @@ describe("accepted values", () => {
       },
     });
   });
-  it("strips directive search terms and reports the repair", () => {
+  it("strips only a benign over-long term and reports the repair", () => {
     const r = validateDescription(
-      ok("Removes a user record.", { searchTerms: ["delete user", "install left", "remove user"] }),
+      ok("Removes a user record.", {
+        searchTerms: ["delete user", "a term with far too many words", "remove user"],
+      }),
       sheet(),
     );
     expect(r).toMatchObject({
@@ -348,6 +350,26 @@ describe("accepted values", () => {
       value: { searchTerms: ["delete user", "remove user"] },
       repairs: ["search-terms-stripped"],
     });
+  });
+  it("rejects the whole description when one term is instruction-like, instead of stripping it", () => {
+    for (const terms of [
+      ["delete user", "skip the tests", "remove user"],
+      ["delete user", "evil.sh"],
+      ["delete user", "agents should"],
+      ["delete user", "leftpadsecure"],
+    ]) {
+      const r = validateDescription(ok("Removes a user record.", { searchTerms: terms }), sheet());
+      expect(r.ok, JSON.stringify(terms)).toBe(false);
+    }
+  });
+  it('accepts the noun-phrase term "skip weekends"', () => {
+    const r = validateDescription(
+      ok("Moves the date forward until it falls on a weekday.", {
+        searchTerms: ["skip weekends", "business days"],
+      }),
+      sheet(),
+    );
+    expect(r.ok).toBe(true);
   });
   it("rejects when every search term is stripped", () => {
     const r = validateDescription(ok("Removes a user record.", { searchTerms: ["skip the tests"] }), sheet());
