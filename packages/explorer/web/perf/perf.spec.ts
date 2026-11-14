@@ -128,3 +128,27 @@ test("30k-function graph: layout off the main thread, pan/zoom fps", async ({ pa
   expect(report.nodes).toBeGreaterThan(30_000);
   expect(results["near pan"]?.frames ?? 0).toBeGreaterThan(5);
 });
+
+// The 3D code city at the Files level of the large mock (about 900 buildings): orbiting must stay smooth.
+// `data-frame-ms` is the CPU time the scene spends per frame (render + label placement); `data-frames` counts frames.
+test("3D city, files level: orbiting stays within a frame budget", async ({ page }) => {
+  await page.goto("/#/map-3d?level=files&scenario=large");
+  await expect(page.locator(".map3d[data-ready='true']")).toBeVisible({ timeout: 120_000 });
+  await page.waitForTimeout(1500);
+  const canvas = page.getByTestId("map3d-canvas");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("no canvas");
+  const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await startRecorder(page);
+  const before = Number(await canvas.getAttribute("data-frames"));
+  await interact(page, centre, false);
+  await page.waitForTimeout(300);
+  const stats = await stopRecorder(page);
+  const frames = Number(await canvas.getAttribute("data-frames")) - before;
+  const ms = Number(await canvas.getAttribute("data-frame-ms"));
+  const gl = process.env.PERF_GL ?? "gpu (angle)";
+  console.log(`PERF_REPORT_3D ${JSON.stringify({ ...stats, sceneFrames: frames, avgSceneMs: ms, gl })}`);
+  expect(frames).toBeGreaterThan(20);
+  // Average CPU time per frame (render submit + labels) under the 16 ms budget; software GL renders far slower.
+  if (process.env.PERF_GL === undefined) expect(ms).toBeLessThan(16);
+});

@@ -39,6 +39,12 @@ export interface LayoutInput {
   saved?: Positions;
   /** CSS size of the canvas the map will be fitted to; the map layout sizes titles and gaps for it. */
   viewport?: { w: number; h: number };
+  /**
+   * Level-independent box sizes: every workspace is sized as if it had contents. Without it a workspace with no
+   * children (the Workspaces level) can be a pixel or two smaller than the same one at the Folders level, which
+   * would move its neighbours. The 3D city sets it so its districts stay put when the level changes.
+   */
+  stableBoxes?: boolean;
 }
 
 /** Geometry of a hierarchical map (workspace boxes with a treemap inside). Indexed like the sorted-id tree. */

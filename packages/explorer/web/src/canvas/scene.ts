@@ -291,6 +291,12 @@ export function layoutInputFor(
   focus: string | null,
   saved?: LayoutInput["saved"],
   viewport?: { w: number; h: number },
+  /**
+   * Level-independent boxes (`LayoutInput.stableBoxes`) and no "src/" note of skipped folders in the title block the
+   * layout reserves room for: both exist only at the Folders and Files levels and would move boxes by a pixel or two
+   * between levels. The 3D city asks for the stable form so its districts stay put when the level changes.
+   */
+  stableTitles = false,
 ): LayoutInput {
   return {
     nodes: scene.nodes.map((n, i) => ({
@@ -301,7 +307,10 @@ export function layoutInputFor(
       functions: scene.functions[i],
       files: scene.files[i],
       ...((scene.tree.nodes[i] as TreeNode).parent === -1
-        ? { title: nodeTitle(scene, i), subtitle: subtitleParts(scene, i) }
+        ? {
+            title: nodeTitle(scene, i),
+            subtitle: subtitleParts(scene, i).filter((p) => !(stableTitles && p.endsWith("/"))),
+          }
         : {}),
     })),
     edges: scene.edges.map((e) => ({
@@ -314,6 +323,7 @@ export function layoutInputFor(
     focus,
     saved,
     viewport,
+    ...(stableTitles ? { stableBoxes: true } : {}),
   };
 }
 

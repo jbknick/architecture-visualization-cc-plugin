@@ -391,7 +391,7 @@ export async function layoutMap(
           fns.get(r) as number,
           area,
           aspect,
-          (tree.nodes[r] as TreeNode).children.length > 0,
+          input.stableBoxes === true || (tree.nodes[r] as TreeNode).children.length > 0,
           node?.title ?? "",
           node?.subtitle ?? [],
           portSide(r),

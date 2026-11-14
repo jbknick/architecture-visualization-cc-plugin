@@ -409,3 +409,191 @@
 .map3d-howto-toggle[aria-expanded="true"] .map3d-howto-chevron {
   transform: rotate(90deg);
 }
+
+/* ---- Code city (default style) --------------------------------------------------------------------------- */
+.c3-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+.c3-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.c3-leader {
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.c3-pole {
+  stroke: var(--text);
+  stroke-width: 1.5;
+  opacity: 0.8;
+}
+.c3-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  line-height: 1.25;
+  will-change: transform;
+}
+.c3-title {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 8px 4px 8px;
+  border-left: 4px solid var(--muted);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+.c3-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+.c3-sub {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.c3-subc {
+  position: absolute;
+  visibility: hidden;
+  max-height: 0;
+  overflow: hidden;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.c3-title.is-compact .c3-sub {
+  display: none;
+}
+.c3-title.is-compact .c3-subc {
+  position: static;
+  visibility: visible;
+  max-height: none;
+}
+.c3-cap {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ws, var(--muted)) 55%, transparent);
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.c3-cap .c3-fg {
+  margin-right: 4px;
+  color: var(--ws, var(--muted));
+}
+.c3-cap .c3-cf {
+  display: inline-block;
+  max-width: 0;
+  overflow: hidden;
+  vertical-align: bottom;
+  font-weight: 600;
+  color: var(--muted);
+}
+.c3-cap.is-full .c3-cf {
+  max-width: none;
+  margin-left: 3px;
+}
+.c3-pill {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 2px solid var(--ws, var(--muted));
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.c3-pill.is-dim {
+  opacity: 0.3;
+}
+.c3-pill.is-full {
+  background: var(--ws);
+  color: #fff;
+  border-color: var(--ws);
+}
+.c3-flag {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--surface);
+  border: 2px solid var(--ws, var(--muted));
+  font-size: 11px;
+  font-weight: 800;
+  box-sizing: border-box;
+}
+.c3-flag.is-hover {
+  outline: 3px solid var(--accent);
+}
+.map3d-toprow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.map3d-styles {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.map3d-seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.map3d-seg-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 2px 11px;
+  font-size: 12.5px;
+  line-height: 1.3;
+  cursor: pointer;
+  background: var(--surface-2);
+}
+.map3d-seg-opt input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.map3d-seg-opt.is-on {
+  background: var(--accent);
+  color: #fff;
+}
+.map3d-seg-opt:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.map3d-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.map3d-toprow .map3d-reset,
+.map3d-views .map3d-reset {
+  padding: 4px 9px;
+  font-size: 12.5px;
+}
+.map3d-toprow .map3d-reset {
+  padding: 2px 9px;
+  font-size: 12.5px;
+  line-height: 1.3;
+}
