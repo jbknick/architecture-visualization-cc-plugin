@@ -18,6 +18,8 @@ interface Probe {
   fitScale: number;
   hiddenTitles: string[];
   titles: Record<string, "inside" | "beside" | "hidden">;
+  titleTexts: Record<string, string>;
+  pills: { key: string; count: string; text: string }[];
   regions: { id: string; x: number; y: number; w: number; h: number }[];
   edges: { key: string; x: number; y: number; weight: number }[];
 }
@@ -35,7 +37,11 @@ async function probe(page: Page): Promise<Probe> {
 async function openLarge(page: Page, level: string, extra = "") {
   await page.goto(`/#/project-map?level=${level}&scenario=large${extra}`);
   await expect(canvas(page).locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 30_000 });
-  await expect(canvas(page).locator(".gc-status")).toContainText("treemap");
+  // The layout/timing chip is debug text: not shown to users.
+  await expect(canvas(page).locator(".gc-status")).toHaveCount(0);
+  // Folders level: the faint file mosaic arrives in the background and the map is laid out again.
+  if (level === "dirs") await expect(canvas(page).locator(".gc-sigma[data-mosaic=true]")).toBeVisible();
+  await expect(canvas(page).locator(".gc-sigma[data-ready=true]")).toBeVisible();
   await page.mouse.move(2, 2);
   await page.waitForTimeout(700);
 }
@@ -133,6 +139,11 @@ test("large scenario: the whole diagram fits the canvas and every workspace titl
       level,
     ).toEqual([]);
     expect(p.hiddenTitles, level).toEqual([]);
+    // The repo-root workspace (id `ws:.`, a 31-character unscoped name) always shows a title, at every level.
+    expect(p.titles["ws:."], level).not.toBe("hidden");
+    expect(p.titleTexts["ws:."], level).toMatch(
+      /\(repo root\)|acme-platform-monorepo-root-app|acme-platform/,
+    );
     expect(p.scale).toBeCloseTo(p.fitScale, 5);
   }
 });
@@ -215,4 +226,53 @@ test("large scenario: hover shows a tooltip, click selects a cell, double-click 
   // Drilling in shows that workspace alone, fitted.
   await expect(canvas(page).locator(".gc-sigma[data-ready=true]")).toBeVisible();
   await expect.poll(async () => (await probe(page)).regions.length).toBe(1);
+});
+
+test("large scenario: every count pill shows the import weight of its pair, never the sum with a declared dependency", async ({
+  page,
+}) => {
+  const { projectMapLarge } = await import("../mock/largeMap.ts");
+  const view = projectMapLarge({ focus: null, level: "workspaces", options: {} });
+  if ("error" in view) throw new Error(view.error);
+  const imports = new Map(
+    view.edges.filter((e) => e.kind === "imports").map((e) => [`${e.src}>${e.dst}`, e.weight]),
+  );
+  // The mock has pairs with an imports edge and a depends_on edge side by side (the case that showed N + 1).
+  const both = view.edges.filter((e) => e.kind === "depends_on" && imports.has(`${e.src}>${e.dst}`));
+  expect(both.length).toBeGreaterThan(0);
+
+  await openLarge(page, "dirs");
+  await page.getByLabel("Show declared dependencies").check();
+  await page.waitForTimeout(300);
+  const check = async (label: string) => {
+    const p = await probe(page);
+    expect(p.pills.length, label).toBeGreaterThan(0);
+    for (const pill of p.pills) {
+      const expected = imports.get(pill.key);
+      if (pill.count === "declared") {
+        expect(expected, `${label}: ${pill.key} is declared only, so it has no number`).toBeUndefined();
+        continue;
+      }
+      expect(expected, `${label}: ${pill.key} has an imports edge`).toBeDefined();
+      expect(Number(pill.count.replace(/,/g, "")), `${label}: ${pill.key}`).toBe(expected);
+    }
+    for (const e of p.edges) {
+      const expected = imports.get(e.key);
+      if (expected !== undefined) expect(e.weight, `${label}: arrow ${e.key}`).toBe(expected);
+    }
+  };
+  await check("overview");
+  // Hovering a workspace row shows all of its links with a pill each.
+  await page.getByRole("checkbox", { name: /^core/ }).locator("xpath=ancestor::label").hover();
+  await page.waitForTimeout(300);
+  await check("core highlighted");
+  await page.getByLabel("Show declared dependencies").uncheck();
+});
+
+test("large scenario: the layout/timing chip appears only with ?debug=1", async ({ page }) => {
+  await page.goto("/#/project-map?level=workspaces&scenario=large");
+  await expect(canvas(page).locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 30_000 });
+  await expect(canvas(page).locator(".gc-status")).toHaveCount(0);
+  await page.goto("/?debug=1#/project-map?level=workspaces&scenario=large");
+  await expect(canvas(page).locator(".gc-status")).toContainText("treemap");
 });

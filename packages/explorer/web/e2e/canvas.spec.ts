@@ -151,13 +151,12 @@ test("hovering an aggregated arrow shows 'A → B: N imports'", async ({ page })
 
 test("the layout is deterministic: same positions after reload and re-layout", async ({ page }) => {
   await openMap(page);
-  await expect(canvas(page).locator(".gc-status")).toContainText("treemap/layered", { timeout: 20_000 });
+  await expect(canvas(page).locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 20_000 });
   const first = (await probe(page)).hash;
   await page.reload();
   await expect(canvas(page).locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 20_000 });
   expect((await probe(page)).hash).toBe(first);
   await page.getByRole("button", { name: "Re-layout" }).click();
-  await expect(canvas(page).locator(".gc-status")).toContainText("treemap/layered", { timeout: 20_000 });
   await expect(canvas(page).locator(".gc-sigma[data-ready=true]")).toBeVisible();
   expect((await probe(page)).hash).toBe(first);
 });
