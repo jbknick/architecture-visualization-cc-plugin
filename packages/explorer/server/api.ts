@@ -279,6 +279,10 @@ function source(ctx: ApiContext, query: URLSearchParams) {
     throw new HttpError(403, "Path is not indexable");
   }
 
+  // Only files the index knows about: git-ignored files, nested repos and symlinked directories are not in it.
+  const indexed = new Set(ctx.store.effectiveFiles().map((f) => f.path));
+  if (!indexed.has(clean)) throw new HttpError(404, "File not found");
+
   const root = ctx.paths.root;
   let real: string;
   try {
@@ -295,6 +299,8 @@ function source(ctx: ApiContext, query: URLSearchParams) {
   if (isSensitive(resolvedRel) || !isIndexable(resolvedRel, ctx.config)) {
     throw new HttpError(403, "Path is not indexable");
   }
+  // A symlink must resolve to another indexed file, never to something the index does not know.
+  if (!indexed.has(resolvedRel)) throw new HttpError(404, "File not found");
 
   const fd = openSync(real, "r");
   let text: string;

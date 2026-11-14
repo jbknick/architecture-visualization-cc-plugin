@@ -24,8 +24,10 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   buildExplorerUrl,
+  cookieName,
   type ExplorerServer,
   findRunningExplorer,
+  HTML_CSP,
   startExplorerServer,
   startOrReuseExplorer,
   stateFilePath,
@@ -123,6 +125,14 @@ beforeAll(async () => {
     "export function alpha() {}\nexport function parseUserInput() {}\n",
   );
   writeFileSync(join(repo, "src", "b.ts"), "import { alpha } from './a';\nexport const b = alpha;\n");
+  writeFileSync(join(repo, "src", "ignored.ts"), "export const ignored = 1;\n");
+  writeFileSync(join(repo, ".gitignore"), "src/ignored.ts\n");
+  mkdirSync(join(repo, "nested", "inner", "src"), { recursive: true });
+  execFileSync("git", ["init", "-q", join(repo, "nested", "inner")]);
+  writeFileSync(join(repo, "nested", "inner", "src", "n.ts"), "export const n = 1;\n");
+  mkdirSync(join(tmp, "elsewhere"), { recursive: true });
+  writeFileSync(join(tmp, "elsewhere", "e.ts"), "export const e = 1;\n");
+  symlinkSync(join(tmp, "elsewhere"), join(repo, "linkdir"));
   writeFileSync(join(repo, ".env"), "SECRET=1\n");
   writeFileSync(join(repo, "src", "creds.ts"), "x");
   writeFileSync(join(tmp, "outside.ts"), "export const outside = 1;\n");
@@ -204,7 +214,7 @@ describe("security", () => {
   it("rejects /api requests without a token (403)", async () => {
     expect((await get(srv.port, "/api/meta")).status).toBe(403);
     expect((await get(srv.port, "/api/meta", { "x-gantry-token": "nope" })).status).toBe(403);
-    expect((await get(srv.port, "/api/meta", { cookie: "gantry_t=wrong" })).status).toBe(403);
+    expect((await get(srv.port, "/api/meta", { cookie: `${cookieName(srv.port)}=wrong` })).status).toBe(403);
   });
 
   it("rejects a wrong Origin (403) and accepts the right one", async () => {
@@ -221,7 +231,100 @@ describe("security", () => {
 
   it("accepts the token as header or cookie (200)", async () => {
     expect((await get(srv.port, "/api/meta", auth())).status).toBe(200);
-    expect((await get(srv.port, "/api/meta", { cookie: `gantry_t=${srv.token}` })).status).toBe(200);
+    expect(
+      (await get(srv.port, "/api/meta", { cookie: `${cookieName(srv.port)}=${srv.token}` })).status,
+    ).toBe(200);
+  });
+
+  it("names the cookie per port, so two explorers in one browser profile keep working", async () => {
+    const other = await startExplorerServer({ paths, store, writeStateFile: false });
+    try {
+      expect(other.port).not.toBe(srv.port);
+      const set = async (s: ExplorerServer) => {
+        const res = await get(s.port, `/?t=${s.token}`);
+        return String(res.headers["set-cookie"]).split(";")[0] as string;
+      };
+      const a = await set(srv);
+      const b = await set(other);
+      expect(a.startsWith(`gantry_t_${srv.port}=`)).toBe(true);
+      expect(b.startsWith(`gantry_t_${other.port}=`)).toBe(true);
+      const jar = `${a}; ${b}`; // what one browser sends to both ports
+      expect((await get(srv.port, "/api/meta", { cookie: jar })).status).toBe(200);
+      expect((await get(other.port, "/api/meta", { cookie: jar })).status).toBe(200);
+      // A cookie for the other port (or the old shared name) never authenticates.
+      expect((await get(srv.port, "/api/meta", { cookie: b })).status).toBe(403);
+      expect((await get(other.port, "/api/meta", { cookie: a })).status).toBe(403);
+      expect((await get(srv.port, "/api/meta", { cookie: `gantry_t=${srv.token}` })).status).toBe(403);
+    } finally {
+      await other.close();
+    }
+  });
+
+  it("keeps the ?t= redirect on-origin whatever the path looks like", async () => {
+    const evil = [
+      "/.//evil.example/",
+      "//evil.example/",
+      "/\\evil.example/",
+      "/./\\/evil.example/",
+      "///evil.example",
+    ];
+    for (const p of evil) {
+      const res = await get(srv.port, `${p}?t=${srv.token}&x=1`);
+      expect(res.status, p).toBe(302);
+      const loc = String(res.headers.location);
+      expect(loc.startsWith("/") && !loc.startsWith("//"), `${p} -> ${loc}`).toBe(true);
+      expect(new URL(loc, `http://127.0.0.1:${srv.port}`).origin).toBe(`http://127.0.0.1:${srv.port}`);
+      expect(loc.endsWith("?x=1")).toBe(true);
+    }
+    expect((await get(srv.port, `/.//evil.example/?t=${srv.token}`)).headers.location).toBe("/evil.example/");
+    expect((await get(srv.port, `/a/b/?t=${srv.token}`)).headers.location).toBe("/a/b/");
+  });
+
+  it("sends Referrer-Policy and a restrictive CSP on HTML responses", async () => {
+    for (const p of ["/", "/some/route", "/index.html"]) {
+      const res = await get(srv.port, p);
+      expect(res.status, p).toBe(200);
+      expect(res.headers["referrer-policy"]).toBe("no-referrer");
+      expect(res.headers["content-security-policy"]).toBe(HTML_CSP);
+    }
+    expect(HTML_CSP).toContain("default-src 'none'");
+    expect(HTML_CSP).toContain("connect-src 'self'");
+    expect(HTML_CSP).not.toMatch(/script-src[^;]*unsafe/);
+    // The placeholder page (no static dir) is HTML too.
+    const bare = await startExplorerServer({ paths, store, writeStateFile: false });
+    try {
+      const res = await get(bare.port, "/");
+      expect(res.headers["referrer-policy"]).toBe("no-referrer");
+      expect(res.headers["content-security-policy"]).toBe(HTML_CSP);
+    } finally {
+      await bare.close();
+    }
+    // Non-HTML responses carry the Referrer-Policy but no CSP.
+    const js = await get(srv.port, "/assets/app.js");
+    expect(js.headers["referrer-policy"]).toBe("no-referrer");
+    expect(js.headers["content-security-policy"]).toBeUndefined();
+    expect((await api("/api/meta")).headers["referrer-policy"]).toBe("no-referrer");
+  });
+
+  it("answers HEAD without a body and refuses other methods on every route", async () => {
+    const m = (method: string, path: string) =>
+      new Promise<{ status: number; body: string }>((resolve, reject) => {
+        const r = request({ host: "127.0.0.1", port: srv.port, path, method, headers: auth() }, (res) => {
+          let body = "";
+          res.on("data", (c: Buffer) => {
+            body += c.toString();
+          });
+          res.on("end", () => resolve({ status: res.statusCode ?? 0, body }));
+        });
+        r.on("error", reject);
+        r.end();
+      });
+    expect(await m("HEAD", "/api/source?path=src/ignored.ts")).toEqual({ status: 404, body: "" });
+    expect((await m("HEAD", "/api/source?path=src/a.ts")).body).toBe("");
+    for (const method of ["POST", "PUT", "DELETE", "PATCH", "OPTIONS"]) {
+      expect((await m(method, "/api/source?path=src/a.ts")).status, method).toBe(405);
+      expect((await m(method, "/")).status, method).toBe(405);
+    }
   });
 
   it("sets the cookie on ?t= and redirects to strip it", async () => {
@@ -229,7 +332,7 @@ describe("security", () => {
     expect(res.status).toBe(302);
     expect(res.headers.location).toBe("/");
     const cookie = String(res.headers["set-cookie"]);
-    expect(cookie).toContain(`gantry_t=${srv.token}`);
+    expect(cookie).toContain(`${cookieName(srv.port)}=${srv.token}`);
     expect(cookie).toMatch(/HttpOnly/);
     expect(cookie).toMatch(/SameSite=Strict/);
     expect(cookie).toMatch(/Path=\//);
@@ -518,6 +621,15 @@ describe("/api/search", () => {
 
 describe("/api/source", () => {
   const src = (q: string) => api(`/api/source?${q}`);
+  // Indexed only for these tests, so the counts asserted by the other describes stay put. The symlinks
+  // are indexed on purpose: they must still be refused by the realpath checks, not just by the lookup.
+  const extras = ["src/big.ts", "src/envlink.ts", "src/link.ts", "src/creds.ts"];
+  beforeAll(() => {
+    for (const p of extras) store.replaceFile("main", fileRec(p), [], []);
+  });
+  afterAll(() => {
+    for (const p of extras) store.replaceFile("main", fileRec(p, "ws:.", { deleted: true }), [], []);
+  });
 
   it("returns the requested lines", async () => {
     const res = await src("path=src/a.ts&start=2&end=2");
@@ -550,6 +662,55 @@ describe("/api/source", () => {
     expect((await src(`path=${encodeURIComponent("src/../../outside.ts")}`)).status).toBe(403);
     expect((await src(`path=${encodeURIComponent(join(tmp, "outside.ts"))}`)).status).toBe(403);
     expect((await src("path=src/link.ts")).status).toBe(403); // symlink escaping the repo
+  });
+
+  it("only serves files present in the index (effectiveFiles)", async () => {
+    // Present on disk and indexable by pattern, but git-ignored / in a nested repo / under a symlinked dir.
+    expect((await src("path=src/a.ts")).status).toBe(200);
+    for (const p of ["src/ignored.ts", "nested/inner/src/n.ts", "linkdir/e.ts"]) {
+      const res = await src(`path=${encodeURIComponent(p)}`);
+      expect([403, 404], p).toContain(res.status);
+      expect(res.body).not.toContain("export const");
+    }
+  });
+
+  it("is not fooled by encodings, slashes, case or normalisation", async () => {
+    const variants = [
+      "src/ignored.ts",
+      "./src/ignored.ts",
+      "src//ignored.ts",
+      "src/./ignored.ts",
+      "src/ignored.ts/",
+      "SRC/IGNORED.TS",
+      "src\\ignored.ts",
+      "src/ignored.ts\0",
+      " src/ignored.ts",
+      "src/ignored.ts ",
+    ];
+    for (const v of variants) {
+      const res = await src(`path=${encodeURIComponent(v)}`);
+      expect([403, 404], v).toContain(res.status);
+    }
+    expect([403, 404]).toContain((await src("path=src%252Fignored.ts")).status); // double-encoded
+    expect([403, 404]).toContain((await api("/api/source/?path=src/ignored.ts")).status);
+    expect((await api("/api/%73ource?path=src/a.ts")).status).toBe(404);
+    // Normalised aliases of an indexed file stay readable (the lookup uses the normalised path).
+    expect((await src("path=./src/a.ts")).status).toBe(200);
+    // Repeated parameters: the first one is what counts for both the check and the read.
+    expect([403, 404]).toContain((await src("path=src/ignored.ts&path=src/a.ts")).status);
+    expect((await src("path=src/a.ts&path=src/ignored.ts")).json().path).toBe("src/a.ts");
+  });
+
+  it("refuses an indexed symlink that points at a file the index does not know", async () => {
+    const alias = join(repo, "src", "alias.ts");
+    symlinkSync(join(repo, "src", "ignored.ts"), alias);
+    store.replaceFile("main", fileRec("src/alias.ts"), [], []);
+    try {
+      expect([403, 404]).toContain((await src("path=src/alias.ts")).status);
+    } finally {
+      store.replaceFile("main", fileRec("src/alias.ts", "ws:.", { deleted: true }), [], []);
+      rmSync(alias);
+    }
   });
 
   it("validates parameters and missing files", async () => {

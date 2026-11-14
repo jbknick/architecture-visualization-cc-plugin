@@ -48,7 +48,28 @@ export interface ExplorerState {
 
 export const stateFilePath = (p: GantryPaths): string => path.join(p.dataDir, "explorer.json");
 
-const COOKIE = "gantry_t";
+/** Cookies are shared across ports on 127.0.0.1, so the name carries the port: two explorers never clobber each other. */
+export const cookieName = (port: number): string => `gantry_t_${port}`;
+
+/**
+ * Sent with every HTML response. Same-origin scripts only (Vite emits module scripts and an ES worker as
+ * same-origin files); inline styles are allowed because React sets `style` attributes; `blob:` covers the
+ * layout Web Worker and WebGL texture uploads; everything else is closed.
+ */
+export const HTML_CSP = [
+  "default-src 'none'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "worker-src 'self' blob:",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+].join("; ");
+const REFERRER_POLICY = "no-referrer";
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -65,15 +86,7 @@ const MIME: Record<string, string> = {
 
 const LAYOUT_ROUTE = /^\/api\/layout\/[^/]+$/;
 
-/** Reads a request body up to cputime         unlimited
-filesize        unlimited
-datasize        unlimited
-stacksize       7MB
-coredumpsize    0kB
-addressspace    unlimited
-memorylocked    unlimited
-maxproc         2666
-descriptors     1048576 bytes; rejects with a 413 HttpError beyond that. */
+/** Reads a request body up to `limit` bytes; rejects with a 413 HttpError beyond that. */
 function readBody(req: IncomingMessage, limit: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -114,6 +127,7 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
     "content-length": Buffer.byteLength(data),
     "cache-control": "no-store",
     "x-content-type-options": "nosniff",
+    "referrer-policy": REFERRER_POLICY,
   });
   res.end(data);
 }
@@ -122,7 +136,13 @@ const PLACEHOLDER = `<!doctype html><meta charset="utf-8"><title>Gantry</title><
 
 function serveStatic(res: ServerResponse, staticDir: string | undefined, pathname: string): void {
   const respondPlaceholder = () => {
-    res.writeHead(200, { "content-type": MIME[".html"] as string, "cache-control": "no-store" });
+    res.writeHead(200, {
+      "content-type": MIME[".html"] as string,
+      "cache-control": "no-store",
+      "referrer-policy": REFERRER_POLICY,
+      "content-security-policy": HTML_CSP,
+      "x-content-type-options": "nosniff",
+    });
     res.end(PLACEHOLDER);
   };
   if (!staticDir || !existsSync(staticDir)) return void respondPlaceholder();
@@ -150,10 +170,13 @@ function serveStatic(res: ServerResponse, staticDir: string | undefined, pathnam
     if (!existsSync(file)) return void respondPlaceholder();
     real = realpathSync(file);
   }
+  const type = MIME[path.extname(real).toLowerCase()] ?? "application/octet-stream";
   res.writeHead(200, {
-    "content-type": MIME[path.extname(real).toLowerCase()] ?? "application/octet-stream",
+    "content-type": type,
     "x-content-type-options": "nosniff",
     "cache-control": "no-cache",
+    "referrer-policy": REFERRER_POLICY,
+    ...(type === MIME[".html"] ? { "content-security-policy": HTML_CSP } : {}),
   });
   createReadStream(real).pipe(res);
 }
@@ -186,7 +209,7 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
         }
         const header = req.headers["x-gantry-token"];
         const supplied =
-          (Array.isArray(header) ? header[0] : header) ?? parseCookies(req.headers.cookie)[COOKIE];
+          (Array.isArray(header) ? header[0] : header) ?? parseCookies(req.headers.cookie)[cookieName(port)];
         if (!supplied || !safeEqual(supplied, token))
           return void sendJson(res, 403, { error: "Missing or bad token" });
         if (layoutPut) {
@@ -224,9 +247,13 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
       if (t !== null) {
         if (!safeEqual(t, token)) return void sendJson(res, 403, { error: "Bad token" });
         url.searchParams.delete("t");
+        // Collapse leading slashes so `/.//evil.example/` (pathname `//evil.example/`) cannot become a
+        // protocol-relative, off-site Location.
+        const safePath = `/${url.pathname.replace(/^\/+/, "")}`;
         res.writeHead(302, {
-          "set-cookie": `${COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/`,
-          location: `${url.pathname}${url.search}`,
+          "set-cookie": `${cookieName(port)}=${token}; HttpOnly; SameSite=Strict; Path=/`,
+          location: `${safePath}${url.search}`,
+          "referrer-policy": REFERRER_POLICY,
           "cache-control": "no-store",
         });
         return void res.end();
