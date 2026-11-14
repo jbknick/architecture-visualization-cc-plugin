@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { bloomHashes } from "./bloom.js";
+import { itTiming } from "./itTiming.js";
 import { WORD_BLOOM_BASE64, WORD_COUNT } from "./wordlist.data.js";
 import { HAND_LIST_COUNTS, isBaseWord, isWord, wordlistInitMs } from "./wordlist.js";
 
@@ -20,7 +21,7 @@ describe("word list", () => {
     expect(WORD_BLOOM_BASE64.length).toBeLessThan(600_000);
   });
 
-  it("initialises lazily in under 50 ms", () => {
+  itTiming("initialises lazily in under 50 ms", () => {
     expect(isWord("session")).toBe(true);
     console.log(
       `word list init ${wordlistInitMs.toFixed(2)} ms, ${WORD_BLOOM_BASE64.length} base64 characters`,

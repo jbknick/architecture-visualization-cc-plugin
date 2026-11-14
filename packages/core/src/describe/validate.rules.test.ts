@@ -3,6 +3,7 @@
 // agents, search-term handling and the credential-name rules (issue #22, spec section 8).
 import { describe, expect, it } from "vitest";
 import { groundingNames, ungroundedTokens } from "./identifiers.js";
+import { itTiming } from "./itTiming.js";
 import { ACTION_VERB_COUNT } from "./lexicon.js";
 import { isCredentialName, redactForFactSheet } from "./secrets.js";
 import { hasImperativeClause, shapeProblem } from "./shape.js";
@@ -67,7 +68,7 @@ describe("dictionary grounding", () => {
     expect(ungroundedTokens("pastebin-mirror", gb)).not.toEqual([]);
   });
 
-  it("caps every scanned input before any regex runs", () => {
+  itTiming("caps every scanned input before any regex runs", () => {
     const huge = sheet({
       signature: "(a: string)".repeat(5000),
       doc: "word ".repeat(100_000),
