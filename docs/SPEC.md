@@ -293,6 +293,8 @@ Every response is one JSON text block ≤ 4,000 chars; descriptions go in a fiel
 
 Claims expire after 10 minutes and return to `pending`. Tool names as seen by Claude: `mcp__plugin_gantry_gantry__<tool>`.
 
+Describer tool details (#24). `gantry_claim_batch` items are `{ content_key, path, kind, signature, doc, callees, return_type, body }`. A batch the worker claimed and did not submit is returned again, under the same `batch_id` and with `reissued: true`, before any new function is claimed (the claim clock is not restarted). Because a response is at most 4,000 characters, a claim returns only the sheets that fit (`truncated: true`) and puts the rest back to `pending`. `gantry_submit_descriptions` rejects a `content_key` outside the batch as `not_in_batch`, adds `embedded` (vectors stored right away, only when the model is already cached) and `batch_status: "unknown_or_expired"` when no claim carries that `batch_id`. Every tool description ends with the `untrusted_description` notice.
+
 ## 16. Plugin (`plugin/`)
 
 - `plugin.json`: name `gantry`, version, description.
