@@ -32,6 +32,11 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
           "workspaceId": "ws:@acme/utils",
         },
         {
+          "advice": {
+            "action": "Import it: import { formatRelativeDate } from './date'",
+            "inline": true,
+            "situation": 1,
+          },
           "endLine": 12,
           "exported": true,
           "fanIn": 0,
@@ -89,6 +94,11 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
           "workspaceId": "ws:@acme/utils",
         },
         {
+          "advice": {
+            "action": "Export it from @acme/utils (add to exports map) or move it to a shared package",
+            "inline": false,
+            "situation": 3,
+          },
           "endLine": 8,
           "exported": true,
           "fanIn": 1,

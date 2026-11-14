@@ -105,7 +105,12 @@ describe("duplicates view", () => {
     expect(skipped.every((s) => s.message.length > 0)).toBe(true);
   });
 
-  it("carries optional advice only when core exports adviseReuse", () => {
-    for (const c of dups().clusters) for (const m of c.members) expect(m.advice).toBeUndefined();
+  it("carries reuse advice for every copy and none for the keep candidate", () => {
+    for (const c of dups().clusters) {
+      for (const m of c.members) {
+        if (m.keep) expect(m.advice).toBeUndefined();
+        else expect(m.advice).toMatchObject({ situation: expect.any(Number), action: expect.any(String) });
+      }
+    }
   });
 });
