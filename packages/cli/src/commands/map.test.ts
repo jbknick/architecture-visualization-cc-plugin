@@ -1,8 +1,9 @@
 import { type ChildProcess, execFileSync, spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolvePaths } from "@gantry/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -64,6 +65,42 @@ describe.skipIf(!built)("gantry map (bundled CLI)", () => {
     first.kill("SIGINT");
     expect(await exited).toBe(0);
   });
+
+  it("two concurrent starts leave one server; the loser exits 0 and prints no token", async () => {
+    const repo2 = join(tmp, "race");
+    execFileSync("git", ["init", "-q", repo2]);
+    const run = () =>
+      new Promise<{ code: number | null; out: string; child: ChildProcess }>((resolve) => {
+        const child = spawn("node", [cliJs, "map", "--no-open", "--no-url"], {
+          cwd: repo2,
+          env,
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        let out = "";
+        child.stdout?.on("data", (c: Buffer) => {
+          out += c.toString();
+        });
+        child.on("exit", (code) => resolve({ code, out, child }));
+        setTimeout(() => resolve({ code: null, out, child }), 4000); // still serving
+      });
+    const [a, b] = await Promise.all([run(), run()]);
+    const serving = [a, b].filter((r) => r.code === null);
+    const exited = [a, b].filter((r) => r.code !== null);
+    try {
+      expect(serving).toHaveLength(1);
+      expect(exited).toHaveLength(1);
+      expect(exited[0]?.code).toBe(0);
+      for (const r of [a, b]) expect(r.out).not.toContain("?t=");
+      const state = JSON.parse(
+        readFileSync(join(resolvePaths(repo2, env).dataDir, "explorer.json"), "utf8"),
+      ) as {
+        pid: number;
+      };
+      expect(state.pid).toBe(serving[0]?.child.pid);
+    } finally {
+      for (const r of serving) r.child.kill("SIGINT");
+    }
+  }, 15000);
 
   it("rejects an invalid --port", () => {
     const r = spawnSync("node", [cliJs, "map", "--no-open", "--port", "abc"], {

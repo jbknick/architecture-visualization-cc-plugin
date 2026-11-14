@@ -27,6 +27,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   buildExplorerUrl,
   cookieName,
+  ExplorerAlreadyRunning,
   type ExplorerServer,
   findRunningExplorer,
   HTML_CSP,
@@ -647,6 +648,19 @@ describe("/api/search", () => {
     }
   });
 
+  it("adds case-insensitive substring matches after the hybrid results, in a stable order", async () => {
+    const res = (await api("/api/search?q=SERINP")).json();
+    expect(res.hits.map((h: { name: string }) => h.name)).toEqual(["parseUserInput"]);
+    // `lph` is no prefix of any token, so only the substring pass finds alpha; it carries no description.
+    const mid = (await api("/api/search?q=lph")).json();
+    expect(mid.hits).toHaveLength(1);
+    expect(mid.hits[0]).toMatchObject({ name: "alpha", score: 0, untrusted_description: null });
+    // A hybrid hit is never repeated by the substring pass.
+    const both = (await api("/api/search?q=a")).json().hits.map((h: { id: string }) => h.id);
+    expect(new Set(both).size).toBe(both.length);
+    expect(both).toEqual((await api("/api/search?q=a")).json().hits.map((h: { id: string }) => h.id));
+  });
+
   it("ranks exact name matches first, ignores empty and hostile queries, and limits to 20", async () => {
     expect((await api("/api/search?q=")).json()).toEqual({ hits: [] });
     expect((await api(`/api/search?q=${encodeURIComponent('"* OR NEAR(')}`)).status).toBe(200);
@@ -797,6 +811,11 @@ describe("explorer.json and reuse", () => {
     expect(again.token).toBe(srv.token);
     expect(again.url).toBe(srv.url);
     expect(again.server).toBeUndefined();
+  });
+
+  it("a start that loses the explorer.json race throws ExplorerAlreadyRunning and serves nothing", async () => {
+    await expect(startExplorerServer({ paths, store })).rejects.toBeInstanceOf(ExplorerAlreadyRunning);
+    expect(JSON.parse(readFileSync(stateFilePath(paths), "utf8")).token).toBe(srv.token);
   });
 
   it("ignores and removes a stale explorer.json, then starts fresh", async () => {

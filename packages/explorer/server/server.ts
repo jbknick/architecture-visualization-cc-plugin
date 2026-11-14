@@ -3,12 +3,13 @@ import {
   chmodSync,
   createReadStream,
   existsSync,
+  linkSync,
   mkdirSync,
   readFileSync,
   realpathSync,
-  renameSync,
   rmSync,
   statSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -193,6 +194,14 @@ function serveStatic(res: ServerResponse, staticDir: string | undefined, pathnam
   createReadStream(real).pipe(res);
 }
 
+/** Another explorer for this worktree won the race to create `explorer.json` and is answering. */
+export class ExplorerAlreadyRunning extends Error {
+  constructor(readonly state: ExplorerState) {
+    super("An explorer is already running for this worktree");
+    this.name = "ExplorerAlreadyRunning";
+  }
+}
+
 export async function startExplorerServer(opts: ExplorerServerOptions): Promise<ExplorerServer> {
   const { paths } = opts;
   const ownsStore = !opts.store;
@@ -322,8 +331,29 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
     const state: ExplorerState = { port, token, pid: process.pid, startedAt: new Date().toISOString() };
     const tmp = `${file}.${process.pid}.tmp`;
     writeFileSync(tmp, JSON.stringify(state), { mode: 0o600 });
-    renameSync(tmp, file);
-    chmodSync(file, 0o600);
+    try {
+      // `link` fails with EEXIST when the file exists, and the file appears complete: create-exclusive without a partial read.
+      for (let attempt = 0; ; attempt++) {
+        try {
+          linkSync(tmp, file);
+          break;
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code !== "EEXIST" || attempt >= 3) throw err;
+          const winner = await findRunningExplorer(paths); // removes a stale file
+          if (winner) throw new ExplorerAlreadyRunning(winner);
+        }
+      }
+      chmodSync(file, 0o600);
+    } catch (err) {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+        server.closeAllConnections();
+      });
+      if (ownsStore) store.close();
+      throw err;
+    } finally {
+      unlinkSync(tmp);
+    }
   }
   const removeState = () => {
     try {
@@ -409,6 +439,21 @@ export async function startOrReuseExplorer(opts: ExplorerServerOptions): Promise
       reused: true,
     };
   }
-  const server = await startExplorerServer(opts);
+  let server: ExplorerServer;
+  try {
+    server = await startExplorerServer(opts);
+  } catch (err) {
+    // Lost the race for explorer.json: serve nothing, hand back the winner.
+    if (err instanceof ExplorerAlreadyRunning) {
+      const w = err.state;
+      return {
+        port: w.port,
+        token: w.token,
+        url: buildExplorerUrl({ port: w.port, token: w.token }),
+        reused: true,
+      };
+    }
+    throw err;
+  }
   return { port: server.port, token: server.token, url: server.url, reused: false, server };
 }

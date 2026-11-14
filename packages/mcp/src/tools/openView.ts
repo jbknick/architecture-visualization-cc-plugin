@@ -10,6 +10,8 @@ import { defineTool } from "../tool.js";
 /** How long to wait for a freshly spawned explorer; the tool's contract is a URL within 3 s. */
 export const START_TIMEOUT_MS = 2500;
 const POLL_MS = 40;
+/** Parts of the URL that are set by other arguments; a filter must not override them. */
+const RESERVED_FILTER_KEYS = new Set(["focus", "t", "view"]);
 
 /** `gantry` CLI bundle: next to the MCP bundle in `plugin/dist/`, or (running from source) at the repo's `plugin/dist/`. */
 function cliPath(): string | undefined {
@@ -20,7 +22,7 @@ function cliPath(): string | undefined {
 }
 
 /**
- * Starts `gantry map --no-open` detached. Its stdout and stderr go to `<logsDir>/explorer.log` (never to this
+ * Starts `gantry map --no-open` detached. Its output has no access token (`--no-url`) and goes to `<logsDir>/explorer.log` (never to this
  * process's stdout, which carries protocol frames only, and never into the repository). `exited` resolves when the
  * child ends, so the caller can stop waiting.
  */
@@ -28,9 +30,9 @@ function spawnExplorer(paths: GantryPaths, env: NodeJS.ProcessEnv): { exited: Pr
   const cli = cliPath();
   if (!cli) throw new Error("Cannot find the gantry CLI bundle (plugin/dist/cli.js); run the build");
   mkdirSync(paths.logsDir, { recursive: true, mode: 0o700 });
-  const fd = openSync(join(paths.logsDir, "explorer.log"), "a", 0o600);
+  const fd = openSync(join(paths.logsDir, "explorer.log"), "w", 0o600); // truncated on each spawn, so old output never piles up
   try {
-    const child = spawn(process.execPath, [cli, "map", "--no-open"], {
+    const child = spawn(process.execPath, [cli, "map", "--no-open", "--no-url"], {
       cwd: paths.root,
       env,
       detached: true,
@@ -63,6 +65,13 @@ export const openViewTool = defineTool({
       .describe("View options as string key/value pairs"),
   },
   async run({ view, focus, filters }, { paths, env }) {
+    const reserved = Object.keys(filters ?? {}).filter((k) => RESERVED_FILTER_KEYS.has(k));
+    if (reserved.length > 0) {
+      return {
+        error: "reserved_filter_key",
+        message: `filters may not use ${reserved.map((k) => `'${k}'`).join(", ")}; pass focus as its own argument.`,
+      };
+    }
     const ids = listViews().map((v) => v.id);
     if (!ids.includes(view)) {
       return { error: "unknown_view", message: `No view named '${view}'.`, views: ids };
@@ -78,7 +87,7 @@ export const openViewTool = defineTool({
       while (!state && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, POLL_MS));
         state = await findRunningExplorer(paths);
-        // A second explorer that lost a start race exits after the winner wrote explorer.json; check once more.
+        // If the child exited, it either lost a start race (the winner's explorer.json is in place) or failed; check once more.
         if (!state && dead) {
           state = await findRunningExplorer(paths);
           break;
