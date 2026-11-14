@@ -7,6 +7,7 @@ export * from "./describe/filters.js";
 export * from "./describe/identifiers.js";
 export * from "./describe/schema.js";
 export * from "./describe/secrets.js";
+export * from "./describe/submit.js";
 export * from "./describe/templates.js";
 export * from "./describe/validate.js";
 export * from "./discover/index.js";

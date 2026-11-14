@@ -276,7 +276,7 @@ Backlog priority: exported functions and route/entry files 0, other exported 1, 
 
 ## 15. MCP server (`packages/mcp`, server name `gantry`)
 
-Every response is one JSON text block ≤ 4,000 chars; descriptions go in a field named `untrusted_description`. Lazy refresh (section 11) runs before each call.
+Every response is one JSON text block ≤ 4,000 chars, except `gantry_claim_batch` (≤ 80,000 chars: it is describer-only, never called by the main agent, and a batch of 40 fact sheets is about 25,000 chars, so the main agent's context is not affected; the limit is a per-tool setting that defaults to 4,000); descriptions go in a field named `untrusted_description`. Lazy refresh (section 11) runs before each call.
 
 | Tool                                           | Input                                                                                                                   | Output                                                                                                                                                                                         |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -292,6 +292,8 @@ Every response is one JSON text block ≤ 4,000 chars; descriptions go in a fiel
 | `gantry_submit_descriptions` (describer only)  | `{ batch_id, results: [{ content_key, description }] }`                                                                 | `{ accepted, rejected: [{ content_key, reason }] }`                                                                                                                                            |
 
 Claims expire after 10 minutes and return to `pending`. Tool names as seen by Claude: `mcp__plugin_gantry_gantry__<tool>`.
+
+Describer tool details (#24). `gantry_claim_batch` items are `{ content_key, path, kind, signature, doc, callees, return_type, body }`. A batch the worker claimed and did not submit is returned again, under the same `batch_id` and with `reissued: true`, before any new function is claimed (the claim clock is not restarted). A claim returns up to `size` (at most 40) sheets in one response of at most 80,000 chars; sheets beyond that go back to `pending` and the payload says `truncated: true`; a single oversized sheet is shortened (doc, callees, signature, then `body`, flagged `body_truncated`). `gantry_submit_descriptions` keeps the 4,000-char cap. `gantry_submit_descriptions` rejects a `content_key` outside the batch as `not_in_batch`, adds `embedded` (vectors stored right away, only when the model is already cached) and `batch_status: "unknown_or_expired"` when no claim carries that `batch_id`. Every tool description ends with the `untrusted_description` notice.
 
 ## 16. Plugin (`plugin/`)
 
