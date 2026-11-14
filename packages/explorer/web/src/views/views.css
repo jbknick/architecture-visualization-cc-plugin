@@ -171,3 +171,47 @@ kbd {
   color: var(--muted);
   font-size: 12px;
 }
+.badge-dup {
+  border-color: #b45309;
+  color: #b45309;
+}
+.badge-misleading {
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+.badge-undescribed {
+  border-style: dashed;
+}
+@media (prefers-color-scheme: dark) {
+  .badge-dup {
+    border-color: #fbbf24;
+    color: #fbbf24;
+  }
+  .badge-misleading {
+    border-color: #f87171;
+    color: #f87171;
+  }
+}
+.badge-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+  color: var(--muted);
+}
+.badge-key li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: help;
+}
+.badge-dot {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}

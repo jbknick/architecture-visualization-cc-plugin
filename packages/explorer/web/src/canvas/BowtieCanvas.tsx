@@ -1,6 +1,8 @@
 import "./canvas.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GraphNode } from "../api.ts";
+import { badgeTipLines, drawBadgeMarks, m2Of } from "../badges.ts";
+import { BadgeKey } from "../components/BadgeKey.tsx";
 import type { CanvasProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { kindColor, type Scheme } from "../theme.ts";
@@ -40,6 +42,8 @@ interface DrawnLabel {
 }
 
 interface DrawnRect {
+  /** M2 badge names drawn on the node (read by tests). */
+  badges: string[];
   id: string;
   type: string;
   x: number;
@@ -419,7 +423,15 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
       const y = sy(wr.y);
       const w = wr.w * k;
       const h = wr.h * k;
-      rects.push({ id: n.id, type: p.type, x: x, y: y, w: w, h: h });
+      rects.push({
+        id: n.id,
+        type: p.type,
+        x: x,
+        y: y,
+        w: w,
+        h: h,
+        badges: m2Of(n.badges).map((b) => b.name),
+      });
       const isSel = sel === n.id;
       const isHot = hover.current === n.id;
       const dimmed = active !== null && !isSel && !isHot && !(adj.get(active)?.has(n.id) ?? false);
@@ -450,6 +462,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
         ctx.fillStyle = T.accent;
         ctx.font = `700 ${pxText(11, 9.5, 12)}px ${FONT}`;
         ctx.fillText("FOCUS", x + padX, y + h * 0.27);
+        const focusMarks = drawBadgeMarks(ctx, n.badges, x + w - 12, y + h * 0.84 - 4, T.scheme, T.surface);
         const kindText = fitText(ctx, n.kind, w * 0.4);
         ctx.fillStyle = T.muted;
         ctx.font = `600 ${pxText(11, 9.5, 12)}px ${FONT}`;
@@ -471,7 +484,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
         if (n.path) {
           ctx.fillStyle = T.muted;
           ctx.font = `${pxText(11.5, 10, 12.5)}px ${MONO}`;
-          const path = fitMiddle(ctx, `${n.path}`, maxW);
+          const path = fitMiddle(ctx, `${n.path}`, maxW - focusMarks);
           ctx.fillText(path, x + padX, y + h * 0.84);
         }
       } else if (p.type === "group" || p.type === "head") {
@@ -573,12 +586,16 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
         const bar = Math.max(2, 3 * k);
         ctx.fillStyle = col;
         ctx.fillRect(x, y + 1, bar, Math.max(1, h - 2));
+        const markW =
+          h >= LABEL_MIN_ROW_PX
+            ? drawBadgeMarks(ctx, n.badges, x + w - 5, y + h / 2, T.scheme, T.surface)
+            : 0;
         if (h >= LABEL_MIN_ROW_PX) {
           const fs = pxText(12, 10.5, 13);
           ctx.font = `${fs}px ${FONT}`;
           ctx.fillStyle = T.text;
           ctx.textBaseline = "middle";
-          const text = fitText(ctx, n.label, w - bar - 12);
+          const text = fitText(ctx, n.label, w - bar - 12 - markW);
           ctx.fillText(text, x + bar + 7, y + h / 2 + 0.5);
           labels.push({
             id: n.id,
@@ -875,6 +892,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
           y: Math.round(r.y),
           w: Math.round(r.w),
           h: Math.round(r.h * 10) / 10,
+          badges: r.badges,
         })),
       });
     };
@@ -987,6 +1005,9 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
           if (p && p.type === "row") callbacks.current.onDrill?.(p.node.id);
         }}
       />
+      <div className="gc-key">
+        <BadgeKey />
+      </div>
       <div className="gc-controls" role="toolbar" aria-label="Graph controls">
         <button
           type="button"
@@ -1032,6 +1053,7 @@ function describe(n: GraphNode): string[] {
     lines.push(n.expanded ? "Click to collapse" : "Click to expand");
   } else if (n.kind === "more") lines.push("Not shown, to keep the view readable");
   else lines.push(n.kind);
+  lines.push(...badgeTipLines(n.badges));
   if (n.path && n.kind !== "group") lines.push(n.path);
   if (n.workspace) lines.push(n.workspace.replace(/^ws:/, ""));
   return lines;

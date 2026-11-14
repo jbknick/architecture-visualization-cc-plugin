@@ -1,6 +1,7 @@
 import type { FileRecord, SymbolRecord } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { GraphEdge, GraphNode, ViewModule } from "../types.js";
+import { buildBadgeIndex, symbolBadges } from "./badges.js";
 import {
   clampInt,
   EGO_PAGE_DEFAULT,
@@ -161,6 +162,7 @@ export const egoView: ViewModule = {
     };
     const lineOf = (id: string): number | undefined => symbols.get(id)?.startLine;
 
+    const badgeIndex = buildBadgeIndex(store);
     const nodes = new Map<string, GraphNode>();
     const makeNode = (id: string): GraphNode => {
       const ws = wsOf(id);
@@ -173,7 +175,7 @@ export const egoView: ViewModule = {
           size: 1,
           path: files.get(s.fileId)?.path,
           stats: { functions: 1, loc: s.loc },
-          ...(s.exported ? { badges: ["exported"] } : {}),
+          ...symbolBadges(s, badgeIndex),
           ...(ws ? { workspace: ws } : {}),
         };
       }
