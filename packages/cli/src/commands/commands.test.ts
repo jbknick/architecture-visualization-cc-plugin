@@ -422,3 +422,34 @@ describe("gantry config", () => {
     expect(run(fx.dir, ["config", "get", "nope"]).code).toBe(1);
   });
 });
+
+describe("gantry backlog", () => {
+  it("prints counts by status and priority, as text and as JSON, without writing to the repo", async () => {
+    const fx = await fixture("pnpm-turbo");
+    expect(run(fx.dir, ["init"]).code).toBe(0);
+    const j = run(fx.dir, ["backlog", "--json"]);
+    expect(j.code).toBe(0);
+    const c = JSON.parse(j.out) as {
+      total: number;
+      byStatus: { pending: number; claimed: number; failed: number };
+      byPriority: Record<string, { pending: number; claimed: number; failed: number; total: number }>;
+    };
+    expect(c.total).toBeGreaterThan(0);
+    expect(c.byStatus.pending).toBe(c.total);
+    expect(c.byStatus.claimed + c.byStatus.failed).toBe(0);
+    const sum = Object.values(c.byPriority).reduce((n, v) => n + v.total, 0);
+    expect(sum).toBe(c.total);
+    for (const k of Object.keys(c.byPriority)) expect(["0", "1", "2"]).toContain(k);
+    const t = run(fx.dir, ["backlog"]);
+    expect(t.code).toBe(0);
+    expect(t.out).toContain(`Backlog: ${c.total} (pending ${c.byStatus.pending}, claimed 0, failed 0)`);
+    expect(t.out).toMatch(/\n {2}priority \d: /);
+    expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
+  });
+
+  it("reports zeros on an empty backlog", async () => {
+    const fx = await fixture("single-pkg");
+    const c = JSON.parse(run(fx.dir, ["backlog", "--json"]).out);
+    expect(c).toEqual({ total: 0, byStatus: { pending: 0, claimed: 0, failed: 0 }, byPriority: {} });
+  });
+});
