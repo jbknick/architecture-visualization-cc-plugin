@@ -223,8 +223,9 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       "src": "dir:ws:@acme/api:src",
       "dst": "dir:ws:@acme/db:src",
       "kind": "imports",
-      "weight": 4,
-      "confidence": "high"
+      "weight": 2,
+      "confidence": "high",
+      "bindings": 4
     },
     {
       "id": "dir:ws:@acme/web:src/components|imports|dir:ws:@acme/web:src/hooks",
@@ -706,8 +707,9 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "src": "file:apps/api/src/app.ts",
       "dst": "file:packages/db/src/index.ts",
       "kind": "imports",
-      "weight": 2,
-      "confidence": "high"
+      "weight": 1,
+      "confidence": "high",
+      "bindings": 2
     },
     {
       "id": "file:apps/api/src/index.ts|imports|file:apps/api/src/app.ts",
@@ -730,8 +732,9 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "src": "file:apps/api/src/router.ts",
       "dst": "file:packages/db/src/index.ts",
       "kind": "imports",
-      "weight": 2,
-      "confidence": "high"
+      "weight": 1,
+      "confidence": "high",
+      "bindings": 2
     },
     {
       "id": "file:apps/web/src/components/PostList.tsx|imports|file:apps/web/src/hooks/useDebounce.ts",
@@ -977,8 +980,9 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
       "src": "ws:@acme/api",
       "dst": "ws:@acme/db",
       "kind": "imports",
-      "weight": 4,
-      "confidence": "high"
+      "weight": 2,
+      "confidence": "high",
+      "bindings": 4
     },
     {
       "id": "ws:@acme/web|depends_on|ws:@acme/ui",

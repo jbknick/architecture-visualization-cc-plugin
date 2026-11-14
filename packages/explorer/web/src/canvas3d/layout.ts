@@ -33,6 +33,8 @@ export interface Arc {
   dst: string;
   /** Imports (or dependency count) aggregated over every node-level edge between the two islands. */
   weight: number;
+  /** Imported names behind the imports, when that differs from `weight`. */
+  bindings?: number;
   /** True when the arc only comes from package.json `depends_on`, not from imports. */
   dependsOnly: boolean;
   /** Quadratic Bezier: from, control, to. */
@@ -501,7 +503,10 @@ export function computeLayout({ nodes, edges }: LayoutInput): Layout {
 
   // Node-level edges split into inside-island springs and cross-island totals.
   const inside = new Map<string, { a: string; b: string; w: number }[]>();
-  const cross_ = new Map<string, { src: string; dst: string; w: number; imports: number }>();
+  const cross_ = new Map<
+    string,
+    { src: string; dst: string; w: number; imports: number; bindings: number }
+  >();
   for (const e of edges) {
     const ga = groupOf(e.src);
     const gb = groupOf(e.dst);
@@ -509,13 +514,16 @@ export function computeLayout({ nodes, edges }: LayoutInput): Layout {
     if (ga === gb) {
       if (e.src === e.dst) continue;
       const list = inside.get(ga) ?? [];
-      list.push({ a: e.src, b: e.dst, w: e.weight });
+      list.push({ a: e.src, b: e.dst, w: e.bindings ?? e.weight });
       inside.set(ga, list);
     } else {
       const key = `${ga}\u0000${gb}`;
-      const c = cross_.get(key) ?? { src: ga, dst: gb, w: 0, imports: 0 };
+      const c = cross_.get(key) ?? { src: ga, dst: gb, w: 0, imports: 0, bindings: 0 };
       c.w += e.weight;
-      if (e.kind !== "depends_on") c.imports += e.weight;
+      if (e.kind !== "depends_on") {
+        c.imports += e.weight;
+        c.bindings += e.bindings ?? e.weight;
+      }
       cross_.set(key, c);
     }
   }
@@ -573,6 +581,7 @@ export function computeLayout({ nodes, edges }: LayoutInput): Layout {
         dst: c.dst,
         weight: c.imports > 0 ? c.imports : c.w,
         dependsOnly: c.imports === 0,
+        ...(c.imports > 0 && c.bindings !== c.imports ? { bindings: c.bindings } : {}),
         ...arcPoints(a, b),
       };
     });

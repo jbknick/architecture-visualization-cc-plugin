@@ -1,5 +1,6 @@
 import type { FileRecord } from "@gantry/core";
 import type { ApiContext, GraphEdge, GraphNode, ViewModule, ViewParams, ViewResult } from "../types.js";
+import { ImportAggregator } from "./aggregate.js";
 import { shortWorkspaceLabels } from "./labels.js";
 import { cmp, isTestPath, optBool } from "./options.js";
 
@@ -196,10 +197,11 @@ export function buildMap3d(
 
   // Edges: file imports lifted to the level's nodes, plus workspace depends_on.
   const sum = new EdgeSum();
+  const imports = new ImportAggregator();
   for (const e of store.effectiveEdges({ kind: ["imports"] })) {
     const a = nodeOf.get(e.src);
     const b = nodeOf.get(e.dst);
-    if (a && b) sum.add(a, b, "imports", e.count, e.confidence);
+    if (a && b) imports.add(a, b, e);
   }
   const wsIds = new Set(wsNodes.map((n) => n.id));
   for (const e of store.effectiveEdges({ kind: ["depends_on"] })) {
@@ -207,7 +209,11 @@ export function buildMap3d(
   }
 
   nodes.sort((a, b) => cmp(a.id, b.id));
-  return { nodes, edges: sum.list(), layoutHint: "force-3d" };
+  return {
+    nodes,
+    edges: [...imports.edges(), ...sum.list()].sort((a, b) => cmp(a.id, b.id)),
+    layoutHint: "force-3d",
+  };
 }
 
 export const map3dView: ViewModule = {
