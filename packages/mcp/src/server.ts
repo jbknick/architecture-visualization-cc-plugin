@@ -43,7 +43,13 @@ async function runTool(
     await lazyRefresh(paths, o.log);
     const store = openStore(paths.dbPath);
     try {
-      const result = await tool.run(args, { paths, store, log: o.log, getEmbedder: o.getEmbedder });
+      const result = await tool.run(args, {
+        paths,
+        store,
+        log: o.log,
+        env: o.env,
+        getEmbedder: o.getEmbedder,
+      });
       return envelope(result, tool.maxResponseChars ?? MAX_RESPONSE_CHARS);
     } finally {
       store.close();

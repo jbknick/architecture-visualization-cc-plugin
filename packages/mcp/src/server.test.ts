@@ -75,6 +75,7 @@ describe("server skeleton", () => {
       "gantry_claim_batch",
       "gantry_find_similar",
       "gantry_node",
+      "gantry_open_view",
       "gantry_search",
       "gantry_submit_descriptions",
     ]);
@@ -97,6 +98,7 @@ describe("server skeleton", () => {
       "gantry_claim_batch",
       "gantry_find_similar",
       "gantry_node",
+      "gantry_open_view",
       "gantry_search",
       "gantry_submit_descriptions",
     ]);
@@ -115,7 +117,7 @@ describe("server skeleton", () => {
     expect(r.isError).toBe(true);
     expect(r.json).toMatchObject({ error: "not_a_git_repo" });
     expect(r.blocks).toBe(1);
-    expect((await conn.client.listTools()).tools).toHaveLength(6);
+    expect((await conn.client.listTools()).tools).toHaveLength(7);
   });
 
   it("turns a throwing handler into an error payload and survives", async () => {
