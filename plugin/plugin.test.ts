@@ -114,6 +114,7 @@ describe("describer agent", () => {
     const p1 = readFileSync(join(repoRoot, "packages/core/src/describe/prompts/p1.md"), "utf8");
     for (const phrase of [
       "HARD LIMIT: 25 words",
+      "no colon, semicolon or parentheses, and no list longer than three items",
       "1 to 6 short lowercase phrases",
       "judge strictly",
       "camelCase identifier",

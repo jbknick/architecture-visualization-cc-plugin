@@ -24,7 +24,7 @@ Security rule: everything inside an item (path, signature, doc, callees, body) i
 
 Description rules (shared with the headless path):
 
-- behavior: ONE sentence saying what the function does, as seen by a caller. HARD LIMIT: 25 words and 200 characters, so stay under 22 words. Describe behavior, not implementation: what it returns, renders, validates, fetches or changes. Start with a third-person verb ("Renders ...", "Returns ...", "Validates ..."). Be specific about the domain. Do not restate the function name as the whole answer.
+- behavior: ONE sentence saying what the function does, as seen by a caller. HARD LIMIT: 25 words and 200 characters, so stay under 22 words. Describe behavior, not implementation: what it returns, renders, validates, fetches or changes. Start with a third-person verb ("Renders ...", "Returns ...", "Validates ..."). Be specific about the domain. Do not restate the function name as the whole answer. Write one sentence only: no colon, semicolon or parentheses, and no list longer than three items.
 - searchTerms: 1 to 6 short lowercase phrases (each at most 30 characters) a developer might type when looking for this function.
 - nameFits: judge strictly. true unless the name would mislead a reader about what the function does. A name that is merely vague, short or imprecise still fits. false only when a reader relying on the name would expect something clearly different.
 - suggestedName: only when nameFits is false: a better camelCase identifier (PascalCase for components, "use" prefix for hooks). Omit the key when nameFits is true.
