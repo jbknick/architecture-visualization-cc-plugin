@@ -11,6 +11,7 @@ import {
   syncBacklog,
 } from "@gantry/core";
 import type { Command } from "commander";
+import { runEmbed, summaryOf } from "./embed.js";
 import { EXIT_OK, fail, summaryLines } from "./shared.js";
 
 const nf = new Intl.NumberFormat("en-US");
@@ -41,7 +42,11 @@ export function registerInit(program: Command): void {
       "--exports-first",
       "with --estimate, count only priority 0-1 functions (exported and entry files)",
     )
-    .action(async (opts: { estimate?: boolean; exportsFirst?: boolean }) => {
+    .option(
+      "--embed",
+      "after indexing, also embed code and descriptions (slow on a large repo; see `gantry embed`)",
+    )
+    .action(async (opts: { estimate?: boolean; exportsFirst?: boolean; embed?: boolean }) => {
       try {
         const paths = resolvePaths(process.cwd());
         const r = await indexRepo(paths, { layer: "main" });
@@ -54,6 +59,17 @@ export function registerInit(program: Command): void {
             const exportsFirst = opts.exportsFirst === true;
             for (const line of estimateLines(estimate(store, { exportsFirst }), exportsFirst)) {
               process.stdout.write(`${line}\n`);
+            }
+          } else if (opts.embed) {
+            // Explicit opt-in: init never embeds on its own (it is deterministic and fast; spec section 11).
+            // Never fatal: a missing model leaves the index as it is.
+            try {
+              const e = await runEmbed(store, paths.root);
+              for (const line of summaryOf(e)) process.stdout.write(`${line}\n`);
+            } catch (e) {
+              process.stderr.write(
+                `gantry: embedding skipped: ${e instanceof Error ? e.message : String(e)}\n`,
+              );
             }
           }
         } finally {

@@ -10,5 +10,12 @@ export default defineConfig({
   target: "node22",
   platform: "node",
   clean: true,
-  external: ["better-sqlite3", "sqlite-vec", "oxc-parser", "oxc-resolver"],
+  external: [
+    "better-sqlite3",
+    "sqlite-vec",
+    "oxc-parser",
+    "oxc-resolver",
+    "@huggingface/transformers",
+    "onnxruntime-node",
+  ],
 });

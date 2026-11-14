@@ -374,7 +374,7 @@ function findAll(name: string) {
 }
 
 describe("normalizeForEmbedding", () => {
-  test("renames locals, replaces strings, drops comments and layout", () => {
+  test("renames locals and the function name to v1, v2…, replaces strings, drops comments and layout", () => {
     const src = `export function greet(name: string, polite = true) {
   // say hi
   const msg = polite ? "Good day, " : 'yo ';
@@ -382,28 +382,59 @@ describe("normalizeForEmbedding", () => {
 }`;
     const out = normalizeForEmbedding(src, whole(src), "ts");
     expect(out).toBe(
-      'function greet($1: string, $2 = true) { const $3 = $2 ? "s" : "s"; return { name: $1, text: $3 + $1 }; }',
+      'function v1(v2: string, v3 = true) { const v4 = v3 ? "s" : "s"; return { name: v2, text: v4 + v2 }; }',
     );
   });
 
-  test("same text for renamed locals and reformatting; differs for different strings only in ignored ways", () => {
+  test("same text for renamed locals and reformatting; strings and the function name do not matter", () => {
     const a = `function f(a, b) { return a + b + "x"; }`;
-    const b = `function f(p,\n q) {\n // c\n return p + q + 'other'; }`;
+    const b = `function g(p,\n q) {\n // c\n return p + q + 'other'; }`;
     expect(normalizeForEmbedding(b, whole(b), "ts")).toBe(normalizeForEmbedding(a, whole(a), "ts"));
   });
 
-  test("keeps property names and free identifiers", () => {
+  test("keeps property names, well-known globals and free identifiers", () => {
     const src = `function f(user) { return fetchUser(user.id).name; }`;
     expect(normalizeForEmbedding(src, whole(src), "ts")).toBe(
-      "function f($1) { return fetchUser($1.id).name; }",
+      "function v1(v2) { return fetchUser(v2.id).name; }",
+    );
+    const m = `const clamp = (x, lo, hi) => Math.min(Math.max(x, lo), hi);`;
+    expect(normalizeForEmbedding(m, whole(m), "ts")).toBe(
+      "const v1 = (v2, v3, v4) => Math.min(Math.max(v2, v3), v4);",
+    );
+  });
+
+  test("capitalize and decapitalize no longer normalize to the same text", () => {
+    const up = `function f(s) { return s.charAt(0).toUpperCase() + s.slice(1); }`;
+    const low = `function f(s) { return s.charAt(0).toLowerCase() + s.slice(1); }`;
+    expect(normalizeForEmbedding(up, whole(up), "ts")).not.toBe(normalizeForEmbedding(low, whole(low), "ts"));
+  });
+
+  test("template literals become the same placeholder as strings", () => {
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: source code under test, not a template
+    const src = "function f(n) { return `item ${n}` + 'x'; }";
+    expect(normalizeForEmbedding(src, whole(src), "ts")).toBe('function v1(v2) { return "s" + "s"; }');
+  });
+
+  test("a recursive reference follows the renamed function name", () => {
+    const src = `function fact(n) { return n <= 1 ? 1 : n * fact(n - 1); }`;
+    expect(normalizeForEmbedding(src, whole(src), "ts")).toBe(
+      "function v1(v2) { return v2 <= 1 ? 1 : v2 * v1(v2 - 1); }",
     );
   });
 
   test("tsx", () => {
     const src = `function C({ label }: P) { return <b title="t">{label}</b>; }`;
     expect(normalizeForEmbedding(src, whole(src), "tsx")).toBe(
-      'function C({ label: $1 }: P) { return <b title="s">{$1}</b>; }',
+      'function v1({ label: v2 }: P) { return <b title="s">{v2}</b>; }',
     );
+  });
+
+  test("does not change the hashes", () => {
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: source code under test, not a template
+    const src = "function f(n) { return `item ${n}`; }";
+    const before = h(src);
+    normalizeForEmbedding(src, whole(src), "ts");
+    expect(h(src)).toEqual(before);
   });
 });
 
