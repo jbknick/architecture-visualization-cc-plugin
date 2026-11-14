@@ -6,7 +6,7 @@ Plan doc (background and rationale): https://claude.ai/artifact/7UCZZRCs4k45gPkK
 
 ## 1. Ground rules
 
-- **Repo:** `jbknick/architecture-visualization-cc-plugin` (public). The product, plugin, CLI and MCP server are named **Gantry**. Default branch `main`. One branch and PR per issue (`gantry/<issue-number>-<short-slug>`), stacked on its dependency's branch when that one isn't merged yet.
+- **Repo:** `jbknick/architecture-visualization-cc-plugin` (public). The product's display name is **Claude Code Architecture Visualisation Plugin**; the CLI command, package scope, MCP server name, plugin id and data directory keep the short identifier **`gantry`**. Default branch `main`. One branch and PR per issue (`gantry/<issue-number>-<short-slug>`), stacked on its dependency's branch when that one isn't merged yet.
 - **Public repo:** the test bed (Devprentice) is private. Never commit its code, fact sheets, descriptions, graph dumps or screenshots showing its code. Private eval data lives only in git-ignored `evals/private/`. Commit only scripts and aggregate numbers.
 - **Toolchain:** Node 22 LTS, pnpm 9+, TypeScript strict, ESM (`"module": "NodeNext"`), vitest, Biome. Build with `tsc -b`; bundle CLI/MCP entry points with `tsup` into `plugin/dist/`.
 - **Local quality gate:** `pnpm check` = `biome check . && tsc -b --noEmit && vitest run`. It must pass before a PR. There is no hosted CI; never add or wait for GitHub Actions.
@@ -21,7 +21,7 @@ Plan doc (background and rationale): https://claude.ai/artifact/7UCZZRCs4k45gPkK
 
 Runtime: `oxc-parser`, `oxc-resolver`, `better-sqlite3`, `sqlite-vec` (pin exact version), `@modelcontextprotocol/sdk`, `zod`, `commander`, `ignore`, `picomatch`, `@huggingface/transformers`, `@parcel/watcher`, `ws`, `@ast-grep/napi`, `sigma`, `graphology`, `graphology-layout-forceatlas2`, `elkjs`, `react`, `react-dom`, `3d-force-graph`, `three`, `three-spritetext`. Later only: `ts-morph`.
 Explorer 3D map (`packages/explorer/web`, lazy chunk only): `3d-force-graph` gives the orbit camera, picking and link rendering for the `map-3d` view; `three` is its renderer and draws the workspace islands and bundled arcs; `three-spritetext` makes the always-facing text labels. The default `city` style of the same view is a plain `three` scene (instanced boxes, tube arches, `OrbitControls` from `three/examples`, DOM labels) on the 2D project map's layout: no new dependency; `style=islands` selects the island rendering above.
-Dev: `typescript`, `vitest`, `@biomejs/biome`, `tsup`, `tsx`, `vite`, `@vitejs/plugin-react`, `playwright` (explorer smoke tests only), `@types/three`.
+Dev: `typescript`, `vitest`, `@biomejs/biome`, `tsup`, `tsx`, `vite`, `@vitejs/plugin-react`, `playwright` (explorer smoke tests only), `@types/three`, `gifenc` (root devDependency, pure-JS GIF encoder for `scripts/readme-media.ts` only; no ffmpeg needed).
 
 ## 3. Repo layout
 

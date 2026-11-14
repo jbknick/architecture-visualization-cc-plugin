@@ -7,7 +7,7 @@ export function TopBar() {
   return (
     <header className="topbar">
       <div className="topbar-id">
-        <span className="brand">Gantry</span>
+        <span className="brand">Claude Code Architecture Visualisation Plugin</span>
         {meta && (
           <span className="repo" title={meta.headSha ? `${meta.repo} at ${meta.headSha}` : meta.repo}>
             <span className="repo-name">{meta.repo}</span>
