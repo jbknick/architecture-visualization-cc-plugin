@@ -1,4 +1,5 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -232,5 +233,49 @@ describe("working layer", () => {
     await indexRepo(paths, { layer: "working", files: ["src/math.ts"] });
     const g = dump(paths);
     expect(g.files.some((f) => (f as { path: string }).path === "src/math.ts")).toBe(false);
+  });
+});
+
+describe("IndexResult.specifierCounts", () => {
+  it("counts each distinct (file, specifier) pair once under its resolution class", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "gantry-spec-"));
+    const data = mkdtempSync(join(tmpdir(), "gantry-data-"));
+    dataDirs.push(dir, data);
+    mkdirSync(join(dir, "src"), { recursive: true });
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({ name: "spec", dependencies: { zod: "1.0.0" } }),
+    );
+    writeFileSync(join(dir, "src/data.json"), "{}\n");
+    writeFileSync(join(dir, "src/b.ts"), "export const b = 1;\n");
+    writeFileSync(
+      join(dir, "src/a.ts"),
+      [
+        'import { b } from "./b";', // file
+        'import zod from "zod";', // external: declared, not installed
+        'import fs from "node:fs";', // builtin
+        'import v from "virtual:thing";', // virtual
+        'import gen from "./dist/out";', // generated: missing, under a built-in exclude
+        'import data from "./data.json";', // excluded: exists in the repo but is not indexed
+        'import nope from "./missing";', // unresolved
+        'import { b as again } from "./b";', // same pair as the first line: counted once
+        "export const all = [b, zod, fs, v, gen, data, nope, again];",
+        "",
+      ].join("\n"),
+    );
+    spawnSync("git", ["init", "-q"], { cwd: dir });
+    spawnSync("git", ["add", "-A"], { cwd: dir });
+    const paths = resolvePaths(dir, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
+    const r = await indexRepo(paths, { layer: "main" });
+    expect(r.specifierCounts).toEqual({
+      file: 1,
+      external: 1,
+      builtin: 1,
+      virtual: 1,
+      generated: 1,
+      excluded: 1,
+      unresolved: 1,
+    });
+    expect(r.unresolved.map((u) => u.specifier).sort()).toEqual(["./data.json", "./dist/out", "./missing"]);
   });
 });
