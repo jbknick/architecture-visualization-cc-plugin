@@ -3,6 +3,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { itTiming } from "./itTiming.js";
 import { CREDENTIAL_FORMATS } from "./secrets.formats.js";
 import { redactForFactSheet, scanSecrets } from "./secrets.js";
 
@@ -58,7 +59,7 @@ describe("redactor precision on this repository's own source", () => {
     expect(changed.length / files.length).toBeLessThan(0.02);
   });
 
-  it("redacts 100k characters in under 1.5 s", () => {
+  itTiming("redacts 100k characters in under 1.5 s", () => {
     const text = 'const apiKey = "abc123def456";\n'.repeat(3300);
     const t0 = performance.now();
     redactForFactSheet(text);

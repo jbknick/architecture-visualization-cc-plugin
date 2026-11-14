@@ -1,12 +1,27 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: the patterns are source text with template literals
 // Mutation check for the description validators (issue #22): disables one rule at a time by editing its source line,
 // runs the describe tests, and reports whether a test failed ("killed") or not ("SURVIVED"). The edited file is
-// restored after every run. Usage: pnpm exec tsx scripts/describe-mutations.ts
-import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+// restored after every run, also on SIGINT, SIGTERM and SIGHUP. A baseline run must be green first, and a compile error, crash or timeout is reported as ERROR, never as a kill. Part of `pnpm check` since issue #108: a surviving mutation (a rule that no
+// test notices) fails the check. Usage: pnpm exec tsx scripts/describe-mutations.ts
+import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+  writeSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const dir = join(import.meta.dirname, "..", "packages", "core", "src", "describe");
+// The three overrides exist for the interrupt test (packages/core/test/describe-mutations.test.ts): a scratch directory,
+// a stub test command and a cap on the number of mutations. Normal runs use none of them.
+const dir =
+  process.env.GANTRY_MUTATION_DIR ?? join(import.meta.dirname, "..", "packages", "core", "src", "describe");
 
 interface Mutation {
   name: string;
@@ -96,6 +111,60 @@ const MUTATIONS: Mutation[] = [
     replace: "else dropped.push(t);",
   },
   {
+    name: "redactor: env assignments no longer found",
+    file: "secrets.ts",
+    find: "[A-Z][A-Z0-9_]{2,60})=(?<v>",
+    replace: "[A-Z][A-Z0-9_]{2,60})\\u0001(?<v>",
+  },
+  {
+    name: "redactor: joined literals no longer found",
+    file: "secrets.ts",
+    find: "join\\(\\s{0,5}(?:\"\"|''|",
+    replace: "jxin\\(\\s{0,5}(?:\"\"|''|",
+  },
+  {
+    name: "redactor: positional credential arguments no longer found",
+    file: "secrets.ts",
+    find: "(?<v>[^\"'\\r\\n]{4,200})[\"']\\s{0,3}[,)]/g,",
+    replace: "(?<v>[^\"'\\r\\n]{4,200})[\"']\\s{0,3}[,)]\\u0001/g,",
+  },
+  {
+    name: "redactor: credential flags no longer found",
+    file: "secrets.ts",
+    find: "(?<![\\w-])(?:--?(?:password|",
+    replace: "(?<![\\w-])(?:--?\\u0001(?:password|",
+  },
+  {
+    name: "redactor: curl -u pair no longer found",
+    file: "secrets.ts",
+    find: "-u\\s{1,3}[\"']?(?<u>",
+    replace: "-\\u0001u\\s{1,3}[\"']?(?<u>",
+  },
+  {
+    name: "redactor: commit ids redacted again",
+    file: "secrets.ts",
+    find: 'accept: (g, redact) => !(redact && isCommitId(g.h ?? "", g.ctx ?? "")),',
+    replace: "accept: () => true,",
+  },
+  {
+    name: "redactor: i18n labels redacted again",
+    file: "secrets.ts",
+    find: "(isLabelName(name) && looksLikeLabel(v)) ||",
+    replace: "",
+  },
+  {
+    name: "redactor: sentence-like values behind strong credential names left alone",
+    file: "secrets.ts",
+    find: "(!hasStrongWord(name) || isPlaceholderPrompt(v))",
+    replace: "true",
+  },
+  {
+    name: "redactor: SRI hashes and routes redacted again",
+    file: "secrets.ts",
+    find: "if (isIntegrityHash(tok) || isRoute(tok)) return false;",
+    replace: "",
+  },
+  {
     name: "entropy rule off",
     file: "secrets.ts",
     find: "export const ENTROPY_THRESHOLD = 4.0;",
@@ -103,29 +172,221 @@ const MUTATIONS: Mutation[] = [
   },
 ];
 
-let survived = 0;
-for (const m of MUTATIONS) {
+const TEST_CMD =
+  process.env.GANTRY_MUTATION_CMD ?? "pnpm vitest run packages/core/src/describe --reporter=dot --bail=1";
+type Outcome = "green" | "killed" | "error";
+let lastOutput = "";
+let child: ReturnType<typeof spawn> | null = null;
+
+/**
+ * Runs the describe tests asynchronously, so the signal handlers below can run while a test is going. "killed" means a
+ * test failed; a compile error, crash or timeout is "error", not a kill. GANTRY_MUTATION_RUN tells tests to skip their
+ * timing assertions, which a slow machine could turn into a false kill.
+ */
+function runTests(): Promise<Outcome> {
+  return new Promise((resolve) => {
+    let out = "";
+    // detached: the child leads its own process group, so one kill reaches vitest and its workers
+    const c = spawn(TEST_CMD, {
+      shell: true,
+      detached: true,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, GANTRY_MUTATION_RUN: "1" },
+    });
+    child = c;
+    const timer = setTimeout(() => killChild(), 300_000);
+    c.stdout?.on("data", (d) => {
+      out += d;
+    });
+    c.stderr?.on("data", (d) => {
+      out += d;
+    });
+    c.on("error", () => {
+      clearTimeout(timer);
+      child = null;
+      resolve("error");
+    });
+    c.on("close", (status, signal) => {
+      clearTimeout(timer);
+      child = null;
+      if (status === 0) return resolve("green");
+      lastOutput = `status=${status} signal=${signal} ${out}`;
+      if (signal != null || status == null) return resolve("error"); // timeout or killed
+      // With --bail the run stops at the first failure, so there may be no summary. A file that did not load or
+      // compile is not a kill; anything else that exits non-zero is a failed test.
+      if (
+        /Transform failed|SyntaxError|ReferenceError|Failed to (?:load|resolve|parse)|error TS\d+/.test(out)
+      )
+        return resolve("error");
+      resolve("killed");
+    });
+  });
+}
+
+function killChild(): void {
+  if (child?.pid === undefined) return;
+  try {
+    process.kill(-child.pid, "SIGKILL");
+  } catch {
+    // already gone
+  }
+}
+
+const lockFile = join(
+  tmpdir(),
+  `gantry-describe-mutation-${createHash("sha1").update(dir).digest("hex").slice(0, 12)}.json`,
+);
+interface Lock {
+  pid: number;
+  path: string;
+  original: string;
+  mutatedHash: string;
+}
+const sha256 = (text: string): string => createHash("sha256").update(text).digest("hex");
+const NO_MUTATION: Lock = { pid: process.pid, path: "", original: "", mutatedHash: "" };
+let held = false;
+let current: { path: string; original: string } | null = null;
+
+/** Replaces the lock's contents atomically (temp file, then rename over it); the lock is never deleted and re-created. */
+function writeLock(lock: Lock): void {
+  const tmp = `${lockFile}.${process.pid}.tmp`;
+  writeFileSync(tmp, JSON.stringify(lock), { mode: 0o600 });
+  renameSync(tmp, lockFile);
+}
+
+/** Puts the mutated file back; the lock stays held. */
+const restore = (): void => {
+  if (current === null) return;
+  writeFileSync(current.path, current.original);
+  current = null;
+  if (held) writeLock(NO_MUTATION);
+};
+/** Final step of every exit path: restore, then release the lock (only if this run holds it). */
+const cleanup = (): void => {
+  killChild();
+  restore();
+  if (held) {
+    held = false;
+    try {
+      unlinkSync(lockFile);
+    } catch {
+      // already gone
+    }
+  }
+};
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
+  process.on(sig, () => {
+    cleanup();
+    process.exit(130);
+  });
+}
+process.on("exit", cleanup);
+
+const LOCKED_EXIT = 3;
+const isAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return pid !== process.pid;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === "EPERM";
+  }
+};
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/** Reads a lock another run created; it may be empty for an instant between its create and its first write. */
+async function readLock(file: string): Promise<Lock | null> {
+  for (let i = 0; i < 10; i++) {
+    try {
+      const l = JSON.parse(readFileSync(file, "utf8")) as Lock;
+      if (typeof l.pid === "number") return l;
+    } catch {
+      // not written yet, or gone
+    }
+    await sleep(100);
+  }
+  return null;
+}
+
+/**
+ * Takes the lock before anything else, with an exclusive create, and holds it for the whole run. A lock whose process is
+ * alive means another run is in progress (exit 3, nothing touched). A dead process's lock is first renamed away (only
+ * one contender wins the rename), then its file is restored only if it still holds exactly the mutated text; a file
+ * with newer edits is left alone with a warning. SIGKILL cannot be caught, which is why the lock carries the original.
+ */
+async function acquireLock(): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const fd = openSync(lockFile, "wx", 0o600);
+      writeSync(fd, JSON.stringify(NO_MUTATION));
+      closeSync(fd);
+      held = true;
+      return;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+    }
+    const lock = await readLock(lockFile);
+    if (lock !== null && isAlive(lock.pid)) {
+      console.log(
+        `another mutation run (pid ${lock.pid}) is in progress; wait for it to finish and run again`,
+      );
+      process.exit(LOCKED_EXIT);
+    }
+    const stale = `${lockFile}.stale.${process.pid}`;
+    try {
+      renameSync(lockFile, stale);
+    } catch {
+      continue; // someone else took it over first; look again
+    }
+    if (lock !== null && lock.path !== "") {
+      if (existsSync(lock.path) && sha256(readFileSync(lock.path, "utf8")) === lock.mutatedHash) {
+        writeFileSync(lock.path, lock.original);
+        console.log(`restored ${lock.path} from an interrupted run`);
+      } else {
+        console.log(
+          `warning: left ${lock.path} alone (an interrupted run's lock, but the file has changed since)`,
+        );
+      }
+    }
+    unlinkSync(stale);
+  }
+  console.log("could not take the mutation lock; run again");
+  process.exit(LOCKED_EXIT);
+}
+
+await acquireLock();
+
+if ((await runTests()) !== "green") {
+  console.log("baseline: the describe tests are not green without any mutation; fix them first");
+  process.exit(1);
+}
+
+const limit = Number(process.env.GANTRY_MUTATION_LIMIT ?? MUTATIONS.length);
+const run = MUTATIONS.slice(0, limit);
+let bad = 0;
+for (const m of run) {
   const path = join(dir, m.file);
   const original = readFileSync(path, "utf8");
   if (!original.includes(m.find)) {
     console.log(`${m.name}: PATTERN NOT FOUND in ${m.file}`);
-    survived++;
+    bad++;
     continue;
   }
-  writeFileSync(path, original.replace(m.find, m.replace));
-  let failed = false;
+  current = { path, original };
+  const mutated = original.replace(m.find, m.replace);
+  const lock: Lock = { pid: process.pid, path, original, mutatedHash: sha256(mutated) };
+  writeLock(lock);
+  writeFileSync(path, mutated);
+  let outcome: Outcome;
   try {
-    execSync("pnpm vitest run packages/core/src/describe --reporter=dot", {
-      stdio: "pipe",
-      timeout: 300_000,
-    });
-  } catch {
-    failed = true;
+    outcome = await runTests();
   } finally {
-    writeFileSync(path, original);
+    restore();
   }
-  if (!failed) survived++;
-  console.log(`${m.name}: ${failed ? "killed" : "SURVIVED"}`);
+  if (outcome === "error") console.log(lastOutput.slice(-800));
+  if (outcome !== "killed") bad++;
+  console.log(
+    `${m.name}: ${outcome === "killed" ? "killed" : outcome === "green" ? "SURVIVED" : "ERROR (not a kill)"}`,
+  );
 }
-console.log(`${MUTATIONS.length - survived} of ${MUTATIONS.length} mutations killed`);
-process.exit(survived === 0 ? 0 : 1);
+console.log(`${run.length - bad} of ${run.length} mutations killed`);
+process.exit(bad === 0 ? 0 : 1);

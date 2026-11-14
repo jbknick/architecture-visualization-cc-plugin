@@ -16,6 +16,7 @@ import {
   type HonestRow,
 } from "./corpus.honest.js";
 import { fullSheet, HONEST_FINAL, HONEST_REVIEW_2, type HonestFull } from "./corpus.honest2.js";
+import { itTiming } from "./itTiming.js";
 import { sheet as sessionSheet } from "./validate.fixtures.js";
 import { validateDescription } from "./validate.js";
 
@@ -245,7 +246,7 @@ describe("real model output (private, counts only)", () => {
 
 describe("performance", () => {
   const sheet = honestSheet(["fetchUser", "httpGet"]);
-  it("validates normal input in under 2 ms median", () => {
+  itTiming("validates normal input in under 2 ms median", () => {
     const raw = honestRaw(HONEST_MAIN[0] as HonestRow);
     for (let i = 0; i < 200; i++) validateDescription(raw, sheet); // warm up
     const times: number[] = [];
@@ -260,7 +261,7 @@ describe("performance", () => {
     expect(median).toBeLessThan(2);
   });
 
-  it("validates adversarial input at the caps in under 50 ms", () => {
+  itTiming("validates adversarial input at the caps in under 50 ms", () => {
     const filler: Record<string, string> = {
       "a*": "a".repeat(400),
       "a.a.a": "a.".repeat(200),
@@ -304,22 +305,31 @@ describe("performance", () => {
     console.log(`validateDescription worst case at the caps ${worst.toFixed(2)} ms`);
   });
 
-  it("fails values over the hard caps at once, whatever they hold", () => {
+  const overCap = () => {
     const huge = "a.".repeat(500_000);
-    for (const raw of [
+    return [
       { behavior: huge, searchTerms: ["x"], nameFits: true },
       { behavior: "Returns x.", searchTerms: [huge], nameFits: true },
       { behavior: "Returns x.", searchTerms: ["x"], nameFits: false, suggestedName: huge },
       { behavior: "Returns x.", searchTerms: Array(7).fill("x"), nameFits: true },
-    ]) {
+    ];
+  };
+
+  // functional: runs in mutation runs too
+  it("fails values over the hard caps with reason length", () => {
+    for (const raw of overCap())
+      expect(validateDescription(raw, sheet)).toMatchObject({ ok: false, reason: "length" });
+  });
+
+  itTiming("fails values over the hard caps at once, whatever they hold", () => {
+    for (const raw of overCap()) {
       const t0 = performance.now();
-      const r = validateDescription(raw, sheet);
+      validateDescription(raw, sheet);
       expect(performance.now() - t0).toBeLessThan(5);
-      expect(r).toMatchObject({ ok: false, reason: "length" });
     }
   });
 
-  it("scans a fact sheet at the grounding caps in under 50 ms", () => {
+  itTiming("scans a fact sheet at the grounding caps in under 50 ms", () => {
     const big = honestSheet(["fetchUser"]);
     big.signature = `(${"a: string, ".repeat(100)})`;
     big.doc = "word ".repeat(400);
