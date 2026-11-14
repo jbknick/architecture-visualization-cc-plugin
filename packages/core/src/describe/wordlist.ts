@@ -213,6 +213,9 @@ screenshot screenshots screencast screencasts
 regexp regexps
 urlsafe base64url
 frontmatter
+avatar avatars localstorage sessionstorage snackbar snackbars demo demos captcha recaptcha pubsub chatbot chatbots
+mdx xlsx webm intl typeahead combobox datepicker timepicker colorpicker callout callouts esm ssg isr rsc lsp vdom
+progressbar clipboard ips emoji emojis
 `);
 
 /** Words that need no grounding anywhere: function words, determiners, auxiliaries and the ordinary glue of English. */

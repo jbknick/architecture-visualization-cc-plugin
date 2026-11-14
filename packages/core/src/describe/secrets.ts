@@ -3,13 +3,18 @@
 // element of the pattern cannot also match, so no input makes the scan super-linear.
 
 import { stripInvisible } from "./text.js";
+import { isWord } from "./wordlist.js";
 
 export interface SecretRule {
   name: string;
   /** Global. A named group `v` marks the part to redact; without it the whole match is redacted. */
   re: RegExp;
-  /** Extra test on the named groups of a match; a rule with `accept` only fires when it returns true. */
-  accept?: (groups: Record<string, string>) => boolean;
+  /**
+   * Extra test on the named groups of a match; a rule with `accept` only fires when it returns true. `redact` is true
+   * when the redactor runs (source code on its way to a fact sheet) and false when a model's description is scanned:
+   * the redactor leaves alone what is common in ordinary code (commit SHAs, i18n labels, routes, SRI hashes).
+   */
+  accept?: (groups: Record<string, string>, redact: boolean) => boolean;
   /** Anchored on a vendor prefix or fixed shape, so it is also run on text with spaces and hyphens between alphanumerics removed. */
   collapsible?: boolean;
   /** Custom replacement used by the redactor instead of redacting the `v` group. */
@@ -72,6 +77,53 @@ const NON_SECRET_VALUES = new Set([
   "undefined",
 ]);
 
+/**
+ * Text right before a git object id: `commit `, `sha1: `, `rev=` or `/commit/`. Nothing else counts (not `ref`, `hash`,
+ * `digest`, `checksum`, `@` or `#`: a secret can sit behind any of those).
+ */
+const COMMIT_CONTEXT = /(?:\b(?:commit|sha|sha1|rev)\b\s{0,3}[:=]?\s{0,3}["'`]?|\/commit\/)$/i;
+/** Context that makes a hex run after `sha` a signature or HMAC value, not a commit id. */
+const SIGNATURE_CONTEXT = /signature|authorization|hmac|bearer|header|digest|checksum/i;
+
+/** A git object id the redactor leaves alone: exactly 40 or 64 hex digits right after a commit word. */
+function isCommitId(hex: string, ctx: string): boolean {
+  return (hex.length === 40 || hex.length === 64) && COMMIT_CONTEXT.test(ctx) && !SIGNATURE_CONTEXT.test(ctx);
+}
+
+/** A capitalised phrase of letters and spaces: "Enter your password". */
+function looksLikeLabel(v: string): boolean {
+  return /\s/.test(v) && /^\p{Lu}[\p{L}' ,.!?-]*$/u.test(v) && v.trim().split(/\s+/).length >= 2;
+}
+
+/** Words of a sentence written for a person. `is` is left out on purpose: "Winter Is Coming" is a passphrase. */
+const SENTENCE_WORDS = new Set(
+  "your you the a an to enter type please choose confirm for of must at least".split(" "),
+);
+
+/** The value reads as a sentence for a person: a label phrase of 3+ words that holds a function word. */
+function readsAsSentence(v: string): boolean {
+  return (
+    looksLikeLabel(v) &&
+    v.trim().split(/\s+/).length >= 3 &&
+    v
+      .toLowerCase()
+      .split(/\s+/)
+      .some((w) => SENTENCE_WORDS.has(w))
+  );
+}
+
+/** Names whose last word says the value is text shown to a person (`passwordText`, `tokenCaption`). */
+const LABEL_NAME_WORDS = new Set(
+  "label placeholder hint text message title caption prompt description tooltip helper".split(" "),
+);
+function isLabelName(name: string): boolean {
+  const parts = nameParts(name);
+  return parts.length > 1 && LABEL_NAME_WORDS.has(parts[parts.length - 1] as string);
+}
+
+/** Words that make a call a login: `login("admin", "pw")`, `signIn(...)`, `basicAuth(...)`. */
+const LOGIN_WORDS = new Set("login logon signin sign authenticate auth basic credentials connect".split(" "));
+
 /** Values that are message keys, not secrets: `auth.login_title`, `errors:password`. */
 function looksLikeMessageKey(v: string): boolean {
   return /^[a-z]+(?:[._:][a-z_]+)+$/.test(v);
@@ -133,7 +185,14 @@ export const SECRET_RULES: readonly SecretRule[] = [
   { name: "azure-sas", re: /\bsig=[A-Za-z0-9%+/]{30,}/g, collapsible: true },
   { name: "azure-storage-key", re: /AccountKey=(?<v>[A-Za-z0-9+/=]{40,})/g, collapsible: true },
   { name: "base64-der-key", re: /\bMII[A-Za-z0-9+/]{40,}/g, collapsible: true },
-  { name: "hex-secret", re: /\b[0-9a-fA-F]{32,}\b/g, collapsible: true },
+  {
+    // A run of 32+ hex digits. When the redactor runs, exactly 40 or 64 digits right after `commit`, `sha`, `rev` or
+    // `/commit/` are a git object id and is left alone: they fill ordinary changelogs and lock files.
+    name: "hex-secret",
+    re: /(?<!\w)(?<=(?<ctx>.{0,40}))(?<h>[0-9a-fA-F]{32,})(?!\w)/g,
+    accept: (g, redact) => !(redact && isCommitId(g.h ?? "", g.ctx ?? "")),
+    collapsible: true,
+  },
   {
     name: "private-key",
     // The header, plus the key body through the END line when present (the body has no recognisable shape).
@@ -158,11 +217,14 @@ export const SECRET_RULES: readonly SecretRule[] = [
     // string literal of four characters or more, in any letter case. Interpolated templates are left alone.
     name: "generic-credential",
     re: /(?<![\w$.-])(?<name>[A-Za-z_$][\w$.-]{0,60})["']?\s{0,20}[:=]\s{0,20}(?<q>["'`])(?<v>[^"'`\r\n]{4,200})/g,
-    accept: (g) => {
+    accept: (g, redact) => {
       const v = g.v ?? "";
       if (v === MARKER || !isCredentialName(g.name ?? "")) return false;
       if (g.q === "`" && v.includes("${")) return false;
       if (looksLikeMessageKey(v) || NON_SECRET_VALUES.has(v)) return false;
+      // A text for a person ("Enter your password") is not a secret, but only when the name says so or the value reads as
+      // a sentence; a capitalised phrase behind a plain credential name stays redacted (`password = "Correct Horse Battery"`).
+      if (redact && ((isLabelName(g.name ?? "") && looksLikeLabel(v)) || readsAsSentence(v))) return false;
       // `key: "Please enter your password"` is a label; a space in the value only counts for strong credential names.
       return !/\s/.test(v) || hasStrongWord(g.name ?? "");
     },
@@ -186,6 +248,65 @@ export const SECRET_RULES: readonly SecretRule[] = [
       if (/^[A-Z][A-Z0-9_]*$/.test(name) && g.sep === "=") return true; // shell style: API_KEY=value
       // Lower-case or camelCase names: a random-looking value (it holds a digit and a letter, no call or member chain).
       return /\d/.test(v) && /[A-Za-z]/.test(v) && !/[A-Za-z]\.[A-Za-z]/.test(v);
+    },
+  },
+  {
+    // An unquoted upper-case environment assignment (`export NAME=<value>`) whose value looks random
+    // (16+ characters with a letter and a digit, no path, URL or reference).
+    name: "env-assignment",
+    re: /(?<![\w$.-])(?<name>[A-Z][A-Z0-9_]{2,60})=(?<v>[^\s"'`;,(){}[\]=<>]{16,200})/g,
+    accept: (g) => {
+      const v = g.v ?? "";
+      if (v === MARKER || /^(?:process\.|import\.meta|env\.|this\.|\$|@|\/|\.|https?:|file:|%|-)/i.test(v))
+        return false;
+      return (
+        /\d/.test(v) &&
+        /[A-Za-z]/.test(v) &&
+        !/[A-Za-z]\.[A-Za-z]/.test(v) &&
+        !/^[\w-]+(?:\/[\w.-]+){2,}$/.test(v)
+      );
+    },
+  },
+  {
+    // A secret assembled from an array of string literals and joined with an empty string. Redacted when the joined text is a
+    // credential by itself or sits behind a credential name.
+    name: "joined-literals",
+    re: /(?:(?<![\w$.-])(?<name>[A-Za-z_$][\w$.-]{0,60})["']?\s{0,20}[:=]\s{0,20})?\[(?<items>(?:\s{0,5}(?:"[^"\r\n]{0,80}"|'[^'\r\n]{0,80}')\s{0,5},){1,8}\s{0,5}(?:"[^"\r\n]{0,80}"|'[^'\r\n]{0,80}'))\s{0,5},?\s{0,5}\]\s{0,5}\.\s{0,5}join\(\s{0,5}(?:""|'')\s{0,5}\)/g,
+    accept: (g) => {
+      const joined = joinedLiterals(g.items ?? "");
+      if (joined.length < 4) return false;
+      if ((g.name ?? "") !== "" && isCredentialName(g.name ?? "")) return true;
+      return rulesHitting(joined, SECRET_RULES, true).length > 0 || isHighEntropyToken(joined);
+    },
+    replace: (_m, g) => `${(g.name ?? "") !== "" ? `${g.name} = ` : ""}"${MARKER}"`,
+  },
+  {
+    // A literal passed positionally to a call whose name says it takes a credential (a login call with a user and a
+    // password, a set-password call). The last literal is the secret.
+    name: "positional-credential",
+    re: /(?<![\w$])(?<name>[A-Za-z_$][\w$]{0,40})\s{0,3}\(\s{0,3}(?<pre>(?:(?:"[^"\r\n]{0,100}"|'[^'\r\n]{0,100}')\s{0,3},\s{0,3}){0,3})(?<q>["'])(?<v>[^"'\r\n]{4,200})["']\s{0,3}[,)]/g,
+    accept: (g) => {
+      const v = g.v ?? "";
+      const name = g.name ?? "";
+      if (v === MARKER || looksLikeMessageKey(v) || NON_SECRET_VALUES.has(v) || /^[/.#]/.test(v))
+        return false;
+      const earlier = ((g.pre ?? "").match(/,/g) ?? []).length;
+      if (earlier >= 1) return nameParts(name).some((p) => LOGIN_WORDS.has(p)) && !/\s/.test(v);
+      return isCredentialName(name) && /\d/.test(v) && /[A-Za-z]/.test(v) && !/\s/.test(v);
+    },
+  },
+  {
+    // A credential given as a command-line argument: a password, token or key flag with its value, or curl's `-u` pair.
+    name: "cli-credential",
+    re: /(?<![\w-])(?:--?(?:password|passwd|pwd|pass|token|secret|api-key|apikey|auth-token|access-token|client-secret|private-key|passphrase)(?:=|\s{1,3})(?<v>[^\s"'`;|&<>]{4,200})|-u\s{1,3}(?<u>[^\s:"'`$]{1,60}:[^\s"'`$]{4,100}))/g,
+    accept: (g) => {
+      const v = g.v ?? g.u ?? "";
+      return v !== MARKER && !/^[-$%{<@(]|^env:/i.test(v) && (g.u === undefined || /\d/.test(v));
+    },
+    replace: (m, g) => {
+      const v = g.v ?? g.u ?? "";
+      const at = m.lastIndexOf(v);
+      return at < 0 ? MARKER : m.slice(0, at) + MARKER + m.slice(at + v.length);
     },
   },
   { name: "age-secret-key", re: /\bAGE-SECRET-KEY-1[A-Z0-9]{20,}/g, collapsible: true },
@@ -216,6 +337,30 @@ export const SECRET_RULES: readonly SecretRule[] = [
   { name: "square-access", re: /\bsq0(?:atp|csp)-[A-Za-z0-9_-]{20,}/g, collapsible: true },
 ];
 
+/** The text of the string literals in `items`, joined: `"sk_", 'live_'` gives `sk_live_`. */
+function joinedLiterals(items: string): string {
+  let out = "";
+  for (const m of items.matchAll(/"([^"\r\n]{0,80})"|'([^'\r\n]{0,80})'/g)) out += m[1] ?? m[2] ?? "";
+  return out;
+}
+
+/** `sha384-oqVuAfXRKap7...`: a Subresource Integrity hash is a digest, not a secret. */
+function isIntegrityHash(tok: string): boolean {
+  return /^sha(?:256|384|512)-[A-Za-z0-9+/]{40,}={0,2}$/.test(tok);
+}
+
+/** `/api/v1/orgs/:orgId/invitations`: every segment is a version, a parameter or words of the dictionary. */
+function isRoute(tok: string): boolean {
+  if (!tok.includes("/")) return false;
+  const segs = tok.split("/").filter((x) => x !== "");
+  if (segs.length < 2) return false;
+  return segs.every(
+    (seg) =>
+      /^(?:v\d{1,2}|:[A-Za-z_]\w*|\{[A-Za-z_]\w*\}|\d{1,4})$/.test(seg) ||
+      (/^[a-z][a-z-]*[a-z]$|^[a-z]$/.test(seg) && seg.split("-").every((part) => isWord(part))),
+  );
+}
+
 const ENTROPY_TOKEN = /[A-Za-z0-9+/=_-]{32,}/g;
 export const ENTROPY_MIN_LENGTH = 32;
 export const ENTROPY_THRESHOLD = 4.0;
@@ -237,7 +382,16 @@ export function shannonEntropy(s: string): number {
  * A random-looking token: 32+ chars of the base64/base64url alphabet with entropy >= 4.0 that holds both a letter
  * and a digit. The letter+digit requirement keeps long identifiers and paths (letters and separators only) out.
  */
-export function isHighEntropyToken(tok: string): boolean {
+export function isHighEntropyToken(tok: string, redact = false): boolean {
+  if (redact) {
+    if (isIntegrityHash(tok) || isRoute(tok)) return false;
+    // a git object id inside a URL or lock-file reference: `commit/<sha>`, `#<sha>`
+    const rest = tok.replace(
+      /(?:commit\/|\b(?:sha1?|rev)=)(?:[0-9a-f]{40}|[0-9a-f]{64})(?![0-9A-Za-z])/gi,
+      "",
+    );
+    if (rest !== tok) return isHighEntropyToken(rest, false);
+  }
   return (
     tok.length >= ENTROPY_MIN_LENGTH &&
     /[A-Za-z]/.test(tok) &&
@@ -284,13 +438,13 @@ function groupsOf(m: RegExpExecArray): Record<string, string> {
   return (m.groups ?? {}) as Record<string, string>;
 }
 
-function rulesHitting(text: string, rules: readonly SecretRule[]): string[] {
+function rulesHitting(text: string, rules: readonly SecretRule[], redact = false): string[] {
   const hits: string[] = [];
   for (const rule of rules) {
     rule.re.lastIndex = 0;
     let m: RegExpExecArray | null = rule.re.exec(text);
     while (m !== null) {
-      if (rule.accept === undefined || rule.accept(groupsOf(m))) {
+      if (rule.accept === undefined || rule.accept(groupsOf(m), redact)) {
         hits.push(rule.name);
         break;
       }
@@ -329,7 +483,7 @@ const COLLAPSIBLE_RULES = SECRET_RULES.filter((r) => r.collapsible === true);
 export function scanSecrets(text: string): string[] {
   const norm = normalizeForScan(text);
   const hits = rulesHitting(norm, SECRET_RULES);
-  if ((norm.match(ENTROPY_TOKEN) ?? []).some(isHighEntropyToken)) hits.push("high-entropy");
+  if ((norm.match(ENTROPY_TOKEN) ?? []).some((t) => isHighEntropyToken(t))) hits.push("high-entropy");
   const collapsed = collapseHyphens(norm);
   const splitHits: string[] = [];
   if (collapsed !== norm) splitHits.push(...rulesHitting(collapsed, COLLAPSIBLE_RULES));
@@ -354,7 +508,7 @@ function redactWith(text: string, rules: readonly SecretRule[]): string {
       const match = args[0] as string;
       const last = args[args.length - 1];
       const groups = typeof last === "object" && last !== null ? (last as Record<string, string>) : undefined;
-      if (rule.accept !== undefined && !rule.accept(groups ?? {})) return match;
+      if (rule.accept !== undefined && !rule.accept(groups ?? {}, true)) return match;
       if (rule.replace !== undefined) return rule.replace(match, groups ?? {});
       const v = groups?.v;
       if (v === undefined) return MARKER;
@@ -377,19 +531,22 @@ export function redactForFactSheet(text: string): string {
   let out = stripInvisible(text);
   const folded = out.normalize("NFKC");
   // Fullwidth or ligature spellings of a key: adopt the folded text only when it reveals a hit the raw text hides.
-  if (folded !== out && rulesHitting(folded, SECRET_RULES).length > rulesHitting(out, SECRET_RULES).length) {
+  if (
+    folded !== out &&
+    rulesHitting(folded, SECRET_RULES, true).length > rulesHitting(out, SECRET_RULES, true).length
+  ) {
     out = folded;
   }
   out = redactWith(out, SECRET_RULES);
   // Vendor keys broken by hyphens ("AKIA-IOSF-ODNN-..."): replace the whole hyphenated run.
   out = out.replace(/\b[A-Za-z0-9]{1,12}(?:-[A-Za-z0-9]{1,12}){2,12}\b/g, (tok) => {
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tok)) return tok;
-    return rulesHitting(tok.replace(/-/g, ""), COLLAPSIBLE_RULES).length > 0 ? MARKER : tok;
+    return rulesHitting(tok.replace(/-/g, ""), COLLAPSIBLE_RULES, true).length > 0 ? MARKER : tok;
   });
-  out = out.replace(ENTROPY_TOKEN, (tok) => (isHighEntropyToken(tok) ? MARKER : tok));
+  out = out.replace(ENTROPY_TOKEN, (tok) => (isHighEntropyToken(tok, true) ? MARKER : tok));
   out = out.replace(B64_TOKEN, (tok) => {
     const decoded = decodePrintable(tok);
-    return decoded !== null && rulesHitting(decoded, SECRET_RULES).length > 0 ? MARKER : tok;
+    return decoded !== null && rulesHitting(decoded, SECRET_RULES, true).length > 0 ? MARKER : tok;
   });
   return out;
 }
