@@ -9,7 +9,7 @@
   "packageManager": "pnpm@10.31.0",
   "scripts": {
     "build": "tsc -b && tsup && pnpm --filter @gantry/explorer build:web",
-    "check": "biome check . && tsc -b --noEmit && vitest run",
+    "check": "biome check . && tsc -b --noEmit && vitest run && tsx scripts/describe-mutations.ts",
     "fmt": "biome check --write .",
     "readme:media": "tsx scripts/readme-media.ts",
     "test": "vitest run"

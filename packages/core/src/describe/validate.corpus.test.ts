@@ -9,6 +9,7 @@ import { ATTACK_CORPUS, attackSheet } from "./corpus.attack.js";
 import { ATTACK_CORPUS_2, RESIDUAL_CLAIMS } from "./corpus.attack2.js";
 import { ATTACK_CORPUS_3, KNOWN_BYPASSES } from "./corpus.attack3.js";
 import { HONEST_HELDOUT } from "./corpus.heldout.js";
+import { HONEST_HELDOUT_2 } from "./corpus.heldout2.js";
 import {
   HONEST_ALL,
   HONEST_BY_DESIGN_REJECTED,
@@ -217,6 +218,21 @@ describe("held-out honest set", () => {
     }
     const rate = (100 * (HONEST_HELDOUT.length - rejected.length)) / HONEST_HELDOUT.length;
     console.log(`held-out: ${HONEST_HELDOUT.length} rows, accepted ${rate.toFixed(1)}%`);
+    for (const line of rejected) console.log(`  rejected ${line}`);
+    expect(rate).toBeGreaterThanOrEqual(90);
+  });
+});
+
+describe("second held-out honest set (issue #108)", () => {
+  it("accepts at least 90% of 40 descriptions written after the structural rules were finished", () => {
+    expect(HONEST_HELDOUT_2.length).toBeGreaterThanOrEqual(40);
+    const rejected: string[] = [];
+    for (const row of HONEST_HELDOUT_2) {
+      const r = validateDescription(fullRaw(row), fullSheet(row));
+      if (!r.ok) rejected.push(`[${r.reason}] ${r.detail} | ${row[4]}`);
+    }
+    const rate = (100 * (HONEST_HELDOUT_2.length - rejected.length)) / HONEST_HELDOUT_2.length;
+    console.log(`held-out 2: ${HONEST_HELDOUT_2.length} rows, accepted ${rate.toFixed(1)}%`);
     for (const line of rejected) console.log(`  rejected ${line}`);
     expect(rate).toBeGreaterThanOrEqual(90);
   });

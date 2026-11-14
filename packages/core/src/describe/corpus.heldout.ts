@@ -4,6 +4,10 @@
 // is recorded below as it came out; no rule, list or row was changed because of it. The test asserts 90% so a later
 // change that makes the validator stricter than this is caught. Written by hand; nothing here comes from a private repo.
 //
+// STATUS AFTER #108: this set is no longer untuned. The word-list additions (`avatar`, ...) and `prefix-verb` first words
+// ("Re-encodes") of issue #108 came from its three rejected rows. The untuned measure is corpus.heldout2.ts, written after
+// the #108 rules were finished and run once (result recorded in its header).
+//
 // RESULT OF THE ONE RUN: 60 rows, 57 accepted (95.0%), 3 rejected, nothing tuned afterwards:
 //   - "Fisher-Yates" (a proper-name compound) -> identifier
 //   - the search term "avatar text" ("avatar" is not in the 1934 word list and not in the fact sheet) -> identifier

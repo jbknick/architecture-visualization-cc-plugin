@@ -1,7 +1,8 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: the patterns are source text with template literals
 // Mutation check for the description validators (issue #22): disables one rule at a time by editing its source line,
 // runs the describe tests, and reports whether a test failed ("killed") or not ("SURVIVED"). The edited file is
-// restored after every run. Usage: pnpm exec tsx scripts/describe-mutations.ts
+// restored after every run, also on Ctrl-C. Part of `pnpm check` since issue #108: a surviving mutation (a rule that no
+// test notices) fails the check. Usage: pnpm exec tsx scripts/describe-mutations.ts
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -96,6 +97,90 @@ const MUTATIONS: Mutation[] = [
     replace: "else dropped.push(t);",
   },
   {
+    name: "structural: punctuation rule off",
+    file: "clause.ts",
+    find: 'if (hasClausePunctuation(body)) return "punctuation";',
+    replace: "",
+  },
+  {
+    name: "structural: bare word after a connector accepted",
+    file: "clause.ts",
+    find: 'if (bareWordAfterBoundary(t)) return "bare-word";',
+    replace: "",
+  },
+  {
+    name: "structural: obligation predicates accepted",
+    file: "clause.ts",
+    find: 'if (obligation(t)) return "obligation";',
+    replace: "",
+  },
+  {
+    name: "structural: control construction accepted",
+    file: "clause.ts",
+    find: 'if (controlConstruction(t)) return "control";',
+    replace: "",
+  },
+  {
+    name: "structural: second subject accepted",
+    file: "clause.ts",
+    find: 'if (secondSubject(t) || modalSubject(t)) return "second-subject";',
+    replace: "",
+  },
+  {
+    name: "redactor: env assignments no longer found",
+    file: "secrets.ts",
+    find: "[A-Z][A-Z0-9_]{2,60})=(?<v>",
+    replace: "[A-Z][A-Z0-9_]{2,60})\\u0001(?<v>",
+  },
+  {
+    name: "redactor: joined literals no longer found",
+    file: "secrets.ts",
+    find: "join\\(\\s{0,5}(?:\"\"|'')",
+    replace: "jxin\\(\\s{0,5}(?:\"\"|'')",
+  },
+  {
+    name: "redactor: positional credential arguments no longer found",
+    file: "secrets.ts",
+    find: "(?<v>[^\"'\\r\\n]{4,200})[\"']\\s{0,3}[,)]/g,",
+    replace: "(?<v>[^\"'\\r\\n]{4,200})[\"']\\s{0,3}[,)]\\u0001/g,",
+  },
+  {
+    name: "redactor: credential flags no longer found",
+    file: "secrets.ts",
+    find: "(?<![\\w-])(?:--?(?:password|",
+    replace: "(?<![\\w-])(?:--?\\u0001(?:password|",
+  },
+  {
+    name: "redactor: curl -u pair no longer found",
+    file: "secrets.ts",
+    find: "|-u\\s{1,3}(?<u>",
+    replace: "|-\\u0001u\\s{1,3}(?<u>",
+  },
+  {
+    name: "redactor: commit ids redacted again",
+    file: "secrets.ts",
+    find: 'accept: (g, redact) => !(redact && COMMIT_CONTEXT.test(g.ctx ?? "")),',
+    replace: "accept: () => true,",
+  },
+  {
+    name: "redactor: i18n labels redacted again",
+    file: "secrets.ts",
+    find: "if (redact && looksLikeLabel(v)) return false;",
+    replace: "",
+  },
+  {
+    name: "redactor: SRI hashes and routes redacted again",
+    file: "secrets.ts",
+    find: "if (isIntegrityHash(tok) || isRoute(tok)) return false;",
+    replace: "",
+  },
+  {
+    name: "prefix-verb first words rejected again",
+    file: "identifiers.ts",
+    find: "if (verbPre !== null && isWord(verbPre[1] as string)) return true;",
+    replace: "",
+  },
+  {
     name: "entropy rule off",
     file: "secrets.ts",
     find: "export const ENTROPY_THRESHOLD = 4.0;",
@@ -104,6 +189,14 @@ const MUTATIONS: Mutation[] = [
 ];
 
 let survived = 0;
+let current: { path: string; original: string } | null = null;
+const restore = (): void => {
+  if (current !== null) writeFileSync(current.path, current.original);
+};
+process.on("SIGINT", () => {
+  restore();
+  process.exit(130);
+});
 for (const m of MUTATIONS) {
   const path = join(dir, m.file);
   const original = readFileSync(path, "utf8");
@@ -112,17 +205,19 @@ for (const m of MUTATIONS) {
     survived++;
     continue;
   }
+  current = { path, original };
   writeFileSync(path, original.replace(m.find, m.replace));
   let failed = false;
   try {
-    execSync("pnpm vitest run packages/core/src/describe --reporter=dot", {
+    execSync("pnpm vitest run packages/core/src/describe --reporter=dot --bail=1", {
       stdio: "pipe",
       timeout: 300_000,
     });
   } catch {
     failed = true;
   } finally {
-    writeFileSync(path, original);
+    restore();
+    current = null;
   }
   if (!failed) survived++;
   console.log(`${m.name}: ${failed ? "killed" : "SURVIVED"}`);
