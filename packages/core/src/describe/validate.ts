@@ -33,13 +33,7 @@ import {
 } from "./shape.js";
 import { tokenize, wordCount } from "./text.js";
 
-export type ValidationFailureReason =
-  | "schema"
-  | "length"
-  | "shape"
-  | "identifier"
-  | "injection"
-  | "secret";
+export type ValidationFailureReason = "schema" | "length" | "shape" | "identifier" | "injection" | "secret";
 export type ValidationRepair = "behavior-truncated" | "search-terms-stripped";
 export type ValidationResult =
   | { ok: true; value: Description; repairs?: ValidationRepair[] }
@@ -121,8 +115,7 @@ function judgeTerm(term: string, names: ReadonlySet<string>): TermVerdict {
   if (tokens.length === 0 || tokens.length > MAX_TERM_WORDS)
     return { ok: false, reason: "shape", detail: `a term must hold 1 to ${MAX_TERM_WORDS} words` };
   const lower = tokens.map((t) => t.toLowerCase());
-  if (addressingHits(term).length > 0)
-    return { ok: false, reason: "injection", detail: "addressing words" };
+  if (addressingHits(term).length > 0) return { ok: false, reason: "injection", detail: "addressing words" };
   if (startsWithDirective(lower) || instructsProtectedObject(lower))
     return { ok: false, reason: "injection", detail: "directive term" };
   const f = scanInjection(term);

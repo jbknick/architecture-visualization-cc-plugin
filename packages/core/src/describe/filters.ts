@@ -47,7 +47,10 @@ export const IMPERATIVE_PATTERNS: readonly ImperativePattern[] = [
 
 /** Collapsed (letters and digits only) phrases that survive spacing and punctuation tricks like "i-g-n-o-r-e". */
 const COLLAPSED_PHRASES: readonly { name: string; re: RegExp }[] = [
-  { name: "ignore-instructions", re: /(?:ignore|disregard)(?:all|any|the|your)?(?:previous|prior|above|instructions|rules)/ },
+  {
+    name: "ignore-instructions",
+    re: /(?:ignore|disregard)(?:all|any|the|your)?(?:previous|prior|above|instructions|rules)/,
+  },
 ];
 
 /** Text prepared for pattern matching: NFKC (fullwidth, ligatures, math letters fold to ASCII), accents removed. */

@@ -6,9 +6,9 @@ import { ATTACK_CORPUS, attackSheet } from "./corpus.attack.js";
 import {
   HONEST_ALL,
   HONEST_BY_DESIGN_REJECTED,
-  type HonestRow,
   HONEST_MAIN,
   HONEST_REVIEW,
+  type HonestRow,
 } from "./corpus.honest.js";
 import { validateDescription } from "./validate.js";
 
@@ -61,7 +61,8 @@ describe("attack corpus", () => {
       };
       if (c.name !== undefined) raw.suggestedName = c.name;
       const r = validateDescription(raw, attackSheet());
-      if (r.ok) passed.push(`${c.cls}: ${c.behavior.slice(0, 50)} ${JSON.stringify(c.terms ?? c.name ?? "")}`);
+      if (r.ok)
+        passed.push(`${c.cls}: ${c.behavior.slice(0, 50)} ${JSON.stringify(c.terms ?? c.name ?? "")}`);
       else if (c.reason !== undefined && r.reason !== c.reason)
         passed.push(`${c.cls}: wanted ${c.reason}, got ${r.reason} for ${c.behavior.slice(0, 40)}`);
       // a failure detail never repeats a secret or a long opaque token in full
@@ -153,7 +154,10 @@ describe("performance", () => {
     for (const [k, s] of Object.entries(filler)) {
       const terms = Array.from({ length: 6 }, () => s.slice(0, 60));
       const t0 = performance.now();
-      validateDescription({ behavior: s, searchTerms: terms, nameFits: false, suggestedName: "a".repeat(80) }, sheet);
+      validateDescription(
+        { behavior: s, searchTerms: terms, nameFits: false, suggestedName: "a".repeat(80) },
+        sheet,
+      );
       const dt = performance.now() - t0;
       worst = Math.max(worst, dt);
       expect(dt, k).toBeLessThan(50);

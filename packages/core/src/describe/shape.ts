@@ -101,7 +101,15 @@ const ADDRESSING_PHRASES = /\b(?:need to|needs to be|has to|have to|be sure|make
  * data"). The attacks they stood for ("Note: ...", "IMPORTANT: ...") are labels, rejected by
  * the label rule, or start with a non-verb, rejected by the first-word rule.
  */
-export const ADDRESSING_DROPPED: readonly string[] = ["note", "warning", "important", "never", "always", "my", "do not"];
+export const ADDRESSING_DROPPED: readonly string[] = [
+  "note",
+  "warning",
+  "important",
+  "never",
+  "always",
+  "my",
+  "do not",
+];
 
 /** Addressing words and phrases in `text` (lower-case, deduplicated). */
 export function addressingHits(text: string): string[] {
@@ -129,7 +137,8 @@ const CLAUSE_IMPERATIVES = new Set(
 /** First word is a listed verb, optionally after one adverb in -ly ("Strictly parses") or as `prefix-verb` ("Deep-copies"). */
 function startsWithVerb(pieces: readonly string[]): boolean {
   let first = (pieces[0] ?? "").toLowerCase();
-  if ((/^[a-z]{3,12}ly$/.test(first) || first === "always" || first === "never") && pieces.length > 1) first = (pieces[1] as string).toLowerCase();
+  if ((/^[a-z]{3,12}ly$/.test(first) || first === "always" || first === "never") && pieces.length > 1)
+    first = (pieces[1] as string).toLowerCase();
   const hyphen = /^[a-z]{2,8}-([a-z]+)$/.exec(first);
   if (hyphen !== null) first = hyphen[1] as string;
   return /^[a-z]+$/.test(first) && DESCRIPTION_VERBS.has(first);
@@ -204,7 +213,9 @@ export function instructsProtectedObject(words: readonly string[]): boolean {
 
 /** Terms that start with an install or shell command, or with an unconditional override verb. */
 const COMMAND_STARTS = new Set(
-  "ignore disregard forget bypass skip prefer use avoid install npm pnpm yarn npx pip curl wget sudo chmod please always never".split(" "),
+  "ignore disregard forget bypass skip prefer use avoid install npm pnpm yarn npx pip curl wget sudo chmod please always never".split(
+    " ",
+  ),
 );
 export function startsWithDirective(words: readonly string[]): boolean {
   return words.length > 0 && COMMAND_STARTS.has(words[0] as string);

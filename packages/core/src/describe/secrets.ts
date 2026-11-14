@@ -258,7 +258,8 @@ export function scanSecrets(text: string): string[] {
   const splitHits: string[] = [];
   if (collapsed !== norm) splitHits.push(...rulesHitting(collapsed, COLLAPSIBLE_RULES));
   for (const w of windows(collapsed)) splitHits.push(...rulesHitting(w, COLLAPSIBLE_RULES));
-  for (const name of splitHits) if (!hits.includes(name) && !hits.includes(`split:${name}`)) hits.push(`split:${name}`);
+  for (const name of splitHits)
+    if (!hits.includes(name) && !hits.includes(`split:${name}`)) hits.push(`split:${name}`);
   for (const tok of norm.match(B64_TOKEN) ?? []) {
     const decoded = decodePrintable(tok);
     if (decoded === null) continue;
@@ -276,8 +277,7 @@ function redactWith(text: string, rules: readonly SecretRule[]): string {
     out = out.replace(rule.re, (...args: unknown[]) => {
       const match = args[0] as string;
       const last = args[args.length - 1];
-      const groups =
-        typeof last === "object" && last !== null ? (last as Record<string, string>) : undefined;
+      const groups = typeof last === "object" && last !== null ? (last as Record<string, string>) : undefined;
       if (rule.accept !== undefined && !rule.accept(groups ?? {})) return match;
       const v = groups?.v;
       if (v === undefined) return MARKER;

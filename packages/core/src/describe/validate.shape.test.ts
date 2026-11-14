@@ -7,8 +7,8 @@ import { groundingNames, ungroundedTokens } from "./identifiers.js";
 import { redactForFactSheet, scanSecrets } from "./secrets.js";
 import { DESCRIPTION_VERBS, instructsProtectedObject, shapeProblem } from "./shape.js";
 import { fakeSymbol, putFile } from "./testkit.js";
-import { validateDescription } from "./validate.js";
 import { sheet } from "./validate.fixtures.js";
+import { validateDescription } from "./validate.js";
 
 const ok = (behavior: string, extra: Record<string, unknown> = {}) => ({
   behavior,
@@ -56,7 +56,18 @@ describe("shapeProblem", () => {
 
   it("holds a committed list of about 700 third-person verbs", () => {
     expect(DESCRIPTION_VERBS.size).toBeGreaterThanOrEqual(250);
-    for (const v of ["returns", "fetches", "renders", "builds", "validates", "deletes", "runs", "executes", "sends", "parses"])
+    for (const v of [
+      "returns",
+      "fetches",
+      "renders",
+      "builds",
+      "validates",
+      "deletes",
+      "runs",
+      "executes",
+      "sends",
+      "parses",
+    ])
       expect(DESCRIPTION_VERBS.has(v), v).toBe(true);
     for (const v of ["remove", "skip", "install", "use", "replace", "ignore", "note", "remember"])
       expect(DESCRIPTION_VERBS.has(v), v).toBe(false);
@@ -179,7 +190,9 @@ describe("redactForFactSheet", () => {
 
 describe("buildFactSheet redacts secrets", () => {
   it("never carries a secret from body, doc or signature", () => {
-    const samples = Object.entries(SECRET_SAMPLES).filter(([n, s]) => n !== "githubSplitSpace" && !s.includes("\n") && !s.startsWith("-----"));
+    const samples = Object.entries(SECRET_SAMPLES).filter(
+      ([n, s]) => n !== "githubSplitSpace" && !s.includes("\n") && !s.startsWith("-----"),
+    );
     const store = openStore(":memory:");
     for (const [name, secret] of samples) {
       const file = `src/${name}.ts`;

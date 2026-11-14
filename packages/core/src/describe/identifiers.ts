@@ -113,7 +113,8 @@ function plainCompound(t: string): boolean {
   const hyphen = t.split("-");
   const ok = hyphen.every((p) => p.length <= 14 && (isPlainToken(p) || p === "ID"));
   if (hyphen.length === 2) return ok;
-  if (hyphen.length >= 3 && hyphen.length <= 5) return ok && hyphen.some((p) => FUNCTION_WORDS.has(p.toLowerCase()));
+  if (hyphen.length >= 3 && hyphen.length <= 5)
+    return ok && hyphen.some((p) => FUNCTION_WORDS.has(p.toLowerCase()));
   const slash = t.split("/");
   return slash.length === 2 && slash.every((p) => /^[a-z]{2,14}$/.test(p) && isPlainToken(p));
 }
@@ -122,7 +123,8 @@ function plainCompound(t: string): boolean {
 const TIME = /^\d{1,2}:\d{2}(?:-\d{1,2}:\d{2})?$/;
 
 /** A bare file name with an extension that is not a top-level domain ("robots.txt"): it cannot be a host. */
-const SAFE_FILE = /^[A-Za-z0-9_-]{1,30}\.(?:txt|xml|json|yaml|yml|toml|csv|png|svg|ico|html|css|js|ts|tsx|jsx|lock|log|ini|cfg|conf)$/;
+const SAFE_FILE =
+  /^[A-Za-z0-9_-]{1,30}\.(?:txt|xml|json|yaml|yml|toml|csv|png|svg|ico|html|css|js|ts|tsx|jsx|lock|log|ini|cfg|conf)$/;
 
 function allowListed(t: string): boolean {
   const lower = t.toLowerCase();
@@ -225,7 +227,9 @@ export function groundingNames(sheet: FactSheet): Set<string> {
   addIdents(stripLiteralsAndComments(sheet.body), false);
   // Enum-like string values ("NOT_FOUND", "retry_later", "FORBIDDEN") are the vocabulary of the function, and a single
   // UPPER_SNAKE or snake_case word cannot be a host, a path or a package name.
-  for (const m of sheet.body.matchAll(/["'`]([A-Za-z][A-Za-z0-9]{0,20}(?:_[A-Za-z0-9]{1,20}){1,5}|[A-Z]{6,30})["'`]/g))
+  for (const m of sheet.body.matchAll(
+    /["'`]([A-Za-z][A-Za-z0-9]{0,20}(?:_[A-Za-z0-9]{1,20}){1,5}|[A-Z]{6,30})["'`]/g,
+  ))
     add(m[1] as string);
   return names;
 }

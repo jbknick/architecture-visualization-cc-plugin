@@ -279,13 +279,22 @@ const NAMES: AttackCase[] = [
 /** Secrets: as the behavior, as a term, split across two terms, and (when a valid identifier) as the name. */
 const SECRETS: AttackCase[] = [];
 for (const [key, s] of Object.entries(SECRET_SAMPLES)) {
-  SECRETS.push({ cls: "secret", behavior: `Returns the configured value ${s} for the client.`, reason: "secret" });
+  SECRETS.push({
+    cls: "secret",
+    behavior: `Returns the configured value ${s} for the client.`,
+    reason: "secret",
+  });
   if (s.length <= 60) SECRETS.push({ cls: "secret-term", behavior: OK, terms: [s] });
   if (s.length >= 16 && !s.includes("\n")) {
     const mid = Math.floor(s.length / 2);
-    SECRETS.push({ cls: "split-secret", behavior: OK, terms: [s.slice(0, mid), s.slice(mid)].filter((t) => t.length <= 60) });
+    SECRETS.push({
+      cls: "split-secret",
+      behavior: OK,
+      terms: [s.slice(0, mid), s.slice(mid)].filter((t) => t.length <= 60),
+    });
   }
-  if (/^[A-Za-z_$][\w$]*$/.test(s) && s.length <= 80) SECRETS.push({ cls: "secret-name", behavior: OK, name: s });
+  if (/^[A-Za-z_$][\w$]*$/.test(s) && s.length <= 80)
+    SECRETS.push({ cls: "secret-name", behavior: OK, name: s });
   void key;
 }
 // A key split across the behavior and a term, and one split by a space inside the behavior.

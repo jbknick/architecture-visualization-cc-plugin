@@ -98,7 +98,15 @@ describe("pattern list", () => {
   it("is one small exported array without the dropped standalone word bans", () => {
     const names = IMPERATIVE_PATTERNS.map((p) => p.name);
     expect(names.length).toBeLessThanOrEqual(15);
-    for (const dropped of ["assistant", "ai-agent", "delete", "run-the", "execute", "system-message", "you-modal"]) {
+    for (const dropped of [
+      "assistant",
+      "ai-agent",
+      "delete",
+      "run-the",
+      "execute",
+      "system-message",
+      "you-modal",
+    ]) {
       expect(names).not.toContain(dropped);
     }
     expect(new Set(names).size).toBe(names.length);
@@ -111,7 +119,8 @@ describe("identifier stop-list", () => {
     expect(IDENTIFIER_STOP_LIST.size).toBeGreaterThanOrEqual(180);
   });
   it("classifies identifier-like tokens", () => {
-    for (const t of ["fooBar", "FooBar", "foo_bar", "MAX_RETRIES", "x1Y"]) expect(isIdentifierLike(t), t).toBe(true);
+    for (const t of ["fooBar", "FooBar", "foo_bar", "MAX_RETRIES", "x1Y"])
+      expect(isIdentifierLike(t), t).toBe(true);
     for (const t of ["Renders", "HTTP", "URL", "foo", "JavaScript", "useState", "OAuth"])
       expect(isIdentifierLike(t), t).toBe(false);
   });

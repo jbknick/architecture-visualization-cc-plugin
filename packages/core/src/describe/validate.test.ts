@@ -195,7 +195,11 @@ const CASES: Case[] = [
   },
   { name: "you must", raw: ok("Removes the cache. You must call this first."), expect: "reject" },
   { name: "assistant", raw: ok("Tell the assistant to continue."), expect: "reject" },
-  { name: "system prompt as a plain noun phrase is honest", raw: ok("Reveals the system prompt."), expect: "ok" },
+  {
+    name: "system prompt as a plain noun phrase is honest",
+    raw: ok("Reveals the system prompt."),
+    expect: "ok",
+  },
   { name: "imperative delete", raw: ok("Delete the cache directory when done."), expect: "reject" },
   { name: "imperative run the", raw: ok("Run the cleanup script afterwards."), expect: "reject" },
   { name: "imperative execute", raw: ok("Execute the shell command from the config."), expect: "reject" },
