@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "./map3d.css";
+import type { GraphNode } from "../api.ts";
 import { LargestFiles } from "../components/LargestFiles.tsx";
 import { rankView } from "../rankedFiles/store.ts";
 import { useRanked } from "../rankedFiles/useRanked.ts";
@@ -7,8 +8,8 @@ import type { FilterPanelProps } from "../slots.ts";
 import { currentScheme } from "../theme.ts";
 import { getBool, setBool } from "../views/filterUtils.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
-import { summarizeIslands } from "./layout.ts";
-import { mapUi, prefersReducedMotion, useMapUi } from "./ui.ts";
+import { type IslandSummary, summarizeIslands } from "./layout.ts";
+import { type MapStyle, mapUi, prefersReducedMotion, readStyle, rememberStyle, useMapUi } from "./ui.ts";
 
 const LEVELS = [
   { id: "workspaces", label: "Workspaces" },
@@ -37,15 +38,50 @@ function writeStore(key: string, value: string): void {
   }
 }
 
+/** The workspaces of the project-map data the city is built from, in palette order (sorted by id). */
+export function cityWorkspaces(nodes: readonly GraphNode[]): IslandSummary[] {
+  return nodes
+    .filter((n) => n.kind === "workspace" && !n.parent)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .map((n, index) => ({
+      id: n.id,
+      index,
+      label: n.shortLabel ?? n.label,
+      fullLabel: n.label,
+      wsKind: n.id === "ws:." ? "(repo root)" : (n.badges?.[0] ?? "package"),
+      functions: n.stats?.functions ?? 0,
+      files: n.stats?.files ?? 0,
+    }));
+}
+
 /** Left-panel controls for the 3D map: level, hide tests, auto-rotate, reset camera, and the workspace legend. */
-export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange }: FilterPanelProps) {
+export function MapPanel({
+  nodes: shellNodes,
+  filters,
+  onFiltersChange,
+  route,
+  onRouteChange,
+}: FilterPanelProps) {
   const ui = useMapUi();
+  const style = readStyle(filters);
+  const city = style === "city";
+  // The city is built from the project-map data; its panel lists the same workspaces and files.
+  const nodes = city && ui.cityData ? ui.cityData.nodes : shellNodes;
+  const setStyle = (next: MapStyle) => {
+    rememberStyle(next);
+    mapUi.touchStyle();
+    const { style: _drop, ...rest } = filters;
+    onFiltersChange(next === "islands" ? { ...rest, style: "islands" } : rest);
+  };
   const level = route?.level === "workspaces" || route?.level === "files" ? route.level : "dirs";
   const hideTests = getBool(filters, "hideTests", true);
   // Biggest first; the colour index stays the island's position in the sorted-id order.
   const islands = useMemo(
-    () => summarizeIslands(nodes).sort((a, b) => b.functions - a.functions || (a.id < b.id ? -1 : 1)),
-    [nodes],
+    () =>
+      (city && ui.cityData ? cityWorkspaces(nodes) : summarizeIslands(nodes)).sort(
+        (a, b) => b.functions - a.functions || (a.id < b.id ? -1 : 1),
+      ),
+    [nodes, city, ui.cityData],
   );
   const scheme = currentScheme();
   const ranked = useRanked(nodes, hideTests, level === "files");
@@ -63,6 +99,41 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
 
   return (
     <div className="map3d-panel">
+      <div className="map3d-toprow">
+        <fieldset className="map3d-styles" aria-label="Style">
+          <div className="map3d-seg">
+            {(
+              [
+                ["city", "City"],
+                ["islands", "Islands"],
+              ] as const
+            ).map(([id, label]) => (
+              <label key={id} className={`map3d-seg-opt ${style === id ? "is-on" : ""}`}>
+                <input type="radio" name="map3d-style" checked={style === id} onChange={() => setStyle(id)} />
+                {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {!city && (
+          <button type="button" className="map3d-reset" onClick={() => mapUi.resetCamera()}>
+            Reset camera
+          </button>
+        )}
+      </div>
+      {city && (
+        <div className="map3d-views">
+          <button type="button" className="map3d-reset" onClick={() => mapUi.setCameraView("top")}>
+            Top view
+          </button>
+          <button type="button" className="map3d-reset" onClick={() => mapUi.setCameraView("angled")}>
+            Angled view
+          </button>
+          <button type="button" className="map3d-reset" onClick={() => mapUi.resetCamera()}>
+            Reset camera
+          </button>
+        </div>
+      )}
       <fieldset className="map3d-levels">
         <legend className="muted">Level</legend>
         {LEVELS.map((l) => (
@@ -106,7 +177,45 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
           </span>
           <span className="panel-title">How to read it</span>
         </button>
-        {howtoOpen && (
+        {howtoOpen && city && (
+          <ul id="map3d-howto-body">
+            <li>
+              <span className="map3d-sw map3d-sw-island" aria-hidden="true" />
+              <span>
+                <strong>District</strong> = one workspace, laid out like the 2D project map (area =
+                functions). Colour = workspace, as in the list below.
+              </span>
+            </li>
+            <li>
+              <svg className="map3d-sw map3d-sw-arrow" viewBox="0 0 26 10" aria-hidden="true">
+                <path d="M1 5 H17" stroke="currentColor" strokeWidth="2.4" fill="none" />
+                <path d="M16 0.8 L25 5 L16 9.2 Z" fill="currentColor" />
+              </svg>
+              <span>
+                <strong>Arch A → B</strong> = A imports from B. Colour = the importer, thicker = more imports,
+                the number is the import count.
+              </span>
+            </li>
+            <li>
+              <span className="map3d-sw map3d-sw-dot" aria-hidden="true" />
+              <span>
+                {level === "workspaces" && "Block height = functions in the workspace."}
+                {level === "dirs" && (
+                  <>
+                    <strong>Plinth</strong> = folder; the tall blocks are the folders with the most functions.
+                  </>
+                )}
+                {level === "files" && (
+                  <>
+                    <strong>Building</strong> = file, height = functions. <strong>Flags</strong> = largest
+                    files, listed on the left.
+                  </>
+                )}
+              </span>
+            </li>
+          </ul>
+        )}
+        {howtoOpen && !city && (
           <ul id="map3d-howto-body">
             <li>
               <span className="map3d-sw map3d-sw-island" aria-hidden="true" />
@@ -173,9 +282,6 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
         />
         Show declared dependencies
       </label>
-      <button type="button" className="map3d-reset" onClick={() => mapUi.resetCamera()}>
-        Reset camera
-      </button>
 
       <h3 className="panel-title legend-title">Workspaces</h3>
       <ul className="map3d-legend">

@@ -5,9 +5,10 @@ import type { CanvasProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
 import { getBool } from "../views/filterUtils.ts";
+import CityCanvas from "./city/CityCanvas.tsx";
 import { fnv1a } from "./layout.ts";
 import { MapScene, type TipInfo } from "./scene.ts";
-import { mapUi, prefersReducedMotion, useMapUi } from "./ui.ts";
+import { mapUi, prefersReducedMotion, readStyle, useMapUi } from "./ui.ts";
 
 interface Tip extends TipInfo {
   x: number;
@@ -15,7 +16,7 @@ interface Tip extends TipInfo {
 }
 
 /** The WebGL canvas for the `force-3d` layout. Loaded lazily; see index.tsx. */
-export default function Graph3D({ nodes, edges, focus, onSelect, onHover }: CanvasProps) {
+function IslandsCanvas({ nodes, edges, focus, onSelect, onHover }: CanvasProps) {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<MapScene | null>(null);
   const [tip, setTip] = useState<Tip | null>(null);
@@ -92,8 +93,12 @@ export default function Graph3D({ nodes, edges, focus, onSelect, onHover }: Canv
   useEffect(() => scene.current?.setShowDeclared(ui.showDeclared), [ui.showDeclared]);
   useEffect(() => scene.current?.setLegendHover(ui.hoverIsland), [ui.hoverIsland]);
 
+  // Requests made before this canvas existed (the store outlives the style switch) are not replayed.
+  const seenReset = useRef(ui.resetNonce);
+  const seenFly = useRef(ui.flyNonce);
   useEffect(() => {
-    if (ui.resetNonce > 0) {
+    if (ui.resetNonce > seenReset.current) {
+      seenReset.current = ui.resetNonce;
       scene.current?.resetCamera();
       handlers.current.onSelect(null);
     }
@@ -101,7 +106,8 @@ export default function Graph3D({ nodes, edges, focus, onSelect, onHover }: Canv
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: fires per request (nonce), not per island change
   useEffect(() => {
-    if (ui.flyNonce === 0 || !ui.island) return;
+    if (ui.flyNonce <= seenFly.current || !ui.island) return;
+    seenFly.current = ui.flyNonce;
     const s = scene.current;
     if (!s?.isIsland(ui.island)) return;
     handlers.current.onSelect(ui.island);
@@ -149,4 +155,11 @@ export default function Graph3D({ nodes, edges, focus, onSelect, onHover }: Canv
       {nodes.length === 0 && <p className="empty map3d-empty">Nothing to draw at this level.</p>}
     </div>
   );
+}
+
+/** The map-3d canvas: the code city (default) or, with style=islands, the island rendering. */
+export default function Graph3D(props: CanvasProps) {
+  useMapUi(); // the remembered style can change without the hash changing
+  const style = readStyle(useStore().state.route.filters);
+  return style === "islands" ? <IslandsCanvas {...props} /> : <CityCanvas {...props} />;
 }

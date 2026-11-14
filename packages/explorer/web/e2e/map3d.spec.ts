@@ -13,7 +13,7 @@ test.use({
 
 // Runs against the mock API's synthetic map-3d dataset (5 workspaces, 60 files), never real repo data.
 test("3D map: islands, labels and bundled arcs on fixture data", async ({ page }) => {
-  await page.goto("/#/map-3d?level=files");
+  await page.goto("/#/map-3d?level=files&style=islands");
   const canvas = page.getByTestId("map3d-canvas");
   await expect(canvas.locator("canvas")).toBeVisible();
   await expect(page.locator(".map3d[data-ready='true']")).toBeVisible();
@@ -442,7 +442,7 @@ test("3D map, large scenario: every island is still named in a narrow window", a
 });
 
 async function openLarge(page: Page, level: string): Promise<void> {
-  await page.goto(`/#/map-3d?level=${level}&scenario=large`);
+  await page.goto(`/#/map-3d?level=${level}&scenario=large&style=islands`);
   await expect(page.getByTestId("map3d-canvas").locator("canvas")).toBeVisible();
   await expect(page.locator(".map3d[data-ready='true']")).toBeVisible();
   await page.waitForTimeout(2500);

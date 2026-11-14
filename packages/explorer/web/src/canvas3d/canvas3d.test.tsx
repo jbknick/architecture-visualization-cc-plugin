@@ -7,7 +7,7 @@ import { emptyRoute } from "../route.ts";
 import { installMockFetch, renderApp } from "../testUtils.tsx";
 import { Canvas3D } from "./index.tsx";
 import { MapPanel } from "./MapPanel.tsx";
-import { mapUi } from "./ui.ts";
+import { mapUi, readStyle } from "./ui.ts";
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -43,7 +43,8 @@ describe("WebGL fallback", () => {
   });
 });
 
-describe("MapPanel", () => {
+describe("MapPanel (islands style)", () => {
+  beforeEach(() => window.localStorage.setItem("gantry.map3d.style", "islands"));
   const data = map3dView("dirs");
   const setup = (filters: Record<string, string> = {}, level: ViewLevel | null = null) => {
     const onFiltersChange = vi.fn();
@@ -182,5 +183,71 @@ describe("MapPanel", () => {
     const before = mapUi.get().autoRotate;
     fireEvent.click(box);
     expect(mapUi.get().autoRotate).toBe(!before);
+  });
+});
+
+describe("style and camera controls (city is the default)", () => {
+  const data = map3dView("dirs");
+  const setup = (filters: Record<string, string> = {}) => {
+    const onFiltersChange = vi.fn();
+    render(
+      <MapPanel
+        viewId="map-3d"
+        nodes={data.nodes}
+        edges={data.edges}
+        filters={filters}
+        onFiltersChange={onFiltersChange}
+        route={{ ...emptyRoute, view: "map-3d", filters }}
+        onRouteChange={vi.fn()}
+      />,
+    );
+    return { onFiltersChange };
+  };
+
+  it("reads the style from the hash, then from localStorage, and defaults to the city", () => {
+    expect(readStyle({})).toBe("city");
+    expect(readStyle({ style: "islands" })).toBe("islands");
+    window.localStorage.setItem("gantry.map3d.style", "islands");
+    expect(readStyle({})).toBe("islands");
+    expect(readStyle({ style: "city" })).toBe("city");
+  });
+
+  it("shows City selected by default and explains the city in 'How to read it'", () => {
+    setup();
+    expect((screen.getByLabelText("City") as HTMLInputElement).checked).toBe(true);
+    const howto = document.querySelector(".map3d-howto") as Element;
+    expect(howto.textContent).toContain("District = one workspace");
+    expect(howto.textContent).toContain("Arch A → B = A imports from B");
+  });
+
+  it("switches to Islands through the hash filter and remembers the choice; City drops the filter", () => {
+    const { onFiltersChange } = setup({ hideTests: "false" });
+    fireEvent.click(screen.getByLabelText("Islands"));
+    expect(onFiltersChange).toHaveBeenCalledWith({ hideTests: "false", style: "islands" });
+    expect(window.localStorage.getItem("gantry.map3d.style")).toBe("islands");
+    cleanup();
+    const again = setup({ style: "islands", hideTests: "false" });
+    fireEvent.click(screen.getByLabelText("City"));
+    expect(again.onFiltersChange).toHaveBeenCalledWith({ hideTests: "false" });
+    expect(window.localStorage.getItem("gantry.map3d.style")).toBe("city");
+  });
+
+  it("has Top view, Angled view and Reset camera buttons that send camera requests", () => {
+    setup();
+    const before = mapUi.get().cameraNonce;
+    fireEvent.click(screen.getByRole("button", { name: "Top view" }));
+    expect(mapUi.get().cameraView).toBe("top");
+    expect(mapUi.get().cameraNonce).toBe(before + 1);
+    fireEvent.click(screen.getByRole("button", { name: "Angled view" }));
+    expect(mapUi.get().cameraView).toBe("angled");
+    fireEvent.click(screen.getByRole("button", { name: "Reset camera" }));
+    expect(mapUi.get().cameraView).toBe("reset");
+    expect(mapUi.get().cameraNonce).toBe(before + 3);
+  });
+
+  it("does not show the camera preset buttons in the islands style", () => {
+    setup({ style: "islands" });
+    expect(screen.queryByRole("button", { name: "Top view" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Reset camera" })).toBeTruthy();
   });
 });
