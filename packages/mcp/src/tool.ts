@@ -23,6 +23,8 @@ export interface Tool {
   name: string;
   description: string;
   inputSchema: z.ZodRawShape;
+  /** Response size limit in characters. Default 4,000 (`MAX_RESPONSE_CHARS`); only a describer-only tool may raise it. */
+  maxResponseChars?: number;
   /** Receives the arguments already validated against `inputSchema`. Returns a JSON-serialisable result. */
   run(args: unknown, ctx: ToolContext): unknown | Promise<unknown>;
 }
@@ -32,6 +34,7 @@ export interface ToolSpec<Shape extends z.ZodRawShape> {
   /** What the tool does, for the model. `UNTRUSTED_NOTICE` is appended. */
   description: string;
   inputSchema: Shape;
+  maxResponseChars?: number;
   run(args: z.infer<z.ZodObject<Shape>>, ctx: ToolContext): unknown | Promise<unknown>;
 }
 
@@ -41,6 +44,7 @@ export function defineTool<Shape extends z.ZodRawShape>(spec: ToolSpec<Shape>): 
     name: spec.name,
     description: `${spec.description} ${UNTRUSTED_NOTICE}`,
     inputSchema: spec.inputSchema,
+    ...(spec.maxResponseChars === undefined ? {} : { maxResponseChars: spec.maxResponseChars }),
     run: (args, ctx) => spec.run(args as z.infer<z.ZodObject<Shape>>, ctx),
   };
 }

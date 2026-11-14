@@ -13,6 +13,7 @@ import {
   silentLog,
 } from "./testkit.js";
 import { defineTool, UNTRUSTED_NOTICE } from "./tool.js";
+import { CLAIM_MAX_CHARS } from "./tools/claim.js";
 import { TOOLS } from "./tools/index.js";
 import { untrustedField } from "./untrusted.js";
 
@@ -337,34 +338,65 @@ describe("gantry_claim_batch and gantry_submit_descriptions", () => {
     });
   });
 
-  it("keeps every response within 4,000 characters and puts the sheets that did not fit back in the queue", async () => {
+  it("returns a full batch of 40 typical sheets in one response without truncation", async () => {
     const files: Record<string, string> = {};
-    for (let i = 0; i < 30; i++) files[`src/gen/f${i}.ts`] = fn(`generated${i}`, `x${i}`);
-    const { repo, client } = await setup(files);
-    const total = repo.withStore(
-      (s) => (s.db.prepare("SELECT COUNT(*) AS n FROM backlog").get() as { n: number }).n,
-    );
-    expect(total).toBe(32);
-
+    for (let i = 0; i < 40; i++) files[`src/gen/f${i}.ts`] = fn(`generated${i}`, `x${i}`);
+    const { client } = await setup(files);
     const c = await claim(client, "w1", 40);
-    expect(c.text.length).toBeLessThanOrEqual(MAX_RESPONSE_CHARS);
-    expect(c.json.truncated).toBe(true);
-    expect(c.items.length).toBeGreaterThan(0);
-    expect(c.items.length).toBeLessThan(32);
-    repo.withStore((s) => {
-      const claimed = s.db.prepare("SELECT COUNT(*) AS n FROM backlog WHERE status = 'claimed'").get() as {
-        n: number;
-      };
-      expect(claimed.n).toBe(c.items.length);
-    });
+    expect(c.items).toHaveLength(40);
+    expect(c.json.truncated).toBeUndefined();
+    expect(c.text.length).toBeGreaterThan(MAX_RESPONSE_CHARS);
+    expect(c.text.length).toBeLessThanOrEqual(CLAIM_MAX_CHARS);
 
-    // A huge rejection list is also bounded.
+    // The submit answer keeps the 4,000-character cap even for a long rejection list.
     const results = c.items.map((i) => ({
       content_key: i.content_key,
       description: { behavior: "x".repeat(300) },
     }));
     const s = await call(client, "gantry_submit_descriptions", { batch_id: c.batch, results });
     expect(s.text.length).toBeLessThanOrEqual(MAX_RESPONSE_CHARS);
+  });
+
+  it("caps a claim at 80,000 characters and puts the sheets that did not fit back in the queue", async () => {
+    const files: Record<string, string> = {};
+    const doc = `// ${"documented behaviour ".repeat(30)}\n`;
+    const calls = Array.from(
+      { length: 60 },
+      (_, i) => `  helperWithAVeryLongDescriptiveName${i}(input);\n`,
+    ).join("");
+    for (let i = 0; i < 40; i++) {
+      files[`src/big/b${i}.ts`] =
+        `${doc}${fn(`big${i}`, `y${i}`).replace("  const first", `${calls}  const first`)}`;
+    }
+    const { repo, client } = await setup(files);
+    const c = await claim(client, "w1", 40);
+    expect(c.text.length).toBeLessThanOrEqual(CLAIM_MAX_CHARS);
+    expect(c.json.truncated).toBe(true);
+    expect(c.items.length).toBeGreaterThan(0);
+    expect(c.items.length).toBeLessThan(40);
+    repo.withStore((s) => {
+      const claimed = s.db.prepare("SELECT COUNT(*) AS n FROM backlog WHERE status = 'claimed'").get() as {
+        n: number;
+      };
+      expect(claimed.n).toBe(c.items.length);
+    });
+  });
+
+  it("limits a tool without an explicit cap to 4,000 characters", async () => {
+    const wide = defineTool({
+      name: "wide",
+      description: "Returns a long list.",
+      inputSchema: {},
+      run: () => ({ rows: Array.from({ length: 500 }, (_, i) => `row-${i}-${"p".repeat(50)}`) }),
+    });
+    expect(wide.maxResponseChars).toBeUndefined();
+    const { client } = await setup({}, { tools: [...TOOLS, wide] });
+    const r = await call(client, "wide");
+    expect(r.text.length).toBeLessThanOrEqual(MAX_RESPONSE_CHARS);
+    expect(r.json.truncated).toBe(true);
+    expect(TOOLS.filter((t) => t.maxResponseChars !== undefined).map((t) => t.name)).toEqual([
+      "gantry_claim_batch",
+    ]);
   });
 
   it("embeds the new description vectors when the model is available, and not otherwise", async () => {

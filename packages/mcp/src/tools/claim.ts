@@ -7,7 +7,8 @@ import {
   releaseExpiredClaims,
 } from "@gantry/core";
 import { z } from "zod";
-import { MAX_RESPONSE_CHARS } from "../envelope.js";
+export const CLAIM_MAX_CHARS = 80_000; // describer-only tool: a full batch of 40 sheets in one response (orchestrator decision on #24)
+
 import { defineTool } from "../tool.js";
 
 interface ClaimItem {
@@ -43,7 +44,7 @@ function shrink(base: object, item: ClaimItem): ClaimItem | undefined {
     callees: item.callees.slice(0, 10),
     signature: item.signature.slice(0, 300),
   };
-  while (length({ ...base, items: [cur] }) > MAX_RESPONSE_CHARS) {
+  while (length({ ...base, items: [cur] }) > CLAIM_MAX_CHARS) {
     if (cur.body.length === 0) return undefined;
     cur.body = cur.body.slice(0, Math.floor(cur.body.length * 0.8));
     cur.body_truncated = true;
@@ -51,12 +52,12 @@ function shrink(base: object, item: ClaimItem): ClaimItem | undefined {
   return cur;
 }
 
-/** The leading sheets that fit in one 4,000-character response (the payload may also carry `truncated: true`). */
+/** The leading sheets that fit in one response (the payload may also carry `truncated: true`). */
 function fit(base: object, items: ClaimItem[]): ClaimItem[] {
   const kept: ClaimItem[] = [];
   const room = { ...base, truncated: true };
   for (const item of items) {
-    if (length({ ...room, items: [...kept, item] }) <= MAX_RESPONSE_CHARS) {
+    if (length({ ...room, items: [...kept, item] }) <= CLAIM_MAX_CHARS) {
       kept.push(item);
       continue;
     }
@@ -71,10 +72,11 @@ function fit(base: object, items: ClaimItem[]): ClaimItem[] {
 
 export const claimTool = defineTool({
   name: "gantry_claim_batch",
+  maxResponseChars: CLAIM_MAX_CHARS,
   description:
     "Describer agents only. Claims functions that still need a description and returns their fact sheets as {batch_id, items}, each item {content_key, path, kind, signature, doc, callees, return_type, body}. " +
     "Pass your own stable worker_id. A batch you claimed and did not submit is returned again under the same batch_id before any new function is handed out, and claims expire after 10 minutes. " +
-    "A response holds at most 4,000 characters, so fewer than size items can come back (truncated: true); the rest stay queued for your next call. " +
+    "A response holds at most 80,000 characters; if the sheets do not all fit, fewer than size items come back (truncated: true) and the rest stay queued for your next call. " +
     "Submit the descriptions with gantry_submit_descriptions.",
   inputSchema: {
     worker_id: z

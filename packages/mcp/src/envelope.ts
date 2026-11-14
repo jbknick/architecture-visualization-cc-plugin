@@ -54,8 +54,8 @@ export function fitJson(result: unknown, limit = MAX_RESPONSE_CHARS): string {
 }
 
 /** A successful tool response. */
-export function envelope(result: unknown): ToolResponse {
-  return { content: [{ type: "text", text: fitJson(result) }] };
+export function envelope(result: unknown, limit = MAX_RESPONSE_CHARS): ToolResponse {
+  return { content: [{ type: "text", text: fitJson(result, limit) }] };
 }
 
 /** A failed tool response: `isError: true` and `{ error, message }`. */

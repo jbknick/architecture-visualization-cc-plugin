@@ -1,7 +1,7 @@
 import { ensureDataDir, type GantryPaths, NotAGitRepoError, openStore, resolvePaths } from "@gantry/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { cachedEmbedder } from "./embedder.js";
-import { envelope, errorEnvelope, type ToolResponse } from "./envelope.js";
+import { envelope, errorEnvelope, MAX_RESPONSE_CHARS, type ToolResponse } from "./envelope.js";
 import { createLogger, type Logger } from "./log.js";
 import { lazyRefresh } from "./refresh.js";
 import type { Tool, ToolContext } from "./tool.js";
@@ -44,7 +44,7 @@ async function runTool(
     const store = openStore(paths.dbPath);
     try {
       const result = await tool.run(args, { paths, store, log: o.log, getEmbedder: o.getEmbedder });
-      return envelope(result);
+      return envelope(result, tool.maxResponseChars ?? MAX_RESPONSE_CHARS);
     } finally {
       store.close();
     }

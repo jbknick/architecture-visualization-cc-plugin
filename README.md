@@ -118,7 +118,7 @@ Progress by milestone. Issue lists are on the [milestones page](https://github.c
 
 ## MCP server
 
-`plugin/dist/mcp.js` is a stdio MCP server named `gantry` (it is built by `pnpm build`; the plugin package that starts it for Claude Code is not built yet). Before every tool call it brings the index up to date: it runs `heal` only when `HEAD` has moved, then refreshes the files you have edited since. It writes nothing but protocol messages to stdout, and every answer is one JSON block of at most 4,000 characters (lists are cut and the answer says `"truncated": true`).
+`plugin/dist/mcp.js` is a stdio MCP server named `gantry` (it is built by `pnpm build`; the plugin package that starts it for Claude Code is not built yet). Before every tool call it brings the index up to date: it runs `heal` only when `HEAD` has moved, then refreshes the files you have edited since. It writes nothing but protocol messages to stdout, and every answer is one JSON block of at most 4,000 characters (lists are cut and the answer says `"truncated": true`). The one exception is `gantry_claim_batch`, which only background describer agents call and which may return a full batch of 40 functions (up to 80,000 characters).
 
 Two tools exist today, both for background describer agents. They do not read or search the graph.
 
