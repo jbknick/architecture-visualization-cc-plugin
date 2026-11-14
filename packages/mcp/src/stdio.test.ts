@@ -91,7 +91,13 @@ describe("node mcp.js over stdio", () => {
       const tools = ((await reply(2)).result as { tools: { name: string }[] }).tools
         .map((t) => t.name)
         .sort();
-      expect(tools).toEqual(["gantry_claim_batch", "gantry_submit_descriptions"]);
+      expect(tools).toEqual([
+        "gantry_browse",
+        "gantry_claim_batch",
+        "gantry_node",
+        "gantry_search",
+        "gantry_submit_descriptions",
+      ]);
 
       send({
         jsonrpc: "2.0",

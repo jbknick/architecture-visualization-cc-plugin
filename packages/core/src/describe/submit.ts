@@ -1,16 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import { refreshDescriptionFts } from "../search/descfts.js";
 import type { Store } from "../store/index.js";
 import type { FactSheet } from "../types.js";
 import type { SourceContext } from "./backlog.js";
-import {
-  buildFactSheet,
-  contentKey,
-  FUNCTION_LIKE_KINDS,
-  PROMPT_MAJOR,
-  pathOfFileId,
-  SensitivePathError,
-} from "./factsheet.js";
+import { buildFactSheet, contentKey, PROMPT_MAJOR, pathOfFileId, SensitivePathError } from "./factsheet.js";
 import { validateDescription } from "./validate.js";
 
 /** A function whose description failed validation this many times is parked as `failed` (spec section 8: `describe.retry`). */
@@ -259,7 +253,7 @@ export function submitDescriptions(
     out.acceptedKeys.push(key);
   }
 
-  updateFts(store, stored);
+  refreshDescriptionFts(store, { keys: new Set(stored.map((s) => s.key)) });
   store.db
     .prepare(
       `INSERT INTO usage_log(at, task, model, effort, functions, input_tokens, output_tokens, cost_estimate_usd, source)
@@ -267,30 +261,4 @@ export function submitDescriptions(
     )
     .run(new Date().toISOString(), SUBMIT_MODEL, out.accepted + out.rejected.length);
   return out;
-}
-
-/** Writes the description columns of `fts_symbols` for every effective symbol that has a stored content key. */
-function updateFts(
-  store: Store,
-  stored: { key: string; behavior: string; terms: string; suggested: string }[],
-): void {
-  if (stored.length === 0) return;
-  const byKey = new Map(stored.map((s) => [s.key, s]));
-  const select = store.db.prepare("SELECT name_tokens, path FROM fts_symbols WHERE symbol_id = ?");
-  store.tx(() => {
-    for (const sym of store.effectiveSymbols({ kind: [...FUNCTION_LIKE_KINDS] })) {
-      if (sym.exactHash === "") continue;
-      const s = byKey.get(contentKey(sym.exactHash));
-      if (!s) continue;
-      const row = select.get(sym.id) as { name_tokens: string; path: string } | undefined;
-      if (!row) continue; // the indexer writes the row; nothing to enrich yet
-      store.fts.upsert(sym.id, {
-        nameTokens: row.name_tokens,
-        suggestedName: s.suggested,
-        path: row.path,
-        behavior: s.behavior,
-        searchTerms: s.terms,
-      });
-    }
-  });
 }

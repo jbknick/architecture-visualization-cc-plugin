@@ -2,11 +2,13 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { writeCatalog } from "../catalog/index.js";
 import { loadConfig } from "../config/index.js";
 import { isIndexable } from "../discover/index.js";
 import { rebuildSimilarEdges } from "../dup/index.js";
 import { indexRepo } from "../indexer.js";
 import type { GantryPaths } from "../paths/index.js";
+import { refreshDescriptionFts } from "../search/descfts.js";
 import { openStore, type Store } from "../store/index.js";
 
 /** Above this share of indexed files touched by a diff, a full main re-index is cheaper than patching. */
@@ -228,6 +230,15 @@ export async function heal(
     }
     // Derived edges follow the main layer; exact and near only (vector edges are rebuilt by `gantry embed`).
     if (changed > 0) await rebuildSimilarEdges(store, { tiers: ["exact", "near"] });
+    if (changed > 0) {
+      // Incremental indexing rewrites FTS rows without description columns; then the catalog follows the graph.
+      refreshDescriptionFts(store);
+      try {
+        writeCatalog(store, paths);
+      } catch {
+        // the catalog is a convenience; a failed write must not fail a heal
+      }
+    }
     return done(changed, full);
   });
 }

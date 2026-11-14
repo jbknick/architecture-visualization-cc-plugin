@@ -4,6 +4,7 @@ import path from "node:path";
 import { isSensitive } from "../discover/index.js";
 import { hashSymbol } from "../hash/index.js";
 import { type ParsedFile, parseSource } from "../parse/index.js";
+import { refreshDescriptionFts } from "../search/descfts.js";
 import type { Store } from "../store/index.js";
 import type { Description, FactSheet, SymbolRecord } from "../types.js";
 import {
@@ -207,6 +208,8 @@ export function syncBacklog(store: Store, opts: SyncOptions = {}): BacklogSyncRe
       }
     }
   });
+  // Stored descriptions into the FTS columns (an incremental index rewrites rows without them).
+  refreshDescriptionFts(store, full ? {} : { keys: new Set(groups.keys()) });
   return result;
 }
 
