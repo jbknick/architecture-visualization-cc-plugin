@@ -472,6 +472,7 @@ export function dumpGraph(store: Store): {
   }));
   // minhash is omitted: it is 64 words per symbol and is fully determined by the source.
   const symbols = store.effectiveSymbols().map(({ minhash: _m, ...s }) => s);
-  const edges = store.effectiveEdges();
+  // similar_to edges are derived (rebuilt by init/heal/embed from hashes and vectors), not part of the index.
+  const edges = store.effectiveEdges().filter((e) => e.kind !== "similar_to");
   return { workspaces, files, symbols, edges };
 }
