@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Inspector } from "./components/Inspector.tsx";
 import { LeftPanel } from "./components/LeftPanel.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
@@ -10,17 +10,45 @@ import { drillPatch } from "./views/drill.ts";
 import "./canvases.ts";
 import "./views/index.ts";
 
+/** Rows one side of the ego view may have, from the room the canvas leaves (see canvas/bowtieLayout.ts): about 30px a row. */
+export function egoMaxRows(innerHeight: number): number {
+  const canvasHeight = innerHeight - 56 - 32; // top bar and status bar
+  return Math.max(8, Math.min(24, Math.floor((canvasHeight - 96) / 30)));
+}
+
+function useEgoMaxRows(): number {
+  const [h, setH] = useState(() => (typeof window === "undefined" ? 900 : window.innerHeight));
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const onResize = () => {
+      clearTimeout(t);
+      t = setTimeout(() => setH(window.innerHeight), 300);
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+  return egoMaxRows(h);
+}
+
 export function App() {
   const store = useStore();
   const { state, view, navigate, selectNode, toggleLeft, setHover, setView } = store;
   const { route, meta, metaError, leftOpen } = state;
   const FocusPrompt = view ? getFocusPrompt(view) : null;
   const needsFocus = FocusPrompt !== null && !route.focus;
+  const maxRows = useEgoMaxRows();
+  const filters = useMemo(
+    () => (view === "ego" ? { ...route.filters, maxRows: String(maxRows) } : route.filters),
+    [view, route.filters, maxRows],
+  );
   const { data, loading, error } = useViewData(needsFocus ? null : view, {
     focus: route.focus,
     level: route.level,
     hops: route.hops,
-    filters: route.filters,
+    filters,
   });
 
   const nodes = needsFocus ? [] : (data?.nodes ?? []);

@@ -133,7 +133,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       focusOn: (id, hit = null) => {
         dispatch({ type: "pick", hit });
         // The default connection types depend on whether the centre is a function or a file, so drop a stale choice.
-        const { edgeKinds: _drop, ...filters } = state.route.filters;
+        const { edgeKinds: _drop, expand: _expand, ...filters } = state.route.filters;
         navigate({ focus: id, sel: id, filters });
       },
       openInView: (id, nodeId, selectId = nodeId) =>

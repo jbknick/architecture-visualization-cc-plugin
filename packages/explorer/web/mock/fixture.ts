@@ -13,6 +13,7 @@ import type {
 } from "../src/api.ts";
 import { generateSynthetic } from "../src/canvas/synthetic.ts";
 import { buildHierarchy } from "./hierarchy.ts";
+import { egoHub, hubNode } from "./hubEgo.ts";
 import { largeMapNode, projectMapLarge } from "./largeMap.ts";
 
 export const meta: Meta = {
@@ -451,6 +452,15 @@ function projectMap(q: ParsedQuery): ViewData | { error: string; status: number 
 
 function ego(q: ParsedQuery): ViewData | { error: string; status: number } {
   if (!q.focus) return { status: 400, error: "ego requires focus=<symbol or file id>" };
+  // Mock-only flag: `#/ego?focus=<hubFocus>&scenario=hub` serves the 221-caller hub (mock/hubEgo.ts).
+  // `scenario=hub-thin` is the same hub with the callers spread thinly over many files and folders.
+  if (q.options.scenario === "hub" || q.options.scenario === "hub-thin")
+    return egoHub(
+      optList(q.options, "expand") ?? [],
+      q.options.scenario,
+      Number(q.options.maxRows) || undefined,
+      Number(q.options.pageRows) || undefined,
+    );
   if (!symbolById.has(q.focus) && !fileById.has(q.focus))
     return { status: 404, error: `Unknown focus: ${q.focus}` };
   const hops = q.hops ?? 2;
@@ -496,6 +506,7 @@ function ego(q: ParsedQuery): ViewData | { error: string; status: number } {
       path: s.file.path,
       stats: { functions: 1, loc: 5 },
       ...(s.sym.exported ? { badges: ["exported"] } : {}),
+      workspace: wsId(s.file.ws),
       side,
       hop,
     });
@@ -513,7 +524,7 @@ function ego(q: ParsedQuery): ViewData | { error: string; status: number } {
       weight: 1,
       confidence: l.confidence ?? ("high" as const),
     }));
-  return { nodes: [...nodes.values()], edges: edgeOut, layoutHint: "radial" };
+  return { nodes: [...nodes.values()], edges: edgeOut, layoutHint: "bowtie" };
 }
 
 // ---------- /api/node ----------
@@ -795,7 +806,7 @@ const m3Imports: { src: string; dst: string; w: number }[] = (() => {
 interface M3Ws {
   id: string;
   name: string;
-  kind: "app" | "package";
+  kind: "app" | "package" | "unknown";
   /** Workspace directory (the real server sends it as `path`). */
   dir: string;
 }
@@ -819,7 +830,7 @@ const SCOPE = "@acme-platform-monorepo";
 const ROOT_PKG = "acme-platform-monorepo-root-app";
 const LARGE_SPEC: {
   name: string;
-  kind: "app" | "package";
+  kind: "app" | "package" | "unknown";
   dir: string;
   files: number;
   fns: number;
@@ -863,7 +874,7 @@ const LARGE_SPEC: {
   { name: `${SCOPE}/ui-kit`, kind: "package", dir: "packages/ui-kit", files: 5, fns: 12, dirs: ["src"] },
   { name: `${SCOPE}/db-client`, kind: "package", dir: "packages/db-client", files: 4, fns: 9, dirs: ["src"] },
   { name: `${SCOPE}/testing`, kind: "package", dir: "packages/testing", files: 2, fns: 6, dirs: ["src"] },
-  { name: ROOT_PKG, kind: "package", dir: "tooling", files: 1, fns: 3, dirs: ["."] },
+  { name: ROOT_PKG, kind: "unknown", dir: "tooling", files: 1, fns: 3, dirs: ["."] },
   { name: "scripts", kind: "app", dir: "scripts", files: 1, fns: 1, dirs: ["."] },
 ];
 const WORDS = [
@@ -995,6 +1006,14 @@ const M3_LARGE: M3Data = (() => {
       if (t.id !== f.id) out.set(`${f.id}|${t.id}`, 1 + (m3hash(`${f.id}${t.id}x`) % 3));
     }
   }
+  // One cycle: three imports back from core to api (against 267-ish the other way), so the pair has two arcs.
+  const coreFiles = byWs.get(id(wsName("core"))) as M3File[];
+  const apiFiles = byWs.get(id(wsName("api"))) as M3File[];
+  for (let k = 0; k < 3; k++) {
+    const src = coreFiles[k] as M3File;
+    const dst = apiFiles[(k * 7) % apiFiles.length] as M3File;
+    out.set(`${src.id}|${dst.id}`, 1);
+  }
   const imports = [...out].map(([k, w]) => {
     const [src, dst] = k.split("|") as [string, string];
     return { src, dst, w };
@@ -1017,6 +1036,17 @@ const M3_LARGE: M3Data = (() => {
     dec("config", "types"),
     dec("ui-kit", "logger"),
   ];
+  // Two type-only files at the root of api: a folder with no functions, which the 3D map must not draw.
+  const apiDir = LARGE_SPEC[0]?.dir ?? "apps/api";
+  for (const base of ["env.d", "globals.d"]) {
+    files.push({
+      id: `file:${apiDir}/${base}.ts`,
+      path: `${apiDir}/${base}.ts`,
+      ws: id(wsName("api")),
+      dir: ".",
+      fns: 0,
+    });
+  }
   return { ws, files, imports, declared };
 })();
 
@@ -1210,7 +1240,7 @@ export function handleMockApi(url: URL): MockResponse | null {
 
   if (path.startsWith("/api/node/")) {
     const id = decodeURIComponent(path.slice("/api/node/".length));
-    const found = nodeDetail(id) ?? map3dDetail(id);
+    const found = nodeDetail(id) ?? map3dDetail(id) ?? hubNode(id);
     if (found) return { status: 200, body: found };
     const large = largeMapNode(id);
     if (large)

@@ -3,6 +3,7 @@ import type { GraphNode, NeighborRef, NodeDetail } from "../api.ts";
 import { useNodeDetail } from "../hooks.ts";
 import { useStore } from "../store.tsx";
 import { isServerNode } from "../views/drill.ts";
+import { expandedIds, withExpanded } from "../views/egoGroups.ts";
 import { KindBadge } from "./KindBadge.tsx";
 import { SourcePreview } from "./SourcePreview.tsx";
 
@@ -67,10 +68,51 @@ export function groupNeighbors(neighbors: NodeDetail["neighbors"]): Group[] {
   return [...groups.values()].sort((a, b) => structural(a) - structural(b));
 }
 
+/** The members of an ego group node. Selecting one expands the group (if needed) and opens the member. */
+function GroupMembers({ node }: { node: GraphNode }) {
+  const { state, navigate } = useStore();
+  const members = node.members ?? [];
+  const side = node.side === "in" ? "callers" : "callees";
+  const open = (id: string) => {
+    const filters = node.expanded
+      ? state.route.filters
+      : withExpanded(state.route.filters, [...expandedIds(state.route.filters), node.id]);
+    navigate({ sel: id, filters });
+  };
+  return (
+    <section aria-label="Group members">
+      <h3>
+        {members.length} {members.length === 1 ? side.slice(0, -1) : side}
+      </h3>
+      <p className="muted">
+        {node.expanded
+          ? "This group is expanded: its members are shown one by one."
+          : "Pick a member to open this group and see that member's details."}
+      </p>
+      <ul className="member-list">
+        {members.map((m) => (
+          <li key={m.id}>
+            <button type="button" className="link-btn" title={m.id} onClick={() => open(m.id)}>
+              {m.label}
+            </button>
+            {m.path && (
+              <code className="member-path">
+                {m.path}
+                {m.line !== undefined ? `:${m.line}` : ""}
+              </code>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function GraphNodeFacts({ node, view }: { node: GraphNode; view: string | null }) {
   const stats = node.stats;
   const facts: [string, number][] = [];
   if (stats?.files !== undefined) facts.push(["Files", stats.files]);
+  if (stats?.members !== undefined) facts.push(["Members", stats.members]);
   if (stats?.functions !== undefined) facts.push(["Functions", stats.functions]);
   if (stats?.loc !== undefined) facts.push(["Lines of code", stats.loc]);
   return (
@@ -100,6 +142,7 @@ function GraphNodeFacts({ node, view }: { node: GraphNode; view: string | null }
           ))}
         </dl>
       )}
+      {node.kind === "group" && <GroupMembers node={node} />}
       {node.badges && node.badges.length > 0 && (
         <ul className="badges" aria-label="Badges">
           {node.badges.map((b) => (

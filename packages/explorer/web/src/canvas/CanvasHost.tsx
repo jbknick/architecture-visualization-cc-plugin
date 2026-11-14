@@ -5,6 +5,8 @@ import { useStore } from "../store.tsx";
 
 // sigma and the layout engine load on first use, so the shell itself stays small (and testable without WebGL).
 const GraphCanvas = lazy(() => import("./GraphCanvas.tsx").then((m) => ({ default: m.GraphCanvas })));
+// The ego view's bow-tie is a plain 2D canvas: no sigma, no WebGL.
+const BowtieCanvas = lazy(() => import("./BowtieCanvas.tsx").then((m) => ({ default: m.BowtieCanvas })));
 
 type Mode = "graph" | "list";
 
@@ -13,11 +15,13 @@ let lastMode: Mode = "graph";
 
 /** sigma needs WebGL2; without it (old browsers, jsdom) the list stays the renderer. */
 const hasWebGL = () => typeof WebGL2RenderingContext !== "undefined";
+const has2d = () => typeof CanvasRenderingContext2D !== "undefined";
 
 /** The registered canvas for graph hints: the sigma canvas with a List / Graph toggle. */
 export function CanvasHost(props: CanvasProps) {
   const { view } = useStore();
-  const webgl = hasWebGL();
+  const bowtie = props.layoutHint === "bowtie";
+  const webgl = bowtie ? has2d() : hasWebGL();
   const [mode, setMode] = useState<Mode>(webgl ? lastMode : "list");
   const choose = (next: Mode) => {
     lastMode = next;
@@ -33,7 +37,7 @@ export function CanvasHost(props: CanvasProps) {
           type="button"
           aria-pressed={mode === "graph"}
           disabled={!webgl}
-          title={webgl ? undefined : "WebGL is not available in this browser"}
+          title={webgl ? undefined : "Canvas drawing is not available in this browser"}
           onClick={() => choose("graph")}
         >
           Graph
@@ -41,7 +45,7 @@ export function CanvasHost(props: CanvasProps) {
       </fieldset>
       {mode === "graph" ? (
         <Suspense fallback={<p className="empty">Loading graph…</p>}>
-          <GraphCanvas {...props} viewId={view} />
+          {bowtie ? <BowtieCanvas {...props} /> : <GraphCanvas {...props} viewId={view} />}
         </Suspense>
       ) : (
         <ListCanvas {...props} />
