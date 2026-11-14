@@ -45,7 +45,14 @@ export function registerMap(program: Command): void {
       const staticDir = join(dirname(fileURLToPath(import.meta.url)), "explorer");
       // Accepted for v1: the printed/opened URL carries `?t=<token>`, so the token is visible in process
       // arguments (`open <url>`) and browser history. The server strips it on first load and sets a cookie.
-      const running = await startOrReuseExplorer({ paths, port, staticDir });
+      let running: Awaited<ReturnType<typeof startOrReuseExplorer>>;
+      try {
+        running = await startOrReuseExplorer({ paths, port, staticDir });
+      } catch (err) {
+        process.stderr.write(`gantry map: ${err instanceof Error ? err.message : String(err)}\n`);
+        process.exitCode = 1;
+        return;
+      }
       // `--no-url`: the token never reaches a log file; the URL is in explorer.json (0600) for whoever needs it.
       process.stdout.write(
         opts.url ? `${running.url}\n` : `Explorer listening on http://127.0.0.1:${running.port}/\n`,

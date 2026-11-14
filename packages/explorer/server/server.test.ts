@@ -661,6 +661,37 @@ describe("/api/search", () => {
     expect(both).toEqual((await api("/api/search?q=a")).json().hits.map((h: { id: string }) => h.id));
   });
 
+  it("the substring pass stays fast on 100k symbols", { retry: 2, timeout: 60000 }, async () => {
+    const big = openStore(":memory:");
+    for (let f = 0; f < 100; f++) {
+      const p = `src/big${f}.ts`;
+      big.replaceFile(
+        "main",
+        fileRec(p),
+        Array.from({ length: 1000 }, (_, i) => symRec(p, `sym${f}x${i}`)),
+        [],
+      );
+    }
+    const s = await startExplorerServer({
+      paths,
+      store: big,
+      writeStateFile: false,
+      getEmbedder: async () => undefined,
+    });
+    try {
+      const t0 = performance.now();
+      const res = await get(s.port, "/api/search?q=X999", { "x-gantry-token": s.token });
+      const ms = performance.now() - t0;
+      const names = res.json().hits.map((h: { name: string }) => h.name);
+      expect(names).toHaveLength(20);
+      expect(names).toEqual([...names].sort());
+      expect(ms).toBeLessThan(400);
+    } finally {
+      await s.close();
+      big.close();
+    }
+  });
+
   it("ranks exact name matches first, ignores empty and hostile queries, and limits to 20", async () => {
     expect((await api("/api/search?q=")).json()).toEqual({ hits: [] });
     expect((await api(`/api/search?q=${encodeURIComponent('"* OR NEAR(')}`)).status).toBe(200);
@@ -826,7 +857,7 @@ describe("explorer.json and reuse", () => {
     expect(await findRunningExplorer(p)).toBeUndefined();
     expect(existsSync(stateFilePath(p))).toBe(false);
 
-    writeFileSync(stateFilePath(p), JSON.stringify({ port: 1, token: "x", pid: process.pid, startedAt: "" }));
+    writeFileSync(stateFilePath(p), JSON.stringify({ port: 1, token: "x", pid: 999999999, startedAt: "" }));
     const run = await startOrReuseExplorer({ paths: p, store });
     try {
       expect(run.reused).toBe(false);

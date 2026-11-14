@@ -6,6 +6,21 @@ import { fileURLToPath } from "node:url";
 import { resolvePaths } from "@gantry/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+function spawnAsync(
+  cmd: string,
+  args: string[],
+  o: { cwd: string; env: NodeJS.ProcessEnv },
+): Promise<{ code: number | null; err: string }> {
+  return new Promise((resolve) => {
+    const c = spawn(cmd, args, { ...o, stdio: ["ignore", "ignore", "pipe"] });
+    let err = "";
+    c.stderr?.on("data", (d: Buffer) => {
+      err += d.toString();
+    });
+    c.on("exit", (code) => resolve({ code, err }));
+  });
+}
+
 const here = dirname(fileURLToPath(import.meta.url));
 const cliJs = join(here, "..", "..", "..", "..", "plugin", "dist", "cli.js");
 const built = existsSync(cliJs);
@@ -101,6 +116,32 @@ describe.skipIf(!built)("gantry map (bundled CLI)", () => {
       for (const r of serving) r.child.kill("SIGINT");
     }
   }, 15000);
+
+  it("starts against an explorer that is stopped fail with a message naming its pid and leave it alone", async () => {
+    const repo3 = join(tmp, "stopped");
+    execFileSync("git", ["init", "-q", repo3]);
+    const a = spawn("node", [cliJs, "map", "--no-open", "--no-url"], { cwd: repo3, env, stdio: "ignore" });
+    const file = join(resolvePaths(repo3, env).dataDir, "explorer.json");
+    try {
+      for (let i = 0; i < 100 && !existsSync(file); i++) await new Promise((r) => setTimeout(r, 50));
+      const before = readFileSync(file, "utf8");
+      process.kill(a.pid as number, "SIGSTOP");
+      const runs = await Promise.all(
+        Array.from({ length: 6 }, () =>
+          spawnAsync("node", [cliJs, "map", "--no-open", "--no-url"], { cwd: repo3, env }),
+        ),
+      );
+      for (const r of runs) {
+        expect(r.code).toBe(1);
+        expect(r.err).toContain(String(a.pid));
+        expect(r.err).not.toContain("    at "); // one line, no stack
+      }
+      expect(readFileSync(file, "utf8")).toBe(before);
+    } finally {
+      process.kill(a.pid as number, "SIGCONT");
+      a.kill("SIGINT");
+    }
+  }, 30000);
 
   it("rejects an invalid --port", () => {
     const r = spawnSync("node", [cliJs, "map", "--no-open", "--port", "abc"], {

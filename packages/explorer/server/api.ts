@@ -226,17 +226,13 @@ async function search(ctx: ApiContext, raw: string): Promise<{ hits: SearchHit[]
   // Case-insensitive substring pass (so `pp` finds `app`): symbols whose name contains the query and that the
   // hybrid search did not return, ordered by name then id, up to the limit. They carry no score or description.
   if (hits.length < SEARCH_LIMIT) {
-    const seen = new Set(hits.map((h) => h.id));
-    const lower = q.toLowerCase().slice(0, MAX_QUERY_LEN);
     const files = new Map(store.effectiveFiles().map((f) => [f.id, f]));
-    const extra = store
-      .effectiveSymbols()
-      .filter(
-        (s) =>
-          !seen.has(s.id) && s.name.toLowerCase().includes(lower) && files.get(s.fileId)?.deleted === false,
-      )
-      .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-    for (const s of extra.slice(0, SEARCH_LIMIT - hits.length)) {
+    const extra = store.effectiveSymbolsByName(
+      q.slice(0, MAX_QUERY_LEN),
+      hits.map((h) => h.id),
+      SEARCH_LIMIT - hits.length,
+    );
+    for (const s of extra) {
       hits.push({
         id: s.id,
         name: s.name,

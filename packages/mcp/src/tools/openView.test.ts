@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -54,6 +54,22 @@ describe("gantry_open_view", () => {
     expect(r.json.views).toContain("project-map");
     expect(existsSync(join(repo.paths.dataDir, "explorer.json"))).toBe(false);
   });
+
+  it.skipIf(!built)(
+    "does not write through a symlink planted at explorer.log",
+    async () => {
+      const { repo, client } = await setup();
+      const victim = join(repo.paths.dataDir, "..", "victim.txt");
+      writeFileSync(victim, "keep");
+      mkdirSync(repo.paths.logsDir, { recursive: true });
+      symlinkSync(victim, join(repo.paths.logsDir, "explorer.log"));
+      const r = await call(client, "gantry_open_view", { view: "ego" });
+      expect(r.isError).toBe(false);
+      expect(readFileSync(victim, "utf8")).toBe("keep");
+      rmSync(victim, { force: true });
+    },
+    15000,
+  );
 
   it("rejects focus, t and view as filter keys", async () => {
     const { repo, client } = await setup();

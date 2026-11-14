@@ -6,6 +6,7 @@ export {
   type ExplorerServer,
   type ExplorerServerOptions,
   type ExplorerState,
+  ExplorerUnresponsive,
   findRunningExplorer,
   HTML_CSP,
   type RunningExplorer,
