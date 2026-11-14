@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { type GantryPaths, openStore, resolvePaths } from "@gantry/core";
 import { build } from "tsup";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { backlogPriority, preCommit, runHook } from "./entry.js";
+import { preCommit, runHook } from "./entry.js";
 import { hookScript, installHooks, shimScript, uninstallHooks } from "./install.js";
 import { assertTempHome } from "./testkit.js";
 
@@ -476,13 +476,13 @@ describe("entry points", () => {
     const file = join(fx.dir, "packages/utils/src/staged.ts");
     writeFileSync(
       file,
-      "export function stagedFn(a: number) { return a + 1; }\nfunction localFn() { return 2; }\n",
+      "export function stagedFn(a: number) { const b = a + 1; return b; }\nfunction localFn() { const c = 2; return c; }\n",
     );
     git(fx.dir, ["add", "packages/utils/src/staged.ts"]);
     // The working tree moves on after staging.
     writeFileSync(
       file,
-      "export function stagedFn(a: number) { return a * 1000 + 7; }\nfunction localFn() { return 3; }\n",
+      "export function stagedFn(a: number) { const b = a * 1000 + 7; return b; }\nfunction localFn() { const c = 3; return c; }\n",
     );
     const workingBefore = workingRows(p);
 
@@ -523,7 +523,10 @@ describe("entry points", () => {
   it("pre-commit skips functions that already have a description", async () => {
     const fx = await indexed();
     const p = pathsOf(fx.dir);
-    writeFileSync(join(fx.dir, "packages/utils/src/d.ts"), "export function describedFn() { return 41; }\n");
+    writeFileSync(
+      join(fx.dir, "packages/utils/src/d.ts"),
+      "export function describedFn() { const n = 41; return n; }\n",
+    );
     git(fx.dir, ["add", "packages/utils/src/d.ts"]);
     gantry(fx.dir, ["hook", "pre-commit"]);
     const key = backlog(p).find((b) => b.symbol_id.endsWith("#describedFn"))?.content_key as string;
@@ -540,13 +543,32 @@ describe("entry points", () => {
     expect(backlog(p).filter((b) => b.symbol_id.endsWith("#describedFn"))).toEqual([]);
   });
 
+  it("pre-commit describes one-line functions from a template instead of enqueueing them", async () => {
+    const fx = await indexed();
+    const p = pathsOf(fx.dir);
+    writeFileSync(
+      join(fx.dir, "packages/utils/src/tiny.ts"),
+      "export function tinyFn(a: number) {\n  return a + 1;\n}\nexport function bigFn(a: number) {\n  const b = a + 1;\n  return b;\n}\n",
+    );
+    git(fx.dir, ["add", "packages/utils/src/tiny.ts"]);
+    expect(gantry(fx.dir, ["hook", "pre-commit"])).toEqual({ code: 0, out: "", err: "" });
+    expect(backlog(p).map((b) => b.symbol_id)).not.toContain("sym:packages/utils/src/tiny.ts#tinyFn");
+    expect(backlog(p).map((b) => b.symbol_id)).toContain("sym:packages/utils/src/tiny.ts#bigFn");
+    const s = openStore(p.dbPath);
+    const tpl = s.db
+      .prepare("SELECT behavior, provenance FROM descriptions WHERE behavior = 'Returns a + 1.'")
+      .all();
+    s.close();
+    expect(tpl).toEqual([{ behavior: "Returns a + 1.", provenance: "template" }]);
+  });
+
   it("pre-commit stays under 1 s for 20 staged files", async () => {
     const fx = await indexed();
     const p = pathsOf(fx.dir);
     for (let i = 0; i < 20; i++) {
       writeFileSync(
         join(fx.dir, `packages/utils/src/bulk${i}.ts`),
-        `export function bulk${i}(x: number) { return x + ${i}; }\n`,
+        `export function bulk${i}(x: number) { const y = x + ${i}; return y; }\n`,
       );
     }
     git(fx.dir, ["add", "-A"]);
@@ -592,7 +614,10 @@ describe("entry points", () => {
     git(fx.dir, ["remote", "add", "origin", remote]);
     expect(git(fx.dir, ["push", "-q", "-u", "origin", "main"]).code).toBe(0);
 
-    writeFileSync(join(fx.dir, "packages/utils/src/pushme.ts"), "export function pushMe() { return 9; }\n");
+    writeFileSync(
+      join(fx.dir, "packages/utils/src/pushme.ts"),
+      "export function pushMe() { const n = 9; return n; }\n",
+    );
     git(fx.dir, ["add", "-A"]);
     expect(git(fx.dir, ["commit", "-q", "-m", "p"]).code).toBe(0);
     expect(backlog(pathsOf(fx.dir)).some((b) => b.symbol_id.endsWith("#pushMe"))).toBe(true);
@@ -616,12 +641,5 @@ describe("entry points", () => {
     expect(gantry(fx.dir, ["hook", "post-tool-use"])).toEqual({ code: 0, out: "", err: "" });
     expect(gantry(fx.dir, ["hook", "no-such-hook"])).toEqual({ code: 0, out: "", err: "" });
     expect(gantry(tmpdir(), ["hook", "pre-commit"]).out).toBe("");
-  });
-
-  it("backlog priority follows spec section 9", () => {
-    expect(backlogPriority("function", true, "src/util.ts")).toBe(0);
-    expect(backlogPriority("method", true, "src/util.ts")).toBe(1);
-    expect(backlogPriority("function", false, "src/util.ts")).toBe(2);
-    expect(backlogPriority("function", false, "apps/web/src/routes/index.tsx")).toBe(0);
   });
 });
