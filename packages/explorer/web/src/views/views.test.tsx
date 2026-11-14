@@ -22,8 +22,12 @@ const lastMain = (calls: string[], view: string) =>
     .at(-1);
 
 const hashParams = () => new URLSearchParams(window.location.hash.split("?")[1] ?? "");
-const filtersOf = (p: URLSearchParams | undefined) =>
-  JSON.parse(p?.get("filters") ?? "{}") as Record<string, string>;
+/** The request's filters; `maxRows` (sized to the window, sent on every ego request) is checked on its own. */
+const filtersOf = (p: URLSearchParams | undefined) => {
+  const { maxRows, ...rest } = JSON.parse(p?.get("filters") ?? "{}") as Record<string, string>;
+  if (maxRows !== undefined) expect(Number(maxRows)).toBeGreaterThanOrEqual(8);
+  return rest;
+};
 
 describe("view params from the hash reach /api/view", () => {
   it("forwards level and filters to the project map", async () => {

@@ -265,3 +265,13 @@
 .gc-crumb-sep {
   color: var(--muted);
 }
+
+/* Ego bow-tie (BowtieCanvas): one 2D canvas filling the slot. */
+.bt-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}

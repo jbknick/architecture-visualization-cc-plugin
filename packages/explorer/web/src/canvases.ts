@@ -19,6 +19,7 @@ for (const hint of [
   "radial",
   "force",
   "tree-lr",
+  "bowtie",
   "columns",
   "clusters",
   "layered",

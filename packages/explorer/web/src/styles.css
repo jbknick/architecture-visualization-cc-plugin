@@ -652,3 +652,90 @@ kbd {
     transition: background-color 0.1s;
   }
 }
+
+/* Ego panel: summary, groups, workspace colours */
+.ego-summary {
+  margin: 4px 0 8px;
+}
+.ego-line {
+  margin: 0 0 2px;
+  font-weight: 600;
+  font-size: 13px;
+}
+.group-actions {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0;
+}
+.group-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.group-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.group-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.group-row:hover:not(.is-static) {
+  background: var(--accent-soft);
+}
+.group-row.is-static {
+  cursor: default;
+}
+.group-name {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+.group-row .kind-dot {
+  margin-top: 4px;
+}
+.group-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.group-toggle {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.member-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 340px;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+}
+.member-list li {
+  display: flex;
+  flex-direction: column;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+}
+.member-path {
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}

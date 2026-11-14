@@ -13,6 +13,7 @@ import type {
 } from "../src/api.ts";
 import { generateSynthetic } from "../src/canvas/synthetic.ts";
 import { buildHierarchy } from "./hierarchy.ts";
+import { egoHub, hubNode } from "./hubEgo.ts";
 import { largeMapNode, projectMapLarge } from "./largeMap.ts";
 
 export const meta: Meta = {
@@ -451,6 +452,15 @@ function projectMap(q: ParsedQuery): ViewData | { error: string; status: number 
 
 function ego(q: ParsedQuery): ViewData | { error: string; status: number } {
   if (!q.focus) return { status: 400, error: "ego requires focus=<symbol or file id>" };
+  // Mock-only flag: `#/ego?focus=<hubFocus>&scenario=hub` serves the 221-caller hub (mock/hubEgo.ts).
+  // `scenario=hub-thin` is the same hub with the callers spread thinly over many files and folders.
+  if (q.options.scenario === "hub" || q.options.scenario === "hub-thin")
+    return egoHub(
+      optList(q.options, "expand") ?? [],
+      q.options.scenario,
+      Number(q.options.maxRows) || undefined,
+      Number(q.options.pageRows) || undefined,
+    );
   if (!symbolById.has(q.focus) && !fileById.has(q.focus))
     return { status: 404, error: `Unknown focus: ${q.focus}` };
   const hops = q.hops ?? 2;
@@ -496,6 +506,7 @@ function ego(q: ParsedQuery): ViewData | { error: string; status: number } {
       path: s.file.path,
       stats: { functions: 1, loc: 5 },
       ...(s.sym.exported ? { badges: ["exported"] } : {}),
+      workspace: wsId(s.file.ws),
       side,
       hop,
     });
@@ -513,7 +524,7 @@ function ego(q: ParsedQuery): ViewData | { error: string; status: number } {
       weight: 1,
       confidence: l.confidence ?? ("high" as const),
     }));
-  return { nodes: [...nodes.values()], edges: edgeOut, layoutHint: "radial" };
+  return { nodes: [...nodes.values()], edges: edgeOut, layoutHint: "bowtie" };
 }
 
 // ---------- /api/node ----------
@@ -1229,7 +1240,7 @@ export function handleMockApi(url: URL): MockResponse | null {
 
   if (path.startsWith("/api/node/")) {
     const id = decodeURIComponent(path.slice("/api/node/".length));
-    const found = nodeDetail(id) ?? map3dDetail(id);
+    const found = nodeDetail(id) ?? map3dDetail(id) ?? hubNode(id);
     if (found) return { status: 200, body: found };
     const large = largeMapNode(id);
     if (large)
