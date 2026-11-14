@@ -7,7 +7,7 @@ import type { ParsedFile } from "./index.js";
  * Bump when `parseSource` output changes for the same input (new fields, different symbol ids, ...):
  * every cached entry written under another version is dropped on open.
  */
-export const PARSE_CACHE_VERSION = 1;
+export const PARSE_CACHE_VERSION = 2;
 
 export const PARSE_CACHE_FILE = "parse-cache.db";
 

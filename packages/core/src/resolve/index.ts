@@ -53,6 +53,9 @@ export interface Resolver {
   stats(): ResolveStats;
 }
 
+/** Evidence on the `file -> file` `imports` self edge that marks a `"use client"` file. */
+export const USE_CLIENT_EVIDENCE = "directive:use client";
+
 const MAX_DEPTH = 10;
 const EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx"];
 const SCRIPT_EXT_RE = /\.(?:[cm]?[jt]sx?)$/;
@@ -522,6 +525,9 @@ export function createResolver(ctx: ResolveContext): Resolver {
     };
     for (const i of pf.imports) addImport(i.specifier, i.line);
     for (const e of pf.exports) if (e.fromSpecifier !== undefined) addImport(e.fromSpecifier);
+
+    // File-level marker read by the reuse advice: a self edge whose evidence names the directive.
+    if (pf.directives?.includes("use client")) b.add(fileId, fileId, "imports", "high", USE_CLIENT_EVIDENCE);
 
     // exports: file -> original symbol
     const exportNames = new Set<string>();
