@@ -1,6 +1,7 @@
 import { isSensitive } from "../discover/index.js";
 import type { Store } from "../store/index.js";
 import type { FactSheet, SymbolKind } from "../types.js";
+import { redactForFactSheet } from "./secrets.js";
 
 /** Major version of the description prompt (spec section 7); part of every contentKey. */
 export const PROMPT_MAJOR = "p1";
@@ -73,12 +74,15 @@ export function leadingDoc(lines: string[], startLine: number): string | null {
 }
 
 function docText(rawLines: string[]): string | null {
-  const text = rawLines
-    .map(cleanCommentLine)
-    .filter((l) => l !== "")
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
+  // Redact before the cut so a secret straddling the cut cannot leave a readable half behind.
+  const text = redactForFactSheet(
+    rawLines
+      .map(cleanCommentLine)
+      .filter((l) => l !== "")
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
   if (text === "") return null;
   return text.length > FACT_DOC_MAX ? `${text.slice(0, FACT_DOC_MAX - 1)}…` : text;
 }
@@ -147,10 +151,13 @@ export function buildFactSheet(store: Store, symbolId: string, source: string): 
   if (isSensitive(path)) throw new SensitivePathError(path);
 
   const lines = source.split("\n");
-  const body = lines
-    .slice(sym.startLine - 1, sym.endLine)
-    .join("\n")
-    .trimEnd();
+  // Secrets are redacted before trimming (a key near the cut must not survive as a prefix) and before anything leaves.
+  const body = redactForFactSheet(
+    lines
+      .slice(sym.startLine - 1, sym.endLine)
+      .join("\n")
+      .trimEnd(),
+  );
 
   const names = new Set<string>();
   for (const e of store.effectiveEdges({ src: sym.id, kind: [...CALLEE_EDGES] })) {
@@ -164,7 +171,7 @@ export function buildFactSheet(store: Store, symbolId: string, source: string): 
     id: sym.id,
     path,
     kind: sym.kind,
-    signature: sym.signature,
+    signature: redactForFactSheet(sym.signature),
     doc: leadingDoc(lines, sym.startLine),
     callees,
     returnType: returnTypeOf(sym.signature),

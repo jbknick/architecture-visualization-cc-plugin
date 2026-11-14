@@ -1,0 +1,969 @@
+// Committed corpus of honest one-sentence descriptions for the acceptance test (issue #22, part F). Written by hand
+// for typical functions; no code or descriptions from any private repository. Each row is
+// [behavior, searchTerms, identifiers the function's fact sheet names]. The identifiers become the signature, callees
+// and body of a small fact sheet so grounded names resolve. Do not delete rows to improve the rate: fix the rule.
+
+export type HonestRow = readonly [behavior: string, terms: readonly string[], idents?: readonly string[]];
+
+/** The 65 descriptions from the independent review's false-positive script (rewritten rows are in HONEST_REWRITTEN). */
+export const HONEST_REVIEW: readonly HonestRow[] = [
+  ["Deletes expired sessions from the store.", ["session cleanup", "expired sessions"]],
+  ["Runs the pending migrations in order.", ["migrations", "schema upgrade"]],
+  ["Builds the system prompt for the assistant.", ["prompt builder", "chat setup"]],
+  ["Validates the API key header.", ["api key check", "auth header"]],
+  ["Parses a URL into host and path.", ["url parsing", "host"]],
+  ["Sends the user a password reset email.", ["password reset", "email"]],
+  ["Removes a user and all of their posts.", ["delete user", "account removal"]],
+  ["Executes a SQL query and returns the rows.", ["sql query", "database"]],
+  ["Kills the child process after a timeout.", ["process kill", "timeout"]],
+  ["Drops the temporary table if it exists.", ["drop table", "cleanup"]],
+  ["Returns the system configuration from environment variables.", ["config", "env vars"]],
+  ["Streams assistant messages to the chat window.", ["chat stream", "messages"]],
+  ["Creates a new agent with the given tools.", ["agent factory", "tools"]],
+  ["Renders the prompt template with user variables.", ["prompt template", "rendering"]],
+  ["Loads instruction text for the onboarding tour.", ["onboarding", "tour steps"]],
+  ["Refreshes the OAuth access token when it expires.", ["token refresh", "oauth"]],
+  ["Hashes the password with bcrypt before saving.", ["password hashing", "bcrypt"]],
+  ["Signs a JWT for the current user.", ["jwt signing", "auth token"]],
+  ["Builds an HTTP client with retry and backoff.", ["http client", "retry"]],
+  ["Fetches JSON from the given endpoint with a timeout.", ["fetch json", "http get"]],
+  ["Encodes query parameters into a URL search string.", ["query string", "url encoding"]],
+  ["Deletes a file from the upload bucket.", ["file delete", "storage"]],
+  ["Handles the delete button click by removing the row.", ["delete handler", "table row"]],
+  ["Sends a DELETE request to the users endpoint.", ["http delete", "users api"]],
+  ["Runs the test suite in watch mode.", ["test runner", "watch mode"]],
+  ["Executes each queued job and records failures.", ["job queue", "worker"]],
+  ["Ignores whitespace when comparing two strings.", ["string compare", "whitespace"]],
+  ["Stores the secret key in the OS keychain.", ["keychain", "secret storage"]],
+  ["Reads the private key file and returns a signer.", ["private key", "signing"]],
+  ["Masks credit card numbers in log output.", ["pii masking", "logging"]],
+  ["Redacts tokens and passwords from error messages.", ["redaction", "errors"]],
+  ["Generates a random 32-byte API token.", ["token generation", "random"]],
+  ["Verifies the webhook signature with the shared secret.", ["webhook", "signature check"]],
+  ["Connects to Postgres using the connection string.", ["database connection", "postgres"]],
+  ["Uploads the image to S3 and returns its public URL.", ["s3 upload", "image"]],
+  ["Converts Markdown to sanitized HTML.", ["markdown", "html sanitize"]],
+  ["Escapes HTML special characters in user input.", ["html escape", "xss"]],
+  ["Truncates a string to the given length with an ellipsis.", ["truncate", "string"]],
+  ["Debounces a callback so it fires at most once per interval.", ["debounce", "timing"]],
+  ["Formats a date as an ISO 8601 string.", ["date format", "iso"]],
+  ["Calls the model with the system message and user prompt.", ["llm call", "chat completion"]],
+  ["Lets the user pick which AI agent handles the ticket.", ["agent picker", "routing"]],
+  ["Tells the model to stop when the token budget runs out.", ["token budget", "stop"]],
+  ["Disables the submit button while the form is pending.", ["form state", "submit"]],
+  ["Forgets all cached credentials on logout.", ["logout", "credential cache"]],
+  ["Overrides the default rules with project settings.", ["config merge", "rules"]],
+  ["Retries the request when the server returns 503.", ["retry", "http 503"]],
+  ["Removes the user from the team and revokes their access.", ["team membership", "revoke"]],
+  ["Reads the .env file into process environment variables.", ["dotenv", "env loading"]],
+  ["Builds the curl command shown in the API docs panel.", ["curl snippet", "docs"]],
+  ["Wraps sudo prompts in the installer UI.", ["installer", "privilege"]],
+  ["Pretends to be offline in tests by stubbing fetch.", ["offline mock", "tests"]],
+  ["Executes the given callback after the DOM is ready.", ["dom ready", "callback"]],
+  ["Prevents users from deleting the last admin.", ["admin guard", "delete protection"]],
+  ["Sorts items by priority, then by creation date.", ["sorting", "priority"]],
+  ["Hides the developer mode toggle in production builds.", ["developer mode", "feature toggle"]],
+  ["Validates that the password is at least 12 characters.", ["password policy", "validation"]],
+];
+
+/** Review rows whose original wording cannot pass the new rules by design, with the wording that can. */
+export const HONEST_REWRITTEN: readonly HonestRow[] = [
+  ["Returns true when the banner is visible to the current user.", ["feature flag", "banner"]],
+  ["Checks whether the current user has an expired password.", ["password expiry", "reset"]],
+  ["Opens a WebSocket to the local development server.", ["websocket", "dev server"]],
+  ["Pings the loopback address to check the local daemon is up.", ["health check", "local daemon"]],
+  ["Applies a percent-encoded path to the router.", ["path decoding", "router"]],
+  ["Returns the email address stored on the user profile.", ["email", "user profile"]],
+  ["Lists the users that can be mentioned in a comment.", ["mentions", "autocomplete"]],
+  ["Shows the sign-in notice when the session ends.", ["session expired", "notice"]],
+];
+
+/** Review rows that the new rules reject on purpose, and the rule that does it (asserted in the test). */
+export const HONEST_BY_DESIGN_REJECTED: readonly { row: HonestRow; reason: string }[] = [
+  { row: ["Returns true if the user should see the banner.", ["feature flag", "banner"]], reason: "shape" },
+  { row: ["Checks whether the user must reset their password.", ["password expiry"]], reason: "shape" },
+  {
+    row: ["Opens a WebSocket to the server at localhost:8080 in development.", ["websocket"]],
+    reason: "identifier",
+  },
+  { row: ["Pings 127.0.0.1 to check the local daemon is up.", ["health check"]], reason: "identifier" },
+  { row: ["Applies a percent-encoded path like %2F%2E to the router.", ["path decoding"]], reason: "shape" },
+  { row: ["Returns the user's email address, like name@example.com.", ["email"]], reason: "shape" },
+  { row: ["Lists the users you can mention in a comment.", ["mentions"]], reason: "shape" },
+  { row: ["Shows the 'you must sign in' notice when the session ends.", ["notice"]], reason: "shape" },
+];
+
+export const HONEST_MAIN: readonly HonestRow[] = [
+  // UI components
+  [
+    "Renders a button that shows a spinner while the request is pending.",
+    ["loading button", "spinner"],
+    ["Button", "isPending"],
+  ],
+  [
+    "Renders the avatar image, falling back to the user's initials when the image fails to load.",
+    ["avatar", "initials fallback"],
+    ["Avatar", "onError"],
+  ],
+  [
+    "Displays a modal dialog and closes it when the overlay is clicked.",
+    ["modal dialog", "overlay click"],
+    ["Modal", "onClose"],
+  ],
+  [
+    "Renders a sortable table with a header row and a footer showing the total.",
+    ["data table", "sortable columns"],
+    ["DataTable", "sortBy"],
+  ],
+  ["Shows a toast message for five seconds and then removes it.", ["toast", "notification"], ["Toast"]],
+  [
+    "Renders the navigation bar with links for each route and highlights the active one.",
+    ["navbar", "active link"],
+    ["NavBar", "routes"],
+  ],
+  [
+    "Displays an empty state with an icon, a title and an optional action button.",
+    ["empty state", "placeholder"],
+    ["EmptyState"],
+  ],
+  [
+    "Renders a tooltip next to the anchor element when it receives focus or hover.",
+    ["tooltip", "hover"],
+    ["Tooltip", "anchorRef"],
+  ],
+  [
+    "Renders a text input with a label and shows the validation error below it.",
+    ["form field", "error message"],
+    ["TextField"],
+  ],
+  [
+    "Renders a paginated list and calls onPageChange when the user selects another page.",
+    ["pagination", "page change"],
+    ["Pagination", "onPageChange"],
+  ],
+  [
+    "Renders a dropdown menu and moves focus between items with the arrow keys.",
+    ["dropdown", "keyboard navigation"],
+    ["Dropdown"],
+  ],
+  [
+    "Renders a progress bar that fills according to the completed fraction.",
+    ["progress bar", "percent"],
+    ["ProgressBar", "fraction"],
+  ],
+  [
+    "Wraps its children in an error boundary and shows a fallback when one of them throws.",
+    ["error boundary", "fallback ui"],
+    ["ErrorBoundary"],
+  ],
+  [
+    "Renders the page header with the title, a breadcrumb trail and the action buttons.",
+    ["page header", "breadcrumbs"],
+    ["PageHeader"],
+  ],
+  [
+    "Renders a checkbox group and reports the list of selected values.",
+    ["checkbox group", "multi select"],
+    ["CheckboxGroup", "onChange"],
+  ],
+  [
+    "Renders a tab strip and shows the panel that belongs to the selected tab.",
+    ["tabs", "tab panel"],
+    ["Tabs", "activeTab"],
+  ],
+  [
+    "Renders a skeleton placeholder with the same dimensions as the loaded card.",
+    ["skeleton", "loading card"],
+    ["CardSkeleton"],
+  ],
+  [
+    "Renders a date picker and returns the chosen day as an ISO string.",
+    ["date picker", "calendar"],
+    ["DatePicker", "onSelect"],
+  ],
+  [
+    "Renders the user menu with the profile link and the sign-out button.",
+    ["user menu", "sign out"],
+    ["UserMenu", "signOut"],
+  ],
+  [
+    "Renders an image gallery with thumbnails and a full-screen preview.",
+    ["image gallery", "lightbox"],
+    ["Gallery"],
+  ],
+  [
+    "Renders a collapsible section whose header toggles the visibility of the body.",
+    ["accordion", "collapse"],
+    ["Accordion", "isOpen"],
+  ],
+  [
+    "Renders a badge showing the number of unread notifications.",
+    ["notification badge", "unread count"],
+    ["Badge", "unreadCount"],
+  ],
+  [
+    "Renders a search box and calls onSearch after the user stops typing for 300 milliseconds.",
+    ["search box", "debounced input"],
+    ["SearchBox", "onSearch"],
+  ],
+  [
+    "Renders a drag-and-drop area and passes the dropped files to the upload handler.",
+    ["file drop", "upload area"],
+    ["DropZone", "onFiles"],
+  ],
+  [
+    "Renders the footer with the copyright year and the list of legal links.",
+    ["footer", "copyright"],
+    ["Footer"],
+  ],
+
+  // hooks
+  [
+    "Returns the current window width and updates it when the window is resized.",
+    ["window size", "resize listener"],
+    ["useWindowWidth"],
+  ],
+  [
+    "Returns a debounced copy of the value that changes after the given delay.",
+    ["debounce hook", "delayed value"],
+    ["useDebouncedValue", "delayMs"],
+  ],
+  [
+    "Stores a value in localStorage and keeps it in sync across browser tabs.",
+    ["persisted state", "local storage"],
+    ["useLocalStorage"],
+  ],
+  [
+    "Subscribes to the media query and returns whether it currently matches.",
+    ["media query", "responsive"],
+    ["useMediaQuery"],
+  ],
+  [
+    "Returns the previous value of a prop or state variable from the last render.",
+    ["previous value", "usePrevious"],
+    ["usePrevious"],
+  ],
+  [
+    "Runs the callback on a fixed interval and clears the timer when the component unmounts.",
+    ["interval hook", "timer"],
+    ["useInterval"],
+  ],
+  [
+    "Tracks the mouse position relative to the given element.",
+    ["mouse position", "pointer tracking"],
+    ["useMouse", "elementRef"],
+  ],
+  [
+    "Fetches a resource with the query client and returns the data, the error and the loading flag.",
+    ["data fetching", "query hook"],
+    ["useResource", "queryClient"],
+  ],
+  [
+    "Returns a function that copies text to the clipboard and reports whether it succeeded.",
+    ["clipboard", "copy text"],
+    ["useClipboard"],
+  ],
+  ["Locks scrolling of the page body while the modal is open.", ["scroll lock", "modal"], ["useScrollLock"]],
+  [
+    "Returns true after the component has mounted on the client.",
+    ["mounted flag", "hydration"],
+    ["useIsMounted"],
+  ],
+  [
+    "Registers a keyboard shortcut and removes the listener when the component unmounts.",
+    ["keyboard shortcut", "hotkey"],
+    ["useHotkey"],
+  ],
+  [
+    "Observes an element with an IntersectionObserver and returns whether it is visible.",
+    ["visibility", "intersection observer"],
+    ["useInView", "IntersectionObserver"],
+  ],
+  [
+    "Returns the authenticated user from the session context or null when signed out.",
+    ["current user", "session context"],
+    ["useCurrentUser", "SessionContext"],
+  ],
+  [
+    "Keeps a form's values and touched fields in state and exposes a submit handler.",
+    ["form state", "form hook"],
+    ["useForm"],
+  ],
+
+  // API handlers
+  [
+    "Handles a POST request by validating the body and creating a new order.",
+    ["create order", "post handler"],
+    ["createOrder", "orderSchema"],
+  ],
+  [
+    "Returns the list of invoices for the signed-in customer as JSON.",
+    ["list invoices", "billing api"],
+    ["listInvoices"],
+  ],
+  [
+    "Handles the webhook from the payment provider and marks the matching order as paid.",
+    ["payment webhook", "mark paid"],
+    ["handlePaymentWebhook", "markOrderPaid"],
+  ],
+  [
+    "Responds with a 404 status when the requested project does not exist.",
+    ["not found", "project lookup"],
+    ["getProject"],
+  ],
+  [
+    "Parses the pagination parameters from the query string and clamps the page size.",
+    ["pagination params", "page size"],
+    ["parsePagination"],
+  ],
+  [
+    "Authenticates the request with the session cookie and attaches the user to the context.",
+    ["auth middleware", "session cookie"],
+    ["requireSession"],
+  ],
+  [
+    "Streams a CSV export of the report rows to the response.",
+    ["csv export", "streaming response"],
+    ["exportReport"],
+  ],
+  [
+    "Updates the profile of the current user and returns the saved record.",
+    ["update profile", "patch handler"],
+    ["updateProfile"],
+  ],
+  [
+    "Applies a rate limit per IP address and responds with 429 when it is exceeded.",
+    ["rate limit", "throttle requests"],
+    ["rateLimit"],
+  ],
+  [
+    "Deletes a comment when the requester owns it or is a moderator.",
+    ["delete comment", "ownership check"],
+    ["deleteComment"],
+  ],
+  [
+    "Returns the health status of the database and the cache.",
+    ["health endpoint", "status check"],
+    ["healthCheck"],
+  ],
+  [
+    "Converts an uncaught error into a JSON response with a status code and a message.",
+    ["error handler", "error response"],
+    ["errorHandler"],
+  ],
+  [
+    "Reads the raw request body and verifies its signature before parsing it.",
+    ["raw body", "signature verification"],
+    ["verifyBody"],
+  ],
+  [
+    "Redirects the browser to the login page when no session exists.",
+    ["login redirect", "guard"],
+    ["loginRedirect"],
+  ],
+  [
+    "Registers the routes for the billing module on the router.",
+    ["route registration", "billing routes"],
+    ["registerBillingRoutes"],
+  ],
+
+  // DB queries
+  [
+    "Selects the most recent orders for a customer ordered by creation date.",
+    ["recent orders", "customer orders"],
+    ["getRecentOrders"],
+  ],
+  [
+    "Inserts a row into the audit table with the actor, the action and the timestamp.",
+    ["audit log", "insert audit"],
+    ["writeAudit"],
+  ],
+  [
+    "Counts the unread messages in each conversation for the given user.",
+    ["unread count", "conversations"],
+    ["countUnread"],
+  ],
+  [
+    "Updates the status column of a job and returns the number of affected rows.",
+    ["job status", "update status"],
+    ["setJobStatus"],
+  ],
+  [
+    "Runs a transaction that moves the balance between two accounts.",
+    ["transfer funds", "transaction"],
+    ["transfer"],
+  ],
+  [
+    "Finds a user by email address using a case-insensitive comparison.",
+    ["find user", "email lookup"],
+    ["findUserByEmail"],
+  ],
+  [
+    "Deletes rows older than the retention period in batches of 1000.",
+    ["retention cleanup", "batch delete"],
+    ["purgeOldRows"],
+  ],
+  [
+    "Upserts the settings row for a workspace and returns the merged result.",
+    ["upsert settings", "workspace config"],
+    ["saveSettings"],
+  ],
+  [
+    "Joins orders with their line items and groups the totals by month.",
+    ["monthly totals", "order report"],
+    ["monthlyTotals"],
+  ],
+  [
+    "Opens a read-only connection to the SQLite file and enables write-ahead logging.",
+    ["sqlite open", "wal mode"],
+    ["openDatabase"],
+  ],
+  [
+    "Creates the tables and indexes if they do not exist yet.",
+    ["schema setup", "init database"],
+    ["initSchema"],
+  ],
+  [
+    "Adds a column to the table and backfills it from the existing data.",
+    ["add column", "backfill"],
+    ["addColumnMigration"],
+  ],
+  [
+    "Paginates the result set with a keyset cursor instead of an offset.",
+    ["keyset pagination", "cursor"],
+    ["pageAfter"],
+  ],
+  [
+    "Returns the ids of rows that have no matching parent record.",
+    ["orphan rows", "integrity check"],
+    ["findOrphans"],
+  ],
+  [
+    "Locks the row for update and returns its current version number.",
+    ["row lock", "optimistic version"],
+    ["lockRow"],
+  ],
+
+  // auth
+  [
+    "Checks the password against the stored hash in constant time.",
+    ["password check", "constant time"],
+    ["verifyPassword"],
+  ],
+  [
+    "Creates a session record and sets the cookie with the HttpOnly flag.",
+    ["create session", "session cookie"],
+    ["createSession"],
+  ],
+  [
+    "Revokes every refresh token that belongs to the user.",
+    ["revoke tokens", "logout everywhere"],
+    ["revokeTokens"],
+  ],
+  [
+    "Verifies the one-time code from the authenticator app within a 30 second window.",
+    ["totp", "two-factor code"],
+    ["verifyTotp"],
+  ],
+  [
+    "Builds the OAuth authorization URL with the state and the code challenge.",
+    ["oauth url", "pkce"],
+    ["buildAuthUrl"],
+  ],
+  [
+    "Exchanges the authorization code for an access token and a refresh token.",
+    ["code exchange", "token endpoint"],
+    ["exchangeCode"],
+  ],
+  [
+    "Returns true when the user has the given permission through any of their roles.",
+    ["permission check", "role based access"],
+    ["hasPermission"],
+  ],
+  [
+    "Locks the account after five failed sign-in attempts.",
+    ["account lockout", "failed logins"],
+    ["recordFailedLogin"],
+  ],
+  ["Decodes the JWT payload and checks the expiry claim.", ["jwt decode", "token expiry"], ["decodeToken"]],
+  [
+    "Generates a password reset token that expires after one hour.",
+    ["reset token", "password reset"],
+    ["createResetToken"],
+  ],
+  [
+    "Compares the CSRF token from the header with the one stored in the session.",
+    ["csrf", "token compare"],
+    ["checkCsrf"],
+  ],
+  ["Reads the bearer token from the Authorization header.", ["bearer token", "auth header"], ["readBearer"]],
+  ["Signs the user out and clears the session cookie.", ["sign out", "clear cookie"], ["signOut"]],
+
+  // crypto
+  [
+    "Encrypts the payload with AES-256-GCM and prepends the random nonce.",
+    ["aes encryption", "gcm"],
+    ["encryptPayload"],
+  ],
+  [
+    "Decrypts the payload and throws when the authentication tag does not match.",
+    ["aes decryption", "tag check"],
+    ["decryptPayload"],
+  ],
+  ["Derives a 32-byte key from the passphrase with PBKDF2.", ["key derivation", "pbkdf2"], ["deriveKey"]],
+  [
+    "Computes the SHA-256 digest of the input and returns it as a hex string.",
+    ["sha256", "hex digest"],
+    ["sha256Hex"],
+  ],
+  ["Returns the HMAC of the message using the shared secret.", ["hmac", "message signature"], ["hmacSign"]],
+  [
+    "Generates a random identifier from 16 bytes of secure randomness.",
+    ["random id", "secure random"],
+    ["randomId"],
+  ],
+  [
+    "Compares two buffers in constant time to avoid leaking their contents through timing.",
+    ["timing safe", "buffer compare"],
+    ["safeEqual"],
+  ],
+  ["Encodes bytes as URL-safe Base64 without padding.", ["base64url", "encode"], ["toBase64Url"]],
+  [
+    "Generates an RSA key pair and exports both halves in PEM format.",
+    ["rsa keypair", "pem export"],
+    ["generateKeyPair"],
+  ],
+  [
+    "Verifies a detached signature against the public key.",
+    ["signature verify", "public key"],
+    ["verifySignature"],
+  ],
+
+  // HTTP clients
+  [
+    "Sends a GET request with the default headers and parses the JSON response.",
+    ["http get", "json response"],
+    ["getJson"],
+  ],
+  [
+    "Retries failed requests with exponential backoff and a maximum of three attempts.",
+    ["retry", "exponential backoff"],
+    ["withRetry"],
+  ],
+  [
+    "Adds the authorization header to every outgoing request.",
+    ["auth interceptor", "request headers"],
+    ["authInterceptor"],
+  ],
+  [
+    "Aborts the request when it takes longer than the configured timeout.",
+    ["request timeout", "abort"],
+    ["fetchWithTimeout"],
+  ],
+  [
+    "Builds the query string from an object and skips undefined values.",
+    ["query string", "url params"],
+    ["buildQuery"],
+  ],
+  [
+    "Throws an HttpError that carries the status code and the response body.",
+    ["http error", "status code"],
+    ["HttpError", "assertOk"],
+  ],
+  [
+    "Uploads a file as multipart form data and reports the progress.",
+    ["multipart upload", "progress"],
+    ["uploadFile"],
+  ],
+  ["Caches GET responses in memory for the given time to live.", ["response cache", "ttl"], ["cachedGet"]],
+  [
+    "Follows pagination links until the last page and concatenates the results.",
+    ["paginate all", "link header"],
+    ["fetchAllPages"],
+  ],
+  [
+    "Posts the event to the analytics endpoint and ignores network errors.",
+    ["analytics event", "fire and forget"],
+    ["trackEvent"],
+  ],
+  ["Deduplicates concurrent requests for the same key.", ["request dedupe", "in-flight"], ["dedupe"]],
+
+  // CLI tools
+  [
+    "Parses the command line arguments into flags and positional values.",
+    ["argument parser", "cli flags"],
+    ["parseArgs"],
+  ],
+  ["Prints the usage text and exits with a non-zero status.", ["usage", "help text"], ["printUsage"]],
+  [
+    "Reads the configuration file from the home directory and merges it with the flags.",
+    ["config file", "cli config"],
+    ["loadConfig"],
+  ],
+  [
+    "Asks a yes or no question on the terminal and returns the answer.",
+    ["confirm prompt", "terminal input"],
+    ["confirm"],
+  ],
+  ["Writes a progress line to stderr and rewrites it in place.", ["progress line", "stderr"], ["progress"]],
+  ["Walks the directory tree and yields the files that match the glob.", ["glob", "file walk"], ["walk"]],
+  [
+    "Spawns the child process, pipes its output to the terminal and returns the exit code.",
+    ["spawn process", "exit code"],
+    ["runCommand"],
+  ],
+  [
+    "Colors the text with ANSI escape codes when the output is a terminal.",
+    ["ansi colors", "tty"],
+    ["paint"],
+  ],
+  [
+    "Registers the subcommands with the program and starts parsing.",
+    ["subcommands", "cli setup"],
+    ["buildProgram"],
+  ],
+  [
+    "Resolves the project root by looking for the nearest package.json.",
+    ["project root", "find up"],
+    ["findRoot"],
+  ],
+  [
+    "Formats the elapsed time as minutes and seconds.",
+    ["duration format", "elapsed time"],
+    ["formatDuration"],
+  ],
+
+  // prompt building and LLM code
+  [
+    "Builds the prompt from the system message, the examples and the user question.",
+    ["prompt builder", "few shot"],
+    ["buildPrompt"],
+  ],
+  [
+    "Sends the messages to the model and returns the text of the first completion.",
+    ["chat completion", "llm call"],
+    ["complete"],
+  ],
+  [
+    "Counts the tokens in a message list and trims the oldest messages to fit the budget.",
+    ["token count", "context window"],
+    ["fitToBudget"],
+  ],
+  [
+    "Parses the tool call arguments from the model response and validates them against the schema.",
+    ["tool call", "argument parsing"],
+    ["parseToolCall"],
+  ],
+  [
+    "Streams the model output and calls onToken for each chunk.",
+    ["streaming tokens", "chunk callback"],
+    ["streamCompletion", "onToken"],
+  ],
+  [
+    "Retries the model call once when the response is not valid JSON.",
+    ["json retry", "structured output"],
+    ["completeJson"],
+  ],
+  [
+    "Embeds the text with the embedding model and returns a normalized vector.",
+    ["embedding", "vector"],
+    ["embed"],
+  ],
+  [
+    "Ranks the documents by cosine similarity to the query vector.",
+    ["similarity search", "ranking"],
+    ["rankByCosine"],
+  ],
+  [
+    "Summarizes the conversation so far into a short memory note.",
+    ["conversation summary", "memory"],
+    ["summarizeHistory"],
+  ],
+  [
+    "Formats the retrieved passages as numbered context for the prompt.",
+    ["rag context", "passages"],
+    ["formatContext"],
+  ],
+  [
+    "Truncates the document to the maximum number of tokens at a sentence boundary.",
+    ["truncate tokens", "sentence boundary"],
+    ["truncateToTokens"],
+  ],
+  [
+    "Selects the model by name and falls back to the default when the name is unknown.",
+    ["model selection", "default model"],
+    ["pickModel"],
+  ],
+  [
+    "Appends the assistant reply to the conversation and saves the transcript.",
+    ["transcript", "conversation save"],
+    ["appendReply"],
+  ],
+  [
+    "Wraps the user input in delimiters so it is clearly separated from the instructions.",
+    ["prompt delimiters", "input wrapping"],
+    ["wrapUserInput"],
+  ],
+  ["Records the token usage and the cost of each request.", ["usage log", "cost tracking"], ["recordUsage"]],
+
+  // deletion, execution, migration code
+  [
+    "Deletes the temporary directory and everything inside it.",
+    ["remove directory", "temp cleanup"],
+    ["removeTempDir"],
+  ],
+  [
+    "Removes the cache entries whose keys start with the given prefix.",
+    ["cache invalidation", "prefix delete"],
+    ["invalidatePrefix"],
+  ],
+  [
+    "Runs each migration file in order inside a transaction and records it in the history table.",
+    ["run migrations", "history table"],
+    ["migrateUp"],
+  ],
+  ["Rolls back the last applied migration.", ["rollback", "migrate down"], ["migrateDown"]],
+  [
+    "Executes the shell command and resolves with its standard output.",
+    ["exec command", "shell output"],
+    ["execShell"],
+  ],
+  [
+    "Deletes all rows from the table and resets the identity counter.",
+    ["truncate table", "reset ids"],
+    ["truncateTable"],
+  ],
+  [
+    "Drops the index and creates it again with the new columns.",
+    ["rebuild index", "drop index"],
+    ["rebuildIndex"],
+  ],
+  ["Kills the worker process and waits for it to exit.", ["stop worker", "kill process"], ["stopWorker"]],
+  ["Removes the lock file when the process exits.", ["lock file", "exit cleanup"], ["releaseLock"]],
+  [
+    "Runs the seed script and skips records that already exist.",
+    ["seed data", "idempotent seed"],
+    ["seedDatabase"],
+  ],
+  [
+    "Archives the project instead of deleting it so it can be restored later.",
+    ["soft delete", "archive project"],
+    ["archiveProject"],
+  ],
+  [
+    "Executes the queued tasks one at a time and stops at the first failure.",
+    ["task runner", "sequential"],
+    ["runTasks"],
+  ],
+  [
+    "Skips the migration when the column already exists.",
+    ["idempotent migration", "column check"],
+    ["addColumnIfMissing"],
+  ],
+  [
+    "Unlinks the file and ignores the error when it is already gone.",
+    ["safe unlink", "file delete"],
+    ["removeFile"],
+  ],
+  [
+    "Clears every item from the queue and returns how many were removed.",
+    ["clear queue", "drain"],
+    ["clearQueue"],
+  ],
+
+  // misc utilities with numbers, acronyms, punctuation, file names
+  [
+    "Reads package.json from the project root and returns the parsed object.",
+    ["package json", "read manifest"],
+    ["readManifest"],
+  ],
+  [
+    "Returns the file extension in lower case without the leading dot.",
+    ["file extension", "path utils"],
+    ["extname"],
+  ],
+  [
+    "Splits a comma-separated string into trimmed non-empty values.",
+    ["split csv", "trim values"],
+    ["splitList"],
+  ],
+  ["Clamps a number between a minimum and a maximum value.", ["clamp", "number range"], ["clamp"]],
+  [
+    "Formats a number of bytes as a human-readable size such as 1.5 MB.",
+    ["file size", "human readable"],
+    ["formatBytes"],
+  ],
+  ["Converts a camelCase string to kebab-case.", ["kebab case", "string case"], ["toKebab"]],
+  [
+    "Groups the items by the result of the key function and returns a Map.",
+    ["group by", "map of arrays"],
+    ["groupBy"],
+  ],
+  ["Returns a Promise that resolves after the given number of milliseconds.", ["sleep", "delay"], ["sleep"]],
+  [
+    "Memoizes the function using the first argument as the cache key.",
+    ["memoize", "cache results"],
+    ["memoize"],
+  ],
+  ["Flattens a nested array one level deep.", ["flatten", "array utils"], ["flatten"]],
+  [
+    "Merges two objects recursively and prefers the values from the second one.",
+    ["deep merge", "object merge"],
+    ["deepMerge"],
+  ],
+  [
+    "Generates a URL slug from a title by converting it to lower case and replacing spaces with hyphens.",
+    ["slugify", "url slug"],
+    ["slugify"],
+  ],
+  ["Parses a duration such as 90s into milliseconds.", ["parse duration", "time units"], ["parseDuration"]],
+  ["Returns the first n elements of the array.", ["take", "array head"], ["take"]],
+  [
+    "Compares two semantic version strings and returns -1, 0 or 1.",
+    ["semver compare", "version order"],
+    ["compareVersions"],
+  ],
+  ["Waits until the predicate returns true or the timeout expires.", ["wait for", "polling"], ["waitFor"]],
+  ["Chunks an array into groups of the given size.", ["chunk array", "batching"], ["chunk"]],
+  [
+    "Returns true when the value is a plain object and not an array or null.",
+    ["is plain object", "type guard"],
+    ["isPlainObject"],
+  ],
+  ["Pads a number with leading zeros to the given width.", ["zero pad", "number format"], ["padNumber"]],
+  ["Picks the given keys from an object and returns a new one.", ["pick keys", "object utils"], ["pick"]],
+  ["Counts the words in a text, ignoring punctuation.", ["word count", "text stats"], ["countWords"]],
+  ["Returns the current time in UTC as an ISO string.", ["utc now", "timestamp"], ["nowIso"]],
+  [
+    "Converts a hex color such as a short code to RGB components.",
+    ["hex to rgb", "color convert"],
+    ["hexToRgb"],
+  ],
+  [
+    "Validates an email address with a simple pattern and returns a boolean.",
+    ["email validation", "regex"],
+    ["isEmail"],
+  ],
+  ["Normalizes line endings to a single newline.", ["line endings", "normalize text"], ["normalizeNewlines"]],
+  [
+    "Emits a typed event to every listener that subscribed to its name.",
+    ["event emitter", "publish"],
+    ["emit"],
+  ],
+  ["Registers a listener and returns a function that removes it.", ["subscribe", "unsubscribe"], ["on"]],
+  [
+    "Throttles the function so it runs at most once every 100 milliseconds.",
+    ["throttle", "rate control"],
+    ["throttle"],
+  ],
+  ["Logs the message with a timestamp and the level to the console.", ["logger", "console log"], ["log"]],
+  [
+    "Maps the database row to the API shape and renames snake_case columns to camelCase.",
+    ["row mapper", "dto"],
+    ["toApiUser"],
+  ],
+  [
+    "Returns the display name, falling back to the email address when no name is set.",
+    ["display name", "fallback"],
+    ["displayName"],
+  ],
+  ["Returns an array, wrapping a single value when needed.", ["to array", "normalize input"], ["toArray"]],
+  [
+    "Returns null when the input cannot be parsed and does not throw.",
+    ["safe parse", "nullable result"],
+    ["safeParse"],
+  ],
+  [
+    "Shows a warning toast when the connection is lost.",
+    ["connection warning", "offline notice"],
+    ["showOfflineWarning"],
+  ],
+  [
+    "Marks the item as important and moves it to the top of the list.",
+    ["pin item", "priority flag"],
+    ["markImportant"],
+  ],
+  [
+    "Returns the default value instead of undefined for missing keys.",
+    ["default value", "lookup"],
+    ["getOrDefault"],
+  ],
+  [
+    "Checks whether the user needs to accept the updated terms.",
+    ["terms acceptance", "consent"],
+    ["needsTermsUpdate"],
+  ],
+  [
+    "Copies the file to the destination and keeps the original modification time.",
+    ["copy file", "preserve mtime"],
+    ["copyPreserving"],
+  ],
+  [
+    "Sets the document title and restores the previous one on cleanup.",
+    ["document title", "side effect"],
+    ["useTitle"],
+  ],
+  [
+    "Compresses the buffer with gzip and returns the smaller of the two buffers.",
+    ["gzip", "compress"],
+    ["maybeGzip"],
+  ],
+  [
+    "Wraps the callback in a try and catch block and reports the error to Sentry.",
+    ["error reporting", "sentry"],
+    ["safely"],
+  ],
+  [
+    "Resolves a path relative to the repository root and rejects paths that escape it.",
+    ["path resolve", "path traversal"],
+    ["resolveInRepo"],
+  ],
+  [
+    "Returns the ordinal suffix for a day of the month, such as st, nd, rd or th.",
+    ["ordinal", "date text"],
+    ["ordinalSuffix"],
+  ],
+  ["Maps an HTTP status code to a short error message.", ["status message", "http errors"], ["statusText"]],
+  [
+    "Waits for the I/O to finish and returns the number of bytes written.",
+    ["bytes written", "io wait"],
+    ["flushAll"],
+  ],
+  [
+    "Reads a value from the environment and throws when a required variable is missing.",
+    ["env variable", "required config"],
+    ["requireEnv"],
+  ],
+  [
+    "Starts a timer and returns a function that stops it and reports the elapsed milliseconds.",
+    ["stopwatch", "timing"],
+    ["startTimer"],
+  ],
+  [
+    "Toggles the dark theme class on the root element and saves the choice.",
+    ["dark mode", "theme toggle"],
+    ["toggleTheme"],
+  ],
+  [
+    "Navigates to the previous page and falls back to the home page when there is no history.",
+    ["go back", "history"],
+    ["goBack"],
+  ],
+  [
+    "Focuses the first invalid field in the form and scrolls it into view.",
+    ["focus error", "form validation"],
+    ["focusFirstError"],
+  ],
+  [
+    "Hydrates the store from the server state embedded in the page.",
+    ["hydrate store", "ssr state"],
+    ["hydrateStore"],
+  ],
+  [
+    "Restores the scroll position of the page after navigating back.",
+    ["scroll restore", "history"],
+    ["restoreScroll"],
+  ],
+];
+
+export const HONEST_ALL: readonly HonestRow[] = [...HONEST_REVIEW, ...HONEST_REWRITTEN, ...HONEST_MAIN];
