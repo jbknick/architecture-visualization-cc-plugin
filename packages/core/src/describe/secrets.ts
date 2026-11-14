@@ -77,13 +77,48 @@ const NON_SECRET_VALUES = new Set([
   "undefined",
 ]);
 
-/** Text right before a git object id: `commit `, `sha1: `, `rev=`, `#`, `/commit/`, `git@`. */
-const COMMIT_CONTEXT =
-  /(?:\b(?:commit|commits|sha|sha1|rev|revision|ref|tree|blob|head|hash|oid|checksum|digest|integrity)\b\s{0,3}[:=]?\s{0,3}["'`]?|#|\/(?:commit|tree|blob)\/|@)$/i;
+/**
+ * Text right before a git object id: `commit `, `sha1: `, `rev=` or `/commit/`. Nothing else counts (not `ref`, `hash`,
+ * `digest`, `checksum`, `@` or `#`: a secret can sit behind any of those).
+ */
+const COMMIT_CONTEXT = /(?:\b(?:commit|sha|sha1|rev)\b\s{0,3}[:=]?\s{0,3}["'`]?|\/commit\/)$/i;
+/** Context that makes a hex run after `sha` a signature or HMAC value, not a commit id. */
+const SIGNATURE_CONTEXT = /signature|authorization|hmac|bearer|header|digest|checksum/i;
 
-/** A label for a person, not a secret: a capitalised phrase of letters and spaces ("Enter your password"). */
+/** A git object id the redactor leaves alone: exactly 40 or 64 hex digits right after a commit word. */
+function isCommitId(hex: string, ctx: string): boolean {
+  return (hex.length === 40 || hex.length === 64) && COMMIT_CONTEXT.test(ctx) && !SIGNATURE_CONTEXT.test(ctx);
+}
+
+/** A capitalised phrase of letters and spaces: "Enter your password". */
 function looksLikeLabel(v: string): boolean {
   return /\s/.test(v) && /^\p{Lu}[\p{L}' ,.!?-]*$/u.test(v) && v.trim().split(/\s+/).length >= 2;
+}
+
+/** Words of a sentence written for a person. `is` is left out on purpose: "Winter Is Coming" is a passphrase. */
+const SENTENCE_WORDS = new Set(
+  "your you the a an to enter type please choose confirm for of must at least".split(" "),
+);
+
+/** The value reads as a sentence for a person: a label phrase of 3+ words that holds a function word. */
+function readsAsSentence(v: string): boolean {
+  return (
+    looksLikeLabel(v) &&
+    v.trim().split(/\s+/).length >= 3 &&
+    v
+      .toLowerCase()
+      .split(/\s+/)
+      .some((w) => SENTENCE_WORDS.has(w))
+  );
+}
+
+/** Names whose last word says the value is text shown to a person (`passwordText`, `tokenCaption`). */
+const LABEL_NAME_WORDS = new Set(
+  "label placeholder hint text message title caption prompt description tooltip helper".split(" "),
+);
+function isLabelName(name: string): boolean {
+  const parts = nameParts(name);
+  return parts.length > 1 && LABEL_NAME_WORDS.has(parts[parts.length - 1] as string);
 }
 
 /** Words that make a call a login: `login("admin", "pw")`, `signIn(...)`, `basicAuth(...)`. */
@@ -151,11 +186,11 @@ export const SECRET_RULES: readonly SecretRule[] = [
   { name: "azure-storage-key", re: /AccountKey=(?<v>[A-Za-z0-9+/=]{40,})/g, collapsible: true },
   { name: "base64-der-key", re: /\bMII[A-Za-z0-9+/]{40,}/g, collapsible: true },
   {
-    // A run of 32+ hex digits. When the redactor runs, a run right after a commit word (`commit`, `sha`, `rev`, `#`,
-    // `/commit/`, ...) is a git object id and is left alone: they fill ordinary changelogs and lock files.
+    // A run of 32+ hex digits. When the redactor runs, exactly 40 or 64 digits right after `commit`, `sha`, `rev` or
+    // `/commit/` are a git object id and is left alone: they fill ordinary changelogs and lock files.
     name: "hex-secret",
-    re: /(?<!\w)(?<=(?<ctx>.{0,40}))[0-9a-fA-F]{32,}(?!\w)/g,
-    accept: (g, redact) => !(redact && COMMIT_CONTEXT.test(g.ctx ?? "")),
+    re: /(?<!\w)(?<=(?<ctx>.{0,40}))(?<h>[0-9a-fA-F]{32,})(?!\w)/g,
+    accept: (g, redact) => !(redact && isCommitId(g.h ?? "", g.ctx ?? "")),
     collapsible: true,
   },
   {
@@ -187,7 +222,9 @@ export const SECRET_RULES: readonly SecretRule[] = [
       if (v === MARKER || !isCredentialName(g.name ?? "")) return false;
       if (g.q === "`" && v.includes("${")) return false;
       if (looksLikeMessageKey(v) || NON_SECRET_VALUES.has(v)) return false;
-      if (redact && looksLikeLabel(v)) return false; // an i18n label: `password: "Enter your password"`
+      // A text for a person ("Enter your password") is not a secret, but only when the name says so or the value reads as
+      // a sentence; a capitalised phrase behind a plain credential name stays redacted (`password = "Correct Horse Battery"`).
+      if (redact && ((isLabelName(g.name ?? "") && looksLikeLabel(v)) || readsAsSentence(v))) return false;
       // `key: "Please enter your password"` is a label; a space in the value only counts for strong credential names.
       return !/\s/.test(v) || hasStrongWord(g.name ?? "");
     },
@@ -349,7 +386,10 @@ export function isHighEntropyToken(tok: string, redact = false): boolean {
   if (redact) {
     if (isIntegrityHash(tok) || isRoute(tok)) return false;
     // a git object id inside a URL or lock-file reference: `commit/<sha>`, `#<sha>`
-    const rest = tok.replace(/(?:(?:commit|tree|blob)\/|[#@])[0-9a-f]{40}(?![0-9A-Za-z])/gi, "");
+    const rest = tok.replace(
+      /(?:commit\/|\b(?:sha1?|rev)=)(?:[0-9a-f]{40}|[0-9a-f]{64})(?![0-9A-Za-z])/gi,
+      "",
+    );
     if (rest !== tok) return isHighEntropyToken(rest, false);
   }
   return (

@@ -1,7 +1,7 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: the patterns are source text with template literals
 // Mutation check for the description validators (issue #22): disables one rule at a time by editing its source line,
 // runs the describe tests, and reports whether a test failed ("killed") or not ("SURVIVED"). The edited file is
-// restored after every run, also on Ctrl-C. Part of `pnpm check` since issue #108: a surviving mutation (a rule that no
+// restored after every run, also on SIGINT, SIGTERM and SIGHUP. A baseline run must be green first, and a compile error, crash or timeout is reported as ERROR, never as a kill. Part of `pnpm check` since issue #108: a surviving mutation (a rule that no
 // test notices) fails the check. Usage: pnpm exec tsx scripts/describe-mutations.ts
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -165,13 +165,13 @@ const MUTATIONS: Mutation[] = [
   {
     name: "redactor: commit ids redacted again",
     file: "secrets.ts",
-    find: 'accept: (g, redact) => !(redact && COMMIT_CONTEXT.test(g.ctx ?? "")),',
+    find: 'accept: (g, redact) => !(redact && isCommitId(g.h ?? "", g.ctx ?? "")),',
     replace: "accept: () => true,",
   },
   {
     name: "redactor: i18n labels redacted again",
     file: "secrets.ts",
-    find: "if (redact && looksLikeLabel(v)) return false;",
+    find: 'if (redact && ((isLabelName(g.name ?? "") && looksLikeLabel(v)) || readsAsSentence(v))) return false;',
     replace: "",
   },
   {
@@ -194,39 +194,68 @@ const MUTATIONS: Mutation[] = [
   },
 ];
 
-let survived = 0;
+const TEST_CMD = "pnpm vitest run packages/core/src/describe --reporter=dot --bail=1";
+type Outcome = "green" | "killed" | "error";
+let lastOutput = "";
+
+/** Runs the describe tests. "killed" means a test failed; a compile error, crash or timeout is "error", not a kill. */
+function runTests(): Outcome {
+  try {
+    execSync(TEST_CMD, { stdio: "pipe", timeout: 300_000 });
+    return "green";
+  } catch (e) {
+    const err = e as { status?: number | null; signal?: string | null; stdout?: Buffer; stderr?: Buffer };
+    const out = `${err.stdout?.toString() ?? ""}\n${err.stderr?.toString() ?? ""}`;
+    lastOutput = `status=${err.status} signal=${err.signal} ${out}`;
+    if (err.signal != null || err.status == null) return "error"; // timeout or killed
+    // With --bail the run stops at the first failure, so there may be no summary. A file that did not load or
+    // compile is not a kill; anything else that exits non-zero is a failed test.
+    if (/Transform failed|SyntaxError|ReferenceError|Failed to (?:load|resolve|parse)|error TS\d+/.test(out))
+      return "error";
+    return "killed";
+  }
+}
+
 let current: { path: string; original: string } | null = null;
 const restore = (): void => {
   if (current !== null) writeFileSync(current.path, current.original);
+  current = null;
 };
-process.on("SIGINT", () => {
-  restore();
-  process.exit(130);
-});
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
+  process.on(sig, () => {
+    restore();
+    process.exit(130);
+  });
+}
+process.on("exit", restore);
+
+if (runTests() !== "green") {
+  console.log("baseline: the describe tests are not green without any mutation; fix them first");
+  process.exit(1);
+}
+
+let bad = 0;
 for (const m of MUTATIONS) {
   const path = join(dir, m.file);
   const original = readFileSync(path, "utf8");
   if (!original.includes(m.find)) {
     console.log(`${m.name}: PATTERN NOT FOUND in ${m.file}`);
-    survived++;
+    bad++;
     continue;
   }
   current = { path, original };
   writeFileSync(path, original.replace(m.find, m.replace));
-  let failed = false;
+  let outcome: Outcome;
   try {
-    execSync("pnpm vitest run packages/core/src/describe --reporter=dot --bail=1", {
-      stdio: "pipe",
-      timeout: 300_000,
-    });
-  } catch {
-    failed = true;
+    outcome = runTests();
   } finally {
     restore();
-    current = null;
   }
-  if (!failed) survived++;
-  console.log(`${m.name}: ${failed ? "killed" : "SURVIVED"}`);
+  if (outcome === "error") console.log(lastOutput.slice(-800));
+  if (outcome !== "killed") bad++;
+  console.log(
+    `${m.name}: ${outcome === "killed" ? "killed" : outcome === "green" ? "SURVIVED" : "ERROR (not a kill)"}`,
+  );
 }
-console.log(`${MUTATIONS.length - survived} of ${MUTATIONS.length} mutations killed`);
-process.exit(survived === 0 ? 0 : 1);
+console.log(`${MUTATIONS.length - bad} of ${MUTATIONS.length} mutations killed`);
+process.exit(bad === 0 ? 0 : 1);

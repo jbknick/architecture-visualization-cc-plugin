@@ -55,10 +55,6 @@ describe("redactor leaves alone (issue #108)", () => {
     ["i18n key", `t("auth.password"); { passwordLabel: "Password" }`],
     ["commit sha after a word", "See commit 356a192b7913b04c54574d18c28d46e6395428ab for details."],
     ["commit sha in a url", "https://github.com/o/r/commit/356a192b7913b04c54574d18c28d46e6395428ab"],
-    [
-      "sha after a hash",
-      "resolved: git+ssh://git@github.com/o/r.git#356a192b7913b04c54574d18c28d46e6395428ab",
-    ],
     ["rev assignment", 'rev = "356a192b7913b04c54574d18c28d46e6395428ab"'],
     [
       "sri hash",
@@ -70,11 +66,49 @@ describe("redactor leaves alone (issue #108)", () => {
     ["authenticate strategy", 'passport.authenticate("local", { session: false });'],
     ["cli flag with a variable", "tool deploy --password $DEPLOY_PASSWORD --token ${TOKEN}"],
   ];
-  for (const [name, text] of same) {
+  for (const [name, text] of same)
     it(`does not change ${name}`, () => {
       expect(redactForFactSheet(text)).toBe(text);
     });
-  }
+
+  it("redacts a capitalised multi-word value behind a plain credential name (as main does)", () => {
+    for (const t of [
+      'const password = "Correct Horse Battery Staple";',
+      'DB_PASSWORD = "Winter Is Coming"',
+      'passphrase: "Blue Monkey Tiger Lamp"',
+      'token: "Abc Def"',
+      'const secret = "Purple Elephant Dance"',
+    ])
+      expect(redactForFactSheet(t), t).toContain("<redacted>");
+  });
+
+  it("leaves a label alone only when the name says label or the text reads as a sentence", () => {
+    expect(redactForFactSheet('passwordText: "Show Password Field"')).toBe(
+      'passwordText: "Show Password Field"',
+    );
+    expect(redactForFactSheet('password: "Enter your password"')).toBe('password: "Enter your password"');
+  });
+
+  it("redacts a hex run after ref, digest, checksum, @, a # fragment or a signature header again", () => {
+    const h = "356a192b7913b04c54574d18c28d46e6395428ab";
+    for (const t of [
+      `ref ${h}`,
+      `digest: ${h}`,
+      `checksum=${h}`,
+      `git@${h}`,
+      `https://example.com/page#${h}`,
+      `Signature: keyId=abc, sha ${h}`,
+      `commit ${h}0`,
+      `commit ${h.slice(0, 36)}`,
+    ])
+      expect(redactForFactSheet(t), t).toContain("<redacted>");
+  });
+
+  it("keeps exactly 40 or 64 hex digits after commit, sha, rev or /commit/", () => {
+    const h = "356a192b7913b04c54574d18c28d46e6395428ab";
+    for (const t of [`commit ${h}`, `sha: ${h}`, `rev=${h}`, `/commit/${h}`, `commit ${h}${h.slice(0, 24)}`])
+      expect(redactForFactSheet(t), t).toBe(t);
+  });
 
   it("still reports a bare 40-digit hex on the description side", () => {
     expect(scanSecrets("commit 356a192b7913b04c54574d18c28d46e6395428ab")).toContain("hex-secret");

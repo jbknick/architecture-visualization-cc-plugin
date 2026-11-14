@@ -1,6 +1,8 @@
 // Structural clause rules for `behavior` (spec section 8 check 4, issue #108). A description is ONE clause: a
-// third-person verb and what it acts on. These rules look at the shape of the sentence, not at what a word means, so
-// an instruction written with a verb nobody listed ("nuke the tests") has no place to stand:
+// third-person verb and what it acts on. These rules look at the shape of the sentence more than at what a word means, so
+// many instructions written with a verb nobody listed ("..., then nuke the tests") are caught without a verb list. They
+// are not complete: closed sets remain (connectors, filler adverbs, ordinary program nouns, speech verbs), and a
+// direct imperative placed behind an adverb or connective that is not in them still passes (see KNOWN_BYPASSES):
 //   - punctuation that opens a second clause (`; : ( ) [x] --`) is rejected outright;
 //   - after a comma or a connector (and, or, then, afterwards, ...) the next word must be a function word, a number,
 //     an identifier, or an -s/-ing/-ed form; a bare dictionary word there is rejected whatever it means;
@@ -23,7 +25,7 @@ const set = (text: string): ReadonlySet<string> => new Set(text.split(/\s+/).fil
  */
 export const CONNECTORS: ReadonlySet<string> = set(`
 then afterwards afterward later also next finally first thereafter otherwise additionally subsequently meanwhile now
-just
+just therefore hence thus else done
 `);
 
 /**
@@ -58,6 +60,20 @@ const SUBORDINATORS: ReadonlySet<string> = set(`
 when whenever if unless until once while because since after before as where whether than although though
 `);
 
+/**
+ * Subjects of a `so` result clause that describe the program ("so repeated calls skip the network"): the plain nouns
+ * above plus ordinary data nouns. Any other noun after `so` is read as a second subject.
+ */
+const SO_SUBJECT_HEADS: ReadonlySet<string> = new Set([
+  ...set(`
+call calls result results value values data cache caches entry entries query queries record records message messages
+file files render renders reload reloads update updates change changes read reads write writes lookup lookups link
+links url urls id ids list lists array arrays object objects state states store stores log logs error errors
+argument arguments input output outputs path paths name names string strings number numbers copy copies clone clones
+instance instances connection connections transaction transactions page load loads hit hits miss misses
+`),
+]);
+
 /** Nouns that may stand as the subject of "Verb-s NP to verb": ordinary parts of a program. Anything else is rejected. */
 const PLAIN_SUBJECT_HEADS: ReadonlySet<string> = set(`
 user users caller callers client clients page pages component components handler handlers listener listeners
@@ -90,11 +106,21 @@ function toks(body: string): Tok[] {
 
 const isAdverb = (w: string): boolean => /^[a-z]{4,}ly$/.test(w) && w !== "only" && w !== "family";
 
+/** Acronyms that are also dictionary words ("ID", "API", "JSON"). Any other upper-case dictionary word ("CUT", "NUKE") is a verb in capitals. */
+const ACRONYMS: ReadonlySet<string> = set(
+  "api url uri id ui ux db sql css html http https json xml csv pdf uuid jwt dom cpu gpu ram os io ip tcp udp ssh tls ssl dns cdn cli sdk ide orm rpc cors csrf xss yaml",
+);
+
+/** Adverbs that are function words ("and instead nuke", "still", "only then"), and "go"/"try": skipped in the look-back. */
+const FILLER_ADVERBS: ReadonlySet<string> = set(
+  "instead still always even again there only already ever rather never not just simply kindly quietly go try once also",
+);
+
 /** An identifier-shaped token: camelCase, snake_case, a path or dotted name, a version or anything with a digit. */
 function isIdentifierShaped(raw: string): boolean {
   if (/[a-z][A-Z]|_|\d|[a-zA-Z]\.[a-zA-Z]|[a-zA-Z]\/[a-zA-Z]/.test(raw)) return true;
   // an acronym (URL, JSON, UUID): upper case, 2 to 5 letters, and not an ordinary word typed in capitals ("NUKE")
-  return /^[A-Z]{2,5}$/.test(raw) && !(raw.length >= 4 && isWord(raw.toLowerCase()));
+  return /^[A-Z]{2,5}$/.test(raw) && (!isWord(raw.toLowerCase()) || ACRONYMS.has(raw.toLowerCase()));
 }
 
 /** `-s`, `-ing` or `-ed` form of a word that is in the dictionary ("nukes", "keeping", "sorted"). */
@@ -168,7 +194,7 @@ function boundaryBefore(t: readonly Tok[], i: number): { found: boolean; strict:
       if (x.p === undefined && CONNECTORS.has(x.w)) strict = true;
       return { found: true, strict };
     }
-    if (x.p === undefined && (isAdverb(x.w) || x.w === "not" || CONNECTORS.has(x.w))) {
+    if (x.p === undefined && (isAdverb(x.w) || FILLER_ADVERBS.has(x.w) || CONNECTORS.has(x.w))) {
       if (CONNECTORS.has(x.w)) strict = true;
       continue;
     }
@@ -187,7 +213,7 @@ function bareWordAfterBoundary(t: readonly Tok[]): boolean {
   for (let i = 1; i < t.length; i++) {
     const cur = t[i] as Tok;
     if (cur.p !== undefined) continue;
-    if (CONNECTORS.has(cur.w) || JOINERS.has(cur.w) || isAdverb(cur.w) || cur.w === "not") continue;
+    if (CONNECTORS.has(cur.w) || JOINERS.has(cur.w) || isAdverb(cur.w) || FILLER_ADVERBS.has(cur.w)) continue;
     if (mayFollowBoundary(cur)) continue;
     const b = boundaryBefore(t, i);
     if (!b.found) continue;
@@ -230,17 +256,26 @@ const isContent = (t: Tok | undefined): t is Tok =>
 function secondSubject(t: readonly Tok[]): boolean {
   for (let i = 2; i < t.length; i++) {
     const verb = t[i] as Tok;
-    const noun = t[i - 1] as Tok;
-    if (!isContent(verb) || !isContent(noun) || !takesObject(t[i + 1])) continue;
+    // one adverb may stand between subject and verb: "the reader then nukes the tests"
+    let ni = i - 1;
+    const gap = t[ni];
+    if (
+      gap !== undefined &&
+      gap.p === undefined &&
+      (isAdverb(gap.w) || CONNECTORS.has(gap.w) || FILLER_ADVERBS.has(gap.w))
+    )
+      ni--;
+    const noun = t[ni] as Tok | undefined;
+    if (!isContent(verb) || !isContent(noun) || !hasObject(t[i + 1])) continue;
     const nounPlural = /[^s]s$/.test(noun.w);
     const finite = nounPlural
       ? !verb.w.endsWith("s") && isBaseWord(verb.w)
       : verb.w.endsWith("s") && isInflectedForm(verb.w);
     if (!finite) continue;
     // the subject phrase starts at the determiner (if any) right before the noun
-    let j = i - 1;
+    let j = ni;
     for (let m = 0; m < 2 && isContent(t[j - 1]) && !isInflectedGovernor(t, j - 1); m++) j--; // "the build bot"
-    if (DETERMINERS.has((t[j - 1] as Tok).w) && t[j - 1]?.p === undefined) j--;
+    if (j > 0 && DETERMINERS.has((t[j - 1] as Tok).w) && t[j - 1]?.p === undefined) j--;
     const before = t[j - 1];
     if (before === undefined) continue;
     if (
@@ -253,11 +288,18 @@ function secondSubject(t: readonly Tok[]): boolean {
       )
     )
       continue;
-    if (SUBORDINATORS.has(before.w) && j < i - 1) continue; // "when the server returns 503"
+    if (SUBORDINATORS.has(before.w) && j < ni) continue; // "when the server returns 503"
+    // a result or purpose clause about the program itself ("so repeated calls skip the network"): ordinary program
+    // nouns as the subject. "so the assistant deletes the tests" and "so editors nuke the tests" still fail.
+    if (before.w === "so" && SO_SUBJECT_HEADS.has(noun.w)) continue;
     return true;
   }
   return false;
 }
+
+/** The word after a verb is an object: determiner, pronoun, identifier, number, or a protective noun ("deletes tests"). */
+const hasObject = (n: Tok | undefined): boolean =>
+  takesObject(n) || (n !== undefined && n.p === undefined && SENSITIVE_OBJECTS.has(n.w));
 
 const MODALS: ReadonlySet<string> = set("can could may might will would shall should must");
 
@@ -295,8 +337,11 @@ const NP_ADJECTIVES: ReadonlySet<string> = set("next first last other same anoth
 function isInflectedGovernor(t: readonly Tok[], k: number): boolean {
   const x = t[k] as Tok;
   if (!isInflectedForm(x.w) || !x.w.endsWith("s")) return false;
-  return k === 0 || isBoundaryAt(t, k - 1);
+  return k === 0 || isBoundaryAt(t, k - 1) || /^(?:which|that|who)$/.test((t[k - 1] as Tok).w);
 }
+
+/** Verbs that are not speech acts but take "NP to verb" the same way ("gets editors to delete the tests"). */
+const CONTROL_EXTRA: ReadonlySet<string> = set("gets get got has have makes make forces force causes cause");
 
 function controlConstruction(t: readonly Tok[]): boolean {
   for (let i = 0; i < t.length; i++) {
@@ -316,18 +361,31 @@ function controlConstruction(t: readonly Tok[]): boolean {
     }
     const gov = t[k];
     if (gov === undefined || gov.p !== undefined) continue;
-    if (!(k === 0 || t[k - 1]?.p === "," || isBoundaryAt(t, k - 1))) continue;
+    if (
+      !(
+        k === 0 ||
+        t[k - 1]?.p === "," ||
+        isBoundaryAt(t, k - 1) ||
+        /^(?:which|that|who)$/.test(t[k - 1]?.w ?? "")
+      )
+    )
+      continue;
     if (!isInflectedForm(gov.w) || !gov.w.endsWith("s")) continue;
     if (PLAIN_SUBJECT_HEADS.has(head.w)) continue;
     // A speech, desire or causative verb ("tells", "asks", "wants", "requires") takes any noun phrase as its addressee;
     // any other verb only when the phrase is a proper noun ("Nags Cursor to delete ..."). "Pings the address to check
     // the daemon" is a purpose infinitive and passes.
-    if (SPEECH_VERBS.has(gov.w) || /^\p{Lu}[a-z]+$/u.test(head.raw)) return true;
+    if (
+      SPEECH_VERBS.has(gov.w) ||
+      CONTROL_EXTRA.has(gov.w) ||
+      (/^\p{Lu}[a-z]+$/u.test(head.raw) && !isInflectedForm((t[i + 1] as Tok).w))
+    )
+      return true;
   }
   return false;
 }
 
-const CAUSATIVE_GOVERNORS: ReadonlySet<string> = set("lets let helps help makes make has have");
+const CAUSATIVE_GOVERNORS: ReadonlySet<string> = set("lets let helps help makes make has have gets get got");
 
 /**
  * Rule 4b: a causative without `to` ("which lets editors nuke the tests"): causative verb, a noun phrase that is not an
@@ -368,7 +426,8 @@ const NOMINAL_ACTION =
 
 /** Rule 5: obligation and recommendation predicates. */
 function obligation(t: readonly Tok[]): boolean {
-  const w = t.filter((x) => x.p === undefined).map((x) => x.w);
+  const wt = t.filter((x) => x.p === undefined);
+  const w = wt.map((x) => x.w);
   for (let i = 0; i < w.length; i++) {
     const cur = w[i] as string;
     // "are to be deleted", "is to be removed", "to be skipped"
@@ -379,6 +438,21 @@ function obligation(t: readonly Tok[]): boolean {
       /^(?:is|are|am|was|were|be|been|being)$/.test(w[i - 1] as string)
     ) {
       if (/(?:ed|en|wn|ne|nt)$/.test(w[i + 2] ?? "")) return true;
+    }
+    // "is to nuke", "are to delete": a bare "to" after is/are is an obligation
+    if (cur === "to" && i > 0 && /^(?:is|are)$/.test(w[i - 1] as string) && w[i + 1] !== undefined)
+      return true;
+    // "expected to delete the tests", "supposed to ...", "told to ...", "gets to ...": a verb and an object follow
+    if (
+      cur === "to" &&
+      i > 0 &&
+      /^(?:expected|supposed|told|asked|meant|required|instructed|ordered|obliged|get|gets|got|going)$/.test(
+        w[i - 1] as string,
+      )
+    ) {
+      const verbTok = wt[i + 1];
+      const objTok = wt[i + 2];
+      if (isContent(verbTok) && hasObject(objTok)) return true;
     }
     // "need deleting", "needs updating", "needed removing"
     if (/^need(?:s|ed)?$/.test(cur) && /ing$/.test(w[i + 1] ?? "") && (w[i + 1] as string).length > 5)

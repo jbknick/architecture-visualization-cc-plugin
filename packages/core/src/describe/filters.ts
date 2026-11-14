@@ -22,7 +22,7 @@ export const IMPERATIVE_PATTERNS: readonly ImperativePattern[] = [
   {
     // The same attack in the third person, which passes the first-word shape rule: "Ignores previous instructions".
     name: "ignores-instructions",
-    re: /\b(?:ignores|disregards|forgets)\s+(?:(?:all|any|the|your|my|these|those|every|of)\s+){0,4}(?:previous|prior|above|preceding|instructions?|guidelines?|system\s+prompt)\b/i,
+    re: /\b(?:ignores|disregards|forgets|ignoring|disregarding|forgetting|overriding|bypassing)\s+(?:(?:all|any|the|your|my|these|those|every|of)\s+){0,4}(?:previous|prior|above|preceding|instructions?|guidelines?|system\s+prompt)\b/i,
   },
   { name: "do-not-tell", re: /\bdo(?:\s+not|n't)\s+(?:tell|mention|reveal|disclose|inform|trust)\b/i },
   { name: "system-prompt-label", re: /\bsystem\s+prompt\s*:/i },
