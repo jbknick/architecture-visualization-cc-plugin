@@ -14,7 +14,7 @@ import type { FactSheet } from "../types.js";
 import { BATCH_SIZE, backlogPriority } from "./backlog.js";
 import { routeFor } from "./route.js";
 import { BATCH_RESULT_JSON_SCHEMA } from "./schema.js";
-import { storeDescriptions } from "./store.js";
+import { MAX_DESCRIBE_ATTEMPTS, recordDescribeFailure, storeDescriptions } from "./store.js";
 import { logUsage } from "./usage.js";
 import { validateDescription } from "./validate.js";
 
@@ -45,8 +45,6 @@ const AUTH_CACHE_MS = 10 * 60 * 1000;
 const AUTH_TIMEOUT_MS = 10_000;
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
 const KILL_GRACE_MS = 150;
-/** A failed row is retried once on the retry route; at this many attempts it stays failed. */
-export const MAX_ATTEMPTS = 2;
 
 /**
  * How many functions fit one call in the time left, from the M0 numbers (about 3.3 s cold start, 0.4 s per
@@ -310,14 +308,10 @@ function ensureQueued(store: Store, sheet: FactSheet): void {
     .run(sheet.contentKey, sheet.id, priority);
 }
 
+/** Counts one failed attempt (shared rule with the MCP path: `pending` after the first, `failed` after the second). */
 function markFailed(store: Store, sheet: FactSheet, why: string): void {
   ensureQueued(store, sheet);
-  store.db
-    .prepare(
-      `UPDATE backlog SET status = 'failed', attempts = attempts + 1, last_error = ?, claimed_by = NULL, claimed_at = NULL
-       WHERE content_key = ?`,
-    )
-    .run(why.slice(0, 200), sheet.contentKey);
+  recordDescribeFailure(store, sheet.contentKey, why.slice(0, 200));
 }
 
 /**
@@ -431,7 +425,6 @@ export async function describeWithWorker(
             contentKey: sheet.contentKey,
             description: v.value,
             model: route.model,
-            provenance: "worker",
           });
         } else {
           markFailed(store, sheet, `${v.reason}: ${v.detail}`);
@@ -452,9 +445,12 @@ export async function describeWithWorker(
 }
 
 /**
- * The pre-commit describer: sheets whose backlog row is not yet `failed` run on `opts.task`; rows already
- * `failed` once (attempts below `MAX_ATTEMPTS`), and the ones that fail in the first pass, run once on
- * `describe.retry` (Sonnet by default) when time is left. A row that fails twice stays `failed`.
+ * The pre-commit describer: sheets with no failed attempt yet run on `opts.task`; sheets that failed once (backlog
+ * `attempts` = 1, from an earlier run, from the MCP describer or from the first pass here) run once on
+ * `describe.retry` (Sonnet by default) when time is left. The attempt count is the shared one
+ * (`MAX_DESCRIBE_ATTEMPTS`, see `recordDescribeFailure`), so a function is tried at most twice in total across the
+ * pre-commit path and the MCP path; a row that reached the limit is `failed` and skipped, a `claimed` row belongs to
+ * someone else and is skipped too.
  */
 export async function describeWithRetry(
   store: Store,
@@ -467,17 +463,15 @@ export async function describeWithRetry(
   const retry: FactSheet[] = [];
   for (const s of sheets) {
     const row = backlogRow(store, s.contentKey);
-    if (row?.status === "failed") {
-      if (row.attempts < MAX_ATTEMPTS) retry.push(s);
-    } else fresh.push(s);
+    if (row && (row.status === "failed" || row.status === "claimed" || row.attempts >= MAX_DESCRIBE_ATTEMPTS))
+      continue;
+    if (row && row.attempts >= 1) retry.push(s);
+    else fresh.push(s);
   }
   const first = await describeWithWorker(store, fresh, opts);
   const total: WorkerResult = { ...first };
-  const failedNow = fresh.filter((s) => backlogRow(store, s.contentKey)?.status === "failed");
-  const second = [
-    ...retry,
-    ...failedNow.filter((s) => (backlogRow(store, s.contentKey)?.attempts ?? 0) < MAX_ATTEMPTS),
-  ];
+  const failedNow = fresh.filter((s) => (backlogRow(store, s.contentKey)?.attempts ?? 0) === 1);
+  const second = [...retry, ...failedNow];
   if (second.length > 0) {
     // The first pass counted its failures; they move into the retry pass's own tally.
     total.failed -= failedNow.length;

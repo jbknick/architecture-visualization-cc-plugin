@@ -166,7 +166,7 @@ const rows = (p: GantryPaths, sql: string) => {
   }
 };
 const workerDescriptions = (p: GantryPaths) =>
-  rows(p, "SELECT * FROM descriptions WHERE provenance = 'worker'");
+  rows(p, "SELECT * FROM descriptions WHERE provenance = 'model'");
 const porcelain = (dir: string) => git(dir, ["status", "--porcelain", "--ignored"]).out;
 
 describe("precommit.mode off (the default)", () => {

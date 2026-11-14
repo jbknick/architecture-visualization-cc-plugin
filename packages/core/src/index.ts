@@ -9,6 +9,7 @@ export * from "./describe/route.js";
 export * from "./describe/schema.js";
 export * from "./describe/secrets.js";
 export * from "./describe/store.js";
+export * from "./describe/submit.js";
 export * from "./describe/templates.js";
 export * from "./describe/usage.js";
 export * from "./describe/validate.js";

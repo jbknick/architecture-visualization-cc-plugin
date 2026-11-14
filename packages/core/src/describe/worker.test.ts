@@ -5,9 +5,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type GantryConfig, loadConfig } from "../config/index.js";
 import type { Store } from "../store/index.js";
 import type { FactSheet } from "../types.js";
-import { syncBacklog } from "./backlog.js";
+import { claimBatch, syncBacklog } from "./backlog.js";
 import { buildFactSheet, FUNCTION_LIKE_KINDS } from "./factsheet.js";
 import { routeFor } from "./route.js";
+import { MAX_DESCRIBE_ATTEMPTS } from "./store.js";
+import { submitDescriptions } from "./submit.js";
 import { cleanupData, type Indexed, indexedFixture } from "./testkit.js";
 import { estimateCostUsd, logUsage, PRICE_PER_MTOK } from "./usage.js";
 import {
@@ -109,7 +111,7 @@ const status = (key: string) =>
     | undefined;
 const descCount = () =>
   (
-    ix.store.db.prepare("SELECT COUNT(*) AS n FROM descriptions WHERE provenance = 'worker'").get() as {
+    ix.store.db.prepare("SELECT COUNT(*) AS n FROM descriptions WHERE provenance = 'model'").get() as {
       n: number;
     }
   ).n;
@@ -219,10 +221,10 @@ describe("describeWithWorker", () => {
     });
     expect(descCount()).toBe(sheets.length);
     const d = ix.store.db
-      .prepare("SELECT provenance, model, behavior FROM descriptions WHERE provenance = 'worker' LIMIT 1")
+      .prepare("SELECT provenance, model, behavior FROM descriptions WHERE provenance = 'model' LIMIT 1")
       .get();
     expect(d).toMatchObject({
-      provenance: "worker",
+      provenance: "model",
       model: "haiku",
       behavior: "Returns the total of the given numbers.",
     });
@@ -254,7 +256,7 @@ describe("describeWithWorker", () => {
     const r = await run(sheets.slice(0, 2));
     expect(r.described).toBe(2);
     const b = (
-      ix.store.db.prepare("SELECT behavior FROM descriptions WHERE provenance = 'worker' LIMIT 1").get() as {
+      ix.store.db.prepare("SELECT behavior FROM descriptions WHERE provenance = 'model' LIMIT 1").get() as {
         behavior: string;
       }
     ).behavior;
@@ -292,12 +294,12 @@ describe("describeWithWorker", () => {
     expect(usage()[0]?.input_tokens).toBeNull();
   });
 
-  it("invalid or missing output marks the function failed with an attempt and a reason", async () => {
+  it("invalid or missing output counts an attempt and records a reason (pending after the first)", async () => {
     fake.configure({ mode: "invalid" });
     const r = await run(sheets.slice(0, 3));
     expect(r).toMatchObject({ described: 0, failed: 3, queued: 0 });
     const s = status(sheets[0]?.contentKey as string);
-    expect(s).toMatchObject({ status: "failed", attempts: 1 });
+    expect(s).toMatchObject({ status: "pending", attempts: 1 });
     expect(s?.last_error).toMatch(/^(injection|shape|identifier|schema)/);
     fake.configure({ mode: "missing" });
     const m = await run(sheets.slice(3, 4));
@@ -377,11 +379,11 @@ describe("describeWithRetry", () => {
     ]);
     expect(
       ix.store.db
-        .prepare("SELECT model, provenance FROM descriptions WHERE provenance = 'worker' LIMIT 1")
+        .prepare("SELECT model, provenance FROM descriptions WHERE provenance = 'model' LIMIT 1")
         .get(),
     ).toEqual({
       model: "sonnet",
-      provenance: "worker",
+      provenance: "model",
     });
   });
 
@@ -414,5 +416,34 @@ describe("describeWithRetry", () => {
     });
     expect(r.described).toBe(0);
     expect(fake.runCalls().map((c) => c.model)).toEqual(["haiku"]);
+  });
+
+  it("a function is tried at most MAX_DESCRIBE_ATTEMPTS times in total across the worker and the MCP submit path", async () => {
+    expect(MAX_DESCRIBE_ATTEMPTS).toBe(2);
+    const target = sheets[0] as FactSheet;
+    const o = {
+      task: "describe.precommit" as const,
+      deadlineMs: 20_000,
+      config,
+      env: { ...process.env },
+      batchSize: 40,
+    };
+    // attempt 1: the worker fails it (pending, attempts 1)
+    fake.configure({ mode: "invalid", perModel: { sonnet: "valid" } });
+    await describeWithWorker(ix.store, [target], o);
+    expect(status(target.contentKey)).toMatchObject({ status: "pending", attempts: 1 });
+    // attempt 2: a describer claims it and submits a bad description through the MCP path -> parked as failed
+    const { batchId, items } = claimBatch(ix.store, "w1", 40);
+    expect(items.map((i) => i.contentKey)).toContain(target.contentKey);
+    const r = submitDescriptions(ix.store, batchId, [
+      { contentKey: target.contentKey, description: { behavior: "" } },
+    ]);
+    expect(r.rejected).toHaveLength(1);
+    expect(status(target.contentKey)).toMatchObject({ status: "failed", attempts: 2 });
+    // the hook path must not try it a third time, on any route
+    const before = fake.runCalls().length;
+    const res = await describeWithRetry(ix.store, [target], o);
+    expect(fake.runCalls()).toHaveLength(before);
+    expect(res).toMatchObject({ described: 0, failed: 0 });
   });
 });
