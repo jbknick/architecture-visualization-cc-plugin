@@ -66,11 +66,18 @@ const INJECTED = {
 };
 
 describe("server skeleton", () => {
-  it("is named gantry, has the version it was given and lists the two describer tools", async () => {
+  it("is named gantry, has the version it was given and lists the describer and the browse tools", async () => {
     const { client } = await setup();
     expect(client.getServerVersion()).toMatchObject({ name: "gantry", version: "9.9.9" });
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual(["gantry_claim_batch", "gantry_submit_descriptions"]);
+    expect(tools.map((t) => t.name).sort()).toEqual([
+      "gantry_browse",
+      "gantry_claim_batch",
+      "gantry_find_similar",
+      "gantry_node",
+      "gantry_search",
+      "gantry_submit_descriptions",
+    ]);
     for (const t of tools) {
       expect(t.description).toContain(UNTRUSTED_NOTICE);
       expect(t.description).toContain("untrusted_description");
@@ -85,7 +92,14 @@ describe("server skeleton", () => {
   });
 
   it("registers tools from a list, so a later issue adds one entry", () => {
-    expect(TOOLS.map((t) => t.name)).toEqual(["gantry_claim_batch", "gantry_submit_descriptions"]);
+    expect(TOOLS.map((t) => t.name).sort()).toEqual([
+      "gantry_browse",
+      "gantry_claim_batch",
+      "gantry_find_similar",
+      "gantry_node",
+      "gantry_search",
+      "gantry_submit_descriptions",
+    ]);
   });
 
   it("answers outside a git repository with a JSON error and keeps serving", async () => {
@@ -101,7 +115,7 @@ describe("server skeleton", () => {
     expect(r.isError).toBe(true);
     expect(r.json).toMatchObject({ error: "not_a_git_repo" });
     expect(r.blocks).toBe(1);
-    expect((await conn.client.listTools()).tools).toHaveLength(2);
+    expect((await conn.client.listTools()).tools).toHaveLength(6);
   });
 
   it("turns a throwing handler into an error payload and survives", async () => {

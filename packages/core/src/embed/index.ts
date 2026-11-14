@@ -19,6 +19,7 @@ import {
 } from "./vec.js";
 
 export {
+  cachedEmbedder,
   EMBED_BATCH_SIZE,
   EMBED_MAX_TOKENS,
   type Embedder,

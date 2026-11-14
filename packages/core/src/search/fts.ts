@@ -7,6 +7,8 @@ export interface SearchOptions {
   workspace?: string;
   exported?: boolean;
   limit?: number;
+  /** Also match the suggested name, behavior and search terms of stored descriptions (hybrid search). Default false. */
+  descriptions?: boolean;
 }
 
 export interface SearchHit {
@@ -28,8 +30,16 @@ const EXACT_NAME_BOOST = 2;
 /** Quotes a token for FTS5. Tokens are already alphanumeric; doubling quotes keeps the function safe regardless. */
 const quote = (t: string): string => `"${t.replaceAll('"', '""')}"*`;
 
-function runMatch(store: Store, terms: string[], joiner: " AND " | " OR "): { id: string; rank: number }[] {
-  const match = `{name_tokens path} : (${terms.map(quote).join(joiner)})`;
+const NAME_PATH_COLUMNS = "name_tokens path";
+const ALL_COLUMNS = "name_tokens suggested_name path behavior search_terms";
+
+function runMatch(
+  store: Store,
+  terms: string[],
+  joiner: " AND " | " OR ",
+  columns: string,
+): { id: string; rank: number }[] {
+  const match = `{${columns}} : (${terms.map(quote).join(joiner)})`;
   try {
     return store.db
       .prepare(
@@ -52,8 +62,9 @@ export function ftsSearch(store: Store, q: string, opts: SearchOptions = {}): Se
   const terms = [...new Set(splitIdentifier(query))];
   if (terms.length === 0) return [];
 
-  let rows = runMatch(store, terms, " AND ");
-  if (rows.length === 0 && terms.length > 1) rows = runMatch(store, terms, " OR ");
+  const columns = opts.descriptions ? ALL_COLUMNS : NAME_PATH_COLUMNS;
+  let rows = runMatch(store, terms, " AND ", columns);
+  if (rows.length === 0 && terms.length > 1) rows = runMatch(store, terms, " OR ", columns);
 
   const files = new Map(store.effectiveFiles().map((f) => [f.id, f]));
   let workspaceId: string | undefined;

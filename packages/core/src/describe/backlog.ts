@@ -4,6 +4,7 @@ import path from "node:path";
 import { isSensitive } from "../discover/index.js";
 import { hashSymbol } from "../hash/index.js";
 import { type ParsedFile, parseSource } from "../parse/index.js";
+import { refreshDescriptionFts } from "../search/descfts.js";
 import type { Store } from "../store/index.js";
 import type { Description, FactSheet, SymbolRecord } from "../types.js";
 import {
@@ -207,6 +208,8 @@ export function syncBacklog(store: Store, opts: SyncOptions = {}): BacklogSyncRe
       }
     }
   });
+  // Stored descriptions into the FTS columns (an incremental index rewrites rows without them).
+  refreshDescriptionFts(store, full ? {} : { keys: new Set(groups.keys()) });
   return result;
 }
 
@@ -315,4 +318,31 @@ export function estimate(store: Store, opts: { exportsFirst?: boolean } = {}): E
     batches,
     rounds: Math.ceil(batches / BATCHES_PER_ROUND),
   };
+}
+
+export interface BacklogCounts {
+  total: number;
+  byStatus: { pending: number; claimed: number; failed: number };
+  /** Keys are the priorities present ("0", "1", "2"), each split by status; absent priorities are omitted. */
+  byPriority: Record<string, { pending: number; claimed: number; failed: number; total: number }>;
+}
+
+/** Counts of the backlog by status and by priority (spec section 10, `gantry backlog`). Read-only. */
+export function backlogCounts(store: Store): BacklogCounts {
+  const rows = store.db
+    .prepare(
+      "SELECT priority, status, COUNT(*) AS n FROM backlog GROUP BY priority, status ORDER BY priority, status",
+    )
+    .all() as { priority: number; status: "pending" | "claimed" | "failed"; n: number }[];
+  const out: BacklogCounts = { total: 0, byStatus: { pending: 0, claimed: 0, failed: 0 }, byPriority: {} };
+  for (const r of rows) {
+    out.total += r.n;
+    out.byStatus[r.status] += r.n;
+    const key = String(r.priority);
+    const p = out.byPriority[key] ?? { pending: 0, claimed: 0, failed: 0, total: 0 };
+    out.byPriority[key] = p;
+    p[r.status] += r.n;
+    p.total += r.n;
+  }
+  return out;
 }
