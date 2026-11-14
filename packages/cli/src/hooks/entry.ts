@@ -10,10 +10,8 @@ import {
   openStore,
   resolvePaths,
   type Store,
+  syncBacklog,
 } from "@gantry/core";
-
-/** First part of a contentKey (spec section 7): `<exactHash>:<PROMPT_MAJOR>`. */
-export const PROMPT_MAJOR = "p1";
 
 export const HOOK_NAMES = [
   "session-start",
@@ -26,8 +24,6 @@ export const HOOK_NAMES = [
 ] as const;
 export type HookName = (typeof HOOK_NAMES)[number];
 
-const FUNCTION_LIKE = new Set(["function", "method", "component", "hook"]);
-const ENTRY_FILE = /(^|\/)(routes?|pages?|app|api)\/|(^|\/)(index|main|server|entry|router)\.[cm]?[jt]sx?$/;
 const GIT_MAX_BUFFER = 512 * 1024 * 1024;
 
 export function logHook(paths: GantryPaths, name: string, message: string): void {
@@ -61,13 +57,6 @@ function stagedPaths(root: string): string[] {
     : [];
 }
 
-/** Backlog priority (spec section 9): exported functions and route/entry files 0, other exported 1, local 2. */
-export function backlogPriority(kind: string, exported: boolean, filePath: string): number {
-  if (ENTRY_FILE.test(filePath)) return 0;
-  if (!exported) return 2;
-  return kind === "method" ? 1 : 0;
-}
-
 /** Pre-commit: index the staged blobs on a scratch copy of the store and enqueue undescribed functions. */
 export async function preCommit(paths: GantryPaths): Promise<number> {
   const config = loadConfig(paths);
@@ -89,22 +78,10 @@ export async function preCommit(paths: GantryPaths): Promise<number> {
     scratch = openStore(scratchPath);
     await indexRepo(paths, { layer: "working", files: [...sources.keys()], sources, store: scratch });
 
-    const described = real.db.prepare("SELECT 1 FROM descriptions WHERE content_key = ?");
-    const insert = real.db.prepare(
-      "INSERT OR IGNORE INTO backlog(content_key, symbol_id, priority, status) VALUES (?, ?, ?, 'pending')",
+    const staged = [...sources.keys()].flatMap((p) =>
+      (scratch as Store).effectiveSymbols({ fileId: `file:${p}` }),
     );
-    let added = 0;
-    real.tx(() => {
-      for (const p of sources.keys()) {
-        for (const s of (scratch as Store).effectiveSymbols({ fileId: `file:${p}` })) {
-          if (!FUNCTION_LIKE.has(s.kind)) continue;
-          const key = `${s.exactHash}:${PROMPT_MAJOR}`;
-          if (described.get(key)) continue;
-          added += insert.run(key, s.id, backlogPriority(s.kind, s.exported, p)).changes;
-        }
-      }
-    });
-    return added;
+    return syncBacklog(real, { root: paths.root, sources, symbols: staged }).enqueued;
   } finally {
     scratch?.close();
     real.close();

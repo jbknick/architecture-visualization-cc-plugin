@@ -96,11 +96,42 @@ describe("gantry init", () => {
     expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
   });
 
-  it("--estimate prints counts and the M2 placeholder line", async () => {
-    const fx = await fixture("single-pkg");
+  it("--estimate prints every estimate field for pnpm-turbo and makes no model calls", async () => {
+    const fx = await fixture("pnpm-turbo");
     const r = run(fx.dir, ["init", "--estimate"]);
+    expect(r.err).toBe("");
     expect(r.code).toBe(0);
-    expect(r.out).toContain("Descriptions not estimated until M2");
+    expect(r.out).not.toContain("not estimated");
+    const num = (label: string): number => {
+      const m = new RegExp(`${label}:\\s+([\\d,]+)`).exec(r.out);
+      expect(m, label).not.toBeNull();
+      return Number(((m as RegExpExecArray)[1] as string).replace(/,/g, ""));
+    };
+    const toDescribe = num("to describe");
+    expect(num("function-like")).toBeGreaterThan(0);
+    expect(num("templated")).toBeGreaterThan(0);
+    expect(toDescribe).toBeGreaterThan(0);
+    expect(num("input tokens")).toBe(950 * toDescribe);
+    expect(num("output tokens")).toBe(250 * toDescribe);
+    expect(num("batches")).toBe(Math.ceil(toDescribe / 40));
+    expect(num("rounds")).toBe(Math.ceil(Math.ceil(toDescribe / 40) / 4));
+    expect(r.out).toContain("0.96 s per function");
+    expect(r.out).not.toMatch(/subagent/i);
+    expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
+  });
+
+  it("--estimate --exports-first counts only priority 0-1 functions", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const all = run(fx.dir, ["init", "--estimate"]);
+    const first = run(fx.dir, ["init", "--estimate", "--exports-first"]);
+    expect(first.code).toBe(0);
+    const get = (out: string, label: string): number =>
+      Number(
+        ((new RegExp(`${label}:\\s+([\\d,]+)`).exec(out) as RegExpExecArray)[1] as string).replace(/,/g, ""),
+      );
+    expect(get(first.out, "function-like")).toBeLessThanOrEqual(get(all.out, "function-like"));
+    expect(get(first.out, "to describe")).toBeLessThanOrEqual(get(all.out, "to describe"));
+    expect(first.out).toContain("exported and entry-file functions only");
   });
 
   it("exits 2 outside a git repository", () => {
