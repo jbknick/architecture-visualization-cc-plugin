@@ -5,11 +5,13 @@ import {
   ellipsizeMiddle,
   fitCellLabel,
   fitFileLabel,
+  fitLargestFileLabel,
   layoutTreemap,
   squarify,
   stripExtension,
   TM_PAD,
   type TmNode,
+  wrapLines,
   wrapText,
   wrapTwoLines,
 } from "./treemap.ts";
@@ -224,6 +226,43 @@ describe("file name labels", () => {
   it("gives nothing when the cell is too narrow or too short", () => {
     expect(fitFileLabel(at, "orderService.ts", 8, 16)).toBeNull();
     expect(fitFileLabel(at, "orderService.ts", 100, 9)).toBeNull();
+  });
+});
+
+describe("label of the largest file in a folder", () => {
+  // 6px per character at 11px, 5.5 at 10px, 5 at 9px.
+  const at = (t: string, f: number) => t.length * (f === 11 ? 6 : f === 10 ? 5.5 : 5);
+
+  it("wraps on as few lines as it takes (at most three) at . - _ and camelCase", () => {
+    const six = (t: string) => t.length * 6;
+    expect(wrapLines(six, "customerInvoiceRepositoryFactory", 110, 3)).toEqual([
+      "customerInvoice",
+      "RepositoryFactory",
+    ]);
+    const three = wrapLines(six, "customerInvoiceRepositoryFactory", 90, 3);
+    expect(three?.join("")).toBe("customerInvoiceRepositoryFactory");
+    expect(three).toHaveLength(3);
+  });
+
+  it("uses fewer lines when they are enough and null when three are not", () => {
+    expect(wrapLines((t) => t.length * 6, "auditHandler", 100, 3)).toEqual(["auditHandler"]);
+    expect(wrapLines((t) => t.length * 6, "abcdefghijklmnop", 40, 3)).toBeNull();
+  });
+
+  it("finds a three-line label where the ordinary rule gives up", () => {
+    const name = "customerInvoiceRepository.ts";
+    expect(fitFileLabel(at, name, 70, 40)).toBeNull();
+    const l = fitLargestFileLabel(at, name, 70, 40);
+    expect(l).not.toBeNull();
+    expect(l?.lines.length).toBeLessThanOrEqual(3);
+    expect(l?.font).toBeGreaterThanOrEqual(9);
+    expect(l?.lines.join("")).toMatch(/^customerInvoiceRepository(\.ts)?$/);
+    for (const line of l?.lines ?? []) expect(at(line, l?.font ?? 11)).toBeLessThanOrEqual(70 - 6);
+  });
+
+  it("gives no label (and no ellipsis) when even three lines at 9px do not fit", () => {
+    expect(fitLargestFileLabel(at, "customerInvoiceRepository.ts", 30, 40)).toBeNull();
+    expect(fitLargestFileLabel(at, "customerInvoiceRepository.ts", 70, 14)).toBeNull();
   });
 });
 

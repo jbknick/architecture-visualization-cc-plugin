@@ -20,6 +20,7 @@ interface Probe {
   titles: Record<string, "inside" | "beside" | "hidden">;
   titleTexts: Record<string, string>;
   pills: { key: string; count: string; text: string }[];
+  markers: { rank: number; id: string; x: number; y: number; r: number }[];
   crumb: string[] | null;
   regions: { id: string; x: number; y: number; w: number; h: number }[];
   edges: {
@@ -73,6 +74,77 @@ test("large scenario, folders level (dark)", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await openLarge(page, "dirs");
   await page.screenshot({ path: resolve(shots, "map-2d-large-dark.png") });
+});
+
+test("large scenario, files level (dark)", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await openLarge(page, "files");
+  await page.screenshot({ path: resolve(shots, "map-2d-large-files-dark.png") });
+});
+
+test("large scenario, files level: 'Largest files' lists 15 files and the canvas numbers them the same way", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await openLarge(page, "files");
+  const list = page.getByTestId("largest-files");
+  const rows = list.locator(".largest-row");
+  await expect(rows).toHaveCount(15);
+  const listed = await rows.evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.file ?? ""));
+  const counts = await rows.evaluateAll((els) =>
+    els.map((e) => Number((e.querySelector(".largest-count")?.textContent ?? "").replace(/\D/g, ""))),
+  );
+  // Sorted by function count; the second line names the workspace and the folder.
+  for (let i = 1; i < counts.length; i++) expect(counts[i - 1]).toBeGreaterThanOrEqual(counts[i] as number);
+  await expect(rows.first().locator(".largest-where")).toContainText("›");
+  // The canvas has one marker per row, numbered like the list, all on screen and apart from each other.
+  const { markers } = await probe(page);
+  expect(markers).toHaveLength(15);
+  expect(markers.map((m) => m.id)).toEqual(listed);
+  expect(markers.map((m) => m.rank)).toEqual(Array.from({ length: 15 }, (_, i) => i + 1));
+  const box = await surface(page).boundingBox();
+  if (!box) throw new Error("no canvas");
+  for (const [i, m] of markers.entries()) {
+    expect(m.r * 2).toBeGreaterThanOrEqual(16);
+    expect(m.x).toBeGreaterThan(m.r);
+    expect(m.y).toBeGreaterThan(m.r);
+    expect(m.x).toBeLessThan(box.width - m.r);
+    expect(m.y).toBeLessThan(box.height - m.r);
+    for (const o of markers.slice(i + 1))
+      expect(Math.hypot(m.x - o.x, m.y - o.y)).toBeGreaterThanOrEqual(2 * m.r);
+  }
+  await expect(canvas(page).getByTestId("map-key")).toContainText(
+    "Numbers = largest files, listed on the left",
+  );
+  // Hovering a marker shows the tooltip with name, counts and path.
+  const m3 = markers[2] as (typeof markers)[number];
+  await page.mouse.move(box.x + m3.x - 3, box.y + m3.y - 3);
+  await page.mouse.move(box.x + m3.x, box.y + m3.y, { steps: 3 });
+  const tip = canvas(page).getByRole("tooltip");
+  await expect(tip).toContainText(/file · [\d,]+ functions/);
+  await expect(tip).toContainText((await rows.nth(2).getAttribute("title")) ?? "");
+  // Clicking a row selects the file (inspector) and zooms to it.
+  const before = (await probe(page)).scale;
+  await rows.nth(0).click();
+  await expect(page).toHaveURL(/sel=file/);
+  await page.waitForTimeout(1200);
+  expect((await probe(page)).scale).toBeGreaterThan(before * 2);
+});
+
+test("large scenario, files level: 'Top files in' restricts the ranking to one workspace", async ({
+  page,
+}) => {
+  await openLarge(page, "files");
+  const list = page.getByTestId("largest-files");
+  await list.getByLabel("Top files in").selectOption({ label: "web" });
+  const rows = list.locator(".largest-row");
+  await expect(rows).toHaveCount(15);
+  const where = await rows.locator(".largest-where").allTextContents();
+  for (const w of where) expect(w.trim().startsWith("web")).toBe(true);
+  const { markers } = await probe(page);
+  expect(markers.map((m) => m.id)).toEqual(
+    await rows.evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.file ?? "")),
+  );
 });
 
 /** Zooms the camera to a node by id (the canvas listens for `gantry:zoom-to`) and waits for the animation. */

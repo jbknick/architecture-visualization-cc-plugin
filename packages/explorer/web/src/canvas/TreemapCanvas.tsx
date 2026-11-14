@@ -1,6 +1,8 @@
 import "./canvas.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type Filters, type GraphNode } from "../api.ts";
+import { useRankView } from "../rankedFiles/store.ts";
+import { useRanked } from "../rankedFiles/useRanked.ts";
 import type { CanvasProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
@@ -153,6 +155,9 @@ export function TreemapCanvas({
   const [zoomedIn, setZoomedIn] = useState(false);
   const layoutViewport = useRef<{ w: number; h: number } | null>(null);
   const ui = useMapView();
+  // Files level: the largest files get numbered markers on their tiles (the same ranking as the left panel's list).
+  const filesLevel = route.level === "files" || (route.level === null && !route.focus);
+  const ranked = useRanked(nodes, getBool(route.filters, "hideTests", true), filesLevel && !baseScene.mosaic);
   const debug = useMemo(debugEnabled, []);
   const callbacks = useRef({ onSelect, onHover, onDrill });
   callbacks.current = { onSelect, onHover, onDrill };
@@ -173,6 +178,8 @@ export function TreemapCanvas({
     bright: null as Set<number> | null,
     links: [] as CellLink[],
     hoverEdge: null as string | null,
+    ranks: [] as { index: number; rank: number }[],
+    rankHover: null as number | null,
   });
 
   const sceneKey = useMemo(
@@ -230,6 +237,15 @@ export function TreemapCanvas({
   // Selection and highlight state shared with the draw loop.
   const selectedIndex = focus ? (scene.tree.index.get(focus) ?? null) : null;
   const hoverWsIndex = ui.hoverWorkspace ? (scene.tree.index.get(ui.hoverWorkspace) ?? null) : null;
+  const rankIndex = useMemo(
+    () =>
+      ranked.files.flatMap((f) => {
+        const index = scene.tree.index.get(f.id);
+        return index === undefined ? [] : [{ index, rank: f.rank }];
+      }),
+    [ranked.files, scene],
+  );
+  const rankHoverIndex = ranked.hoverFile ? (scene.tree.index.get(ranked.hoverFile) ?? null) : null;
   useEffect(() => {
     const selectedTier =
       selectedIndex === null ? -1 : kindTier((scene.tree.nodes[selectedIndex] as TreeNode).kind);
@@ -241,6 +257,8 @@ export function TreemapCanvas({
       links: selectedIndex !== null && selectedTier > 0 ? selectionLinks(scene, selectedIndex) : [],
       showDeclared: ui.showDeclared,
       panelHover: hoverWsIndex,
+      ranks: rankIndex,
+      rankHover: rankHoverIndex,
       highlightWs:
         selectedIndex !== null && selectedTier === 0
           ? selectedIndex
@@ -249,7 +267,7 @@ export function TreemapCanvas({
             : null,
     };
     engine.current?.redraw();
-  }, [scene, selectedIndex, theme, ui.showDeclared, hoverWsIndex]);
+  }, [scene, selectedIndex, theme, ui.showDeclared, hoverWsIndex, rankIndex, rankHoverIndex]);
 
   // The camera, pointer handling and the draw loop, rebuilt whenever the layout changes.
   useEffect(() => {
@@ -273,6 +291,7 @@ export function TreemapCanvas({
       titleTexts: new Map(),
       pills: [],
       labels: [],
+      markers: [],
     };
     let raf = 0;
     let anim = 0;
@@ -342,6 +361,8 @@ export function TreemapCanvas({
         hoverEdge: l.hoverEdge,
         stickyTop,
         reserved: keyRects(),
+        ranks: l.ranks,
+        rankHover: l.rankHover,
       });
       const pastFit = cam.scale > fitScale * ZOOMED_PAST_FIT;
       if (pastFit !== zoomedPast) {
@@ -507,6 +528,11 @@ export function TreemapCanvas({
       lines.push(node?.path ?? plain(n.id));
       return lines;
     };
+    /** The tile of the rank marker under a point (markers sit on top of the tiles), or null. */
+    const markerAt = (x: number, y: number): number | null => {
+      for (const m of last.markers) if (Math.hypot(x - m.x, y - m.y) <= m.r + 2) return m.index;
+      return null;
+    };
     const setHover = (i: number | null) => {
       if (live.current.hovered === i) return;
       live.current = { ...live.current, hovered: i };
@@ -542,7 +568,7 @@ export function TreemapCanvas({
         return;
       }
       const { x, y } = local(e);
-      const cell = pickCell(scene, geo, cam, x, y);
+      const cell = markerAt(x, y) ?? pickCell(scene, geo, cam, x, y);
       const edge = cell === null ? edgeAt(x, y) : null;
       if (edge) {
         hoverEdge = edge;
@@ -574,7 +600,7 @@ export function TreemapCanvas({
       box.releasePointerCapture?.(e.pointerId);
       if (wasDrag) return;
       const { x, y } = local(e);
-      const cell = pickCell(scene, geo, cam, x, y);
+      const cell = markerAt(x, y) ?? pickCell(scene, geo, cam, x, y);
       internalSelect.current = true;
       if (cell === null && hoverEdge) return;
       callbacks.current.onSelect(cell === null ? null : realId(cell));
@@ -617,6 +643,13 @@ export function TreemapCanvas({
         titles: Object.fromEntries([...last.titles].map(([i, where]) => [scene.nodes[i]?.id, where])),
         titleTexts: Object.fromEntries([...last.titleTexts].map(([i, t]) => [scene.nodes[i]?.id, t])),
         pills: last.pills,
+        markers: last.markers.map((m) => ({
+          rank: m.rank,
+          id: m.id,
+          x: Math.round(m.x),
+          y: Math.round(m.y),
+          r: m.r,
+        })),
         crumb: crumbKey === "" ? null : crumbKey.split("|").map((c) => c.slice(c.indexOf(":") + 1)),
         stickyTop,
         edges: last.edgeHits.map((e) => {
@@ -688,6 +721,16 @@ export function TreemapCanvas({
     }
     engine.current?.zoomTo(selectedIndex);
   }, [selectedIndex]);
+
+  // "Largest files": a click on a row asks the canvas to zoom to that file (even when it is already selected).
+  const { focusFile, focusNonce } = useRankView();
+  const seenFocus = useRef(focusNonce);
+  useEffect(() => {
+    if (focusNonce === seenFocus.current) return;
+    seenFocus.current = focusNonce;
+    const index = focusFile ? scene.tree.index.get(focusFile) : undefined;
+    if (index !== undefined) engine.current?.zoomTo(index);
+  }, [focusFile, focusNonce, scene]);
 
   // Keyboard: + / - zoom, 0 fits, Esc clears the selection.
   useEffect(() => {
@@ -795,6 +838,7 @@ export function TreemapCanvas({
       <MapKey
         level={route.level}
         hideTests={getBool(route.filters, "hideTests", true)}
+        ranked={rankIndex.length > 0}
         zoomed={zoomedIn}
         onToggle={redrawNow}
       />

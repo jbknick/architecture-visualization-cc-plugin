@@ -1,6 +1,9 @@
 import type { GraphNode, ViewLevel } from "../api.ts";
 import { mapView, useMapView } from "../canvas/mapView.ts";
+import { LargestFiles } from "../components/LargestFiles.tsx";
 import { useViewData } from "../hooks.ts";
+import { rankView } from "../rankedFiles/store.ts";
+import { useRanked } from "../rankedFiles/useRanked.ts";
 import type { FilterPanelProps } from "../slots.ts";
 import { currentScheme } from "../theme.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
@@ -139,6 +142,7 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
   const focusNode = trail[trail.length - 1];
   // With no explicit level the server shows Files, or just the direct contents when a focus is set.
   const level = route?.level ?? (focus ? null : "files");
+  const ranked = useRanked(nodes, getBool(filters, "hideTests", true), level === "files");
 
   return (
     <div className="filter-panel" data-view="project-map">
@@ -190,8 +194,13 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
               </>
             ) : (
               <p className="muted">
-                {ui.zoomedInto ? `Zoomed into ${ui.zoomedInto}. ` : "Showing the whole repo. "}
-                Double-click a workspace, folder or file to look inside it.
+                {ui.zoomedInto
+                  ? `Zoomed into ${ui.zoomedInto}.`
+                  : `Showing the whole repo. ${
+                      level === "files"
+                        ? "Double-click a tile to look inside."
+                        : "Double-click a workspace, folder or file to look inside it."
+                    }`}
               </p>
             )}
           </section>
@@ -218,6 +227,20 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
               <p className="muted">Showing what is directly inside {focusNode.label}.</p>
             )}
           </section>
+
+          {level === "files" && (
+            <LargestFiles
+              files={ranked.files}
+              scope={ranked.scope}
+              scopes={ranked.scopes}
+              onScope={rankView.setScope}
+              colorOf={(id) => workspaceColorAt(colourRank.get(id) ?? 0, scheme)}
+              onSelect={(id) => onRouteChange({ sel: id })}
+              onFocus={rankView.focus}
+              onHover={rankView.setHoverFile}
+              selectedId={route.sel}
+            />
+          )}
         </>
       )}
 

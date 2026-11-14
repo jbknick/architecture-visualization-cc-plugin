@@ -152,7 +152,7 @@
   left: 12px;
   bottom: 12px;
   z-index: 4;
-  max-width: min(600px, calc(100% - 24px));
+  max-width: min(860px, calc(100% - 24px));
   margin: 0;
   padding: 6px 10px;
   border: 1px solid var(--border);
@@ -280,14 +280,51 @@
   font-weight: 400;
   font-size: 11px;
 }
+/* Folder captions (Files level): bold, with a folder glyph, no box; file names are regular weight. */
 .m3-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 800;
+  letter-spacing: 0.01em;
   background: transparent;
   text-shadow:
     0 0 3px var(--m3-bg),
     0 0 3px var(--m3-bg),
     0 0 6px var(--m3-bg);
+}
+.m3-fg {
+  flex: none;
+  width: 12px;
+  height: 10px;
+  fill: currentColor;
+  opacity: 0.85;
+}
+/* Rank marker: the numbered circle that ties a dot to the "Largest files" list. */
+.m3-rank {
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 2.5px solid var(--m3-leader);
+  border-radius: 50%;
+  background: var(--m3-fg);
+  color: var(--m3-bg);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  pointer-events: auto;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px var(--m3-bg);
+}
+.m3-rank.is-hot {
+  box-shadow:
+    0 0 0 2px var(--m3-bg),
+    0 0 0 4px var(--accent);
 }
 .m3-hover {
   font-weight: 700;

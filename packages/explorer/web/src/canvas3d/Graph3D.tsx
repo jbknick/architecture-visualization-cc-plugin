@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRankView } from "../rankedFiles/store.ts";
+import { useRanked } from "../rankedFiles/useRanked.ts";
 import type { CanvasProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
@@ -20,6 +22,11 @@ export default function Graph3D({ nodes, edges, focus, onSelect, onHover }: Canv
   const [ready, setReady] = useState(false);
   const ui = useMapUi();
   const hideTests = getBool(useStore().state.route.filters, "hideTests", true);
+  // Files level: the largest files get a ringed dot, a number marker and a name (same ranking as the left panel).
+  const filesLevel = useMemo(() => nodes.some((n) => n.kind === "file"), [nodes]);
+  const ranked = useRanked(nodes, hideTests, filesLevel);
+  const { focusFile, focusNonce } = useRankView();
+  const seenFocus = useRef(focusNonce);
   // The shell refetches the view on every focus change; only a real data change may re-layout and move the camera.
   const dataKey = useMemo(
     () =>
@@ -72,6 +79,15 @@ export default function Graph3D({ nodes, edges, focus, onSelect, onHover }: Canv
     if (s) mapUi.selectIsland(focus && s.isIsland(focus) ? focus : null);
   }, [focus]);
 
+  useEffect(() => scene.current?.setRanked(ranked.files), [ranked.files]);
+  useEffect(() => scene.current?.setHoverFile(ranked.hoverFile), [ranked.hoverFile]);
+  // A click on a row of the "Largest files" list flies the camera to that file.
+  useEffect(() => {
+    if (focusNonce === seenFocus.current) return;
+    seenFocus.current = focusNonce;
+    if (focusFile) scene.current?.flyToNode(focusFile);
+  }, [focusFile, focusNonce]);
+
   useEffect(() => scene.current?.setAutoRotate(ui.autoRotate), [ui.autoRotate]);
   useEffect(() => scene.current?.setShowDeclared(ui.showDeclared), [ui.showDeclared]);
   useEffect(() => scene.current?.setLegendHover(ui.hoverIsland), [ui.hoverIsland]);
@@ -115,6 +131,14 @@ export default function Graph3D({ nodes, edges, focus, onSelect, onHover }: Canv
         <span>
           <strong>Number</strong> = imports, <strong>→</strong> points at the imported workspace
         </span>
+        {filesLevel && ranked.files.length > 0 && (
+          <>
+            {" · "}
+            <span>
+              <strong>Numbers</strong> = largest files, listed on the left
+            </span>
+          </>
+        )}
         {hideTests && (
           <>
             {" · "}

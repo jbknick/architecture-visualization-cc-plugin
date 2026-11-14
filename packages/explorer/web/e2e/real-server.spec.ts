@@ -72,7 +72,7 @@ test("project map: switch levels, drill into @acme/ui, then see Button's callers
   await page.goto(url);
   await expect(page.getByText("pnpm-turbo").first()).toBeVisible();
   // These steps drive the list renderer; the graph canvas (#36) is the default for 2D views.
-  await page.getByRole("button", { name: "List" }).click();
+  await page.getByRole("button", { name: "List", exact: true }).click();
   // The server reports counts only; nothing about a backlog or working changes yet.
   await expect(page.getByText(/^\d+ workspaces$/)).toBeVisible();
   await expect(page.getByText(/Backlog/)).toHaveCount(0);
@@ -139,7 +139,7 @@ test("project map: switch levels, drill into @acme/ui, then see Button's callers
   await page.mouse.move(2, 2);
   await page.waitForTimeout(500);
   await page.screenshot({ path: join(shots, "ego-fixture.png") });
-  await page.getByRole("button", { name: "List" }).click();
+  await page.getByRole("button", { name: "List", exact: true }).click();
 
   // Hops and the link back to the project map.
   await page.getByRole("slider").fill("1");

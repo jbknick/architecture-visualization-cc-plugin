@@ -344,3 +344,78 @@ export function fitFileLabel(
   const text = fitCellLabel((t) => measureAt(t, 10), bare, cellW, cellH, 10, padding);
   return text ? { lines: [text], font: 10 } : null;
 }
+
+/**
+ * Splits `text` into at most `maxLines` lines no wider than `maxW`, breaking only at `breakPoints` (after `.`, `-`,
+ * `_`, before a camelCase capital). Uses as few lines as possible and, for that count, the narrowest widest line.
+ * Returns null when no such split exists.
+ */
+export function wrapLines(
+  measure: (text: string) => number,
+  text: string,
+  maxW: number,
+  maxLines: number,
+): string[] | null {
+  if (measure(text) <= maxW) return [text];
+  const cuts = [0, ...breakPoints(text), text.length];
+  const n = cuts.length;
+  // best[k][j]: the smallest widest line when text[0..cuts[j]] is split into k lines.
+  const best: number[][] = [];
+  const from: number[][] = [];
+  for (let k = 0; k <= maxLines; k++) {
+    best.push(new Array<number>(n).fill(Number.POSITIVE_INFINITY));
+    from.push(new Array<number>(n).fill(-1));
+  }
+  (best[0] as number[])[0] = 0;
+  for (let k = 1; k <= maxLines; k++) {
+    for (let j = 1; j < n; j++) {
+      for (let i = 0; i < j; i++) {
+        const prev = (best[k - 1] as number[])[i] as number;
+        if (prev === Number.POSITIVE_INFINITY) continue;
+        const w = measure(text.slice(cuts[i], cuts[j]));
+        if (w > maxW) continue;
+        const v = Math.max(prev, w);
+        if (v < ((best[k] as number[])[j] as number)) {
+          (best[k] as number[])[j] = v;
+          (from[k] as number[])[j] = i;
+        }
+      }
+    }
+    if (((best[k] as number[])[n - 1] as number) < Number.POSITIVE_INFINITY) {
+      const lines: string[] = [];
+      for (let j = n - 1, kk = k; kk > 0; kk--) {
+        const i = (from[kk] as number[])[j] as number;
+        lines.unshift(text.slice(cuts[i], cuts[j]));
+        j = i;
+      }
+      return lines;
+    }
+  }
+  return null;
+}
+
+/**
+ * The label of the largest file of a folder: the full name or the name without its extension at 11, 10 or 9px,
+ * wrapped on up to three lines at `.`, `-`, `_` and camelCase breaks. Null when even that does not fit (no ellipsis).
+ */
+export function fitLargestFileLabel(
+  measureAt: (text: string, font: number) => number,
+  name: string,
+  cellW: number,
+  cellH: number,
+  padding = 3,
+): FileLabel | null {
+  const room = cellW - 2 * padding;
+  if (room <= 0) return null;
+  const bare = stripExtension(name);
+  const forms = bare === name ? [name] : [name, bare];
+  for (const font of [11, 10, 9]) {
+    for (const form of forms) {
+      const maxLines = Math.min(3, Math.floor((cellH - 3) / (font * 1.15)));
+      if (maxLines < 1) continue;
+      const lines = wrapLines((t) => measureAt(t, font), form, room, maxLines);
+      if (lines) return { lines, font };
+    }
+  }
+  return null;
+}
