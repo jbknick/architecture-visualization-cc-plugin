@@ -2,8 +2,8 @@
   {
     "id": "s01",
     "misleading": true,
-    "query": "format a date as day and short month, adding the year only when it is not the current year, empty string for invalid input",
-    "newCode": "export function describeDay(\n  input: string | number | Date | null | undefined,\n  now: Date = new Date(),\n): string {\n  if (input === null || input === undefined || input === \"\") return \"\";\n  const moment = new Date(input);\n  if (Number.isNaN(moment.getTime())) return \"\";\n  const sameYear = moment.getUTCFullYear() === now.getUTCFullYear();\n  const formatter = new Intl.DateTimeFormat(\"en-GB\", {\n    day: \"numeric\",\n    month: \"short\",\n    year: sameYear ? undefined : \"numeric\",\n    timeZone: \"UTC\",\n  });\n  return formatter.format(moment);\n}\n",
+    "query": "format a date for display in a short form",
+    "newCode": "export function describeDay(input: Date | string | number, now: Date = new Date()): string {\n  const moment = new Date(input);\n  if (Number.isNaN(moment.getTime())) return \"\";\n  const sameYear = moment.getUTCFullYear() === now.getUTCFullYear();\n  const formatter = new Intl.DateTimeFormat(\"en-US\", {\n    day: \"numeric\",\n    month: \"short\",\n    year: sameYear ? undefined : \"numeric\",\n    timeZone: \"UTC\",\n  });\n  return formatter.format(moment);\n}\n",
     "expected": {
       "tiers": ["code_vector", "semantic"],
       "situation": 1
@@ -12,8 +12,8 @@
   {
     "id": "s02",
     "misleading": true,
-    "query": "turn a past timestamp into text like '3 days ago', '2 months ago' or 'today'",
-    "newCode": "export function timeSinceLabel(then: number, reference: number): string {\n  const elapsedDays = Math.max(0, Math.floor((reference - then) / 86_400_000));\n  const steps: [string, number][] = [\n    [\"year\", 365],\n    [\"month\", 30.4],\n    [\"day\", 1],\n  ];\n  for (const [unit, size] of steps) {\n    const count = Math.floor(elapsedDays / size);\n    if (count >= 1) return `${count} ${unit}${count === 1 ? \"\" : \"s\"} ago`;\n  }\n  return \"today\";\n}\n",
+    "query": "turn a past timestamp into text like '3 days ago'",
+    "newCode": "export function timeSinceLabel(then: number, reference: number): string {\n  const elapsedDays = Math.max(0, Math.floor((reference - then) / 86_400_000));\n  const steps: [string, number][] = [\n    [\"year\", 365],\n    [\"month\", 30],\n    [\"day\", 1],\n  ];\n  for (const [unit, size] of steps) {\n    const count = Math.floor(elapsedDays / size);\n    if (count >= 1) return `${count} ${unit}${count === 1 ? \"\" : \"s\"} ago`;\n  }\n  return \"today\";\n}\n",
     "expected": {
       "tiers": ["code_vector", "semantic"],
       "situation": 1
@@ -22,7 +22,7 @@
   {
     "id": "s03",
     "misleading": true,
-    "query": "check that a value is a non-empty string holding an absolute http, https or mailto link",
+    "query": "check that a URL uses an allowed protocol",
     "newCode": "export function looksNavigable(candidate: unknown): boolean {\n  if (typeof candidate !== \"string\") return false;\n  const text = candidate.trim();\n  if (text.length === 0) return false;\n  let parsed: URL;\n  try {\n    parsed = new URL(text);\n  } catch {\n    return false;\n  }\n  const allowed = [\"http:\", \"https:\", \"mailto:\"];\n  return allowed.indexOf(parsed.protocol) !== -1;\n}\n",
     "expected": {
       "tiers": ["code_vector", "semantic"],
@@ -32,7 +32,7 @@
   {
     "id": "s04",
     "misleading": false,
-    "query": "escape the five XML special characters in a string",
+    "query": "escape the special characters of a string for XML",
     "newCode": "export function escapeForXml(value: string): string {\n  const table: Record<string, string> = {\n    \"&\": \"&amp;\",\n    \"<\": \"&lt;\",\n    \">\": \"&gt;\",\n    '\"': \"&quot;\",\n    \"'\": \"&apos;\",\n  };\n  let out = \"\";\n  for (const ch of value) {\n    out += table[ch] ?? ch;\n  }\n  return out;\n}\n",
     "expected": {
       "tiers": ["exact", "near", "code_vector", "semantic"],
@@ -52,8 +52,8 @@
   {
     "id": "s06",
     "misleading": false,
-    "query": "keyed hash of a user id and a short code, as hex",
-    "newCode": "export async function signUserCode(userId: string, code: string, secret: string): Promise<string> {\n  const encoder = new TextEncoder();\n  const keyMaterial = await crypto.subtle.importKey(\n    \"raw\",\n    encoder.encode(secret),\n    { name: \"HMAC\", hash: \"SHA-256\" },\n    false,\n    [\"sign\"],\n  );\n  const signature = await crypto.subtle.sign(\"HMAC\", keyMaterial, encoder.encode(`${userId}:${code}`));\n  let hex = \"\";\n  for (const byte of new Uint8Array(signature)) hex += byte.toString(16).padStart(2, \"0\");\n  return hex;\n}\n",
+    "query": "get the time zone name of the current environment, falling back to UTC",
+    "newCode": "export function localZoneName(): string {\n  try {\n    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;\n    return zone ? zone : \"UTC\";\n  } catch {\n    return \"UTC\";\n  }\n}\n",
     "expected": {
       "tiers": ["exact", "near", "code_vector", "semantic"],
       "situation": 3
@@ -62,8 +62,7 @@
   {
     "id": "s07",
     "misleading": false,
-    "copyAs": "canonicalBoardLink",
-    "query": "normalise a GitHub project board URL to its canonical form, null when it is not one",
+    "copyOfExisting": true,
     "expected": {
       "tiers": ["exact", "near"],
       "situation": 1
@@ -72,8 +71,7 @@
   {
     "id": "s08",
     "misleading": false,
-    "copyAs": "distinctPeople",
-    "query": "remove repeated people from a list, keyed by lower-cased login or name",
+    "copyOfExisting": true,
     "expected": {
       "tiers": ["exact", "near"],
       "situation": 3
@@ -82,8 +80,7 @@
   {
     "id": "s09",
     "misleading": false,
-    "copyAs": "parseGithubRepo",
-    "query": "validate and normalise a GitHub repository URL into name and URL",
+    "copyOfExisting": true,
     "expected": {
       "tiers": ["exact", "near"],
       "situation": 3
@@ -92,8 +89,7 @@
   {
     "id": "s10",
     "misleading": false,
-    "copyAs": "issueLinkFor",
-    "query": "build the URL of a repository's issue page",
+    "copyOfExisting": true,
     "expected": {
       "tiers": ["exact", "near"],
       "situation": 1

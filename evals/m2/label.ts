@@ -3,20 +3,21 @@
  * picks 20 for the operator to spot-check. Every distinct alert at the LOOSE thresholds of the replay is labelled
  * once, so the sweep can score any threshold pair. The prompt carries private code to the model (approved for this
  * issue); results go only to `$GANTRY_PRIVATE_DIR/m2/`: `labels.json` (key to true/false), `label-detail.jsonl`
- * (key, verdict, one-line reason), `spotcheck.json` (20 opaque ids). Prints aggregate counts and the opaque ids.
+ * (key, verdict, one-line reason), Prints aggregate counts. The operator's spot-check sample is drawn by `spotcheck.ts`.
  *
  * Usage: GANTRY_PRIVATE_DIR=... CLAUDE_PLUGIN_DATA=<data dir> pnpm tsx evals/m2/label.ts <clone>
  * <clone> only supplies git history (`git show <commit>^:<path>`); it is not modified.
  */
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { git, privateDir, writePrivate } from "./lib.js";
+import { requireDataDir } from "./safety.js";
 import { type Cand, dupKey, importKey, loadEdits } from "./sweep.js";
 
 const repo = resolve(process.argv[2] ?? "");
+requireDataDir();
 const claudeBin = process.env.CLAUDE_CODE_EXECPATH ?? join(homedir(), ".local", "bin", "claude");
 
 const RUBRIC = `You label alerts from a code-reuse guard. Each item is one alert shown to a developer who just edited a file.
@@ -118,7 +119,6 @@ const labels: Record<string, boolean> = existsSync(labelsFile)
   : {};
 const detail = join(privateDir(), "label-detail.jsonl");
 const todo = [...items.values()].filter((i) => labels[i.key] === undefined);
-const ids = new Map<string, string>(); // call-local id to key
 const SYSTEM = join(privateDir(), "label-system.txt");
 writeFileSync(SYSTEM, RUBRIC);
 
@@ -203,7 +203,6 @@ async function lane(): Promise<void> {
     process.stderr.write(`labelled ${Object.keys(labels).length}/${items.size}\n`);
   }
 }
-void ids;
 await Promise.all([lane(), lane(), lane()]);
 
 // usage of the labelling calls, accumulated across resumed runs (the headless calls are not in the copy's usage_log)
@@ -219,17 +218,7 @@ await Promise.all([lane(), lane(), lane()]);
   });
 }
 
-// spot-check sample: 20 labelled alerts, opaque ids, balanced when possible, deterministic
-const keys = Object.keys(labels).sort();
-const opaque = (k: string): string => createHash("sha256").update(k).digest("hex").slice(0, 8);
-const trues = keys.filter((k) => labels[k]).sort((a, b) => (opaque(a) < opaque(b) ? -1 : 1));
-const falses = keys.filter((k) => !labels[k]).sort((a, b) => (opaque(a) < opaque(b) ? -1 : 1));
-const pick = [...trues.slice(0, 10), ...falses.slice(0, 10)];
-if (pick.length < 20) pick.push(...[...trues.slice(10), ...falses.slice(10)].slice(0, 20 - pick.length));
-writePrivate(
-  "spotcheck.json",
-  pick.map((k) => ({ id: opaque(k), key: k, label: labels[k] })),
-);
+const keys = Object.keys(labels);
 process.stdout.write(
-  `${JSON.stringify({ alertsLabelled: keys.length, true: trues.length, false: falses.length, calls, inTok, outTok, spotcheck: pick.map(opaque) })}\n`,
+  `${JSON.stringify({ alertsLabelled: keys.length, true: keys.filter((k) => labels[k]).length, false: keys.filter((k) => !labels[k]).length, calls, inTok, outTok })}\n`,
 );

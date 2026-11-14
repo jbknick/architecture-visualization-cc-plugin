@@ -4,7 +4,7 @@
  * Timeboxed runs make model calls (the headless worker) when logged in; each run starts from a fresh copy of the
  * data dir so the staged functions are undescribed every time.
  *
- * Usage: CLAUDE_PLUGIN_DATA=<data dir of the clone> pnpm tsx evals/m2/timing.ts <clone> [--repeats 2]
+ * Usage: CLAUDE_PLUGIN_DATA=<data dir of the clone> pnpm tsx evals/m2/timing.ts <clone> [--repeats 3]
  * The clone is a throwaway: it is reset to its starting HEAD at the end. Writes `timing.json` (private) and prints
  * aggregates. Nothing is written to ~/.gantry: the hook is a script in a temp dir wired with core.hooksPath.
  */
@@ -14,12 +14,13 @@ import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { isIndexable, loadConfig, openStore, resolvePaths } from "../../packages/core/src/index.js";
 import { cliJs, git, table, writePrivate } from "./lib.js";
+import { assertThrowawayCopy, requireDataDir } from "./safety.js";
 
 const repo = resolve(process.argv[2] ?? "");
 const rArg = process.argv.indexOf("--repeats");
-const repeats = rArg >= 0 ? Number(process.argv[rArg + 1]) : 2;
-const dataSrc = process.env.CLAUDE_PLUGIN_DATA;
-if (!dataSrc) throw new Error("set CLAUDE_PLUGIN_DATA");
+const repeats = rArg >= 0 ? Number(process.argv[rArg + 1]) : 3;
+const dataSrc = requireDataDir();
+assertThrowawayCopy(repo);
 const FILES = 20;
 
 const startHead = git(repo, ["rev-parse", "HEAD"]).trim();
@@ -74,10 +75,6 @@ const modes: { name: string; mode: "off" | "timeboxed"; budgetMs: number | null 
   { name: "timeboxed 20000", mode: "timeboxed", budgetMs: 20000 },
 ];
 try {
-  git(repo, ["config", "core.hooksPath", hooks]);
-  git(repo, ["config", "user.email", "eval@example.invalid"]);
-  git(repo, ["config", "user.name", "Gantry Eval"]);
-  git(repo, ["config", "commit.gpgsign", "false"]);
   for (const m of modes) {
     for (let i = 1; i <= repeats; i++) {
       git(repo, ["reset", "-q", "--hard", startHead]);
@@ -92,7 +89,24 @@ try {
       );
       for (const f of chosen) git(repo, ["checkout", `${f.commit}^`, "--", f.rel]);
       const t0 = Date.now();
-      const r = spawnSync("git", ["commit", "-q", "-m", "eval commit"], { cwd: repo, env, encoding: "utf8" });
+      const r = spawnSync(
+        "git",
+        [
+          "-c",
+          `core.hooksPath=${hooks}`,
+          "-c",
+          "user.email=eval@example.invalid",
+          "-c",
+          "user.name=Gantry Eval",
+          "-c",
+          "commit.gpgsign=false",
+          "commit",
+          "-q",
+          "-m",
+          "eval commit",
+        ],
+        { cwd: repo, env, encoding: "utf8" },
+      );
       const wallMs = Date.now() - t0;
       if (r.status !== 0) throw new Error("git commit failed");
       const st = openStore(resolvePaths(repo, env).dbPath);
@@ -120,7 +134,6 @@ try {
     }
   }
 } finally {
-  git(repo, ["config", "--unset", "core.hooksPath"]);
   git(repo, ["reset", "-q", "--hard", startHead]);
   rmSync(hooks, { recursive: true, force: true });
 }

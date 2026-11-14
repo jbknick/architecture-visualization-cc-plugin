@@ -15,7 +15,7 @@
  * Usage: GANTRY_PRIVATE_DIR=... CLAUDE_PLUGIN_DATA=<data dir> pnpm tsx evals/m2/replay.ts <clone> [--commits 200]
  * The clone must be a throwaway (checked out and cleaned repeatedly); its original HEAD is restored at the end.
  */
-import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { changedSymbols, importFindings } from "../../packages/cli/src/hooks/findings.js";
 import { postToolUse } from "../../packages/cli/src/hooks/postToolUse.js";
@@ -33,10 +33,13 @@ import {
   resolvePaths,
 } from "../../packages/core/src/index.js";
 import { git, privateDir } from "./lib.js";
+import { assertThrowawayCopy, requireDataDir } from "./safety.js";
 
 const repo = resolve(process.argv[2] ?? "");
 const nArg = process.argv.indexOf("--commits");
 const nCommits = nArg >= 0 ? Number(process.argv[nArg + 1]) : 200;
+requireDataDir();
+assertThrowawayCopy(repo);
 const paths = resolvePaths(repo);
 const config = loadConfig(paths);
 const embedder = await cachedEmbedder()();
@@ -181,4 +184,3 @@ try {
 process.stdout.write(
   `${JSON.stringify({ commits: commits.length, edits, notIndexable: skippedEdits, seconds: Math.round((Date.now() - t0) / 1000) })}\n`,
 );
-void readFileSync;

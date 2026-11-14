@@ -39,6 +39,7 @@ import {
   type SeededCase,
   writePrivate,
 } from "./lib.js";
+import { assertThrowawayCopy } from "./safety.js";
 import { type FormResult, printSeeded, type SeededResult } from "./seeded-report.js";
 
 const repo = resolve(process.argv[2] ?? "");
@@ -49,6 +50,7 @@ const cases = JSON.parse(
 ) as SeededCase[];
 const bindings = new Map(readPrivate<SeededBinding[]>("seeded-bindings.json").map((b) => [b.id, b]));
 
+assertThrowawayCopy(repo);
 const dataCopy = mkdtempSync(join(tmpdir(), "gantry-seeded-data-"));
 cpSync(dataSrc, dataCopy, { recursive: true });
 const env = { ...process.env, CLAUDE_PLUGIN_DATA: dataCopy };
@@ -102,11 +104,13 @@ try {
     if (!b) throw new Error(`no binding for ${c.id}`);
     const existing = store.getSymbol(b.existing);
     if (!existing) throw new Error(`binding of ${c.id} does not resolve`);
-    const code = c.newCode ?? derivedCopy(b.existing, c.copyAs ?? "copiedHelper");
+    const code = c.newCode ?? derivedCopy(b.existing, b.copyAs ?? "copiedHelper");
+    const query = b.query ?? c.query;
+    if (query === undefined) throw new Error(`no query for ${c.id}`);
     const lang = b.targetFile.endsWith("x") ? "tsx" : "ts";
 
     const codeMatches = await similar({ code, caller_path: b.targetFile });
-    const queryMatches = await similar({ query: c.query, caller_path: b.targetFile });
+    const queryMatches = await similar({ query, caller_path: b.targetFile });
 
     // diagnostics
     const parsed = parseSource(`scratch.${lang}`, code);
@@ -123,7 +127,7 @@ try {
     let queryCos: number | null = null;
     let queryRank: number | null = null;
     let bestOther: number | null = null;
-    const [qv] = await embedder.embed([c.query], "query");
+    const [qv] = await embedder.embed([query], "query");
     if (qv) {
       const near = knn(store, "vec_descriptions", qv, 200);
       const ek = existing.exactHash === "" ? "" : contentKey(existing.exactHash);

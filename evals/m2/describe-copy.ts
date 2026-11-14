@@ -17,8 +17,10 @@ import {
   resolvePaths,
   syncBacklog,
 } from "../../packages/core/src/index.js";
+import { requireDataDir } from "./safety.js";
 
 const repo = resolve(process.argv[2] ?? "");
+requireDataDir();
 const maxArg = process.argv.indexOf("--max-batches");
 const maxBatches = maxArg >= 0 ? Number(process.argv[maxArg + 1]) : Number.POSITIVE_INFINITY;
 const paths = resolvePaths(repo);

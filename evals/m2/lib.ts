@@ -12,10 +12,9 @@ export const here = dirname(fileURLToPath(import.meta.url));
 export const gantryRoot = resolve(here, "..", "..");
 export const cliJs = join(gantryRoot, "plugin", "dist", "cli.js");
 
-/** Where private data goes. Required: there is no default inside the repo. */
+/** Where private data goes: `$GANTRY_PRIVATE_DIR`, else the git-ignored `evals/private/` of this repo (may be a symlink to a directory outside it). */
 export function privateDir(): string {
-  const d = process.env.GANTRY_PRIVATE_DIR;
-  if (!d) throw new Error("set GANTRY_PRIVATE_DIR to the private evals directory (outside this repo)");
+  const d = process.env.GANTRY_PRIVATE_DIR ?? join(gantryRoot, "evals", "private");
   const dir = join(resolve(d), "m2");
   mkdirSync(dir, { recursive: true });
   return dir;
@@ -53,18 +52,21 @@ export interface SeededCase {
   id: string;
   /** Name differs from the existing function's and says nothing about what it does (spec section 13). */
   misleading: boolean;
-  /** What the author would type into gantry_find_similar's `query`. */
-  query: string;
-  /** Hand-written code; absent when the case is a verbatim copy derived from the test bed at run time. */
+  /** What the author would type into gantry_find_similar's `query`. Generic for the public cases; a private case gets it from its binding. */
+  query?: string;
+  /** Hand-written, generic code. Absent for the private verbatim-copy cases. */
   newCode?: string;
-  /** For a derived copy: the new function name. The body is the existing one, copied by the runner. */
-  copyAs?: string;
+  /** Private verbatim-copy case: the runner copies the existing function from the copy under the binding's `copyAs` name. */
+  copyOfExisting?: boolean;
   expected: { tiers: string[]; situation: 1 | 2 | 3 | 4 | 5 | 6 };
 }
 export interface SeededBinding {
   id: string;
   existing: string;
   targetFile: string;
+  /** Private cases only: the query and the new function's name. */
+  query?: string;
+  copyAs?: string;
 }
 
 export const pct = (n: number, d: number): string => (d === 0 ? "n/a" : `${((100 * n) / d).toFixed(1)}%`);
