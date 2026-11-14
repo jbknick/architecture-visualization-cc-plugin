@@ -57,6 +57,19 @@ const WORKSPACES: MockWorkspace[] = [
   { name: "@acme/web", dir: "apps/web", kind: "app" },
 ];
 
+const MOCK_DUP = new Set(["slugify", "formatRelativeDate"]);
+const MOCK_DESCRIBED = new Set(["Button", "Card", "Header", "formatRelativeDate"]);
+/** Badges as the real server would compute them for the pnpm-turbo fixture (see server/views/badges.ts). */
+function mockBadges(s: MockSymbol): { badges?: string[] } {
+  const b = [...(s.exported ? ["exported"] : [])];
+  if (MOCK_DUP.has(s.name)) b.push("dup");
+  if (["function", "method", "component", "hook"].includes(s.kind)) {
+    if (!MOCK_DESCRIBED.has(s.name)) b.push("undescribed");
+    else if (s.name === "formatRelativeDate") b.push("misleading");
+  }
+  return b.length > 0 ? { badges: b } : {};
+}
+
 const sym = (name: string, kind: string, line: number, endLine: number, exported = true): MockSymbol => ({
   name,
   kind,
@@ -374,7 +387,7 @@ function projectMap(q: ParsedQuery): ViewData | { error: string; status: number 
           path: f.path,
           parent: fileId(f.path),
           stats: { functions: 1, loc: 5 },
-          ...(s.exported ? { badges: ["exported"] } : {}),
+          ...mockBadges(s),
         },
         TIER.symbol,
       );
@@ -507,7 +520,7 @@ function ego(q: ParsedQuery): ViewData | { error: string; status: number } {
       size: 1,
       path: s.file.path,
       stats: { functions: 1, loc: 5 },
-      ...(s.sym.exported ? { badges: ["exported"] } : {}),
+      ...mockBadges(s.sym),
       workspace: wsId(s.file.ws),
       side,
       hop,

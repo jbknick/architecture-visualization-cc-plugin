@@ -15,6 +15,9 @@ exports[`ego > snapshot: Button ego graph 1`] = `
   "layoutHint": "bowtie",
   "nodes": [
     {
+      "badges": [
+        "undescribed",
+      ],
       "hop": 1,
       "id": "sym:apps/web/src/routes/index.tsx#HomePage",
       "kind": "component",
@@ -31,6 +34,7 @@ exports[`ego > snapshot: Button ego graph 1`] = `
     {
       "badges": [
         "exported",
+        "undescribed",
       ],
       "hop": 0,
       "id": "sym:packages/ui/src/button.tsx#Button",
@@ -1754,6 +1758,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     {
       "badges": [
         "exported",
+        "undescribed",
       ],
       "id": "sym:apps/web/src/components/Header.tsx#Header",
       "kind": "component",
@@ -1769,6 +1774,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     {
       "badges": [
         "exported",
+        "undescribed",
       ],
       "id": "sym:apps/web/src/components/PostList.tsx#PostList",
       "kind": "component",
@@ -1784,6 +1790,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     {
       "badges": [
         "exported",
+        "undescribed",
       ],
       "id": "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
       "kind": "hook",
@@ -1799,6 +1806,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     {
       "badges": [
         "exported",
+        "undescribed",
       ],
       "id": "sym:apps/web/src/lib/slug.ts#slugify",
       "kind": "function",
@@ -1812,6 +1820,9 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       },
     },
     {
+      "badges": [
+        "undescribed",
+      ],
       "id": "sym:apps/web/src/routes/__root.tsx#RootLayout",
       "kind": "component",
       "label": "RootLayout",
@@ -1824,6 +1835,9 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       },
     },
     {
+      "badges": [
+        "undescribed",
+      ],
       "id": "sym:apps/web/src/routes/index.tsx#HomePage",
       "kind": "component",
       "label": "HomePage",
@@ -1836,6 +1850,9 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       },
     },
     {
+      "badges": [
+        "undescribed",
+      ],
       "id": "sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
       "kind": "component",
       "label": "PostPage",
@@ -1848,6 +1865,9 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       },
     },
     {
+      "badges": [
+        "undescribed",
+      ],
       "id": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
       "kind": "component",
       "label": "ProfilePage",
@@ -1862,6 +1882,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     {
       "badges": [
         "exported",
+        "undescribed",
       ],
       "id": "sym:packages/db/src/queries.ts#createPost",
       "kind": "function",
@@ -1877,6 +1898,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     {
       "badges": [
         "exported",
+        "undescribed",
       ],
       "id": "sym:packages/db/src/queries.ts#getPost",
       "kind": "function",
@@ -1892,6 +1914,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     {
       "badges": [
         "exported",
+        "undescribed",
       ],
       "id": "sym:packages/db/src/queries.ts#listPosts",
       "kind": "function",
@@ -1907,6 +1930,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     {
       "badges": [
         "exported",
+        "undescribed",
       ],
       "id": "sym:packages/ui/src/button.tsx#Button",
       "kind": "component",
@@ -1922,6 +1946,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     {
       "badges": [
         "exported",
+        "undescribed",
       ],
       "id": "sym:packages/ui/src/card.tsx#Card",
       "kind": "component",
@@ -1937,6 +1962,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     {
       "badges": [
         "exported",
+        "undescribed",
       ],
       "id": "sym:packages/utils/src/date.ts#formatRelativeDate",
       "kind": "function",
@@ -1950,6 +1976,9 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       },
     },
     {
+      "badges": [
+        "undescribed",
+      ],
       "id": "sym:packages/utils/src/slug.ts#slugify",
       "kind": "function",
       "label": "slugify",
@@ -1964,6 +1993,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     {
       "badges": [
         "exported",
+        "undescribed",
       ],
       "id": "sym:packages/utils/src/time.ts#parseTimestamp",
       "kind": "function",

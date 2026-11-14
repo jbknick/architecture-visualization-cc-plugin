@@ -2,6 +2,7 @@
 // and the links of the selected cell. Everything is drawn on one 2D canvas; cells smaller than two pixels and
 // cells outside the viewport are skipped, which keeps 30k-function maps smooth.
 
+import { drawBadgeMarks, m2Spec } from "../badges.ts";
 import { decollideMarkers } from "../rankedFiles/markers.ts";
 import { GROUP_KIND, kindTier, type TreeNode } from "./hierarchy.ts";
 import {
@@ -118,6 +119,8 @@ export interface DrawResult {
   labels: { id: string; kind: "folder" | "file"; cellW: number; lines: string[]; box?: Rect }[];
   /** The rank markers that were drawn (centre and radius in px), in rank order. */
   markers: RankMarker[];
+  /** Function tiles that got M2 badge marks (ids and badge names), for tests. */
+  badged: { id: string; badges: string[] }[];
 }
 
 export { FONT };
@@ -324,6 +327,7 @@ export function drawMap(env: DrawEnv): DrawResult {
     pills: [],
     labels: [],
     markers: [],
+    badged: [],
   };
   ctx.clearRect(0, 0, w, h);
   ctx.textBaseline = "top";
@@ -473,6 +477,11 @@ export function drawMap(env: DrawEnv): DrawResult {
         ctx.font = `500 ${fs}px ${FONT}`;
         ctx.fillStyle = "rgba(255,255,255,0.96)";
         ctx.fillText(text, x + 3, y + (ph - fs) / 2);
+      }
+      const marks = scene.nodes[i]?.badges;
+      if (marks && pw >= 16 && ph >= 12) {
+        drawBadgeMarks(ctx, marks, x + pw - 2, y + Math.min(7, ph / 2), theme.scheme, theme.surface);
+        result.badged.push({ id: node.id, badges: marks.filter((b) => m2Spec(b)) });
       }
       return;
     }
