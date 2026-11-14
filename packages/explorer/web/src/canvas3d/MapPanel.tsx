@@ -9,6 +9,8 @@ import { currentScheme } from "../theme.ts";
 import { getBool, setBool } from "../views/filterUtils.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
 import { type IslandSummary, summarizeIslands } from "./layout.ts";
+import { SettlementsHowTo } from "./settlements/Legend.tsx";
+import { assignTiers, TIER_LABEL } from "./settlements/tiers.ts";
 import { type MapStyle, mapUi, prefersReducedMotion, readStyle, rememberStyle, useMapUi } from "./ui.ts";
 
 const LEVELS = [
@@ -65,24 +67,27 @@ export function MapPanel({
   const ui = useMapUi();
   const style = readStyle(filters);
   const city = style === "city";
-  // The city is built from the project-map data; its panel lists the same workspaces and files.
-  const nodes = city && ui.cityData ? ui.cityData.nodes : shellNodes;
+  const settle = style === "settlements";
+  // The city and the settlements are built from the project-map data; the panel lists the same workspaces and files.
+  const fromMap = (city || settle) && ui.cityData;
+  const nodes = fromMap && ui.cityData ? ui.cityData.nodes : shellNodes;
   const setStyle = (next: MapStyle) => {
     rememberStyle(next);
     mapUi.touchStyle();
     const { style: _drop, ...rest } = filters;
-    onFiltersChange(next === "islands" ? { ...rest, style: "islands" } : rest);
+    onFiltersChange(next === "settlements" ? rest : { ...rest, style: next });
   };
   const level = route?.level === "workspaces" || route?.level === "files" ? route.level : "dirs";
   const hideTests = getBool(filters, "hideTests", true);
   // Biggest first; the colour index stays the island's position in the sorted-id order.
   const islands = useMemo(
     () =>
-      (city && ui.cityData ? cityWorkspaces(nodes) : summarizeIslands(nodes)).sort(
+      (fromMap ? cityWorkspaces(nodes) : summarizeIslands(nodes)).sort(
         (a, b) => b.functions - a.functions || (a.id < b.id ? -1 : 1),
       ),
-    [nodes, city, ui.cityData],
+    [nodes, fromMap],
   );
+  const tiers = useMemo(() => assignTiers(new Map(islands.map((i) => [i.id, i.functions]))), [islands]);
   const scheme = currentScheme();
   const ranked = useRanked(nodes, hideTests, level === "files");
   const reduced = prefersReducedMotion();
@@ -104,6 +109,7 @@ export function MapPanel({
           <div className="map3d-seg">
             {(
               [
+                ["settlements", "Settlements"],
                 ["city", "City"],
                 ["islands", "Islands"],
               ] as const
@@ -115,12 +121,33 @@ export function MapPanel({
             ))}
           </div>
         </fieldset>
-        {!city && (
+        {!city && !settle && (
           <button type="button" className="map3d-reset" onClick={() => mapUi.resetCamera()}>
             Reset camera
           </button>
         )}
       </div>
+      {settle && (
+        <div className="map3d-views">
+          <button type="button" className="map3d-reset" onClick={() => mapUi.setCameraView("angled")}>
+            Overview
+          </button>
+          <button type="button" className="map3d-reset" onClick={() => mapUi.setCameraView("top")}>
+            Top view
+          </button>
+          <button
+            type="button"
+            className="map3d-reset"
+            title="Down among the buildings of the biggest settlement"
+            onClick={() => mapUi.setCameraView("street")}
+          >
+            Street level
+          </button>
+          <button type="button" className="map3d-reset" onClick={() => mapUi.resetCamera()}>
+            Reset camera
+          </button>
+        </div>
+      )}
       {city && (
         <div className="map3d-views">
           <button type="button" className="map3d-reset" onClick={() => mapUi.setCameraView("top")}>
@@ -143,21 +170,23 @@ export function MapPanel({
           </button>
         </div>
       )}
-      <fieldset className="map3d-levels">
-        <legend className="muted">Level</legend>
-        {LEVELS.map((l) => (
-          <label key={l.id} className="map3d-radio">
-            <input
-              type="radio"
-              name="map3d-level"
-              checked={level === l.id}
-              onChange={() => onRouteChange?.({ level: l.id === "dirs" ? null : l.id })}
-            />
-            {l.label}
-          </label>
-        ))}
-      </fieldset>
-      {level === "files" && (
+      {!settle && (
+        <fieldset className="map3d-levels">
+          <legend className="muted">Level</legend>
+          {LEVELS.map((l) => (
+            <label key={l.id} className="map3d-radio">
+              <input
+                type="radio"
+                name="map3d-level"
+                checked={level === l.id}
+                onChange={() => onRouteChange?.({ level: l.id === "dirs" ? null : l.id })}
+              />
+              {l.label}
+            </label>
+          ))}
+        </fieldset>
+      )}
+      {level === "files" && !settle && (
         <LargestFiles
           files={ranked.files}
           scope={ranked.scope}
@@ -186,6 +215,7 @@ export function MapPanel({
           </span>
           <span className="panel-title">How to read it</span>
         </button>
+        {howtoOpen && settle && <SettlementsHowTo />}
         {howtoOpen && city && (
           <ul id="map3d-howto-body">
             <li>
@@ -224,7 +254,7 @@ export function MapPanel({
             </li>
           </ul>
         )}
-        {howtoOpen && !city && (
+        {howtoOpen && !city && !settle && (
           <ul id="map3d-howto-body">
             <li>
               <span className="map3d-sw map3d-sw-island" aria-hidden="true" />
@@ -315,6 +345,7 @@ export function MapPanel({
               <span className="map3d-legend-name">{i.label}</span>
               <span className="map3d-legend-count">{i.functions.toLocaleString("en-US")} fn</span>
               <span className="map3d-legend-meta">
+                {settle && tiers.get(i.id) ? `${TIER_LABEL[tiers.get(i.id) ?? "village"]} · ` : ""}
                 {i.wsKind} · {i.files.toLocaleString("en-US")} {i.files === 1 ? "file" : "files"}
               </span>
             </button>

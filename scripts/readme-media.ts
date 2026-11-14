@@ -3,8 +3,10 @@
 //   - the explorer's mock API with its synthetic `scenario=large` / `scenario=hub` / `scenario=dups` data (web/mock).
 // Never point this at a private repo. Run: `pnpm build && pnpm readme:media` (or `pnpm tsx scripts/readme-media.ts`).
 // Options: --only <name,name>  regenerate just those PNGs (names without .png, or `gif`).
-//          --gif                also regenerate explorer-tour.gif. The GIF is NOT rewritten otherwise: its frames are
-//                              captured mid-animation (camera flight, 3D orbit), so it is not byte-stable between runs.
+//          --gif                also regenerate explorer-tour.gif and settlements-traffic.gif. The GIFs are NOT
+//                              rewritten otherwise: their frames are captured mid-animation (camera flight, 3D orbit,
+//                              traffic), so they are not byte-stable between runs.
+// The 3D settlements stills are taken with reduced motion, so the traffic stands still where it is at t = 0.
 // The PNGs are deterministic: every shot waits for the data (data-ready), the camera (no data-moving) and then for two
 // identical consecutive screenshots. A shot that differs from the committed PNG only by anti-aliasing noise (a few
 // levels per channel) leaves the file untouched, so two runs leave `git status --short docs/readme` empty.
@@ -153,12 +155,14 @@ async function startReal(): Promise<{ url: string; stop: () => void }> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function newPage(browser: Browser, scheme: "light" | "dark" = "light"): Promise<Page> {
+async function newPage(browser: Browser, scheme: "light" | "dark" = "light", still = false): Promise<Page> {
+  // `still`: reduced motion, so the 3D settlements stand still (traffic drawn where it is at t = 0) and two
+  // screenshots in a row are identical.
   const ctx = await browser.newContext({
     viewport: { width: 1440, height: 900 },
     deviceScaleFactor: 1,
     colorScheme: scheme,
-    reducedMotion: "no-preference",
+    reducedMotion: still ? "reduce" : "no-preference",
   });
   return ctx.newPage();
 }
@@ -304,9 +308,21 @@ async function zoomTo(page: Page, id: string) {
 }
 
 async function openCity(page: Page, base: string, level: string, extra = "") {
-  await page.goto(`${base}/#/map-3d?level=${level}${extra}`);
+  await page.goto(`${base}/#/map-3d?level=${level}&style=city${extra}`);
   await page.getByTestId("map3d-canvas").locator("canvas").waitFor();
   await page.locator(".map3d[data-ready='true'][data-style='city']").waitFor({ timeout: 30_000 });
+  await settle(page);
+}
+
+/** The default 3D style (#114): settlements, roads and traffic. */
+async function openSettlements(page: Page, url: string, view?: "Street level" | string) {
+  await page.goto(url);
+  await page.getByTestId("map3d-canvas").locator("canvas").waitFor();
+  await page.locator(".map3d[data-ready='true'][data-style='settlements']").waitFor({ timeout: 30_000 });
+  await page.locator("[data-testid=map3d-canvas][data-frames]").waitFor();
+  if (view === "Street level") await page.getByRole("button", { name: "Street level" }).click();
+  else if (view) await page.locator(".map3d-legend-row").filter({ hasText: view }).first().click();
+  await sleep(view ? 900 : 300);
   await settle(page);
 }
 
@@ -389,6 +405,27 @@ async function stills(browser: Browser, mockBase: string) {
   }
   await page.context().close();
 
+  for (const scheme of ["light", "dark"] as const) {
+    const name = scheme === "light" ? "settlements" : "settlements-dark";
+    if (!want(name)) continue;
+    const p = await newPage(browser, scheme, true);
+    await openSettlements(p, `${mockBase}/#/map-3d?scenario=large`);
+    await save(p, name);
+    await p.context().close();
+  }
+  if (want("settlements-street")) {
+    const p = await newPage(browser, "light", true);
+    await openSettlements(p, `${mockBase}/#/map-3d?scenario=large`, "Street level");
+    await save(p, "settlements-street");
+    await p.context().close();
+  }
+  if (want("settlements-town")) {
+    const p = await newPage(browser, "light", true);
+    await openSettlements(p, `${mockBase}/#/map-3d?scenario=large`, "types");
+    await save(p, "settlements-town");
+    await p.context().close();
+  }
+
   if (want("project-map-dark")) {
     const dark = await newPage(browser, "dark");
     await openMap2d(dark, mockBase, "workspaces", "&scenario=large");
@@ -398,7 +435,7 @@ async function stills(browser: Browser, mockBase: string) {
 }
 
 async function fixtureStills(browser: Browser) {
-  if (!want("fixture-project-map") && !want("fixture-caller-graph")) return;
+  if (!want("fixture-project-map") && !want("fixture-caller-graph") && !want("fixture-settlements")) return;
   const real = await startReal();
   try {
     const page = await newPage(browser);
@@ -431,15 +468,21 @@ async function fixtureStills(browser: Browser) {
       await settle(page);
       await save(page, "fixture-caller-graph");
     }
-    void base;
     await page.context().close();
+    if (want("fixture-settlements")) {
+      const p = await newPage(browser, "light", true);
+      await openSettlements(p, `${base}#/map-3d`);
+      await save(p, "fixture-settlements");
+      await p.context().close();
+    }
   } finally {
     real.stop();
   }
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// GIF: switch the 2D levels, then orbit the 3D city. Frames are PNG screenshots, downscaled to 900 px wide in a
+// GIFs: the tour switches the 2D levels, then shows the 3D settlements with their traffic and orbits them; the traffic
+// GIF is a close-up of vehicles on the roads. Frames are PNG screenshots, downscaled to 900 px wide in a
 // helper page (canvas drawImage) and encoded with gifenc (pure JS, no ffmpeg).
 
 const GIF_W = 900;
@@ -484,9 +527,15 @@ async function gif(browser: Browser, mockBase: string) {
   await page.mouse.move(2, 2);
   await snap(800);
 
-  // 3D city: files level, then a slow orbit by dragging the scene.
-  await openCity(page, mockBase, "files", "&scenario=large");
-  await snap(800);
+  // 3D settlements, with the traffic moving, then a slow orbit by dragging the scene.
+  await page.goto(`${mockBase}/#/map-3d?scenario=large`);
+  await page.locator(".map3d[data-ready='true'][data-style='settlements']").waitFor({ timeout: 30_000 });
+  await page.mouse.move(2, 2);
+  await sleep(1200);
+  for (let i = 0; i < 8; i++) {
+    await sleep(80);
+    await snap(100);
+  }
   const box = await page.getByTestId("map3d-canvas").boundingBox();
   if (!box) throw new Error("3D canvas has no box");
   const cx = box.x + box.width * 0.5;
@@ -502,7 +551,27 @@ async function gif(browser: Browser, mockBase: string) {
   await page.mouse.up();
   await snap(700);
   await page.context().close();
+  await writeGif(browser, frames, "explorer-tour.gif");
+}
 
+/** Traffic close up: vehicles driving from the importer to the imported settlement, a few seconds of it. */
+async function trafficGif(browser: Browser, mockBase: string) {
+  const page = await newPage(browser);
+  const frames: Frame[] = [];
+  await page.goto(`${mockBase}/#/map-3d?scenario=large`);
+  await page.locator(".map3d[data-ready='true'][data-style='settlements']").waitFor({ timeout: 30_000 });
+  await page.locator(".map3d-legend-row").filter({ hasText: "core" }).first().click();
+  await page.mouse.move(2, 2);
+  await sleep(1500);
+  for (let i = 0; i < 36; i++) {
+    frames.push({ png: await page.screenshot(), delay: 110 });
+    await sleep(60);
+  }
+  await page.context().close();
+  await writeGif(browser, frames, "settlements-traffic.gif");
+}
+
+async function writeGif(browser: Browser, frames: Frame[], name: string) {
   // Downscale in a helper page and read the RGBA back as base64.
   const helper = await (await browser.newContext()).newPage();
   const encoder = gifenc.GIFEncoder();
@@ -532,13 +601,14 @@ async function gif(browser: Browser, mockBase: string) {
     encoder.writeFrame(index, GIF_W, GIF_H, { palette, delay: f.delay });
   }
   encoder.finish();
+  await helper.context().close();
   mkdirSync(out, { recursive: true });
-  const file = join(out, "explorer-tour.gif");
+  const file = join(out, name);
   writeFileSync(file, encoder.bytes());
   const mb = statSync(file).size / 1048576;
   const secs = frames.reduce((s, f) => s + f.delay, 0) / 1000;
-  console.log(`explorer-tour.gif ${mb.toFixed(2)} MB, ${frames.length} frames, ${secs.toFixed(1)} s`);
-  if (mb > 6) throw new Error("GIF is over 6 MB");
+  console.log(`${name} ${mb.toFixed(2)} MB, ${frames.length} frames, ${secs.toFixed(1)} s`);
+  if (mb > 6) throw new Error(`${name} is over 6 MB`);
 }
 
 async function main() {
@@ -550,7 +620,10 @@ async function main() {
   try {
     await stills(browser, mockBase);
     await fixtureStills(browser);
-    if (want("gif")) await gif(browser, mockBase);
+    if (want("gif")) {
+      await gif(browser, mockBase);
+      await trafficGif(browser, mockBase);
+    }
   } finally {
     await browser.close();
     if (mock.pid) process.kill(-mock.pid, "SIGTERM");

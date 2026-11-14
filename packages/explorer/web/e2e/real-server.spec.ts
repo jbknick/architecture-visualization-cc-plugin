@@ -161,7 +161,7 @@ test("project map: switch levels, drill into @acme/ui, then see Button's callers
   await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("button.tsx");
 });
 
-test("3D map: opens from the view switcher and draws the fixture's workspaces as a city (islands on request)", async ({
+test("3D map: opens from the view switcher and draws the fixture's workspaces as settlements (city and islands on request)", async ({
   page,
 }) => {
   mkdirSync(shots, { recursive: true });
@@ -174,16 +174,26 @@ test("3D map: opens from the view switcher and draws the fixture's workspaces as
   const legend = page.getByRole("list").filter({ has: page.getByRole("button", { name: /^ui/ }) });
   await expect(legend.getByRole("button")).toHaveCount(5);
   await page.getByLabel(/Auto-rotate/).uncheck();
+  // The default style: one settlement per workspace, each with its name and tier.
+  await expect(page.locator(".map3d[data-style='settlements']")).toBeVisible();
+  await expect(page.locator(".s3-title .s3-name")).toHaveCount(5);
   await page.waitForTimeout(2500);
   await page.screenshot({ path: join(shots, "map-3d-fixture.png") });
 
-  // Level switch goes into the hash as `level=` and the filter checkbox as `hideTests=`.
+  // The city keeps the level switch: it goes into the hash as `level=` and the filter checkbox as `hideTests=`.
+  await page.getByLabel("City").click();
+  await expect(page).toHaveURL(/style=city/);
   await page.getByLabel("Files").click();
   await expect(page).toHaveURL(/#\/map-3d\?.*level=files/);
   // (a click, not `uncheck()`: the checkbox follows the hash a few ms after the click, which `uncheck()` does not wait for)
   await page.getByLabel("Hide tests").click();
   await expect(page).toHaveURL(/hideTests=false/);
   await expect(page.getByLabel("Hide tests")).not.toBeChecked();
+  // The city lays out again for the new level and filter; a click in the list before it is ready is not replayed.
+  await expect(
+    page.locator(".map3d[data-ready='true'][data-style='city'][data-level='files']"),
+  ).toBeVisible();
+  await page.waitForTimeout(500);
   await legend.getByRole("button", { name: /^ui/ }).click();
   await expect(page).toHaveURL(/sel=ws%3A%40acme%2Fui/);
   await expect(page.getByRole("complementary", { name: "Inspector" })).toBeVisible();
@@ -193,8 +203,9 @@ test("3D map: opens from the view switcher and draws the fixture's workspaces as
   await page.getByLabel("Islands").click();
   await expect(page).toHaveURL(/style=islands/);
   await expect(page.locator(".map3d[data-ready='true']:not([data-style])")).toBeVisible();
-  await page.getByLabel("City").click();
+  await page.getByLabel("Settlements").click();
   await expect(page).not.toHaveURL(/style=/);
+  await expect(page.locator(".map3d[data-ready='true'][data-style='settlements']")).toBeVisible();
 });
 
 test("graph canvas: the treemap layout is the same after a reload; PUT /api/layout stays token-gated", async ({

@@ -129,10 +129,55 @@ test("30k-function graph: layout off the main thread, pan/zoom fps", async ({ pa
   expect(results["near pan"]?.frames ?? 0).toBeGreaterThan(5);
 });
 
+// The 3D settlements on the large mock (about 300 buildings, traffic, shadows): the first frame and the frame rate
+// with everything moving, idle and while orbiting. The GL renderer string is reported with the numbers.
+test("3D settlements: first frame and fps with life running", async ({ page }) => {
+  await page.goto("/#/map-3d?scenario=large");
+  await expect(page.locator(".map3d[data-ready='true'][data-style='settlements']")).toBeVisible({
+    timeout: 120_000,
+  });
+  const canvas = page.getByTestId("map3d-canvas");
+  await expect(canvas).toHaveAttribute("data-first-frame-at", /\d/);
+  await page.waitForTimeout(1500);
+  const renderer = await page.evaluate(() => {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    const ext = gl?.getExtension("WEBGL_debug_renderer_info");
+    return ext && gl ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : "unknown";
+  });
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("no canvas");
+  const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.move(2, 2);
+  await startRecorder(page);
+  await page.waitForTimeout(4000);
+  const idle = await stopRecorder(page);
+  await startRecorder(page);
+  await interact(page, centre, true);
+  await page.waitForTimeout(300);
+  const orbit = await stopRecorder(page);
+  const report = {
+    firstFrameAtMs: Number(await canvas.getAttribute("data-first-frame-at")),
+    sceneFirstFrameMs: Number(await canvas.getAttribute("data-first-frame-ms")),
+    buildMs: Number(await canvas.getAttribute("data-build-ms")),
+    avgSceneMs: Number(await canvas.getAttribute("data-frame-ms")),
+    vehicles: Number(await canvas.getAttribute("data-vehicles")),
+    idle,
+    orbit,
+    renderer,
+    gl: process.env.PERF_GL ?? "gpu (angle)",
+  };
+  console.log(`PERF_REPORT_SETTLEMENTS ${JSON.stringify(report)}`);
+  expect(idle.frames).toBeGreaterThan(20);
+  if (process.env.PERF_GL === undefined) {
+    expect(idle.fps).toBeGreaterThan(30);
+    expect(report.firstFrameAtMs).toBeLessThan(2000);
+  }
+});
+
 // The 3D code city at the Files level of the large mock (about 900 buildings): orbiting must stay smooth.
 // `data-frame-ms` is the CPU time the scene spends per frame (render + label placement); `data-frames` counts frames.
 test("3D city, files level: orbiting stays within a frame budget", async ({ page }) => {
-  await page.goto("/#/map-3d?level=files&scenario=large");
+  await page.goto("/#/map-3d?level=files&scenario=large&style=city");
   await expect(page.locator(".map3d[data-ready='true']")).toBeVisible({ timeout: 120_000 });
   await page.waitForTimeout(1500);
   const canvas = page.getByTestId("map3d-canvas");

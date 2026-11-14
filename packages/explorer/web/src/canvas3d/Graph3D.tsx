@@ -8,6 +8,7 @@ import { getBool } from "../views/filterUtils.ts";
 import CityCanvas from "./city/CityCanvas.tsx";
 import { fnv1a } from "./layout.ts";
 import { MapScene, type TipInfo } from "./scene.ts";
+import SettlementCanvas from "./settlements/SettlementCanvas.tsx";
 import { mapUi, prefersReducedMotion, readStyle, useMapUi } from "./ui.ts";
 
 interface Tip extends TipInfo {
@@ -157,9 +158,11 @@ function IslandsCanvas({ nodes, edges, focus, onSelect, onHover }: CanvasProps) 
   );
 }
 
-/** The map-3d canvas: the code city (default) or, with style=islands, the island rendering. */
+/** The map-3d canvas: the settlements (default), or with style=city the code city, with style=islands the islands. */
 export default function Graph3D(props: CanvasProps) {
   useMapUi(); // the remembered style can change without the hash changing
   const style = readStyle(useStore().state.route.filters);
-  return style === "islands" ? <IslandsCanvas {...props} /> : <CityCanvas {...props} />;
+  if (style === "islands") return <IslandsCanvas {...props} />;
+  if (style === "city") return <CityCanvas {...props} />;
+  return <SettlementCanvas {...props} />;
 }

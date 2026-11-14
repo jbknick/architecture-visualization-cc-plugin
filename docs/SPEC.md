@@ -20,7 +20,7 @@ Plan doc (background and rationale): https://claude.ai/artifact/7UCZZRCs4k45gPkK
 ## 2. Approved dependencies
 
 Runtime: `oxc-parser`, `oxc-resolver`, `better-sqlite3`, `sqlite-vec` (pin exact version), `@modelcontextprotocol/sdk`, `zod`, `commander`, `ignore`, `picomatch`, `@huggingface/transformers`, `@parcel/watcher`, `ws`, `@ast-grep/napi`, `sigma`, `graphology`, `graphology-layout-forceatlas2`, `elkjs`, `react`, `react-dom`, `3d-force-graph`, `three`, `three-spritetext`. Later only: `ts-morph`.
-Explorer 3D map (`packages/explorer/web`, lazy chunk only): `3d-force-graph` gives the orbit camera, picking and link rendering for the `map-3d` view; `three` is its renderer and draws the workspace islands and bundled arcs; `three-spritetext` makes the always-facing text labels. The default `city` style of the same view is a plain `three` scene (instanced boxes, tube arches, `OrbitControls` from `three/examples`, DOM labels) on the 2D project map's layout: no new dependency; `style=islands` selects the island rendering above.
+Explorer 3D map (`packages/explorer/web`, lazy chunk only): `3d-force-graph` gives the orbit camera, picking and link rendering for the `map-3d` view; `three` is its renderer and draws the workspace islands and bundled arcs; `three-spritetext` makes the always-facing text labels. The default `settlements` style of the same view (#114) is a plain `three` scene built from the project map's files-level data: one settlement per workspace (village, town, city or metropolis by function count), one procedural instanced building per file, roads and highways for workspace imports with instanced traffic, `OrbitControls` from `three/examples`, DOM labels; no new dependency, no downloaded models or textures. `style=city` selects the code city (instanced boxes and tube arches on the 2D project map's layout) and `style=islands` the island rendering above.
 Bundled asset (not a dependency): the English word list of section 8, generated from `/usr/share/dict/words` (Webster's Second International, 1934, copyright lapsed, public domain) by `scripts/build-wordlist.ts` into `packages/core/src/describe/wordlist.data.ts` (582 KB).
 Dev: `typescript`, `vitest`, `@biomejs/biome`, `tsup`, `tsx`, `vite`, `@vitejs/plugin-react`, `playwright` (explorer smoke tests only), `@types/three`, `gifenc` (root devDependency, pure-JS GIF encoder for `scripts/readme-media.ts` only; no ffmpeg needed).
 
@@ -64,7 +64,7 @@ type TaskName =
   | "overview"
   | "explain";
 type GantryConfig = {
-  precommit: { mode: "off" | "timeboxed" | "strict"; budgetMs: number; maxFunctions: number }; // off, 8000, 50
+  precommit: { mode: "off" | "timeboxed" | "strict"; budgetMs: number; maxFunctions: number }; // off, 20000, 50
   routing: Record<TaskName, { model: "haiku" | "sonnet" | "opus"; effort: "low" | "medium" | "high" }>;
   exclude: string[]; // extra globs, added to built-ins
   workspaces: { overrides: Record<string, { kind?: "app" | "package" }> };

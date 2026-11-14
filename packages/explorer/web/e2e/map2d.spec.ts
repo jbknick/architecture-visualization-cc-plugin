@@ -548,7 +548,8 @@ test("mock scenarios: header and status bar describe the scenario; the Debug tab
   await expect(page.locator(".repo-name")).toHaveText("acme-platform-monorepo");
   await expect(page.getByText("11 workspaces")).toBeVisible();
   await expect(page.getByRole("tab", { name: "Debug: workspaces" })).toHaveCount(0);
-  await expect(page.getByRole("tab")).toHaveCount(3);
+  // Project map, Function ego graph, Duplicates, 3D map.
+  await expect(page.getByRole("tab")).toHaveCount(4);
   await page.goto("/?debug=1#/project-map?level=workspaces&scenario=large");
   await expect(page.getByRole("tab", { name: "Debug: workspaces" })).toBeVisible();
   // The route keeps working when typed, without the opt-in.

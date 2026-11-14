@@ -165,7 +165,7 @@ export default function CityCanvas({ focus, onSelect, onHover }: CanvasProps) {
   useEffect(() => {
     if (ui.cameraNonce === seenCamera.current) return;
     seenCamera.current = ui.cameraNonce;
-    scene.current?.setView(ui.cameraView);
+    scene.current?.setView(ui.cameraView === "street" ? "angled" : ui.cameraView);
     if (ui.cameraView === "reset") handlers.current.onSelect(null);
   }, [ui.cameraNonce, ui.cameraView]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: fires per request (nonce)
