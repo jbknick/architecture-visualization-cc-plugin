@@ -171,7 +171,7 @@ test("the project map at workspace level draws one box per workspace", async ({ 
 
 test("List and Graph toggle swaps renderers", async ({ page }) => {
   await openMap(page);
-  await page.getByRole("button", { name: "List" }).click();
+  await page.getByRole("button", { name: "List", exact: true }).click();
   await expect(page.getByRole("listbox", { name: "Graph nodes" })).toBeVisible();
   await page.getByRole("button", { name: "Graph" }).click();
   await expect(canvas(page).locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 20_000 });

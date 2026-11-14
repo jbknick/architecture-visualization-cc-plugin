@@ -1,6 +1,8 @@
 // Drawing and hit testing for the project map: workspace boxes, the treemap inside them, routed workspace links
 // and the links of the selected cell. Everything is drawn on one 2D canvas; cells smaller than two pixels and
 // cells outside the viewport are skipped, which keeps 30k-function maps smooth.
+
+import { decollideMarkers } from "../rankedFiles/markers.ts";
 import { GROUP_KIND, kindTier, type TreeNode } from "./hierarchy.ts";
 import {
   actualInner,
@@ -27,7 +29,7 @@ import {
   mix,
   workspaceColor,
 } from "./style.ts";
-import { fitCellLabel, fitFileLabel, wrapText } from "./treemap.ts";
+import { fitCellLabel, fitFileLabel, fitLargestFileLabel, wrapText } from "./treemap.ts";
 import type { MapGeometry, Rect } from "./types.ts";
 
 export type Camera = Cam;
@@ -61,7 +63,24 @@ export interface DrawEnv {
   stickyTop?: number;
   /** Screen rectangles (the key) that count pills and titles keep clear of. */
   reserved?: Rect[];
+  /** Rank markers (Files level): the largest files, numbered from 1; `index` is the file's tree index. */
+  ranks?: { index: number; rank: number }[];
+  /** Tree index of the file the pointer is over in the "Largest files" list: its tile and marker are highlighted. */
+  rankHover?: number | null;
 }
+
+/** A rank marker as drawn: a numbered circle on (or beside) the tile of one of the largest files. */
+export interface RankMarker {
+  rank: number;
+  index: number;
+  id: string;
+  x: number;
+  y: number;
+  r: number;
+}
+
+/** Marker radius in px (an 18px circle). */
+export const MARKER_R = 9;
 
 export interface EdgeHit {
   key: string;
@@ -96,7 +115,9 @@ export interface DrawResult {
   /** Count pills that were drawn: the link key, the number shown (import count) and the full text. */
   pills: { key: string; count: string; text: string; x: number; y: number; w: number; h: number }[];
   /** The text printed on every folder strip and file cell: `cellW` is the cell's width on screen. */
-  labels: { id: string; kind: "folder" | "file"; cellW: number; lines: string[] }[];
+  labels: { id: string; kind: "folder" | "file"; cellW: number; lines: string[]; box?: Rect }[];
+  /** The rank markers that were drawn (centre and radius in px), in rank order. */
+  markers: RankMarker[];
 }
 
 export { FONT };
@@ -302,6 +323,7 @@ export function drawMap(env: DrawEnv): DrawResult {
     titleTexts: new Map(),
     pills: [],
     labels: [],
+    markers: [],
   };
   ctx.clearRect(0, 0, w, h);
   ctx.textBaseline = "top";
@@ -379,6 +401,27 @@ export function drawMap(env: DrawEnv): DrawResult {
   const dimmed = (i: number): boolean =>
     (env.bright !== null && !env.bright.has(i)) ||
     (panelHover !== null && (tree.nodes[i] as TreeNode).root !== panelHover);
+
+  // The largest file of each folder (most functions, then first in order) gets a third chance at a label.
+  const largestCache = new Map<number, number>();
+  const largestFileOf = (parent: number): number => {
+    let v = largestCache.get(parent);
+    if (v === undefined) {
+      v = -1;
+      let top = -1;
+      for (const c of (tree.nodes[parent] as TreeNode).children) {
+        const cn = tree.nodes[c] as TreeNode;
+        if (kindTier(cn.kind) !== 2 || cn.children.length > 0) continue;
+        const f = scene.functions[c] ?? 0;
+        if (f > top) {
+          top = f;
+          v = c;
+        }
+      }
+      largestCache.set(parent, v);
+    }
+    return v;
+  };
 
   setStripMeasure(measure);
   const measureAt = (weight: number, text: string, font: number) =>
@@ -511,12 +554,22 @@ export function drawMap(env: DrawEnv): DrawResult {
       // A file cell: the whole name at 10 to 11px in regular weight (on two lines when that is what it takes), and
       // a second small line with its function count when the cell has room. A name that does not fit gets no
       // label: zooming in reveals it.
-      const label = fitFileLabel((t, f) => measureAt(400, t, f), name, vw, ph, 3);
+      let label = fitFileLabel((t, f) => measureAt(400, t, f), name, vw, ph, 3);
+      if (!label && node.parent !== -1 && largestFileOf(node.parent) === i)
+        label = fitLargestFileLabel((t, f) => measureAt(400, t, f), name, vw, ph, 3);
       if (label) {
-        result.labels.push({ id: node.id, kind: "file", cellW: pw, lines: label.lines });
+        const font = label.font;
+        const lh = font * 1.15;
+        const lw = Math.max(...label.lines.map((t) => measureAt(400, t, font)));
+        result.labels.push({
+          id: node.id,
+          kind: "file",
+          cellW: pw,
+          lines: label.lines,
+          box: { x: vx + 3, y: y + 2, w: lw, h: label.lines.length * lh },
+        });
         ctx.font = `400 ${label.font}px ${FONT}`;
         ctx.fillStyle = tint.ink;
-        const lh = label.font * 1.15;
         label.lines.forEach((line, k) => {
           ctx.fillText(line, vx + 3, y + 2 + k * lh);
         });
@@ -600,6 +653,7 @@ export function drawMap(env: DrawEnv): DrawResult {
   if (panelHover !== null) outline(panelHover, 3, theme.accent);
   if (env.hovered !== null && env.hovered !== env.selected) outline(env.hovered, 2, theme.text);
   outline(env.selected, 3, theme.accent);
+  if (env.rankHover != null) outline(env.rankHover, 3, theme.accent);
   // A folder with no strip of its own (too small, or nested deeper than three levels) shows its name on hover.
   if (env.hovered !== null && env.hovered < tree.nodes.length) {
     const hn = tree.nodes[env.hovered] as TreeNode;
@@ -627,6 +681,9 @@ export function drawMap(env: DrawEnv): DrawResult {
     }
   }
 
+  // 4b. Rank markers: numbered circles on the tiles of the largest files (Files level), nudged apart.
+  drawRankMarkers(env, result, tintOf);
+
   // 5. Workspace titles last so nothing covers them; the selected and hovered ones first claim their space.
   const order = [...scene.roots]
     .filter((r) => rootBoxes[r] && result.boxes.some((b) => b.index === r))
@@ -641,6 +698,81 @@ export function drawMap(env: DrawEnv): DrawResult {
   }
   ctx.globalAlpha = 1;
   return result;
+}
+
+/**
+ * The numbered markers of the ranked files. Each sits on its tile (the middle, or a corner when the tile's name label
+ * is there); markers that would overlap are nudged apart, and none is ever dropped.
+ */
+function drawRankMarkers(
+  env: DrawEnv,
+  result: DrawResult,
+  tintOf: (root: number) => { colour: string },
+): void {
+  const ranks = env.ranks;
+  if (!ranks || ranks.length === 0) return;
+  const { ctx, scene, geo, cam, theme, w, h } = env;
+  const tree = scene.tree;
+  const R = MARKER_R;
+  const labelBox = new Map<string, Rect>();
+  for (const l of result.labels) if (l.box) labelBox.set(l.id, l.box);
+  const hitsLabel = (cx: number, cy: number, b: Rect | undefined): boolean =>
+    !!b && cx + R > b.x - 1 && cx - R < b.x + b.w + 1 && cy + R > b.y - 1 && cy - R < b.y + b.h + 1;
+  const items = [...ranks]
+    .filter((r) => r.index < tree.nodes.length)
+    .sort((a, b) => a.rank - b.rank)
+    .map((r) => {
+      const rect = screenRectOf(scene, geo, cam, r.index);
+      const id = (tree.nodes[r.index] as TreeNode).id;
+      const box = labelBox.get(id);
+      // Candidates: the middle, then the corners away from the name label.
+      const cands: [number, number][] = [
+        [rect.x + rect.w / 2, rect.y + rect.h / 2],
+        [rect.x + rect.w - R - 2, rect.y + rect.h - R - 2],
+        [rect.x + rect.w - R - 2, rect.y + R + 2],
+        [rect.x + R + 2, rect.y + rect.h - R - 2],
+      ];
+      const roomy = rect.w >= 2 * R + 4 && rect.h >= 2 * R + 4;
+      const pick =
+        (roomy ? cands.find(([cx, cy]) => !hitsLabel(cx, cy, box)) : undefined) ??
+        (cands[0] as [number, number]);
+      return { ...r, id, x: pick[0], y: pick[1] };
+    });
+  const reserved = env.reserved ?? [];
+  const placed = decollideMarkers(items, R, 2, (x, y) => {
+    if (x < R + 2 || y < R + 2 || x > w - R - 2 || y > h - R - 2) return true;
+    return reserved.some((k) => x + R > k.x && x - R < k.x + k.w && y + R > k.y && y - R < k.y + k.h);
+  });
+  const light = theme.scheme === "light";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  placed.forEach((p, k) => {
+    const it = items[k] as (typeof items)[number];
+    const hot = env.rankHover === it.index;
+    const dim = env.panelHover != null && (tree.nodes[it.index] as TreeNode).root !== env.panelHover;
+    const colour = tintOf((tree.nodes[it.index] as TreeNode).root).colour;
+    const r = hot ? R + 2 : R;
+    ctx.globalAlpha = dim ? 0.35 : 1;
+    // Halo in the canvas colour keeps the circle apart from the tiles under it.
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r + 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = hexToRgba(light ? "#ffffff" : "#0b0e13", 0.92);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = light ? "#12161d" : "#f5f7fa";
+    ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = hot ? theme.accent : colour;
+    ctx.stroke();
+    ctx.font = `700 ${it.rank > 9 ? 10 : 11}px ${FONT}`;
+    ctx.fillStyle = light ? "#ffffff" : "#10141a";
+    ctx.fillText(String(it.rank), p.x, p.y + 0.5);
+    result.markers.push({ rank: it.rank, index: it.index, id: it.id, x: p.x, y: p.y, r: R });
+  });
+  ctx.globalAlpha = 1;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
 }
 
 function drawTitle(

@@ -11,7 +11,7 @@ test("search Button, open the inspector, deep link survives reload", async ({ pa
   await page.goto("/");
   await expect(page.getByText("pnpm-turbo")).toBeVisible();
   // This test drives the list renderer; the graph canvas (#36) is the default for 2D views.
-  await page.getByRole("button", { name: "List" }).click();
+  await page.getByRole("button", { name: "List", exact: true }).click();
   await expect(page.getByRole("option", { name: /@acme\/web/ })).toBeVisible();
 
   const search = page.getByRole("combobox", { name: "Search symbols" });

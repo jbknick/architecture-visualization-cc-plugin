@@ -55,6 +55,7 @@ interface Box {
   r: number;
   b: number;
   fs: number;
+  fw: number;
 }
 
 /** Every label that is currently shown, with its on-screen box. */
@@ -73,6 +74,7 @@ async function shownLabels(page: Page): Promise<Box[]> {
           r: r.right,
           b: r.bottom,
           fs: Number.parseFloat(getComputedStyle(e.querySelector(".m3-name") ?? e).fontSize),
+          fw: Number.parseFloat(getComputedStyle(e).fontWeight),
         };
       }),
   );
@@ -198,19 +200,24 @@ for (const [level, file] of [
         expect(c.text).toMatch(/ · [\d,]+ fn$/);
         expect(c.text).not.toContain("(root)");
       }
-      // The largest files of the big folders are named in full or without extension, never cut in the middle.
+      // Folder captions are bold with a folder glyph; file names are regular weight and belong to ranked files only.
+      for (const c of boxes.filter((b) => b.cls.includes("m3-cluster")))
+        expect(c.fw).toBeGreaterThanOrEqual(700);
       const names = boxes.filter((b) => b.cls.includes("m3-file"));
-      expect(names.length).toBeGreaterThanOrEqual(6);
+      expect(names.length).toBeGreaterThanOrEqual(1);
       for (const n of names) {
-        expect(n.text).toMatch(/^[\w.-]+ · [\d,]+ fn$/);
+        expect(n.text).toMatch(/^[\w.-]+( · [\d,]+ fn)?$/);
         expect(n.text).not.toContain("…");
+        expect(n.fw).toBeLessThanOrEqual(500);
       }
+      await expect(page.locator(".m3-cluster .m3-fg").first()).toBeAttached();
+      await expect(page.getByTestId("map3d-key")).toContainText(
+        "Numbers = largest files, listed on the left",
+      );
       // No web of import lines by default.
       expect(await page.getByTestId("map3d-labels").getAttribute("data-edges")).toBe("0");
-      // Hovering a file dot draws that file's imports as thin lines (dots are small: try the named ones in turn).
-      const dots = await page
-        .locator(".m3-file[data-dot]:visible")
-        .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.dot ?? ""));
+      // Hovering a file dot draws that file's imports as thin lines (dots are small: try the ranked ones in turn).
+      const dots = (await rankProbe(page)).ranks.map((r) => `${r.dx},${r.dy}`);
       let edges = 0;
       for (const dot of dots) {
         const [dx, dy] = dot.split(",").map(Number) as [number, number];
@@ -222,7 +229,7 @@ for (const [level, file] of [
       }
       expect(edges).toBeGreaterThan(0);
       await page.screenshot({ path: resolve(shots, "map-3d-large-files-file-hover.png") });
-      // Hovering an island reveals more file names.
+      // Hovering an island lights it up.
       await page.getByRole("button", { name: /^api/ }).hover();
       await page.waitForTimeout(600);
       await page.screenshot({ path: resolve(shots, "map-3d-large-files-hover.png") });
@@ -241,6 +248,146 @@ for (const [level, file] of [
     }
   });
 }
+
+/** The map3d overlay's rank markers and file names for the Files level, in screen px relative to the canvas. */
+async function rankProbe(page: Page) {
+  const overlay = page.getByTestId("map3d-labels");
+  const ranks = JSON.parse((await overlay.getAttribute("data-ranks")) ?? "[]") as {
+    rank: number;
+    id: string;
+    x: number;
+    y: number;
+    dx: number;
+    dy: number;
+    dr: number;
+  }[];
+  const discs = JSON.parse((await overlay.getAttribute("data-discs")) ?? "[]") as {
+    id: string;
+    x: number;
+    y: number;
+    r: number;
+  }[];
+  return { ranks, discs };
+}
+
+test("3D map, large scenario, files level: 'Largest files' lists 15 files and the canvas numbers them the same way", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await openLarge(page, "files");
+  const list = page.getByTestId("largest-files");
+  const rows = list.locator(".largest-row");
+  await expect(rows).toHaveCount(15);
+  const listed = await rows.evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.file ?? ""));
+  await expect(rows.first().locator(".largest-where")).toContainText("›");
+  // 15 markers, numbered like the list, each next to its dot (leader at most 14px) and apart from each other.
+  const markers = page.locator(".m3-rank");
+  await expect(markers).toHaveCount(15);
+  const visible = await markers.evaluateAll((els) =>
+    els
+      .filter((e) => (e as HTMLElement).style.visibility === "visible")
+      .map((e) => ({ rank: Number(e.textContent), id: (e as HTMLElement).dataset.file ?? "" })),
+  );
+  expect(visible.map((m) => m.rank)).toEqual(Array.from({ length: 15 }, (_, i) => i + 1));
+  expect(visible.map((m) => m.id)).toEqual(listed);
+  const { ranks } = await rankProbe(page);
+  expect(ranks).toHaveLength(15);
+  const near: number[] = [];
+  for (const [i, m] of ranks.entries()) {
+    near.push(Math.hypot(m.x - m.dx, m.y - m.dy) - 9 - m.dr);
+    for (const o of ranks.slice(i + 1)) expect(Math.hypot(m.x - o.x, m.y - o.y)).toBeGreaterThanOrEqual(18);
+  }
+  expect(Math.max(...near)).toBeLessThanOrEqual(14.5);
+  // Hovering a marker shows the tooltip with name, counts and path.
+  const host = (await page.getByTestId("map3d-canvas").boundingBox()) as { x: number; y: number };
+  const m2 = ranks[1] as (typeof ranks)[number];
+  await page.mouse.move(host.x + m2.x - 2, host.y + m2.y - 2);
+  await page.mouse.move(host.x + m2.x, host.y + m2.y, { steps: 3 });
+  const tip = page.getByRole("status").filter({ hasText: "functions" });
+  await expect(tip).toContainText(/file · [\d,]+ functions/);
+  await expect(tip).toContainText((await rows.nth(1).getAttribute("title")) ?? "");
+  // Clicking a row selects the file (inspector).
+  await rows.nth(0).click();
+  await expect(page).toHaveURL(/sel=file/);
+  await expect(page.getByRole("complementary", { name: "Inspector" })).toBeVisible();
+});
+
+test("3D map, large scenario, files level: every file name is inside its island or within 28px of its dot", async ({
+  page,
+}) => {
+  await openLarge(page, "files");
+  const { discs } = await rankProbe(page);
+  const host = (await page.getByTestId("map3d-canvas").boundingBox()) as { x: number; y: number };
+  const names = await page.locator(".m3-file").evaluateAll((els) =>
+    els
+      .filter((e) => (e as HTMLElement).style.visibility === "visible")
+      .map((e) => {
+        const r = e.getBoundingClientRect();
+        const el = e as HTMLElement;
+        return {
+          text: e.textContent ?? "",
+          isl: el.dataset.isl ?? "",
+          dot: (el.dataset.dot ?? "0,0").split(",").map(Number) as [number, number],
+          l: r.left,
+          t: r.top,
+          r: r.right,
+          b: r.bottom,
+        };
+      }),
+  );
+  expect(names.length).toBeGreaterThanOrEqual(1);
+  for (const n of names) {
+    const l = n.l - host.x;
+    const t = n.t - host.y;
+    const r = n.r - host.x;
+    const b = n.b - host.y;
+    const own = discs.find((d) => d.id === n.isl);
+    const inside =
+      !!own &&
+      [
+        [l, t],
+        [r, t],
+        [l, b],
+        [r, b],
+      ].every(([x, y]) => Math.hypot((x as number) - own.x, (y as number) - own.y) <= own.r);
+    const nx = Math.min(Math.max(n.dot[0], l), r);
+    const ny = Math.min(Math.max(n.dot[1], t), b);
+    const toDot = Math.hypot(nx - n.dot[0], ny - n.dot[1]);
+    expect(inside || toDot <= 28, `${n.text}: ${toDot.toFixed(1)}px from its dot, inside=${inside}`).toBe(
+      true,
+    );
+    // Never over another island.
+    for (const d of discs) {
+      if (d.id === n.isl) continue;
+      const cx = Math.min(Math.max(d.x, l), r);
+      const cy = Math.min(Math.max(d.y, t), b);
+      expect(Math.hypot(cx - d.x, cy - d.y), `${n.text} over another island`).toBeGreaterThanOrEqual(d.r);
+    }
+  }
+});
+
+test("3D map, large scenario, files level (dark)", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await openLarge(page, "files");
+  await page.screenshot({ path: resolve(shots, "map-3d-large-files-dark.png") });
+});
+
+test("3D map, large scenario, files level: 'Top files in' restricts the ranking to one workspace", async ({
+  page,
+}) => {
+  await openLarge(page, "files");
+  const list = page.getByTestId("largest-files");
+  await list.getByLabel("Top files in").selectOption({ label: "core" });
+  const rows = list.locator(".largest-row");
+  await expect(rows).toHaveCount(15);
+  for (const w of await rows.locator(".largest-where").allTextContents())
+    expect(w.trim().startsWith("core")).toBe(true);
+  await page.waitForTimeout(400);
+  const { ranks } = await rankProbe(page);
+  expect(ranks.map((m) => m.id)).toEqual(
+    await rows.evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.file ?? "")),
+  );
+});
 
 test("3D map, large scenario: the workspace list fits at 900px, 'How to read it' collapses and scrolling still works", async ({
   page,

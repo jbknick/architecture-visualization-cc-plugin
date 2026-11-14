@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import "./map3d.css";
+import { LargestFiles } from "../components/LargestFiles.tsx";
+import { rankView } from "../rankedFiles/store.ts";
+import { useRanked } from "../rankedFiles/useRanked.ts";
 import type { FilterPanelProps } from "../slots.ts";
 import { currentScheme } from "../theme.ts";
 import { getBool, setBool } from "../views/filterUtils.ts";
@@ -45,6 +48,7 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
     [nodes],
   );
   const scheme = currentScheme();
+  const ranked = useRanked(nodes, hideTests, level === "files");
   const reduced = prefersReducedMotion();
   // "How to read it": open on a first visit to a small map, collapsed to one line afterwards; remembered.
   const [seenBefore] = useState(() => readStore(SEEN_KEY) !== null);
@@ -73,6 +77,19 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
           </label>
         ))}
       </fieldset>
+      {level === "files" && (
+        <LargestFiles
+          files={ranked.files}
+          scope={ranked.scope}
+          scopes={ranked.scopes}
+          onScope={rankView.setScope}
+          colorOf={(id) => workspaceColorAt(islands.find((i) => i.id === id)?.index ?? 0, scheme)}
+          onSelect={(id) => onRouteChange?.({ sel: id })}
+          onFocus={rankView.focus}
+          onHover={rankView.setHoverFile}
+          selectedId={route?.sel}
+        />
+      )}
       <section className="map3d-howto" aria-label="How to read this map">
         <button
           type="button"
@@ -119,7 +136,8 @@ export function MapPanel({ nodes, filters, onFiltersChange, route, onRouteChange
                 )}
                 {level === "files" && (
                   <>
-                    <strong>Ring</strong> = folder; <strong>dot</strong> = file (size = functions).
+                    <strong>Ring</strong> = folder; <strong>dot</strong> = file (size = functions).{" "}
+                    <strong>Numbers</strong> = largest files, listed on the left.
                   </>
                 )}
               </span>

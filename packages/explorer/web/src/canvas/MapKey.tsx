@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 /** The key lines of the project map: what a box, a line and a number mean (and what the filters hid). */
-export function keyLines(level: string | null, hideTests: boolean): string[] {
+export function keyLines(level: string | null, hideTests: boolean, ranked = false): string[] {
   const lines = [
     "Box = workspace (area = functions) · Line colour = importing workspace · dot → arrowhead: A imports from B",
   ];
@@ -10,6 +10,7 @@ export function keyLines(level: string | null, hideTests: boolean): string[] {
   if (level !== "workspaces") second.push("Tiles = folders / files (area = functions)");
   if (hideTests) second.push("Tests hidden");
   lines.push(second.join(" · "));
+  if (ranked) lines.push("Numbers = largest files, listed on the left");
   return lines;
 }
 
@@ -20,11 +21,14 @@ export function keyLines(level: string | null, hideTests: boolean): string[] {
 export function MapKey({
   level,
   hideTests,
+  ranked = false,
   zoomed = false,
   onToggle,
 }: {
   level: string | null;
   hideTests: boolean;
+  /** Files level with numbered markers on the tiles: the key says what they are. */
+  ranked?: boolean;
   zoomed?: boolean;
   /** Called after the key opened or closed (the canvas keeps its pills clear of it). */
   onToggle?: () => void;
@@ -38,7 +42,7 @@ export function MapKey({
   // The canvas redraws after every change of the key's size.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `open` is the trigger
   useEffect(() => onToggle?.(), [open, onToggle]);
-  const lines = keyLines(level, hideTests);
+  const lines = keyLines(level, hideTests, ranked);
   return (
     <div className="gc-key" data-testid="map-key" data-open={open}>
       <button

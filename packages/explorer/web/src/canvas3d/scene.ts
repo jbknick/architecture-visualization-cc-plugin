@@ -6,6 +6,7 @@
 import ForceGraph3D, { type ForceGraph3DInstance, type NodeObject } from "3d-force-graph";
 import * as THREE from "three";
 import type { GraphEdge, GraphNode } from "../api.ts";
+import type { RankedFile } from "../rankedFiles/rank.ts";
 import type { Scheme } from "../theme.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
 import {
@@ -49,6 +50,12 @@ interface NodeEntry {
   island: string;
   color: THREE.Color;
   material: THREE.MeshLambertMaterial;
+  mesh: THREE.Mesh;
+  group: THREE.Group;
+  /** The dot's radius from the layout; ranked files are drawn larger (see `applyRankStyles`). */
+  baseR: number;
+  /** Workspace-coloured ring around the dot of a ranked file. */
+  ring: THREE.Sprite | null;
 }
 
 interface IslandEntry {
@@ -79,7 +86,7 @@ interface ArcEntry {
   tHead: number;
 }
 
-type LabelKind = "island" | "dir" | "cluster" | "file" | "arc" | "hover";
+type LabelKind = "island" | "dir" | "cluster" | "file" | "rank" | "arc" | "hover";
 
 /** One DOM label (plus an optional leader line in the SVG layer) taking part in screen-space de-collision. */
 interface Lbl {
@@ -130,12 +137,12 @@ interface Rect {
 const SHADES = [0, 0.3, -0.22, 0.5, -0.38, 0.14, -0.1, 0.4] as const;
 const PAD = 3;
 const MARGIN = 5;
-/** Files level: the largest files named per folder ring, the ring size (px diameter) that earns names, and how many
- * rings per island (the biggest ones) are named by default; hovering the island names more. */
-const FILES_NAMED = 2;
-const BIG_RING_PX = 40;
-const RINGS_NAMED = 2;
 const LEADER_MAX = 24;
+/** Files level: a ranked file's name sits at most this far (px) from its dot, with a leader; its rank marker at most
+ * MARKER_LEADER_MAX px (edge of the dot to edge of the marker). The marker is an 18px circle. */
+const FILE_LEADER_MAX = 28;
+const MARKER_LEADER_MAX = 14;
+const MARKER_R = 9;
 /** An island is "big" (name block on top of it) when its radius is at least this fraction of the largest. */
 const BIG_FRACTION = 0.5;
 
@@ -172,6 +179,21 @@ function dotTexture(): THREE.Texture {
   return new THREE.CanvasTexture(c);
 }
 
+/** A ring (annulus) texture, tinted per island through the sprite material's colour. */
+function ringTexture(): THREE.Texture {
+  const c = document.createElement("canvas");
+  c.width = c.height = 64;
+  const g = c.getContext("2d");
+  if (g) {
+    g.strokeStyle = "#ffffff";
+    g.lineWidth = 8;
+    g.beginPath();
+    g.arc(32, 32, 27, 0, Math.PI * 2);
+    g.stroke();
+  }
+  return new THREE.CanvasTexture(c);
+}
+
 export class MapScene {
   private readonly graph: ForceGraph3DInstance<N>;
   private readonly extras = new THREE.Group();
@@ -188,6 +210,11 @@ export class MapScene {
   private particles: THREE.Points | null = null;
   private particleSeeds: { arc: number; phase: number; speed: number }[] = [];
   private dot: THREE.Texture | null = null;
+  private ringTex: THREE.Texture | null = null;
+  /** Files level: the ranked files (the "Largest files" list), and the one the pointer is over in the list. */
+  private ranked: RankedFile[] = [];
+  private rankedIds = new Set<string>();
+  private hoverFileId: string | null = null;
   private focus: string | null = null;
   private hoverArc: ArcEntry | null = null;
   private hoverNode: string | null = null;
@@ -325,6 +352,30 @@ export class MapScene {
     this.applyIslandsAndArcs();
   }
 
+  /** The files named in the "Largest files" list: they get a larger ringed dot, a number marker and a name. */
+  setRanked(files: RankedFile[]): void {
+    const same =
+      files.length === this.ranked.length &&
+      files.every((f, i) => f.id === this.ranked[i]?.id && f.rank === this.ranked[i]?.rank);
+    if (same) return;
+    this.ranked = files;
+    this.rankedIds = new Set(files.map((f) => f.id));
+    if (!this.layout) return;
+    this.dropLabels((l) => l.kind === "file" || l.kind === "rank");
+    this.buildRankLabels(this.layout);
+    this.measureLabels();
+    this.applyRankStyles();
+    this.lastKey = "";
+  }
+
+  /** The file under the pointer in the list: its dot, ring and marker are highlighted and its name is shown. */
+  setHoverFile(id: string | null): void {
+    if (this.hoverFileId === id) return;
+    this.hoverFileId = id;
+    this.applyRankStyles();
+    for (const l of this.labels) if (l.kind === "rank") l.el.classList.toggle("is-hot", l.nodeId === id);
+  }
+
   setShowDeclared(on: boolean): void {
     if (this.showDeclared === on) return;
     this.showDeclared = on;
@@ -434,6 +485,7 @@ export class MapScene {
     this.overlay.remove();
     this.unitSphere.dispose();
     this.dot?.dispose();
+    this.ringTex?.dispose();
     this.graph.graphData({ nodes: [], links: [] });
     this.graph._destructor();
   }
@@ -478,6 +530,16 @@ export class MapScene {
       target,
       900,
     );
+  }
+
+  private dropLabels(test: (l: Lbl) => boolean): void {
+    this.labels = this.labels.filter((l) => {
+      if (!test(l)) return true;
+      l.el.remove();
+      l.leader?.remove();
+      if (this.hoverLabel === l) this.hoverLabel = null;
+      return false;
+    });
   }
 
   private clearExtras(): void {
@@ -823,6 +885,7 @@ export class MapScene {
       this.updateParticles(0);
     }
     this.measureLabels();
+    this.applyRankStyles();
     this.applyHighlight();
   }
 
@@ -870,7 +933,17 @@ export class MapScene {
               c.functions,
               c.rank,
               (el) => {
-                el.textContent = folderCaption(names[i] as string, c.functions);
+                // Folder captions are bold with a small folder glyph, so they read apart from file names.
+                const glyph = document.createElementNS(SVG_NS, "svg");
+                glyph.setAttribute("class", "m3-fg");
+                glyph.setAttribute("viewBox", "0 0 12 10");
+                glyph.setAttribute("aria-hidden", "true");
+                const shape = document.createElementNS(SVG_NS, "path");
+                shape.setAttribute("d", "M0.5 1.2h4l1.2 1.4h5.8v6.2h-11z");
+                glyph.appendChild(shape);
+                const text = document.createElement("span");
+                text.textContent = folderCaption(names[i] as string, c.functions);
+                el.append(glyph, text);
                 el.title = `${c.key}: ${c.functions.toLocaleString("en-US")} functions in ${c.files} files`;
               },
               { leader: true },
@@ -879,36 +952,70 @@ export class MapScene {
             lbl.worldR = c.radius;
           });
         }
-        for (const c of cs) {
-          const top = c.nodeIds
-            .map((id) => this.nodesById.get(id))
-            .filter((n): n is GraphNode => !!n)
-            .sort((a, b) => b.size - a.size || (a.id < b.id ? -1 : 1))
-            .slice(0, FILES_NAMED);
-          top.forEach((n, i) => {
-            const p = layout.positions.get(n.id);
-            if (!p) return;
-            const full = folderCaption(n.label, n.size);
-            const short = folderCaption(stem(n.label), n.size);
-            const lbl = this.makeLabel("file", iid, n.size, i, (el) => {
-              el.textContent = full;
-              el.title = n.path ?? n.label;
-            });
-            lbl.variants =
-              full === short
-                ? [{ text: full, w: 0, h: 0 }]
-                : [
-                    { text: full, w: 0, h: 0 },
-                    { text: short, w: 0, h: 0 },
-                  ];
-            lbl.nodeId = n.id;
-            lbl.world = v3(p);
-            lbl.worldR = layout.nodeRadius.get(n.id) ?? 1;
-            lbl.ring = { center: v3(c.center), r: c.radius, rank: c.rank };
-          });
-        }
       }
+      this.buildRankLabels(layout);
     }
+  }
+
+  /**
+   * Files level: for each ranked file a number marker (with a short leader to its dot) and its name. The name is
+   * placed next to the dot or not at all; the marker is always shown (see `layoutLabels`).
+   */
+  private buildRankLabels(layout: Layout): void {
+    if (this.level !== "files") return;
+    for (const f of this.ranked) {
+      const n = this.nodesById.get(f.id);
+      const p = layout.positions.get(f.id);
+      const isl = this.islandOfNode.get(f.id);
+      if (!n || !p || !isl) continue;
+      const hex = `#${(this.islandEntries.get(isl.id)?.color ?? new THREE.Color("#888888")).getHexString()}`;
+      const marker = this.makeLabel(
+        "rank",
+        isl.id,
+        1e6 - f.rank,
+        f.rank - 1,
+        (el) => {
+          el.textContent = String(f.rank);
+          el.style.borderColor = hex;
+          el.setAttribute("data-rank", String(f.rank));
+          el.setAttribute("data-file", f.id);
+          el.addEventListener("pointermove", (ev) => this.markerTip(f, isl.fullLabel, ev));
+          el.addEventListener("pointerleave", () => this.cb.onTip(null, 0, 0));
+          el.addEventListener("click", () => this.cb.onSelect(f.id));
+        },
+        { leader: true, color: hex },
+      );
+      marker.nodeId = f.id;
+      marker.world = v3(p);
+      // The marker keeps clear of the dot and its ring (1.45 times the dot's radius).
+      marker.worldR = this.rankedDotR(layout.nodeRadius.get(f.id) ?? 1) * 1.45;
+      const full = folderCaption(n.label, n.size);
+      const short = folderCaption(stem(n.label), n.size);
+      const name = this.makeLabel("file", isl.id, 1e6 - f.rank, f.rank - 1, (el) => {
+        el.textContent = full;
+        el.title = n.path ?? n.label;
+        el.setAttribute("data-file", f.id);
+        el.setAttribute("data-isl", isl.id);
+      });
+      // Longest first: name and count, the same without its extension, then the bare name (the count is in the list).
+      const texts = [...new Set([full, short, n.label, stem(n.label)])];
+      name.variants = texts.map((text) => ({ text, w: 0, h: 0 }));
+      name.nodeId = f.id;
+      name.world = v3(p);
+      name.worldR = this.rankedDotR(layout.nodeRadius.get(f.id) ?? 1) * 1.45;
+    }
+  }
+
+  private markerTip(f: RankedFile, workspace: string, ev: PointerEvent): void {
+    const rect = this.el.getBoundingClientRect();
+    this.cb.onTip(
+      {
+        title: f.name,
+        lines: [`file · ${f.functions.toLocaleString("en-US")} functions · ${workspace}`, f.path],
+      },
+      ev.clientX - rect.left,
+      ev.clientY - rect.top,
+    );
   }
 
   private islandClusters = new Map<string, Cluster[]>();
@@ -928,8 +1035,58 @@ export class MapScene {
     mesh.scale.setScalar(r);
     const group = new THREE.Group();
     group.add(mesh);
-    this.entries.set(n.id, { node: n.gnode, island: isl.id, color, material });
+    this.entries.set(n.id, {
+      node: n.gnode,
+      island: isl.id,
+      color,
+      material,
+      mesh,
+      group,
+      baseR: r,
+      ring: null,
+    });
+    const entry = this.entries.get(n.id);
+    if (entry) this.styleRank(n.id, entry);
     return group;
+  }
+
+  /**
+   * Ranked files (Files level) are drawn larger and ringed in their workspace colour, so they stand out from the
+   * cloud of dots; the file under the pointer in the list gets a larger ring still.
+   */
+  /** World radius of a ranked file's dot: larger than a plain dot, and never under about 4.5px on screen. */
+  private rankedDotR(base: number): number {
+    return Math.max(base * 1.35, this.px(4.5));
+  }
+
+  private applyRankStyles(): void {
+    for (const [id, e] of this.entries) this.styleRank(id, e);
+  }
+
+  /** Size and ring of one dot (also run for a node object the moment it is created). */
+  private styleRank(id: string, e: NodeEntry): void {
+    this.ringTex ??= ringTexture();
+    const ranked = this.rankedIds.has(id) && this.level === "files";
+    const hot = this.hoverFileId === id;
+    const r = ranked ? this.rankedDotR(e.baseR) : e.baseR;
+    e.mesh.scale.setScalar(r);
+    if (ranked) {
+      if (!e.ring) {
+        e.ring = new THREE.Sprite(
+          new THREE.SpriteMaterial({
+            map: this.ringTex,
+            color: this.islandEntries.get(e.island)?.color ?? e.color,
+            transparent: true,
+            depthTest: false,
+          }),
+        );
+        e.ring.renderOrder = 5;
+        e.ring.raycast = () => {}; // decoration only: the dot under it is what the pointer hits
+        e.group.add(e.ring);
+      }
+      e.ring.visible = true;
+      e.ring.scale.setScalar(r * 2 * (hot ? 1.9 : 1.45));
+    } else if (e.ring) e.ring.visible = false;
   }
 
   // ---- highlight --------------------------------------------------------------------------------------------
@@ -1005,6 +1162,7 @@ export class MapScene {
       c.copy(e.color);
       if (!lit) c.lerp(bg, 0.86);
       e.material.color.copy(c);
+      if (e.ring) (e.ring.material as THREE.SpriteMaterial).opacity = lit ? 1 : 0.15;
     }
     for (const l of this.labels) {
       if (l.nodeId) l.dim = !!sel && !sel.nodes.has(l.nodeId);
@@ -1264,7 +1422,7 @@ export class MapScene {
     const H = this.el.clientHeight || 800;
     cam.updateMatrixWorld();
     const active = this.activeIsland();
-    const key = `${cam.matrixWorld.elements.map((x) => x.toFixed(3)).join(",")}|${W}x${H}|${active}|${this.focus}|${this.hoverNode}|${this.showDeclared}|${this.level}|${this.labels.length}|${this.hoverLabel?.shortText ?? ""}`;
+    const key = `${cam.matrixWorld.elements.map((x) => x.toFixed(3)).join(",")}|${W}x${H}|${active}|${this.focus}|${this.hoverNode}|${this.hoverFileId}|${this.showDeclared}|${this.level}|${this.labels.length}|${this.hoverLabel?.shortText ?? ""}`;
     if (key === this.lastKey) return;
     this.lastKey = key;
     const frame = ++this.frameNo;
@@ -1361,7 +1519,7 @@ export class MapScene {
 
     // 0. The hovered node.
     const hl = this.hoverLabel;
-    if (hl && this.hoverNode && hl.world) {
+    if (hl && (this.hoverNode ?? this.hoverFileId) && hl.world) {
       const s = projR(hl.world, hl.worldR ?? 1);
       if (s.ok) {
         const x = clamp(s.x - hl.w / 2, MARGIN, W - MARGIN - hl.w);
@@ -1553,6 +1711,60 @@ export class MapScene {
       }
     }
 
+    // 2b. Rank markers (Files level): numbered circles next to the dots of the ranked files. They are placed right
+    // after the island names and arc pills and before folder captions and file names, so those cannot crowd them
+    // out. Each marker sits within MARKER_LEADER_MAX px of its dot (leader line) and never covers another ranked dot
+    // if that can be avoided; the most crowded dots choose first. A marker with no such spot waits until the folder
+    // captions are placed and then takes the nearest free spot further away: it is shown whatever happens.
+    const rankData: { rank: number; id: string; x: number; y: number; dx: number; dy: number; dr: number }[] =
+      [];
+    const dots = new Map<Lbl, { x: number; y: number; r: number }>();
+    for (const l of this.labels) {
+      if (l.kind !== "rank" || !l.world) continue;
+      const c = projR(l.world, l.worldR ?? 1);
+      if (c.ok) dots.set(l, { x: c.x, y: c.y, r: Math.max(c.r, 2) });
+    }
+    const crowd = (d: { x: number; y: number }): number => {
+      let n = 0;
+      for (const o of dots.values()) if (o !== d && Math.hypot(o.x - d.x, o.y - d.y) < 45) n++;
+      return n;
+    };
+    const markerOrder = [...dots.keys()].sort(
+      (x, y) =>
+        crowd(dots.get(y) as { x: number; y: number }) - crowd(dots.get(x) as { x: number; y: number }) ||
+        x.rank - y.rank,
+    );
+    // 24 directions, the upper right first, then outwards both ways around the dot.
+    const DIRS = Array.from({ length: 24 }, (_, k) => -45 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 15);
+    const NEAR = [1, 3, 5, 7, 9, 11, 12.5, MARKER_LEADER_MAX];
+    const FAR = Array.from({ length: 40 }, (_, k) => MARKER_LEADER_MAX + 3 * (k + 1));
+    const markerPlaced = new Map<Lbl, { x: number; y: number }>();
+    const placeMarker = (l: Lbl, gaps: number[], strict: boolean): boolean => {
+      const dot = dots.get(l) as { x: number; y: number; r: number };
+      const fits = (cx: number, cy: number): boolean => {
+        const r = rectOf(cx - MARKER_R, cy - MARKER_R, 2 * MARKER_R, 2 * MARKER_R);
+        if (!inView(cx - MARKER_R, cy - MARKER_R, 2 * MARKER_R, 2 * MARKER_R) || !isFree(r)) return false;
+        if (!strict) return true;
+        for (const [ol, od] of dots)
+          if (ol !== l && Math.hypot(od.x - cx, od.y - cy) < MARKER_R + od.r) return false;
+        return true;
+      };
+      for (const g of gaps) {
+        for (const deg of DIRS) {
+          const a = (deg * Math.PI) / 180;
+          const d = dot.r + MARKER_R + g;
+          const x = dot.x + Math.cos(a) * d;
+          const y = dot.y + Math.sin(a) * d;
+          if (!fits(x, y)) continue;
+          placed.push(rectOf(x - MARKER_R, y - MARKER_R, 2 * MARKER_R, 2 * MARKER_R));
+          markerPlaced.set(l, { x, y });
+          return true;
+        }
+      }
+      return false;
+    };
+    for (const l of markerOrder) if (!placeMarker(l, NEAR, true)) placeMarker(l, NEAR, false) || void 0;
+
     // 3. Folder captions, folder ring captions, file names.
     const discs: { x: number; y: number; r: number; island: string; l: Lbl }[] = [];
     for (const l of this.labels) {
@@ -1564,7 +1776,7 @@ export class MapScene {
       discs.some((d) => d.l !== self && d.island === island && rectHitsDisc(r, { x: d.x, y: d.y, r: d.r }));
     const COMPASS = [0, 45, -45, 90, -90, 135, -135, 180];
     const cand = this.labels
-      .filter((l) => l.kind === "dir" || l.kind === "cluster" || l.kind === "file")
+      .filter((l) => l.kind === "dir" || l.kind === "cluster")
       .filter((l) => !l.dim && l.island && scr.get(l.island)?.ok)
       .sort(
         (a, b) =>
@@ -1621,11 +1833,19 @@ export class MapScene {
         if (c.r < 14 && !isActive) continue;
         const w = l.w;
         const h = l.h;
+        // Folder captions sit at the upper-left of their ring (the corner of the label touches the rim), where the
+        // eye looks for a folder name; the other spots are fallbacks.
+        const ul = { x: c.x - c.r * Math.SQRT1_2, y: c.y - c.r * Math.SQRT1_2 };
         const spots = [
+          { x: ul.x + 5 - w, y: ul.y + 3 - h, lead: false },
+          { x: c.x - c.r - w * 0.1, y: c.y - c.r - h + 2, lead: false },
           { x: c.x - w / 2, y: c.y - c.r - h / 2, lead: false },
           { x: c.x - w / 2, y: c.y + c.r - h / 2, lead: false },
+          { x: ul.x - 4 - w + c.r * 0.4, y: ul.y - h / 2, lead: false },
+          { x: c.x - c.r * 0.9, y: c.y - c.r * 0.6 - h / 2, lead: false },
+          { x: c.x + c.r - w * 0.9, y: c.y + c.r - h + 4, lead: false },
         ];
-        for (const off of [4, 12, LEADER_MAX]) {
+        for (const off of [4, 12, LEADER_MAX, 36]) {
           for (const deg of [-90, 90, 0, 180, -45, 45, 135, -135]) {
             const a = (deg * Math.PI) / 180;
             const p = beside(c, Math.cos(a), Math.sin(a), off, w, h);
@@ -1640,57 +1860,105 @@ export class MapScene {
           show(l, sp.x, sp.y, 1, sp.lead ? leaderTo(c, sp.x, sp.y, w, h) : null);
           break;
         }
-        continue;
       }
-      // File names: the largest files of a folder ring, beside the ring with a leader to the dot.
-      if (!l.ring || !l.variants) continue;
-      const ring = projR(l.ring.center, l.ring.r);
-      const multi = (this.islandClusters.get(l.island)?.length ?? 0) >= 2;
-      if (multi && !isActive && (ring.r * 2 < BIG_RING_PX || l.ring.rank >= RINGS_NAMED)) continue;
-      if (multi && isActive && ring.r * 2 < BIG_RING_PX * 0.65) continue;
+    }
+
+    // 3b. Markers that found no spot near their dot: the nearest free one further away, whatever happens shown.
+    for (const l of markerOrder) {
+      if (markerPlaced.has(l)) continue;
+      if (placeMarker(l, FAR, true) || placeMarker(l, FAR, false)) continue;
+      const dot = dots.get(l) as { x: number; y: number; r: number };
+      const at = { x: dot.x + dot.r + MARKER_R + 2, y: dot.y - dot.r - MARKER_R - 2 };
+      placed.push(rectOf(at.x - MARKER_R, at.y - MARKER_R, 2 * MARKER_R, 2 * MARKER_R));
+      markerPlaced.set(l, at);
+    }
+    const markerOfNode = new Map<string, { x: number; y: number }>();
+    for (const [l, at] of markerPlaced) if (l.nodeId) markerOfNode.set(l.nodeId, at);
+    for (const l of [...markerPlaced.keys()].sort((x, y) => x.rank - y.rank)) {
+      const at = markerPlaced.get(l) as { x: number; y: number };
+      const dot = dots.get(l) as { x: number; y: number; r: number };
+      const x = at.x - MARKER_R;
+      const y = at.y - MARKER_R;
+      show(l, x, y, 1, leaderTo(dot, x, y, 2 * MARKER_R, 2 * MARKER_R), l.dim ? 0.4 : 1);
+      rankData.push({
+        rank: l.rank + 1,
+        id: l.nodeId ?? "",
+        x: Math.round(at.x),
+        y: Math.round(at.y),
+        dx: Math.round(dot.x),
+        dy: Math.round(dot.y),
+        dr: Math.round(dot.r * 10) / 10,
+      });
+    }
+    this.overlay.setAttribute("data-ranks", JSON.stringify(rankData));
+
+    // 4. File names of the ranked files, after everything else (the marker alone stands for a file with no room).
+    const fileLabels = this.labels
+      .filter((l) => l.kind === "file" && !l.dim && l.world && l.island && scr.get(l.island)?.ok)
+      .sort((x, y) => x.rank - y.rank);
+    for (const l of fileLabels) {
+      if (!l.world || !l.island) continue;
+      const c = projR(l.world, l.worldR ?? 1);
+      if (!c.ok) continue;
+      // File names (ranked files only): beside the dot with a leader of at most FILE_LEADER_MAX px, never over another
+      // island; when there is no room the rank marker alone stands for the file (the list has the name).
+      if (!l.variants || !l.island) continue;
+      const own = scr.get(l.island);
       const dot = { x: c.x, y: c.y, r: Math.max(c.r, 1.5) };
-      let dirx = dot.x - ring.x;
-      let diry = dot.y - ring.y;
+      const reach = [4, 10, 18, FILE_LEADER_MAX].filter((g) => g + dot.r <= FILE_LEADER_MAX);
+      let dirx = dot.x - (own?.x ?? dot.x);
+      let diry = dot.y - (own?.y ?? dot.y);
       if (Math.hypot(dirx, diry) < 3) {
         dirx = 1;
         diry = 0;
       }
       const base = Math.atan2(diry, dirx);
       let done = false;
-      // Beside the ring, clear of the other rings (A); then allowed over their edges (B); last, over the dots of
-      // its own ring, stacked above and below the middle (C). The full name goes before the one without extension.
-      for (const pass of ["A", "B"]) {
-        for (const v of l.variants) {
-          for (const off of pass === "A" ? [4, 10, 18, LEADER_MAX] : [4, 10, 18, 26, 36]) {
-            for (const deg of COMPASS) {
-              const a = base + (deg * Math.PI) / 180;
-              const p = beside(ring, Math.cos(a), Math.sin(a), off, v.w, v.h);
-              const r = rectOf(p.x, p.y, v.w, v.h);
-              if (!inView(p.x, p.y, v.w, v.h) || !isFree(r) || hitsIsland(r, l.island, false)) continue;
-              if (pass === "A" && hitsOtherDisc(r, null, l.island)) continue;
-              if (l.el.textContent !== v.text) l.el.textContent = v.text;
-              placed.push(r);
-              show(l, p.x, p.y, 1, leaderTo(dot, p.x, p.y, v.w, v.h));
-              l.el.setAttribute("data-dot", `${Math.round(dot.x)},${Math.round(dot.y)}`);
-              done = true;
-              break;
-            }
-            if (done) break;
+      // Best place: right beside the dot's own rank marker (number and name read as one), still within
+      // FILE_LEADER_MAX px of the dot.
+      const mk = l.nodeId ? markerOfNode.get(l.nodeId) : undefined;
+      for (const v of l.variants) {
+        if (!mk || done) break;
+        const sides = [
+          { x: mk.x + MARKER_R + 2, y: mk.y - v.h / 2 },
+          { x: mk.x - MARKER_R - 2 - v.w, y: mk.y - v.h / 2 },
+          { x: mk.x - v.w / 2, y: mk.y - MARKER_R - 2 - v.h },
+          { x: mk.x - v.w / 2, y: mk.y + MARKER_R + 2 },
+        ];
+        for (const sp of sides) {
+          const r = rectOf(sp.x, sp.y, v.w, v.h);
+          const nx = clamp(dot.x, sp.x, sp.x + v.w);
+          const ny = clamp(dot.y, sp.y, sp.y + v.h);
+          if (Math.hypot(nx - dot.x, ny - dot.y) > FILE_LEADER_MAX) continue;
+          if (!inView(sp.x, sp.y, v.w, v.h) || !isFree(r) || hitsIsland(r, l.island, false)) continue;
+          if (l.el.textContent !== v.text) l.el.textContent = v.text;
+          placed.push(r);
+          show(l, sp.x, sp.y, 1, null);
+          l.el.setAttribute("data-dot", `${Math.round(dot.x)},${Math.round(dot.y)}`);
+          l.el.setAttribute("data-dot-r", dot.r.toFixed(1));
+          done = true;
+          break;
+        }
+      }
+      for (const v of l.variants) {
+        if (done) break;
+        for (const off of reach) {
+          for (const deg of COMPASS) {
+            const a = base + (deg * Math.PI) / 180;
+            const p = beside(dot, Math.cos(a), Math.sin(a), off, v.w, v.h);
+            const r = rectOf(p.x, p.y, v.w, v.h);
+            if (!inView(p.x, p.y, v.w, v.h) || !isFree(r) || hitsIsland(r, l.island, false)) continue;
+            if (l.el.textContent !== v.text) l.el.textContent = v.text;
+            placed.push(r);
+            show(l, p.x, p.y, 1, leaderTo(dot, p.x, p.y, v.w, v.h));
+            l.el.setAttribute("data-dot", `${Math.round(dot.x)},${Math.round(dot.y)}`);
+            l.el.setAttribute("data-dot-r", dot.r.toFixed(1));
+            done = true;
+            break;
           }
           if (done) break;
         }
         if (done) break;
-      }
-      if (done || !multi) continue;
-      for (const v of l.variants) {
-        const x = ring.x - v.w / 2;
-        const y = l.rank === 0 ? ring.y - dot.r - v.h - 3 : ring.y + dot.r + 3;
-        const r = rectOf(x, y, v.w, v.h);
-        if (!inView(x, y, v.w, v.h) || !isFree(r) || v.w > ring.r * 2.4) continue;
-        if (l.el.textContent !== v.text) l.el.textContent = v.text;
-        placed.push(r);
-        show(l, x, y, 1, leaderTo(dot, x, y, v.w, v.h));
-        break;
       }
     }
 
@@ -1710,7 +1978,7 @@ export class MapScene {
 
   /** The single label that follows the hovered node (any node, at any level). */
   private syncHoverLabel(): void {
-    const id = this.hoverNode;
+    const id = this.hoverNode ?? this.hoverFileId;
     if (!id) return;
     const e = this.entries.get(id);
     const p = this.layout?.positions.get(id);
