@@ -49,14 +49,17 @@ const lockPath = (dir: string) =>
     `gantry-describe-mutation-${createHash("sha1").update(dir).digest("hex").slice(0, 12)}.json`,
   );
 
-function runScript(dir: string): Promise<{ code: number | null; out: string }> {
+function runScript(
+  dir: string,
+  cmd = `node -e "process.exit(0)"`,
+): Promise<{ code: number | null; out: string }> {
   return new Promise((resolve) => {
     const child = spawn(join(root, "node_modules", ".bin", "tsx"), ["scripts/describe-mutations.ts"], {
       cwd: root,
       env: {
         ...process.env,
         GANTRY_MUTATION_DIR: dir,
-        GANTRY_MUTATION_CMD: `node -e "process.exit(0)"`,
+        GANTRY_MUTATION_CMD: cmd,
         GANTRY_MUTATION_LIMIT: "1",
       },
     });
@@ -126,4 +129,25 @@ describe("mutation lock file", () => {
       rmSync(lockPath(dir), { force: true });
     }
   }, 30_000);
+
+  // Two real runs: exactly one proceeds, the other exits 3 without touching anything, and the tree ends unchanged.
+  const slow = `node -e "setTimeout(()=>process.exit(0),1500)"`;
+  const sources = () =>
+    readFileSync(join(root, "packages", "core", "src", "describe", "validate.ts"), "utf8");
+  for (const [label, delayMs] of [
+    ["started together", 0],
+    ["the second started during the first's baseline", 700],
+  ] as const) {
+    it(`lets exactly one of two runs proceed (${label})`, async () => {
+      const dir = setup(sources());
+      const before = readFileSync(join(dir, "validate.ts"), "utf8");
+      const first = runScript(dir, slow);
+      await new Promise((r) => setTimeout(r, delayMs));
+      const second = runScript(dir, slow);
+      const codes = (await Promise.all([first, second])).map((r) => r.code);
+      expect(codes.filter((c) => c === 3)).toHaveLength(1);
+      expect(readFileSync(join(dir, "validate.ts"), "utf8")).toBe(before);
+      expect(existsSync(lockPath(dir))).toBe(false);
+    }, 60_000);
+  }
 });

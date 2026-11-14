@@ -5,7 +5,16 @@
 // test notices) fails the check. Usage: pnpm exec tsx scripts/describe-mutations.ts
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+  writeSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -234,54 +243,117 @@ interface Lock {
   mutatedHash: string;
 }
 const sha256 = (text: string): string => createHash("sha256").update(text).digest("hex");
+const NO_MUTATION: Lock = { pid: process.pid, path: "", original: "", mutatedHash: "" };
+let held = false;
 let current: { path: string; original: string } | null = null;
-// Only a run that holds a mutation touches the lock file, so a refused or finished run never deletes another run's lock.
+
+/** Replaces the lock's contents atomically (temp file, then rename over it); the lock is never deleted and re-created. */
+function writeLock(lock: Lock): void {
+  const tmp = `${lockFile}.${process.pid}.tmp`;
+  writeFileSync(tmp, JSON.stringify(lock), { mode: 0o600 });
+  renameSync(tmp, lockFile);
+}
+
+/** Puts the mutated file back; the lock stays held. */
 const restore = (): void => {
   if (current === null) return;
   writeFileSync(current.path, current.original);
   current = null;
-  if (existsSync(lockFile)) unlinkSync(lockFile);
+  if (held) writeLock(NO_MUTATION);
+};
+/** Final step of every exit path: restore, then release the lock (only if this run holds it). */
+const cleanup = (): void => {
+  killChild();
+  restore();
+  if (held) {
+    held = false;
+    try {
+      unlinkSync(lockFile);
+    } catch {
+      // already gone
+    }
+  }
 };
 for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
   process.on(sig, () => {
-    killChild();
-    restore();
+    cleanup();
     process.exit(130);
   });
 }
-process.on("exit", () => {
-  killChild();
-  restore();
-});
+process.on("exit", cleanup);
 
-// A SIGKILLed run cannot restore its file, so every mutation first saves the original, the process id and a hash of the
-// mutated text to a lock file outside the tree. On start: a lock whose process is alive means another run is in progress
-// (exit 3, so `pnpm check` fails loudly); a dead process's lock restores the file only if it still holds exactly the
-// mutated text (otherwise the file has newer edits and is left alone); either way the stale lock is removed.
 const LOCKED_EXIT = 3;
-if (existsSync(lockFile)) {
-  const lock = JSON.parse(readFileSync(lockFile, "utf8")) as Lock;
-  let alive = false;
+const isAlive = (pid: number): boolean => {
   try {
-    process.kill(lock.pid, 0);
-    alive = lock.pid !== process.pid;
+    process.kill(pid, 0);
+    return pid !== process.pid;
   } catch (e) {
-    alive = (e as NodeJS.ErrnoException).code === "EPERM";
+    return (e as NodeJS.ErrnoException).code === "EPERM";
   }
-  if (alive) {
-    console.log(`another mutation run (pid ${lock.pid}) is in progress; wait for it to finish and run again`);
-    process.exit(LOCKED_EXIT);
+};
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/** Reads a lock another run created; it may be empty for an instant between its create and its first write. */
+async function readLock(file: string): Promise<Lock | null> {
+  for (let i = 0; i < 10; i++) {
+    try {
+      const l = JSON.parse(readFileSync(file, "utf8")) as Lock;
+      if (typeof l.pid === "number") return l;
+    } catch {
+      // not written yet, or gone
+    }
+    await sleep(100);
   }
-  if (existsSync(lock.path) && sha256(readFileSync(lock.path, "utf8")) === lock.mutatedHash) {
-    writeFileSync(lock.path, lock.original);
-    console.log(`restored ${lock.path} from an interrupted run`);
-  } else {
-    console.log(
-      `warning: left ${lock.path} alone (an interrupted run's lock, but the file has changed since)`,
-    );
-  }
-  unlinkSync(lockFile);
+  return null;
 }
+
+/**
+ * Takes the lock before anything else, with an exclusive create, and holds it for the whole run. A lock whose process is
+ * alive means another run is in progress (exit 3, nothing touched). A dead process's lock is first renamed away (only
+ * one contender wins the rename), then its file is restored only if it still holds exactly the mutated text; a file
+ * with newer edits is left alone with a warning. SIGKILL cannot be caught, which is why the lock carries the original.
+ */
+async function acquireLock(): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const fd = openSync(lockFile, "wx", 0o600);
+      writeSync(fd, JSON.stringify(NO_MUTATION));
+      closeSync(fd);
+      held = true;
+      return;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+    }
+    const lock = await readLock(lockFile);
+    if (lock !== null && isAlive(lock.pid)) {
+      console.log(
+        `another mutation run (pid ${lock.pid}) is in progress; wait for it to finish and run again`,
+      );
+      process.exit(LOCKED_EXIT);
+    }
+    const stale = `${lockFile}.stale.${process.pid}`;
+    try {
+      renameSync(lockFile, stale);
+    } catch {
+      continue; // someone else took it over first; look again
+    }
+    if (lock !== null && lock.path !== "") {
+      if (existsSync(lock.path) && sha256(readFileSync(lock.path, "utf8")) === lock.mutatedHash) {
+        writeFileSync(lock.path, lock.original);
+        console.log(`restored ${lock.path} from an interrupted run`);
+      } else {
+        console.log(
+          `warning: left ${lock.path} alone (an interrupted run's lock, but the file has changed since)`,
+        );
+      }
+    }
+    unlinkSync(stale);
+  }
+  console.log("could not take the mutation lock; run again");
+  process.exit(LOCKED_EXIT);
+}
+
+await acquireLock();
 
 if ((await runTests()) !== "green") {
   console.log("baseline: the describe tests are not green without any mutation; fix them first");
@@ -302,7 +374,7 @@ for (const m of run) {
   current = { path, original };
   const mutated = original.replace(m.find, m.replace);
   const lock: Lock = { pid: process.pid, path, original, mutatedHash: sha256(mutated) };
-  writeFileSync(lockFile, JSON.stringify(lock));
+  writeLock(lock);
   writeFileSync(path, mutated);
   let outcome: Outcome;
   try {

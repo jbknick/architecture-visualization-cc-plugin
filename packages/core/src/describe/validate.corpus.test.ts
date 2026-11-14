@@ -305,18 +305,27 @@ describe("performance", () => {
     console.log(`validateDescription worst case at the caps ${worst.toFixed(2)} ms`);
   });
 
-  itTiming("fails values over the hard caps at once, whatever they hold", () => {
+  const overCap = () => {
     const huge = "a.".repeat(500_000);
-    for (const raw of [
+    return [
       { behavior: huge, searchTerms: ["x"], nameFits: true },
       { behavior: "Returns x.", searchTerms: [huge], nameFits: true },
       { behavior: "Returns x.", searchTerms: ["x"], nameFits: false, suggestedName: huge },
       { behavior: "Returns x.", searchTerms: Array(7).fill("x"), nameFits: true },
-    ]) {
+    ];
+  };
+
+  // functional: runs in mutation runs too
+  it("fails values over the hard caps with reason length", () => {
+    for (const raw of overCap())
+      expect(validateDescription(raw, sheet)).toMatchObject({ ok: false, reason: "length" });
+  });
+
+  itTiming("fails values over the hard caps at once, whatever they hold", () => {
+    for (const raw of overCap()) {
       const t0 = performance.now();
-      const r = validateDescription(raw, sheet);
+      validateDescription(raw, sheet);
       expect(performance.now() - t0).toBeLessThan(5);
-      expect(r).toMatchObject({ ok: false, reason: "length" });
     }
   });
 
