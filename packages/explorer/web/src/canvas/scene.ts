@@ -258,7 +258,8 @@ export function subtitleParts(scene: Scene, i: number): string[] {
   const fn = scene.functions[i] ?? 0;
   const files = scene.files[i] ?? 0;
   const parts: string[] = [];
-  const badge = node?.badges?.[0];
+  // The repo-root workspace shows "(repo root)" where the others show their type ("app", "package").
+  const badge = node?.id === "ws:." ? "(repo root)" : node?.badges?.[0];
   if (badge) parts.push(badge);
   parts.push(`${fn.toLocaleString("en-US")} ${fn === 1 ? "function" : "functions"}`);
   if (files > 0 || node?.stats?.files !== undefined)

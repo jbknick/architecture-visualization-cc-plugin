@@ -5,7 +5,7 @@
 // the same functions, so a click always lands on what was drawn. No elk, no squarify at zoom time.
 import { kindTier, type TreeNode } from "./hierarchy.ts";
 import { folderTitle, type Scene } from "./scene.ts";
-import { TM_PAD } from "./treemap.ts";
+import { TM_PAD, wrapText } from "./treemap.ts";
 import type { MapGeometry, Rect } from "./types.ts";
 
 /** Workspace title block, folder strip and file-name strip: the tallest they get on screen, in px. */
@@ -13,9 +13,9 @@ export const WS_HEAD_MAX = 44;
 export const DIR_STRIP_MAX = 34;
 /** A folder strip with one line of text, and with two (long names wrap before they are cut). */
 export const DIR_STRIP_ONE = 20;
-export const DIR_STRIP_TWO = 32;
+export const DIR_STRIP_TWO = 28;
 /** Room a folder strip keeps for its glyph and padding, in px: the name gets the width minus this. */
-export const DIR_STRIP_INSET = 22;
+export const DIR_STRIP_INSET = 23;
 export const FILE_STRIP_MAX = 16;
 /** A folder gets a header strip when it is at least this big on screen. */
 export const DIR_MIN_W = 70;
@@ -28,6 +28,80 @@ export const WS_HEAD_MIN = 30;
 /** Padding around the children of a container on screen, in px. */
 export function padPx(scale: number): number {
   return Math.min(2, Math.max(0.5, scale * TM_PAD));
+}
+
+/** Width of the folder glyph and its gap in front of a strip's name, and the padding behind it. */
+const GLYPH_W = 14;
+const STRIP_PAD_L = 5;
+const STRIP_PAD_R = 4;
+
+/** What a folder strip shows: the whole name (and maybe the count) on `lines`, at `fs` px, with or without the glyph. */
+export interface StripLayout {
+  head: number;
+  lines: string[];
+  fs: number;
+  glyph: boolean;
+  /** The last line (or the second one) carries the `N fn` count. */
+  count: boolean;
+}
+
+type Measure = (font: string, text: string) => number;
+export const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+/** Without a canvas (unit tests) text is estimated at 5.8 px per character at 10px, bold. */
+let measureFn: Measure = (font, text) =>
+  text.length * 0.58 * (Number.parseFloat(font.split(" ")[1] ?? "10") || 10);
+const stripCache = new Map<string, StripLayout | null>();
+
+/** The map's text measurer: drawing installs the canvas one each frame, so strips are sized with real widths. */
+export function setStripMeasure(fn: Measure): void {
+  measureFn = fn;
+  stripCache.clear();
+}
+
+/**
+ * The strip a folder of on-screen size `pw` x `ph` can show, or null when it cannot show its whole name (wrapped to
+ * two lines and shrunk to 10px at the smallest): such a folder gets no strip and no glyph, its name shows on hover.
+ * The name is never cut: not with an ellipsis and not inside a word. `N fn` follows the name when it fits.
+ */
+export function folderStrip(title: string, count: string, pw: number, ph: number): StripLayout | null {
+  const key = `${title}|${count}|${Math.round(pw * 2)}|${Math.round(ph)}`;
+  const hit = stripCache.get(key);
+  if (hit !== undefined) return hit;
+  if (stripCache.size > 6000) stripCache.clear();
+  const out = computeStrip(title, count, pw, ph);
+  stripCache.set(key, out);
+  return out;
+}
+
+function computeStrip(title: string, count: string, pw: number, ph: number): StripLayout | null {
+  if (pw < DIR_MIN_W || ph < DIR_MIN_H) return null;
+  const one = Math.min(DIR_STRIP_ONE, Math.max(14, ph * 0.3));
+  const two = ph >= 54 && DIR_STRIP_TWO <= ph * 0.6 ? DIR_STRIP_TWO : 0;
+  const words = title.match(/[^-_/. ]+[-_/. ]*/g) ?? [title];
+  let plain: StripLayout | null = null;
+  for (const maxLines of two > 0 ? [1, 2] : [1]) {
+    const head = maxLines === 1 ? one : two;
+    for (const fs of [11, 10]) {
+      if (maxLines * fs * 1.15 > head - 1) continue;
+      const font = `700 ${fs}px ${FONT}`;
+      const m = (t: string) => measureFn(font, t);
+      for (const glyph of [true, false]) {
+        const avail = pw - (glyph ? STRIP_PAD_L + GLYPH_W : STRIP_PAD_L) - STRIP_PAD_R;
+        if (words.some((w) => m(w) > avail)) continue; // a word is never broken
+        const lines = wrapText(m, title, avail);
+        if (lines.length > maxLines || lines.some((t) => m(t) > avail + 0.5)) continue;
+        const last = lines[lines.length - 1] as string;
+        if (m(`${last} · ${count}`) <= avail) {
+          return { head, lines: [...lines.slice(0, -1), `${last} · ${count}`], fs, glyph, count: true };
+        }
+        if (lines.length < maxLines && m(count) <= avail) {
+          return { head, lines: [...lines, count], fs, glyph, count: true };
+        }
+        plain ??= { head, lines, fs, glyph, count: false };
+      }
+    }
+  }
+  return plain;
 }
 
 /** Height of the header strip reserved at the top of cell `i` (on-screen size `pw` x `ph`) at zoom `scale`. */
@@ -48,18 +122,19 @@ export function headPx(
     return h >= WS_HEAD_MIN && ph >= h + 12 ? h : 0;
   }
   if (tier === 1) {
-    if ((scene.depth[i] as number) > MAX_STRIP_DEPTH || pw < DIR_MIN_W || ph < DIR_MIN_H) return 0;
-    const one = Math.min(DIR_STRIP_ONE, Math.max(14, ph * 0.3));
-    // A name that cannot fit one line even at 10px gets a two-line strip when the cell is tall enough for it.
-    if (ph >= 54 && DIR_STRIP_TWO <= ph * 0.6 && folderTitle(scene, i).length * 6.2 > pw - DIR_STRIP_INSET)
-      return DIR_STRIP_TWO;
-    return one;
+    if ((scene.depth[i] as number) > MAX_STRIP_DEPTH) return 0;
+    return folderStrip(folderTitle(scene, i), fnCount(scene, i), pw, ph)?.head ?? 0;
   }
   if (tier === 2 && node.children.length > 0) {
     if (pw < 40 || ph < 24) return 0;
     return Math.min(FILE_STRIP_MAX, Math.max(13, ph * 0.25));
   }
   return 0;
+}
+
+/** The count printed after a folder's name. */
+export function fnCount(scene: Scene, i: number): string {
+  return `${(scene.functions[i] ?? 0).toLocaleString("en-US")} fn`;
 }
 
 export function rectAt(geo: MapGeometry, i: number): Rect {

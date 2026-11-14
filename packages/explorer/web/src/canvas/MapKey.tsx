@@ -1,21 +1,43 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-/** The key lines of the project map: what a box, an arrow and a number mean (and what the filters hid). */
+/** The key lines of the project map: what a box, a line and a number mean (and what the filters hid). */
 export function keyLines(level: string | null, hideTests: boolean): string[] {
   const lines = [
-    "Box = workspace (area = functions) · A → B = A imports from B · number = files importing · thicker = more",
+    "Box = workspace (area = functions) · Line colour = importing workspace · dot → arrowhead: A imports from B",
   ];
-  const second: string[] = [];
+  const second = ["Number = files importing · thicker = more"];
   // Folders, Files and Functions levels (and a drilled-in view) draw tiles inside the boxes.
   if (level !== "workspaces") second.push("Tiles = folders / files (area = functions)");
   if (hideTests) second.push("Tests hidden");
-  if (second.length > 0) lines.push(second.join(" · "));
+  lines.push(second.join(" · "));
   return lines;
 }
 
-/** A compact, collapsible key at the bottom-left of the canvas: at most two lines of text. */
-export function MapKey({ level, hideTests }: { level: string | null; hideTests: boolean }) {
-  const [open, setOpen] = useState(true);
+/**
+ * A compact, collapsible key at the bottom-left of the canvas: two lines of text, or just "Key ▸". It folds itself
+ * away while the camera is zoomed in past the fit, so it never covers tile labels (the user can open it again).
+ */
+export function MapKey({
+  level,
+  hideTests,
+  zoomed = false,
+  onToggle,
+}: {
+  level: string | null;
+  hideTests: boolean;
+  zoomed?: boolean;
+  /** Called after the key opened or closed (the canvas keeps its pills clear of it). */
+  onToggle?: () => void;
+}) {
+  const [open, setOpen] = useState(!zoomed);
+  const wasZoomed = useRef(zoomed);
+  useEffect(() => {
+    if (zoomed && !wasZoomed.current) setOpen(false);
+    wasZoomed.current = zoomed;
+  }, [zoomed]);
+  // The canvas redraws after every change of the key's size.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `open` is the trigger
+  useEffect(() => onToggle?.(), [open, onToggle]);
   const lines = keyLines(level, hideTests);
   return (
     <div className="gc-key" data-testid="map-key" data-open={open}>

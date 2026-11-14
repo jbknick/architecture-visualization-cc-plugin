@@ -22,7 +22,15 @@ interface Probe {
   pills: { key: string; count: string; text: string }[];
   crumb: string[] | null;
   regions: { id: string; x: number; y: number; w: number; h: number }[];
-  edges: { key: string; x: number; y: number; weight: number; route: [number, number][]; width: number }[];
+  edges: {
+    key: string;
+    x: number;
+    y: number;
+    weight: number;
+    route: [number, number][];
+    width: number;
+    colour: string;
+  }[];
 }
 
 async function probe(page: Page): Promise<Probe> {
@@ -284,8 +292,9 @@ test("large scenario: the key says what boxes, arrows and numbers mean, and can 
   const key = canvas(page).getByTestId("map-key");
   await expect(key).toBeVisible();
   await expect(key).toContainText("Box = workspace (area = functions)");
-  await expect(key).toContainText("A → B = A imports from B");
-  await expect(key).toContainText("number = files importing · thicker = more");
+  await expect(key).toContainText("Line colour = importing workspace");
+  await expect(key).toContainText("A imports from B");
+  await expect(key).toContainText("Number = files importing · thicker = more");
   await expect(key).toContainText("Tests hidden");
   await expect(key).not.toContainText("Tiles = folders / files");
   // At most two lines of text, in the bottom-left corner.
@@ -305,6 +314,43 @@ test("large scenario: the key says what boxes, arrows and numbers mean, and can 
   await expect(key).toContainText("Tiles = folders / files (area = functions)");
   await key.getByRole("button", { name: /Key/ }).click();
   await expect(key.locator(".gc-key-body")).toHaveCount(0);
+  await key.getByRole("button", { name: /Key/ }).click();
+  await expect(key.locator(".gc-key-body")).toHaveCount(1);
+});
+
+test("large scenario: lines are coloured by the importing workspace, pills keep off the key, and the key folds away when zoomed in", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await openLarge(page, "workspaces");
+  const p = await probe(page);
+  const bySource = new Map<string, Set<string>>();
+  for (const e of p.edges) {
+    const src = e.key.split(">")[0] as string;
+    bySource.set(src, (bySource.get(src) ?? new Set()).add(e.colour));
+  }
+  // "All blue lines leave web": one colour per importer, a different colour for each importer.
+  for (const [src, set] of bySource) expect(set.size, src).toBe(1);
+  expect(new Set([...bySource.values()].map((s) => [...s][0])).size).toBe(bySource.size);
+  expect(bySource.size).toBeGreaterThanOrEqual(8);
+  // No pill sits on the key.
+  const kb = await canvas(page).getByTestId("map-key").boundingBox();
+  const sb = await surface(page).boundingBox();
+  if (!kb || !sb) throw new Error("no key or canvas");
+  for (const pill of p.pills as unknown as { key: string; x: number; y: number; w: number; h: number }[]) {
+    const kx = kb.x - sb.x;
+    const ky = kb.y - sb.y;
+    expect(
+      pill.x < kx + kb.width && kx < pill.x + pill.w && pill.y < ky + kb.height && ky < pill.y + pill.h,
+      `${pill.key} on the key`,
+    ).toBe(false);
+  }
+  // Zoomed in past the fit the key folds itself to "Key ▸" (so it never covers tile labels) and opens again on click.
+  const key = canvas(page).getByTestId("map-key");
+  await expect(key.locator(".gc-key-body")).toHaveCount(1);
+  await zoomTo(page, "ws:@acme-platform-monorepo/api");
+  await expect(key.locator(".gc-key-body")).toHaveCount(0);
+  expect((await key.boundingBox())?.height).toBeLessThan(30);
   await key.getByRole("button", { name: /Key/ }).click();
   await expect(key.locator(".gc-key-body")).toHaveCount(1);
 });
