@@ -94,6 +94,7 @@ describe("node mcp.js over stdio", () => {
       expect(tools).toEqual([
         "gantry_browse",
         "gantry_claim_batch",
+        "gantry_find_similar",
         "gantry_node",
         "gantry_search",
         "gantry_submit_descriptions",

@@ -1,0 +1,28 @@
+{
+  "description": "Gantry reuse guard: session reminder and duplicate/import findings after edits",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/gantry\" hook session-start",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/gantry\" hook post-tool-use",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
