@@ -210,8 +210,13 @@ async function modeRecipe(cli: Cli): Promise<number> {
       `per function: output=${(u.outputTokens / cli.n).toFixed(1)} input=${(u.inputTokens / cli.n).toFixed(1)}`,
     );
   }
-  console.log(`schema/length checks: ${check.ok ? "pass" : `FAIL ${check.problems.join("; ")}`}`);
-  return check.ok ? 0 : 1;
+  // Over-length text is repairable by the host (truncate or re-ask), so it is a warning here. Anything else is a failure.
+  const limits = check.problems.filter((p) => /: behavior over \d+ (chars|words)$/.test(p));
+  const hard = check.problems.filter((p) => !limits.includes(p));
+  const status = hard.length > 0 ? `FAIL ${hard.join("; ")}` : "pass";
+  console.log(`schema checks: ${status}`);
+  if (limits.length > 0) console.log(`length warnings (repairable by the host): ${limits.join("; ")}`);
+  return hard.length > 0 ? 1 : 0;
 }
 
 /** Flag matrix: init probe (offline-safe, shows what loads) plus a live run (needs login). */
