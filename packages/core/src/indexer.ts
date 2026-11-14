@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { detectTanstackRoutes, isRouterWorkspace } from "./adapters/tanstack-routes.js";
 import { loadConfig } from "./config/index.js";
 import { discoverFiles, isIndexable } from "./discover/index.js";
 import { hashSymbol } from "./hash/index.js";
@@ -10,7 +11,15 @@ import { type ParsedFile, parseSource } from "./parse/index.js";
 import { ensureDataDir, type GantryPaths } from "./paths/index.js";
 import { createResolver, type SpecifierClass } from "./resolve/index.js";
 import { openStore, type Store, splitIdentifier } from "./store/index.js";
-import type { EdgeRecord, FileRecord, Layer, SymbolKind, SymbolRecord, WorkspaceRecord } from "./types.js";
+import type {
+  AdapterNodeRecord,
+  EdgeRecord,
+  FileRecord,
+  Layer,
+  SymbolKind,
+  SymbolRecord,
+  WorkspaceRecord,
+} from "./types.js";
 import { detectWorkspaces, workspaceForPath } from "./workspace/index.js";
 
 export interface IndexResult {
@@ -95,6 +104,26 @@ function sameEdges(a: EdgeRecord[], b: EdgeRecord[]): boolean {
   const ka = a.map(edgeKey).sort();
   const kb = b.map(edgeKey).sort();
   return ka.every((k, i) => k === kb[i]);
+}
+
+const nodeKey = (n: AdapterNodeRecord): string =>
+  `${n.id}\0${n.kind}\0${n.ws}\0${n.label}\0${n.fileId}\0${JSON.stringify(n.data)}`;
+
+function sameNodes(a: AdapterNodeRecord[], b: AdapterNodeRecord[]): boolean {
+  if (a.length !== b.length) return false;
+  const ka = a.map(nodeKey).sort();
+  const kb = b.map(nodeKey).sort();
+  return ka.every((k, i) => k === kb[i]);
+}
+
+function groupByFile<T extends { fileId: string }>(items: T[]): Map<string, T[]> {
+  const m = new Map<string, T[]>();
+  for (const it of items) {
+    const a = m.get(it.fileId) ?? [];
+    a.push(it);
+    m.set(it.fileId, a);
+  }
+  return m;
 }
 
 function readJsonHash(root: string, rel: string): { hash: string; mtimeMs: number } {
@@ -195,6 +224,25 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     const resolver = createResolver({ root, workspaces, parsed });
     store.upsertWorkspaces(workspaces);
 
+    // Framework adapters: TanStack Router file routes, for app workspaces that use it. They need every route
+    // file's text (parents and children come from the whole folder), so they run over the full read set.
+    const routes = workspaces.some(isRouterWorkspace)
+      ? detectTanstackRoutes({
+          root,
+          workspaces,
+          files: present.map((e) => ({
+            path: e.path,
+            id: e.id,
+            workspaceId: e.workspaceId,
+            source: e.source as string,
+          })),
+          parsed,
+          resolver,
+        })
+      : { nodes: [], edges: [] };
+    const routeEdges = groupByFile(routes.edges);
+    const routeNodes = groupByFile(routes.nodes);
+
     // 3. Decide what to write.
     const full = !opts.files;
     const existsNow = new Set(present.map((e) => e.id));
@@ -293,7 +341,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
           : { exactHash: "", shapeHash: "", minhash: new Uint32Array(64) };
         return { ...s, ...h };
       });
-      const edges = resolver.edgesForFile(e.id);
+      const edges = [...resolver.edgesForFile(e.id), ...(routeEdges.get(e.id) ?? [])];
       const file: FileRecord = {
         id: e.id,
         path: e.path,
@@ -304,7 +352,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
         ...(pf.directives && pf.directives.length > 0 ? { directives: pf.directives } : {}),
       };
       const old = layer === "main" && !rebuildFts ? oldFtsIds("main", e.id) : [];
-      store.replaceFile(layer, file, symbols, edges);
+      store.replaceFile(layer, file, symbols, edges, routeNodes.get(e.id) ?? []);
       const keep = new Set(symbols.map((s) => s.id));
       for (const id of old) if (!keep.has(id)) store.fts.remove(id);
       for (const s of symbols) {
@@ -353,14 +401,17 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
           a.push(ed);
           eff.set(ed.fileId, a);
         }
+        const effNodes = groupByFile(store.effectiveAdapterNodes());
         const effFiles = new Map(store.effectiveFiles().map((f) => [f.id, f]));
         for (const e of present) {
           if (written.has(e.id)) continue;
           const file = effFiles.get(e.id);
           if (!file) continue;
-          const fresh = resolver.edgesForFile(e.id);
-          if (sameEdges(fresh, eff.get(e.id) ?? [])) continue;
-          store.replaceFile(layer, file, store.effectiveSymbols({ fileId: e.id }), fresh);
+          const fresh = [...resolver.edgesForFile(e.id), ...(routeEdges.get(e.id) ?? [])];
+          const freshNodes = routeNodes.get(e.id) ?? [];
+          if (sameEdges(fresh, eff.get(e.id) ?? []) && sameNodes(freshNodes, effNodes.get(e.id) ?? []))
+            continue;
+          store.replaceFile(layer, file, store.effectiveSymbols({ fileId: e.id }), fresh, freshNodes);
           written.add(e.id);
           result.edges += fresh.length;
         }
@@ -401,6 +452,7 @@ function removeMainFile(store: Store, fileId: string, removeFts: boolean): void 
   if (removeFts) for (const s of syms) store.fts.remove(s.id);
   store.db.prepare("DELETE FROM symbols WHERE layer = 'main' AND file_id = ?").run(fileId);
   store.db.prepare("DELETE FROM edges WHERE layer = 'main' AND file_id = ?").run(fileId);
+  store.db.prepare("DELETE FROM adapter_nodes WHERE layer = 'main' AND file_id = ?").run(fileId);
   store.db.prepare("DELETE FROM files WHERE layer = 'main' AND id = ?").run(fileId);
 }
 
@@ -454,6 +506,7 @@ export function dumpGraph(store: Store): {
   files: unknown[];
   symbols: unknown[];
   edges: unknown[];
+  adapterNodes?: unknown[];
 } {
   const wsRows = store.db.prepare("SELECT * FROM workspaces ORDER BY id").all() as Json[];
   const workspaces = wsRows.map((w) => ({
@@ -476,5 +529,7 @@ export function dumpGraph(store: Store): {
   const symbols = store.effectiveSymbols().map(({ minhash: _m, ...s }) => s);
   // similar_to edges are derived (rebuilt by init/heal/embed from hashes and vectors), not part of the index.
   const edges = store.effectiveEdges().filter((e) => e.kind !== "similar_to");
-  return { workspaces, files, symbols, edges };
+  // Adapter nodes (routes) appear only when an adapter found some, so repositories without them dump as before.
+  const adapterNodes = store.effectiveAdapterNodes();
+  return { workspaces, files, symbols, edges, ...(adapterNodes.length > 0 ? { adapterNodes } : {}) };
 }

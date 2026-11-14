@@ -56,6 +56,8 @@ export interface GraphEdge {
   uses?: number;
   /** Imports edges: imported names summed over the underlying file edges. Present only when it differs from `weight`. */
   bindings?: number;
+  /** Slices view: true when the edge crosses a slice boundary. */
+  cross?: boolean;
 }
 
 /** The canvas layouts defined by issue #36. */

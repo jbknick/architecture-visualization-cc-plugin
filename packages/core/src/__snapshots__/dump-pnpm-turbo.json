@@ -166,7 +166,7 @@
       "id": "file:apps/web/src/routes/settings/profile.tsx",
       "path": "apps/web/src/routes/settings/profile.tsx",
       "workspaceId": "ws:@acme/web",
-      "contentHash": "5ecd8f61d2de63385c19cc45b5f46d7294a066408b0cbf14f895b0ab4d526a99"
+      "contentHash": "5cba289fde16c8dd40258f2c954c36b4743b5996d5ba005a904b2d1117178c05"
     },
     {
       "id": "file:packages/db/src/index.ts",
@@ -423,13 +423,13 @@
       "kind": "component",
       "exported": false,
       "signature": "()",
-      "startLine": 6,
-      "endLine": 8,
-      "loc": 3,
+      "startLine": 7,
+      "endLine": 14,
+      "loc": 8,
       "complexity": 1,
       "stmtCount": 1,
-      "exactHash": "0aea25c6b5571a1371322af864c4b964",
-      "shapeHash": "54388dfa9576cbd259c99310a0c8143b"
+      "exactHash": "b9a2fe5472527acf3614fd080641361e",
+      "shapeHash": "0a49ccdf9d969c0a143a2f591819b0a5"
     },
     {
       "id": "sym:apps/web/src/routes/settings/profile.tsx#Route",
@@ -438,8 +438,8 @@
       "kind": "const",
       "exported": true,
       "signature": "",
-      "startLine": 4,
-      "endLine": 4,
+      "startLine": 5,
+      "endLine": 5,
       "loc": 1,
       "complexity": 1,
       "stmtCount": 0,
@@ -1065,12 +1065,23 @@
     },
     {
       "src": "file:apps/web/src/routes/settings/profile.tsx",
-      "dst": "file:packages/ui/src/index.ts",
+      "dst": "file:packages/ui/src/button.tsx",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/settings/profile.tsx:2"
+      ],
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+    },
+    {
+      "src": "file:apps/web/src/routes/settings/profile.tsx",
+      "dst": "file:packages/ui/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/settings/profile.tsx:3"
       ],
       "fileId": "file:apps/web/src/routes/settings/profile.tsx"
     },
@@ -1478,6 +1489,83 @@
       "fileId": "file:packages/utils/src/time.ts"
     },
     {
+      "src": "route:@acme/web:/",
+      "dst": "sym:apps/web/src/routes/index.tsx#HomePage",
+      "kind": "serves",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/index.tsx"
+      ],
+      "fileId": "file:apps/web/src/routes/index.tsx"
+    },
+    {
+      "src": "route:@acme/web:/posts/$postId",
+      "dst": "sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "kind": "serves",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/posts.$postId.tsx"
+      ],
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+    },
+    {
+      "src": "route:@acme/web:/settings/profile",
+      "dst": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "kind": "serves",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/settings/profile.tsx"
+      ],
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+    },
+    {
+      "src": "route:@acme/web:__root__",
+      "dst": "route:@acme/web:/",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/index.tsx"
+      ],
+      "fileId": "file:apps/web/src/routes/index.tsx"
+    },
+    {
+      "src": "route:@acme/web:__root__",
+      "dst": "route:@acme/web:/posts/$postId",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/posts.$postId.tsx"
+      ],
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+    },
+    {
+      "src": "route:@acme/web:__root__",
+      "dst": "route:@acme/web:/settings/profile",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/settings/profile.tsx"
+      ],
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+    },
+    {
+      "src": "route:@acme/web:__root__",
+      "dst": "sym:apps/web/src/routes/__root.tsx#RootLayout",
+      "kind": "serves",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/__root.tsx"
+      ],
+      "fileId": "file:apps/web/src/routes/__root.tsx"
+    },
+    {
       "src": "sym:apps/api/src/router.ts#router",
       "dst": "sym:packages/db/src/queries.ts#createPost",
       "kind": "calls",
@@ -1567,12 +1655,23 @@
     },
     {
       "src": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "dst": "sym:packages/ui/src/button.tsx#Button",
+      "kind": "renders",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/routes/settings/profile.tsx:11"
+      ],
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+    },
+    {
+      "src": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
       "dst": "sym:packages/ui/src/card.tsx#Card",
       "kind": "renders",
       "confidence": "high",
       "count": 1,
       "evidence": [
-        "apps/web/src/routes/settings/profile.tsx:7"
+        "apps/web/src/routes/settings/profile.tsx:10"
       ],
       "fileId": "file:apps/web/src/routes/settings/profile.tsx"
     },
@@ -1811,6 +1910,74 @@
       "count": 1,
       "evidence": [],
       "fileId": "file:apps/web/package.json"
+    }
+  ],
+  "adapterNodes": [
+    {
+      "id": "route:@acme/web:/",
+      "kind": "route",
+      "ws": "ws:@acme/web",
+      "label": "/",
+      "fileId": "file:apps/web/src/routes/index.tsx",
+      "data": {
+        "routeId": "/",
+        "urlPath": "/",
+        "path": "apps/web/src/routes/index.tsx",
+        "options": [
+          "component"
+        ],
+        "index": true,
+        "component": "HomePage"
+      }
+    },
+    {
+      "id": "route:@acme/web:/posts/$postId",
+      "kind": "route",
+      "ws": "ws:@acme/web",
+      "label": "/posts/$postId",
+      "fileId": "file:apps/web/src/routes/posts.$postId.tsx",
+      "data": {
+        "routeId": "/posts/$postId",
+        "urlPath": "/posts/$postId",
+        "path": "apps/web/src/routes/posts.$postId.tsx",
+        "options": [
+          "component"
+        ],
+        "component": "PostPage"
+      }
+    },
+    {
+      "id": "route:@acme/web:/settings/profile",
+      "kind": "route",
+      "ws": "ws:@acme/web",
+      "label": "/settings/profile",
+      "fileId": "file:apps/web/src/routes/settings/profile.tsx",
+      "data": {
+        "routeId": "/settings/profile",
+        "urlPath": "/settings/profile",
+        "path": "apps/web/src/routes/settings/profile.tsx",
+        "options": [
+          "component"
+        ],
+        "component": "ProfilePage"
+      }
+    },
+    {
+      "id": "route:@acme/web:__root__",
+      "kind": "route",
+      "ws": "ws:@acme/web",
+      "label": "__root",
+      "fileId": "file:apps/web/src/routes/__root.tsx",
+      "data": {
+        "routeId": "__root__",
+        "urlPath": "/",
+        "path": "apps/web/src/routes/__root.tsx",
+        "options": [
+          "component"
+        ],
+        "root": true,
+        "component": "RootLayout"
+      }
     }
   ]
 }

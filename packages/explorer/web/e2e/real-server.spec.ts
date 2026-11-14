@@ -282,3 +282,84 @@ test("duplicates: lists the fixture's near pair with a side-by-side, and a dismi
   await expect(groups.getByRole("button").filter({ hasText: "formatRelativeDate" })).toHaveCount(0);
   await expect(groups.getByRole("button").filter({ hasText: "slugify" })).toHaveCount(1);
 });
+
+test("pages: the fixture's three routes show their components and the shared Button, and the depth slider and prefix filter work", async ({
+  page,
+}) => {
+  mkdirSync(shots, { recursive: true });
+  await page.goto(url);
+  await page.getByRole("tab", { name: "Pages" }).click();
+  await expect(page).toHaveURL(/#\/pages/);
+  const rows = page.getByRole("listbox", { name: "Graph nodes" }).getByRole("option");
+  await page.getByRole("button", { name: "List", exact: true }).click();
+  for (const label of ["/", "/posts/$postId", "/settings/profile", "HomePage", "PostPage", "ProfilePage"]) {
+    await expect(
+      rows.filter({ hasText: new RegExp(`^${label.replace(/[$/]/g, "\\$&")}`) }).first(),
+    ).toBeVisible();
+  }
+  // Button is one node, drawn once, with two incoming edges (home and profile pages).
+  await expect(rows.filter({ hasText: /^Button/ })).toHaveCount(1);
+  await expect(page.getByRole("list", { name: "Shared components" })).toContainText("shared by 2");
+  // One step shows what the page components use directly; the hook below PostList needs two (the default).
+  await expect(rows.filter({ hasText: /^useDebounce/ })).toHaveCount(1);
+  await page.getByRole("slider").fill("1");
+  await expect(page).toHaveURL(/hops=1/);
+  await expect(rows.filter({ hasText: /^useDebounce/ })).toHaveCount(0);
+  await page.getByRole("slider").fill("2");
+  await expect(rows.filter({ hasText: /^useDebounce/ })).toHaveCount(1);
+  // Route prefix: only /settings/profile and its layout.
+  await page.getByRole("textbox").fill("/settings");
+  await page.getByRole("textbox").press("Enter");
+  await expect(rows.filter({ hasText: /^\/posts/ })).toHaveCount(0);
+  await expect(rows.filter({ hasText: /^\/settings\/profile/ })).toHaveCount(1);
+  await page.getByRole("textbox").fill("");
+  await page.getByRole("textbox").press("Enter");
+  await expect(rows.filter({ hasText: /^\/posts/ })).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Graph" }).click();
+  await expect(page.locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 30_000 });
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: join(shots, "pages-fixture.png") });
+});
+
+test("slices: cross-slice imports with their counts, the shared-by list, and imports inside a slice on request", async ({
+  page,
+}) => {
+  mkdirSync(shots, { recursive: true });
+  await page.goto(url);
+  await page.getByRole("tab", { name: "Feature slices" }).click();
+  await expect(page).toHaveURL(/#\/slices/);
+  const rows = page.getByRole("listbox", { name: "Graph nodes" }).getByRole("option");
+  await page.getByRole("button", { name: "List", exact: true }).click();
+  // The packages/* glob gives three slices; the app has no slice of its own, so its route segments are slices.
+  for (const label of [
+    "packages/db",
+    "packages/ui",
+    "packages/utils",
+    "web /",
+    "web /posts",
+    "web /settings",
+  ]) {
+    await expect(
+      rows.filter({ hasText: new RegExp(`^${label.replace(/\//g, "\\/")}`) }).first(),
+    ).toBeVisible();
+  }
+  await expect(page.getByText(/6 slices; 4 links between them/)).toBeVisible();
+  await expect(page.getByText(/first-level route segments/)).toBeVisible();
+  const shared = page.getByRole("region", { name: "Shared by" });
+  await expect(shared.getByRole("button", { name: /Button/ })).toContainText("2 slices");
+  await page.getByRole("radio", { name: "Functions" }).click();
+  await expect(page).toHaveURL(/level=symbols/);
+  await expect(rows.filter({ hasText: /^Button/ })).toHaveCount(1);
+  await page.getByRole("radio", { name: "Files" }).click();
+  await page.getByRole("checkbox", { name: /Imports inside a slice/ }).click();
+  await expect(page).toHaveURL(/intra=true/);
+  await page.getByRole("checkbox", { name: /Imports inside a slice/ }).click();
+
+  await page.getByRole("button", { name: "Graph" }).click();
+  await expect(page.locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 30_000 });
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: join(shots, "slices-fixture.png") });
+});

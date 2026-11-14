@@ -124,8 +124,14 @@ function dropRedundantWorking(store: Store): void {
   const edges = store.db.prepare(
     "SELECT src, dst, kind, confidence, count, evidence FROM edges WHERE layer = ? AND file_id = ? ORDER BY src, dst, kind",
   );
+  const nodes = store.db.prepare(
+    "SELECT id, kind, ws, label, data FROM adapter_nodes WHERE layer = ? AND file_id = ? ORDER BY id",
+  );
   for (const { id } of rows) {
-    if (JSON.stringify(edges.all("working", id)) === JSON.stringify(edges.all("main", id))) {
+    if (
+      JSON.stringify(edges.all("working", id)) === JSON.stringify(edges.all("main", id)) &&
+      JSON.stringify(nodes.all("working", id)) === JSON.stringify(nodes.all("main", id))
+    ) {
       store.clearWorking(id);
     }
   }

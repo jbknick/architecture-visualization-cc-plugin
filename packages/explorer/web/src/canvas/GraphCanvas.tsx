@@ -98,7 +98,8 @@ function FlatGraphCanvas({
     () => `${scene.nodes.length}:${scene.edges.length}:${scene.nodes[0]?.id ?? ""}`,
     [scene],
   );
-  const persist = Boolean(viewId) && layoutHint !== "radial";
+  // Radial and tree layouts follow from the data (the focus, the filters), so their positions are not saved.
+  const persist = Boolean(viewId) && layoutHint !== "radial" && layoutHint !== "tree-lr";
 
   // Theme: follow the shell's CSS variables and the OS colour scheme.
   useEffect(() => {
@@ -214,7 +215,7 @@ function FlatGraphCanvas({
         hideEdgesOnMove: false,
         enableEdgeEvents: true,
         labelDensity: 1,
-        labelGridCellSize: 130,
+        labelGridCellSize: layoutHint === "tree-lr" ? 28 : 130, // a route tree is sparse and its rows are close: label every node
         labelRenderedSizeThreshold: 0,
         minCameraRatio: 0.0015,
         maxCameraRatio: 12,
@@ -429,7 +430,7 @@ function FlatGraphCanvas({
       api2.current = null;
       sigma.kill();
     };
-  }, [layout, scene, sceneKey]);
+  }, [layout, scene, sceneKey, layoutHint]);
 
   // Selecting from outside the canvas (search, inspector, deep link) brings the node into view.
   useEffect(() => {

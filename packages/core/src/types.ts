@@ -51,6 +51,19 @@ export interface EdgeRecord {
   evidence: string[];
   fileId: string;
 }
+/**
+ * A node contributed by a framework adapter (TanStack Router routes now; endpoints and tables in M6), stored in
+ * `adapter_nodes` (spec section 9). `id` follows spec section 6 (`route:<ws>:<path>`), `ws` is the workspace id,
+ * `fileId` the file the node was found in (it picks the layer in the effective view) and `data` is adapter-specific JSON.
+ */
+export interface AdapterNodeRecord {
+  id: string;
+  kind: string;
+  ws: string | null;
+  label: string;
+  fileId: string;
+  data: Record<string, unknown>;
+}
 export interface FactSheet {
   contentKey: string;
   id: string;

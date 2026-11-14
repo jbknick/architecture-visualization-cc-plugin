@@ -256,7 +256,7 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       "src": "dir:ws:@acme/web:src/routes",
       "dst": "dir:ws:@acme/ui:src",
       "kind": "imports",
-      "weight": 2,
+      "weight": 3,
       "confidence": "high"
     },
     {
@@ -785,6 +785,14 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "confidence": "high"
     },
     {
+      "id": "file:apps/web/src/routes/settings/profile.tsx|imports|file:packages/ui/src/button.tsx",
+      "src": "file:apps/web/src/routes/settings/profile.tsx",
+      "dst": "file:packages/ui/src/button.tsx",
+      "kind": "imports",
+      "weight": 1,
+      "confidence": "high"
+    },
+    {
       "id": "file:apps/web/src/routes/settings/profile.tsx|imports|file:packages/ui/src/index.ts",
       "src": "file:apps/web/src/routes/settings/profile.tsx",
       "dst": "file:packages/ui/src/index.ts",
@@ -1013,7 +1021,7 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
       "src": "ws:@acme/web",
       "dst": "ws:@acme/ui",
       "kind": "imports",
-      "weight": 2,
+      "weight": 3,
       "confidence": "high"
     },
     {
