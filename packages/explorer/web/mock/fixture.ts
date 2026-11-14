@@ -13,8 +13,8 @@ import type {
 } from "../src/api.ts";
 import { generateSynthetic } from "../src/canvas/synthetic.ts";
 import { buildHierarchy } from "./hierarchy.ts";
-import { egoHub, hubNode } from "./hubEgo.ts";
-import { largeMapNode, projectMapLarge } from "./largeMap.ts";
+import { egoHub, hubCounts, hubNode } from "./hubEgo.ts";
+import { type Counts, largeMapCounts, largeMapNode, projectMapLarge } from "./largeMap.ts";
 
 export const meta: Meta = {
   repo: "pnpm-turbo",
@@ -1189,10 +1189,31 @@ export interface MockResponse {
   body: unknown;
 }
 
+/**
+ * `/api/meta` for the active mock scenario: the scenario's repo name and the counts of its own data, so the header
+ * and status bar agree with the canvas. The 3D map's large dataset is a separate (smaller) one from the project map's.
+ */
+export function metaFor(scenario: string | null, view: string | null): Meta {
+  let counts: Counts | undefined;
+  if (scenario === "large") {
+    counts =
+      view === "map-3d"
+        ? {
+            workspaces: M3_LARGE.ws.length,
+            files: M3_LARGE.files.length,
+            symbols: M3_LARGE.files.reduce((a, f) => a + f.fns, 0),
+            edges: M3_LARGE.imports.length + M3_LARGE.declared.length,
+          }
+        : largeMapCounts();
+  } else if (scenario === "hub" || scenario === "hub-thin") counts = hubCounts(scenario);
+  return counts ? { ...meta, repo: "acme-platform-monorepo", counts } : meta;
+}
+
 /** Pure request handler shared by the node:http mock server and the in-process fetch mock. */
 export function handleMockApi(url: URL): MockResponse | null {
   const path = url.pathname;
-  if (path === "/api/meta") return { status: 200, body: meta };
+  if (path === "/api/meta")
+    return { status: 200, body: metaFor(url.searchParams.get("scenario"), url.searchParams.get("view")) };
 
   if (path.startsWith("/api/layout/")) {
     const view = decodeURIComponent(path.slice("/api/layout/".length));
