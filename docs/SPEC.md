@@ -76,6 +76,7 @@ type GantryConfig = {
   backlogReminderThreshold: number; // 100
   renameSuggestions: boolean; // false (measured in M0: Haiku flagged 0 of 23 misleading names, so precision is not measurable; stays false)
   views: { slices: string[] }; // ["apps/*/src/features/*", "apps/*/src/modules/*", "packages/*"]
+  worker?: { binary?: string }; // absent by default: absolute path of the `claude` binary for the headless worker; first in the binary resolution order (section 16)
 };
 ```
 Routing defaults: `describe.init|sync|precommit` haiku/low, `describe.retry` sonnet/low, `overview` sonnet/low, `explain` sonnet/medium.

@@ -3,18 +3,10 @@ import path from "node:path";
 import type { Store } from "../store/index.js";
 import type { FactSheet } from "../types.js";
 import type { SourceContext } from "./backlog.js";
-import {
-  buildFactSheet,
-  contentKey,
-  FUNCTION_LIKE_KINDS,
-  PROMPT_MAJOR,
-  pathOfFileId,
-  SensitivePathError,
-} from "./factsheet.js";
+import { buildFactSheet, contentKey, pathOfFileId, SensitivePathError } from "./factsheet.js";
+import { type AcceptedDescription, recordDescribeFailure, storeDescriptions } from "./store.js";
 import { validateDescription } from "./validate.js";
 
-/** A function whose description failed validation this many times is parked as `failed` (spec section 8: `describe.retry`). */
-export const MAX_DESCRIBE_ATTEMPTS = 2;
 /** Model name written for descriptions that arrive through the describer tools. */
 export const SUBMIT_MODEL = "haiku";
 const DETAIL_MAX = 120;
@@ -174,16 +166,7 @@ export function submitDescriptions(
   const toPending = store.db.prepare(
     "UPDATE backlog SET status = 'pending', claimed_by = NULL, claimed_at = NULL WHERE content_key = ?",
   );
-  const failRow = store.db.prepare(
-    `UPDATE backlog SET attempts = ?, last_error = ?, status = ?, claimed_by = NULL, claimed_at = NULL
-     WHERE content_key = ?`,
-  );
-  const insertDescription = store.db.prepare(
-    `INSERT OR REPLACE INTO descriptions(content_key, behavior, search_terms, name_fits, suggested_name,
-       provenance, model, prompt_version, created_at) VALUES (?, ?, ?, ?, ?, 'model', ?, ?, ?)`,
-  );
-
-  const stored: { key: string; behavior: string; terms: string; suggested: string }[] = [];
+  const accepted: AcceptedDescription[] = [];
   for (const item of results) {
     const key = item.contentKey;
     if (seen.has(key)) {
@@ -225,41 +208,16 @@ export function submitDescriptions(
 
     const v = validateDescription(item.description, sheet);
     if (!v.ok) {
-      const attempts = (row.attempts ?? 0) + 1;
-      failRow.run(
-        attempts,
-        `${v.reason}: ${cap(v.detail, DETAIL_MAX)}`,
-        attempts >= MAX_DESCRIBE_ATTEMPTS ? "failed" : "pending",
-        key,
-      );
+      recordDescribeFailure(store, key, `${v.reason}: ${cap(v.detail, DETAIL_MAX)}`);
       reject(key, v.reason, v.detail);
       continue;
     }
-    const d = v.value;
-    store.tx(() => {
-      insertDescription.run(
-        key,
-        d.behavior,
-        JSON.stringify(d.searchTerms),
-        d.nameFits ? 1 : 0,
-        d.suggestedName ?? null,
-        SUBMIT_MODEL,
-        PROMPT_MAJOR,
-        new Date().toISOString(),
-      );
-      dropRow.run(key);
-    });
-    stored.push({
-      key,
-      behavior: d.behavior,
-      terms: d.searchTerms.join(" "),
-      suggested: d.suggestedName ?? "",
-    });
+    accepted.push({ contentKey: key, description: v.value, model: SUBMIT_MODEL });
     out.accepted++;
     out.acceptedKeys.push(key);
   }
 
-  updateFts(store, stored);
+  storeDescriptions(store, accepted, { replace: true });
   store.db
     .prepare(
       `INSERT INTO usage_log(at, task, model, effort, functions, input_tokens, output_tokens, cost_estimate_usd, source)
@@ -267,30 +225,4 @@ export function submitDescriptions(
     )
     .run(new Date().toISOString(), SUBMIT_MODEL, out.accepted + out.rejected.length);
   return out;
-}
-
-/** Writes the description columns of `fts_symbols` for every effective symbol that has a stored content key. */
-function updateFts(
-  store: Store,
-  stored: { key: string; behavior: string; terms: string; suggested: string }[],
-): void {
-  if (stored.length === 0) return;
-  const byKey = new Map(stored.map((s) => [s.key, s]));
-  const select = store.db.prepare("SELECT name_tokens, path FROM fts_symbols WHERE symbol_id = ?");
-  store.tx(() => {
-    for (const sym of store.effectiveSymbols({ kind: [...FUNCTION_LIKE_KINDS] })) {
-      if (sym.exactHash === "") continue;
-      const s = byKey.get(contentKey(sym.exactHash));
-      if (!s) continue;
-      const row = select.get(sym.id) as { name_tokens: string; path: string } | undefined;
-      if (!row) continue; // the indexer writes the row; nothing to enrich yet
-      store.fts.upsert(sym.id, {
-        nameTokens: row.name_tokens,
-        suggestedName: s.suggested,
-        path: row.path,
-        behavior: s.behavior,
-        searchTerms: s.terms,
-      });
-    }
-  });
 }

@@ -1,17 +1,9 @@
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import {
-  type GantryPaths,
-  heal,
-  indexRepo,
-  isIndexable,
-  loadConfig,
-  openStore,
-  resolvePaths,
-  type Store,
-  syncBacklog,
-} from "@gantry/core";
+import { type GantryPaths, heal, loadConfig, openStore, resolvePaths } from "@gantry/core";
+import { describeStaged, git, preCommit } from "./staged.js";
+
+export { preCommit };
 
 export const HOOK_NAMES = [
   "session-start",
@@ -24,8 +16,6 @@ export const HOOK_NAMES = [
 ] as const;
 export type HookName = (typeof HOOK_NAMES)[number];
 
-const GIT_MAX_BUFFER = 512 * 1024 * 1024;
-
 export function logHook(paths: GantryPaths, name: string, message: string): void {
   try {
     fs.mkdirSync(paths.logsDir, { recursive: true, mode: 0o700 });
@@ -35,57 +25,6 @@ export function logHook(paths: GantryPaths, name: string, message: string): void
     );
   } catch {
     // logging must never fail a hook
-  }
-}
-
-function git(root: string, args: string[]): { ok: boolean; out: Buffer } {
-  const r = spawnSync("git", ["-c", "core.quotepath=off", ...args], {
-    cwd: root,
-    maxBuffer: GIT_MAX_BUFFER,
-    stdio: ["ignore", "pipe", "ignore"],
-  });
-  return { ok: r.status === 0, out: r.stdout ?? Buffer.alloc(0) };
-}
-
-function stagedPaths(root: string): string[] {
-  const r = git(root, ["diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR"]);
-  return r.ok
-    ? r.out
-        .toString("utf8")
-        .split("\0")
-        .filter((p) => p !== "")
-    : [];
-}
-
-/** Pre-commit: index the staged blobs on a scratch copy of the store and enqueue undescribed functions. */
-export async function preCommit(paths: GantryPaths): Promise<number> {
-  const config = loadConfig(paths);
-  const files = stagedPaths(paths.root).filter((p) => isIndexable(p, config));
-  if (files.length === 0 || !fs.existsSync(paths.dbPath)) return 0;
-
-  const sources = new Map<string, string>();
-  for (const p of files) {
-    const r = git(paths.root, ["show", `:${p}`]);
-    if (r.ok) sources.set(p, r.out.toString("utf8"));
-  }
-  if (sources.size === 0) return 0;
-
-  const scratchPath = path.join(paths.dataDir, `precommit-${process.pid}.db`);
-  const real = openStore(paths.dbPath);
-  let scratch: Store | undefined;
-  try {
-    real.db.exec(`VACUUM INTO '${scratchPath.replace(/'/g, "''")}'`);
-    scratch = openStore(scratchPath);
-    await indexRepo(paths, { layer: "working", files: [...sources.keys()], sources, store: scratch });
-
-    const staged = [...sources.keys()].flatMap((p) =>
-      (scratch as Store).effectiveSymbols({ fileId: `file:${p}` }),
-    );
-    return syncBacklog(real, { root: paths.root, sources, symbols: staged }).enqueued;
-  } finally {
-    scratch?.close();
-    real.close();
-    for (const ext of ["", "-wal", "-shm"]) fs.rmSync(scratchPath + ext, { force: true });
   }
 }
 
@@ -135,6 +74,7 @@ export async function runHook(
   errOut: (s: string) => void = (s) => void process.stderr.write(s),
 ): Promise<string | undefined> {
   if (env.GANTRY_WORKER === "1") return undefined;
+  const startedAt = Date.now();
   let paths: GantryPaths;
   try {
     paths = resolvePaths(cwd, env);
@@ -158,9 +98,16 @@ export async function runHook(
         }
         return undefined;
       }
-      case "pre-commit":
-        await preCommit(paths);
+      case "pre-commit": {
+        // `off` (the default) only enqueues; `timeboxed` and `strict` also run the headless describer.
+        if (loadConfig(paths).precommit.mode === "off") {
+          await preCommit(paths);
+          return undefined;
+        }
+        const r = await describeStaged(paths, { env, startedAt });
+        if (r && r.undescribed > 0) errOut(`gantry: described ${r.described}, queued ${r.queued}\n`);
         return undefined;
+      }
       case "session-start": {
         if (!fs.existsSync(paths.dbPath)) return "Gantry: no index for this repo yet. Run `gantry init`.";
         await heal(paths);
