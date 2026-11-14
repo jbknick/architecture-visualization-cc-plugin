@@ -13,7 +13,15 @@ import {
 } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import path from "node:path";
-import { type GantryConfig, type GantryPaths, loadConfig, openStore, type Store } from "@gantry/core";
+import {
+  cachedEmbedder,
+  type Embedder,
+  type GantryConfig,
+  type GantryPaths,
+  loadConfig,
+  openStore,
+  type Store,
+} from "@gantry/core";
 import { HttpError, handleApi } from "./api.js";
 import { MAX_DISMISS_BODY_BYTES, putDismiss } from "./dismiss.js";
 import { MAX_LAYOUT_BODY_BYTES, putLayout } from "./layout.js";
@@ -28,6 +36,8 @@ export interface ExplorerServerOptions {
   /** Inject a store (tests); otherwise `paths.dbPath` is opened and closed with the server. */
   store?: Store;
   config?: GantryConfig;
+  /** Default: the embedding model if it is already cached. Tests pass a fake or `async () => undefined`. */
+  getEmbedder?: () => Promise<Embedder | undefined>;
   /** Write `<dataDir>/explorer.json` (default true). */
   writeStateFile?: boolean;
 }
@@ -189,7 +199,7 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
   const store = opts.store ?? openStore(paths.dbPath);
   const config = opts.config ?? loadConfig(paths);
   const token = randomBytes(32).toString("base64url");
-  const ctx = { store, paths, config };
+  const ctx = { store, paths, config, getEmbedder: opts.getEmbedder ?? cachedEmbedder() };
   let port = 0;
 
   const handler = (req: IncomingMessage, res: ServerResponse): void => {
@@ -251,7 +261,18 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
           );
           return;
         }
-        return void sendJson(res, 200, handleApi(ctx, url.pathname, url.searchParams));
+        const body = handleApi(ctx, url.pathname, url.searchParams);
+        if (body instanceof Promise) {
+          body.then(
+            (b) => sendJson(res, 200, b),
+            (err: unknown) => {
+              if (err instanceof HttpError) return void sendJson(res, err.status, { error: err.message });
+              sendJson(res, 500, { error: "Internal error" });
+            },
+          );
+          return;
+        }
+        return void sendJson(res, 200, body);
       }
 
       // First load: `?t=<token>` sets the cookie and redirects to strip it (the #fragment survives).

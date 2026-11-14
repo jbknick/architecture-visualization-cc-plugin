@@ -164,6 +164,9 @@ importers:
       '@gantry/core':
         specifier: workspace:*
         version: link:../core
+      '@gantry/explorer':
+        specifier: workspace:*
+        version: link:../explorer
       '@modelcontextprotocol/sdk':
         specifier: 1.32.2
         version: 1.32.2(zod@4.6.7)
