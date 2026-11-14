@@ -1,16 +1,20 @@
 import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { openStore, type Store } from "@gantry/core";
 import { build } from "tsup";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -48,7 +52,14 @@ beforeAll(async () => {
     format: ["esm"],
     platform: "node",
     target: "node22",
-    external: ["better-sqlite3", "sqlite-vec", "oxc-parser", "oxc-resolver"],
+    external: [
+      "better-sqlite3",
+      "sqlite-vec",
+      "oxc-parser",
+      "oxc-resolver",
+      "@huggingface/transformers",
+      "onnxruntime-node",
+    ],
     esbuildOptions(o) {
       o.alias = { "@gantry/core": join(repoRoot, "packages/core/src/index.ts") };
     },
@@ -65,12 +76,12 @@ afterAll(async () => {
   for (const f of fixtures.splice(0)) await f.cleanup();
 });
 
-function run(cwd: string, args: string[]) {
+function run(cwd: string, args: string[], extraEnv: Record<string, string> = {}) {
   const r = spawnSync("node", [cli, ...args], {
     cwd,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
-    env: { ...process.env, HOME: join(dataDir, "home"), CLAUDE_PLUGIN_DATA: dataDir },
+    env: { ...process.env, HOME: join(dataDir, "home"), CLAUDE_PLUGIN_DATA: dataDir, ...extraEnv },
   });
   return { code: r.status, out: r.stdout, err: r.stderr };
 }
@@ -113,6 +124,78 @@ describe("gantry init", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+});
+
+/** Opens the database the bundled CLI wrote last (each fixture repo has its own under the data dir). */
+function openBundleDb(): Store {
+  const repos = join(dataDir, "repos");
+  const dbs = readdirSync(repos)
+    .map((d) => join(repos, d, "gantry.db"))
+    .filter((d) => existsSync(d))
+    .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs); // the repo indexed last comes first
+  if (!dbs[0]) throw new Error("no gantry.db written");
+  return openStore(dbs[0]);
+}
+
+describe("bundled CLI: vector tables and embeddings", () => {
+  it("opens the store with migration v2 (sqlite-vec resolves from the bundle)", async () => {
+    const fx = await fixture("single-pkg");
+    const r = run(fx.dir, ["init"]);
+    expect(r.err).toBe("");
+    expect(r.code).toBe(0);
+    const db = openBundleDb();
+    try {
+      expect(db.getMeta("schema_version")).toBe("2");
+      expect(db.getMeta("vec_available")).toBe("1");
+      expect(db.getMeta("embed_model")).toBe("jinaai/jina-embeddings-v2-base-code");
+      expect(db.getMeta("embed_dim")).toBe("768");
+      const tables = (
+        db.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]
+      ).map((t) => t.name);
+      expect(tables).toContain("vec_descriptions");
+      expect(tables).toContain("vec_code");
+    } finally {
+      db.close();
+    }
+  });
+
+  const modelDir = join(process.env.HOME ?? "", ".gantry", "models");
+  const haveModel = existsSync(
+    join(modelDir, "jinaai/jina-embeddings-v2-base-code/onnx/model_quantized.onnx"),
+  );
+  it.skipIf(!haveModel)(
+    "gantry init embeds code through the external transformers/onnxruntime packages",
+    async () => {
+      const fx = await fixture("single-pkg");
+      // The fixtures only hold tiny functions; add one with 6+ statements (committed, so it is indexed).
+      writeFileSync(
+        join(fx.dir, "src/embedme.ts"),
+        "export function sumPositive(xs: number[]) {\n  let total = 0;\n  for (const x of xs) {\n    if (x > 0) {\n      total += x;\n    }\n  }\n  const avg = total / xs.length;\n  return { total, avg };\n}\n",
+      );
+      fx.git(["add", "-A"]);
+      fx.git(["commit", "-m", "add embedme"]);
+      const r = run(fx.dir, ["init"], { GANTRY_EMBED: "1", GANTRY_MODELS_DIR: modelDir });
+      expect(r.err).toBe("");
+      expect(r.code).toBe(0);
+      const db = openBundleDb();
+      try {
+        // Only symbols with stmtCount >= 6 are embedded; the fixture must have at least one.
+        const eligible = (
+          db.db
+            .prepare(
+              "SELECT count(DISTINCT exact_hash) AS n FROM symbols WHERE kind IN ('function','method','component','hook') AND stmt_count >= 6",
+            )
+            .get() as { n: number }
+        ).n;
+        const stored = (db.db.prepare("SELECT count(*) AS n FROM vec_code").get() as { n: number }).n;
+        expect(eligible).toBeGreaterThan(0);
+        expect(stored).toBe(eligible);
+      } finally {
+        db.close();
+      }
+    },
+    90_000,
+  );
 });
 
 describe("gantry index --dump", () => {

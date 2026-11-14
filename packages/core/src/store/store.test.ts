@@ -83,8 +83,9 @@ describe("openStore", () => {
     ]) {
       expect(names).toContain(t);
     }
-    expect(names.some((n) => n.startsWith("vec_"))).toBe(false);
-    expect(store.getMeta("schema_version")).toBe("1");
+    expect(names).toContain("vec_descriptions"); // migration v2 (sqlite-vec loaded by openStore)
+    expect(names).toContain("vec_code");
+    expect(store.getMeta("schema_version")).toBe("2");
     expect(store.db.pragma("journal_mode", { simple: true })).toBe("wal");
     expect(store.db.pragma("busy_timeout", { simple: true })).toBe(5000);
     expect(store.db.pragma("foreign_keys", { simple: true })).toBe(1);

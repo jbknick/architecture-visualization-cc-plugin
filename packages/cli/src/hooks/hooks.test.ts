@@ -81,7 +81,14 @@ beforeAll(async () => {
     format: ["esm"],
     platform: "node",
     target: "node22",
-    external: ["better-sqlite3", "sqlite-vec", "oxc-parser", "oxc-resolver"],
+    external: [
+      "better-sqlite3",
+      "sqlite-vec",
+      "oxc-parser",
+      "oxc-resolver",
+      "@huggingface/transformers",
+      "onnxruntime-node",
+    ],
     esbuildOptions(o) {
       o.alias = { "@gantry/core": join(repoRoot, "packages/core/src/index.ts") };
     },

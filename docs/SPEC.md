@@ -176,7 +176,7 @@ Templates without a model: re-exports, barrel files, type aliases, and one-state
 ## 9. SQLite schema v1 (`core/src/store/schema.sql`)
 
 ```sql
-CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);            -- schema_version, head_sha, indexed_at, last_refresh_at
+CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);            -- schema_version, head_sha, indexed_at, last_refresh_at, vec_available, embed_model, embed_dim
 CREATE TABLE workspaces(id TEXT PRIMARY KEY, name TEXT, dir TEXT, kind TEXT CHECK(kind IN ('app','package','unknown')),
   frameworks TEXT, deps TEXT, exports_map TEXT);                 -- json columns
 CREATE TABLE files(id TEXT, layer TEXT CHECK(layer IN ('main','working')), path TEXT, workspace_id TEXT,
@@ -198,9 +198,12 @@ CREATE TABLE dismissals(a TEXT, b TEXT, reason TEXT, PRIMARY KEY(a, b));
 CREATE TABLE overviews(node_id TEXT PRIMARY KEY, text TEXT, input_key TEXT, model TEXT, created_at TEXT);
 CREATE TABLE layouts(view TEXT, node_id TEXT, x REAL, y REAL, PRIMARY KEY(view, node_id));
 CREATE VIRTUAL TABLE fts_symbols USING fts5(symbol_id UNINDEXED, name_tokens, suggested_name, path, behavior, search_terms);
--- created after the embedding dimension D is known (migration v2):
--- CREATE VIRTUAL TABLE vec_descriptions USING vec0(content_key TEXT PRIMARY KEY, embedding float[D]);
--- CREATE VIRTUAL TABLE vec_code USING vec0(content_key TEXT PRIMARY KEY, embedding float[D]);
+-- migration v2 (embeddings; D = 768 for the M0 model, so the dimension is known):
+-- CREATE VIRTUAL TABLE vec_descriptions USING vec0(content_key TEXT PRIMARY KEY, embedding float[768] distance_metric=cosine);
+-- CREATE VIRTUAL TABLE vec_code USING vec0(content_key TEXT PRIMARY KEY, embedding float[768] distance_metric=cosine);
+--   records meta.embed_model and meta.embed_dim; a changed model or dimension drops and recreates both tables and re-embeds.
+--   `openStore` loads sqlite-vec first and writes meta.vec_available (1 or 0); if it cannot load, migration v2 creates no
+--   tables, everything except vector search keeps working, and `ensureVecTables` creates them later where it can.
 -- migration v3 (pages view): adapter_nodes(id, layer, kind, ws, label, file_id, data), PRIMARY KEY(id, layer)
 ```
 Effective view = working rows override main rows for the same file id; a working `files` row with `deleted=1` hides the main file. WAL mode; writers take an exclusive lock via `BEGIN IMMEDIATE` with a 5 s busy timeout.
@@ -294,7 +297,7 @@ Claims expire after 10 minutes and return to `pending`. Tool names as seen by Cl
 | semantic    | cosine ≥ 0.60 (measured in M0) between description embeddings, compatible signature  |
 
 Embedding model (measured in M0): `jinaai/jina-embeddings-v2-base-code` (q8 ONNX, mean pooling, L2-normalized) for both descriptions and normalized code, dimension D = 768, so `vec_descriptions` and `vec_code` are `float[768]` (section 9 migration v2). The two thresholds are initial values from a small hand-written set (15 + 15 pairs per task), not final: code_vector 0.96 gave recall 93% and 7% false positives (1 of 15), semantic 0.60 gave recall 80% and 7% false positives; the old 0.92 and 0.85 gave 33% false positives and 0% recall. Re-fit both in M2 (#32) on real LLM-written descriptions.
-Normalizer for `vec_code` (decided in M0, approved by the operator on 2026-11-14): rename local identifiers (parameters, `const`/`let` names, the function name) to `v1, v2, …`, drop comments, collapse whitespace, replace string and template literals with `"s"`, but keep property names after `.` and well-known globals. Renaming everything made `capitalize` and `decapitalize` identical (cosine 1.000); keeping them raised Jina's best accuracy from 93.3% to 96.7% (measured in M0).
+Normalizer for `vec_code` (decided in M0, approved by the operator on 2026-11-14): rename local identifiers (parameters, `const`/`let` names, the function name) to `v1, v2, …`, drop comments, collapse whitespace, replace string and template literals with `"s"`, but keep property names after `.` and well-known globals (and any other identifier not declared inside the function, such as an imported helper). The function's own name is renamed too, recursive calls included. Renaming everything made `capitalize` and `decapitalize` identical (cosine 1.000); keeping them raised Jina's best accuracy from 93.3% to 96.7% (measured in M0).
 
 Compare only within kind family (function/method together; component; hook). Skip tests, fixtures, generated files, barrels and `duplicates.ignore`. Dismissed pairs never alert. Budget: < 1 in 10 hook alerts false; alerts on < 5% of edits.
 
