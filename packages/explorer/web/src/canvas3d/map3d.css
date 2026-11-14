@@ -1,0 +1,599 @@
+.map3d {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.map3d-host {
+  position: absolute;
+  inset: 0;
+}
+.map3d-host canvas {
+  display: block;
+}
+.map3d-tip {
+  position: absolute;
+  z-index: 5;
+  max-width: 320px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  overflow-wrap: anywhere;
+}
+.map3d-tip strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+.map3d-tip div {
+  color: var(--muted);
+}
+.map3d-empty {
+  position: absolute;
+  inset: 0;
+}
+.map3d-fallback {
+  margin: 12vh auto;
+  max-width: 460px;
+  padding: 0 20px;
+  line-height: 1.5;
+}
+.map3d-fallback h2 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+.map3d-fallback a {
+  color: var(--accent);
+}
+
+.map3d-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.map3d-levels {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+.map3d-levels legend {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.map3d-radio,
+.map3d-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.map3d-reset {
+  align-self: flex-start;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.map3d-reset:hover {
+  border-color: var(--accent);
+}
+.map3d-legend {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.map3d-legend-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-items: start;
+  text-align: left;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.map3d-legend-row .kind-dot {
+  margin-top: 4px;
+}
+.map3d-legend-row:hover {
+  background: var(--surface-2);
+}
+.map3d-legend-row.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.map3d-legend-name {
+  min-width: 0;
+  overflow-wrap: anywhere; /* wrap long names, never cut them */
+  font-weight: 600;
+  line-height: 1.3;
+}
+.map3d-legend-count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: nowrap;
+}
+.map3d-legend-meta {
+  line-height: 1.2;
+  grid-column: 2 / span 2;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Always-visible key, bottom-left of the canvas. */
+.map3d-key {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 4;
+  max-width: min(860px, calc(100% - 24px));
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+.map3d-key strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Label overlay: DOM text placed in screen space every frame by scene.ts. */
+.m3-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+.m3-leaders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.m3-leader {
+  stroke: var(--m3-leader);
+  stroke-width: 1;
+  fill: none;
+}
+.m3-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  white-space: nowrap;
+  color: var(--m3-fg);
+  background: var(--m3-bg);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.25;
+  padding: 2px 6px;
+  font-weight: 500;
+}
+.m3-island {
+  padding: 3px 9px 4px;
+  border: 1.5px solid currentColor;
+  border-radius: 9px;
+  text-align: center;
+  max-width: 230px;
+}
+.m3-name {
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  max-width: 12em;
+  margin: 0 auto;
+}
+.m3-cap {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.82;
+  white-space: nowrap;
+}
+.m3-arc {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px 1px 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border: 1px solid var(--m3-leader);
+  border-radius: 999px;
+}
+/* Direction glyph: an arrow rotated along the arc, pointing at the imported (target) workspace. */
+.m3-pa {
+  flex: none;
+  width: 11px;
+  height: 9px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.m3-arc-lo .m3-pa {
+  width: 9px;
+  height: 7px;
+}
+.m3-arc.m3-full {
+  padding: 1px 7px;
+}
+.m3-arc.m3-full .m3-pa {
+  display: none;
+}
+/* Light arcs (few imports): smaller and lighter, so the heavy ones still lead. */
+.m3-arc-lo {
+  padding: 0 4px 0 5px;
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.9;
+  border-color: color-mix(in srgb, var(--m3-leader) 55%, transparent);
+}
+.m3-dir,
+.m3-file {
+  font-size: 11.5px;
+  padding: 1px 5px;
+}
+.m3-dir {
+  white-space: pre;
+  text-align: center;
+}
+.m3-file {
+  font-weight: 400;
+  font-size: 11px;
+}
+/* Folder captions (Files level): bold, with a folder glyph, no box; file names are regular weight. */
+.m3-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  background: transparent;
+  text-shadow:
+    0 0 3px var(--m3-bg),
+    0 0 3px var(--m3-bg),
+    0 0 6px var(--m3-bg);
+}
+.m3-fg {
+  flex: none;
+  width: 12px;
+  height: 10px;
+  fill: currentColor;
+  opacity: 0.85;
+}
+/* Rank marker: the numbered circle that ties a dot to the "Largest files" list. */
+.m3-rank {
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 2.5px solid var(--m3-leader);
+  border-radius: 50%;
+  background: var(--m3-fg);
+  color: var(--m3-bg);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  pointer-events: auto;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px var(--m3-bg);
+}
+.m3-rank.is-hot {
+  box-shadow:
+    0 0 0 2px var(--m3-bg),
+    0 0 0 4px var(--accent);
+}
+.m3-hover {
+  font-weight: 700;
+  border: 1px solid var(--m3-leader);
+}
+
+.map3d-howto {
+  display: grid;
+  gap: 6px;
+}
+.map3d-howto h3 {
+  margin: 0;
+}
+.map3d-howto ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.map3d-howto li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: start;
+}
+.map3d-howto strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.map3d-sw {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+}
+.map3d-sw-island {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  background: var(--accent-soft);
+}
+.map3d-sw-arrow {
+  width: 26px;
+  height: 10px;
+  margin-top: 6px;
+}
+.map3d-sw-dot {
+  width: 10px;
+  height: 10px;
+  margin: 6px 0 0 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.map3d-howto-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.map3d-howto-toggle .panel-title {
+  margin: 0;
+}
+.map3d-howto-chevron {
+  display: inline-block;
+  width: 10px;
+  color: var(--muted);
+  font-size: 10px;
+  transition: transform 0.12s;
+}
+.map3d-howto-toggle[aria-expanded="true"] .map3d-howto-chevron {
+  transform: rotate(90deg);
+}
+
+/* ---- Code city (default style) --------------------------------------------------------------------------- */
+.c3-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+.c3-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.c3-leader {
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.c3-pole {
+  stroke: var(--text);
+  stroke-width: 1.5;
+  opacity: 0.8;
+}
+.c3-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  line-height: 1.25;
+  will-change: transform;
+}
+.c3-title {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 8px 4px 8px;
+  border-left: 4px solid var(--muted);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+.c3-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+.c3-sub {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.c3-subc {
+  position: absolute;
+  visibility: hidden;
+  max-height: 0;
+  overflow: hidden;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.c3-title.is-compact .c3-sub {
+  display: none;
+}
+.c3-title.is-compact .c3-subc {
+  position: static;
+  visibility: visible;
+  max-height: none;
+}
+.c3-cap {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ws, var(--muted)) 55%, transparent);
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.c3-cap .c3-fg {
+  margin-right: 4px;
+  color: var(--ws, var(--muted));
+}
+.c3-cap .c3-cf {
+  display: inline-block;
+  max-width: 0;
+  overflow: hidden;
+  vertical-align: bottom;
+  font-weight: 600;
+  color: var(--muted);
+}
+.c3-cap.is-full .c3-cf {
+  max-width: none;
+  margin-left: 3px;
+}
+.c3-pill {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 2px solid var(--ws, var(--muted));
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.c3-pill.is-dim {
+  opacity: 0.3;
+}
+.c3-pill.is-full {
+  background: var(--ws);
+  color: #fff;
+  border-color: var(--ws);
+}
+.c3-flag {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--surface);
+  border: 2px solid var(--ws, var(--muted));
+  font-size: 11px;
+  font-weight: 800;
+  box-sizing: border-box;
+}
+.c3-flag.is-hover {
+  outline: 3px solid var(--accent);
+}
+.map3d-toprow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.map3d-styles {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.map3d-seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.map3d-seg-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 2px 11px;
+  font-size: 12.5px;
+  line-height: 1.3;
+  cursor: pointer;
+  background: var(--surface-2);
+}
+.map3d-seg-opt input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.map3d-seg-opt.is-on {
+  background: var(--accent);
+  color: #fff;
+}
+.map3d-seg-opt:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.map3d-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.map3d-toprow .map3d-reset,
+.map3d-views .map3d-reset {
+  padding: 4px 9px;
+  font-size: 12.5px;
+}
+.map3d-toprow .map3d-reset {
+  padding: 2px 9px;
+  font-size: 12.5px;
+  line-height: 1.3;
+}

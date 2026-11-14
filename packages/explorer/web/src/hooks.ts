@@ -6,6 +6,7 @@ import {
   type SearchHit,
   type SourceSlice,
   type ViewData,
+  type ViewLevel,
 } from "./api.ts";
 
 export interface Loadable<T> {
@@ -41,15 +42,23 @@ function useLoad<T>(key: string | null, load: (signal: AbortSignal) => Promise<T
   return state;
 }
 
+/** Fetches a view with its hash-route params. Pass `view: null` to skip the request. */
 export function useViewData(
   view: string | null,
-  focus: string | null,
-  depth: number | null,
-  filters: Filters,
+  params: { focus: string | null; level: ViewLevel | null; hops: number | null; filters: Filters },
 ): Loadable<ViewData> {
-  const key = view === null ? null : JSON.stringify([view, focus, depth, filters]);
+  const key = view === null ? null : JSON.stringify([view, params]);
   return useLoad(key, (signal) =>
-    api.view(view ?? "", { focus: focus ?? undefined, depth: depth ?? undefined, filters }, signal),
+    api.view(
+      view ?? "",
+      {
+        focus: params.focus ?? undefined,
+        level: params.level ?? undefined,
+        hops: params.hops ?? undefined,
+        filters: params.filters,
+      },
+      signal,
+    ),
   );
 }
 

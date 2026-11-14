@@ -1,0 +1,277 @@
+/* Graph canvas (#36). Uses the shell's CSS variables so it follows light and dark themes. */
+.gc-host {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.gc-host > .list-canvas {
+  padding-top: 44px;
+}
+.gc-mode {
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 5;
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.gc-mode button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+.gc-mode button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.gc {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg);
+}
+.gc-under,
+.gc-sigma {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.gc-sigma {
+  background: transparent;
+  touch-action: none;
+}
+.gc-controls {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+}
+.gc-btn {
+  min-width: 32px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.gc-btn.wide {
+  font-size: 12px;
+  padding: 0 12px;
+}
+.gc-btn:hover {
+  background: var(--surface-2);
+}
+.gc-btn:focus-visible,
+.gc-mode button:focus-visible,
+.gc-legend-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.gc-legend {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 5;
+  max-width: 240px;
+  max-height: 55%;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 12px;
+}
+.gc-legend.is-top {
+  /* Hierarchical maps: a collapsed key in the strip above the fitted diagram, never over it. */
+  top: 10px;
+  right: auto;
+  bottom: auto;
+  left: 120px;
+  max-height: 70%;
+}
+.gc-legend-toggle {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.gc-legend-body {
+  padding: 0 10px 8px;
+}
+.gc-legend h4 {
+  margin: 6px 0 4px;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.gc-legend ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.gc-legend li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 1px 0;
+  color: var(--text);
+}
+.gc-legend .is-muted li {
+  opacity: 0.7;
+}
+.gc-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+.gc-swatch.round {
+  border-radius: 50%;
+}
+.gc-status {
+  position: absolute;
+  left: 12px;
+  bottom: 8px;
+  z-index: 5;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 8px;
+}
+.gc-tooltip {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  max-width: 360px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  overflow-wrap: anywhere;
+}
+.gc-tooltip div {
+  color: var(--muted);
+}
+/* The project map (TreemapCanvas): an opaque control bar, so labels never show through it, and room for the key. */
+.gc-map .gc-controls {
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+}
+.gc-map .gc-status {
+  bottom: 58px;
+}
+.gc-key {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: min(780px, calc(100% - 24px));
+  padding: 4px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.gc-key-toggle {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+}
+.gc-key-toggle:focus-visible,
+.gc-crumb button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.gc-key-body div + div {
+  color: var(--muted);
+}
+.gc-crumb {
+  position: absolute;
+  top: 44px;
+  left: 12px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: calc(100% - 200px);
+  padding: 2px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+}
+.gc-crumb button {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gc-crumb button:hover {
+  background: var(--surface-2);
+}
+.gc-crumb-sep {
+  color: var(--muted);
+}
+
+/* Ego bow-tie (BowtieCanvas): one 2D canvas filling the slot. */
+.bt-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}

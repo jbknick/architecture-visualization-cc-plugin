@@ -11,8 +11,10 @@ export default defineConfig({
   root: here,
   base: "./",
   plugins: [react()],
+  worker: { format: "es" },
   build: {
     outDir: resolve(here, "../../../plugin/dist/explorer"),
     emptyOutDir: true,
+    chunkSizeWarningLimit: 1700, // the lazy 3D chunk (three.js) is ~1.5 MB; the main bundle stays small
   },
 });

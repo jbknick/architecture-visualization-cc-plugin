@@ -1,19 +1,15 @@
 import { closeSync, fstatSync, openSync, readSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { isIndexable, isSensitive, MAX_FILE_BYTES, splitIdentifier } from "@gantry/core";
-import type { ApiContext, ViewParams } from "./types.js";
+import { HttpError } from "./errors.js";
+import { getLayout } from "./layout.js";
+import type { ApiContext, ViewLevel, ViewParams } from "./types.js";
 import { getView, listViews } from "./views/index.js";
+import { parseOptions } from "./views/options.js";
 
-export class HttpError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = "HttpError";
-  }
-}
+export { HttpError };
 
+const VIEW_LEVELS: readonly ViewLevel[] = ["workspaces", "dirs", "files", "symbols"];
 export const MAX_SOURCE_LINES = 400;
 export const SEARCH_LIMIT = 20;
 
@@ -50,6 +46,8 @@ export function handleApi(ctx: ApiContext, pathname: string, query: URLSearchPar
       return search(ctx, query.get("q") ?? "");
     case "source":
       return source(ctx, query);
+    case "layout":
+      return getLayout(ctx.store, decodeSegment(segments[2]));
     default:
       throw new HttpError(404, "Unknown API route");
   }
@@ -82,12 +80,19 @@ function view(ctx: ApiContext, id: string, query: URLSearchParams) {
   const mod = getView(id);
   if (!mod) throw new HttpError(404, `Unknown view: ${id}`);
   if (!mod.enabled) throw new HttpError(404, `View disabled: ${id}`);
-  const params: ViewParams = {
-    filters: (query.get("filters") ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean),
-  };
+  const rawFilters = query.get("filters") ?? "";
+  const filters = rawFilters
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const params: ViewParams = { filters, options: parseOptions(rawFilters, filters, query) };
+  const level = query.get("level");
+  if (level) {
+    if (!(VIEW_LEVELS as readonly string[]).includes(level)) {
+      throw new HttpError(400, `level must be one of ${VIEW_LEVELS.join(", ")}`);
+    }
+    params.level = level as ViewLevel;
+  }
   const focus = query.get("focus");
   if (focus) params.focus = focus;
   const depth = query.get("depth");

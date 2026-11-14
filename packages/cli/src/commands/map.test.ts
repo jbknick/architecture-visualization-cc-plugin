@@ -27,10 +27,6 @@ describe.skipIf(!built)("gantry map (bundled CLI)", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("ships schema.sql next to the bundle", () => {
-    expect(existsSync(join(dirname(cliJs), "schema.sql"))).toBe(true);
-  });
-
   it("starts, serves the API, and a second `gantry map` reuses the same server", async () => {
     first = spawn("node", [cliJs, "map", "--no-open"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"] });
     const url = await new Promise<string>((resolve, reject) => {

@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { handleMockApi } from "./fixture.ts";
+import { handleMockApi, mockLayouts } from "./fixture.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../../../../plugin/dist/explorer");
@@ -17,6 +17,21 @@ const types: Record<string, string> = {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://127.0.0.1");
+  if (req.method === "PUT" && url.pathname.startsWith("/api/layout/")) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+    try {
+      const body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
+        positions: Record<string, [number, number]>;
+      };
+      mockLayouts.set(decodeURIComponent(url.pathname.slice("/api/layout/".length)), body.positions);
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ saved: Object.keys(body.positions).length }));
+    } catch {
+      res.writeHead(400).end();
+    }
+    return;
+  }
   const api = handleMockApi(url);
   if (api) {
     res.writeHead(api.status, { "content-type": "application/json" });

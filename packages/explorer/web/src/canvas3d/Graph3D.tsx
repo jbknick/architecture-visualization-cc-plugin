@@ -1,0 +1,165 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRankView } from "../rankedFiles/store.ts";
+import { useRanked } from "../rankedFiles/useRanked.ts";
+import type { CanvasProps } from "../slots.ts";
+import { useStore } from "../store.tsx";
+import { currentScheme } from "../theme.ts";
+import { getBool } from "../views/filterUtils.ts";
+import CityCanvas from "./city/CityCanvas.tsx";
+import { fnv1a } from "./layout.ts";
+import { MapScene, type TipInfo } from "./scene.ts";
+import { mapUi, prefersReducedMotion, readStyle, useMapUi } from "./ui.ts";
+
+interface Tip extends TipInfo {
+  x: number;
+  y: number;
+}
+
+/** The WebGL canvas for the `force-3d` layout. Loaded lazily; see index.tsx. */
+function IslandsCanvas({ nodes, edges, focus, onSelect, onHover }: CanvasProps) {
+  const host = useRef<HTMLDivElement>(null);
+  const scene = useRef<MapScene | null>(null);
+  const [tip, setTip] = useState<Tip | null>(null);
+  const [ready, setReady] = useState(false);
+  const ui = useMapUi();
+  const hideTests = getBool(useStore().state.route.filters, "hideTests", true);
+  // Files level: the largest files get a ringed dot, a number marker and a name (same ranking as the left panel).
+  const filesLevel = useMemo(() => nodes.some((n) => n.kind === "file"), [nodes]);
+  const ranked = useRanked(nodes, hideTests, filesLevel);
+  const { focusFile, focusNonce } = useRankView();
+  const seenFocus = useRef(focusNonce);
+  // The shell refetches the view on every focus change; only a real data change may re-layout and move the camera.
+  const dataKey = useMemo(
+    () =>
+      fnv1a(
+        `${nodes.map((n) => `${n.id}:${n.size}:${n.parent ?? ""}`).join("|")}#${edges.map((e) => `${e.id}:${e.weight}`).join("|")}`,
+      ),
+    [nodes, edges],
+  );
+  // The scene is built once; callbacks go through refs so it never has to be rebuilt for a new closure.
+  const handlers = useRef({ onSelect, onHover });
+  handlers.current = { onSelect, onHover };
+
+  useEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    const s = new MapScene(
+      el,
+      {
+        onSelect: (id) => handlers.current.onSelect(id),
+        onHover: (id) => handlers.current.onHover(id),
+        onTip: (t, x, y) => setTip(t ? { ...t, x, y } : null),
+      },
+      { scheme: currentScheme(), reducedMotion: prefersReducedMotion() },
+    );
+    scene.current = s;
+    s.setAutoRotate(mapUi.get().autoRotate);
+    s.setShowDeclared(mapUi.get().showDeclared);
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const onScheme = () => s.setScheme(currentScheme());
+    mq?.addEventListener?.("change", onScheme);
+    return () => {
+      mq?.removeEventListener?.("change", onScheme);
+      scene.current = null;
+      s.dispose();
+    };
+  }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `dataKey` stands for nodes and edges; focus has its own effect
+  useEffect(() => {
+    const s = scene.current;
+    if (!s) return;
+    s.setData(nodes, edges);
+    s.setFocus(focus);
+    setReady(true);
+  }, [dataKey]);
+
+  useEffect(() => {
+    scene.current?.setFocus(focus);
+    const s = scene.current;
+    if (s) mapUi.selectIsland(focus && s.isIsland(focus) ? focus : null);
+  }, [focus]);
+
+  useEffect(() => scene.current?.setRanked(ranked.files), [ranked.files]);
+  useEffect(() => scene.current?.setHoverFile(ranked.hoverFile), [ranked.hoverFile]);
+  // A click on a row of the "Largest files" list flies the camera to that file.
+  useEffect(() => {
+    if (focusNonce === seenFocus.current) return;
+    seenFocus.current = focusNonce;
+    if (focusFile) scene.current?.flyToNode(focusFile);
+  }, [focusFile, focusNonce]);
+
+  useEffect(() => scene.current?.setAutoRotate(ui.autoRotate), [ui.autoRotate]);
+  useEffect(() => scene.current?.setShowDeclared(ui.showDeclared), [ui.showDeclared]);
+  useEffect(() => scene.current?.setLegendHover(ui.hoverIsland), [ui.hoverIsland]);
+
+  // Requests made before this canvas existed (the store outlives the style switch) are not replayed.
+  const seenReset = useRef(ui.resetNonce);
+  const seenFly = useRef(ui.flyNonce);
+  useEffect(() => {
+    if (ui.resetNonce > seenReset.current) {
+      seenReset.current = ui.resetNonce;
+      scene.current?.resetCamera();
+      handlers.current.onSelect(null);
+    }
+  }, [ui.resetNonce]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fires per request (nonce), not per island change
+  useEffect(() => {
+    if (ui.flyNonce <= seenFly.current || !ui.island) return;
+    seenFly.current = ui.flyNonce;
+    const s = scene.current;
+    if (!s?.isIsland(ui.island)) return;
+    handlers.current.onSelect(ui.island);
+    s.flyToIsland(ui.island);
+  }, [ui.flyNonce]);
+
+  return (
+    <div className="map3d" data-ready={ready ? "true" : "false"}>
+      <div ref={host} className="map3d-host" data-testid="map3d-canvas" />
+      {tip && (
+        <div className="map3d-tip" style={{ left: tip.x + 14, top: tip.y + 14 }} role="status">
+          <strong>{tip.title}</strong>
+          {tip.lines.map((l) => (
+            <div key={l}>{l}</div>
+          ))}
+        </div>
+      )}
+      <p className="map3d-key" data-testid="map3d-key">
+        <span>
+          <strong>Island</strong> = workspace (size = functions)
+        </span>
+        {" · "}
+        <span>
+          <strong>Arrow A → B</strong> = A imports from B (thicker = more imports)
+        </span>
+        {" · "}
+        <span>
+          <strong>Number</strong> = imports, <strong>→</strong> points at the imported workspace
+        </span>
+        {filesLevel && ranked.files.length > 0 && (
+          <>
+            {" · "}
+            <span>
+              <strong>Numbers</strong> = largest files, listed on the left
+            </span>
+          </>
+        )}
+        {hideTests && (
+          <>
+            {" · "}
+            <span>Tests hidden</span>
+          </>
+        )}
+      </p>
+      {nodes.length === 0 && <p className="empty map3d-empty">Nothing to draw at this level.</p>}
+    </div>
+  );
+}
+
+/** The map-3d canvas: the code city (default) or, with style=islands, the island rendering. */
+export default function Graph3D(props: CanvasProps) {
+  useMapUi(); // the remembered style can change without the hash changing
+  const style = readStyle(useStore().state.route.filters);
+  return style === "islands" ? <IslandsCanvas {...props} /> : <CityCanvas {...props} />;
+}

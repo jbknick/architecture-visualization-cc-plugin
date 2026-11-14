@@ -8,6 +8,8 @@ CREATE TABLE symbols(id TEXT, layer TEXT, file_id TEXT, name TEXT, kind TEXT, ex
   exact_hash TEXT, shape_hash TEXT, minhash BLOB, PRIMARY KEY(id, layer));
 CREATE TABLE edges(src TEXT, dst TEXT, kind TEXT, layer TEXT, confidence TEXT, count INTEGER, evidence TEXT, file_id TEXT,
   PRIMARY KEY(src, dst, kind, layer));
+CREATE INDEX symbols_file ON symbols(file_id, layer);            -- per-file replace without a table scan
+CREATE INDEX edges_file ON edges(file_id, layer);
 CREATE TABLE descriptions(content_key TEXT PRIMARY KEY, behavior TEXT, search_terms TEXT, name_fits INTEGER,
   suggested_name TEXT, provenance TEXT, model TEXT, prompt_version TEXT, created_at TEXT);
 CREATE TABLE backlog(content_key TEXT PRIMARY KEY, symbol_id TEXT, priority INTEGER, status TEXT

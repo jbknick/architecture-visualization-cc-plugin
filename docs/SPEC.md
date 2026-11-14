@@ -19,8 +19,9 @@ Plan doc (background and rationale): https://claude.ai/artifact/7UCZZRCs4k45gPkK
 
 ## 2. Approved dependencies
 
-Runtime: `oxc-parser`, `oxc-resolver`, `better-sqlite3`, `sqlite-vec` (pin exact version), `@modelcontextprotocol/sdk`, `zod`, `commander`, `ignore`, `picomatch`, `@huggingface/transformers`, `@parcel/watcher`, `ws`, `@ast-grep/napi`, `sigma`, `graphology`, `graphology-layout-forceatlas2`, `elkjs`, `react`, `react-dom`. Later only: `ts-morph`.
-Dev: `typescript`, `vitest`, `@biomejs/biome`, `tsup`, `tsx`, `vite`, `@vitejs/plugin-react`, `playwright` (explorer smoke tests only).
+Runtime: `oxc-parser`, `oxc-resolver`, `better-sqlite3`, `sqlite-vec` (pin exact version), `@modelcontextprotocol/sdk`, `zod`, `commander`, `ignore`, `picomatch`, `@huggingface/transformers`, `@parcel/watcher`, `ws`, `@ast-grep/napi`, `sigma`, `graphology`, `graphology-layout-forceatlas2`, `elkjs`, `react`, `react-dom`, `3d-force-graph`, `three`, `three-spritetext`. Later only: `ts-morph`.
+Explorer 3D map (`packages/explorer/web`, lazy chunk only): `3d-force-graph` gives the orbit camera, picking and link rendering for the `map-3d` view; `three` is its renderer and draws the workspace islands and bundled arcs; `three-spritetext` makes the always-facing text labels. The default `city` style of the same view is a plain `three` scene (instanced boxes, tube arches, `OrbitControls` from `three/examples`, DOM labels) on the 2D project map's layout: no new dependency; `style=islands` selects the island rendering above.
+Dev: `typescript`, `vitest`, `@biomejs/biome`, `tsup`, `tsx`, `vite`, `@vitejs/plugin-react`, `playwright` (explorer smoke tests only), `@types/three`.
 
 ## 3. Repo layout
 
@@ -183,6 +184,8 @@ CREATE TABLE symbols(id TEXT, layer TEXT, file_id TEXT, name TEXT, kind TEXT, ex
   exact_hash TEXT, shape_hash TEXT, minhash BLOB, PRIMARY KEY(id, layer));
 CREATE TABLE edges(src TEXT, dst TEXT, kind TEXT, layer TEXT, confidence TEXT, count INTEGER, evidence TEXT, file_id TEXT,
   PRIMARY KEY(src, dst, kind, layer));
+CREATE INDEX symbols_file ON symbols(file_id, layer);            -- per-file replace without a table scan
+CREATE INDEX edges_file ON edges(file_id, layer);
 CREATE TABLE descriptions(content_key TEXT PRIMARY KEY, behavior TEXT, search_terms TEXT, name_fits INTEGER,
   suggested_name TEXT, provenance TEXT, model TEXT, prompt_version TEXT, created_at TEXT);
 CREATE TABLE backlog(content_key TEXT PRIMARY KEY, symbol_id TEXT, priority INTEGER, status TEXT

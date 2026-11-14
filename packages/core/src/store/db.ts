@@ -1,7 +1,8 @@
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import Database from "better-sqlite3";
 import { createStore, type Store } from "./repo.js";
+import { SCHEMA_V1 } from "./schema.js";
 
 export class SchemaTooNewError extends Error {
   constructor(
@@ -23,25 +24,10 @@ const MIGRATIONS: Migration[] = [
   {
     version: 1,
     apply(db) {
-      db.exec(readSchemaSql());
+      db.exec(SCHEMA_V1);
     },
   },
 ];
-
-/**
- * schema.sql lives next to this file in source, is copied next to the bundles by tsup (plugin/dist/), and for
- * tsc output (packages/core/dist/store/) is found in the source tree two levels up.
- */
-function readSchemaSql(): string {
-  for (const rel of ["./schema.sql", "../../src/store/schema.sql"]) {
-    try {
-      return readFileSync(new URL(rel, import.meta.url), "utf8");
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-    }
-  }
-  throw new Error("schema.sql not found next to the store module");
-}
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;
 
