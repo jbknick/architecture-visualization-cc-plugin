@@ -1,6 +1,8 @@
 import type { FileRecord, SymbolRecord } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { GraphEdge, GraphNode, ViewModule } from "../types.js";
+import { type GroupItem, type GroupPlan, planGroups, type WorkspaceInfo } from "./egoGroups.js";
+import { shortWorkspaceLabels } from "./labels.js";
 import { cmp, getOrInit, optBool, optInt, optList } from "./options.js";
 
 export const EGO_MAX_NODES = 400;
@@ -22,9 +24,15 @@ interface Link {
  * imports for a file); `highConfidence` (default false).
  *
  * Callees (`side: "out"`) follow edges forward, callers (`side: "in"`) backward; `hop` is the distance from
- * the focus. A file focus works on file nodes: symbol-level edges are lifted to their files. Past 400 nodes
- * the farthest ring that does not fit collapses into `+K more` nodes (kind `more`), one per side and file;
- * rings beyond it are dropped.
+ * the focus. A file focus works on file nodes: symbol-level edges are lifted to their files. Layout hint
+ * `bowtie`: callers in columns left of the focus, callees right of it.
+ *
+ * Grouping: a side at one hop with more than 24 nodes is grouped by workspace (a workspace group over 12
+ * members by top-level folder, a folder group over 12 by file; groups of 3 or fewer stay individual). A group
+ * is one node `group:<side>:<hop>:<ws:... | dir:... | file:...>` (kind `group`, `members` lists what is inside)
+ * with aggregated edges. `expand=<group id>|<group id>` (a filter) returns those groups' members instead.
+ * Past 400 nodes the farthest ring that does not fit collapses into `+K more` nodes (kind `more`), one per side
+ * and file; rings beyond it are dropped. An expansion that would pass 400 shows what fits plus a `+K more`.
  */
 export const egoView: ViewModule = {
   id: "ego",
@@ -121,8 +129,23 @@ export const egoView: ViewModule = {
     for (const [id, h] of hopOf) (rings[h] as string[]).push(id);
     for (const r of rings) r.sort(cmp);
 
+    const wsInfo = new Map<string, WorkspaceInfo>();
+    const workspaces = store.listWorkspaces();
+    const shortNames = shortWorkspaceLabels(workspaces.map((w) => w.name));
+    for (const w of workspaces) wsInfo.set(w.id, { dir: w.dir, short: shortNames.get(w.name) ?? w.name });
+    const fileOf = (id: string): FileRecord | undefined => {
+      const s = symbols.get(id);
+      return s ? files.get(s.fileId) : files.get(id);
+    };
+    const wsOf = (id: string): string | undefined => {
+      const w = fileOf(id)?.workspaceId;
+      return w && wsInfo.has(w) ? w : undefined;
+    };
+    const lineOf = (id: string): number | undefined => symbols.get(id)?.startLine;
+
     const nodes = new Map<string, GraphNode>();
     const makeNode = (id: string): GraphNode => {
+      const ws = wsOf(id);
       const s = symbols.get(id);
       if (s) {
         return {
@@ -133,6 +156,7 @@ export const egoView: ViewModule = {
           path: files.get(s.fileId)?.path,
           stats: { functions: 1, loc: s.loc },
           ...(s.exported ? { badges: ["exported"] } : {}),
+          ...(ws ? { workspace: ws } : {}),
         };
       }
       const f = files.get(id) as FileRecord;
@@ -144,18 +168,51 @@ export const egoView: ViewModule = {
         size: Math.max(1, fns),
         path: f.path,
         stats: { files: 1, functions: fns },
+        ...(ws ? { workspace: ws } : {}),
       };
     };
     nodes.set(focus, { ...makeNode(focus), side: "focus", hop: 0 });
 
-    const memberOf = new Map<string, string>(); // collapsed node id -> its "+K more" node id
+    // Units placed on the canvas: an individual node or a group of nodes, per (side, hop).
+    interface Unit {
+      side: "in" | "out";
+      hop: number;
+      id: string;
+      group?: GroupPlan;
+    }
+    const placed: Unit[] = [];
+    const groupSort = (a: GroupPlan, b: GroupPlan): number =>
+      b.members.length - a.members.length || cmp(a.id, b.id);
+    const unitsFor = (sd: "in" | "out", h: number, ids: string[]): Unit[] => {
+      const items: GroupItem[] = ids.map((id) => ({
+        id,
+        path: fileOf(id)?.path ?? id,
+        ws: wsOf(id) ?? null,
+      }));
+      const { groups, singles } = planGroups(sd, h, items, wsInfo);
+      return [
+        ...singles.map((it) => ({ side: sd, hop: h, id: it.id })),
+        ...[...groups].sort(groupSort).map((g) => ({ side: sd, hop: h, id: g.id, group: g })),
+      ];
+    };
+
+    const memberOf = new Map<string, string>(); // collapsed node id -> its group / "+K more" node id
+    let used = 1;
     const ringsAfter = (h: number): boolean => rings.slice(h + 1).some((r) => r.length > 0);
     for (let h = 1; h <= hops; h++) {
       const ring = rings[h] as string[];
       if (ring.length === 0) continue;
       const reserve = ringsAfter(h) ? 2 : 0;
-      if (nodes.size + ring.length <= EGO_MAX_NODES - reserve) {
-        for (const id of ring) nodes.set(id, { ...makeNode(id), side: side.get(id), hop: h });
+      const units = (["in", "out"] as const).flatMap((sd) =>
+        unitsFor(
+          sd,
+          h,
+          ring.filter((id) => side.get(id) === sd),
+        ),
+      );
+      if (used + units.length <= EGO_MAX_NODES - reserve) {
+        placed.push(...units);
+        used += units.length;
         continue;
       }
       // Collapse this ring per (side, file); merge the smallest groups per side if there are too many.
@@ -170,7 +227,7 @@ export const egoView: ViewModule = {
       const ordered = [...groups.entries()].sort(
         (a, b) => b[1].ids.length - a[1].ids.length || cmp(a[0], b[0]),
       );
-      const room = EGO_MAX_NODES - nodes.size;
+      const room = EGO_MAX_NODES - used;
       const keep = ordered.length <= room ? ordered.length : Math.max(0, room - 2);
       const mergedBySide = new Map<"in" | "out", string[]>();
       ordered.forEach(([, g], i) => {
@@ -196,7 +253,72 @@ export const egoView: ViewModule = {
         ...(path ? { path } : {}),
         stats: { functions: ids.length },
       });
+      used++;
       for (const m of ids) memberOf.set(m, id);
+    }
+
+    // Expanded groups show their members as individual nodes while the 400-node budget lasts; what does not
+    // fit stays behind a "+K more" node inside the group.
+    const expand = new Set(optList(params, "expand") ?? []);
+    const memberList = (g: GroupPlan): GroupItem[] =>
+      [...g.members].sort((a, b) => cmp(a.path, b.path) || cmp(a.id, b.id));
+    let budget = EGO_MAX_NODES - used;
+    const groupNode = (u: Unit, g: GroupPlan): GraphNode => {
+      const files = new Set(g.members.map((m) => m.path)).size;
+      const word =
+        u.side === "in"
+          ? g.members.length === 1
+            ? "caller"
+            : "callers"
+          : g.members.length === 1
+            ? "callee"
+            : "callees";
+      return {
+        id: g.id,
+        kind: "group",
+        label: g.label,
+        size: g.members.length,
+        side: u.side,
+        hop: u.hop,
+        path: g.path,
+        ...(g.ws ? { workspace: g.ws } : {}),
+        stats: { members: g.members.length, files },
+        badges: [`${g.members.length} ${word}`],
+        members: memberList(g).map((m) => {
+          const line = lineOf(m.id);
+          return {
+            id: m.id,
+            label: symbols.get(m.id)?.name ?? baseName(m.path),
+            path: m.path,
+            ...(line !== undefined ? { line } : {}),
+          };
+        }),
+      };
+    };
+    for (const u of placed) {
+      const g = u.group;
+      if (!g) {
+        nodes.set(u.id, { ...makeNode(u.id), side: u.side, hop: u.hop });
+        continue;
+      }
+      // An expanded group stays as a header node (`expanded: true`, no edges); its members follow as nodes.
+      const n = g.members.length;
+      if (expand.has(g.id) && budget >= 2) {
+        const ordered = memberList(g);
+        const full = n <= budget;
+        const shown = full ? ordered : ordered.slice(0, budget - 1);
+        nodes.set(g.id, { ...groupNode(u, g), expanded: true });
+        for (const m of shown) nodes.set(m.id, { ...makeNode(m.id), side: u.side, hop: u.hop, group: g.id });
+        if (!full) {
+          const rest = ordered.slice(shown.length).map((m) => m.id);
+          addMore(`more:${u.side}:${u.hop}:${g.id}`, u.side, u.hop, rest, g.path);
+          (nodes.get(`more:${u.side}:${u.hop}:${g.id}`) as GraphNode).group = g.id;
+        }
+        budget -= shown.length + (full ? 0 : 1);
+        continue;
+      }
+      nodes.set(g.id, groupNode(u, g));
+      for (const m of g.members) memberOf.set(m.id, g.id);
     }
 
     const ref = (id: string): string | undefined => (nodes.has(id) ? id : memberOf.get(id));
@@ -217,7 +339,7 @@ export const egoView: ViewModule = {
     return {
       nodes: [...nodes.values()].sort((a, b) => cmp(a.id, b.id)),
       edges: [...agg.values()].sort((a, b) => cmp(a.id, b.id)),
-      layoutHint: "radial",
+      layoutHint: "bowtie",
     };
   },
 };

@@ -47,7 +47,7 @@ Register in `src/canvases.ts` (imported by `App.tsx`). `focus` is the focused no
 
 ## Graph canvas (`src/canvas/`)
 
-The canvas registered for `nested-elk`, `elk-layered`, `radial`, `force`, `tree-lr`, `columns`, `clusters` and the server hints `layered`, `tree`, `grid`. `CanvasHost` wraps it with a List / Graph toggle and lazy-loads it. `GraphCanvas.tsx` builds the scene and picks one of two renderers: hierarchical data (the project map: workspaces, folders, files, functions) gets the treemap canvas; flat graphs (ego, debug) keep the sigma canvas.
+The canvas registered for `nested-elk`, `elk-layered`, `radial`, `force`, `tree-lr`, `bowtie` (the ego view, below), `columns`, `clusters` and the server hints `layered`, `tree`, `grid`. `CanvasHost` wraps it with a List / Graph toggle and lazy-loads it. `GraphCanvas.tsx` builds the scene and picks one of two renderers: hierarchical data (the project map: workspaces, folders, files, functions) gets the treemap canvas; flat graphs (ego, debug) keep the sigma canvas.
 
 ### Project map: workspace boxes with a treemap inside
 
@@ -68,6 +68,15 @@ The canvas registered for `nested-elk`, `elk-layered`, `radial`, `force`, `tree-
 - `hierarchy.ts`: containment tree. `scene.ts`: everything derived from nodes and edges (workspace links, counts, selection sets). `zoom.ts`: the far / mid / near band reported in `data-level`. `style.ts`: workspace palette (indexed by sorted id) and theme. `synthetic.ts`: seeded 30k-function generator used by `pnpm --filter @gantry/explorer perf`.
 
 Test hooks on the canvas element: dispatch `gantry:zoom-to` (`detail: { id }`) on `[data-testid=graph-canvas]` to fly to a node, and `gantry:probe` on `.gc-sigma` to write hit geometry (workspace boxes, links, where each title went) and a hash of the positions to `data-probe`.
+
+### Ego view: bow-tie (`bowtie` layout hint)
+
+The `ego` view returns layoutHint `bowtie`, drawn by `canvas/BowtieCanvas.tsx` on one 2D canvas (no WebGL, no sigma). `bowtieLayout.ts` is the pure, deterministic layout: the focus is a card in the middle, callers sit in columns to its left (nearest hop next to the focus), callees to its right, hop 2+ further out on the same side. Columns stack top to bottom: groups first (one workspace after another, largest first), then individual nodes by workspace and name; hop 2+ columns are ordered by the average height of their neighbours. Every edge flows left to right, as a curve whose width is `0.9 + 0.55 * sqrt(weight)` (clamped), dashed when low confidence; where many edges meet one node they are spread along its side and share one arrowhead.
+
+- Grouping happens on the server (`server/views/egoGroups.ts`): a side at one hop with more than 24 nodes is grouped by workspace, a workspace group over 12 members by top-level folder, a folder group over 12 by file, and groups of 3 or fewer stay individual. A group is one node (`kind: "group"`, `id: group:<side>:<hop>:<ws:... | dir:... | file:...>`, `stats.members`, `members[]`, `workspace`) with one aggregated edge.
+- Expanding: the `expand` filter (a `|` separated list of group ids) makes the server return those groups' members as separate nodes. The group stays as a header node (`expanded: true`, no edges) and its members carry `group: <id>`; what does not fit under the 400-node cap stays behind a `+K more` node inside the group. Hash route: `#/ego?focus=<id>&expand=group%3Ain%3A1%3Aws%3A%40acme%2Fweb%7Cgroup%3Ain%3A1%3Adir%3Aapps%2Fweb%2Fsrc` (ids joined with `|`, URL-encoded like every filter). Clicking a group (or its caret) toggles it in `expand` together with `sel`, in one navigation; the panel's Expand all / Collapse all and the inspector's member links write the same filter. Changing the centre drops `expand`.
+- Drawing: the focus, groups and (when the column has room) individual nodes are labelled; an individual row shows its name from an on-screen height of 14px, otherwise on hover (columns of 12 nodes or fewer keep rows at 17px). Colour is by workspace, indexed by the sorted workspace ids present (`workspacePalette.workspaceColorAt`), and the left panel lists the same colours. The kind is in the tooltip. Column titles ("Callers · 221", "Callees · 1") are pinned to the top. Test hooks on `[data-testid=graph-canvas]`: `gantry:zoom-to` (`detail: { id }`) and `gantry:probe` (writes the drawn labels to `data-probe`).
+- `scenario=hub` (mock only, like `scenario=large`): `mock/hubEgo.ts` serves a shared component with 221 callers in 3 workspaces and one callee, grouped by the server's rules. `e2e/ego.spec.ts` writes `docs/milestones/screenshots/ego-hub-{grouped,expanded,dark}.png` and `ego-small.png` from it.
 
 ## Filter slot
 

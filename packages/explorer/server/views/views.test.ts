@@ -160,7 +160,7 @@ describe("ego", () => {
       ),
     ).toBe(true);
     expect(r.nodes.find((n) => n.id === BUTTON)).toMatchObject({ side: "focus", hop: 0 });
-    expect(r.layoutHint).toBe("radial");
+    expect(r.layoutHint).toBe("bowtie");
   });
   it("snapshot: Button ego graph", () => {
     expect(view("ego", `focus=${encodeURIComponent(BUTTON)}`)).toMatchSnapshot();
@@ -315,7 +315,8 @@ describe("scale", () => {
     const { ms, r } = bestOfThree("ego", qs);
     expect(ms).toBeLessThan(300);
     expect(r.nodes.length).toBeLessThanOrEqual(EGO_MAX_NODES);
-    expect(r.nodes.some((n) => n.kind === "more" && /^\+\d+ more$/.test(n.label))).toBe(true);
+    // Past the cap the ring is grouped (and, if still too big, collapsed into "+K more" nodes).
+    expect(r.nodes.some((n) => n.kind === "more" || n.kind === "group")).toBe(true);
     const known = new Set(r.nodes.map((n) => n.id));
     for (const e of r.edges) expect(known.has(e.src) && known.has(e.dst)).toBe(true);
   });

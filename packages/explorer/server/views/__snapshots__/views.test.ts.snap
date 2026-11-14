@@ -12,7 +12,7 @@ exports[`ego > snapshot: Button ego graph 1`] = `
       "weight": 1,
     },
   ],
-  "layoutHint": "radial",
+  "layoutHint": "bowtie",
   "nodes": [
     {
       "hop": 1,
@@ -26,6 +26,7 @@ exports[`ego > snapshot: Button ego graph 1`] = `
         "functions": 1,
         "loc": 8,
       },
+      "workspace": "ws:@acme/web",
     },
     {
       "badges": [
@@ -42,6 +43,7 @@ exports[`ego > snapshot: Button ego graph 1`] = `
         "functions": 1,
         "loc": 7,
       },
+      "workspace": "ws:@acme/ui",
     },
   ],
 }
@@ -83,7 +85,7 @@ exports[`ego > snapshot: file ego graph (imports) 1`] = `
       "weight": 1,
     },
   ],
-  "layoutHint": "radial",
+  "layoutHint": "bowtie",
   "nodes": [
     {
       "hop": 1,
@@ -97,6 +99,7 @@ exports[`ego > snapshot: file ego graph (imports) 1`] = `
         "files": 1,
         "functions": 1,
       },
+      "workspace": "ws:@acme/web",
     },
     {
       "hop": 2,
@@ -110,6 +113,7 @@ exports[`ego > snapshot: file ego graph (imports) 1`] = `
         "files": 1,
         "functions": 1,
       },
+      "workspace": "ws:@acme/web",
     },
     {
       "hop": 2,
@@ -123,6 +127,7 @@ exports[`ego > snapshot: file ego graph (imports) 1`] = `
         "files": 1,
         "functions": 1,
       },
+      "workspace": "ws:@acme/web",
     },
     {
       "hop": 0,
@@ -136,6 +141,7 @@ exports[`ego > snapshot: file ego graph (imports) 1`] = `
         "files": 1,
         "functions": 2,
       },
+      "workspace": "ws:@acme/web",
     },
     {
       "hop": 1,
@@ -149,6 +155,7 @@ exports[`ego > snapshot: file ego graph (imports) 1`] = `
         "files": 1,
         "functions": 1,
       },
+      "workspace": "ws:@acme/ui",
     },
   ],
 }

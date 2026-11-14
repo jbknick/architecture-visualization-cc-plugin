@@ -5,6 +5,16 @@ export interface NodeStats {
   files?: number;
   functions?: number;
   loc?: number;
+  /** Ego group nodes: how many functions (or files) the group stands for. */
+  members?: number;
+}
+
+/** One member of an ego group node. */
+export interface GroupMember {
+  id: string;
+  label: string;
+  path?: string;
+  line?: number;
 }
 
 export interface GraphNode {
@@ -25,6 +35,14 @@ export interface GraphNode {
   side?: "in" | "out" | "focus";
   /** Ego view only: distance from the focus in hops. */
   hop?: number;
+  /** Ego view: id of the workspace the function or file belongs to. */
+  workspace?: string;
+  /** Ego group nodes (`kind: "group"`): what is inside. */
+  members?: GroupMember[];
+  /** Ego group nodes: true when expanded; the members then follow as separate nodes. */
+  expanded?: boolean;
+  /** Ego view: id of the expanded group a node is listed under. */
+  group?: string;
   x?: number;
   y?: number;
 }
