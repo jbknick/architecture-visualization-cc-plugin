@@ -425,7 +425,11 @@ export async function layoutMap(
   addExtraRoutes(placedBest, [...best.rest, ...extraBase]);
 
   // Treemap inside every box, laid out in its normalized content rectangle (headers are added on screen).
-  const skipped = collapseChains(tree, files).skipped;
+  const skipped = collapseChains(
+    tree,
+    files,
+    Float64Array.from(tree.nodes, (_, i) => fnOf(i)),
+  ).skipped;
   const rects = new Float64Array(tree.nodes.length * 4);
   const heads = new Float32Array(tree.nodes.length);
   const positions: Positions = {};

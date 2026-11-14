@@ -157,9 +157,10 @@ export function layoutTreemap(
     out.heads.set(n.id, head);
     const pad = n.transparent ? 0 : TM_PAD;
     const top = head > 0 ? head : pad;
+    // A cell thinner than its padding has no room inside: its children get a zero-size rectangle on the cell.
     const inner: Rect = {
-      x: r.x + pad,
-      y: r.y + top,
+      x: Math.min(r.x + pad, r.x + r.w / 2),
+      y: Math.min(r.y + top, r.y + r.h),
       w: Math.max(0, r.w - 2 * pad),
       h: Math.max(0, r.h - top - pad),
     };
