@@ -141,7 +141,9 @@ kbd {
   min-width: 0;
 }
 .brand {
-  font-size: 16px;
+  flex: none;
+  white-space: nowrap;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.01em;
 }
@@ -177,6 +179,7 @@ kbd {
   cursor: pointer;
   color: var(--muted);
   font-weight: 500;
+  white-space: nowrap;
 }
 .tab:hover {
   background: var(--surface-2);
@@ -200,7 +203,7 @@ kbd {
 .search {
   position: relative;
   margin-left: auto;
-  width: min(420px, 38vw);
+  width: min(420px, 22vw);
 }
 .search input {
   width: 100%;
