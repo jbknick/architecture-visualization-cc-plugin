@@ -1,0 +1,12 @@
+{
+  "name": "gantry-dev",
+  "owner": { "name": "jbknick" },
+  "description": "Local development marketplace for the Gantry plugin",
+  "plugins": [
+    {
+      "name": "gantry",
+      "source": "./plugin",
+      "description": "Claude Code Architecture Visualisation Plugin (local development copy)"
+    }
+  ]
+}
