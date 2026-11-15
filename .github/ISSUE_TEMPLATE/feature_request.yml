@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest a new view, command, adapter or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the Status table in the README and the open issues first; many planned features already have an issue. For open-ended ideas, a [discussion](https://github.com/jbknick/architecture-visualization-cc-plugin/discussions) may be a better start.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What you would like to happen. Mention any part of docs/SPEC.md it would change.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contributing
+      options:
+        - label: I would like to work on this myself.
