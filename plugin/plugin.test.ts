@@ -48,7 +48,7 @@ describe("plugin manifest and MCP config", () => {
   it("has a launcher that is executable and runs the bundled CLI", () => {
     const p = join(pluginDir, "bin/gantry");
     expect(statSync(p).mode & 0o111).not.toBe(0);
-    expect(readFileSync(p, "utf8")).toContain('node "$(dirname "$0")/../dist/cli.js" "$@"');
+    expect(readFileSync(p, "utf8")).toContain('exec node "$self/dist/cli.js" "$@"');
   });
 
   it("is listed by the dev marketplace at the repo root, which points at ./plugin", () => {
@@ -125,7 +125,7 @@ describe("describer agent", () => {
       expect(p1).toContain(phrase);
       expect(body).toContain(phrase);
     }
-    expect(body).toContain('"size": 40');
+    expect(body).toContain('"size": 10');
   });
 });
 

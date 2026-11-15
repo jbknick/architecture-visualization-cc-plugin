@@ -23,6 +23,21 @@ export class NotAGitRepoError extends Error {
   }
 }
 
+/**
+ * The plugin data dir Claude Code assigns, derived from `CLAUDE_PLUGIN_ROOT` when `CLAUDE_PLUGIN_DATA` is not in the
+ * environment (Bash tool commands never get it, spec section 4). An installed plugin lives at
+ * `<claude home>/plugins/cache/<marketplace>/<plugin>/<version>` and its data dir is
+ * `<claude home>/plugins/data/<plugin>-<marketplace>` with every character other than a letter, digit, `_` or `-`
+ * replaced by `-`. Returns `undefined` for any other layout (for example `--plugin-dir`).
+ */
+export function pluginDataFromRoot(pluginRoot: string): string | undefined {
+  const parts = path.resolve(pluginRoot).split(path.sep);
+  const n = parts.length;
+  if (n < 5 || parts[n - 4] !== "cache" || parts[n - 5] !== "plugins") return undefined;
+  const id = `${parts[n - 2]}-${parts[n - 3]}`.replace(/[^A-Za-z0-9_-]/g, "-");
+  return path.join(parts.slice(0, n - 4).join(path.sep) || path.sep, "data", id);
+}
+
 /** Resolve the per-worktree data locations (spec section 4). Never touches the repo working tree. */
 export function resolvePaths(cwd: string, env: NodeJS.ProcessEnv = process.env): GantryPaths {
   const res = spawnSync("git", ["rev-parse", "--show-toplevel"], {
@@ -37,8 +52,16 @@ export function resolvePaths(cwd: string, env: NodeJS.ProcessEnv = process.env):
   const worktreeHash = createHash("sha256").update(root).digest("hex").slice(0, 16);
   const home = env.HOME || os.homedir();
   const gantryHome = path.join(home, ".gantry");
-  const base = env.CLAUDE_PLUGIN_DATA ? env.CLAUDE_PLUGIN_DATA : path.join(gantryHome, "data");
-  const dataDir = path.join(base, "repos", worktreeHash);
+  const legacyBase = path.join(gantryHome, "data");
+  const pluginBase =
+    env.CLAUDE_PLUGIN_DATA ||
+    (env.CLAUDE_PLUGIN_ROOT ? pluginDataFromRoot(env.CLAUDE_PLUGIN_ROOT) : undefined);
+  let dataDir = path.join(pluginBase ?? legacyBase, "repos", worktreeHash);
+  if (pluginBase) {
+    // Data created before the plugin data dir was used everywhere stays found until the new location has its own.
+    const legacy = path.join(legacyBase, "repos", worktreeHash);
+    if (!fs.existsSync(dataDir) && fs.existsSync(legacy)) dataDir = legacy;
+  }
 
   return {
     root,

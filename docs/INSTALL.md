@@ -20,6 +20,12 @@ pnpm install && pnpm build
 
 The plugin adds the `gantry` MCP server, the `describer` agent and the read-only `explainer` agent and five skills that only you can start: `/gantry:init`, `/gantry:sync`, `/gantry:explain`, `/gantry:overview` and `/gantry:map`. You can check the files without a session: `claude plugin validate plugin` and `claude plugin validate .claude-plugin/marketplace.json`.
 
+## Where the data lives
+
+The MCP server, the hooks and the skills all use one data directory per repo: the plugin data dir Claude Code gives the plugin (`~/.claude/plugins/data/gantry-gantry-dev/` for this marketplace), under `repos/<hash>/`. Commands that Claude runs through the Bash tool do not receive `CLAUDE_PLUGIN_DATA`, so the skills pass it in explicitly and `bin/gantry` derives it from its own install path when it is missing. Running `bin/gantry` from a terminal at the installed path (`~/.claude/plugins/cache/gantry-dev/gantry/<version>/bin/gantry`) gives the same directory. Running it from your clone (`<clone>/plugin/bin/gantry`) does not, so for terminal checks set `CLAUDE_PLUGIN_DATA=~/.claude/plugins/data/gantry-gantry-dev` first.
+
+Data written earlier to `~/.gantry/data/repos/<hash>/` (what the CLI used from a skill before this fix) is still found: it is used as long as the plugin data dir has no copy for that repo yet. To move on to a fresh index instead, delete `~/.gantry/data/repos/<hash>/` (or run `gantry uninstall` in the repo) and re-run `/gantry:init`.
+
 ## Use
 
 - `/gantry:init` in a TypeScript git repo: indexes it, shows the estimate (functions to describe, tokens, batches), asks whether to describe everything, exported functions only, or later, then starts 4 background `describer` agents. You can keep working. It offers to install the git hooks.
@@ -40,9 +46,9 @@ This is the acceptance check for the plugin. It makes real model calls (Haiku) o
      && git init -q && git add -A && git -c user.email=t@t -c user.name=t commit -qm init
    ```
 2. Start Claude Code in `$FX` (`cd "$FX" && claude`). Run `/plugin marketplace add <clone path>`, `/plugin install gantry@gantry-dev`, `/reload-plugins`. Check `/plugin` shows `gantry` enabled with no errors and `/mcp` shows `plugin:gantry:gantry` connected.
-3. In a second terminal, set `G=<clone path>/plugin/bin/gantry` and run `cd "$FX" && "$G" init --estimate` once, so you know the total. Run `"$G" backlog --json` and note `total` (call it N) then note the time right before you start step 4 (`date +%s`, call it T0).
+3. In a second terminal, set `export CLAUDE_PLUGIN_DATA=~/.claude/plugins/data/gantry-gantry-dev` (the directory the plugin uses, see above) and `G=<clone path>/plugin/bin/gantry`, and run `cd "$FX" && "$G" init --estimate` once, so you know the total. Run `"$G" backlog --json` and note `total` (call it N) then note the time right before you start step 4 (`date +%s`, call it T0).
 4. In the session run `/gantry:init`. Expect the estimate, then the question. Answer "everything". Expect 4 background `describer` agents.
-5. Watch progress: `watch -n 10 "cd $FX && $G backlog --json"`. `byStatus.pending` falls in steps of 40 per agent and reaches 0; `claimed` returns to 0 once every agent finishes. `failed` should stay 0 or small.
+5. Watch progress: `watch -n 10 "cd $FX && $G backlog --json"`. `byStatus.pending` falls in steps of 10 per agent and reaches 0; `claimed` returns to 0 once every agent finishes. `failed` should stay 0 or small.
 6. When `pending` and `claimed` are both 0, note the time (T1). Functions per minute = `N_done / ((T1 - T0) / 60)`, where `N_done = N - failed`. Also run `"$G" usage` and `"$G" search <word>`, and confirm `git -C "$FX" status --porcelain` is empty (nothing is written into the repo).
 7. Check the tool limit: in the session, ask `/agents` (or the transcript of a describer) and confirm it only called `gantry_claim_batch` and `gantry_submit_descriptions`.
 8. Record N, T1 - T0, functions per minute and the `failed` count in the PR.
