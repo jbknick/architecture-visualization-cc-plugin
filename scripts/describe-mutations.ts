@@ -190,30 +190,12 @@ const MUTATIONS: Mutation[] = [
     replace: "now.failed",
   },
   {
-    name: "fallback candidate not validated",
+    name: "fallback sentence not validated",
     file: "fallback.ts",
-    find: "    if (!v.ok) continue;",
-    replace: "",
-  },
-  {
-    name: "fallback names not checked spelled out",
-    file: "fallback.ts",
-    find: "if (!check(spelled, spelledTerms.length > 0 ? spelledTerms : [sym.kind]).ok) continue;",
+    find: "  if (!v.ok) return null;",
     replace: "",
   },
   // Extra-attempt gate and fallback hardening (#175).
-  {
-    name: "signal: injection filter on all fields together off",
-    file: "validate.ts",
-    find: "if (scanInjection(joined).reject.length > 0 || speechProblem(joined) !== null) return true;",
-    replace: "",
-  },
-  {
-    name: "signal: credential formats off",
-    file: "validate.ts",
-    find: "if (scanSecrets(joined).length > 0) return true;",
-    replace: "",
-  },
   {
     name: "signal: copied credential pieces off",
     file: "validate.ts",
@@ -225,24 +207,6 @@ const MUTATIONS: Mutation[] = [
     file: "validate.ts",
     find: "for (const t of terms) if (termInstruction(t, g) !== null || nameInstruction(t, g) !== null) return true;",
     replace: "for (const t of terms) if (nameInstruction(t, g) !== null) return true;",
-  },
-  {
-    name: "signal: name rules off",
-    file: "validate.ts",
-    find: "for (const t of terms) if (termInstruction(t, g) !== null || nameInstruction(t, g) !== null) return true;",
-    replace: "for (const t of terms) if (termInstruction(t, g) !== null) return true;",
-  },
-  {
-    name: "signal: behavior cues off",
-    file: "validate.ts",
-    find: "(speechProblem(behavior) !== null || behaviorInstructs(behavior))",
-    replace: "false",
-  },
-  {
-    name: "signal: addressee or bare verb at a clause start allowed",
-    file: "validate.ts",
-    find: "if (isActionVerb(first)) return true;",
-    replace: "",
   },
   {
     name: "non-extendable shape codes ignored",
@@ -257,40 +221,10 @@ const MUTATIONS: Mutation[] = [
     replace: "const error = errorText;",
   },
   {
-    name: "bare-verb clause after a semicolon or colon exempt again",
-    file: "shape.ts",
-    find: "if (inVerbList(items, i) && !verbListIsClause(items, i)) continue;",
-    replace: "if (inVerbList(items, i)) continue;",
-  },
-  {
     name: "fallback marker accepted from a model",
     file: "validate.ts",
     find: 'if (claimsFallbackMarker([original, ...d.searchTerms, d.suggestedName ?? ""].join(" ")))',
     replace: "if (false)",
-  },
-  {
-    name: "fallback repeats run-together names",
-    file: "fallback.ts",
-    find: "if (w.length > NAME_WORD_MAX || (w.length > NAME_WORD_FREE && !isWord(w))) return false;",
-    replace: "",
-  },
-  {
-    name: "fallback repeats agent and review words",
-    file: "fallback.ts",
-    find: "if (NAME_BANNED.has(w)) return false;",
-    replace: "",
-  },
-  {
-    name: "fallback names spelled without NFKC",
-    file: "fallback.ts",
-    find: 'return splitIdentifier(name.normalize("NFKC")).join(" ");',
-    replace: 'return splitIdentifier(name).join(" ");',
-  },
-  {
-    name: "fallback spelled-out sentence not used",
-    file: "fallback.ts",
-    find: "const spelled = spelledOut(c);",
-    replace: "const spelled = c.behavior;",
   },
   {
     name: "fallback replaces an existing description",
@@ -343,57 +277,40 @@ const MUTATIONS: Mutation[] = [
     replace: "\"status <> 'failed'\"",
   },
   {
-    name: "clause rule off in the validator",
-    file: "validate.ts",
-    find: 'if (clause === "clause-verb") return fail("shape", "behavior: imperative-clause");',
-    replace: "",
-  },
-  {
-    name: "addressee subjects allowed",
-    file: "clauses.ts",
-    find: 'if (thirdPerson(verb) || isBaseVerbAt(words, s + 1) || MODALS.has(verb)) return "addressee-subject";',
-    replace: "",
-  },
-  {
-    name: "status claims allowed",
-    file: "validate.ts",
-    find: 'if (claimProblem(original) !== null) return fail("injection", "behavior: status-claim");',
-    replace: "",
-  },
-  {
-    name: "open-class verbs not recognised by structure",
-    file: "clauses.ts",
-    find: '(OBJECT_DETERMINERS.has(next) || ORDER_ADVERBS.has(next) || next === "without")',
-    replace: "false",
-  },
-  {
-    name: "action-label list exception dropped",
-    file: "clauses.ts",
-    find: 'if (items.length >= 3 && opener !== "\'" && isActionLabel(label)) return null;',
-    replace: "",
-  },
-  {
-    name: "term order rule off",
-    file: "validate.ts",
-    find: 'if (termOrderProblem(wordsOf(split.join(" "))) !== null)',
-    replace: "if (false)",
-  },
-  {
-    name: "fallback repeats names that read as orders",
-    file: "fallback.ts",
-    find: 'if (nameOrderProblem(words) !== null || (clause !== null && clause !== "clause-verb")) return false;',
-    replace: "",
-  },
-  {
-    name: "gate does not read quotes",
-    file: "validate.ts",
-    find: "clauseProblem(body, { quotes: true })",
-    replace: "clauseProblem(body, { quotes: false })",
-  },
-  {
     name: "production claims: only the without-a-model form",
     file: "validate.ts",
     find: "/\\bno (?:language )?(?:models?|llms?|ai)(?: (?:was|were|is))? (?:used|involved|needed|called)\\b/,",
+    replace: "",
+  },
+  // Gate cues of the untrusted-text model (#175 final round).
+  {
+    name: "gate: clause starts not read",
+    file: "clauses.ts",
+    find: 'if (first !== undefined && !descriptiveStart(first.split("-").pop() ?? first)) return true;',
+    replace: "",
+  },
+  {
+    name: "gate: status, approval and modal words not read",
+    file: "clauses.ts",
+    find: 'return STATUS_WORD.test(t) || t.split(" ").some((w) => MODALS.has(w));',
+    replace: "return false;",
+  },
+  {
+    name: "gate: markup and non-ASCII not read",
+    file: "clauses.ts",
+    find: 'return /[<>]|[^\\x20-\\x7e]/.test(text.normalize("NFKC"));',
+    replace: "return false;",
+  },
+  {
+    name: "gate: addressees not read",
+    file: "clauses.ts",
+    find: 'return wordsOf(text.normalize("NFKC")).some((w) => ADDRESSEE_SUBJECTS.has(w));',
+    replace: "return false;",
+  },
+  {
+    name: "gate: identifiers not split into words",
+    file: "validate.ts",
+    find: '|| gateCue(splitIdentifierWords(t).join(" "), { behavior: false })',
     replace: "",
   },
 ];

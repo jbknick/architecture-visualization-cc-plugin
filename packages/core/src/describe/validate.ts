@@ -4,7 +4,7 @@
 // secret or an injected instruction) is never put into a detail string, and ungrounded tokens are echoed shortened.
 
 import type { Description, FactSheet } from "../types.js";
-import { claimProblem, clauseProblem, termOrderProblem } from "./clauses.js";
+import { gateCue } from "./clauses.js";
 import { scanInjection } from "./filters.js";
 import {
   describeUngrounded,
@@ -166,9 +166,6 @@ function termInstruction(term: string, g: Grounding): Rejection | null {
   const f = scanInjection(term);
   if (f.reject.length > 0) return { ok: false, reason: "injection", detail: f.reject.join(", ") };
   if (secretTokens(term, g).length > 0) return { ok: false, reason: "secret", detail: "a credential value" };
-  // A verb phrase that reads as an order or a claim ("merge immediately", "approve pr", "no review needed").
-  if (termOrderProblem(wordsOf(split.join(" "))) !== null)
-    return { ok: false, reason: "injection", detail: "imperative term" };
   return null;
 }
 
@@ -231,7 +228,6 @@ function nameInstruction(name: string, g: Grounding): Rejection | null {
   const lower = words.map((w) => w.toLowerCase());
   if (lower.some((w) => NAME_ADDRESSING.has(w)))
     return { ok: false, reason: "injection", detail: "addressing words" };
-  if (termOrderProblem(lower) !== null) return { ok: false, reason: "injection", detail: "directive name" };
   if (sensitivePhrases(lower).some((p) => p.from === 0))
     return { ok: false, reason: "injection", detail: "directive name" };
   const sp = speechProblem(lower.join(" "));
@@ -301,12 +297,6 @@ export function validateDescription(
   if (problem !== null) return fail("shape", `behavior: ${problem}`);
   const speech = speechProblem(original);
   if (speech !== null) return fail("injection", `behavior: ${speech}`);
-  // Clause rule (#175 round 2): every clause that opens inside the sentence is a description clause too.
-  const folded = original.normalize("NFKC").trim();
-  const clause = clauseProblem(folded.endsWith(".") ? folded.slice(0, -1) : folded);
-  if (clause === "clause-verb") return fail("shape", "behavior: imperative-clause");
-  if (clause !== null) return fail("injection", `behavior: ${clause}`);
-  if (claimProblem(original) !== null) return fail("injection", "behavior: status-claim");
 
   // (6) grounding: every token must be an ordinary word, a small number, or come from the fact sheet.
   const g = groundingNames(sheet);
@@ -419,8 +409,9 @@ function behaviorInstructs(behavior: string): boolean {
   if (/(?:^|[.;:,(]\s*)[A-Za-z]+(?:\s+[A-Za-z]+)?\s*:/.test(body)) return true;
   if (/(?:^|\s)[A-Za-z](?:\s+[A-Za-z]){2}(?:\s|$)/.test(body)) return true;
   if (hasImperativeClause(body)) return true;
-  // The clause rule of the validator, with quotes as clause openers too, and status or permission claims.
-  if (clauseProblem(body, { quotes: true }) !== null || claimProblem(body) !== null) return true;
+  // The broad gate cues (#175 final round): a base-form or unknown word at any clause start, modals, approval,
+  // status and provenance words, markup or non-ASCII characters, addressees and claims.
+  if (gateCue(body, { behavior: true })) return true;
   // The first clause and each clause after a hard boundary: an addressee or a bare action verb at its start.
   const clauses = body.split(/[;:]\s*|,\s+/);
   for (let i = 0; i < clauses.length; i++) {
@@ -503,8 +494,13 @@ export function instructionSignal(raw: unknown, sheet: FactSheet): boolean {
   if (addressingHits(joined).length > 0 || claimsFallbackMarker(joined)) return true;
   if (behavior.trim() !== "" && (speechProblem(behavior) !== null || behaviorInstructs(behavior)))
     return true;
-  // Every other string is judged by both the term rules and the name rules (search terms, names, unknown keys).
+  // Every behavior string on its own, then every other string by the term rules, the name rules and the gate cues.
+  for (const b of behaviors) if (behaviorInstructs(b)) return true;
   for (const t of terms) if (termInstruction(t, g) !== null || nameInstruction(t, g) !== null) return true;
+  // Identifiers are judged by their words too ("waiveReview" -> "waive review").
+  for (const t of terms)
+    if (gateCue(t, { behavior: false }) || gateCue(splitIdentifierWords(t).join(" "), { behavior: false }))
+      return true;
   if (terms.length > 0 && termsTogetherInstruct(terms)) return true;
   return false;
 }

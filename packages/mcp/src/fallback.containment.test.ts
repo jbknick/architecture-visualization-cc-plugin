@@ -97,7 +97,7 @@ describe("fallback description containment (#175)", () => {
     // The catalog line is tagged from the provenance column (round 2).
     const browse = await call(client, "gantry_browse", { target: "src/text" });
     const catalog = readFileSync(browse.json.catalog_path as string, "utf8");
-    expect(catalog).toContain("{described by: fallback}");
+    expect(catalog).toContain(`untrusted fallback description: "${marker}"`);
 
     const store = openStore(repo.paths.dbPath);
     try {

@@ -527,6 +527,11 @@ describe("gantry search / node", () => {
 
     const j = JSON.parse(run(fx.dir, ["search", "relative date", "--json"]).out);
     expect(j[0]).toMatchObject({ name: "formatRelativeDate", kind: "function" });
+    // #175: description text leaves only as untrusted_description, never under a plain key.
+    for (const h of j) {
+      expect(Object.keys(h)).toContain("untrusted_description");
+      expect(Object.keys(h)).not.toContain("description");
+    }
     expect(run(fx.dir, ["search", "zzzqqq"]).out).toBe("No matches\n");
     expect(JSON.parse(run(fx.dir, ["search", "date", "--kind", "const", "--json"]).out)).toEqual([]);
     expect(run(fx.dir, ["search", "date", "--kind", "bogus"]).code).toBe(1);
