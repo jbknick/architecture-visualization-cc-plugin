@@ -70,15 +70,33 @@ function decodeSegment(s: string | undefined): string {
   }
 }
 
-function meta({ store, paths }: ApiContext) {
+/** Effective rows (working wins per file) counted in SQL: the same numbers as `effective*().length`, without loading them. */
+const EFF_COUNT = `WITH eff_files AS (
+    SELECT id, layer, deleted FROM files WHERE layer = 'working'
+    UNION ALL
+    SELECT m.id, m.layer, m.deleted FROM files m WHERE m.layer = 'main'
+      AND NOT EXISTS (SELECT 1 FROM files w WHERE w.id = m.id AND w.layer = 'working'))`;
+
+function countOf(ctx: ApiContext, table: "files" | "symbols" | "edges"): number {
+  const sql =
+    table === "files"
+      ? `${EFF_COUNT} SELECT COUNT(*) AS n FROM eff_files WHERE deleted = 0`
+      : `${EFF_COUNT} SELECT COUNT(*) AS n FROM ${table} t JOIN eff_files f ON f.id = t.file_id AND f.layer = t.layer
+         WHERE f.deleted = 0`;
+  return (ctx.store.db.prepare(sql).get() as { n: number }).n;
+}
+
+function meta(ctx: ApiContext) {
+  const { store, paths } = ctx;
   return {
     repo: path.basename(paths.root),
     headSha: store.getMeta("head_sha") ?? null,
+    // Counted in SQL: meta is fetched again after every refresh and whenever the tab gets focus back.
     counts: {
       workspaces: store.listWorkspaces().length,
-      files: store.effectiveFiles().length,
-      symbols: store.effectiveSymbols().length,
-      edges: store.effectiveEdges().length,
+      files: countOf(ctx, "files"),
+      symbols: countOf(ctx, "symbols"),
+      edges: countOf(ctx, "edges"),
     },
     views: listViews().map((v) => ({ id: v.id, title: v.title, enabled: v.enabled })),
   };

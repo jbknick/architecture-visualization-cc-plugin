@@ -10,7 +10,7 @@ import { GRID, type RouteLink, routeLinks } from "./mapRoute.ts";
 import { type Pt, routeAround } from "./route.ts";
 import { isTinyWorkspace, TINY_MIN_H, TINY_MIN_W, TINY_STRIP } from "./tiny.ts";
 import { layoutTreemap, type TmNode } from "./treemap.ts";
-import type { LayoutInput, MapGeometry, Positions, Rect } from "./types.ts";
+import type { KeepLayout, LayoutInput, MapGeometry, Positions, Rect } from "./types.ts";
 
 export const DEFAULT_VIEWPORT = { w: 1200, h: 720 };
 /** Screen space the camera keeps free around the diagram (controls on top, status chip at the bottom). */
@@ -446,19 +446,27 @@ export async function layoutMap(
     const score = biggest * scale * scale * (widest >= 0.23 * viewport.w ? 1 : 0.85);
     return { placed, plans, score, rest: split.rest };
   };
-  let best = await solve(VARIANTS[0] as Variant);
-  if (roots.length <= 40 && pairs.length > 0) {
-    for (const v of VARIANTS.slice(1)) {
-      const cand = await solve(v);
-      if (cand.score > best.score * 1.02) best = cand;
+  // After a refresh with the same workspaces: their boxes stay exactly where they were (no placement search).
+  const kept = keptBoxes(tree, roots, input.keep);
+  let best: { placed: Placed; plans: BoxPlan[]; rest: [number, number][] };
+  if (kept) best = kept;
+  else {
+    let solved = await solve(VARIANTS[0] as Variant);
+    if (roots.length <= 40 && pairs.length > 0) {
+      for (const v of VARIANTS.slice(1)) {
+        const cand = await solve(v);
+        if (cand.score > solved.score * 1.02) solved = cand;
+      }
     }
+    best = solved;
   }
   const bestPlans = best.plans;
   const placedBest = best.placed;
   // Every link gets its own orthogonal route around the boxes (see `mapRoute.ts`); very large maps keep the elk
   // routes and the visibility-graph fallback for the rest.
   const allPairs = importPairs.length > 0 ? [...importPairs, ...declaredPairs] : declaredPairs;
-  if (roots.length <= 60 && allPairs.length <= 240) {
+  if (kept && !(roots.length <= 60 && allPairs.length <= 240)) addExtraRoutes(placedBest, allPairs);
+  else if (roots.length <= 60 && allPairs.length <= 240) {
     const links: RouteLink[] = allPairs.map(([a, b]) => ({
       key: `${a}>${b}`,
       a,
@@ -494,25 +502,31 @@ export async function layoutMap(
     }
 
   // Treemap inside every box, laid out in its normalized content rectangle (headers are added on screen).
-  const skipped = collapseChains(
-    tree,
-    files,
-    Float64Array.from(tree.nodes, (_, i) => fnOf(i)),
-  ).skipped;
+  const transparent = input.transparent ? new Set(input.transparent) : null;
+  const skipped = transparent
+    ? Uint8Array.from(tree.nodes, (n) => (transparent.has(n.id) ? 1 : 0))
+    : collapseChains(
+        tree,
+        files,
+        Float64Array.from(tree.nodes, (_, i) => fnOf(i)),
+      ).skipped;
   const rects = new Float64Array(tree.nodes.length * 4);
   const heads = new Float32Array(tree.nodes.length);
   const positions: Positions = {};
   const tm = (i: number): TmNode => {
     const n = tree.nodes[i] as TreeNode;
     const cls = kindTier(n.kind);
+    const fixed = n.parent === -1 ? undefined : input.keep?.weights[n.id];
     return {
       id: n.id,
       weight: cls >= 3 ? 1 : Math.max(fnOf(i), MIN_WEIGHT),
       children: n.children.map(tm),
       head: 0,
       transparent: skipped[i] === 1,
+      ...(fixed !== undefined ? { fixed } : {}),
     };
   };
+  const weights = new Float64Array(tree.nodes.length);
   for (const plan of bestPlans) {
     const box = placedBest.boxes.get(plan.index) as Rect;
     // A tiny workspace's treemap (and its rectangle) is the slab, the strip below stays free for the title.
@@ -520,6 +534,7 @@ export async function layoutMap(
       tm(plan.index),
       tinyOf(plan.index) ? { ...box, h: Math.max(1, box.h - TINY_STRIP) } : box,
     );
+    for (const [id, w] of out.weights ?? []) weights[tree.index.get(id) as number] = w;
     for (const [id, r] of out.rects) {
       const idx = tree.index.get(id) as number;
       rects.set([r.x, r.y, r.w, r.h], idx * 4);
@@ -540,6 +555,56 @@ export async function layoutMap(
       heads,
       routes,
       bounds: { x: bx0, y: by0, w: bx1 - bx0, h: by1 - by0 },
+      weights,
     },
   };
+}
+
+/** The kept workspace boxes, when the workspaces are exactly the ones the kept layout had. */
+function keptBoxes(
+  tree: Tree,
+  roots: number[],
+  keep: KeepLayout | undefined,
+): { placed: Placed; plans: BoxPlan[]; rest: [number, number][] } | null {
+  if (!keep || roots.length === 0 || roots.length !== Object.keys(keep.boxes).length) return null;
+  const boxes = new Map<number, Rect>();
+  const plans: BoxPlan[] = [];
+  let width = 0;
+  let height = 0;
+  for (const r of roots) {
+    const id = (tree.nodes[r] as TreeNode).id;
+    const b = keep.boxes[id];
+    if (!b) return null;
+    const [x, y, w, h] = b;
+    boxes.set(r, { x, y, w, h });
+    plans.push({ index: r, w, h, head: keep.heads[id] ?? 0 });
+    width = Math.max(width, x + w);
+    height = Math.max(height, y + h);
+  }
+  return { placed: { boxes, routes: new Map(), width, height }, plans, rest: [] };
+}
+
+/**
+ * What a refresh keeps of a map layout (`LayoutInput.keep`): the workspace boxes, their title heights and every
+ * node's weight. Nodes that are gone are dropped by the next layout; it only looks up ids it still has.
+ */
+export function keepFrom(
+  ids: readonly string[],
+  map: MapGeometry,
+  isRoot: (i: number) => boolean,
+): KeepLayout {
+  const keep: KeepLayout = { boxes: {}, heads: {}, weights: {} };
+  ids.forEach((id, i) => {
+    if (isRoot(i)) {
+      const k = i * 4;
+      keep.boxes[id] = [
+        map.rects[k] as number,
+        map.rects[k + 1] as number,
+        map.rects[k + 2] as number,
+        map.rects[k + 3] as number,
+      ];
+      keep.heads[id] = map.heads[i] as number;
+    } else if (map.weights) keep.weights[id] = map.weights[i] as number;
+  });
+  return keep;
 }

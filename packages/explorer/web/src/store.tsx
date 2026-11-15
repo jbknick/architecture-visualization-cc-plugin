@@ -8,6 +8,7 @@ import {
   useReducer,
 } from "react";
 import { api, type Meta, type SearchHit } from "./api.ts";
+import { refreshStore, useRefresh } from "./refresh.ts";
 import { emptyRoute, formatHash, parseHash, parseInitialHash, type Route } from "./route.ts";
 
 export interface State {
@@ -98,10 +99,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Mock-only: a `scenario` flag in the hash makes the mock's /api/meta describe that scenario's data.
   const scenario = state.route.filters.scenario;
   const scenarioView = scenario ? (state.route.view ?? undefined) : undefined;
+  // Fetched again after a refresh (new counts) and when the tab comes back into view: that is the request that
+  // shows the "Out of date" marker after a save in the editor (spec section 11 (c); no watcher, no push).
+  const { generation } = useRefresh();
+  const [focusTick, setFocusTick] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") setFocusTick();
+    };
+    window.addEventListener("focus", setFocusTick);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", setFocusTick);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `generation` and `focusTick` only trigger a new request
   useEffect(() => {
     const controller = new AbortController();
     api.meta(controller.signal, scenario, scenarioView).then(
-      (meta) => dispatch({ type: "meta", meta }),
+      (meta) => {
+        refreshStore.noteStale(meta.stale?.files);
+        dispatch({ type: "meta", meta });
+      },
       (err: unknown) => {
         if (!controller.signal.aborted) {
           dispatch({ type: "metaError", message: err instanceof Error ? err.message : String(err) });
@@ -109,7 +129,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
     );
     return () => controller.abort();
-  }, [scenario, scenarioView]);
+  }, [scenario, scenarioView, generation, focusTick]);
 
   // With no view in the hash, land on the project map when the server has it, else the first enabled view.
   const enabledViews = state.meta?.views.filter((v) => v.enabled) ?? [];

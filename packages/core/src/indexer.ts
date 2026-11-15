@@ -323,6 +323,35 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       }
       store.tx(() => store.db.exec("DELETE FROM fts_symbols"));
     }
+    // A targeted run looks FTS rows up by rowid: one scan of the table per write batch instead of one per symbol
+    // (a delete by the UNINDEXED symbol_id column scans the whole table; on 9,000 symbols that was most of a
+    // 20-file refresh). Rebuilt at the start of every batch transaction, so a concurrent writer is seen.
+    let ftsRowids: Map<string, number[]> | null = null;
+    const ftsDelete = store.db.prepare("DELETE FROM fts_symbols WHERE rowid = ?");
+    const rowidsOf = (): Map<string, number[]> => {
+      if (ftsRowids) return ftsRowids;
+      const map = new Map<string, number[]>();
+      for (const r of store.db.prepare("SELECT rowid AS r, symbol_id AS id FROM fts_symbols").all() as {
+        r: number;
+        id: string;
+      }[]) {
+        const list = map.get(r.id);
+        if (list) list.push(r.r);
+        else map.set(r.id, [r.r]);
+      }
+      ftsRowids = map;
+      return map;
+    };
+    const ftsRemove = (id: string): void => {
+      const map = rowidsOf();
+      for (const r of map.get(id) ?? []) ftsDelete.run(r);
+      map.delete(id);
+    };
+    const ftsUpsert = (id: string, cols: [string, string, string, string, string]): void => {
+      ftsRemove(id);
+      const r = ftsInsert.run(id, ...cols);
+      rowidsOf().set(id, [Number(r.lastInsertRowid)]);
+    };
     const oldFtsIds = (l: Layer, fileId: string): string[] =>
       (
         store.db.prepare("SELECT id FROM symbols WHERE layer = ? AND file_id = ?").all(l, fileId) as {
@@ -360,20 +389,14 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       const old = layer === "main" && !rebuildFts ? oldFtsIds("main", e.id) : [];
       store.replaceFile(layer, file, symbols, edges, routeNodes.get(e.id) ?? []);
       const keep = new Set(symbols.map((s) => s.id));
-      for (const id of old) if (!keep.has(id)) store.fts.remove(id);
+      for (const id of old) if (!keep.has(id)) ftsRemove(id);
       for (const s of symbols) {
         const nameTokens = splitIdentifier(s.name).join(" ");
         if (rebuildFts) {
           const p = prevFts.get(s.id);
           ftsInsert.run(s.id, nameTokens, p?.suggested ?? "", e.path, p?.behavior ?? "", p?.terms ?? "");
         } else {
-          store.fts.upsert(s.id, {
-            nameTokens,
-            suggestedName: "",
-            path: e.path,
-            behavior: "",
-            searchTerms: "",
-          });
+          ftsUpsert(s.id, [nameTokens, "", e.path, "", ""]);
         }
       }
       written.add(e.id);
@@ -387,8 +410,10 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     for (let i = 0; i < toWrite.length; i += TX_BATCH) {
       const batch = toWrite.slice(i, i + TX_BATCH);
       store.tx(() => {
+        ftsRowids = null;
         for (const e of batch) writeOne(e);
       });
+      ftsRowids = null;
     }
 
     store.tx(() => {

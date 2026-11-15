@@ -1,9 +1,11 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { ApiError, api } from "./api.ts";
 import { Inspector } from "./components/Inspector.tsx";
 import { LeftPanel } from "./components/LeftPanel.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { useViewData } from "./hooks.ts";
+import { useRefresh } from "./refresh.ts";
 import { getCanvas, getFocusPrompt } from "./slots.ts";
 import { useStore } from "./store.tsx";
 import { drillPatch } from "./views/drill.ts";
@@ -54,6 +56,19 @@ export function App() {
   const nodes = needsFocus ? [] : (data?.nodes ?? []);
   const edges = needsFocus ? [] : (data?.edges ?? []);
   const Canvas = getCanvas(data?.layoutHint ?? "list");
+
+  // After a refresh the selection stays, unless its node is gone from the index.
+  const { generation } = useRefresh();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a refresh (a new generation) re-checks the selection
+  useEffect(() => {
+    const sel = route.sel;
+    if (generation === 0 || !sel) return;
+    const controller = new AbortController();
+    api.node(sel, controller.signal).catch((err: unknown) => {
+      if (!controller.signal.aborted && err instanceof ApiError && err.status === 404) selectNode(null);
+    });
+    return () => controller.abort();
+  }, [generation]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

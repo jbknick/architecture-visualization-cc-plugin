@@ -74,6 +74,8 @@ export interface CanvasTheme {
   muted: string;
   border: string;
   accent: string;
+  /** Outline of functions and files added or changed by the last refresh. */
+  fresh?: string;
 }
 
 const FALLBACK: Record<Scheme, CanvasTheme> = {
@@ -85,6 +87,7 @@ const FALLBACK: Record<Scheme, CanvasTheme> = {
     muted: "#566070",
     border: "#d5d9e1",
     accent: "#2159d6",
+    fresh: "#d97706",
   },
   dark: {
     scheme: "dark",
@@ -94,6 +97,7 @@ const FALLBACK: Record<Scheme, CanvasTheme> = {
     muted: "#9aa4b4",
     border: "#2b323d",
     accent: "#7ba6ff",
+    fresh: "#fbbf24",
   },
 };
 
@@ -119,6 +123,7 @@ export function readTheme(el: Element | null): CanvasTheme {
     muted: get("--muted", base.muted),
     border: get("--border", base.border),
     accent: get("--accent", base.accent),
+    fresh: get("--fresh", base.fresh as string),
   };
 }
 

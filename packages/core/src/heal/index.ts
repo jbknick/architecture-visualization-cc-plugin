@@ -336,3 +336,64 @@ export async function refreshWorking(
     return { reindexed: reindex.length, cleared, ms: Math.round(performance.now() - t0) };
   });
 }
+
+export interface StaleFiles {
+  /** Repo-relative paths that the next heal plus `refreshWorking` would re-index or drop, sorted. */
+  files: string[];
+  /** True when `HEAD` is not the commit the main layer was built for (a heal is due). */
+  head: boolean;
+}
+
+/** True when `HEAD` is not the commit the main layer was built for, so a heal is due. One `git rev-parse`. */
+export function healPending(paths: GantryPaths, store: Store): boolean {
+  const headSha = revParseHead(paths.root);
+  return headSha !== undefined && store.getMeta("head_sha") !== headSha;
+}
+
+/**
+ * What changed since the index was last brought up to date, without re-indexing or writing anything (spec section
+ * 11 (c)): the same `git status` plus mtime test as `refreshWorking`, and the `git diff` of a pending heal. Cheap
+ * enough to run before every explorer request; reads through the caller's open store.
+ */
+export function staleFiles(paths: GantryPaths, store: Store): StaleFiles {
+  const root = paths.root;
+  const config = loadConfig(paths);
+  const out = new Set<string>();
+  const stored = store.getMeta("head_sha");
+  const headSha = revParseHead(root);
+  const head = headSha !== undefined && stored !== headSha;
+  if (head && stored !== undefined && git(root, ["cat-file", "-e", `${stored}^{commit}`]).ok) {
+    for (const [, p] of diffNameStatus(root, stored, headSha as string) ?? [])
+      if (isIndexable(p, config)) out.add(p);
+  }
+
+  const dirty = new Set(statusPaths(root).filter((p) => isIndexable(p, config)));
+  const working = layerRows(store, "working");
+  const main = layerRows(store, "main");
+  for (const p of dirty) {
+    const id = fileId(p);
+    const w = working.get(id);
+    const m = main.get(id);
+    const mainLive = m !== undefined && m.deleted === 0;
+    let mtime: number | undefined;
+    try {
+      mtime = Math.round(fs.statSync(path.join(root, p)).mtimeMs);
+    } catch {
+      mtime = undefined;
+    }
+    if (mtime === undefined) {
+      if (w?.deleted) continue;
+      if (mainLive || w) out.add(p);
+      continue;
+    }
+    const row = w ?? m;
+    if (!row || row.deleted || row.mtime_ms !== mtime) out.add(p);
+  }
+  for (const w of working.values()) {
+    if (dirty.has(w.path)) continue;
+    const m = main.get(w.id);
+    const edgeOnly = !w.deleted && m !== undefined && m.deleted === 0 && m.content_hash === w.content_hash;
+    if (!edgeOnly) out.add(w.path);
+  }
+  return { files: [...out].sort(), head };
+}

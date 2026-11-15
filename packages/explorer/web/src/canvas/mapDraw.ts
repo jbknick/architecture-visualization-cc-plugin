@@ -68,6 +68,8 @@ export interface DrawEnv {
   ranks?: { index: number; rank: number }[];
   /** Tree index of the file the pointer is over in the "Largest files" list: its tile and marker are highlighted. */
   rankHover?: number | null;
+  /** Tree indices of the cells the last refresh added or changed: outlined until the next refresh. */
+  fresh?: readonly number[];
 }
 
 /** A rank marker as drawn: a numbered circle on (or beside) the tile of one of the largest files. */
@@ -659,6 +661,10 @@ export function drawMap(env: DrawEnv): DrawResult {
     ctx.strokeRect(x + width / 2, y + width / 2, Math.max(1, pw - width), Math.max(1, ph - width));
   };
   ctx.globalAlpha = 1;
+  if (env.fresh && env.fresh.length > 0) {
+    const colour = theme.fresh ?? "#d97706";
+    for (const i of env.fresh) outline(i, 2, colour);
+  }
   if (panelHover !== null) outline(panelHover, 3, theme.accent);
   if (env.hovered !== null && env.hovered !== env.selected) outline(env.hovered, 2, theme.text);
   outline(env.selected, 3, theme.accent);

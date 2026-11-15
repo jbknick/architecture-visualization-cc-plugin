@@ -26,6 +26,7 @@ import {
 import { HttpError, handleApi } from "./api.js";
 import { MAX_DISMISS_BODY_BYTES, putDismiss } from "./dismiss.js";
 import { MAX_LAYOUT_BODY_BYTES, putLayout } from "./layout.js";
+import { type RefreshResult, runRefresh, singleFlight, staleInfo } from "./refresh.js";
 import {
   acquireLock,
   createStateFile,
@@ -106,6 +107,10 @@ const MIME: Record<string, string> = {
 
 const LAYOUT_ROUTE = /^\/api\/layout\/[^/]+$/;
 const DISMISS_ROUTE = "/api/dismiss";
+const REFRESH_ROUTE = "/api/refresh";
+const MAX_REFRESH_BODY_BYTES = 1024;
+/** Responses that carry `stale: { files }` (spec section 11 (c)). */
+const STALE_ROUTE = /^\/api\/(meta|view\/[^/]+)$/;
 
 /** Reads a request body up to `limit` bytes; rejects with a 413 HttpError beyond that. */
 function readBody(req: IncomingMessage, limit: number): Promise<string> {
@@ -228,6 +233,11 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
   const token = randomBytes(32).toString("base64url");
   const ctx = { store, paths, config, getEmbedder: opts.getEmbedder ?? cachedEmbedder() };
   let port = 0;
+  const refresh = singleFlight<RefreshResult>(() => runRefresh(paths, store));
+  const withStale = (pathname: string, body: unknown): unknown =>
+    STALE_ROUTE.test(pathname) && typeof body === "object" && body !== null
+      ? { ...body, stale: staleInfo(paths, store) }
+      : body;
 
   const handler = (req: IncomingMessage, res: ServerResponse): void => {
     try {
@@ -237,7 +247,8 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
       const url = new URL(req.url ?? "/", `http://${host}`);
       const layoutPut = req.method === "PUT" && LAYOUT_ROUTE.test(url.pathname);
       const dismissPut = req.method === "PUT" && url.pathname === DISMISS_ROUTE;
-      if (req.method !== "GET" && req.method !== "HEAD" && !layoutPut && !dismissPut) {
+      const refreshPost = req.method === "POST" && url.pathname === REFRESH_ROUTE;
+      if (req.method !== "GET" && req.method !== "HEAD" && !layoutPut && !dismissPut && !refreshPost) {
         res.setHeader("allow", "GET, HEAD");
         return void sendJson(res, 405, { error: "Method not allowed" });
       }
@@ -252,10 +263,13 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
           (Array.isArray(header) ? header[0] : header) ?? parseCookies(req.headers.cookie)[cookieName(port)];
         if (!supplied || !safeEqual(supplied, token))
           return void sendJson(res, 403, { error: "Missing or bad token" });
-        if (layoutPut || dismissPut) {
+        if (layoutPut || dismissPut || refreshPost) {
           let run: (body: unknown) => unknown;
           let limit: number;
-          if (dismissPut) {
+          if (refreshPost) {
+            limit = MAX_REFRESH_BODY_BYTES;
+            run = () => refresh();
+          } else if (dismissPut) {
             limit = MAX_DISMISS_BODY_BYTES;
             run = (body) => putDismiss(ctx, body);
           } else {
@@ -273,12 +287,17 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
           }
           readBody(req, limit).then(
             (text) => {
-              try {
-                sendJson(res, 200, run(JSON.parse(text)));
-              } catch (err) {
+              const fail = (err: unknown) => {
                 if (err instanceof HttpError) return void sendJson(res, err.status, { error: err.message });
                 if (err instanceof SyntaxError) return void sendJson(res, 400, { error: "Invalid JSON" });
                 sendJson(res, 500, { error: "Internal error" });
+              };
+              try {
+                const out = run(JSON.parse(refreshPost && text === "" ? "{}" : text));
+                if (out instanceof Promise) out.then((b) => sendJson(res, 200, b), fail);
+                else sendJson(res, 200, out);
+              } catch (err) {
+                fail(err);
               }
             },
             (err: unknown) => {
@@ -291,7 +310,7 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
         const body = handleApi(ctx, url.pathname, url.searchParams);
         if (body instanceof Promise) {
           body.then(
-            (b) => sendJson(res, 200, b),
+            (b) => sendJson(res, 200, withStale(url.pathname, b)),
             (err: unknown) => {
               if (err instanceof HttpError) return void sendJson(res, err.status, { error: err.message });
               sendJson(res, 500, { error: "Internal error" });
@@ -299,7 +318,7 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
           );
           return;
         }
-        return void sendJson(res, 200, body);
+        return void sendJson(res, 200, withStale(url.pathname, body));
       }
 
       // First load: `?t=<token>` sets the cookie and redirects to strip it (the #fragment survives).
