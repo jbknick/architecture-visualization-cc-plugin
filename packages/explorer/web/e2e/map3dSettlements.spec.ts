@@ -224,9 +224,10 @@ test("settlements: life moves, the pause button stops it, a hidden tab does not 
   await expect(host).toHaveAttribute("data-animating", "true");
   expect(Number(await host.getAttribute("data-vehicles"))).toBeGreaterThan(40);
   const t0 = Number(await host.getAttribute("data-life-t"));
-  await page.waitForTimeout(700);
-  const t1 = Number(await host.getAttribute("data-life-t"));
-  expect(t1).toBeGreaterThan(t0);
+  // The clock moves once per drawn frame; software GL on a busy machine can take longer than a fixed wait.
+  await expect
+    .poll(async () => Number(await host.getAttribute("data-life-t")), { timeout: 5000 })
+    .toBeGreaterThan(t0);
   const pause = page.getByTestId("map3d-pause");
   await expect(pause).toHaveText(/Pause life/);
   await pause.click();
@@ -238,8 +239,9 @@ test("settlements: life moves, the pause button stops it, a hidden tab does not 
   expect(Number(await host.getAttribute("data-life-t"))).toBe(p0);
   await pause.click();
   await expect(host).toHaveAttribute("data-playing", "true");
-  await page.waitForTimeout(500);
-  expect(Number(await host.getAttribute("data-life-t"))).toBeGreaterThan(p0);
+  await expect
+    .poll(async () => Number(await host.getAttribute("data-life-t")), { timeout: 5000 })
+    .toBeGreaterThan(p0);
   // A hidden tab: the loop stops and the clock does not move.
   await page.evaluate(() => {
     Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
