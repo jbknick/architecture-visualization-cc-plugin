@@ -6,7 +6,7 @@ import { useStore } from "../../store.tsx";
 import { currentScheme } from "../../theme.ts";
 import { getBool } from "../../views/filterUtils.ts";
 import { useReviewFocus } from "../../views/reviewFocus.ts";
-import { FAR_KEY, focusedChange, layerFocus, paintLayer } from "../../views/reviewModel.ts";
+import { focusedChange, layerFocus, paintLayer, SHOW_KEY, showOf } from "../../views/reviewModel.ts";
 import { mapUi, prefersReducedMotion, useMapUi } from "../ui.ts";
 import { buildLandscape } from "./model.ts";
 import { SettlementScene, type SettlementTip } from "./SettlementScene.ts";
@@ -25,13 +25,13 @@ export default function SettlementCanvas({ focus, onSelect, onHover, data: viewD
   const { state } = useStore();
   const route = state.route;
   const hideTests = getBool(route.filters, "hideTests", true);
-  // The review view's own options (2D/3D, the hop 2-3 tint) do not change the map's data; `range` and `pr` add the
-  // review layer to the project map response (#167).
+  // The review view's own options (2D/3D, Show) do not change the map's data; `range` and `pr` add the review layer
+  // to the project map response (#167).
   const filtersKey = useMemo(() => {
-    const { style: _style, map: _map, [FAR_KEY]: _far, ...rest } = route.filters;
+    const { style: _style, map: _map, [SHOW_KEY]: _show, ...rest } = route.filters;
     return JSON.stringify(rest);
   }, [route.filters]);
-  const far = getBool(route.filters, FAR_KEY, false);
+  const show = showOf(route.filters);
   const reviewing = Boolean(viewData?.review);
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<SettlementScene | null>(null);
@@ -128,11 +128,11 @@ export default function SettlementCanvas({ focus, onSelect, onHover, data: viewD
         ? paintLayer(
             { ids: land.buildings.map((b) => b.id), parents: land.buildings.map(() => -1) },
             data.layer,
-            far,
+            show,
             layerFocus(data.review, focusChange),
           )
         : null,
-    [land, data, far, focusChange],
+    [land, data, show, focusChange],
   );
   // A changed symbol picked in the review panel selects (and flies to) the building of its file.
   const shown = (id: string | null): string | null => {

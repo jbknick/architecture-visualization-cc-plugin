@@ -12,12 +12,12 @@ import { currentScheme } from "../theme.ts";
 import { getBool } from "../views/filterUtils.ts";
 import { useReviewFocus } from "../views/reviewFocus.ts";
 import {
-  FAR_KEY,
   focusedChange,
   layerFocus,
   MARK_COLOURS,
-  MARK_WORDS,
   paintLayer,
+  reviewTipLines,
+  showOf,
 } from "../views/reviewModel.ts";
 import { GROUP_KIND, kindTier, type TreeNode } from "./hierarchy.ts";
 import { Legend } from "./Legend.tsx";
@@ -303,7 +303,7 @@ export function TreemapCanvas({
 
   // Review layer (#167): the review drawn over this very map; the layout above never sees it, so nothing moves.
   const layer = data?.review?.layer ?? null;
-  const far = getBool(route.filters, FAR_KEY, false);
+  const show = showOf(route.filters);
   // A selected change (or one of its consumers, picked from the panel) shows only that change's consumers and lines.
   const storedChange = useReviewFocus();
   const focusChange = focusedChange(data?.review, focus, storedChange);
@@ -318,13 +318,13 @@ export function TreemapCanvas({
                 parents: scene.tree.nodes.map((n) => n.parent),
               },
               layer,
-              far,
+              show,
               reviewFocusOn,
             ),
             colours: MARK_COLOURS[theme.scheme ?? currentScheme()],
           }
         : null,
-    [scene, layer, far, theme.scheme, reviewFocusOn],
+    [scene, layer, show, theme.scheme, reviewFocusOn],
   );
 
   // Selection and highlight state shared with the draw loop. A changed symbol picked in the review panel selects the
@@ -672,11 +672,14 @@ export function TreemapCanvas({
       lines.push(bits.join(" · "));
       lines.push(node?.path ?? plain(n.id));
       if (cls >= 3) lines.push(...badgeTipLines(node?.badges));
-      const rv = live.current.review;
-      const ch = rv?.change[i];
-      const hop = rv?.hop[i] ?? 0;
-      if (ch) lines.push(`Review: ${MARK_WORDS[ch].label.toLowerCase()}`);
-      else if (hop > 0) lines.push(`Review: calls changed code (hop ${hop})`);
+      // Review: the change, or the hop and the path to the change along the drawn lines.
+      lines.push(
+        ...reviewTipLines(
+          live.current.review,
+          i,
+          (k) => scene.nodes[k]?.label ?? plain(tree.nodes[k]?.id ?? ""),
+        ),
+      );
       return lines;
     };
     /** The tile of the rank marker under a point (markers sit on top of the tiles), or null. */
@@ -1054,6 +1057,7 @@ function reviewProbe(rv: ReviewPaintEnv | null, last: DrawResult, id: (i: number
           changed: last.review.changed,
           affected: last.review.affected,
           faded: last.review.faded,
+          named: last.review.named.map(id),
           links: last.review.links.map((l) => ({
             src: id(l.src),
             dst: id(l.dst),

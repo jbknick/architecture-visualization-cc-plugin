@@ -290,6 +290,9 @@ export interface ReviewLink {
   dst: string;
   change: ReviewMarkKind;
   weight: number;
+  /** `direct`: hop 1, solid, to the change. `potential` (#173): hops 2-3, dashed, to the node one step nearer. */
+  tier: "direct" | "potential";
+  hop: number;
 }
 
 /** The review as a layer on the map in the same response: marks and lines by node id, at the map's level. */

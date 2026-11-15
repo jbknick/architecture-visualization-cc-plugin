@@ -10,13 +10,13 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { Scheme } from "../../theme.ts";
-import { type LayerPaint, MARK_COLOURS } from "../../views/reviewModel.ts";
+import { capPaintLinks, type LayerPaint, MARK_COLOURS, reviewTipLines } from "../../views/reviewModel.ts";
 import { workspaceColorAt } from "../../workspacePalette.ts";
 import { rectsOverlap, type ScreenRect } from "../city/labels.ts";
 import { type BuiltBuildings, buildBuildings } from "./buildings3d.ts";
 import { landGround, roadGround, settlementGround } from "./ground.ts";
 import { tierIcon } from "./icons.ts";
-import { type FacadeUniforms, oakGeometry, pineGeometry } from "./kit.ts";
+import { dashesOf, type FacadeUniforms, oakGeometry, pineGeometry } from "./kit.ts";
 import { buildLife, type Life } from "./life.ts";
 import { color, type Look, lookFor } from "./look.ts";
 import { districtOf, type Landscape, type SBuilding, type Settlement } from "./model.ts";
@@ -463,7 +463,7 @@ export class SettlementScene {
     };
     const drawn: { src: string; dst: string; change: string; soft?: boolean }[] = [];
     const softMats = new Map<string, THREE.MeshBasicMaterial>();
-    // A potentially affected consumer's arc is thin and faint.
+    // A potentially affected consumer's arc is thin, faint and dashed (#173), drawn under the direct ones.
     const softOf = (kind: string): THREE.MeshBasicMaterial => {
       let m = softMats.get(kind);
       if (!m) {
@@ -477,7 +477,7 @@ export class SettlementScene {
       }
       return m;
     };
-    for (const l of rv.links.slice(0, MAX_ARCS)) {
+    for (const l of capPaintLinks(rv.links, MAX_ARCS)) {
       const a = land.buildings[l.src];
       const b = land.buildings[l.dst];
       if (!a || !b) continue;
@@ -487,13 +487,22 @@ export class SettlementScene {
       const mid = p0.clone().add(p2).multiplyScalar(0.5);
       mid.y = Math.max(p0.y, p2.y) + Math.max(2, dist * 0.35);
       const curve = new THREE.QuadraticBezierCurve3(p0, mid, p2);
-      const radius = l.soft ? 0.04 : 0.07 + 0.04 * Math.min(4, l.weight);
-      const tube = new THREE.TubeGeometry(curve, 32, radius, 6, false);
-      this.reviewDisposables.push(tube);
       const mat = l.soft ? softOf(l.change) : matOf(l.change);
-      const mesh = new THREE.Mesh(tube, mat);
-      mesh.renderOrder = 5;
-      group.add(mesh);
+      if (l.soft) {
+        for (const piece of dashesOf(curve, 0.9, 0.55)) {
+          const tube = new THREE.TubeGeometry(piece, 4, 0.05, 6, false);
+          this.reviewDisposables.push(tube);
+          const mesh = new THREE.Mesh(tube, mat);
+          mesh.renderOrder = 4;
+          group.add(mesh);
+        }
+      } else {
+        const tube = new THREE.TubeGeometry(curve, 32, 0.07 + 0.04 * Math.min(4, l.weight), 6, false);
+        this.reviewDisposables.push(tube);
+        const mesh = new THREE.Mesh(tube, mat);
+        mesh.renderOrder = 5;
+        group.add(mesh);
+      }
       const tip = new THREE.Mesh(cone, mat);
       const dir = curve.getTangent(1).normalize();
       tip.position.copy(p2);
@@ -508,6 +517,9 @@ export class SettlementScene {
       changed: ids((i) => rv.change[i] !== null),
       affected: ids((i) => !rv.change[i] && (rv.hop[i] ?? 0) > 0),
       faded: land.buildings.filter((_, i) => !rv.lit[i]).length,
+      hops: Object.fromEntries(
+        land.buildings.flatMap((b, i) => (!rv.change[i] && (rv.hop[i] ?? 0) > 0 ? [[b.id, rv.hop[i]]] : [])),
+      ),
       links: drawn,
     });
   }
@@ -961,6 +973,7 @@ export class SettlementScene {
           `file · ${n(b.fns)} functions${b.loc !== null ? ` · ${n(b.loc)} lines` : ""}`,
           `${s.title} (${TIER_LABEL[s.tier].toLowerCase()})${d ? ` · ${d.title}` : ""}`,
           `${archName(b)} · ${b.role === "code" ? "source file" : b.role}`,
+          ...reviewTipLines(this.review, hit.i, (k) => l.buildings[k]?.path ?? ""),
         ],
       };
     }

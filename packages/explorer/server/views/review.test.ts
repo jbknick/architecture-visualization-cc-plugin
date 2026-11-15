@@ -17,7 +17,15 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { HttpError, handleApi } from "../api.js";
 import type { ApiContext } from "../types.js";
 import { projectMapView } from "./projectMap.js";
-import { clearReviewCache, type ReviewResult, ringPosition, ringRadii, ringSlots } from "./review.js";
+import {
+  capLinks,
+  clearReviewCache,
+  MAX_REVIEW_LINKS,
+  type ReviewResult,
+  ringPosition,
+  ringRadii,
+  ringSlots,
+} from "./review.js";
 import { buildReview } from "./reviewView.js";
 
 interface MaterializedFixture {
@@ -97,6 +105,77 @@ const BUTTON_FILE = fileId("packages/ui/src/button.tsx");
 const HOME_FILE = fileId("apps/web/src/routes/index.tsx");
 
 describe("review view", () => {
+  it("secondary links (#173): a dashed tier from each potentially affected consumer to its next, under the direct ones", async () => {
+    const { ctx, fx } = await setup();
+    // getPost changes: app.ts calls it and the db barrel re-exports it (direct); the api barrel imports app.ts, and
+    // router.ts and the post route import the db barrel (hop 2).
+    fx.git(["checkout", "-b", "chain"]);
+    const q = join(fx.dir, "packages/db/src/queries.ts");
+    writeFileSync(
+      q,
+      readFileSync(q, "utf8").replace("where(eq(posts.id, id))", "where(eq(posts.id, id)).limit(1)"),
+    );
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-m", "getPost body"]);
+    fx.git(["checkout", "main"]);
+    const QUERIES = fileId("packages/db/src/queries.ts");
+    const DB_INDEX = fileId("packages/db/src/index.ts");
+    const APP = fileId("apps/api/src/app.ts");
+    for (const level of ["files", "symbols"] as const) {
+      const r = await buildReview(ctx, opts({ range: "main...chain" }, level));
+      const layer = r.review?.layer;
+      const links = layer?.links ?? [];
+      const dst = level === "files" ? QUERIES : "sym:packages/db/src/queries.ts#getPost";
+      expect(links.filter((l) => l.tier === "direct").map((l) => [l.src, l.dst, l.hop])).toEqual([
+        [APP, dst, 1],
+        [DB_INDEX, dst, 1],
+      ]);
+      expect(links.filter((l) => l.tier === "potential").map((l) => [l.src, l.dst, l.hop])).toEqual([
+        [fileId("apps/api/src/index.ts"), APP, 2],
+        [fileId("apps/api/src/router.ts"), DB_INDEX, 2],
+        [fileId("apps/web/src/routes/posts.$postId.tsx"), DB_INDEX, 2],
+      ]);
+      // Direct lines come first (drawn last, on top); every potential line ends at its consumer's next node.
+      const firstSoft = links.findIndex((l) => l.tier === "potential");
+      expect(links.slice(firstSoft).every((l) => l.tier === "potential")).toBe(true);
+      const potential = r.review?.changes[0]?.consumers.potential ?? [];
+      for (const l of links.filter((x) => x.tier === "potential")) {
+        expect(potential.some((p) => p.node === l.src && p.nextNode === l.dst)).toBe(true);
+        expect(layer?.marks.find((m) => m.id === l.src)?.hop).toBe(2);
+        expect(l.change).toBe("modified");
+      }
+      expect(layer?.linksTotal).toBe(links.length);
+    }
+  });
+
+  it("capLinks: direct lines first, potential after, cut at the cap with the total of both tiers", () => {
+    const link = (i: number, tier: "direct" | "potential") => ({
+      id: `${tier}:${String(i).padStart(4, "0")}`,
+      src: `a${i}`,
+      dst: `b${i}`,
+      change: "modified" as const,
+      weight: 1,
+      tier,
+      hop: tier === "direct" ? 1 : 2,
+    });
+    const direct = Array.from({ length: 1500 }, (_, i) => link(1499 - i, "direct"));
+    const potential = Array.from({ length: 1000 }, (_, i) => link(i, "potential"));
+    const { links, linksTotal } = capLinks(direct, potential);
+    expect(MAX_REVIEW_LINKS).toBe(2000);
+    expect(links).toHaveLength(MAX_REVIEW_LINKS);
+    expect(linksTotal).toBe(2500);
+    expect(links.slice(0, 1500).every((l) => l.tier === "direct")).toBe(true);
+    expect(links[0]?.id).toBe("direct:0000");
+    expect(links[1500]?.id).toBe("potential:0000");
+    // More direct lines than the cap: no potential line is sent.
+    const many = capLinks(
+      Array.from({ length: 2100 }, (_, i) => link(i, "direct")),
+      potential,
+    );
+    expect(many.links.every((l) => l.tier === "direct")).toBe(true);
+    expect(many.linksTotal).toBe(3100);
+  });
+
   it("without range or pr returns an empty view and review: null", async () => {
     const { ctx } = await setup();
     expect(await buildReview(ctx, opts({}))).toEqual({
@@ -123,10 +202,13 @@ describe("review view", () => {
       dst: BUTTON_FILE,
       change: "signature",
       weight: 1,
+      tier: "direct",
+      hop: 1,
     });
-    // Every line points at the changed file and starts at a marked caller; all ends are nodes of this response.
+    // Every direct line points at the changed file and starts at a marked caller; all ends are nodes of this response.
     const ids = new Set(r.nodes.map((n) => n.id));
-    for (const l of layer?.links ?? []) {
+    for (const l of layer?.links ?? []) expect(ids.has(l.src) && ids.has(l.dst)).toBe(true);
+    for (const l of (layer?.links ?? []).filter((x) => x.tier === "direct")) {
       expect(l.dst).toBe(BUTTON_FILE);
       expect(mark(l.src)?.hop).toBe(1);
       expect(ids.has(l.src) && ids.has(l.dst)).toBe(true);
@@ -211,7 +293,7 @@ describe("review view", () => {
     expect(layer?.links).toContainEqual(
       expect.objectContaining({ src: HOME, dst: BUTTON, change: "signature", weight: 1 }),
     );
-    for (const l of layer?.links ?? []) expect(l.dst).toBe(BUTTON);
+    for (const l of layer?.links ?? []) if (l.tier === "direct") expect(l.dst).toBe(BUTTON);
     expect(layer?.placed).toContainEqual([BUTTON, BUTTON]);
   });
 

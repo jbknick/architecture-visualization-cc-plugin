@@ -19,26 +19,40 @@ export function ReviewLegend({ mode }: { mode: LegendMode }) {
           </li>
         ))}
         {mode === "rings" ? (
-          <li title="Code that calls the ring inside it: darker is nearer the change">
-            <span className="rv-swatch rv-caller-swatch" aria-hidden="true" />
-            Caller (fainter = farther)
-          </li>
+          <>
+            <li title="Code that calls the ring inside it: darker is nearer the change">
+              <span className="rv-swatch rv-caller-swatch" aria-hidden="true" />
+              Caller (fainter = farther)
+            </li>
+            <li title="From a caller to the code it calls">
+              <span className="rv-line" aria-hidden="true" />
+              Caller → called
+            </li>
+          </>
         ) : (
           <>
-            <li title="Calls, renders or uses a changed symbol directly (hop 1)">
+            <li title="Calls, renders, imports or otherwise uses a changed symbol itself (hop 1)">
               <span className="rv-swatch rv-mark-affected" aria-hidden="true" />
-              Calls changed code
+              Directly affected
+            </li>
+            <li title="Uses a directly affected node, or one that uses it (hops 2 and 3)">
+              <span className="rv-swatch rv-mark-potential" aria-hidden="true" />
+              Potentially affected
             </li>
             <li title="Code this range did not touch, in its usual place">
               <span className="rv-swatch rv-mark-faded" aria-hidden="true" />
               Untouched
             </li>
+            <li title="From a directly affected node to the changed code it uses">
+              <span className="rv-line" aria-hidden="true" />
+              {mode === "3d" ? "Solid: uses the change (file to file)" : "Solid: uses the change"}
+            </li>
+            <li title="From a potentially affected node to the node one step nearer the change">
+              <span className="rv-line rv-line-dashed" aria-hidden="true" />
+              Dashed: one step nearer
+            </li>
           </>
         )}
-        <li title="From a caller to the code it calls">
-          <span className="rv-line" aria-hidden="true" />
-          {mode === "3d" ? "Caller → changed (file to file)" : "Caller → called"}
-        </li>
       </ul>
     </aside>
   );

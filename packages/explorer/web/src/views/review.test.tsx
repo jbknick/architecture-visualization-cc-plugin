@@ -9,25 +9,34 @@ import { computeLayout } from "../canvas/layout.ts";
 import { buildScene, layoutInputFor } from "../canvas/scene.ts";
 import { installMockFetch, renderApp } from "../testUtils.tsx";
 import {
+  affectedTotals,
+  capPaintLinks,
   focusedChange,
   groupByFile,
+  labelRing,
   layerFocus,
   MARK_COLOURS,
   MARK_KINDS,
   markKindOf,
   paintLayer,
+  pathToChange,
   placedId,
   RINGS_CAPTION,
+  reviewTipLines,
   ringFocus,
   ringGroups,
   ringPath,
   ringTitle,
+  SHOW_CHOICES,
   shortName,
+  showOf,
 } from "./reviewModel.ts";
 
 const BUTTON = "sym:packages/ui/src/button.tsx#Button";
 const BUTTON_FILE = "file:packages/ui/src/button.tsx";
 const CARD_FILE = "file:packages/ui/src/card.tsx";
+const DEBOUNCE_FILE = "file:apps/web/src/hooks/useDebounce.ts";
+const POSTLIST_FILE = "file:apps/web/src/components/PostList.tsx";
 
 function mockView(view: string, filters: Record<string, string>, level?: string): ViewData {
   const q = new URLSearchParams({ filters: JSON.stringify(filters), ...(level ? { level } : {}) });
@@ -50,8 +59,8 @@ describe("reviewModel", () => {
     }
   });
 
-  it("paintLayer: marks by index, ancestors lit, hop 2 only with far, lines and placed ids", () => {
-    // ws -> dir -> {a.ts, b.ts, c.ts}; a.ts changed, b.ts hop 1, c.ts hop 2.
+  it("paintLayer and the Show filter: the whole chain by default, soft dashed lines under direct ones", () => {
+    // ws -> dir -> {a.ts, b.ts, c.ts}; a.ts changed, b.ts hop 1, c.ts hop 2 (via b.ts).
     const tree = {
       ids: ["ws:x", "dir:x", "file:a.ts", "file:b.ts", "file:c.ts", "ws:y"],
       parents: [-1, 0, 1, 1, 1, -1],
@@ -64,24 +73,94 @@ describe("reviewModel", () => {
         { id: "file:gone.ts", change: "added" },
       ],
       links: [
-        { id: "file:b.ts->file:a.ts", src: "file:b.ts", dst: "file:a.ts", change: "signature", weight: 2 },
-        { id: "file:zz.ts->file:a.ts", src: "file:zz.ts", dst: "file:a.ts", change: "signature", weight: 1 },
+        {
+          id: "file:b.ts->file:a.ts",
+          src: "file:b.ts",
+          dst: "file:a.ts",
+          change: "signature",
+          weight: 2,
+          tier: "direct",
+          hop: 1,
+        },
+        {
+          id: "file:zz.ts->file:a.ts",
+          src: "file:zz.ts",
+          dst: "file:a.ts",
+          change: "signature",
+          weight: 1,
+          tier: "direct",
+          hop: 1,
+        },
+        {
+          id: "file:c.ts->file:b.ts",
+          src: "file:c.ts",
+          dst: "file:b.ts",
+          change: "signature",
+          weight: 1,
+          tier: "potential",
+          hop: 2,
+        },
       ],
-      linksTotal: 2,
+      linksTotal: 3,
       placed: [["sym:a.ts#f", "file:a.ts"]],
       unplaced: [],
     };
-    const p = paintLayer(tree, layer, false);
+    // Default (+ Potentially affected): both tints, the dashed line first so the solid one is drawn over it.
+    const p = paintLayer(tree, layer);
     expect(p.change).toEqual([null, null, "signature", null, null, null]);
-    expect([...p.hop]).toEqual([0, 0, 0, 1, 0, 0]);
-    expect([...p.lit]).toEqual([1, 1, 1, 1, 0, 0]);
-    expect(p.links).toEqual([{ src: 3, dst: 2, change: "signature", weight: 2 }]);
+    expect([...p.hop]).toEqual([0, 0, 0, 1, 2, 0]);
+    expect([...p.lit]).toEqual([1, 1, 1, 1, 1, 0]);
+    expect(p.links).toEqual([
+      { src: 4, dst: 3, change: "signature", weight: 1, soft: true },
+      { src: 3, dst: 2, change: "signature", weight: 2 },
+    ]);
     expect(p.placed.get("sym:a.ts#f")).toBe(2);
-    const far = paintLayer(tree, layer, true);
-    expect([...far.hop]).toEqual([0, 0, 0, 1, 2, 0]);
-    expect([...far.lit]).toEqual([1, 1, 1, 1, 1, 0]);
+    expect(paintLayer(tree, layer, "potential")).toEqual(p);
+    // + Directly affected: hop 1 and its solid lines only.
+    const direct = paintLayer(tree, layer, "direct");
+    expect([...direct.hop]).toEqual([0, 0, 0, 1, 0, 0]);
+    expect([...direct.lit]).toEqual([1, 1, 1, 1, 0, 0]);
+    expect(direct.links).toEqual([{ src: 3, dst: 2, change: "signature", weight: 2 }]);
+    // Changed only: no consumers, no lines.
+    const changed = paintLayer(tree, layer, "changed");
+    expect([...changed.hop]).toEqual([0, 0, 0, 0, 0, 0]);
+    expect([...changed.lit]).toEqual([1, 1, 1, 0, 0, 0]);
+    expect(changed.links).toEqual([]);
     expect(placedId(layer, "sym:a.ts#f")).toBe("file:a.ts");
     expect(placedId(layer, "file:b.ts")).toBe("file:b.ts");
+
+    // Hover: the hop in words and the path to the change along the lines (the solid one first).
+    const names = (i: number) => tree.ids[i]?.slice(5) ?? "";
+    expect(pathToChange(p, 4)).toEqual([4, 3, 2]);
+    expect(reviewTipLines(p, 4, names)).toEqual([
+      "Review: potentially affected (hop 2)",
+      "Path to the change: c.ts → b.ts → a.ts",
+    ]);
+    expect(reviewTipLines(p, 3, names)).toEqual([
+      "Review: directly affected (hop 1)",
+      "Path to the change: b.ts → a.ts",
+    ]);
+    expect(reviewTipLines(p, 2, names)).toEqual(["Review: signature changed"]);
+    expect(reviewTipLines(p, 5, names)).toEqual([]);
+  });
+
+  it("the Show filter reads the route; totals count each consumer at its nearest hop; caps keep direct lines", () => {
+    expect(showOf({})).toBe("potential");
+    expect(showOf({ show: "direct" })).toBe("direct");
+    expect(showOf({ show: "changed" })).toBe("changed");
+    expect(showOf({ show: "nonsense" })).toBe("potential");
+    expect(SHOW_CHOICES.map((c) => c.label)).toEqual([
+      "Changed only",
+      "+ Directly affected",
+      "+ Potentially affected",
+    ]);
+    const v = mockView("review", { range: "main...feature" }, "files");
+    expect(affectedTotals(v.review)).toEqual({ direct: 4, potential: 1 });
+    const soft = (i: number): { id: string; soft?: boolean } => ({ id: `s${i}`, soft: true });
+    const solid = (i: number): { id: string; soft?: boolean } => ({ id: `d${i}` });
+    const capped = capPaintLinks([soft(1), soft(2), solid(1), solid(2), solid(3)], 4);
+    expect(capped.map((l) => l.id)).toEqual(["s1", "d1", "d2", "d3"]);
+    expect(capPaintLinks([soft(1), solid(1), solid(2)], 2).map((l) => l.id)).toEqual(["d1", "d2"]);
   });
 
   it("positions: the review map lays out exactly like the plain project map (same level and filters)", async () => {
@@ -110,21 +189,36 @@ describe("reviewModel", () => {
     expect(layer.marks.find((m) => m.id === BUTTON_FILE)).toMatchObject({ change: "signature" });
     expect(layer.marks.find((m) => m.id === CARD_FILE)).toMatchObject({ hop: 1 });
     expect(layer.links.map((l) => l.id)).toContain(`${CARD_FILE}->${BUTTON_FILE}`);
+    // useDebounce (hop 2) reaches the moved date helper through PostList: a dashed line to PostList's file.
+    expect(layer.links).toContainEqual(
+      expect.objectContaining({ src: DEBOUNCE_FILE, dst: POSTLIST_FILE, tier: "potential", hop: 2 }),
+    );
     const scene = buildScene(v.nodes, v.edges, "nested-elk");
     const p = paintLayer(
       { ids: scene.tree.nodes.map((n) => n.id), parents: scene.tree.nodes.map((n) => n.parent) },
       layer,
-      false,
     );
     const at = (id: string) => scene.tree.index.get(id) as number;
     expect(p.change[at(BUTTON_FILE)]).toBe("signature");
     expect(p.hop[at(CARD_FILE)]).toBe(1);
+    expect(p.hop[at(DEBOUNCE_FILE)]).toBe(2);
+    expect(p.links).toContainEqual(
+      expect.objectContaining({ src: at(DEBOUNCE_FILE), dst: at(POSTLIST_FILE), soft: true }),
+    );
     expect(p.lit[at("file:packages/db/src/queries.ts")]).toBe(0);
     expect(p.placed.get(BUTTON)).toBe(at(BUTTON_FILE));
   });
 });
 
 describe("rings model", () => {
+  it("labels the outer rings with the same room as the first", () => {
+    expect(labelRing(0, 500)).toBe(true);
+    for (const hop of [1, 2, 3]) {
+      expect(labelRing(hop, 40)).toBe(true);
+      expect(labelRing(hop, 41)).toBe(false);
+    }
+  });
+
   it("names every ring in plain words", () => {
     expect([0, 1, 2, 3].map(ringTitle)).toEqual([
       "Changed in this range",
@@ -211,7 +305,10 @@ describe("review view", () => {
     await waitFor(() => expect(canvas.getAttribute("data-map")).toBe("2d"));
     const legend = within(canvas).getByRole("complementary", { name: "Review legend" });
     expect(within(legend).getByText("Signature changed")).toBeTruthy();
-    expect(within(legend).getByText("Calls changed code")).toBeTruthy();
+    expect(within(legend).getByText("Directly affected")).toBeTruthy();
+    expect(within(legend).getByText("Potentially affected")).toBeTruthy();
+    expect(within(legend).getByText("Solid: uses the change")).toBeTruthy();
+    expect(within(legend).getByText("Dashed: one step nearer")).toBeTruthy();
     expect(within(legend).getByText("Untouched")).toBeTruthy();
 
     const risk = screen.getByRole("region", { name: "Risk" });
@@ -250,7 +347,7 @@ describe("review view", () => {
     expect(change.querySelector('[data-side="before"]')?.textContent).toContain("formatRelativeDate");
   });
 
-  it("the range form, the 2D/3D toggle, the level and the hop 2-3 tint write the hash", async () => {
+  it("the range form, the 2D/3D toggle, the level and the Show filter write the hash; the panel shows the totals", async () => {
     installMockFetch();
     renderApp("#/review?range=main...feature");
     await screen.findByRole("region", { name: "Risk" });
@@ -260,8 +357,19 @@ describe("review view", () => {
     await waitFor(() => expect(window.location.hash).not.toContain("mode=rings"));
     fireEvent.click(screen.getByRole("radio", { name: "Functions" }));
     await waitFor(() => expect(window.location.hash).toContain("level=symbols"));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Tint callers at hop 2 and 3" }));
-    await waitFor(() => expect(window.location.hash).toContain("far=true"));
+    const show = screen.getByRole("radiogroup", { name: "Show" });
+    expect(
+      within(show).getByRole("radio", { name: "+ Potentially affected" }).getAttribute("aria-checked"),
+    ).toBe("true");
+    fireEvent.click(within(show).getByRole("radio", { name: "+ Directly affected" }));
+    await waitFor(() => expect(window.location.hash).toContain("show=direct"));
+    fireEvent.click(within(show).getByRole("radio", { name: "Changed only" }));
+    await waitFor(() => expect(window.location.hash).toContain("show=changed"));
+    fireEvent.click(within(show).getByRole("radio", { name: "+ Potentially affected" }));
+    await waitFor(() => expect(window.location.hash).not.toContain("show="));
+    expect(screen.getByTestId("review-totals").textContent).toBe(
+      "Directly affected 4 · Potentially affected 1",
+    );
     fireEvent.click(screen.getByRole("radio", { name: "3D map" }));
     await waitFor(() => expect(window.location.hash).toContain("map=3d"));
     const canvas = await screen.findByTestId("review-canvas");
@@ -307,25 +415,33 @@ describe("consumers (#169)", () => {
         { id: "file:d.ts", change: "added", changes: 1 },
       ],
       links: [
-        { id: "file:b.ts->file:a.ts", src: "file:b.ts", dst: "file:a.ts", change: "signature", weight: 1 },
+        {
+          id: "file:b.ts->file:a.ts",
+          src: "file:b.ts",
+          dst: "file:a.ts",
+          change: "signature",
+          weight: 1,
+          tier: "direct",
+          hop: 1,
+        },
       ],
       linksTotal: 1,
       placed: [["sym:a.ts#f", "file:a.ts"]],
       unplaced: [],
     };
-    const p = paintLayer(tree, layer, false, {
+    const p = paintLayer(tree, layer, "potential", {
       node: "file:a.ts",
       kind: "signature",
       direct: ["file:b.ts"],
       potential: [{ node: "file:c.ts", next: "file:b.ts" }],
     });
-    // d.ts (another change) fades; c.ts gets the soft tint even without `far`
+    // d.ts (another change) fades; c.ts gets the soft tint; the soft line comes first (drawn under)
     expect(p.change).toEqual([null, "signature", null, null, null]);
     expect([...p.hop]).toEqual([0, 0, 1, 2, 0]);
     expect([...p.lit]).toEqual([1, 1, 1, 1, 0]);
     expect(p.links).toEqual([
-      { src: 2, dst: 1, change: "signature", weight: 1 },
       { src: 3, dst: 2, change: "signature", weight: 1, soft: true },
+      { src: 2, dst: 1, change: "signature", weight: 1 },
     ]);
   });
 
