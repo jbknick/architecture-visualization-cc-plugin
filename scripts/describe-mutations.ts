@@ -216,13 +216,13 @@ const MUTATIONS: Mutation[] = [
   {
     name: "compound heads: skip policy is a noun",
     file: "shape.ts",
-    find: "!(COMPOUND_HEADS.has(nw) && !VERBS_INSTRUCTIVE.has(it.w))",
+    find: "!(COMPOUND_HEADS.has(nw) && !VERBS_INSTRUCTIVE.has(it.w) && startsNounPhrase(items, i))",
     replace: "!COMPOUND_HEADS.has(nw)",
   },
   {
     name: "participle exemption: any inflection before a person",
     file: "speech.ts",
-    find: "const adjective = j === i + 1 && /ed$/.test(word);",
+    find: 'const adjective = j === i + 1 && ADJECTIVE_PARTICIPLES.has(word) && w[j + 1] !== "to";',
     replace: "const adjective = true;",
   },
   {
@@ -234,14 +234,87 @@ const MUTATIONS: Mutation[] = [
   {
     name: "search-term noun compound: any previous word",
     file: "speech.ts",
-    find: "return COMPOUND_LEAD.has(prev) || VERBS_AMBIGUOUS.has(prev);",
-    replace: "return true;",
+    find: "if (!(COMPOUND_LEAD.has(prev) || VERBS_AMBIGUOUS.has(prev))) return false;",
+    replace: "",
   },
   {
-    name: "search-term noun compound: always-flagged verbs too",
+    name: "search-term noun compound: any verb, not only commit/push/review/merge",
     file: "speech.ts",
-    find: "if (from === 0 || VERBS_ALWAYS.has(verb) ||",
-    replace: "if (from === 0 ||",
+    find: "if (!COMPOUND_VERBS.has(verb) || from === 0",
+    replace: "if (from === 0",
+  },
+  // Fix round of #155 (adversarial review): the branches of the exemptions.
+  {
+    name: "noun subject: no determiner needed",
+    file: "shape.ts",
+    find: "return startsNounPhrase(items, i) && !protectiveAhead(items, i + 1);",
+    replace: "return !protectiveAhead(items, i + 1);",
+  },
+  {
+    name: "noun subject: protective code in the clause ignored",
+    file: "shape.ts",
+    find: "return startsNounPhrase(items, i) && !protectiveAhead(items, i + 1);",
+    replace: "return startsNounPhrase(items, i);",
+  },
+  {
+    name: "noun subject: finite verb branch always a noun",
+    file: "shape.ts",
+    find: "if (FINITE_AFTER_NOUN.has(nw)) {",
+    replace: "if (FINITE_AFTER_NOUN.has(nw)) return true;\n  if (false) {",
+  },
+  {
+    name: "verb list: destructive verbs allowed in the last slot",
+    file: "shape.ts",
+    find: 'if (VERBS_ALWAYS.has(last) && last !== "execute") return false;',
+    replace: "",
+  },
+  {
+    name: "verb list: first word need not read as a verb",
+    file: "shape.ts",
+    find: "if (!verbish(w)) return false;",
+    replace: "",
+  },
+  {
+    name: "noun compound: try/let/make lead-ins allowed",
+    file: "speech.ts",
+    find: 'if (prev === "try" || prev === "attempt" || prev === "let" || prev === "make" || prev === "kindly")',
+    replace: "if (false)",
+  },
+  {
+    name: "noun compound: protective objects allowed",
+    file: "speech.ts",
+    find: "if (!FILLERS.has(w) && !COMPOUND_OBJECTS.has(w)) return false;",
+    replace: "",
+  },
+  {
+    name: "noun compound: fillers between verb and object not skipped",
+    file: "speech.ts",
+    find: "if (!FILLERS.has(w) && !COMPOUND_OBJECTS.has(w)) return false;",
+    replace: "if (!COMPOUND_OBJECTS.has(w)) return false;",
+  },
+  {
+    name: "noun compound: word before the verb may sit in another term",
+    file: "speech.ts",
+    find: "|| owner[from - 1] !== owner[from]) return false;",
+    replace: ") return false;",
+  },
+  {
+    name: "route literals: two in a row allowed",
+    file: "identifiers.ts",
+    find: 'if (ROUTE_SEGMENT.test(t.toLowerCase()) && ROUTE_SEGMENT.test((tokens[i - 1] ?? "").toLowerCase())) {',
+    replace: "if (false) {",
+  },
+  {
+    name: "require/expect: waving review away allowed",
+    file: "speech.ts",
+    find: "|| withoutReview(tail)",
+    replace: "",
+  },
+  {
+    name: "participle before a person followed by to is an adjective",
+    file: "speech.ts",
+    find: ' && w[j + 1] !== "to";',
+    replace: ";",
   },
 ];
 

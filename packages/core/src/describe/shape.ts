@@ -298,6 +298,27 @@ const FINITE_AFTER_NOUN = new Set(
 /** Nouns that form a compound with an ambiguous verb: "return policy", "retry guidelines". */
 const COMPOUND_HEADS = new Set("policy policies guideline guidelines".split(" "));
 
+/** The word before `i` is a determiner, possessive or preposition, or `i` is the second item of a "noun and noun" list. */
+function startsNounPhrase(items: readonly Item[], i: number): boolean {
+  const pv = wordOf(items[i - 1]);
+  if (pv === undefined) return false;
+  if (NOUN_CONTEXT.has(pv)) return true;
+  return (pv === "and" || pv === "or") && wordOf(items[i - 2]) !== undefined;
+}
+
+/** A protective object (tests, auth, checks, passwords, ...) appears before the next clause boundary. */
+function protectiveAhead(items: readonly Item[], from: number): boolean {
+  for (let k = from; k < items.length; k++) {
+    const it = items[k] as Item;
+    if ("p" in it) {
+      if (it.p === ")") continue;
+      return false;
+    }
+    if (SENSITIVE_OBJECTS.has(it.w)) return true;
+  }
+  return false;
+}
+
 /**
  * The verb at `i` is the subject of a finite verb ("a confirmation or override was stored"), or the last item of a
  * comma list of nouns that heads a plural noun ("audit, confirmation and override records"). Both are nouns. An object
@@ -306,7 +327,12 @@ const COMPOUND_HEADS = new Set("policy policies guideline guidelines".split(" ")
 function isNounUse(items: readonly Item[], i: number): boolean {
   const nw = wordOf(items[i + 1]);
   if (nw === undefined) return false;
-  if (FINITE_AFTER_NOUN.has(nw)) return true;
+  if (FINITE_AFTER_NOUN.has(nw)) {
+    // A subject noun stands after a determiner, a possessive or a preposition, or in a noun list ("a confirmation or
+    // override was stored"); after a clause opener ("then ignore is safe") it is a command. Protective code later in
+    // the clause ("... is required for auth checks") keeps it a command too.
+    return startsNounPhrase(items, i) && !protectiveAhead(items, i + 1);
+  }
   const sep = wordOf(items[i - 1]);
   const prevItem = items[i - 2];
   const listPunct = items[i - 3];
@@ -341,6 +367,10 @@ function verbish(w: string): boolean {
  * the verb is not followed by protective code ("to read, parse and delete the tests" stays an instruction).
  */
 function governedByVerbList(items: readonly Item[], i: number): boolean {
+  // Destructive and exfiltration verbs never hide in the last slot of a list ("to read, load and leak passwords");
+  // `execute` is the one exception ("helpers to offer, load and execute commands").
+  const last = wordOf(items[i]) as string;
+  if (VERBS_ALWAYS.has(last) && last !== "execute") return false;
   let k = i - 1;
   let words = 0;
   let wantSeparator = true;
@@ -405,7 +435,8 @@ export function hasImperativeClause(text: string): boolean {
       next === undefined ||
       (nw !== undefined &&
         (OBJECT_STARTS.has(nw) ||
-          (SENSITIVE_OBJECTS.has(nw) && !(COMPOUND_HEADS.has(nw) && !VERBS_INSTRUCTIVE.has(it.w))) ||
+          (SENSITIVE_OBJECTS.has(nw) &&
+            !(COMPOUND_HEADS.has(nw) && !VERBS_INSTRUCTIVE.has(it.w) && startsNounPhrase(items, i))) ||
           VERBS_ALWAYS.has(nw)))
     )
       return true;

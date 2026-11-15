@@ -4,7 +4,6 @@
 import {
   ADDRESSEES_AI,
   ADDRESSEES_HUMAN,
-  CLAUSE_TRIGGERS,
   FILLERS,
   MODALS_AFTER_ADDRESSEE,
   OBJECT_STARTS,
@@ -78,6 +77,17 @@ const REMOVABLE = new Set(
 );
 const MODALS = new Set("can may could might should ought will would".split(" "));
 
+const ADJECTIVE_PARTICIPLES = new Set("suggested recommended proposed invited expected required".split(" "));
+const REVIEW_WORDS = new Set(
+  "review reviewing reading verification verifying checking inspection".split(" "),
+);
+
+/** "without reading the diff", "without review": asked of a person, it waves a safeguard away. */
+function withoutReview(words: readonly string[]): boolean {
+  const k = words.indexOf("without");
+  return k >= 0 && words.slice(k + 1, k + 3).some((x) => REVIEW_WORDS.has(x));
+}
+
 function hasSensitive(words: readonly string[]): boolean {
   return words.some((w) => SENSITIVE_OBJECTS.has(w));
 }
@@ -121,13 +131,15 @@ export function speechProblem(text: string): string | null {
         const kind = addresseeKind(t);
         if (kind === null) continue;
         if (kind === "ai") return "speech-act";
-        // A past participle right before a human addressee is an adjective ("suggested contributors"): judged like a
-        // causative, by what follows. `told`, `ordered`, `asked` stay speech acts when an action verb follows too.
-        const adjective = j === i + 1 && /ed$/.test(word);
+        // A few participles right before a human addressee are adjectives ("suggested contributors"): judged like a
+        // causative, by what follows. Real speech verbs ("asked", "instructed", "advised") never are, and a participle
+        // followed by `to` is a verb.
+        const adjective = j === i + 1 && ADJECTIVE_PARTICIPLES.has(word) && w[j + 1] !== "to";
         if (!CAUSATIVE_STEMS.test(word) && !adjective) return "speech-act";
         // An adjective participle is judged on the next three words only ("suggested maintainers to skip tests").
         const tail = w.slice(j + 1, j + (adjective ? 4 : 11));
-        if (tail.some((x) => VERBS_INSTRUCTIVE.has(x)) || hasSensitive(tail)) return "speech-act";
+        if (tail.some((x) => VERBS_INSTRUCTIVE.has(x)) || hasSensitive(tail) || withoutReview(tail))
+          return "speech-act";
       }
     }
     const kind = addresseeKind(word);
@@ -209,20 +221,38 @@ export function sensitivePhrases(words: readonly string[]): { from: number; to: 
 
 /** Nouns (besides the verb-or-noun words of the lexicon) that make a following verb a noun: "merge commit", "db push". */
 const COMPOUND_LEAD = new Set("db sql code post unit pull auto".split(" "));
+/** The only verbs that may be read as nouns in a search-term compound ("commit validation", "review audit"). */
+const COMPOUND_VERBS = new Set("commit push review merge".split(" "));
+/** The only objects such a compound may end in. Tests, auth, checks, secrets, tokens, ... always keep it a command. */
+const COMPOUND_OBJECTS = new Set(
+  "validation validations audit audits policy policies guideline guidelines review reviews verification".split(
+    " ",
+  ),
+);
 
 /**
- * The phrase verb at `from` is a noun inside a compound ("db push", "merge commit", "review commit validation"): it is
- * not the first word of its search term, it is not an always-flagged verb, and the word before it (same term) is a
- * verb-or-noun of the lexicon that is not itself a command lead ("review", "test", "build") or one of a few noun
- * leads ("db", "sql", "code"). "important skip", "please skip" and "go skip" are not compounds. `owner[i]` is the term
- * that word `i` came from. Used for search terms only.
+ * The phrase `words[from..to]` (verb, fillers, protective objects) is a noun compound ("review commit validation"):
+ * the verb is one of commit, push, review, merge; it is not the first word of its search term; the word before it
+ * (same term) is a verb-or-noun of the lexicon or one of `db sql code post unit pull auto`, but not `try`, `let`,
+ * `make`; and every object is a mild noun (validation, audit, policy, ...). A protective object (tests, auth, checks,
+ * secrets, ...) in the phrase, however far, keeps it an instruction: "review push secrets", "unit skip tests" fail.
+ * `owner[i]` is the term that word `i` came from. Used for search terms only.
  */
-export function isNounCompound(words: readonly string[], owner: readonly number[], from: number): boolean {
+export function isNounCompound(
+  words: readonly string[],
+  owner: readonly number[],
+  from: number,
+  to: number,
+): boolean {
   const verb = words[from] as string;
-  if (from === 0 || VERBS_ALWAYS.has(verb) || owner[from - 1] !== owner[from]) return false;
+  if (!COMPOUND_VERBS.has(verb) || from === 0 || owner[from - 1] !== owner[from]) return false;
   const prev = words[from - 1] as string;
-  if (CLAUSE_TRIGGERS.has(prev) || FILLERS.has(prev) || VERBS_ALWAYS.has(prev)) return false;
   if (prev === "try" || prev === "attempt" || prev === "let" || prev === "make" || prev === "kindly")
     return false;
-  return COMPOUND_LEAD.has(prev) || VERBS_AMBIGUOUS.has(prev);
+  if (!(COMPOUND_LEAD.has(prev) || VERBS_AMBIGUOUS.has(prev))) return false;
+  for (let k = from + 1; k <= to; k++) {
+    const w = words[k] as string;
+    if (!FILLERS.has(w) && !COMPOUND_OBJECTS.has(w)) return false;
+  }
+  return true;
 }

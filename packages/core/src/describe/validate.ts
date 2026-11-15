@@ -150,7 +150,7 @@ function judgeTerm(term: string, g: Grounding): TermVerdict {
   if (sp !== null) return { ok: false, reason: "injection", detail: sp };
   const tw = wordsOf(term);
   const sameTerm = tw.map(() => 0);
-  if (tokens.length >= 3 && sensitivePhrases(tw).some((p) => !isNounCompound(tw, sameTerm, p.from)))
+  if (tokens.length >= 3 && sensitivePhrases(tw).some((p) => !isNounCompound(tw, sameTerm, p.from, p.to)))
     return { ok: false, reason: "injection", detail: "imperative term" };
   // Two words: only a destructive verb with a protective object ("delete tests"); "skip weekends", "run tests" are search terms.
   if (tokens.length === 2 && DESTRUCTIVE.has(tw[0] as string) && PROTECTIVE.has(tw[1] as string))
@@ -191,7 +191,7 @@ function termsTogetherInstruct(terms: readonly string[]): boolean {
   });
   if (alone >= 0 && words.some((w, i) => owner[i] !== alone && PROTECTIVE.has(w))) return true;
   for (const { from, to } of sensitivePhrases(words)) {
-    if (isNounCompound(words, owner, from)) continue;
+    if (isNounCompound(words, owner, from, to)) continue;
     if (owner[from] !== owner[to]) return true;
     if (words.filter((_, i) => owner[i] === owner[from]).length >= 3) return true;
   }

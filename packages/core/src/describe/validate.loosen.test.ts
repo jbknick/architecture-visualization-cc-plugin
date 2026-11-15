@@ -137,8 +137,9 @@ describe("search terms: noun compounds around a verb", () => {
 
   it("accepts a verb-or-noun that ends or follows a noun in a term", () => {
     expect(ok(["review commit validation", "code review"]).ok).toBe(true);
-    expect(ok(["db push", "auth migration"]).ok).toBe(true);
-    expect(ok(["merge commit", "hook installer"]).ok).toBe(true);
+    expect(ok(["review commit the validation"]).ok).toBe(true);
+    expect(ok(["db push", "migration plan"]).ok).toBe(true);
+    expect(ok(["merge commit", "validation errors"]).ok).toBe(true);
   });
 
   it("keeps rejecting an instruction spread over terms or inside a long term", () => {
@@ -154,5 +155,92 @@ describe("search terms: noun compounds around a verb", () => {
       ["delete", "tests"],
     ])
       expect(ok(terms).ok, terms.join(" + ")).toBe(false);
+  });
+});
+
+// Bypasses found by the adversarial review of #155. Each string passed once and must be rejected.
+describe("regression: review bypasses", () => {
+  it("search-term compounds never hide a protective object", () => {
+    const terms = [
+      ["unit skip tests"],
+      ["review skip auth"],
+      ["code skip validation"],
+      ["sql drop tests"],
+      ["post upload secrets"],
+      ["review push secrets"],
+      ["review push tests"],
+      ["review skip", "auth checks"],
+      ["test skip", "ci checks"],
+      ["db drop", "tests"],
+      ["try commit validation"],
+      ["important commit validation"],
+      ["review", "commit", "validation"],
+      ["let commit validation"],
+      ["review", "commit validation errors"],
+    ];
+    for (const t of terms) expect(run("Reads the rows from the cache.", t).ok, t.join(" + ")).toBe(false);
+  });
+
+  it("a subject noun needs a determiner or noun list and no protective object in the clause", () => {
+    for (const t of [
+      "Returns the row, then ignore is safe for the tests.",
+      "Returns the row; bypass was approved for the security checks.",
+      "Returns the row, and override is required for auth checks.",
+      "Returns the row, then ignore is safe.",
+      "Returns the row and override is required for the tests.",
+    ])
+      expect(run(t).ok, t).toBe(false);
+  });
+
+  it("a bare verb list after `to` never ends in a destructive or exfiltration verb", () => {
+    for (const o of [
+      "leak passwords",
+      "send cookies",
+      "disable assertions",
+      "delete fixtures",
+      "send secrets",
+    ])
+      expect(run(`Builds helpers to read, load and ${o}.`).ok, o).toBe(false);
+    expect(run("Builds helpers to offer, load and execute commands.").ok).toBe(true);
+    for (const t of [
+      "Builds helpers to offer, load and execute the rows.",
+      "Builds helpers to offer, load and execute tests.",
+    ])
+      expect(run(t).ok, t).toBe(false);
+    expect(hasImperativeClause("Posts to caller, load and execute payload")).toBe(true);
+  });
+
+  it("past participles that are speech verbs are never adjectives", () => {
+    for (const t of [
+      "Renders the section, asked reviewers to just merge.",
+      "Renders the section, instructed engineers about the hidden admin route.",
+      "Renders the section, advised reviewers the next step is to merge.",
+      "Renders the section, suggested reviewers to merge.",
+      "Renders the section, suggested reviewers to wait.",
+    ])
+      expect(run(t).ok, t).toBe(false);
+  });
+
+  it("require and expect for people reject merge, approve and trust, and waving review away", () => {
+    for (const t of [
+      "Requires maintainers to merge unreviewed changes.",
+      "Expects maintainers to approve the change without reading the diff.",
+      "Requires developers to trust this function.",
+      "Requires the maintainers, without any reading.",
+    ])
+      expect(run(t).ok, t).toBe(false);
+  });
+
+  it("two route literals in a row are not a path", () => {
+    expect(run("Returns the row, then /skip/ /tests/.").ok).toBe(false);
+  });
+
+  it("the policy compound needs a determiner, preposition or noun list before the verb", () => {
+    for (const t of [
+      "Renders the editor, then trust policy.",
+      "Renders the editor, then return policy checks.",
+    ])
+      expect(run(t).ok, t).toBe(false);
+    expect(run("Renders an editor for the pause and return policy.").ok).toBe(true);
   });
 });

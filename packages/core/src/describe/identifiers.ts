@@ -335,6 +335,11 @@ export function ungroundedTokens(text: string, g: Grounding): string[] {
     if (bad.includes(t)) return;
     // A decimal ("1.5 MB", "version 2.0") is a number, except right after a word that introduces an address.
     if (DECIMAL.test(t) && !g.names.has(t) && !ADDRESS_WORDS.has((tokens[i - 1] ?? "").toLowerCase())) return;
+    // Two route literals in a row ("/skip/ /tests/") spell a phrase, not a path.
+    if (ROUTE_SEGMENT.test(t.toLowerCase()) && ROUTE_SEGMENT.test((tokens[i - 1] ?? "").toLowerCase())) {
+      bad.push(t);
+      return;
+    }
     if (!isGrounded(t, g)) bad.push(t);
   });
   return bad;
