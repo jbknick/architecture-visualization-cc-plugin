@@ -180,7 +180,7 @@ const MUTATIONS: Mutation[] = [
   {
     name: "re- compounds: install bait allowed",
     file: "identifiers.ts",
-    find: "![again[1] as string, ...stemsOf(again[1] as string)].some((w) => VERBS_INSTRUCTIVE.has(w))",
+    find: "![again[1] as string, ...stemsOf(again[1] as string)].some((w) => isActionVerb(w))",
     replace: "true",
   },
   {
@@ -247,14 +247,14 @@ const MUTATIONS: Mutation[] = [
   {
     name: "noun subject: no determiner needed",
     file: "shape.ts",
-    find: "return startsNounPhrase(items, i) && !protectiveAhead(items, i + 1);",
+    find: "return startsNounPhrase(items, i, true) && !protectiveAhead(items, i + 1);",
     replace: "return !protectiveAhead(items, i + 1);",
   },
   {
     name: "noun subject: protective code in the clause ignored",
     file: "shape.ts",
-    find: "return startsNounPhrase(items, i) && !protectiveAhead(items, i + 1);",
-    replace: "return startsNounPhrase(items, i);",
+    find: "return startsNounPhrase(items, i, true) && !protectiveAhead(items, i + 1);",
+    replace: "return startsNounPhrase(items, i, true);",
   },
   {
     name: "noun subject: finite verb branch always a noun",
@@ -293,18 +293,6 @@ const MUTATIONS: Mutation[] = [
     replace: "if (!COMPOUND_OBJECTS.has(w)) return false;",
   },
   {
-    name: "noun compound: word before the verb may sit in another term",
-    file: "speech.ts",
-    find: "|| owner[from - 1] !== owner[from]) return false;",
-    replace: ") return false;",
-  },
-  {
-    name: "route literals: two in a row allowed",
-    file: "identifiers.ts",
-    find: 'if (ROUTE_SEGMENT.test(t.toLowerCase()) && ROUTE_SEGMENT.test((tokens[i - 1] ?? "").toLowerCase())) {',
-    replace: "if (false) {",
-  },
-  {
     name: "require/expect: waving review away allowed",
     file: "speech.ts",
     find: "|| withoutReview(tail)",
@@ -315,6 +303,79 @@ const MUTATIONS: Mutation[] = [
     file: "speech.ts",
     find: ' && w[j + 1] !== "to";',
     replace: ";",
+  },
+  // Final round of #155.
+  {
+    name: "permission complement: `delete is safe` is a noun subject",
+    file: "shape.ts",
+    find: 'if (PERMISSION_COMPLEMENT.has(wordOf(items[i + 2]) ?? "")) return false;',
+    replace: "",
+  },
+  {
+    name: "noun subject: list subject needs no determiner",
+    file: "shape.ts",
+    find: 'return !strict || NOUN_CONTEXT.has(wordOf(items[i - 3]) ?? "");',
+    replace: "return true;",
+  },
+  {
+    name: "route literals: more than one allowed",
+    file: "identifiers.ts",
+    find: "routes++ >= 1",
+    replace: "routes++ >= 99",
+  },
+  {
+    name: "execute: runnable objects allowed",
+    file: "shape.ts",
+    find: "EXECUTABLE_OBJECTS.has(obj)",
+    replace: "false",
+  },
+  {
+    name: "execute: any object allowed",
+    file: "shape.ts",
+    find: 'if (obj === undefined || !obj.endsWith("s") ||',
+    replace: "if (obj === undefined ||",
+  },
+  {
+    name: "execute: `commands from` allowed",
+    file: "shape.ts",
+    find: 'if (after === "from" || after === "with" || after === "on") return false;',
+    replace: "",
+  },
+  {
+    name: "review words: unreviewed and blindly pass",
+    file: "speech.ts",
+    find: "if (words.some((x) => UNREVIEWED_WORDS.has(x))) return true;",
+    replace: "",
+  },
+  {
+    name: "review words: `without <gerund>` passes",
+    file: "speech.ts",
+    find: "|| /^[a-z]{3,}ing$/.test(x)",
+    replace: "",
+  },
+  {
+    name: "instructive verbs: accept, ship, sign dropped",
+    file: "lexicon.ts",
+    find: "turn stop merge approve trust accept ship sign",
+    replace: "turn stop merge approve trust",
+  },
+  {
+    name: "noun compound: phrase may span search terms",
+    file: "speech.ts",
+    find: "if (owner[k] !== owner[from]) return false;",
+    replace: "",
+  },
+  {
+    name: "route literals: verbs and protective words allowed",
+    file: "identifiers.ts",
+    find: "!isActionVerb(segment[1] as string) &&",
+    replace: "",
+  },
+  {
+    name: "route literals: protective words allowed",
+    file: "identifiers.ts",
+    find: "!SENSITIVE_OBJECTS.has(segment[1] as string)",
+    replace: "true",
   },
 ];
 

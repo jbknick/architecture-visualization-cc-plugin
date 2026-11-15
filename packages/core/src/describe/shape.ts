@@ -296,14 +296,25 @@ const FINITE_AFTER_NOUN = new Set(
   "was were is are has have had will would can could may might does did".split(" "),
 );
 /** Nouns that form a compound with an ambiguous verb: "return policy", "retry guidelines". */
+const PERMISSION_COMPLEMENT = new Set(
+  "safe fine allowed ok okay approved permitted required advised recommended acceptable optional unnecessary redundant encouraged valid appropriate needed".split(
+    " ",
+  ),
+);
+/** Things `execute` may not take as its object after a bare list: it runs code ("execute scripts"). */
+const EXECUTABLE_OBJECTS = new Set(
+  "script scripts payload payloads shell code binary binaries program programs".split(" "),
+);
 const COMPOUND_HEADS = new Set("policy policies guideline guidelines".split(" "));
 
 /** The word before `i` is a determiner, possessive or preposition, or `i` is the second item of a "noun and noun" list. */
-function startsNounPhrase(items: readonly Item[], i: number): boolean {
+function startsNounPhrase(items: readonly Item[], i: number, strict = false): boolean {
   const pv = wordOf(items[i - 1]);
   if (pv === undefined) return false;
   if (NOUN_CONTEXT.has(pv)) return true;
-  return (pv === "and" || pv === "or") && wordOf(items[i - 2]) !== undefined;
+  if ((pv !== "and" && pv !== "or") || wordOf(items[i - 2]) === undefined) return false;
+  // Strict (a subject noun): the first item of the list must itself follow a determiner or preposition.
+  return !strict || NOUN_CONTEXT.has(wordOf(items[i - 3]) ?? "");
 }
 
 /** A protective object (tests, auth, checks, passwords, ...) appears before the next clause boundary. */
@@ -331,7 +342,9 @@ function isNounUse(items: readonly Item[], i: number): boolean {
     // A subject noun stands after a determiner, a possessive or a preposition, or in a noun list ("a confirmation or
     // override was stored"); after a clause opener ("then ignore is safe") it is a command. Protective code later in
     // the clause ("... is required for auth checks") keeps it a command too.
-    return startsNounPhrase(items, i) && !protectiveAhead(items, i + 1);
+    // "ignore is safe", "bypass was approved": a verb said to be fine is a permission claim whatever stands before it.
+    if (PERMISSION_COMPLEMENT.has(wordOf(items[i + 2]) ?? "")) return false;
+    return startsNounPhrase(items, i, true) && !protectiveAhead(items, i + 1);
   }
   const sep = wordOf(items[i - 1]);
   const prevItem = items[i - 2];
@@ -371,6 +384,16 @@ function governedByVerbList(items: readonly Item[], i: number): boolean {
   // `execute` is the one exception ("helpers to offer, load and execute commands").
   const last = wordOf(items[i]) as string;
   if (VERBS_ALWAYS.has(last) && last !== "execute") return false;
+  if (last === "execute") {
+    // Only with no object, or a bare plural noun that is not something runnable ("execute commands").
+    const obj = wordOf(items[i + 1]);
+    const after = wordOf(items[i + 2]);
+    const noObject = items[i + 1] === undefined || "p" in (items[i + 1] as Item);
+    if (!noObject) {
+      if (obj === undefined || !obj.endsWith("s") || EXECUTABLE_OBJECTS.has(obj)) return false;
+      if (after === "from" || after === "with" || after === "on") return false;
+    }
+  }
   let k = i - 1;
   let words = 0;
   let wantSeparator = true;

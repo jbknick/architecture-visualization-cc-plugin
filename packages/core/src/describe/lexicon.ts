@@ -40,7 +40,7 @@ export const ACTION_VERB_COUNT = VERBS_ALWAYS.size + VERBS_AMBIGUOUS.size;
 export const VERBS_INSTRUCTIVE: ReadonlySet<string> = new Set([
   ...VERBS_ALWAYS,
   ...set(
-    "skip drop install uninstall run download upload print push commit revert rewrite replace turn stop merge approve trust",
+    "skip drop install uninstall run download upload print push commit revert rewrite replace turn stop merge approve trust accept ship sign",
   ),
 ]);
 

@@ -82,10 +82,15 @@ const REVIEW_WORDS = new Set(
   "review reviewing reading verification verifying checking inspection".split(" "),
 );
 
+/** Words that say a change goes in without anyone looking at it. */
+const UNREVIEWED_WORDS = new Set("unreviewed unread blindly unseen unchecked unverified".split(" "));
+
 /** "without reading the diff", "without review": asked of a person, it waves a safeguard away. */
 function withoutReview(words: readonly string[]): boolean {
+  if (words.some((x) => UNREVIEWED_WORDS.has(x))) return true;
   const k = words.indexOf("without");
-  return k >= 0 && words.slice(k + 1, k + 3).some((x) => REVIEW_WORDS.has(x));
+  // "without review", "without reading the diff", "without opening it": any gerund counts.
+  return k >= 0 && words.slice(k + 1, k + 3).some((x) => REVIEW_WORDS.has(x) || /^[a-z]{3,}ing$/.test(x));
 }
 
 function hasSensitive(words: readonly string[]): boolean {
@@ -245,12 +250,14 @@ export function isNounCompound(
   to: number,
 ): boolean {
   const verb = words[from] as string;
-  if (!COMPOUND_VERBS.has(verb) || from === 0 || owner[from - 1] !== owner[from]) return false;
+  if (!COMPOUND_VERBS.has(verb) || from === 0) return false;
   const prev = words[from - 1] as string;
   if (prev === "try" || prev === "attempt" || prev === "let" || prev === "make" || prev === "kindly")
     return false;
   if (!(COMPOUND_LEAD.has(prev) || VERBS_AMBIGUOUS.has(prev))) return false;
+  // The whole phrase sits in ONE search term: "db push" + "validation" in two terms is not a compound.
   for (let k = from + 1; k <= to; k++) {
+    if (owner[k] !== owner[from]) return false;
     const w = words[k] as string;
     if (!FILLERS.has(w) && !COMPOUND_OBJECTS.has(w)) return false;
   }

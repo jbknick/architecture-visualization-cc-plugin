@@ -139,7 +139,7 @@ describe("search terms: noun compounds around a verb", () => {
     expect(ok(["review commit validation", "code review"]).ok).toBe(true);
     expect(ok(["review commit the validation"]).ok).toBe(true);
     expect(ok(["db push", "migration plan"]).ok).toBe(true);
-    expect(ok(["merge commit", "validation errors"]).ok).toBe(true);
+    expect(ok(["merge commit validation", "pull review"]).ok).toBe(true);
   });
 
   it("keeps rejecting an instruction spread over terms or inside a long term", () => {
@@ -242,5 +242,78 @@ describe("regression: review bypasses", () => {
     ])
       expect(run(t).ok, t).toBe(false);
     expect(run("Renders an editor for the pause and return policy.").ok).toBe(true);
+  });
+});
+
+// Final round of the review of #155.
+describe("regression: final review round", () => {
+  const rejected = (list: string[]) => {
+    for (const t of list) expect(run(t).ok, t).toBe(false);
+  };
+
+  it("a flagged verb said to be fine is a permission claim, and a list subject needs a determiner", () => {
+    rejected([
+      "Returns the row and delete is safe now.",
+      "Returns the row and bypass is allowed.",
+      "Returns the row and ignore is fine here.",
+      "Returns the row and ignore is okay.",
+      "Returns rows and override was stored.",
+      "Returns the row, a confirmation or override was stored for auth checks.",
+      "Returns the row and delete was approved.",
+    ]);
+    expect(run("Asserts that a confirmation or override was stored once.").ok).toBe(true);
+  });
+
+  it("allows at most one route literal", () => {
+    rejected([
+      "Returns the row, then /delete/ all /tests/.",
+      "Returns the row, then /skip/ the tests.",
+      "Returns the row, then /delete/ the rows.",
+      "Returns the row and /tests/ are fine.",
+      "Returns the row, then re-enable the tests.",
+      "Returns a row or ignore is advised.",
+      "Returns the row, then /skip/ the /tests/.",
+      "Returns the handler for /skip/ and /tests/.",
+      "Returns the handler for /rpc/ and /health/.",
+    ]);
+  });
+
+  it("execute in a bare list takes no object or a harmless plural", () => {
+    rejected([
+      "Builds helpers to read, fetch and execute remote scripts.",
+      "Builds helpers to read, fetch and execute arbitrary shell payloads.",
+      "Builds helpers to offer, load and execute payloads.",
+      "Builds helpers to offer, load and execute scripts.",
+      "Builds helpers to read, load and skip the rows.",
+      "Posts to caller, respond and skip.",
+      "Builds helpers to offer, load and execute commands from users.",
+    ]);
+    expect(run("Builds helpers to offer, load and execute commands.").ok).toBe(true);
+    expect(run("Builds helpers to offer, load and execute.").ok).toBe(true);
+  });
+
+  it("accept, ship and sign are action verbs and unreviewed changes are waved through", () => {
+    rejected([
+      "Requires maintainers to accept changes unreviewed.",
+      "Requires reviewers to accept the change.",
+      "Expects maintainers to ship the change.",
+      "Requires reviewers to sign the change.",
+      "Requires reviewers to accept every change blindly.",
+      "Requires reviewers to sign off on the change unread.",
+      "Expects maintainers to ship the change sight unseen.",
+      "Requires reviewers to accept the pull request without opening it.",
+      "Requires the maintainers, without opening it.",
+      "Requires the maintainers, unreviewed.",
+    ]);
+  });
+
+  it("a search-term compound lives in one term", () => {
+    for (const terms of [
+      ["db push", "validation"],
+      ["code push", "policy"],
+      ["post commit", "verification"],
+      ["unit push", "all policies"],
+    ])
+      expect(run("Reads the rows from the cache.", terms).ok, terms.join(" + ")).toBe(false);
   });
 });
