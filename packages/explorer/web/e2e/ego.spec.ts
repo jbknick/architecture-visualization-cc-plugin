@@ -15,8 +15,8 @@ const shots = resolve(here, "../../../../docs/milestones/screenshots");
 test.use({ viewport: { width: 1440, height: 900 } });
 
 const canvas = (page: Page) => page.getByTestId("graph-canvas");
-const hubUrl = (extra = "") => `/#/ego?focus=${encodeURIComponent(hubFocus)}&scenario=hub${extra}`;
-const thinUrl = (extra = "") => `/#/ego?focus=${encodeURIComponent(thinFocus)}&scenario=hub-thin${extra}`;
+const hubUrl = (extra = "") => `/#/ego?focus=${encodeURIComponent(hubFocus)}&sel=&scenario=hub${extra}`;
+const thinUrl = (extra = "") => `/#/ego?focus=${encodeURIComponent(thinFocus)}&sel=&scenario=hub-thin${extra}`;
 
 interface Label {
   id: string;

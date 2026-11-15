@@ -8,7 +8,7 @@ import {
   useReducer,
 } from "react";
 import { api, type Meta, type SearchHit } from "./api.ts";
-import { emptyRoute, formatHash, parseHash, type Route } from "./route.ts";
+import { emptyRoute, formatHash, parseHash, parseInitialHash, type Route } from "./route.ts";
 
 export interface State {
   route: Route;
@@ -69,9 +69,19 @@ function readRoute(): Route {
   return parseHash(window.location.hash);
 }
 
+/** Load-time route: a focus-only link also selects the focus node, and the hash is rewritten to say so. */
+function readInitialRoute(): Route {
+  const route = parseInitialHash(window.location.hash);
+  if (route.view) {
+    const hash = formatHash(route);
+    if (hash !== window.location.hash) window.history.replaceState(null, "", hash);
+  }
+  return route;
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, () => ({
-    route: readRoute(),
+    route: readInitialRoute(),
     meta: null,
     metaError: null,
     leftOpen: true,

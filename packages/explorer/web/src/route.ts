@@ -52,3 +52,15 @@ export function formatHash(route: Route): string {
   const qs = params.toString();
   return `#/${encodeURIComponent(route.view ?? "")}${qs ? `?${qs}` : ""}`;
 }
+
+/**
+ * The route for a page load. A link with a `focus` and no `sel` key opens that node in the inspector, as a click in
+ * the app does (`focusOn` sets both). A `sel` key, even an empty one, is explicit and wins. Applied once at load, not
+ * on later hash changes, so closing the inspector inside the app is not undone.
+ */
+export function parseInitialHash(hash: string): Route {
+  const route = parseHash(hash);
+  const query = hash.split("?", 2)[1] ?? "";
+  if (route.focus && !new URLSearchParams(query).has("sel")) route.sel = route.focus;
+  return route;
+}

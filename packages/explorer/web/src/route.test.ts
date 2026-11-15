@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { encodeFilters } from "./api.ts";
-import { formatHash, parseHash } from "./route.ts";
+import { formatHash, parseHash, parseInitialHash } from "./route.ts";
 
 describe("hash route", () => {
   it("parses view, focus, level, hops, selection and filters", () => {
@@ -60,5 +60,18 @@ describe("filters sent to the server", () => {
     expect(encodeFilters({ hideTests: "false", workspaces: "ws:a|ws:b" })).toBe(
       '{"hideTests":"false","workspaces":"ws:a|ws:b"}',
     );
+  });
+});
+
+describe("initial hash", () => {
+  it("selects the focus node when there is no sel key", () => {
+    expect(parseInitialHash("#/ego?focus=sym%3Aa%23B&hops=2").sel).toBe("sym:a#B");
+  });
+  it("lets an explicit sel win, including an empty one", () => {
+    expect(parseInitialHash("#/ego?focus=sym%3Aa%23B&sel=sym%3Ac%23D").sel).toBe("sym:c#D");
+    expect(parseInitialHash("#/ego?focus=sym%3Aa%23B&sel=").sel).toBeNull();
+  });
+  it("selects nothing without a focus", () => {
+    expect(parseInitialHash("#/duplicates").sel).toBeNull();
   });
 });
