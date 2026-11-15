@@ -766,9 +766,13 @@ describe("rebuildSimilarEdges (synthetic)", () => {
 // --- performance --------------------------------------------------------------------------------------
 
 describe("performance", () => {
-  // Timing assertion: retried because parallel builds on the same machine can stall one run.
+  // Absolute speed is asserted only under `pnpm perf` (GANTRY_PERF=1), which is meant to run on a quiet machine
+  // before a release. In `pnpm check` the same test keeps loose sanity bounds (about 10x the targets), so a
+  // quadratic blow-up still fails but a machine running other suites does not. Results are asserted either way.
+  const PERF = process.env.GANTRY_PERF === "1";
+  const limit = (strict: number, loose: number): number => (PERF ? strict : loose);
   it("checks one function against a 6,000-function index well inside the hook budget", {
-    retry: 2,
+    retry: PERF ? 2 : 0,
   }, async () => {
     const { store } = tmpStore();
     const r = rng(42);
@@ -821,10 +825,10 @@ describe("performance", () => {
     process.stderr.write(
       `dup perf: ${count} functions, cold (index build + query) ${coldMs.toFixed(1)} ms, warm query ${warmMs.toFixed(2)} ms\n`,
     );
-    expect(warmMs).toBeLessThan(10);
+    expect(warmMs).toBeLessThan(limit(10, 100));
     // A hook starts a fresh process per edit, so the cold path (index build included) is what counts. The
-    // target is well under 100 ms; the bound is looser only so a busy machine does not fail the suite.
-    expect(coldMs).toBeLessThan(250);
+    // target is well under 100 ms; `pnpm perf` holds it to 250 ms, `pnpm check` to a loose sanity bound.
+    expect(coldMs).toBeLessThan(limit(250, 5000));
 
     // code_vector on 6,000 real-size (768-dimension) vectors: one KNN over the whole table.
     if (vecAvailable(store)) {
@@ -850,7 +854,7 @@ describe("performance", () => {
       process.stderr.write(
         `dup perf: exact+near+code_vector with ${rows.length} vectors ${vecMs.toFixed(1)} ms\n`,
       );
-      expect(vecMs).toBeLessThan(150);
+      expect(vecMs).toBeLessThan(limit(150, 3000));
       expect(withVec.map((c) => c.tier)).toEqual(["exact", "near", "code_vector"]);
     }
   });

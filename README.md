@@ -154,6 +154,7 @@ pnpm install
 pnpm build    # tsc -b && tsup && the explorer web build; writes plugin/dist/
 pnpm check    # biome + tsc + vitest, the local quality gate
 pnpm fmt      # apply Biome fixes
+pnpm perf     # absolute-speed checks (duplicate engine on a 6,000-function index); not part of check, run before releases
 pnpm readme:media   # regenerate the screenshots in docs/readme/ (add --gif to redo the GIFs too)
 ```
 
