@@ -35,8 +35,16 @@ export interface LayoutInput {
   edges: LayoutEdge[];
   hint: string;
   focus: string | null;
+  /** Map layout: the lifted (headerless) folders, as the scene decided them. Absent: decided from the counts. */
+  transparent?: string[];
   /** Saved positions to keep. Unknown nodes are placed near their parent. Ignored by the map layout. */
   saved?: Positions;
+  /**
+   * Map layout only: the previous layout to keep after a refresh (spec section 11 (c)). When the workspaces are the
+   * same, their boxes are reused as they were and every node that was there keeps its weight, so nothing outside a
+   * changed file moves; added nodes are placed inside their parent. Built by `keepFrom`.
+   */
+  keep?: KeepLayout;
   /** CSS size of the canvas the map will be fitted to; the map layout sizes titles and gaps for it. */
   viewport?: { w: number; h: number };
   /**
@@ -50,6 +58,16 @@ export interface LayoutInput {
    * rectangle in the geometry is the slab. The 3D city sets it; the 2D map never does.
    */
   tinyBoxes?: boolean;
+}
+
+/** What a refresh keeps of the previous map layout, by node id. */
+export interface KeepLayout {
+  /** Workspace boxes: x, y, w, h. */
+  boxes: Record<string, [number, number, number, number]>;
+  /** Workspace title block heights. */
+  heads: Record<string, number>;
+  /** The weight every node was laid out with. */
+  weights: Record<string, number>;
 }
 
 /** Geometry of a hierarchical map (workspace boxes with a treemap inside). Indexed like the sorted-id tree. */
@@ -67,6 +85,8 @@ export interface MapGeometry {
   routes: Record<string, [number, number][]>;
   /** Bounding box of the boxes and routes. */
   bounds: Rect;
+  /** The weight every node was laid out with (tree index order); a refresh keeps them (`keepFrom`). */
+  weights?: Float64Array;
 }
 
 export interface LayoutResult {

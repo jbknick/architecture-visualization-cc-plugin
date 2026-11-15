@@ -64,6 +64,42 @@ export interface Scene {
    * mosaic: file cells are drawn without text and cannot be picked.
    */
   mosaic: boolean;
+  /** The decisions this scene kept from an earlier one (after a refresh), passed on to a mosaic rebuild. */
+  sticky?: SceneSticky;
+}
+
+/**
+ * Structure decisions of a scene that depend on function counts: which containers gathered their loose files in a
+ * group cell (and which folder stayed beside it), and which lone folders were lifted. A refresh keeps them for the
+ * containers that were there (spec section 11 (c)), so an added function never regroups the cells around it.
+ */
+export interface SceneSticky {
+  /** Every workspace, folder and group id of the earlier scene. */
+  known: ReadonlySet<string>;
+  /** Container id -> the folder kept beside its group cell. Known containers without an entry had no group. */
+  groups: ReadonlyMap<string, string>;
+  /** Folders that were lifted (drawn without a header). */
+  skipped: ReadonlySet<string>;
+}
+
+/** The structure decisions of `scene`, for the scene built after a refresh. */
+export function stickyOf(scene: Scene): SceneSticky {
+  const known = new Set<string>();
+  const groups = new Map<string, string>();
+  const skipped = new Set<string>();
+  scene.tree.nodes.forEach((n, i) => {
+    if (kindTier(n.kind) > TIER_DIR) return;
+    known.add(n.id);
+    if (scene.skipped[i]) skipped.add(n.id);
+    if (n.kind === GROUP_KIND && n.parent !== -1) {
+      const p = scene.tree.nodes[n.parent] as TreeNode;
+      const main = p.children
+        .map((c) => scene.tree.nodes[c] as TreeNode)
+        .find((c) => kindTier(c.kind) === TIER_DIR && c.kind !== GROUP_KIND);
+      if (main) groups.set(p.id, main.id);
+    }
+  });
+  return { known, groups, skipped };
 }
 
 /**
@@ -73,7 +109,7 @@ export interface Scene {
  * lifted (see `collapseChains`). Ids are unchanged; only the `parent` of the gathered nodes is. A group that is
  * already there (the Folders level loads file cells later, in a second pass) takes the files that arrive.
  */
-export function withRootFileGroups(nodes: GraphNode[]): GraphNode[] {
+export function withRootFileGroups(nodes: GraphNode[], sticky?: SceneSticky): GraphNode[] {
   const kids = new Map<string, GraphNode[]>();
   for (const n of nodes) if (n.parent) kids.set(n.parent, [...(kids.get(n.parent) ?? []), n]);
   const regroup = new Map<string, string>(); // gathered node id -> group id
@@ -85,10 +121,13 @@ export function withRootFileGroups(nodes: GraphNode[]): GraphNode[] {
     const folders = list.filter(isFolder);
     if (folders.length === 0) continue;
     const existing = list.find((k) => k.kind === GROUP_KIND);
+    // After a refresh a container that was there keeps its earlier decision (and the folder it kept beside).
+    const keptMain = sticky?.known.has(x.id) ? (sticky.groups.get(x.id) ?? null) : undefined;
+    if (keptMain === null && !existing) continue;
     // The biggest folder (ties: first by id) and everything beside it.
-    const main = folders.reduce((best, f) =>
-      (f.stats?.functions ?? 0) > (best.stats?.functions ?? 0) ? f : best,
-    );
+    const main =
+      folders.find((f) => f.id === keptMain) ??
+      folders.reduce((best, f) => ((f.stats?.functions ?? 0) > (best.stats?.functions ?? 0) ? f : best));
     const others = list.filter((k) => k !== main && k !== existing);
     if (others.length === 0) continue; // a lone folder: `collapseChains` lifts it
     const inMain = main.stats?.functions;
@@ -97,7 +136,7 @@ export function withRootFileGroups(nodes: GraphNode[]): GraphNode[] {
     const total = x.stats?.functions;
     const all = total ?? inMain + othersFns;
     const loose = total !== undefined ? Math.max(0, total - inMain) : othersFns;
-    if (all > 0 ? inMain / all < 1 - LOOSE_SHARE : folders.length !== 1) continue;
+    if (keptMain === undefined && (all > 0 ? inMain / all < 1 - LOOSE_SHARE : folders.length !== 1)) continue;
     if (existing) {
       for (const k of others) regroup.set(k.id, existing.id);
       continue;
@@ -164,9 +203,9 @@ export function buildScene(
   input: GraphNode[],
   edges: GraphEdge[],
   hint = "nested-elk",
-  opts: { mosaic?: boolean } = {},
+  opts: { mosaic?: boolean; sticky?: SceneSticky } = {},
 ): Scene {
-  const nodes = hint === "nested-elk" ? withRootFileGroups(input) : input;
+  const nodes = hint === "nested-elk" ? withRootFileGroups(input, opts.sticky) : input;
   const tree = buildTree(nodes, { boxWorkspaces: hint === "nested-elk" });
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const ordered = tree.nodes.map((n) => byId.get(n.id) as GraphNode);
@@ -213,7 +252,7 @@ export function buildScene(
     if (stats?.files !== undefined) files[i] = stats.files;
   });
 
-  const collapsed = collapseChains(tree, files, functions);
+  const collapsed = collapseChains(tree, files, functions, opts.sticky);
 
   const incident = new Map<number, number[]>();
   sceneEdges.forEach((e, k) => {
@@ -243,6 +282,7 @@ export function buildScene(
     incident,
     hierarchical: tree.hierarchical,
     mosaic: Boolean(opts.mosaic),
+    ...(opts.sticky ? { sticky: opts.sticky } : {}),
   };
 }
 
@@ -313,6 +353,8 @@ export function layoutInputFor(
           }
         : {}),
     })),
+    // The layout pads the scene's lifted folders the way the renderer draws them (no second decision).
+    transparent: scene.tree.nodes.flatMap((n, i) => (scene.skipped[i] ? [n.id] : [])),
     edges: scene.edges.map((e) => ({
       src: (scene.tree.nodes[e.src] as TreeNode).id,
       dst: (scene.tree.nodes[e.dst] as TreeNode).id,

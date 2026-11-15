@@ -68,11 +68,27 @@ export interface ViewInfo {
   enabled: boolean;
 }
 
+/** Files changed since the index was last brought up to date (spec section 11 (c)). */
+export interface Stale {
+  files: number;
+}
+
 export interface Meta {
   repo: string;
   headSha: string | null;
   counts: { workspaces: number; files: number; symbols: number; edges: number } & Record<string, number>;
   views: ViewInfo[];
+  stale?: Stale;
+}
+
+/** `POST /api/refresh`: what the heal plus working-layer re-index changed. */
+export interface RefreshResult {
+  changed: { files: number; functions: number };
+  ms: number;
+  healed: boolean;
+  /** Ids of the changed files (`file:<path>`). */
+  files: string[];
+  functions: { added: string[]; changed: string[]; removed: string[] };
 }
 
 export type DupTier = "exact" | "near" | "code_vector" | "semantic";
@@ -183,6 +199,7 @@ export interface ViewData extends Partial<DuplicatesData> {
   nodes: GraphNode[];
   edges: GraphEdge[];
   layoutHint: string;
+  stale?: Stale;
 }
 
 export interface DismissResult {
@@ -345,6 +362,27 @@ export const api = {
       body: JSON.stringify({ positions }),
     });
     if (!res.ok) throw new ApiError(res.status, `layout save failed with ${res.status}`);
+  },
+
+  /** Re-indexes what changed (heal plus the working layer). One at a time on the server. */
+  refresh: async (): Promise<RefreshResult> => {
+    const res = await fetch("/api/refresh", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    if (!res.ok) {
+      let detail = "";
+      try {
+        const body = (await res.json()) as { error?: unknown };
+        if (typeof body.error === "string") detail = body.error;
+      } catch {
+        // not JSON
+      }
+      throw new ApiError(res.status, detail || `refresh failed with ${res.status}`);
+    }
+    return (await res.json()) as RefreshResult;
   },
 
   /** Marks two functions as "not a duplicate". Hidden for good, and in the duplicate guard too. */

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GraphNode } from "../api.ts";
+import { useRefresh } from "../refresh.ts";
 import type { CanvasProps } from "../slots.ts";
 import { KindBadge } from "./KindBadge.tsx";
 
@@ -49,6 +50,7 @@ export function orderNodes(nodes: GraphNode[]): GraphNode[] {
 /** Placeholder canvas: a windowed list of nodes. Rows beyond the viewport are never rendered. */
 export function ListCanvas({ nodes: rawNodes, edges, focus, onSelect, onHover, onDrill }: CanvasProps) {
   const nodes = useMemo(() => orderNodes(rawNodes), [rawNodes]);
+  const { fresh } = useRefresh();
   const scroller = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [height, setHeight] = useState(FALLBACK_HEIGHT);
@@ -154,7 +156,8 @@ export function ListCanvas({ nodes: rawNodes, edges, focus, onSelect, onHover, o
                   role="option"
                   tabIndex={-1}
                   aria-selected={selected}
-                  className={`row ${selected ? "is-selected" : ""} ${index === cursor ? "is-cursor" : ""}`}
+                  data-fresh={fresh.has(node.id) ? "true" : undefined}
+                  className={`row ${selected ? "is-selected" : ""} ${index === cursor ? "is-cursor" : ""} ${fresh.has(node.id) ? "fresh" : ""}`}
                   style={{ top: index * ROW_HEIGHT, height: ROW_HEIGHT }}
                   onClick={() => {
                     setCursor(index);

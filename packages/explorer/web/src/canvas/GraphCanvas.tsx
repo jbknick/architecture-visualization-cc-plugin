@@ -4,14 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Sigma from "sigma";
 import { extremityArrow } from "sigma/rendering";
 import { api } from "../api.ts";
+import { useRefresh } from "../refresh.ts";
 import type { CanvasProps } from "../slots.ts";
 import { getFilterPanel } from "../slots.ts";
+import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
 import type { TreeNode } from "./hierarchy.ts";
 import { Legend } from "./Legend.tsx";
 import { runLayout } from "./layoutClient.ts";
 import { hashPositions } from "./prng.ts";
-import { brightSet, buildScene, layoutInputFor, relatedSet, type Scene } from "./scene.ts";
+import { brightSet, buildScene, layoutInputFor, relatedSet, type Scene, stickyOf } from "./scene.ts";
 import { makeSigmaStyles } from "./sigmaStyles.ts";
 import { type CanvasTheme, kindColor, readTheme } from "./style.ts";
 import { TreemapCanvas } from "./TreemapCanvas.tsx";
@@ -54,13 +56,36 @@ function plain(id: string): string {
  * get the treemap canvas; flat graphs (ego, debug) keep the sigma force/layered canvas.
  */
 export function GraphCanvas(props: GraphCanvasProps) {
-  const { nodes, edges, layoutHint, viewId } = props;
-  const scene = useMemo(() => buildScene(nodes, edges, layoutHint), [nodes, edges, layoutHint]);
+  const { viewId } = props;
+  const scene = useStickyScene(props);
   if (scene.hierarchical) {
     const panelLegend = Boolean(viewId) && getFilterPanel(viewId ?? "") !== null;
     return <TreemapCanvas {...props} scene={scene} panelLegend={panelLegend} />;
   }
   return <FlatGraphCanvas {...props} scene={scene} />;
+}
+
+/**
+ * The scene of the current data. After a refresh (spec section 11 (c)) the same picture (view, focus, level,
+ * filters) keeps the structure decisions of the scene before it, so grouping and lifted folders do not change
+ * because a function was added; any other change of the picture starts afresh.
+ */
+function useStickyScene({ nodes, edges, layoutHint }: GraphCanvasProps): Scene {
+  const { generation } = useRefresh();
+  const { view, state } = useStore();
+  const { route } = state;
+  const routeKey = JSON.stringify([view, route.focus, route.level, route.filters, layoutHint]);
+  const last = useRef<{ routeKey: string; generation: number; scene: Scene } | null>(null);
+  return useMemo(() => {
+    const prev = last.current;
+    const keep =
+      prev?.scene.hierarchical === true &&
+      prev.routeKey === routeKey &&
+      (prev.generation < generation || prev.scene.sticky !== undefined);
+    const scene = buildScene(nodes, edges, layoutHint, keep ? { sticky: stickyOf(prev.scene) } : {});
+    last.current = { routeKey, generation, scene };
+    return scene;
+  }, [nodes, edges, layoutHint, routeKey, generation]);
 }
 
 function FlatGraphCanvas({

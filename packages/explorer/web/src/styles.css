@@ -13,6 +13,7 @@
   --warn-border: #d9b44a;
   --warn-text: #5c4300;
   --danger: #b3261e;
+  --fresh: #d97706;
   --tok-comment: #5b6b7f;
   --tok-string: #0b7a4b;
   --tok-keyword: #a2308f;
@@ -39,6 +40,7 @@
     --warn-border: #7a6320;
     --warn-text: #f1d98a;
     --danger: #ff8a80;
+    --fresh: #fbbf24;
     --tok-comment: #8b97a8;
     --tok-string: #7ad9a3;
     --tok-keyword: #e59be0;
@@ -129,7 +131,7 @@ kbd {
   grid-area: top;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   padding: 0 20px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -139,9 +141,19 @@ kbd {
   align-items: baseline;
   gap: 12px;
   min-width: 0;
+  /* The search box gives up room first; below 1420px wide the brand shrinks too (with an ellipsis). */
+  flex-shrink: 0;
+}
+@media (max-width: 1420px) {
+  .topbar-id {
+    flex-shrink: 1;
+  }
 }
 .brand {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 15px;
   font-weight: 700;
@@ -152,13 +164,14 @@ kbd {
   align-items: baseline;
   gap: 8px;
   color: var(--muted);
-  min-width: 0;
 }
 .repo-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 220px;
+  /* A crowded bar still shows the start of the name ("pnp…"); the search box gives up room first. */
+  min-width: 4ch;
 }
 .sha {
   font-size: 12px;
@@ -199,11 +212,48 @@ kbd {
   color: var(--muted);
 }
 
+/* Refresh on request (spec section 11 (c)) */
+.btn.refresh-btn {
+  flex: none;
+  margin-left: auto;
+  padding: 6px 10px;
+}
+.stale-marker {
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  white-space: nowrap;
+}
+.refresh-error {
+  font-size: 12px;
+  color: var(--danger);
+  white-space: nowrap;
+}
+.btn.refresh-btn.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.btn.refresh-btn.primary:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+.row.fresh {
+  box-shadow: inset 3px 0 0 var(--fresh);
+}
+
 /* Search */
 .search {
   position: relative;
-  margin-left: auto;
+  /* The Refresh button before it takes the free space (margin-left: auto). */
+  margin-left: 0;
   width: min(420px, 22vw);
+  /* When the bar is full the search box gives up room first, so the repo name stays readable. */
+  flex: 0 1 auto;
+  min-width: 160px;
 }
 .search input {
   width: 100%;

@@ -522,6 +522,8 @@ describe("/api/view/:id", () => {
         },
       ],
       layoutHint: "force",
+      // Files on disk the injected store does not know about (spec section 11 (c)).
+      stale: { files: expect.any(Number) },
     });
   });
 

@@ -104,6 +104,11 @@ export interface TmNode {
   id: string;
   /** Own weight; used for leaves. Containers weigh the sum of their children. */
   weight: number;
+  /**
+   * Weight to use instead (leaf or container): a refresh keeps the previous weights of the nodes that were there,
+   * so their rectangles stay where they were while the inside of a changed one is laid out again.
+   */
+  fixed?: number;
   children: TmNode[];
   /** Header strip reserved at the top of a container, in layout units. */
   head: number;
@@ -117,6 +122,8 @@ export interface TmResult {
   rects: Map<string, Rect>;
   /** The header actually reserved (0 when the container is too small for one). */
   heads: Map<string, number>;
+  /** The weight every node was laid out with (filled by `layoutTreemap`). */
+  weights?: Map<string, number>;
 }
 
 export const TM_PAD = 1.5;
@@ -141,9 +148,13 @@ export function layoutTreemap(
   out: TmResult = { rects: new Map(), heads: new Map() },
 ) {
   const weights = new Map<TmNode, number>();
+  const byIdOut = out.weights ?? new Map<string, number>();
+  out.weights = byIdOut;
   const weigh = (n: TmNode): number => {
-    const w = n.children.length === 0 ? n.weight : n.children.reduce((s, c) => s + weigh(c), 0);
+    const sum = n.children.length === 0 ? n.weight : n.children.reduce((s, c) => s + weigh(c), 0);
+    const w = n.fixed ?? sum;
     weights.set(n, w);
+    byIdOut.set(n.id, w);
     return w;
   };
   weigh(root);
