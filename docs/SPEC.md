@@ -72,7 +72,7 @@ type GantryConfig = {
     mode: "warn" | "block";
     ignore: string[];
     thresholds: { nearJaccard: number; codeVector: number; semantic: number };
-  }; // 0.85, 0.96 (measured in M0), 0.60 (measured in M0): initial values, to be re-fit in M2 (#32)
+  }; // 0.85, 0.98, 0.60: fitted in M2 (#32), see docs/milestones/M2.md; codeVector was 0.96 in M0
   backlogReminderThreshold: number; // 100
   renameSuggestions: boolean; // false (measured in M0: Haiku flagged 0 of 23 misleading names, so precision is not measurable; stays false)
   views: { slices: string[] }; // ["apps/*/src/features/*", "apps/*/src/modules/*", "packages/*"]
@@ -88,7 +88,7 @@ Routing defaults: `describe.init|sync|precommit` haiku/low, `describe.retry` son
 - Workspace `ws:<package name>` (e.g. `ws:@acme/ui`); root package `ws:.`
 - File `file:<repo-relative posix path>`
 - Symbol `sym:<path>#<name>`; class members `sym:<path>#<Class>.<member>`; default export without a name `#default`; a second symbol with the same id in one file gets `~2`, `~3` by source order.
-- Route `route:<ws>:<path>`; endpoint `ep:<ws>:<METHOD> <path>` or `ep:<ws>:rpc <procedure.path>` or `ep:<ws>:fn <exportName>`; table `table:<name>`.
+- Route `route:<ws>:<path>` (`<ws>` is the workspace package name, the workspace id without `ws:`; `<path>` is the TanStack route id, the string `createFileRoute` takes, such as `/posts/$postId` or `/_app/settings/`, and `__root__` for the root route); endpoint `ep:<ws>:<METHOD> <path>` or `ep:<ws>:rpc <procedure.path>` or `ep:<ws>:fn <exportName>`; table `table:<name>`.
 
 ## 7. Core types (`core/src/types.ts`)
 
@@ -225,9 +225,14 @@ CREATE VIRTUAL TABLE fts_symbols USING fts5(symbol_id UNINDEXED, name_tokens, su
 -- migration v3 (file directives, #105): ALTER TABLE files ADD COLUMN directives TEXT
 --   JSON array of the file's leading directive strings, e.g. ["use client"]. NULL (rows from before v3) and '[]' both mean none until the file is re-indexed.
 --   `FileRecord.directives` is absent when empty; `dumpGraph` adds `directives` to a file row only when non-empty.
--- migration v4 (pages view; was v3 before #105 took v3): adapter_nodes(id, layer, kind, ws, label, file_id, data), PRIMARY KEY(id, layer)
+-- migration v4 (pages view, #38; was v3 before #105 took v3): generic nodes from framework adapters (TanStack Router routes now; endpoints and tables in M6)
+CREATE TABLE IF NOT EXISTS adapter_nodes(id TEXT, layer TEXT CHECK(layer IN ('main','working')), kind TEXT, ws TEXT,
+  label TEXT, file_id TEXT, data TEXT, PRIMARY KEY(id, layer));
+CREATE INDEX IF NOT EXISTS adapter_nodes_file ON adapter_nodes(file_id, layer);
+--   ws: workspace id; file_id: the file the node was found in; data: adapter-specific JSON (routes: routeId, urlPath, path, options, component, loader, beforeLoad, root, index, pathless).
+--   Edges an adapter finds (`serves` route -> component symbol, `contains` parent route -> child route) go into `edges` with the file_id of the file they were found in.
 ```
-Effective view = working rows override main rows for the same file id; a working `files` row with `deleted=1` hides the main file. WAL mode; writers take an exclusive lock via `BEGIN IMMEDIATE` with a 5 s busy timeout.
+Effective view = working rows override main rows for the same file id; a working `files` row with `deleted=1` hides the main file. `adapter_nodes` follow the rule of `symbols`: a node belongs to its `file_id`, `replaceFile` replaces a file's symbols, edges and adapter nodes together, and the effective view takes a node from the layer chosen for its file. WAL mode; writers take an exclusive lock via `BEGIN IMMEDIATE` with a 5 s busy timeout.
 Backlog priority: exported functions and route/entry files 0, other exported 1, local 2.
 
 Search, browse and node tool details (#28). `gantry_search` runs hybrid search: keyword FTS over name tokens, suggested name, path, behavior and search terms (top 50) fused with the nearest description vectors (top 50, query embedded with the `query` prefix) by reciprocal rank fusion (k = 60), then exported ×1.2 and exact name ×2; with no cached model or no vectors it is keywords only, and the model is never downloaded by a search. Each hit is `{ id, name, kind, path, line, signature, score, untrusted_description }` (`limit` default 10, at most 50), sorted by score then id. `gantry_browse` items add `count` (function-like symbols in a `dir` or `file` item, else null); `kind` is a symbol kind, `dir` or `file`; `catalog_path` is the absolute path of a markdown file under the data dir's `catalog/` (`INDEX.md` when the directory defines no functions itself). `gantry_node` returns `node` as `{ id, name, kind, exported, path, line }` for a symbol or `{ id, kind: "file", path, workspace }` for a file, at most 20 neighbors per edge kind, and `more: { [kind]: n }` for the rest. An unknown target returns `{ error: "not_found", message }`. Catalog files: one per directory that defines functions (`catalog/packages/utils/src.md`, root-level functions in `_root.md`) plus `catalog/INDEX.md`; each starts with a note that descriptions are generated and may be wrong. A file is rewritten only when the hash kept in `meta` (`catalog_hash:*`) changes. They are written after `gantry init`, after `heal`, after submits (at most once per 30 s, `meta.catalog_written_at`) and on every `gantry_browse`. Stored descriptions (template and submitted) are copied into the FTS `behavior`, `search_terms` and `suggested_name` columns by one helper, `refreshDescriptionFts`.
@@ -325,21 +330,23 @@ Overview tool details (#35; the contract and the `overviews` table notes were mi
   - Gate on `claude auth status` (prints JSON): proceed only when `loggedIn === true`; `false` means "no worker, enqueue only", not an error. Only a claude.ai login was tested; API-key, Bedrock and Vertex logins were not.
   - Budget (measured in M0, Haiku/low): about 3.3 s cold start, 1 / 10 / 40 sheets in about 2.7 / 7.0 / 16.3 s (median of 3), so about 0.4 s per extra function. Batches of 10 to 40 per call; 40 is the spec batch size. The host enforces the 25-word limit (section 8).
 
-## 17. Duplicate tiers (initial thresholds, measured in M0 and re-fit in M2 (#32))
+## 17. Duplicate tiers (thresholds measured in M0, re-fit in M2 (#32))
 
 | Tier        | Rule                                                                                 |
 | ----------- | ------------------------------------------------------------------------------------ |
 | exact       | same `exactHash`, `stmtCount ≥ 3`                                                    |
 | near        | same `shapeHash` or MinHash Jaccard ≥ 0.85, `stmtCount ≥ 6`, same parameter count ±1 |
-| code_vector | cosine ≥ 0.96 (measured in M0) between normalized-code embeddings                    |
+| code_vector | cosine ≥ 0.98 (M2) between normalized-code embeddings                                |
 | semantic    | cosine ≥ 0.60 (measured in M0) between description embeddings, compatible signature  |
 
 Embedding scope: only function-like symbols with `stmtCount ≥ 3` get a `vec_code` row (smaller ones are never compared by any tier), and the text is the normalized code cut to its first 1,500 characters (`CODE_EMBED_MAX_CHARS`, the fact-sheet body budget) with the tokenizer capped at 512 tokens, so the cost per function is bounded. Embedding is lazy (section 11).
 
-Embedding model (measured in M0): `jinaai/jina-embeddings-v2-base-code` (q8 ONNX, mean pooling, L2-normalized) for both descriptions and normalized code, dimension D = 768, so `vec_descriptions` and `vec_code` are `float[768]` (section 9 migration v2). The two thresholds are initial values from a small hand-written set (15 + 15 pairs per task), not final: code_vector 0.96 gave recall 93% and 7% false positives (1 of 15), semantic 0.60 gave recall 80% and 7% false positives; the old 0.92 and 0.85 gave 33% false positives and 0% recall. Re-fit both in M2 (#32) on real LLM-written descriptions.
+Embedding model (measured in M0): `jinaai/jina-embeddings-v2-base-code` (q8 ONNX, mean pooling, L2-normalized) for both descriptions and normalized code, dimension D = 768, so `vec_descriptions` and `vec_code` are `float[768]` (section 9 migration v2). The two thresholds are initial values from a small hand-written set (15 + 15 pairs per task), not final: code_vector 0.96 gave recall 93% and 7% false positives (1 of 15), semantic 0.60 gave recall 80% and 7% false positives; the old 0.92 and 0.85 gave 33% false positives and 0% recall. M2 (#32) re-fit them on a real replay and real LLM-written descriptions (`docs/milestones/M2.md`): `codeVector` moved to 0.98 (on 1,416 replayed edits, 1 of 98 code-vector candidates at 0.91 or above was a true duplicate and none at 0.93 or above, and between 0.96 and 0.98 they added 4 alerts, all false; the M0 code pairs find 14 of 15 at 0.98 with no false positive, against 15 of 15 and one false positive at 0.96), `nearJaccard` 0.85 and `semantic` 0.60 are kept (the sweep was flat for the first; for the second, 0.65 would drop recall on the M0 description pairs from 11 to 6 of 15 with no fewer false positives). `semantic` only gates the description-to-description tier of `findDuplicates`; neither the hook nor `gantry_find_similar` applies it to a draft.
 Normalizer for `vec_code` (decided in M0, approved by the operator on 2026-11-14): rename local identifiers (parameters, `const`/`let` names, the function name) to `v1, v2, …`, drop comments, collapse whitespace, replace string and template literals with `"s"`, but keep property names after `.` and well-known globals (and any other identifier not declared inside the function, such as an imported helper). The function's own name is renamed too, recursive calls included. Renaming everything made `capitalize` and `decapitalize` identical (cosine 1.000); keeping them raised Jina's best accuracy from 93.3% to 96.7% (measured in M0).
 
-Compare only within kind family (function/method together; component; hook). Skip tests, fixtures, generated files, barrels and `duplicates.ignore`. Dismissed pairs never alert. Budget: < 1 in 10 hook alerts false; alerts on < 5% of edits.
+Compare only within kind family (function/method together; component; hook). Skip tests, fixtures, generated files, barrels and `duplicates.ignore`. Dismissed pairs never alert. Budget: < 1 in 10 hook alerts false; alerts on < 5% of edits. M2 measured the alert rate at 1.3% and the false rate at 45.2%: the false budget is missed (`docs/milestones/M2.md`).
+
+Seeded-case format (M2, #32; supersedes the one-line description in section 13): `evals/seeded-duplicates/cases.json`: 10 cases (3 with misleading names) each as `{ id, misleading, query, newCode | copyAs, expected: { tiers, situation } }`. `newCode` is written by hand; `copyAs` means "copy the existing function under this name" at run time, so no private code is committed. The `existing` symbol id and the target file of each case live only in git-ignored `evals/private/` (`GANTRY_PRIVATE_DIR`). `evals/m2/` and `evals/run-m2.ts` hold the M2 scripts (seeded cases, replay, labelling, sweep, timing).
 
 ## 18. Reuse advice (deterministic)
 

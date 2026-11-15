@@ -58,6 +58,8 @@ export interface GraphEdge {
   uses?: number;
   /** Imports edges: imported names summed over the underlying file edges. Present only when it differs from `weight`. */
   bindings?: number;
+  /** Slices view: true when the edge crosses a slice boundary. */
+  cross?: boolean;
 }
 
 export interface ViewInfo {
@@ -153,7 +155,31 @@ export interface DuplicatesData {
   skipped: DupSkipInfo[];
 }
 
+/** The pages view: an app that has routes (for the filter panel). */
+export interface PagesApp {
+  id: string;
+  name: string;
+  shortLabel: string;
+  routes: number;
+}
+
+/** The slices view: a function used from at least two other slices. */
+export interface SharedSymbol {
+  id: string;
+  name: string;
+  kind: string;
+  path: string;
+  slice: string;
+  usedBy: { id: string; label: string }[];
+}
+
 export interface ViewData extends Partial<DuplicatesData> {
+  /** Pages view: every app with routes, whatever the filter says. */
+  apps?: PagesApp[];
+  /** Slices view: functions used from at least two other slices. */
+  shared?: SharedSymbol[];
+  /** Slices view: apps (workspace ids) that use first-level route segments as slices. */
+  routeFallback?: string[];
   nodes: GraphNode[];
   edges: GraphEdge[];
   layoutHint: string;

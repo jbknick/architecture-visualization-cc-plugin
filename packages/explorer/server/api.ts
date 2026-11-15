@@ -119,8 +119,10 @@ interface Labeler {
 function makeLabeler({ store }: ApiContext): Labeler {
   const ws = new Map(store.listWorkspaces().map((w) => [w.id, w.name]));
   const files = new Map(store.effectiveFiles().map((f) => [f.id, f.path]));
+  const routes = new Map(store.effectiveAdapterNodes({ kind: "route" }).map((r) => [r.id, r.label]));
   return {
     label(id) {
+      if (id.startsWith("route:")) return routes.get(id) ?? id;
       if (id.startsWith("sym:")) return store.getSymbol(id)?.name ?? id.slice(4);
       if (id.startsWith("file:")) return files.get(id) ?? id.slice(5);
       if (id.startsWith("ws:")) return ws.get(id) ?? id.slice(3);
@@ -155,6 +157,17 @@ function node(ctx: ApiContext, id: string) {
   } else if (id.startsWith("file:")) {
     const f = files.get(id);
     if (f) nodeBody = { id: f.id, kind: "file", name: f.path, path: f.path, workspaceId: f.workspaceId };
+  } else if (id.startsWith("route:")) {
+    const r = store.effectiveAdapterNodes({ kind: "route" }).find((x) => x.id === id);
+    if (r) {
+      nodeBody = {
+        id: r.id,
+        kind: "route",
+        name: r.label,
+        path: typeof r.data.path === "string" ? r.data.path : null,
+        workspaceId: r.ws,
+      };
+    }
   } else if (id.startsWith("ws:")) {
     const w = store.listWorkspaces().find((x) => x.id === id);
     if (w) {

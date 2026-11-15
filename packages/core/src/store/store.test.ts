@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EdgeRecord, FileRecord, SymbolRecord } from "../types.js";
 import { openStore, SchemaTooNewError, splitIdentifier } from "./index.js";
 import type { Store } from "./repo.js";
-import { SCHEMA_V1 } from "./schema.js";
+import { SCHEMA_V1, SCHEMA_V4 } from "./schema.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -85,7 +85,7 @@ describe("openStore", () => {
     }
     expect(names).toContain("vec_descriptions"); // migration v2 (sqlite-vec loaded by openStore)
     expect(names).toContain("vec_code");
-    expect(store.getMeta("schema_version")).toBe("3");
+    expect(store.getMeta("schema_version")).toBe("4");
     expect(store.db.pragma("journal_mode", { simple: true })).toBe("wal");
     expect(store.db.pragma("busy_timeout", { simple: true })).toBe(5000);
     expect(store.db.pragma("foreign_keys", { simple: true })).toBe(1);
@@ -134,7 +134,7 @@ describe("openStore", () => {
     raw.close();
     const s = openStore(p);
     try {
-      expect(s.getMeta("schema_version")).toBe("3");
+      expect(s.getMeta("schema_version")).toBe("4");
       const f = s.effectiveFile("file:old.tsx");
       expect(f?.path).toBe("old.tsx");
       expect(f?.directives).toBeUndefined();
@@ -340,8 +340,52 @@ describe("schema", () => {
   it("SCHEMA_V1 equals the SQL block of spec section 9", () => {
     const spec = readFileSync(join(here, "../../../../docs/SPEC.md"), "utf8");
     const sec = spec.split("## 9. SQLite schema v1")[1] ?? "";
-    const block = /```sql\n([\s\S]*?)```/.exec(sec)?.[1] ?? "";
+    const block = (/```sql\n([\s\S]*?)```/.exec(sec)?.[1] ?? "").split("-- migration v4")[0] ?? "";
     expect(norm(SCHEMA_V1)).toBe(norm(block));
+  });
+});
+
+describe("schema v4 (adapter_nodes)", () => {
+  it("SCHEMA_V4 equals the migration v4 DDL of spec section 9", () => {
+    const spec = readFileSync(join(here, "../../../../docs/SPEC.md"), "utf8");
+    const sec = spec.split("## 9. SQLite schema v1")[1] ?? "";
+    const block = /```sql\n([\s\S]*?)```/.exec(sec)?.[1] ?? "";
+    const v4 = block.split("-- migration v4")[1] ?? "";
+    const ddl = v4
+      .split("\n")
+      .slice(1)
+      .filter((l) => !l.trim().startsWith("--"))
+      .join("\n");
+    const norm = (sql: string) => sql.replace(/\s+/g, " ").trim();
+    expect(norm(ddl)).toBe(norm(SCHEMA_V4));
+  });
+
+  it("keeps adapter nodes per file and layer, like symbols", () => {
+    const s = openStore(":memory:");
+    const node = (id: string, label: string) => ({
+      id,
+      kind: "route",
+      ws: "ws:a",
+      label,
+      fileId: "file:r.tsx",
+      data: { urlPath: label },
+    });
+    s.replaceFile("main", file("r.tsx"), [], [], [node("route:a:/", "/")]);
+    expect(s.effectiveAdapterNodes().map((n) => n.label)).toEqual(["/"]);
+    // A working row for the same file wins over main: the main node is hidden.
+    s.replaceFile("working", file("r.tsx"), [], [], [node("route:a:/x", "/x")]);
+    expect(s.effectiveAdapterNodes().map((n) => n.id)).toEqual(["route:a:/x"]);
+    expect(s.effectiveAdapterNodes({ kind: "other" })).toEqual([]);
+    s.clearWorking("file:r.tsx");
+    expect(s.effectiveAdapterNodes().map((n) => n.id)).toEqual(["route:a:/"]);
+    // A working delete hides the main file and so its nodes.
+    s.markDeleted("working", "file:r.tsx");
+    expect(s.effectiveAdapterNodes()).toEqual([]);
+    s.clearWorking();
+    // Replacing a file without nodes drops its old ones.
+    s.replaceFile("main", file("r.tsx"), [], []);
+    expect(s.effectiveAdapterNodes()).toEqual([]);
+    s.close();
   });
 });
 

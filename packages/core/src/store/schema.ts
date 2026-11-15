@@ -23,3 +23,9 @@ CREATE TABLE overviews(node_id TEXT PRIMARY KEY, text TEXT, input_key TEXT, mode
 CREATE TABLE layouts(view TEXT, node_id TEXT, x REAL, y REAL, PRIMARY KEY(view, node_id));
 CREATE VIRTUAL TABLE fts_symbols USING fts5(symbol_id UNINDEXED, name_tokens, suggested_name, path, behavior, search_terms);
 `;
+
+// Migration v4 (spec section 9); store.test.ts asserts it equals the migration v4 block of the spec.
+export const SCHEMA_V4 = `CREATE TABLE IF NOT EXISTS adapter_nodes(id TEXT, layer TEXT CHECK(layer IN ('main','working')), kind TEXT, ws TEXT,
+  label TEXT, file_id TEXT, data TEXT, PRIMARY KEY(id, layer));
+CREATE INDEX IF NOT EXISTS adapter_nodes_file ON adapter_nodes(file_id, layer);
+`;

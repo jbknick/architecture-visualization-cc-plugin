@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import Database from "better-sqlite3";
 import { applyVecMigration, loadVec } from "../embed/vec.js";
 import { createStore, type Store } from "./repo.js";
-import { SCHEMA_V1 } from "./schema.js";
+import { SCHEMA_V1, SCHEMA_V4 } from "./schema.js";
 
 export class SchemaTooNewError extends Error {
   constructor(
@@ -43,6 +43,13 @@ const MIGRATIONS: Migration[] = [
       // Idempotent: a database whose schema_version was reset already has the column.
       const cols = db.prepare("PRAGMA table_info(files)").all() as { name: string }[];
       if (!cols.some((c) => c.name === "directives")) db.exec("ALTER TABLE files ADD COLUMN directives TEXT");
+    },
+  },
+  {
+    // adapter_nodes: generic nodes from framework adapters, with the same per-file layer rules as symbols (spec section 9).
+    version: 4,
+    apply(db) {
+      db.exec(SCHEMA_V4);
     },
   },
 ];
