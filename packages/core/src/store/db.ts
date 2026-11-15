@@ -61,6 +61,10 @@ const MIGRATIONS: Migration[] = [
       if (!cols.some((c) => c.name === "near_minhash"))
         db.exec("ALTER TABLE symbols ADD COLUMN near_minhash BLOB");
       db.exec(SCHEMA_V5);
+      // A pending_files table from a pre-release build of v5 lacks this column.
+      const pcols = db.prepare("PRAGMA table_info(pending_files)").all() as { name: string }[];
+      if (!pcols.some((c) => c.name === "reindexed"))
+        db.exec("ALTER TABLE pending_files ADD COLUMN reindexed INTEGER NOT NULL DEFAULT 0");
       db.exec("DELETE FROM meta WHERE key = 'head_sha'");
     },
   },

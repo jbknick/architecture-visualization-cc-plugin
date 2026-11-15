@@ -808,6 +808,34 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     expect(await settleBatch(p, { sessionId: "s" })).toBeUndefined();
   });
 
+  it("a manifest batch is re-indexed in committed chunks, so a Stop cut short still makes progress (#131)", async () => {
+    const fx = await indexedFx();
+    for (let i = 0; i < 10; i++) touch(fx, `apps/web/src/lib/n${i}.ts`, `export const n${i} = ${i};\n`);
+    const pkgPath = join(fx.dir, "apps/web/package.json");
+    touch(fx, "apps/web/package.json", readFileSync(pkgPath, "utf8"));
+    const p = pathsOf(fx.dir);
+    const reindexed = (): number => {
+      const st = openStore(p.dbPath);
+      try {
+        return (
+          st.db.prepare("SELECT COUNT(*) AS n FROM pending_files WHERE reindexed = 1").get() as { n: number }
+        ).n;
+      } finally {
+        st.close();
+      }
+    };
+    // The clock runs out after the first chunk: 8 files are re-indexed and kept, nothing is checked yet.
+    let calls = 0;
+    expect(
+      await settleBatch(p, { sessionId: "s" }, { deadline: 1, now: () => (calls++ < 1 ? 0 : 2) }),
+    ).toBeUndefined();
+    expect(reindexed()).toBe(8);
+    expect(pendingPaths(fx)).toHaveLength(11);
+    // The next Stop does the rest and clears the batch.
+    expect(await settleBatch(p, { sessionId: "s" })).toBeUndefined();
+    expect(pendingPaths(fx)).toEqual([]);
+  });
+
   it("rows added or re-touched while a settle runs are kept for the next Stop (#131)", async () => {
     const fx = await indexedFx();
     touch(fx, "apps/web/src/lib/first.ts", "export const one = 1;\n");

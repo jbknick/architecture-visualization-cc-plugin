@@ -24,6 +24,8 @@ import { git } from "./staged.js";
 /** Spec section 14: the per-edit hook and the end-of-batch check each finish inside this budget or print nothing. */
 export const POST_TOOL_BUDGET_MS = 1500;
 const MAX_STDIN = 1024 * 1024;
+/** Source files re-indexed per committed step when a manifest is in the batch. */
+const REINDEX_CHUNK = 8;
 /** Batch rows older than this belong to sessions that never reached Stop and are pruned. */
 const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -167,6 +169,8 @@ export function recordEdit(store: Store, session: string, rel: string, source: b
        ON CONFLICT(session_id, path) DO UPDATE SET created_at = excluded.created_at`,
     )
     .run(session, rel, JSON.stringify(baseline), stamp());
+  // A manifest edit changes how every file of the batch resolves: all of them are re-indexed again at Stop.
+  if (!source) store.db.prepare("UPDATE pending_files SET reindexed = 0 WHERE session_id = ?").run(session);
 }
 
 /** ISO time with a per-process counter, so two edits in the same millisecond still get different stamps. */
@@ -185,6 +189,8 @@ export interface SettleOptions {
   maxFiles?: number;
   /** Test seam: runs right after the batch rows are read. */
   afterRead?: () => void;
+  /** Test seam: the clock compared with `deadline`. Default `Date.now`. */
+  now?: () => number;
 }
 
 export interface SettleResult {
@@ -216,6 +222,16 @@ export async function settle(
   opts: SettleOptions = {},
 ): Promise<SettleResult> {
   const deadline = opts.deadline ?? Number.POSITIVE_INFINITY;
+  const now = opts.now ?? Date.now;
+  // A step is started only if the longest step so far would still end before the deadline.
+  let longest = 0;
+  const late = (): boolean => now() + longest > deadline;
+  const step = async (fn: () => Promise<void>): Promise<boolean> => {
+    const t0 = Date.now();
+    const ok = await locked(store, lockWait, fn);
+    longest = Math.max(longest, Date.now() - t0);
+    return ok;
+  };
   const lockWait = opts.lockWaitMs ?? 200;
   const out: SettleResult = { findings: [], settled: 0, remaining: 0 };
   const cutoff = new Date(Date.now() - PENDING_TTL_MS).toISOString();
@@ -224,8 +240,10 @@ export async function settle(
   });
 
   const rows = store.db
-    .prepare("SELECT path, baseline, created_at FROM pending_files WHERE session_id = ? ORDER BY path")
-    .all(session) as { path: string; baseline: string; created_at: string }[];
+    .prepare(
+      "SELECT path, baseline, created_at, reindexed FROM pending_files WHERE session_id = ? ORDER BY path",
+    )
+    .all(session) as { path: string; baseline: string; created_at: string; reindexed: number }[];
   if (rows.length === 0) return out;
   opts.afterRead?.();
   const del = store.db.prepare(
@@ -235,15 +253,26 @@ export async function settle(
   const manifests = rows.filter((r) => !isIndexable(r.path, config));
   out.remaining = rows.length;
 
-  // Re-index step.
-  const reindex =
-    manifests.length > 0
-      ? sources.map((r) => r.path)
-      : sources.filter((r) => !fs.existsSync(path.join(paths.root, r.path))).map((r) => r.path);
-  if (manifests.length > 0 || reindex.length > 0) {
-    if (Date.now() > deadline) return out;
-    const ok = await locked(store, lockWait, async () => {
-      await indexRepo(paths, { layer: "working", files: reindex, store });
+  // Re-index step, in chunks that each commit, so a batch too large for one Stop still makes progress.
+  const gone = (r: { path: string }): boolean => !fs.existsSync(path.join(paths.root, r.path));
+  const todo =
+    manifests.length > 0 ? sources.filter((r) => r.reindexed === 0 || gone(r)) : sources.filter(gone);
+  const mark = store.db.prepare(
+    "UPDATE pending_files SET reindexed = 1 WHERE session_id = ? AND path = ? AND created_at = ?",
+  );
+  for (let i = 0; i < todo.length; i += REINDEX_CHUNK) {
+    if (late()) return out;
+    const chunk = todo.slice(i, i + REINDEX_CHUNK);
+    const ok = await step(async () => {
+      await indexRepo(paths, { layer: "working", files: chunk.map((r) => r.path), store });
+      for (const r of chunk) mark.run(session, r.path, r.created_at);
+    });
+    if (!ok) return out;
+  }
+  if (manifests.length > 0) {
+    if (late()) return out;
+    const ok = await step(async () => {
+      if (todo.length === 0) await indexRepo(paths, { layer: "working", files: [], store }); // workspaces from disk
       for (const m of manifests) del.run(session, m.path, m.created_at);
     });
     if (!ok) return out;
@@ -253,13 +282,9 @@ export async function settle(
 
   const check = diskCheck(paths.root, store, config);
   for (const r of sources) {
-    if (
-      Date.now() > deadline ||
-      out.settled - manifests.length >= (opts.maxFiles ?? Number.POSITIVE_INFINITY)
-    )
-      break;
+    if (late() || out.settled - manifests.length >= (opts.maxFiles ?? Number.POSITIVE_INFINITY)) break;
     const found: Finding[] = [];
-    const ok = await locked(store, lockWait, async () => {
+    const ok = await step(async () => {
       let baseline: Record<string, string>;
       try {
         baseline = JSON.parse(r.baseline) as Record<string, string>;

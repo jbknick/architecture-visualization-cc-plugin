@@ -34,5 +34,5 @@ CREATE INDEX IF NOT EXISTS adapter_nodes_file ON adapter_nodes(file_id, layer);
 // edits touched, with the function hashes they had before the batch; settled and cleared at Stop.
 // store.test.ts asserts it equals the migration v5 block of the spec.
 export const SCHEMA_V5 = `CREATE TABLE IF NOT EXISTS pending_files(session_id TEXT, path TEXT, baseline TEXT, created_at TEXT,
-  PRIMARY KEY(session_id, path));
+  reindexed INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(session_id, path));
 `;
