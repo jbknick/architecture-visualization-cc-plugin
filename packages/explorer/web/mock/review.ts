@@ -190,9 +190,24 @@ export function reviewLayer(place: MockPlacement): ReviewLayer {
     if (l) {
       l.weight += 1;
       l.change = stronger(l.change, kind);
-    } else links.set(id, { id, src, dst, change: kind, weight: 1 });
+    } else links.set(id, { id, src, dst, change: kind, weight: 1, tier: "direct", hop: 1 });
   }
-  const sorted = [...links.values()].sort((a, b) => (a.id < b.id ? -1 : 1));
+  // Potentially affected consumers: a dashed line to the node one step nearer the change (#173).
+  const soft = new Map<string, ReviewLink>();
+  for (const c of changesOf) {
+    for (const x of consumersOn(c.id, place).potential) {
+      const src = x.node;
+      const dst = x.nextNode;
+      if (!src || !dst || src === dst || place.contains(src, dst) || place.contains(dst, src)) continue;
+      const id = `${src}->${dst}`;
+      if (links.has(id)) continue;
+      const l = soft.get(id);
+      if (l) l.weight += 1;
+      else soft.set(id, { id, src, dst, change: c.kind, weight: 1, tier: "potential", hop: x.hop });
+    }
+  }
+  const byId = (a: ReviewLink, b: ReviewLink) => (a.id < b.id ? -1 : 1);
+  const sorted = [...[...links.values()].sort(byId), ...[...soft.values()].sort(byId)];
   return {
     marks: [...marks.values()].sort((a, b) => (a.id < b.id ? -1 : 1)),
     links: sorted,
