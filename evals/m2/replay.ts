@@ -14,12 +14,18 @@
  *     of near candidates and whether the double-check against disk kept it (`verified`), so sweep.ts can re-apply
  *     any thresholds without re-running the replay;
  *   - `imports`: import findings added against the parent, with `verified`;
- *   - `shipped`: on the batch's last edit, what the Stop hook printed (thresholds from the clone's config).
+ *   - `shipped`: on the batch's last edit, what the Stop hook printed (thresholds from the clone's config);
+ *   - `stopMs`, `stopTimedOut` (batch's last edit) and `stopLost` (every edit): the Stop hook runs as Claude Code runs
+ *     it, the built CLI in its own process with the real 1,500 ms budget. When it is cut off at the budget nothing is
+ *     printed, so every finding of the batch counts as lost; a file it had no time for and left in the batch counts as
+ *     lost too (the replay undoes the commit, so no later Stop sees it). sweep.ts drops the findings of lost edits.
  * Prints aggregate counts only.
  *
  * Usage: GANTRY_PRIVATE_DIR=... CLAUDE_PLUGIN_DATA=<data dir> pnpm tsx evals/m2/replay.ts <clone> [--commits 200]
  * The clone must be a throwaway (checked out and cleaned repeatedly); its original HEAD is restored at the end.
  */
+
+import { spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import {
@@ -28,7 +34,7 @@ import {
   type Finding,
   importFindings,
 } from "../../packages/cli/src/hooks/findings.js";
-import { postToolUse, settleBatch } from "../../packages/cli/src/hooks/postToolUse.js";
+import { postToolUse } from "../../packages/cli/src/hooks/postToolUse.js";
 import {
   adviseReuse,
   cachedEmbedder,
@@ -43,7 +49,7 @@ import {
   pathOfFileId,
   resolvePaths,
 } from "../../packages/core/src/index.js";
-import { git, privateDir } from "./lib.js";
+import { cliJs, git, privateDir } from "./lib.js";
 import { assertThrowawayCopy, requireDataDir } from "./safety.js";
 
 const repo = resolve(process.argv[2] ?? "");
@@ -221,10 +227,42 @@ try {
     }
     store.close();
 
-    // 3. The real Stop hook settles the batch.
-    const shipped = await settleBatch(paths, { sessionId: session });
+    // 3. The real Stop hook settles the batch: the built CLI, its own process, the real budget.
+    const env = { ...process.env };
+    delete env.GANTRY_POST_TOOL_BUDGET_MS;
+    const ts = Date.now();
+    const stop = spawnSync("node", [cliJs, "hook", "stop"], {
+      cwd: repo,
+      env,
+      input: JSON.stringify({
+        session_id: session,
+        hook_event_name: "Stop",
+        stop_hook_active: false,
+        cwd: repo,
+      }),
+      encoding: "utf8",
+    });
+    const stopMs = Date.now() - ts;
+    const shipped = (stop.stdout ?? "").trim() === "" ? null : (stop.stdout ?? "").trim();
+    const stopTimedOut = shipped === null && stopMs >= 1500;
+    const left = openStore(paths.dbPath);
+    const unsettled = new Set(
+      (
+        left.db.prepare("SELECT path FROM pending_files WHERE session_id = ?").all(session) as {
+          path: string;
+        }[]
+      ).map((r) => r.path),
+    );
+    left.db.prepare("DELETE FROM pending_files WHERE session_id = ?").run(session);
+    left.close();
     records.forEach((r, i) => {
-      r.shipped = i === records.length - 1 ? (shipped ?? null) : null;
+      const last = i === records.length - 1;
+      r.shipped = last ? shipped : null;
+      if (last) {
+        r.stopMs = stopMs;
+        r.stopTimedOut = stopTimedOut;
+      }
+      r.stopLost = stopTimedOut || unsettled.has(r.path as string);
       appendFileSync(out, `${JSON.stringify(r)}\n`);
     });
 

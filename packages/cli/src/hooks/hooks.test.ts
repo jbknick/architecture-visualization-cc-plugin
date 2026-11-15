@@ -21,6 +21,7 @@ import { build } from "tsup";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { preCommit, runHook } from "./entry.js";
 import { hookScript, installHooks, shimScript, uninstallHooks } from "./install.js";
+import { recordEdit, settleBatch } from "./postToolUse.js";
 import { assertTempHome } from "./testkit.js";
 
 interface MaterializedFixture {
@@ -753,6 +754,117 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     const ctx = contextOf(r.out);
     expect(ctx.length).toBeLessThanOrEqual(600);
     expect(ctx).toBe(SLUG_LINE);
+  });
+
+  const pendingPaths = (fx: MaterializedFixture, session = "s"): string[] => {
+    const st = openStore(pathsOf(fx.dir).dbPath);
+    try {
+      return (
+        st.db.prepare("SELECT path FROM pending_files WHERE session_id = ? ORDER BY path").all(session) as {
+          path: string;
+        }[]
+      ).map((r) => r.path);
+    } finally {
+      st.close();
+    }
+  };
+  const ctxOf = (out: string | undefined): string => (out === undefined ? "" : contextOf(out));
+
+  it("a batch larger than one Stop can settle makes progress on every Stop and is cleared in the end (#131)", async () => {
+    const fx = await indexedFx();
+    for (const n of ["a", "b", "c"])
+      touch(fx, `apps/web/src/lib/copy-${n}.ts`, SLUG.replace("slugify", `slug${n}`));
+    expect(pendingPaths(fx)).toHaveLength(3);
+    const p = pathsOf(fx.dir);
+    // Out of time before the first file: nothing is lost, everything stays.
+    expect(await settleBatch(p, { sessionId: "s" }, { deadline: 0 })).toBeUndefined();
+    expect(pendingPaths(fx)).toHaveLength(3);
+    // One file per Stop: each Stop reports that file and removes it.
+    const seen: string[] = [];
+    for (let i = 3; i > 0; i--) {
+      const ctx = ctxOf(await settleBatch(p, { sessionId: "s" }, { maxFiles: 1 }));
+      expect(ctx).toContain(") looks like ");
+      seen.push(ctx);
+      expect(pendingPaths(fx)).toHaveLength(i - 1);
+    }
+    expect(new Set(seen).size).toBe(3);
+    expect(await settleBatch(p, { sessionId: "s" })).toBeUndefined();
+  });
+
+  it("rows added or re-touched while a settle runs are kept for the next Stop (#131)", async () => {
+    const fx = await indexedFx();
+    touch(fx, "apps/web/src/lib/first.ts", "export const one = 1;\n");
+    touch(fx, "apps/web/src/lib/second.ts", "export const two = 2;\n");
+    const p = pathsOf(fx.dir);
+    await settleBatch(
+      p,
+      { sessionId: "s" },
+      {
+        afterRead: () => {
+          const st = openStore(p.dbPath);
+          try {
+            recordEdit(st, "s", "apps/web/src/lib/first.ts", true); // edited again
+            recordEdit(st, "s", "apps/web/src/lib/third.ts", true); // new
+          } finally {
+            st.close();
+          }
+        },
+      },
+    );
+    expect(pendingPaths(fx)).toEqual(["apps/web/src/lib/first.ts", "apps/web/src/lib/third.ts"]);
+  });
+
+  it("a Stop that cannot get the write lock in time fails open and leaves the batch (#131)", async () => {
+    const fx = await indexedFx();
+    touch(fx, "apps/web/src/lib/new.ts", SLUG);
+    const p = pathsOf(fx.dir);
+    let other: ReturnType<typeof openStore> | undefined;
+    try {
+      const t0 = Date.now();
+      const out = await settleBatch(
+        p,
+        { sessionId: "s" },
+        {
+          lockWaitMs: 50,
+          // Another settle or index takes the write lock right after this one read the batch.
+          afterRead: () => {
+            other = openStore(p.dbPath);
+            other.db.exec("BEGIN IMMEDIATE");
+          },
+        },
+      );
+      expect(out).toBeUndefined();
+      expect(Date.now() - t0).toBeLessThan(1500);
+    } finally {
+      other?.db.exec("ROLLBACK");
+      other?.close();
+    }
+    expect(pendingPaths(fx)).toEqual(["apps/web/src/lib/new.ts"]);
+    expect(ctxOf(await settleBatch(p, { sessionId: "s" }))).toBe(SLUG_LINE);
+    expect(pendingPaths(fx)).toEqual([]);
+  });
+
+  it("rows older than a day are pruned before any work, and a batch of one leaves no row behind", async () => {
+    const fx = await indexedFx();
+    touch(fx, "apps/web/src/lib/new.ts", SLUG);
+    const p = pathsOf(fx.dir);
+    const st = openStore(p.dbPath);
+    st.db.prepare("UPDATE pending_files SET created_at = '2000-01-01T00:00:00.000Z'").run();
+    st.close();
+    expect(await settleBatch(p, { sessionId: "s" }, { deadline: 0 })).toBeUndefined();
+    expect(pendingPaths(fx)).toEqual([]);
+    writeFileSync(join(fx.dir, "apps/web/src/lib/once.ts"), SLUG);
+    hook("post-tool-use", {
+      tool_name: "Write",
+      tool_input: { file_path: join(fx.dir, "apps/web/src/lib/once.ts") },
+      cwd: fx.dir,
+    });
+    const all = openStore(p.dbPath);
+    try {
+      expect(all.db.prepare("SELECT COUNT(*) AS n FROM pending_files").get()).toEqual({ n: 0 });
+    } finally {
+      all.close();
+    }
   });
 
   it("with a session id, post-tool-use only records the edit and Stop settles it once", async () => {

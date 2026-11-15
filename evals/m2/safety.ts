@@ -1,13 +1,18 @@
 /**
  * Guard for the M2 evals, which check out, reset and clean the copy they run on (as the M1 bench does,
  * see docs/milestones/M1.md "Running and recovering the bench"). Call `assertThrowawayCopy` before the first
- * git command that changes the copy: it refuses a path outside the system temp dir and a copy with local changes.
+ * git command that changes the copy: it refuses a path outside the system temp dir (unless the command line carries
+ * `--i-know-this-is-a-throwaway-clone`, as the M1 bench accepts) and a copy with local changes.
  */
 import { spawnSync } from "node:child_process";
-import { assertThrowawayClone } from "../bench/m1-safety.js";
+import { assertThrowawayClone, THROWAWAY_FLAG } from "../bench/m1-safety.js";
 
-export function assertThrowawayCopy(repo: string, tmpRoots?: string[]): void {
-  assertThrowawayClone(repo, false, tmpRoots);
+export function assertThrowawayCopy(
+  repo: string,
+  tmpRoots?: string[],
+  acknowledged: boolean = process.argv.includes(THROWAWAY_FLAG),
+): void {
+  assertThrowawayClone(repo, acknowledged, tmpRoots);
   const top = spawnSync("git", ["rev-parse", "--show-toplevel"], { cwd: repo, encoding: "utf8" });
   if (top.status !== 0) throw new Error(`refusing to run: ${repo} is not a git repository`);
   const status = spawnSync("git", ["status", "--porcelain"], { cwd: repo, encoding: "utf8" });

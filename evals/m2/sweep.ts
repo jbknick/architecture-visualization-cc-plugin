@@ -38,12 +38,19 @@ export interface Edit {
   hookMs: number;
   cands: Cand[];
   imports: { line: number; action: string; verified?: boolean }[];
+  /** The real Stop hook ran out of time before it showed this edit's findings (#131 fix round). */
+  stopLost?: boolean;
+  /** On the batch's last edit: the Stop hook's wall time and whether it was cut off at the budget. */
+  stopMs?: number;
+  stopTimedOut?: boolean;
 }
 export interface Thresholds {
   nearJaccard: number;
   codeVector: number;
   nearTokenJaccard?: number;
   codeVectorTokenJaccard?: number;
+  /** Score what the checks found even where the Stop hook ran out of time (default: lost findings are not shown). */
+  includeLost?: boolean;
 }
 export type Labels = Record<string, boolean>;
 
@@ -60,6 +67,7 @@ export function loadEdits(): Edit[] {
 
 /** The findings the hook would print for one edit at `t` (limit 2 per symbol, inline-only when any is inline). */
 export function findingsFor(e: Edit, t: Thresholds): string[] {
+  if (t.includeLost !== true && e.stopLost === true) return [];
   const nearOk = (c: Cand): boolean =>
     (c.sameShape || (c.shapeScore ?? c.score) >= t.nearJaccard) &&
     (c.tokenScore === undefined || c.tokenScore === null || c.tokenScore >= (t.nearTokenJaccard ?? 0));

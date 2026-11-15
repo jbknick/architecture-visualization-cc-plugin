@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -97,9 +98,14 @@ function repoRelative(root: string, abs: string): string | undefined {
  * PostToolUse for Write/Edit/MultiEdit (spec section 14): the trigger. Records the edited file in the session's
  * batch, with the hashes its functions had before the batch first touched it, and re-indexes a source file into the
  * working layer. With a session id it prints nothing: the checks run once the batch settles, at Stop
- * (`settleBatch`). Without one the edit is a batch of one and is settled at once. Never calls a model.
+ * (`settleBatch`). Without one the edit is a batch of one, under a key of its own, and is settled at once.
+ * Never calls a model.
  */
-export async function postToolUse(paths: GantryPaths, input: PostToolInput): Promise<string | undefined> {
+export async function postToolUse(
+  paths: GantryPaths,
+  input: PostToolInput,
+  opts: SettleOptions = {},
+): Promise<string | undefined> {
   if (!fs.existsSync(paths.dbPath)) return undefined;
   const rel = repoRelative(paths.root, input.filePath);
   if (rel === undefined) return undefined;
@@ -109,11 +115,14 @@ export async function postToolUse(paths: GantryPaths, input: PostToolInput): Pro
 
   const store = openStore(paths.dbPath);
   try {
-    const session = input.sessionId ?? "";
+    const session = input.sessionId ?? `once:${randomUUID()}`;
     recordEdit(store, session, rel, source);
     if (source) await indexRepo(paths, { layer: "working", files: [rel], store });
     if (input.sessionId !== undefined) return undefined;
-    const text = formatCapped(await settle(paths, store, session, config), 600);
+    const r = await settle(paths, store, session, config, opts);
+    // A batch of one that could not finish is not left behind under its throwaway key.
+    store.db.prepare("DELETE FROM pending_files WHERE session_id = ?").run(session);
+    const text = formatCapped(r.findings, 600);
     if (text === "") return undefined;
     return JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: text } });
   } finally {
@@ -122,15 +131,21 @@ export async function postToolUse(paths: GantryPaths, input: PostToolInput): Pro
 }
 
 /**
- * Stop (spec section 14): the turn's batch of edits has settled. Re-indexes every file the batch touched, checks
- * the changed functions for duplicates and the added imports for undeclared packages, double-checks each finding
- * against disk, clears the batch and returns the Stop hook's stdout JSON, or undefined when there is nothing to say.
+ * Stop (spec section 14): the turn's batch of edits has settled. Re-indexes the batch when it touched a manifest,
+ * checks the changed functions for duplicates and the added imports for undeclared packages, double-checks each
+ * finding against disk, removes each file from the batch once it is checked and returns the Stop hook's stdout JSON,
+ * or undefined when there is nothing to say. Files it had no time for stay in the batch for the next Stop.
  */
-export async function settleBatch(paths: GantryPaths, input: StopInput): Promise<string | undefined> {
+export async function settleBatch(
+  paths: GantryPaths,
+  input: StopInput,
+  opts: SettleOptions = {},
+): Promise<string | undefined> {
   if (!fs.existsSync(paths.dbPath)) return undefined;
   const store = openStore(paths.dbPath);
   try {
-    const text = formatCapped(await settle(paths, store, input.sessionId, loadConfig(paths)), 600);
+    const r = await settle(paths, store, input.sessionId, loadConfig(paths), opts);
+    const text = formatCapped(r.findings, 600);
     if (text === "") return undefined;
     return JSON.stringify({ hookSpecificOutput: { hookEventName: "Stop", additionalContext: text } });
   } finally {
@@ -138,7 +153,10 @@ export async function settleBatch(paths: GantryPaths, input: StopInput): Promise
   }
 }
 
-/** Adds `rel` to the session's batch unless it is already in it (the first baseline wins). */
+/**
+ * Adds `rel` to the session's batch. The first baseline wins; a later edit of the same file only moves
+ * `created_at`, so a settle that read the row before that edit does not delete it.
+ */
 export function recordEdit(store: Store, session: string, rel: string, source: boolean): void {
   const baseline = source
     ? Object.fromEntries(store.effectiveSymbols({ fileId: `file:${rel}` }).map((s) => [s.id, s.exactHash]))
@@ -146,61 +164,158 @@ export function recordEdit(store: Store, session: string, rel: string, source: b
   store.db
     .prepare(
       `INSERT INTO pending_files(session_id, path, baseline, created_at) VALUES (?, ?, ?, ?)
-       ON CONFLICT(session_id, path) DO NOTHING`,
+       ON CONFLICT(session_id, path) DO UPDATE SET created_at = excluded.created_at`,
     )
-    .run(session, rel, JSON.stringify(baseline), new Date().toISOString());
+    .run(session, rel, JSON.stringify(baseline), stamp());
+}
+
+/** ISO time with a per-process counter, so two edits in the same millisecond still get different stamps. */
+let stampSeq = 0;
+function stamp(): string {
+  stampSeq = (stampSeq + 1) % 1_000_000;
+  return `${new Date().toISOString()}#${process.pid}.${String(stampSeq).padStart(6, "0")}`;
+}
+
+export interface SettleOptions {
+  /** Epoch ms after which no further file is started (the rest stays in the batch). Default: no deadline. */
+  deadline?: number;
+  /** How long to wait for the store's write lock before giving up (fail open). Default 200 ms. */
+  lockWaitMs?: number;
+  /** At most this many source files per settle (the rest stays in the batch). Default: no cap. */
+  maxFiles?: number;
+  /** Test seam: runs right after the batch rows are read. */
+  afterRead?: () => void;
+}
+
+export interface SettleResult {
+  findings: Finding[];
+  /** Files checked and removed from the batch. */
+  settled: number;
+  /** Files left in the batch: out of time, or the write lock was busy. */
+  remaining: number;
 }
 
 /**
- * The end-of-batch pipeline shared by Stop and a batch of one: re-index the batch's source files together (the
- * indexer re-reads every workspace's package.json and tsconfig from disk on each run), find, double-check against
- * disk, clear the batch. Findings are per file in path order: duplicates (lowest in the file first), then imports.
+ * The end-of-batch pipeline shared by Stop and a batch of one (spec section 14).
+ *
+ * 1. Rows older than 24 h are pruned first, before any other work.
+ * 2. Every step takes the store's write lock with a short wait (`lockWaitMs`); when another settle or index holds it,
+ *    the step is skipped and its files stay in the batch (fail open).
+ * 3. If the batch touched a manifest (package.json, tsconfig, pnpm-workspace.yaml), its source files are re-indexed
+ *    together, which re-reads the workspaces from disk; otherwise only the source files that are gone from disk are
+ *    (PostToolUse already indexed the others).
+ * 4. Each source file is checked, then its row is deleted in the same transaction, by the (path, created_at) that was
+ *    read, so a file edited again meanwhile stays in the batch. No file is started after `deadline`.
+ * Findings are per file in path order: duplicates (lowest in the file first), then imports.
  */
 export async function settle(
   paths: GantryPaths,
   store: Store,
   session: string,
   config: GantryConfig,
-): Promise<Finding[]> {
+  opts: SettleOptions = {},
+): Promise<SettleResult> {
+  const deadline = opts.deadline ?? Number.POSITIVE_INFINITY;
+  const lockWait = opts.lockWaitMs ?? 200;
+  const out: SettleResult = { findings: [], settled: 0, remaining: 0 };
+  const cutoff = new Date(Date.now() - PENDING_TTL_MS).toISOString();
+  await locked(store, lockWait, async () => {
+    store.db.prepare("DELETE FROM pending_files WHERE created_at < ?").run(cutoff);
+  });
+
   const rows = store.db
-    .prepare("SELECT path, baseline FROM pending_files WHERE session_id = ? ORDER BY path")
-    .all(session) as { path: string; baseline: string }[];
-  if (rows.length === 0) return [];
+    .prepare("SELECT path, baseline, created_at FROM pending_files WHERE session_id = ? ORDER BY path")
+    .all(session) as { path: string; baseline: string; created_at: string }[];
+  if (rows.length === 0) return out;
+  opts.afterRead?.();
+  const del = store.db.prepare(
+    "DELETE FROM pending_files WHERE session_id = ? AND path = ? AND created_at = ?",
+  );
   const sources = rows.filter((r) => isIndexable(r.path, config));
-  await indexRepo(paths, { layer: "working", files: sources.map((r) => r.path), store });
-  const check = diskCheck(paths.root, store, config);
-  const findings: Finding[] = [];
-  for (const r of sources) {
-    let baseline: Record<string, string>;
-    try {
-      baseline = JSON.parse(r.baseline) as Record<string, string>;
-    } catch {
-      baseline = {};
-    }
-    const current = store.effectiveSymbols({ fileId: `file:${r.path}` });
-    findings.push(
-      ...(await duplicateFindings(
-        store,
-        changedSymbols(current, new Map(Object.entries(baseline))),
-        config,
-        check,
-      )),
-    );
-    let text: string | undefined;
-    try {
-      text = fs.readFileSync(path.join(paths.root, r.path), "utf8");
-    } catch {
-      text = undefined;
-    }
-    if (text !== undefined) {
-      const head = git(paths.root, ["show", `HEAD:${r.path}`]);
-      const before = head.ok ? parseSource(r.path, head.out.toString("utf8")) : undefined;
-      findings.push(...importFindings(store, r.path, parseSource(r.path, text), before).filter(check));
-    }
+  const manifests = rows.filter((r) => !isIndexable(r.path, config));
+  out.remaining = rows.length;
+
+  // Re-index step.
+  const reindex =
+    manifests.length > 0
+      ? sources.map((r) => r.path)
+      : sources.filter((r) => !fs.existsSync(path.join(paths.root, r.path))).map((r) => r.path);
+  if (manifests.length > 0 || reindex.length > 0) {
+    if (Date.now() > deadline) return out;
+    const ok = await locked(store, lockWait, async () => {
+      await indexRepo(paths, { layer: "working", files: reindex, store });
+      for (const m of manifests) del.run(session, m.path, m.created_at);
+    });
+    if (!ok) return out;
+    out.settled += manifests.length;
+    out.remaining -= manifests.length;
   }
-  store.db.prepare("DELETE FROM pending_files WHERE session_id = ?").run(session);
-  store.db
-    .prepare("DELETE FROM pending_files WHERE created_at < ?")
-    .run(new Date(Date.now() - PENDING_TTL_MS).toISOString());
-  return findings;
+
+  const check = diskCheck(paths.root, store, config);
+  for (const r of sources) {
+    if (
+      Date.now() > deadline ||
+      out.settled - manifests.length >= (opts.maxFiles ?? Number.POSITIVE_INFINITY)
+    )
+      break;
+    const found: Finding[] = [];
+    const ok = await locked(store, lockWait, async () => {
+      let baseline: Record<string, string>;
+      try {
+        baseline = JSON.parse(r.baseline) as Record<string, string>;
+      } catch {
+        baseline = {};
+      }
+      const current = store.effectiveSymbols({ fileId: `file:${r.path}` });
+      found.push(
+        ...(await duplicateFindings(
+          store,
+          changedSymbols(current, new Map(Object.entries(baseline))),
+          config,
+          check,
+        )),
+      );
+      let text: string | undefined;
+      try {
+        text = fs.readFileSync(path.join(paths.root, r.path), "utf8");
+      } catch {
+        text = undefined;
+      }
+      if (text !== undefined) {
+        const head = git(paths.root, ["show", `HEAD:${r.path}`]);
+        const before = head.ok ? parseSource(r.path, head.out.toString("utf8")) : undefined;
+        found.push(...importFindings(store, r.path, parseSource(r.path, text), before).filter(check));
+      }
+      del.run(session, r.path, r.created_at);
+    });
+    if (!ok) break;
+    out.findings.push(...found);
+    out.settled++;
+    out.remaining--;
+  }
+  return out;
+}
+
+/**
+ * Runs `fn` inside `BEGIN IMMEDIATE`, waiting at most `waitMs` for the write lock. False when the lock was busy
+ * (nothing ran) or `fn` threw (rolled back). The indexer's own transactions nest inside as savepoints.
+ */
+async function locked(store: Store, waitMs: number, fn: () => Promise<void>): Promise<boolean> {
+  const prev = store.db.pragma("busy_timeout", { simple: true }) as number;
+  store.db.pragma(`busy_timeout = ${Math.max(0, Math.floor(waitMs))}`);
+  try {
+    store.db.exec("BEGIN IMMEDIATE");
+  } catch {
+    store.db.pragma(`busy_timeout = ${prev}`);
+    return false;
+  }
+  store.db.pragma(`busy_timeout = ${prev}`);
+  try {
+    await fn();
+    store.db.exec("COMMIT");
+    return true;
+  } catch {
+    if (store.db.inTransaction) store.db.exec("ROLLBACK");
+    return false;
+  }
 }

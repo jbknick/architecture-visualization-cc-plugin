@@ -45,6 +45,13 @@ describe("assertThrowawayCopy", () => {
       /not under the system temp dir/,
     );
   });
+  it("accepts a clean copy outside the temp dir when the throwaway flag is given, never a dirty one", () => {
+    const dir = makeCopy();
+    const elsewhere = [join(tmpdir(), "somewhere-else")];
+    expect(() => assertThrowawayCopy(dir, elsewhere, true)).not.toThrow();
+    writeFileSync(join(dir, "a.ts"), "export const a = 3;\n");
+    expect(() => assertThrowawayCopy(dir, elsewhere, true)).toThrow(/local changes/);
+  });
   it("refuses a directory that is not a git repository", () => {
     const dir = mkdtempSync(join(tmpdir(), "gantry-m2-nogit-"));
     dirs.push(dir);

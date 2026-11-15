@@ -13,6 +13,9 @@ import { describeStaged, git, preCommit } from "./staged.js";
 
 export { preCommit };
 
+/** Time kept back from the hook budget for formatting and printing after the last file is checked. */
+const STOP_MARGIN_MS = 300;
+
 export const HOOK_NAMES = [
   "session-start",
   "post-tool-use",
@@ -127,10 +130,12 @@ export async function runHook(
         const late = new Promise<undefined>((resolve) => {
           timer = setTimeout(() => resolve(undefined), ms);
         });
+        // Stop no file after this point, so the findings of the files already checked are printed in time.
+        const settleOpts = { deadline: startedAt + ms - Math.min(STOP_MARGIN_MS, ms / 4) };
         const job =
           name === "stop"
-            ? settleBatch(paths, stopInput as NonNullable<typeof stopInput>)
-            : postToolUse(paths, toolInput as NonNullable<typeof toolInput>);
+            ? settleBatch(paths, stopInput as NonNullable<typeof stopInput>, settleOpts)
+            : postToolUse(paths, toolInput as NonNullable<typeof toolInput>, settleOpts);
         const work = job.catch((err) => {
           logHook(paths, name, `error: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
           return undefined;
