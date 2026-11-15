@@ -5,6 +5,8 @@ export * from "./catalog/index.js";
 export * from "./config/index.js";
 export * from "./describe/backlog.js";
 export * from "./describe/factsheet.js";
+export * from "./describe/fallback.js";
+export * from "./describe/feedback.js";
 export * from "./describe/filters.js";
 export * from "./describe/identifiers.js";
 export * from "./describe/route.js";

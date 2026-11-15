@@ -170,6 +170,43 @@ const MUTATIONS: Mutation[] = [
     find: "export const ENTROPY_THRESHOLD = 4.0;",
     replace: "export const ENTROPY_THRESHOLD = 99;",
   },
+  // Feedback, extra attempt and fallback (#150).
+  {
+    name: "feedback echoes the validator detail",
+    file: "feedback.ts",
+    find: "return { rule: reason, field, fix: generic };",
+    replace: "return { rule: reason, field, fix: `${generic} ${detail}` };",
+  },
+  {
+    name: "extra attempt after any rejection reason",
+    file: "store.ts",
+    find: "    EXTRA_ATTEMPT_REASONS.has(reason) &&",
+    replace: "    true &&",
+  },
+  {
+    name: "injection signal never seen",
+    file: "feedback.ts",
+    find: 'return hit(parts.join(" ")) || parts.some(hit);',
+    replace: "return false;",
+  },
+  {
+    name: "fallback for any final rejection",
+    file: "submit.ts",
+    find: "now.failed && now.attempts >= MAX_DESCRIBE_ATTEMPTS_EXTENDED && extendable",
+    replace: "now.failed",
+  },
+  {
+    name: "fallback candidate not validated",
+    file: "fallback.ts",
+    find: "    if (!v.ok) continue;",
+    replace: "",
+  },
+  {
+    name: "fallback names not checked spelled out",
+    file: "fallback.ts",
+    find: "if (!check(spelledOut(c), spelledTerms.length > 0 ? spelledTerms : [sym.kind]).ok) continue;",
+    replace: "",
+  },
 ];
 
 const TEST_CMD =

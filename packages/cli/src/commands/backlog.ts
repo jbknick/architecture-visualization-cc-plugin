@@ -12,7 +12,12 @@ import {
 import type { Command } from "commander";
 import { EXIT_OK, fail, writeStdout } from "./shared.js";
 
-const EMPTY: BacklogCounts = { total: 0, byStatus: { pending: 0, claimed: 0, failed: 0 }, byPriority: {} };
+const EMPTY: BacklogCounts = {
+  total: 0,
+  byStatus: { pending: 0, claimed: 0, failed: 0 },
+  byPriority: {},
+  fallback: 0,
+};
 
 interface BacklogOpts {
   json?: boolean;
@@ -92,6 +97,7 @@ export function registerBacklog(program: Command): void {
                   ([p, v]) =>
                     `  priority ${p}: ${v.total} (pending ${v.pending}, claimed ${v.claimed}, failed ${v.failed})`,
                 ),
+                ...(c.fallback > 0 ? [`Fallback descriptions (written without a model): ${c.fallback}`] : []),
                 `Data: ${paths.dataDir}`,
                 ...(indexed
                   ? []

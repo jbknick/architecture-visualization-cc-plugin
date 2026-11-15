@@ -729,4 +729,25 @@ describe("gantry backlog", () => {
     expect(JSON.parse(run(fx.dir, ["backlog", "--failed", "--json"]).out).failed).toEqual([]);
     expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
   });
+
+  it("counts fallback descriptions (written without a model) as JSON and as text (#150)", async () => {
+    const fx = await fixture("single-pkg");
+    expect(run(fx.dir, ["init"]).code).toBe(0);
+    const before = JSON.parse(run(fx.dir, ["backlog", "--json"]).out);
+    expect(before.fallback).toBe(0);
+    expect(run(fx.dir, ["backlog"]).out).not.toContain("Fallback descriptions");
+    const db = openStore(join(before.data_dir as string, "gantry.db"));
+    try {
+      db.db
+        .prepare(
+          `INSERT INTO descriptions(content_key, behavior, search_terms, name_fits, provenance, model, prompt_version, created_at)
+           VALUES ('k:p1', 'Defines a function (generated without a model).', '["function"]', 1, 'fallback', NULL, 'p1', 'now')`,
+        )
+        .run();
+    } finally {
+      db.close();
+    }
+    expect(JSON.parse(run(fx.dir, ["backlog", "--json"]).out).fallback).toBe(1);
+    expect(run(fx.dir, ["backlog"]).out).toContain("Fallback descriptions (written without a model): 1");
+  });
 });

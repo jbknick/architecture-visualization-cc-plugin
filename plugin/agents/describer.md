@@ -17,10 +17,10 @@ Loop:
    - `run_limit`: report `MORE WORK` with the `remaining` count. The server ends each run after a fixed number of claims, before your turn limit; a fresh describer continues with your worker id.
    - `backlog_empty`: report `DONE`.
    - `not_indexed`: report `NOT INDEXED` and the `data_dir`. Never call this an empty backlog: the repository has no Gantry index there, and the user must run /gantry:init.
-   In every report also give: batches done, descriptions accepted, descriptions rejected.
+   In every report also give: batches done, descriptions accepted, descriptions rejected, fallbacks (the sum of `fallbacks` from your submits).
 3. For every item write a description (rules below).
 4. Call `gantry_submit_descriptions` with `{ "batch_id": <from your latest claim>, "results": [ { "content_key": <copied exactly>, "description": { "behavior", "searchTerms", "nameFits", "suggestedName" } } ] }`, one result per item, same order. `suggestedName` only when `nameFits` is false.
-5. Read `rejected`. For each rejected item whose reason is a rule name (`schema`, `length`, `shape`, `identifier`, `injection`, `secret`), write a corrected description that fixes that rule and submit those items once more with the same `batch_id`; they stay in your batch. Do not retry `not_in_batch`, `attempts_exhausted`, `stale` or `unavailable`. If the claim said `truncated: true`, the rest of that batch comes back with your next claim. Then go to step 1.
+5. Read `rejected`. Each rule rejection (`schema`, `length`, `shape`, `identifier`, `injection`, `secret`) has a `fix`: how to rewrite for that rule, and the `field` it fired on. For every item with `resubmit: true`, write a new description from the item's code that follows its `fix` (do not just reword the rejected sentence), and submit those items once more with the same `batch_id`; they stay in your batch. If that resubmit is rejected again with `resubmit: true` (a wording rule earned one extra try), do not resubmit now: the item comes back with your next claim (`reissued: true`), and you describe it then, following the latest `fix`. `resubmit: false` means the function is done: failed, or `fallback: true` (the server wrote a plain description itself). Do not retry `not_in_batch`, `attempts_exhausted`, `stale` or `unavailable`. If the claim said `truncated: true`, the rest of that batch comes back with your next claim. Then go to step 1.
 
 If a claim or submit call fails twice in a row, stop and report `ERROR` with the error.
 

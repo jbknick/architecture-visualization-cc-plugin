@@ -338,6 +338,8 @@ export interface BacklogCounts {
   byStatus: { pending: number; claimed: number; failed: number };
   /** Keys are the priorities present ("0", "1", "2"), each split by status; absent priorities are omitted. */
   byPriority: Record<string, { pending: number; claimed: number; failed: number; total: number }>;
+  /** Functions described by the deterministic fallback after their last wording rejection (provenance `fallback`, #150). */
+  fallback: number;
 }
 
 /** Counts of the backlog by status and by priority (spec section 10, `gantry backlog`). Read-only. */
@@ -347,7 +349,17 @@ export function backlogCounts(store: Store): BacklogCounts {
       "SELECT priority, status, COUNT(*) AS n FROM backlog GROUP BY priority, status ORDER BY priority, status",
     )
     .all() as { priority: number; status: "pending" | "claimed" | "failed"; n: number }[];
-  const out: BacklogCounts = { total: 0, byStatus: { pending: 0, claimed: 0, failed: 0 }, byPriority: {} };
+  const fallback = (
+    store.db.prepare("SELECT COUNT(*) AS n FROM descriptions WHERE provenance = 'fallback'").get() as {
+      n: number;
+    }
+  ).n;
+  const out: BacklogCounts = {
+    total: 0,
+    byStatus: { pending: 0, claimed: 0, failed: 0 },
+    byPriority: {},
+    fallback,
+  };
   for (const r of rows) {
     out.total += r.n;
     out.byStatus[r.status] += r.n;
