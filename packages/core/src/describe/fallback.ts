@@ -9,6 +9,7 @@ import { parseSync } from "oxc-parser";
 import { isNode, nodeArray } from "../parse/ast.js";
 import { splitIdentifier } from "../store/index.js";
 import type { Description, FactSheet, SymbolRecord } from "../types.js";
+import { clauseStartProblem, nameOrderProblem } from "./clauses.js";
 import { FUNCTION_LIKE_KINDS } from "./factsheet.js";
 import { MAX_BEHAVIOR_CHARS, MAX_BEHAVIOR_WORDS } from "./schema.js";
 import { termsFromName } from "./templates.js";
@@ -63,7 +64,9 @@ export function spell(name: string): string {
  * Whether the fallback may repeat `name` (#175): a plain ASCII identifier (no full-width or other look-alike forms,
  * which NFKC would fold into a different stored text), whose spelled words cover every letter and digit, none of them
  * a run-together phrase (longer than 15 characters, or longer than 12 and not a dictionary word) or an agent, prompt,
- * addressing or review word, and whose spelling raises no `instructionSignal` as a search term and suggested name.
+ * addressing or review word, that does not read as an order or a claim when taken as a clause on its own
+ * (`nameOrderProblem`, `clauseStartProblem`), and whose spelling raises no `instructionSignal` as a search term
+ * and suggested name.
  */
 export function usableName(name: string, sheet: FactSheet): boolean {
   if (!/^[A-Za-z_$][A-Za-z0-9_$]{0,79}$/.test(name)) return false;
@@ -74,6 +77,12 @@ export function usableName(name: string, sheet: FactSheet): boolean {
     if (w.length > NAME_WORD_MAX || (w.length > NAME_WORD_FREE && !isWord(w))) return false;
     if (NAME_BANNED.has(w)) return false;
   }
+  // Read as a stand-alone clause (#175 round 2): an order or a claim is never repeated.
+  // Most function names open with a verb ("loadUserProfile"), so a verb alone is not an order here; an order is a
+  // destructive verb, a protective or authority object, an order adverb, a do/never/always opener, an addressee
+  // acting, or a claim.
+  const clause = clauseStartProblem(words);
+  if (nameOrderProblem(words) !== null || (clause !== null && clause !== "clause-verb")) return false;
   return !instructionSignal({ searchTerms: [words.join(" ")], suggestedName: name }, sheet);
 }
 

@@ -40,13 +40,14 @@ export function describeAttemptLimit(
   previousError: string | null | undefined,
   extendable = false,
 ): number {
+  // A failure after a tainted one never earns the extra attempt, whatever the count (#175 round 2).
+  if ((previousError ?? "").endsWith(NO_EXTRA_MARK)) return MAX_DESCRIBE_ATTEMPTS;
   if (attempts > MAX_DESCRIBE_ATTEMPTS) return MAX_DESCRIBE_ATTEMPTS_EXTENDED;
   if (
     attempts === MAX_DESCRIBE_ATTEMPTS &&
     extendable &&
     EXTRA_ATTEMPT_REASONS.has(reason) &&
-    !NO_EXTRA_AFTER.has(errorReason(previousError)) &&
-    !(previousError ?? "").endsWith(NO_EXTRA_MARK)
+    !NO_EXTRA_AFTER.has(errorReason(previousError))
   )
     return MAX_DESCRIBE_ATTEMPTS_EXTENDED;
   return MAX_DESCRIBE_ATTEMPTS;
@@ -126,9 +127,12 @@ export function recordDescribeFailure(
   const tainted = opts.tainted ?? true;
   const error = tainted ? `${errorText}${NO_EXTRA_MARK}` : errorText;
   return store.tx(() => {
-    const row = store.db.prepare("SELECT attempts, last_error FROM backlog WHERE content_key = ?").get(key) as
-      | { attempts: number | null; last_error: string | null }
-      | undefined;
+    // The describer path counts only a row still claimed; the worker path any row not already failed.
+    const row = store.db
+      .prepare(
+        `SELECT attempts, last_error FROM backlog WHERE content_key = ? AND ${opts.keepClaim ? "status = 'claimed'" : "status <> 'failed'"}`,
+      )
+      .get(key) as { attempts: number | null; last_error: string | null } | undefined;
     if (!row) return { attempts: 0, failed: false };
     const attempts = (row.attempts ?? 0) + 1;
     const failed =

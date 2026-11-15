@@ -4,6 +4,8 @@
 // linear in the input length (the caller has already capped it at 400 characters).
 
 import {
+  ADDRESSEES_AI,
+  ADDRESSEES_HUMAN,
   CAUSATIVES,
   CLAUSE_TRIGGERS,
   isActionVerb,
@@ -300,8 +302,28 @@ function verbListIsClause(items: readonly Item[], i: number): boolean {
   let end = i;
   while (isListJoin(items[end + 1]) && isVerbItem(items[end + 2])) end += 2;
   const after = items[end + 1];
-  return after === undefined || ("p" in after && after.p !== ")");
+  const toEnd = after === undefined || ("p" in after && after.p !== ")");
+  // Three or more actions under a label that names them ("review actions: approve, comment and reject",
+  // "its handler; approve, reject or skip") list the options, not orders (#175 round 2).
+  if (toEnd && (end - start) / 2 + 1 >= 3 && isActionLabel(wordOf(items[start - 2]))) return false;
+  return toEnd;
 }
+
+/** A plural or agent noun that labels a list of actions ("actions", "operations", "handler"), never an addressee. */
+export function isActionLabel(label: string | undefined): boolean {
+  if (label === undefined || label.length < 4 || ACTION_LABEL_EXCLUDED.has(label)) return false;
+  return (label.endsWith("s") && !label.endsWith("ss")) || /(?:er|or)$/.test(label);
+}
+const ACTION_LABEL_EXCLUDED: ReadonlySet<string> = new Set([
+  ...ADDRESSEES_AI,
+  ...ADDRESSEES_HUMAN,
+  "user",
+  "users",
+  "admin",
+  "admins",
+  "operator",
+  "operators",
+]);
 
 /** True when `text` holds an imperative clause. Linear in the length of `text`. */
 export function hasImperativeClause(text: string): boolean {

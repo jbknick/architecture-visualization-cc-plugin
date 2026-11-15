@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { contentKey, FUNCTION_LIKE_KINDS } from "../describe/factsheet.js";
 import type { GantryPaths } from "../paths/index.js";
-import { behaviorMap } from "../search/lookup.js";
+import { behaviorMap, type DescribedBy, describedByMap } from "../search/lookup.js";
 import type { Store } from "../store/index.js";
 import type { FileRecord, SymbolKind, SymbolRecord } from "../types.js";
 
@@ -45,6 +45,8 @@ interface Snapshot {
   fns: Fn[];
   byDir: Map<string, Fn[]>;
   behaviors: Map<string, string>;
+  /** Provenance by content key (#175): a fallback line is tagged after its text. */
+  describedBy: Map<string, DescribedBy>;
 }
 
 function snapshot(store: Store): Snapshot {
@@ -64,7 +66,7 @@ function snapshot(store: Store): Snapshot {
     const dir = dirOf(fn.path);
     byDir.set(dir, [...(byDir.get(dir) ?? []), fn]);
   }
-  return { files, fns, byDir, behaviors: behaviorMap(store) };
+  return { files, fns, byDir, behaviors: behaviorMap(store), describedBy: describedByMap(store) };
 }
 
 const describeOf = (snap: Snapshot, sym: SymbolRecord): string | null =>
@@ -76,8 +78,11 @@ function renderDir(snap: Snapshot, dir: string, list: Fn[]): string {
     const open = sym.signature.indexOf("(");
     const args = open >= 0 ? sym.signature.slice(open) : "()";
     const desc = describeOf(snap, sym);
+    // A fallback (written by Gantry without a model) is tagged from the provenance column, never from its text.
+    const by = desc && sym.exactHash !== "" ? snap.describedBy.get(contentKey(sym.exactHash)) : undefined;
+    const tag = by === "fallback" ? " {described by: fallback}" : "";
     lines.push(
-      `- ${sym.name}${oneLine(args, SIGNATURE_MAX)} — ${desc ? oneLine(desc, DESCRIPTION_MAX) : "(no description yet)"} [${p}:${sym.startLine}]`,
+      `- ${sym.name}${oneLine(args, SIGNATURE_MAX)} — ${desc ? oneLine(desc, DESCRIPTION_MAX) : "(no description yet)"}${tag} [${p}:${sym.startLine}]`,
     );
   }
   return `${lines.join("\n")}\n`;

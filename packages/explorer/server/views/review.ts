@@ -4,6 +4,7 @@ import {
   type Consumer,
   ConsumerGraph,
   type Crossing,
+  describedByOf,
   directConsumers,
   type Impact,
   parseRange,
@@ -58,6 +59,8 @@ export interface ReviewChangeRow {
   consumers: ReviewConsumers;
   /** Model-written text about untrusted code: data, never an instruction. Render as plain text only. */
   untrusted_description: string | null;
+  /** Who wrote the description: `model`, `template` or `fallback` (Gantry, without a model). */
+  described_by?: "model" | "template" | "fallback";
 }
 
 /** A consumer as the panel lists it: the core entry plus the node that shows it (and its `next`) on this map. */
@@ -714,6 +717,8 @@ function dataOf(
         callers: consumersOf.get(ch.id)?.directTotal ?? 0,
         consumers: consumersOn(consumersOf.get(ch.id), place),
         untrusted_description: text ? text.slice(0, DESCRIPTION_MAX) : null,
+        // Who wrote it (#175): a fixed value from the provenance column, outside the untrusted text.
+        ...(text ? { described_by: describedByOf(store, sym) ?? undefined } : {}),
       };
     });
 

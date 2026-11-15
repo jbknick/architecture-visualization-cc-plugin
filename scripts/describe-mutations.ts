@@ -223,14 +223,14 @@ const MUTATIONS: Mutation[] = [
   {
     name: "signal: term rules off",
     file: "validate.ts",
-    find: "for (const t of terms) if (termInstruction(t, g) !== null) return true;",
-    replace: "",
+    find: "for (const t of terms) if (termInstruction(t, g) !== null || nameInstruction(t, g) !== null) return true;",
+    replace: "for (const t of terms) if (nameInstruction(t, g) !== null) return true;",
   },
   {
     name: "signal: name rules off",
     file: "validate.ts",
-    find: 'if (name.trim() !== "" && nameInstruction(name, g) !== null) return true;',
-    replace: "",
+    find: "for (const t of terms) if (termInstruction(t, g) !== null || nameInstruction(t, g) !== null) return true;",
+    replace: "for (const t of terms) if (termInstruction(t, g) !== null) return true;",
   },
   {
     name: "signal: behavior cues off",
@@ -297,6 +297,104 @@ const MUTATIONS: Mutation[] = [
     file: "submit.ts",
     find: "if (storeDescriptions(store, [f.description], { replace: false }) === 0) continue;",
     replace: "if (storeDescriptions(store, [f.description], { replace: true }) === 0) continue;",
+  },
+  // Clause rule, full-submission gate and fallback names (#175 round 2).
+  {
+    name: "signal reads at most six array items",
+    file: "validate.ts",
+    find: "for (const x of v.slice(0, SUBMITTED_MAX_STRINGS)) walk(x, isBehavior, depth + 1);",
+    replace: "for (const x of v.slice(0, 6)) walk(x, isBehavior, depth + 1);",
+  },
+  {
+    name: "signal skips a non-string behavior",
+    file: "validate.ts",
+    find: 'walk(x, isBehavior || k === "behavior", depth + 1);',
+    replace:
+      'if (typeof x === "string" || k !== "behavior") walk(x, isBehavior || k === "behavior", depth + 1);',
+  },
+  {
+    name: "extra attempt granted by default",
+    file: "store.ts",
+    find: "const extendable = opts.extendable ?? false;",
+    replace: "const extendable = opts.extendable ?? true;",
+  },
+  {
+    name: "failures clean by default",
+    file: "store.ts",
+    find: "const tainted = opts.tainted ?? true;",
+    replace: "const tainted = opts.tainted ?? false;",
+  },
+  {
+    name: "schema, length, injection and secret rejections not tainted",
+    file: "validate.ts",
+    find: 'if (v.reason !== "shape" && v.reason !== "identifier") return true;',
+    replace: "",
+  },
+  {
+    name: "marked failure may still be extended",
+    file: "store.ts",
+    find: 'if ((previousError ?? "").endsWith(NO_EXTRA_MARK)) return MAX_DESCRIBE_ATTEMPTS;',
+    replace: "",
+  },
+  {
+    name: "describer failure counted on an unclaimed row",
+    file: "store.ts",
+    find: "opts.keepClaim ? \"status = 'claimed'\" : \"status <> 'failed'\"",
+    replace: "\"status <> 'failed'\"",
+  },
+  {
+    name: "clause rule off in the validator",
+    file: "validate.ts",
+    find: 'if (clause === "clause-verb") return fail("shape", "behavior: imperative-clause");',
+    replace: "",
+  },
+  {
+    name: "addressee subjects allowed",
+    file: "clauses.ts",
+    find: 'if (thirdPerson(verb) || isBaseVerbAt(words, s + 1) || MODALS.has(verb)) return "addressee-subject";',
+    replace: "",
+  },
+  {
+    name: "status claims allowed",
+    file: "validate.ts",
+    find: 'if (claimProblem(original) !== null) return fail("injection", "behavior: status-claim");',
+    replace: "",
+  },
+  {
+    name: "open-class verbs not recognised by structure",
+    file: "clauses.ts",
+    find: '(OBJECT_DETERMINERS.has(next) || ORDER_ADVERBS.has(next) || next === "without")',
+    replace: "false",
+  },
+  {
+    name: "action-label list exception dropped",
+    file: "clauses.ts",
+    find: 'if (items.length >= 3 && opener !== "\'" && isActionLabel(label)) return null;',
+    replace: "",
+  },
+  {
+    name: "term order rule off",
+    file: "validate.ts",
+    find: 'if (termOrderProblem(wordsOf(split.join(" "))) !== null)',
+    replace: "if (false)",
+  },
+  {
+    name: "fallback repeats names that read as orders",
+    file: "fallback.ts",
+    find: 'if (nameOrderProblem(words) !== null || (clause !== null && clause !== "clause-verb")) return false;',
+    replace: "",
+  },
+  {
+    name: "gate does not read quotes",
+    file: "validate.ts",
+    find: "clauseProblem(body, { quotes: true })",
+    replace: "clauseProblem(body, { quotes: false })",
+  },
+  {
+    name: "production claims: only the without-a-model form",
+    file: "validate.ts",
+    find: "/\\bno (?:language )?(?:models?|llms?|ai)(?: (?:was|were|is))? (?:used|involved|needed|called)\\b/,",
+    replace: "",
   },
 ];
 

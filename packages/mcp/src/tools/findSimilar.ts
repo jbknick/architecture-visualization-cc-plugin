@@ -3,6 +3,7 @@ import {
   adviseReuse,
   behaviorMap,
   contentKey,
+  describedByOf,
   descriptionOf,
   FUNCTION_LIKE_KINDS,
   findDuplicatesDetailed,
@@ -17,7 +18,7 @@ import {
 } from "@gantry/core";
 import { z } from "zod";
 import { defineTool } from "../tool.js";
-import { untrustedField } from "../untrusted.js";
+import { describedByField, untrustedField } from "../untrusted.js";
 
 const KINDS = [
   "function",
@@ -182,6 +183,7 @@ export const findSimilarTool = defineTool({
         tier: f.tier,
         score: Number(f.score.toFixed(4)),
         ...untrustedField(description),
+        ...(description !== null ? describedByField(describedByOf(store, sym)) : {}),
         advice: top
           ? {
               situation: top.situation,

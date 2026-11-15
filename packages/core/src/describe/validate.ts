@@ -4,6 +4,7 @@
 // secret or an injected instruction) is never put into a detail string, and ungrounded tokens are echoed shortened.
 
 import type { Description, FactSheet } from "../types.js";
+import { claimProblem, clauseProblem, termOrderProblem } from "./clauses.js";
 import { scanInjection } from "./filters.js";
 import {
   describeUngrounded,
@@ -165,6 +166,9 @@ function termInstruction(term: string, g: Grounding): Rejection | null {
   const f = scanInjection(term);
   if (f.reject.length > 0) return { ok: false, reason: "injection", detail: f.reject.join(", ") };
   if (secretTokens(term, g).length > 0) return { ok: false, reason: "secret", detail: "a credential value" };
+  // A verb phrase that reads as an order or a claim ("merge immediately", "approve pr", "no review needed").
+  if (termOrderProblem(wordsOf(split.join(" "))) !== null)
+    return { ok: false, reason: "injection", detail: "imperative term" };
   return null;
 }
 
@@ -227,6 +231,7 @@ function nameInstruction(name: string, g: Grounding): Rejection | null {
   const lower = words.map((w) => w.toLowerCase());
   if (lower.some((w) => NAME_ADDRESSING.has(w)))
     return { ok: false, reason: "injection", detail: "addressing words" };
+  if (termOrderProblem(lower) !== null) return { ok: false, reason: "injection", detail: "directive name" };
   if (sensitivePhrases(lower).some((p) => p.from === 0))
     return { ok: false, reason: "injection", detail: "directive name" };
   const sp = speechProblem(lower.join(" "));
@@ -296,6 +301,12 @@ export function validateDescription(
   if (problem !== null) return fail("shape", `behavior: ${problem}`);
   const speech = speechProblem(original);
   if (speech !== null) return fail("injection", `behavior: ${speech}`);
+  // Clause rule (#175 round 2): every clause that opens inside the sentence is a description clause too.
+  const folded = original.normalize("NFKC").trim();
+  const clause = clauseProblem(folded.endsWith(".") ? folded.slice(0, -1) : folded);
+  if (clause === "clause-verb") return fail("shape", "behavior: imperative-clause");
+  if (clause !== null) return fail("injection", `behavior: ${clause}`);
+  if (claimProblem(original) !== null) return fail("injection", "behavior: status-claim");
 
   // (6) grounding: every token must be an ordinary word, a small number, or come from the fact sheet.
   const g = groundingNames(sheet);
@@ -365,17 +376,28 @@ export function validateDescription(
 // every field, with no shape or grounding gate, plus structural instruction cues of `behavior`.
 
 /** A sentence that claims the host's fallback provenance ("generated without a model" and close variants). */
-const FALLBACK_MARKER =
-  /\b(?:generated|written|created|produced|made|built|composed)\s+(?:[a-z]+\s+){0,2}without\s+(?:(?:a|an|any|the)\s+)?(?:models?|llms?|ai|language\s+models?)\b/;
+const PRODUCED = "(?:generated|written|created|produced|made|built|composed|authored|derived)";
+const PRODUCERS = "(?:models?|llms?|ai|language models?|gantry|host|names only)";
+/**
+ * Sentences about how the description itself was produced (#175 round 2): a production verb, then by, with,
+ * without, from, using, via or through, then a model, Gantry, the host or "names only"; "no model was used"; and
+ * "generated, no model". Only the host may say this, in the fallback marker.
+ */
+const FALLBACK_MARKERS: readonly RegExp[] = [
+  new RegExp(
+    `\\b${PRODUCED}(?: [a-z]+){0,3}? (?:by|with|without|from|using|via|through) (?:[a-z]+ ){0,2}?${PRODUCERS}\\b`,
+  ),
+  /\bno (?:language )?(?:models?|llms?|ai)(?: (?:was|were|is))? (?:used|involved|needed|called)\b/,
+  new RegExp(`\\b${PRODUCED} (?:with )?no (?:models?|llms?|ai)\\b`),
+];
 
 /** True when `text` imitates the fallback marker; checked on NFKC-folded words, so punctuation and case do not hide it. */
 export function claimsFallbackMarker(text: string): boolean {
-  return FALLBACK_MARKER.test(
-    text
-      .normalize("NFKC")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, " "),
-  );
+  const t = text
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ");
+  return FALLBACK_MARKERS.some((re) => re.test(t));
 }
 
 /** Shape problems that are instruction cues, never wording slips: a rejection for one of them earns no extra attempt. */
@@ -397,6 +419,8 @@ function behaviorInstructs(behavior: string): boolean {
   if (/(?:^|[.;:,(]\s*)[A-Za-z]+(?:\s+[A-Za-z]+)?\s*:/.test(body)) return true;
   if (/(?:^|\s)[A-Za-z](?:\s+[A-Za-z]){2}(?:\s|$)/.test(body)) return true;
   if (hasImperativeClause(body)) return true;
+  // The clause rule of the validator, with quotes as clause openers too, and status or permission claims.
+  if (clauseProblem(body, { quotes: true }) !== null || claimProblem(body) !== null) return true;
   // The first clause and each clause after a hard boundary: an addressee or a bare action verb at its start.
   const clauses = body.split(/[;:]\s*|,\s+/);
   for (let i = 0; i < clauses.length; i++) {
@@ -408,6 +432,43 @@ function behaviorInstructs(behavior: string): boolean {
   return false;
 }
 
+/** Upper bounds for reading a submission of any shape: strings, total characters and nesting depth. */
+const SUBMITTED_MAX_STRINGS = 64;
+const SUBMITTED_MAX_CHARS = 4000;
+const SUBMITTED_MAX_DEPTH = 6;
+
+/**
+ * Every string of a submission, NFKC-folded and capped: those under a `behavior` key (at any depth, inside arrays or
+ * objects) and all others (search terms, names, unknown keys, array items, object keys). A bare string counts as a
+ * behavior. Bounded by count, size and depth.
+ */
+export function submittedStrings(raw: unknown): { behaviors: string[]; others: string[] } {
+  const behaviors: string[] = [];
+  const others: string[] = [];
+  let chars = 0;
+  const add = (s: string, isBehavior: boolean) => {
+    if (behaviors.length + others.length >= SUBMITTED_MAX_STRINGS || chars >= SUBMITTED_MAX_CHARS) return;
+    const t = s.slice(0, Math.min(HARD_MAX_BEHAVIOR_CHARS, SUBMITTED_MAX_CHARS - chars)).normalize("NFKC");
+    chars += t.length;
+    if (t.trim() !== "") (isBehavior ? behaviors : others).push(t);
+  };
+  const walk = (v: unknown, isBehavior: boolean, depth: number) => {
+    if (depth > SUBMITTED_MAX_DEPTH) return;
+    if (typeof v === "string") add(v, isBehavior);
+    else if (typeof v === "number" || typeof v === "boolean") return;
+    else if (Array.isArray(v))
+      for (const x of v.slice(0, SUBMITTED_MAX_STRINGS)) walk(x, isBehavior, depth + 1);
+    else if (v !== null && typeof v === "object")
+      for (const [k, x] of Object.entries(v as Record<string, unknown>).slice(0, SUBMITTED_MAX_STRINGS)) {
+        if (k !== "behavior" && k !== "searchTerms" && k !== "suggestedName" && k !== "nameFits")
+          add(k, false);
+        walk(x, isBehavior || k === "behavior", depth + 1);
+      }
+  };
+  walk(raw, typeof raw === "string", 0);
+  return { behaviors, others };
+}
+
 /**
  * True when a description holds anything injection-like or secret-like, judged by the validator's own secret and
  * injection rules run on every field alone and on all fields together, without the shape gate: credential formats,
@@ -417,18 +478,13 @@ function behaviorInstructs(behavior: string): boolean {
  * only strings, each capped like the validator's hard caps.
  */
 export function instructionSignal(raw: unknown, sheet: FactSheet): boolean {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return false;
-  const o = raw as Record<string, unknown>;
-  const fold = (s: string, n: number): string => s.slice(0, n).normalize("NFKC");
-  const behavior = typeof o.behavior === "string" ? fold(o.behavior, HARD_MAX_BEHAVIOR_CHARS) : "";
-  const terms = Array.isArray(o.searchTerms)
-    ? o.searchTerms
-        .slice(0, MAX_TERMS)
-        .filter((t): t is string => typeof t === "string")
-        .map((t) => fold(t, HARD_MAX_TERM_CHARS))
-    : [];
-  const name = typeof o.suggestedName === "string" ? fold(o.suggestedName, HARD_MAX_NAME_CHARS) : "";
-  const fields = [behavior, ...terms, name].filter((s) => s.trim() !== "");
+  if (raw === null || raw === undefined) return false;
+  // Every submitted value counts, whatever its type or position (#175 round 2): a non-string behavior or a seventh
+  // search term is rejected for schema or length, but its text must still taint the rejection.
+  const { behaviors, others } = submittedStrings(raw);
+  const behavior = behaviors.join(" ");
+  const terms = others;
+  const fields = [behavior, ...terms].filter((s) => s.trim() !== "");
   if (fields.length === 0) return false;
   const joined = fields.join(" ");
   if (scanSecrets(joined).length > 0) return true;
@@ -447,9 +503,9 @@ export function instructionSignal(raw: unknown, sheet: FactSheet): boolean {
   if (addressingHits(joined).length > 0 || claimsFallbackMarker(joined)) return true;
   if (behavior.trim() !== "" && (speechProblem(behavior) !== null || behaviorInstructs(behavior)))
     return true;
-  for (const t of terms) if (termInstruction(t, g) !== null) return true;
+  // Every other string is judged by both the term rules and the name rules (search terms, names, unknown keys).
+  for (const t of terms) if (termInstruction(t, g) !== null || nameInstruction(t, g) !== null) return true;
   if (terms.length > 0 && termsTogetherInstruct(terms)) return true;
-  if (name.trim() !== "" && nameInstruction(name, g) !== null) return true;
   return false;
 }
 
@@ -463,7 +519,8 @@ export function rejectionTainted(
   raw: unknown,
   sheet: FactSheet,
 ): boolean {
-  if (v.reason === "injection" || v.reason === "secret") return true;
+  // Injection and secret always; schema and length too, since the validator then never read the rest (#175 round 2).
+  if (v.reason !== "shape" && v.reason !== "identifier") return true;
   if (v.reason === "shape" && [...NON_EXTENDABLE_SHAPE].some((code) => v.detail.includes(code))) return true;
   return instructionSignal(raw, sheet);
 }

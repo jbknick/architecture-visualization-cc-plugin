@@ -2,6 +2,8 @@
 // rejections) is still description text. Read back through gantry_node, gantry_search, gantry_browse and the explorer
 // /api/node, it appears only as the value of `untrusted_description`, and its provenance comes out separately as
 // `described_by: "fallback"`, a fixed value outside the untrusted text.
+
+import { readFileSync } from "node:fs";
 import { FALLBACK_MARK, loadConfig, openStore } from "@gantry/core";
 import { handleApi } from "@gantry/explorer";
 import { afterEach, describe, expect, it } from "vitest";
@@ -84,12 +86,18 @@ describe("fallback description containment (#175)", () => {
       ["gantry_node", { target: id }],
       ["gantry_search", { query: "clean text" }],
       ["gantry_browse", { target: "src/text/clean.ts" }],
+      ["gantry_find_similar", { query: "clean text" }],
     ] as [string, Record<string, unknown>][]) {
       const r = await call(client, name, args);
       surfaced += assertContained(name, r.json, marker);
       assertLabelled(name, r.json, marker);
     }
-    expect(surfaced).toBe(3);
+    expect(surfaced).toBeGreaterThanOrEqual(3);
+
+    // The catalog line is tagged from the provenance column (round 2).
+    const browse = await call(client, "gantry_browse", { target: "src/text" });
+    const catalog = readFileSync(browse.json.catalog_path as string, "utf8");
+    expect(catalog).toContain("{described by: fallback}");
 
     const store = openStore(repo.paths.dbPath);
     try {
