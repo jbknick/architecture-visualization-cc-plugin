@@ -329,3 +329,44 @@ test("settlements: screenshots at overview, settlement and street level (light a
     await page.screenshot({ path: resolve(shots, `map-3d-settlements-large-street-${scheme}.png`) });
   }
 });
+
+test("settlements: moving the mouse creates no WebGL contexts and never loses the scene's", async ({
+  page,
+}) => {
+  // Count every WebGL context the page asks for. Before the fix, each re-render (every tooltip change) probed WebGL
+  // with a fresh canvas; the pile-up made the browser drop the scene's own context, blanking it at some positions.
+  await page.addInitScript(() => {
+    const w = window as unknown as { __gl: number };
+    w.__gl = 0;
+    const orig = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      type: string,
+      ...rest: unknown[]
+    ) {
+      if (type.startsWith("webgl")) w.__gl++;
+      return (orig as (...a: unknown[]) => unknown).call(this, type, ...rest);
+    } as typeof orig;
+  });
+  const host = await open(page);
+  const result = await host.locator("canvas").evaluate(async (c: HTMLCanvasElement) => {
+    const w = window as unknown as { __gl: number };
+    const before = w.__gl;
+    let lost = 0;
+    c.addEventListener("webglcontextlost", () => lost++);
+    const r = c.getBoundingClientRect();
+    for (let i = 0; i < 600; i++) {
+      const x = r.left + ((i * 37) % r.width);
+      const y = r.top + ((i * 53) % r.height);
+      c.dispatchEvent(
+        new PointerEvent("pointermove", { clientX: x, clientY: y, bubbles: true, pointerType: "mouse" }),
+      );
+      if (i % 5 === 0) await new Promise((res) => setTimeout(res, 5));
+    }
+    await new Promise((res) => setTimeout(res, 500));
+    return { created: w.__gl - before, lost };
+  });
+  expect(result).toEqual({ created: 0, lost: 0 });
+  const p = await pixels(page);
+  expect(p.nonSky).toBeGreaterThan(0.05);
+});
