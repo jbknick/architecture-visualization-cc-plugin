@@ -53,12 +53,14 @@ test.beforeAll(async () => {
   git("commit", "-q", "-m", "fixture");
   git("checkout", "-q", "-b", "feature");
   const button = join(repo, "packages/ui/src/button.tsx");
+  const widened = readFileSync(button, "utf8").replace(
+    "{ label, onClick }: { label: string; onClick?: () => void }",
+    "{ label, onClick, size }: { label: string; onClick?: () => void; size?: number }",
+  );
+  // Chip: a second change in Button's file, with no consumers.
   writeFileSync(
     button,
-    readFileSync(button, "utf8").replace(
-      "{ label, onClick }: { label: string; onClick?: () => void }",
-      "{ label, onClick, size }: { label: string; onClick?: () => void; size?: number }",
-    ) + "\nexport function Chip({ text }: { text: string }) {\n  return <i>{text}</i>;\n}\n",
+    `${widened}\nexport function Chip({ text }: { text: string }) {\n  return <i>{text}</i>;\n}\n`,
   );
   const slug = join(repo, "packages/utils/src/slug.ts");
   writeFileSync(
@@ -426,9 +428,11 @@ test("selecting a change fits its node and all its direct consumers in view, zoo
 
   // Zoomed in on the full map, but never past the zoom of the plain map to the change's node alone.
   expect(p.scale).toBeGreaterThan(full.fitScale * 1.05);
-  await surface(page).evaluate((el, id) => {
+  await page.getByTestId("graph-canvas").evaluate((el, id) => {
     el.dispatchEvent(new CustomEvent("gantry:zoom-to", { detail: { id } }));
   }, BUTTON_FILE);
+  // The camera moves to the node alone (closer than the group), then settles.
+  await expect.poll(async () => (await probe2d(page)).scale).toBeGreaterThan(p.scale * 1.01);
   const single = await probe2d(page);
   expect(p.scale).toBeLessThanOrEqual(single.scale + 1e-6);
 });
