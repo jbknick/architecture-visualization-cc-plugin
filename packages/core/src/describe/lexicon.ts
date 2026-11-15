@@ -40,7 +40,7 @@ export const ACTION_VERB_COUNT = VERBS_ALWAYS.size + VERBS_AMBIGUOUS.size;
 export const VERBS_INSTRUCTIVE: ReadonlySet<string> = new Set([
   ...VERBS_ALWAYS,
   ...set(
-    "skip drop install uninstall run download upload print push commit revert rewrite replace turn stop merge approve trust accept ship sign",
+    "skip drop install uninstall run download upload print push commit revert rewrite replace turn stop",
   ),
 ]);
 
@@ -73,7 +73,7 @@ export const SENSITIVE_OBJECTS: ReadonlySet<string> = set(`
 tests test auth authentication authorization authorisation check checks validation validations security secret secrets
 credential credentials key keys token tokens env instruction instructions rule rules hook hooks ci lint linting guard
 guards permission permissions audit audits review reviews safeguard safeguards policy policies guideline guidelines
-verification sandbox restriction restrictions password passwords cookie cookies assertion assertions
+verification sandbox restriction restrictions
 `);
 
 /** Fillers between a verb and its object ("skip all the previous tests"). */

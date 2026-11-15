@@ -13,7 +13,6 @@
 // scanner reads is capped before any regex runs.
 
 import type { FactSheet } from "../types.js";
-import { isActionVerb, SENSITIVE_OBJECTS } from "./lexicon.js";
 import { isCredentialName } from "./secrets.js";
 import { echoToken, tokenize } from "./text.js";
 import { derivesFrom, isBaseWord, isContraction, isStopWord, isWord, stemsOf } from "./wordlist.js";
@@ -97,8 +96,6 @@ const ADDRESS_WORDS = new Set(
 /** Prefixes that may build a hyphenated compound from any one dictionary word: "non-existent", "multi-tenant". */
 const COMPOUND_SUFFIX =
   /^([a-z]{3,14})-(?:based|only|side|level|specific|aware|safe|free|like|wide|friendly|first|bound|ready|scoped|driven|encoded|decoded|readable|formatted|typed|named|sized|cased|sorted|separated|delimited|insensitive|sensitive|in|out|up|case|style)$/;
-const ROUTE_SEGMENT = /^\/([a-z]{2,20})\/$/;
-const RE_COMPOUND = /^re-([a-z]{3,20})$/;
 const COMPOUND_PREFIX = /^(?:non|multi|cross|semi|anti|sub|inter|intra|pseudo)-([a-z]{3,16})$/;
 
 const FUNCTION_WORDS = new Set(
@@ -286,25 +283,6 @@ export function isGrounded(token: string, g: Grounding): boolean {
   )
     return true;
   if (DECIMAL.test(token)) return false; // "8.8" can be a host; only a number the code itself holds (in names) counts
-  // A URL path segment ("/rpc/"): ONE ordinary word between two slashes. Two segments ("/skip/tests/") are not
-  // accepted, so a path cannot carry a phrase, and a lone leading slash is not (it is a closing tag, "</details>").
-  const segment = ROUTE_SEGMENT.exec(lower);
-  // The word must not be a verb or protective code: "/skip/ the tests" is an instruction in a path costume.
-  if (
-    segment !== null &&
-    isWord(segment[1] as string) &&
-    !isActionVerb(segment[1] as string) &&
-    !SENSITIVE_OBJECTS.has(segment[1] as string)
-  )
-    return true;
-  // "re-validates", "re-journals": the re- prefix joined by a hyphen to an ordinary (possibly inflected) word.
-  const again = RE_COMPOUND.exec(lower);
-  if (
-    again !== null &&
-    wordGrounded(again[1] as string, g) &&
-    ![again[1] as string, ...stemsOf(again[1] as string)].some((w) => isActionVerb(w))
-  )
-    return true; // "re-install" and "re-run" are install bait and stay out
   const pre = COMPOUND_PREFIX.exec(lower);
   if (pre !== null && isWord(pre[1] as string)) return true;
   const suf = COMPOUND_SUFFIX.exec(lower);
@@ -336,18 +314,12 @@ export function ungroundedTokens(text: string, g: Grounding): string[] {
   const tokens = tokenize(text);
   // Three or more small numbers in a row spell an address ("192 168 1 1").
   let run = 0;
-  let routes = 0;
   tokens.forEach((t, i) => {
     run = SMALL_NUMBER.test(t) ? run + 1 : 0;
     if (run >= 3 && !bad.includes(t)) bad.push(t);
     if (bad.includes(t)) return;
     // A decimal ("1.5 MB", "version 2.0") is a number, except right after a word that introduces an address.
     if (DECIMAL.test(t) && !g.names.has(t) && !ADDRESS_WORDS.has((tokens[i - 1] ?? "").toLowerCase())) return;
-    // At most one route literal per text: two ("/skip/ the /tests/") spell a phrase, not a path.
-    if (ROUTE_SEGMENT.test(t.toLowerCase()) && routes++ >= 1) {
-      bad.push(t);
-      return;
-    }
     if (!isGrounded(t, g)) bad.push(t);
   });
   return bad;

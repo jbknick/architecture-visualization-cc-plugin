@@ -10,8 +10,6 @@ import {
   PERMISSION_WORDS,
   SENSITIVE_OBJECTS,
   SPEECH_VERBS,
-  VERBS_ALWAYS,
-  VERBS_AMBIGUOUS,
   VERBS_INSTRUCTIVE,
 } from "./lexicon.js";
 
@@ -77,22 +75,6 @@ const REMOVABLE = new Set(
 );
 const MODALS = new Set("can may could might should ought will would".split(" "));
 
-const ADJECTIVE_PARTICIPLES = new Set("suggested recommended proposed invited expected required".split(" "));
-const REVIEW_WORDS = new Set(
-  "review reviewing reading verification verifying checking inspection".split(" "),
-);
-
-/** Words that say a change goes in without anyone looking at it. */
-const UNREVIEWED_WORDS = new Set("unreviewed unread blindly unseen unchecked unverified".split(" "));
-
-/** "without reading the diff", "without review": asked of a person, it waves a safeguard away. */
-function withoutReview(words: readonly string[]): boolean {
-  if (words.some((x) => UNREVIEWED_WORDS.has(x))) return true;
-  const k = words.indexOf("without");
-  // "without review", "without reading the diff", "without opening it": any gerund counts.
-  return k >= 0 && words.slice(k + 1, k + 3).some((x) => REVIEW_WORDS.has(x) || /^[a-z]{3,}ing$/.test(x));
-}
-
 function hasSensitive(words: readonly string[]): boolean {
   return words.some((w) => SENSITIVE_OBJECTS.has(w));
 }
@@ -105,7 +87,7 @@ function addresseeKind(w: string): "ai" | "human" | null {
 
 /** Speech and desire verbs that make a bare request; the causatives (let, allow, make, help, ...) describe a feature. */
 const CAUSATIVE_STEMS =
-  /^(?:let|lets|letting|allow|allows|allowed|allowing|make|makes|made|making|help|helps|helped|helping|enable|enables|enabled|enabling|permit|permits|permitted|permitting|authorize|authorizes|authorise|authorises|authorized|authorized|need|needs|needed|needing|require|requires|required|requiring|expect|expects|expected|expecting|cause|causes|caused|causing|empower|empowers|empowered|entitle|entitles|entitled)$/;
+  /^(?:let|lets|letting|allow|allows|allowed|allowing|make|makes|made|making|help|helps|helped|helping|enable|enables|enabled|enabling|permit|permits|permitted|permitting|authorize|authorizes|authorise|authorises|authorized|authorized|need|needs|needed|needing|cause|causes|caused|causing|empower|empowers|empowered|entitle|entitles|entitled)$/;
 
 /**
  * Names the rule that fires, or null. Rules:
@@ -136,15 +118,9 @@ export function speechProblem(text: string): string | null {
         const kind = addresseeKind(t);
         if (kind === null) continue;
         if (kind === "ai") return "speech-act";
-        // A few participles right before a human addressee are adjectives ("suggested contributors"): judged like a
-        // causative, by what follows. Real speech verbs ("asked", "instructed", "advised") never are, and a participle
-        // followed by `to` is a verb.
-        const adjective = j === i + 1 && ADJECTIVE_PARTICIPLES.has(word) && w[j + 1] !== "to";
-        if (!CAUSATIVE_STEMS.test(word) && !adjective) return "speech-act";
-        // An adjective participle is judged on the next three words only ("suggested maintainers to skip tests").
-        const tail = w.slice(j + 1, j + (adjective ? 4 : 11));
-        if (tail.some((x) => VERBS_INSTRUCTIVE.has(x)) || hasSensitive(tail) || withoutReview(tail))
-          return "speech-act";
+        if (!CAUSATIVE_STEMS.test(word)) return "speech-act";
+        const tail = w.slice(j + 1, j + 11);
+        if (tail.some((x) => VERBS_INSTRUCTIVE.has(x)) || hasSensitive(tail)) return "speech-act";
       }
     }
     const kind = addresseeKind(word);
@@ -222,44 +198,4 @@ export function sensitivePhrases(words: readonly string[]): { from: number; to: 
     out.push({ from: i, to: j - 1 });
   }
   return out;
-}
-
-/** Nouns (besides the verb-or-noun words of the lexicon) that make a following verb a noun: "merge commit", "db push". */
-const COMPOUND_LEAD = new Set("db sql code post unit pull auto".split(" "));
-/** The only verbs that may be read as nouns in a search-term compound ("commit validation", "review audit"). */
-const COMPOUND_VERBS = new Set("commit push review merge".split(" "));
-/** The only objects such a compound may end in. Tests, auth, checks, secrets, tokens, ... always keep it a command. */
-const COMPOUND_OBJECTS = new Set(
-  "validation validations audit audits policy policies guideline guidelines review reviews verification".split(
-    " ",
-  ),
-);
-
-/**
- * The phrase `words[from..to]` (verb, fillers, protective objects) is a noun compound ("review commit validation"):
- * the verb is one of commit, push, review, merge; it is not the first word of its search term; the word before it
- * (same term) is a verb-or-noun of the lexicon or one of `db sql code post unit pull auto`, but not `try`, `let`,
- * `make`; and every object is a mild noun (validation, audit, policy, ...). A protective object (tests, auth, checks,
- * secrets, ...) in the phrase, however far, keeps it an instruction: "review push secrets", "unit skip tests" fail.
- * `owner[i]` is the term that word `i` came from. Used for search terms only.
- */
-export function isNounCompound(
-  words: readonly string[],
-  owner: readonly number[],
-  from: number,
-  to: number,
-): boolean {
-  const verb = words[from] as string;
-  if (!COMPOUND_VERBS.has(verb) || from === 0) return false;
-  const prev = words[from - 1] as string;
-  if (prev === "try" || prev === "attempt" || prev === "let" || prev === "make" || prev === "kindly")
-    return false;
-  if (!(COMPOUND_LEAD.has(prev) || VERBS_AMBIGUOUS.has(prev))) return false;
-  // The whole phrase sits in ONE search term: "db push" + "validation" in two terms is not a compound.
-  for (let k = from + 1; k <= to; k++) {
-    if (owner[k] !== owner[from]) return false;
-    const w = words[k] as string;
-    if (!FILLERS.has(w) && !COMPOUND_OBJECTS.has(w)) return false;
-  }
-  return true;
 }
