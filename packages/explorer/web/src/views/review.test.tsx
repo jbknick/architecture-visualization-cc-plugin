@@ -2,19 +2,23 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { handleMockApi } from "../../mock/fixture.ts";
-import type { ReviewLayer, ViewData } from "../api.ts";
+import type { ReviewConsumer, ReviewData, ReviewLayer, ViewData } from "../api.ts";
 import "../canvases.ts";
 import { ringEdges, ringNodes } from "../../mock/review.ts";
 import { computeLayout } from "../canvas/layout.ts";
 import { buildScene, layoutInputFor } from "../canvas/scene.ts";
 import { installMockFetch, renderApp } from "../testUtils.tsx";
 import {
+  focusedChange,
+  groupByFile,
+  layerFocus,
   MARK_COLOURS,
   MARK_KINDS,
   markKindOf,
   paintLayer,
   placedId,
   RINGS_CAPTION,
+  ringFocus,
   ringGroups,
   ringPath,
   ringTitle,
@@ -274,5 +278,144 @@ describe("review view", () => {
     renderApp("#/review?range=main");
     expect(await screen.findByRole("heading", { name: "This view could not be loaded" })).toBeTruthy();
     expect((await screen.findAllByText(/expected <base>...<head>, got "main"/)).length).toBeGreaterThan(0);
+  });
+});
+
+describe("consumers (#169)", () => {
+  const consumer = (id: string, node: string): ReviewConsumer => ({
+    id,
+    name: shortName(id),
+    kind: "function",
+    path: id.slice(4, id.lastIndexOf("#")),
+    line: 1,
+    workspace: null,
+    hop: 1,
+    uses: ["calls"],
+    crosses: [],
+    node,
+  });
+
+  it("paintLayer with a focused change: only it, its direct consumers (strong) and potential ones (soft)", () => {
+    const tree = {
+      ids: ["ws:x", "file:a.ts", "file:b.ts", "file:c.ts", "file:d.ts"],
+      parents: [-1, 0, 0, 0, 0],
+    };
+    const layer: ReviewLayer = {
+      marks: [
+        { id: "file:a.ts", change: "signature", changes: 1 },
+        { id: "file:b.ts", hop: 1 },
+        { id: "file:d.ts", change: "added", changes: 1 },
+      ],
+      links: [
+        { id: "file:b.ts->file:a.ts", src: "file:b.ts", dst: "file:a.ts", change: "signature", weight: 1 },
+      ],
+      linksTotal: 1,
+      placed: [["sym:a.ts#f", "file:a.ts"]],
+      unplaced: [],
+    };
+    const p = paintLayer(tree, layer, false, {
+      node: "file:a.ts",
+      kind: "signature",
+      direct: ["file:b.ts"],
+      potential: [{ node: "file:c.ts", next: "file:b.ts" }],
+    });
+    // d.ts (another change) fades; c.ts gets the soft tint even without `far`
+    expect(p.change).toEqual([null, "signature", null, null, null]);
+    expect([...p.hop]).toEqual([0, 0, 1, 2, 0]);
+    expect([...p.lit]).toEqual([1, 1, 1, 1, 0]);
+    expect(p.links).toEqual([
+      { src: 2, dst: 1, change: "signature", weight: 1 },
+      { src: 3, dst: 2, change: "signature", weight: 1, soft: true },
+    ]);
+  });
+
+  it("focusedChange keeps the change while one of its consumers is selected; groupByFile keeps the order", () => {
+    const review = mockView("review", { range: "main...feature" }, "symbols").review as ReviewData;
+    const card = "sym:packages/ui/src/card.tsx#Card";
+    expect(focusedChange(review, BUTTON, null)).toBe(BUTTON);
+    expect(focusedChange(review, BUTTON_FILE, BUTTON)).toBe(BUTTON_FILE);
+    expect(focusedChange(review, card, BUTTON)).toBe(BUTTON);
+    expect(focusedChange(review, card, null)).toBeNull();
+    expect(focusedChange(review, null, BUTTON)).toBeNull();
+    const groups = groupByFile([
+      consumer("sym:a.ts#x", "a"),
+      consumer("sym:a.ts#y", "a"),
+      consumer("sym:b.ts#z", "b"),
+    ]);
+    expect(groups.map((g) => [g.path, g.items.length])).toEqual([
+      ["a.ts", 2],
+      ["b.ts", 1],
+    ]);
+    // every consumer is placed: clicking one zooms to its node
+    const c = review.changes.find((x) => x.id === BUTTON)?.consumers;
+    expect(c?.direct.map((d) => d.id)).toContain(card);
+    expect(placedId(review.layer, card)).toBe(card);
+    expect(layerFocus(review, BUTTON)?.direct).toContain(card);
+  });
+
+  it("ringFocus: direct edges strong, potential edges soft", () => {
+    const review = mockView("review", { range: "main...feature", mode: "rings" }).review as ReviewData;
+    const f = ringFocus(review, "sym:packages/utils/src/date.ts#formatTimeAgo", ringEdges);
+    expect([...(f?.direct ?? [])]).toEqual(["sym:apps/web/src/components/PostList.tsx#PostList"]);
+    expect([...(f?.potential ?? [])]).toEqual(["sym:apps/web/src/hooks/useDebounce.ts#useDebounce"]);
+    expect([...(f?.strong ?? [])]).toEqual([
+      "sym:apps/web/src/components/PostList.tsx#PostList->sym:packages/utils/src/date.ts#formatTimeAgo",
+    ]);
+    expect([...(f?.soft ?? [])]).toEqual([
+      "sym:apps/web/src/hooks/useDebounce.ts#useDebounce->sym:apps/web/src/components/PostList.tsx#PostList",
+    ]);
+    expect(ringFocus(review, "sym:nope", ringEdges)).toBeNull();
+  });
+
+  it("a selected change expands to its two tiers in the panel and the inspector; a consumer click selects it", async () => {
+    installMockFetch();
+    renderApp("#/review?range=main...feature");
+    const list = await screen.findByRole("region", { name: "Changed symbols" });
+    fireEvent.click(within(list).getByRole("button", { name: /^Button/ }));
+    const tiers = await within(list).findByRole("region", { name: "Consumers of Button" });
+    expect(within(tiers).getByRole("heading", { name: "Directly affected (2)" })).toBeTruthy();
+    expect(within(tiers).getByRole("heading", { name: "Potentially affected (1)" })).toBeTruthy();
+    expect(tiers.textContent).toContain("packages/ui/src/card.tsx");
+    expect(tiers.textContent).toContain("hop 2 via HomePage");
+    const home = within(tiers).getByRole("button", { name: /^HomePage/ });
+    expect(home.textContent).toContain("renders");
+    expect(home.textContent).toContain("app uses a package");
+    const inspector = await screen.findByRole("complementary", { name: "Inspector" });
+    const usedBy = within(inspector).getByRole("region", { name: "Used by" });
+    expect(within(usedBy).getByRole("heading", { name: "Used by (3)" })).toBeTruthy();
+    expect(within(usedBy).getAllByRole("heading", { name: "Directly affected (2)" }).length).toBe(1);
+    // clicking a consumer selects it; the change stays expanded (in focus)
+    fireEvent.click(within(tiers).getByRole("button", { name: /^Card/ }));
+    await waitFor(() =>
+      expect(window.location.hash).toContain(
+        `sel=${encodeURIComponent("sym:packages/ui/src/card.tsx#Card")}`,
+      ),
+    );
+    expect(within(list).getByRole("region", { name: "Consumers of Button" })).toBeTruthy();
+    // a changed file expands to the files that import it
+    const files = screen.getByRole("region", { name: "Changed files" });
+    fireEvent.click(within(files).getByRole("button", { name: /packages\/ui\/src\/button\.tsx/ }));
+    const fileTiers = await within(files).findByRole("region", {
+      name: "Consumers of packages/ui/src/button.tsx",
+    });
+    expect(within(fileTiers).getByRole("heading", { name: "Directly affected (2)" })).toBeTruthy();
+  });
+
+  it("rings: selecting a change marks its direct consumers strong and its potential ones soft", async () => {
+    installMockFetch();
+    const date = "sym:packages/utils/src/date.ts#formatTimeAgo";
+    renderApp(`#/review?range=main...feature&mode=rings&sel=${encodeURIComponent(date)}`);
+    const canvas = await screen.findByTestId("review-canvas");
+    await waitFor(() =>
+      expect(canvas.querySelector(".rv-rings")?.getAttribute("data-focus-change")).toBe(date),
+    );
+    const node = (id: string) => canvas.querySelector(`[data-id="${id}"]`);
+    expect(node("sym:apps/web/src/components/PostList.tsx#PostList")?.getAttribute("data-tier")).toBe(
+      "direct",
+    );
+    expect(node("sym:apps/web/src/hooks/useDebounce.ts#useDebounce")?.getAttribute("data-tier")).toBe(
+      "potential",
+    );
+    expect(node(BUTTON)?.getAttribute("class")).toContain("rv-dim");
   });
 });

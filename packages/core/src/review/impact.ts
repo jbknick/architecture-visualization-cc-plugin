@@ -4,8 +4,14 @@ import { findDuplicates } from "../dup/engine.js";
 import { parseSource } from "../parse/index.js";
 import type { GantryPaths } from "../paths/index.js";
 import type { Store } from "../store/index.js";
-import type { EdgeKind } from "../types.js";
-import { workspaceForPath } from "../workspace/index.js";
+import {
+  type ChangeConsumers,
+  type Consumer,
+  ConsumerGraph,
+  computeConsumers,
+  directConsumers,
+  type UseKind,
+} from "./consumers.js";
 import { type ReviewDiff, readBlobText, type SymbolChange } from "./diff.js";
 import { COMPLEXITY_THRESHOLD, computeRisk, type Risk } from "./risk.js";
 
@@ -21,20 +27,19 @@ export interface Impact {
   crossings: Crossing[];
   risk: Risk;
   notes: string[];
+  /** Per changed symbol (by id), then per changed file (by path): directly and potentially affected consumers. */
+  consumers: ChangeConsumers[];
 }
 
 export const DEFAULT_MAX_HOPS = 3;
 /** The walk stops after this many distinct callers. */
 export const MAX_IMPACT_NODES = 500;
 
-const REVERSE_KINDS: EdgeKind[] = ["calls", "renders", "uses_hook"];
 const TEST_FILE_RE = /\.(?:test|spec)\.[^/]*$/;
 const FUNCTION_LIKE = new Set(["function", "method", "component", "hook"]);
 const NOTE_LIST = 3;
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
-const pathOfId = (id: string): string =>
-  (id.startsWith("sym:") ? id.slice(4).split("#")[0] : pathOfFileId(id)) ?? "";
 const list = (ids: string[]): string =>
   ids.length <= NOTE_LIST
     ? ids.join(", ")
@@ -42,14 +47,18 @@ const list = (ids: string[]): string =>
 
 export interface ImpactOptions {
   maxHops?: number;
+  /** Changed file paths: each gets its own consumers (the files that import it, then theirs). */
+  files?: string[];
 }
 
 /**
  * Impact of `changes` on the graph in `store` (spec section 11, "Impact and risk"; no model calls, no writes).
- * Breadth-first over reverse `calls`/`renders`/`uses_hook` edges from every modified, removed, renamed, moved or
- * signature-changed symbol (added symbols have no callers yet), plus the files that import the file of a removed,
- * renamed or moved symbol; a file node continues through the files that import it. Each caller is recorded at the
- * first hop it appears at, in sorted order, and the walk stops at `maxHops` (3) or 500 callers. Output is sorted
+ * Hop 1 is every direct consumer (`CONSUMER_KINDS`: calls, renders, hook uses, extends, implements, type references
+ * and route edges, plus the files importing an exported change's file that no symbol of theirs already stands for)
+ * of every modified, removed, renamed, moved or signature-changed symbol (added symbols are not walked); hops 2 and 3
+ * follow the same edge kinds, and a file node continues through the files that import it. Each caller is recorded at
+ * the first hop it appears at, in sorted order, and the walk stops at `maxHops` (3) or 500 callers. `consumers` lists
+ * both tiers per change and per changed file (`computeConsumers`). Output is sorted
  * and identical across runs.
  */
 export function computeImpact(store: Store, changes: SymbolChange[], opts: ImpactOptions = {}): Impact {
@@ -66,44 +75,40 @@ export function computeImpact(store: Store, changes: SymbolChange[], opts: Impac
   const seeds = [...seedChange.keys()].sort(cmp);
   const seedSet = new Set(seeds);
 
-  const incoming = (dst: string, kinds: EdgeKind[]): string[] =>
-    store
-      .effectiveEdges({ dst, kind: kinds })
-      .map((e) => e.src)
-      .filter((s) => !s.startsWith("ext:") && s !== dst);
+  const g = new ConsumerGraph(store);
+  // Hop 1: every direct consumer of a changed symbol (all consumer edge kinds, plus importers of an exported change's
+  // file that no symbol of theirs already stands for; see `directConsumers`).
+  const directBy = new Map<SymbolChange, Map<string, Set<UseKind>>>();
+  for (const c of sources) directBy.set(c, directConsumers(g, c));
 
   const seen = new Set<string>(seeds);
   const callersByHop: Impact["callersByHop"] = [];
-  const hop1: { seed: string; caller: string }[] = [];
   let capped = false;
-  let frontier = seeds;
-  for (let hop = 1; hop <= maxHops && frontier.length > 0 && !capped; hop++) {
+  const take = (ids: Iterable<string>, found: Set<string>): void => {
+    for (const s of [...ids].sort(cmp)) {
+      if (seen.has(s)) continue;
+      if (seen.size - seeds.length >= MAX_IMPACT_NODES) {
+        capped = true;
+        return;
+      }
+      seen.add(s);
+      found.add(s);
+    }
+  };
+  let frontier: string[] = [];
+  if (maxHops >= 1) {
+    const found = new Set<string>();
+    take(new Set([...directBy.values()].flatMap((m) => [...m.keys()])), found);
+    if (found.size > 0) callersByHop.push({ hop: 1, ids: [...found].sort(cmp) });
+    frontier = [...found].sort(cmp);
+  }
+  for (let hop = 2; hop <= maxHops && frontier.length > 0 && !capped; hop++) {
     const found = new Set<string>();
     for (const node of frontier) {
-      const srcs = new Set(
-        incoming(node, node.startsWith("file:") ? [...REVERSE_KINDS, "imports"] : REVERSE_KINDS),
+      take(
+        g.incoming(node).map((n) => n.src),
+        found,
       );
-      if (hop === 1 && !node.startsWith("file:")) {
-        const c = seedChange.get(node);
-        // A removed, renamed or moved export breaks every file that imports its file.
-        if (
-          c &&
-          (c.kind === "removed" || c.kind === "renamed" || c.kind === "moved") &&
-          (c.before?.exported ?? false)
-        ) {
-          for (const s of incoming(`file:${c.before?.path}`, ["imports"])) srcs.add(s);
-        }
-      }
-      for (const s of [...srcs].sort(cmp)) {
-        if (hop === 1) hop1.push({ seed: node, caller: s });
-        if (seen.has(s)) continue;
-        if (seen.size - seeds.length >= MAX_IMPACT_NODES) {
-          capped = true;
-          break;
-        }
-        seen.add(s);
-        found.add(s);
-      }
       if (capped) break;
     }
     if (found.size > 0) callersByHop.push({ hop, ids: [...found].sort(cmp) });
@@ -112,45 +117,31 @@ export function computeImpact(store: Store, changes: SymbolChange[], opts: Impac
   if (capped)
     notes.push(`The caller walk stopped at ${MAX_IMPACT_NODES} nodes; deeper callers are not listed.`);
 
-  // Crossings, judged between a changed symbol and its direct callers only.
-  const workspaces = store.listWorkspaces();
-  const fileRec = (path: string) => store.effectiveFile(`file:${path}`);
-  const wsOf = (path: string) => (workspaces.length > 0 ? workspaceForPath(workspaces, path) : undefined);
-  const isClient = (path: string): boolean => fileRec(path)?.directives?.includes("use client") ?? false;
+  // Crossings, judged between a changed symbol and its direct consumers only.
   const crossingSet = new Map<string, Crossing>();
-  for (const { seed, caller } of hop1) {
-    const sp = pathOfId(seed);
-    const cp = pathOfId(caller);
-    if (sp === cp) continue;
-    const sw = wsOf(sp);
-    const cw = wsOf(cp);
-    const add = (kind: Crossing["kind"]): void => {
-      crossingSet.set(`${seed}\0${caller}\0${kind}`, { from: seed, to: caller, kind });
-    };
-    if (sw && cw && sw.id !== cw.id) add(cw.kind === "app" && sw.kind === "package" ? "app" : "workspace");
-    if (isClient(sp) !== isClient(cp)) add("client_server");
+  for (const [c, direct] of directBy) {
+    const sp = (c.after ?? c.before)?.path ?? g.pathOf(c.id);
+    for (const caller of direct.keys()) {
+      for (const kind of g.crossings(sp, g.pathOf(caller)))
+        crossingSet.set(`${c.id}\0${caller}\0${kind}`, { from: c.id, to: caller, kind });
+    }
   }
   const crossings = [...crossingSet.values()].sort(
     (a, b) => cmp(a.from, b.from) || cmp(a.to, b.to) || cmp(a.kind, b.kind),
   );
 
   // Facts for the risk score.
-  const hop1ByChange = new Map<SymbolChange, Set<string>>();
-  for (const { seed, caller } of hop1) {
-    const c = seedChange.get(seed);
-    if (!c) continue;
-    if (!hop1ByChange.has(c)) hop1ByChange.set(c, new Set());
-    hop1ByChange.get(c)?.add(caller);
-  }
-  const hop1Callers = new Set(hop1.map((h) => h.caller).filter((id) => !seedSet.has(id)));
+  const hop1Callers = new Set(
+    [...directBy.values()].flatMap((m) => [...m.keys()]).filter((id) => !seedSet.has(id)),
+  );
   const exportedNow = (c: SymbolChange): boolean =>
     (c.after?.exported ?? false) || (c.before?.exported ?? false);
 
   const removedStillUsed = sources.filter(
-    (c) => c.kind === "removed" && (c.before?.exported ?? false) && (hop1ByChange.get(c)?.size ?? 0) > 0,
+    (c) => c.kind === "removed" && (c.before?.exported ?? false) && (directBy.get(c)?.size ?? 0) > 0,
   );
   for (const c of removedStillUsed) {
-    const users = [...(hop1ByChange.get(c) ?? [])].sort(cmp);
+    const users = [...(directBy.get(c)?.keys() ?? [])].sort(cmp);
     notes.push(`Removed export ${c.id} is still used by ${users.length} node(s): ${list(users)}.`);
   }
 
@@ -185,7 +176,8 @@ export function computeImpact(store: Store, changes: SymbolChange[], opts: Impac
     untested: functions.some((c) => !importedByTest((c.after ?? c.before)?.path ?? "")),
   });
 
-  return { changed: [...changes], callersByHop, crossings, risk, notes };
+  const consumers = computeConsumers(g, changes, opts.files ?? [], maxHops);
+  return { changed: [...changes], callersByHop, crossings, risk, notes, consumers };
 }
 
 /**
@@ -199,7 +191,7 @@ export async function reviewImpact(
   diff: ReviewDiff,
   opts: ImpactOptions = {},
 ): Promise<Impact> {
-  const impact = computeImpact(store, diff.changes, opts);
+  const impact = computeImpact(store, diff.changes, { files: diff.files.map((f) => f.path), ...opts });
   const extra: string[] = [];
 
   const addedSpecs = new Map(diff.importChanges.map((c) => [c.path, new Set(c.added)]));
@@ -275,7 +267,23 @@ export function modifiedChanges(store: Store, ids: string[]): SymbolChange[] {
   return out;
 }
 
-/** Text summary for `gantry review` without `--json`: risk, reasons, hop counts, crossings and notes. */
+/** Changes, direct and potential consumers listed per change in the text summary (the JSON has them all). */
+const TEXT_CHANGES = 20;
+const TEXT_DIRECT = 5;
+const TEXT_POTENTIAL = 3;
+
+/** `HomePage (component, apps/web/src/routes/index.tsx:5) renders; crosses app`, or `... hop 2 via X` (potential). */
+function consumerLine(c: Consumer): string {
+  const where = c.line === null ? c.path : `${c.path}:${c.line}`;
+  const via =
+    c.via !== undefined
+      ? ` hop ${c.hop} via ${c.via.slice(c.via.lastIndexOf(c.via.startsWith("sym:") ? "#" : "/") + 1)}`
+      : "";
+  const crosses = c.crosses.length > 0 ? `; crosses ${c.crosses.join(", ")}` : "";
+  return `${c.name} (${c.kind}${where ? `, ${where}` : ""}) ${c.uses.join(", ")}${via}${crosses}`;
+}
+
+/** Text summary for `gantry review` without `--json`: risk, reasons, hop counts, crossings, consumers and notes. */
 export function formatImpact(diff: ReviewDiff, impact: Impact): string {
   const lines: string[] = [];
   const kinds = new Map<string, number>();
@@ -300,6 +308,18 @@ export function formatImpact(diff: ReviewDiff, impact: Impact): string {
     for (const x of impact.crossings.slice(0, 5)) lines.push(`  ${x.kind}: ${x.from} <- ${x.to}`);
     if (impact.crossings.length > 5) lines.push(`  and ${impact.crossings.length - 5} more`);
   }
+  const used = impact.consumers.filter((c) => c.directTotal + c.potentialTotal > 0);
+  for (const c of used.slice(0, TEXT_CHANGES)) {
+    lines.push(`Consumers of ${c.id}:`);
+    lines.push(`  Directly affected (${c.directTotal}):`);
+    for (const d of c.direct.slice(0, TEXT_DIRECT)) lines.push(`    ${consumerLine(d)}`);
+    if (c.directTotal > TEXT_DIRECT) lines.push(`    and ${c.directTotal - TEXT_DIRECT} more`);
+    lines.push(`  Potentially affected (${c.potentialTotal}):`);
+    for (const p of c.potential.slice(0, TEXT_POTENTIAL)) lines.push(`    ${consumerLine(p)}`);
+    if (c.potentialTotal > TEXT_POTENTIAL) lines.push(`    and ${c.potentialTotal - TEXT_POTENTIAL} more`);
+  }
+  if (used.length > TEXT_CHANGES)
+    lines.push(`Consumers of ${used.length - TEXT_CHANGES} more change(s) are in --json.`);
   if (impact.notes.length > 0) {
     lines.push("Notes:");
     for (const n of impact.notes) lines.push(`  ${n}`);

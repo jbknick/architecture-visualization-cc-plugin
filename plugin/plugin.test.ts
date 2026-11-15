@@ -258,7 +258,15 @@ describe("review skill (#44)", () => {
     expect(data["argument-hint"]).toContain("--pr <n>");
     expect(body.trim().split("\n").length).toBeLessThan(20);
     expect(body).toContain('"${CLAUDE_PLUGIN_ROOT}/bin/gantry" review $ARGUMENTS --json');
-    for (const s of ["signatureChanged", "callersByHop[0].ids", "crossings", "notes", "path:line"]) {
+    for (const s of [
+      "signatureChanged",
+      "callersByHop[0].ids",
+      "consumers",
+      "direct",
+      "crossings",
+      "notes",
+      "path:line",
+    ]) {
       expect(body).toContain(s);
     }
     expect(body).toContain("mcp__plugin_gantry_gantry__gantry_open_view");

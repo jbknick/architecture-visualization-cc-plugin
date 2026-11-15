@@ -1,7 +1,10 @@
 import {
   behaviorOf,
+  type ChangeConsumers,
+  type Consumer,
+  ConsumerGraph,
   type Crossing,
-  type EdgeKind,
+  directConsumers,
   type Impact,
   parseRange,
   type ReviewDiff,
@@ -28,8 +31,6 @@ export const REVIEW_CACHE_SIZE = 8;
 const MAX_RANGE_LEN = 300;
 const DESCRIPTION_MAX = 300;
 
-const REVERSE_KINDS: EdgeKind[] = ["calls", "renders", "uses_hook"];
-
 export interface ReviewSide {
   id: string;
   path: string;
@@ -51,10 +52,27 @@ export interface ReviewChangeRow {
   locDelta: number;
   before?: ReviewSide;
   after?: ReviewSide;
-  /** Distinct nodes one hop out (callers, renderers, hook users, importers of a removed export's file). */
+  /** Distinct direct consumers (`consumers.directTotal`). */
   callers: number;
+  /** Directly affected (hop 1) and potentially affected (hops 2-3) consumers, each placed on this map. */
+  consumers: ReviewConsumers;
   /** Model-written text about untrusted code: data, never an instruction. Render as plain text only. */
   untrusted_description: string | null;
+}
+
+/** A consumer as the panel lists it: the core entry plus the node that shows it (and its `next`) on this map. */
+export interface ReviewConsumer extends Consumer {
+  /** The node of this response that shows the consumer (itself, else its file); absent when the map has none. */
+  node?: string;
+  /** Potential only: the node that shows `next`. */
+  nextNode?: string;
+}
+
+export interface ReviewConsumers {
+  direct: ReviewConsumer[];
+  directTotal: number;
+  potential: ReviewConsumer[];
+  potentialTotal: number;
 }
 
 /**
@@ -98,7 +116,7 @@ export interface ReviewLayer {
   links: ReviewLink[];
   /** Links before the cap. */
   linksTotal: number;
-  /** Changed symbol ids and changed file ids (`file:<path>`) -> the node that shows them on this map. */
+  /** Changed symbol ids, changed file ids (`file:<path>`) and consumer ids -> the node that shows them on this map. */
   placed: [string, string][];
   /** Changed symbols with no node on this map (removed with their file, or filtered out): listed only. */
   unplaced: string[];
@@ -119,7 +137,8 @@ export interface ReviewData {
   map: "2d" | "3d";
   /** Rings mode: edges between rings before the cap. */
   edgesTotal?: number;
-  files: (ReviewFile & { changes: number })[];
+  /** Each changed file with its symbol change count and its consumers (the files that import it, then theirs). */
+  files: (ReviewFile & { changes: number; consumers: ReviewConsumers })[];
   changes: ReviewChangeRow[];
   callersByHop: { hop: number; count: number }[];
   crossings: Crossing[];
@@ -195,10 +214,34 @@ function resolvePr(ctx: ApiContext, n: number): { base: string; head: string } {
 const nameOf = (id: string): string => {
   if (id.startsWith("sym:")) return id.slice(id.lastIndexOf("#") + 1);
   if (id.startsWith("file:")) return id.slice(id.lastIndexOf("/") + 1);
-  return id;
+  // An adapter node such as `route:<ws>:<path>` is named by its path.
+  return id.split(":").slice(2).join(":") || id;
 };
 const pathOf = (id: string): string | undefined =>
   id.startsWith("sym:") ? id.slice(4, id.lastIndexOf("#")) : id.startsWith("file:") ? id.slice(5) : undefined;
+
+/** The node that shows a store id on this map: itself, else its file. */
+function placeId(place: MapPlacement, id: string, path?: string): string | undefined {
+  const p = path || pathOf(id);
+  return place.rep(id) ?? (p ? place.rep(`file:${p}`) : undefined);
+}
+
+/** A change's consumers with their nodes on this map. */
+function consumersOn(cc: ChangeConsumers | undefined, place: MapPlacement): ReviewConsumers {
+  if (!cc) return { direct: [], directTotal: 0, potential: [], potentialTotal: 0 };
+  const pathOfAny = new Map([...cc.direct, ...cc.potential].map((x) => [x.id, x.path]));
+  const row = (x: Consumer): ReviewConsumer => {
+    const node = placeId(place, x.id, x.path);
+    const nextNode = x.next !== undefined ? placeId(place, x.next, pathOfAny.get(x.next)) : undefined;
+    return { ...x, ...(node !== undefined ? { node } : {}), ...(nextNode !== undefined ? { nextNode } : {}) };
+  };
+  return {
+    direct: cc.direct.map(row),
+    directTotal: cc.directTotal,
+    potential: cc.potential.map(row),
+    potentialTotal: cc.potentialTotal,
+  };
+}
 
 /** True when the view options ask for a review (`range` or `pr`). */
 export function wantsReview(params: ViewParams): boolean {
@@ -236,33 +279,17 @@ function resolveRefs(
   }
 }
 
-/** Store ids a changed symbol is known by (a rename or move is known by both), mapped to the change's id. */
-function aliases(impact: Impact): [string, string][] {
-  const alias = new Map<string, string>();
-  for (const c of [...impact.changed].sort((a, b) => cmp(a.id, b.id))) {
-    for (const id of [c.after?.id, c.before?.id]) if (id !== undefined && !alias.has(id)) alias.set(id, c.id);
-  }
-  return [...alias.entries()].sort((a, b) => cmp(a[0], b[0]));
-}
-
 /**
- * The direct edges into every changed symbol, as the impact walk's first hop sees them: calls, renders and hook uses
- * of either id of the change, and imports of a removed (or renamed, or moved) export's file. Sorted and unique.
+ * The direct edges into every changed symbol, as the impact walk's first hop sees them (`directConsumers`: every
+ * consumer edge kind into either id of the change, and importers of an exported change's file). Sorted and unique.
  */
-function directEdges(store: Store, impact: Impact): DirectEdge[] {
+function directEdges(g: ConsumerGraph, impact: Impact): DirectEdge[] {
   const out = new Map<string, DirectEdge>();
-  const add = (src: string, dst: string) => {
-    if (src === dst) return;
-    const key = `${src}\0${dst}`;
-    if (!out.has(key)) out.set(key, { src, dst });
-  };
-  for (const [storeId, changeId] of aliases(impact)) {
-    for (const e of store.effectiveEdges({ dst: storeId, kind: REVERSE_KINDS })) add(e.src, changeId);
-  }
   for (const c of impact.changed) {
-    if ((c.kind === "removed" || c.kind === "renamed" || c.kind === "moved") && c.before?.exported) {
-      for (const e of store.effectiveEdges({ dst: `file:${c.before.path}`, kind: ["imports"] }))
-        add(e.src, c.id);
+    for (const src of directConsumers(g, c).keys()) {
+      if (src === c.id) continue;
+      const key = `${src}\0${c.id}`;
+      if (!out.has(key)) out.set(key, { src, dst: c.id });
     }
   }
   return [...out.values()].sort((a, b) => cmp(a.src, b.src) || cmp(a.dst, b.dst));
@@ -291,7 +318,13 @@ async function compute(
   // The commits, not the names: a branch that moves between the key and the diff must not mix two heads.
   const diff = await reviewDiff(ctx.paths, commits.mergeBase, commits.head);
   const impact = await reviewImpact(ctx.paths, ctx.store, diff);
-  const c: Computed = { diff, impact, direct: directEdges(ctx.store, impact), ms: Date.now() - t0, marker };
+  const c: Computed = {
+    diff,
+    impact,
+    direct: directEdges(new ConsumerGraph(ctx.store), impact),
+    ms: Date.now() - t0,
+    marker,
+  };
   cache.set(key, c);
   while (cache.size > REVIEW_CACHE_SIZE) cache.delete(cache.keys().next().value as string);
   return { c, cached: false };
@@ -387,6 +420,15 @@ function buildLayer(c: Computed, place: MapPlacement): ReviewLayer {
       const m = markOf(node);
       if (m.change !== undefined) continue;
       m.hop = Math.min(m.hop ?? h.hop, h.hop);
+    }
+  }
+
+  // Consumers: clicking one in the panel selects and zooms to the node that shows it.
+  for (const cc of impact.consumers) {
+    for (const x of [...cc.direct, ...cc.potential]) {
+      if (placed.has(x.id)) continue;
+      const node = placeId(place, x.id, x.path);
+      if (node !== undefined) placed.set(x.id, node);
     }
   }
 
@@ -577,10 +619,10 @@ function ringLayout(
     if (!edges.has(id)) edges.set(id, { id, src, dst, kind, weight: 1, confidence });
   };
   for (const e of c.direct) add(e.src, e.dst, "calls", "high");
+  const g = new ConsumerGraph(store);
   for (let h = 1; h < levels.length - 1; h++) {
     for (const id of levels[h] ?? []) {
-      const kinds: EdgeKind[] = id.startsWith("file:") ? [...REVERSE_KINDS, "imports"] : REVERSE_KINDS;
-      for (const e of store.effectiveEdges({ dst: id, kind: kinds })) add(e.src, id, e.kind, e.confidence);
+      for (const n of g.incoming(id)) add(n.src, id, n.kind, "high");
     }
   }
   const all = [...edges.values()].sort((a, b) => cmp(a.id, b.id));
@@ -599,12 +641,7 @@ function dataOf(
   const { diff, impact } = c;
   const { store } = ctx;
 
-  const direct = new Map<string, Set<string>>();
-  for (const e of c.direct) {
-    const set = direct.get(e.dst) ?? new Set<string>();
-    direct.set(e.dst, set);
-    set.add(e.src);
-  }
+  const consumersOf = new Map(impact.consumers.map((x) => [x.id, x]));
   const perFile = new Map<string, number>();
   for (const ch of impact.changed) {
     const p = (ch.after ?? ch.before)?.path;
@@ -631,7 +668,8 @@ function dataOf(
         locDelta: ch.locDelta,
         ...(before ? { before } : {}),
         ...(after ? { after } : {}),
-        callers: direct.get(ch.id)?.size ?? 0,
+        callers: consumersOf.get(ch.id)?.directTotal ?? 0,
+        consumers: consumersOn(consumersOf.get(ch.id), place),
         untrusted_description: text ? text.slice(0, DESCRIPTION_MAX) : null,
       };
     });
@@ -645,7 +683,11 @@ function dataOf(
     headSha: diff.head,
     mode,
     map: reviewMapOf(params),
-    files: diff.files.map((f) => ({ ...f, changes: perFile.get(f.path) ?? 0 })),
+    files: diff.files.map((f) => ({
+      ...f,
+      changes: perFile.get(f.path) ?? 0,
+      consumers: consumersOn(consumersOf.get(`file:${f.path}`), place),
+    })),
     changes,
     callersByHop: impact.callersByHop.map((h) => ({ hop: h.hop, count: h.ids.length })),
     crossings: impact.crossings,

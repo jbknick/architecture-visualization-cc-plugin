@@ -81,21 +81,22 @@ describe("impact on fixtures/pnpm-turbo", () => {
     expect(impact.changed[0]?.signatureChanged).toBe(true);
     const home = "sym:apps/web/src/routes/index.tsx#HomePage";
     const profile = "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage";
-    expect(impact.callersByHop[0]).toEqual({ hop: 1, ids: [home, profile] });
+    // The barrel re-exports button.tsx and no symbol of it renders Button, so the file itself is a direct consumer.
+    expect(impact.callersByHop[0]).toEqual({ hop: 1, ids: ["file:packages/ui/src/index.ts", home, profile] });
     expect(impact.crossings).toEqual([
       { from: BUTTON, to: home, kind: "app" },
       { from: BUTTON, to: profile, kind: "app" },
     ]);
-    // +30 signature, +4 for 2 callers, +10 for 2 crossings, +10 no test imports button.tsx
-    expect(impact.risk.score).toBe(54);
+    // +30 signature, +6 for 3 direct consumers, +10 for 2 crossings, +10 no test imports button.tsx
+    expect(impact.risk.score).toBe(56);
     expect(impact.risk.level).toBe("medium");
     expect(impact.risk.reasons).toEqual([
       "+30 signature changed on an exported symbol",
-      "+4 2 direct callers",
+      "+6 3 direct callers",
       "+10 2 boundary crossings",
       "+10 changed function in a file no test imports",
     ]);
-    expect(formatImpact(diff, impact)).toContain("Risk: medium (54/100)");
+    expect(formatImpact(diff, impact)).toContain("Risk: medium (56/100)");
   });
 
   it("a test file that imports the changed file removes the untested points", async () => {
@@ -108,7 +109,8 @@ describe("impact on fixtures/pnpm-turbo", () => {
     );
     changeButtonSignature(fx);
     const impact = await reviewImpact(paths, store, await reviewDiff(paths, "main", "feature"));
-    expect(impact.risk.score).toBe(44);
+    // the test file imports button.tsx, so it is a fourth direct consumer (+8 instead of +6) and the untested 10 go
+    expect(impact.risk.score).toBe(48);
     expect(impact.risk.reasons.join("\n")).not.toContain("no test imports");
   });
 
@@ -180,6 +182,8 @@ describe("impact on fixtures/pnpm-turbo", () => {
     expect(full.callersByHop).toEqual([
       { hop: 1, ids: ["sym:apps/web/src/components/PostList.tsx#PostList"] },
       { hop: 2, ids: ["sym:apps/web/src/routes/index.tsx#HomePage"] },
+      // the route serves HomePage (route edges count as uses)
+      { hop: 3, ids: ["route:@acme/web:/"] },
     ]);
     const one = computeImpact(store, changes, { maxHops: 1 });
     expect(one.callersByHop).toEqual([

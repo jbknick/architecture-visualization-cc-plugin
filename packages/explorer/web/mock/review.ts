@@ -5,6 +5,8 @@
 import type {
   GraphEdge,
   GraphNode,
+  ReviewConsumer,
+  ReviewConsumers,
   ReviewData,
   ReviewLayer,
   ReviewLink,
@@ -51,6 +53,90 @@ const hops: [string, number][] = [
   ["sym:apps/web/src/hooks/useDebounce.ts#useDebounce", 2],
 ];
 
+const USE_DEBOUNCE = "sym:apps/web/src/hooks/useDebounce.ts#useDebounce";
+const pathOfId = (id: string) =>
+  id.startsWith("sym:") ? id.slice(4, id.lastIndexOf("#")) : id.startsWith("file:") ? id.slice(5) : "";
+const WS: Record<string, string> = { apps: "@acme/web", packages: "@acme/ui" };
+
+/** A consumer of the mock review, as the server sends it (names and paths only). */
+function consumer(
+  id: string,
+  kind: string,
+  hop: number,
+  uses: ReviewConsumer["uses"],
+  crosses: ReviewConsumer["crosses"],
+  line: number | null,
+  path = pathOfId(id),
+  link?: { via: string; next: string },
+): ReviewConsumer {
+  const name = id.startsWith("sym:")
+    ? id.slice(id.lastIndexOf("#") + 1)
+    : id.startsWith("file:")
+      ? path.slice(path.lastIndexOf("/") + 1)
+      : id.split(":").slice(2).join(":");
+  return {
+    id,
+    name,
+    kind,
+    path,
+    line,
+    workspace: WS[path.split("/")[0] ?? ""] ?? null,
+    hop,
+    uses,
+    crosses,
+    ...(link ?? {}),
+  };
+}
+
+/** Directly and potentially affected consumers of each change and changed file (synthetic, like the rest). */
+const CONSUMERS: Record<string, { direct: ReviewConsumer[]; potential: ReviewConsumer[] }> = {
+  [BUTTON]: {
+    direct: [
+      consumer(CARD, "component", 1, ["renders"], [], 3),
+      consumer(HOME, "component", 1, ["renders"], ["app"], 7),
+    ],
+    potential: [
+      consumer("route:@acme/web:/", "route", 2, ["serves"], ["app"], null, "apps/web/src/routes/index.tsx", {
+        via: HOME,
+        next: HOME,
+      }),
+    ],
+  },
+  [DATE]: {
+    direct: [consumer(POSTLIST, "component", 1, ["calls"], ["app"], 4)],
+    potential: [
+      consumer(USE_DEBOUNCE, "hook", 2, ["calls"], ["app"], 1, undefined, { via: POSTLIST, next: POSTLIST }),
+    ],
+  },
+  [SLUG]: { direct: [consumer(ROUTER, "function", 1, ["calls"], ["app"], 5)], potential: [] },
+  "file:packages/ui/src/button.tsx": {
+    direct: [
+      consumer("file:packages/ui/src/index.ts", "file", 1, ["imports"], [], null),
+      consumer("file:apps/web/src/routes/index.tsx", "file", 1, ["imports"], ["app"], null),
+    ],
+    potential: [],
+  },
+};
+
+/** The consumers of `id` with the nodes that show them on this map (itself, else its file). */
+function consumersOn(id: string, place: MockPlacement): ReviewConsumers {
+  const c = CONSUMERS[id] ?? { direct: [], potential: [] };
+  const nodeOf = (x: string, path: string) => place.rep(x) ?? (path ? place.rep(`file:${path}`) : undefined);
+  const all = [...c.direct, ...c.potential];
+  const row = (x: ReviewConsumer): ReviewConsumer => {
+    const node = nodeOf(x.id, x.path);
+    const next = x.next ? all.find((y) => y.id === x.next) : undefined;
+    const nextNode = x.next ? nodeOf(x.next, next?.path ?? pathOfId(x.next)) : undefined;
+    return { ...x, ...(node ? { node } : {}), ...(nextNode ? { nextNode } : {}) };
+  };
+  return {
+    direct: c.direct.map(row),
+    directTotal: c.direct.length,
+    potential: c.potential.map(row),
+    potentialTotal: c.potential.length,
+  };
+}
+
 export function reviewLayer(place: MockPlacement): ReviewLayer {
   const marks = new Map<string, ReviewMark>();
   const markOf = (id: string) => {
@@ -80,6 +166,10 @@ export function reviewLayer(place: MockPlacement): ReviewLayer {
       const m = markOf(node);
       if (!m.change) m.change = "modified";
     }
+  }
+  for (const key of Object.keys(CONSUMERS).sort()) {
+    const c = consumersOn(key, place);
+    for (const x of [...c.direct, ...c.potential]) if (x.node && !placed.has(x.id)) placed.set(x.id, x.node);
   }
   for (const [id, hop] of hops) {
     const node = place.rep(id);
@@ -132,9 +222,24 @@ export function reviewData(
     mode,
     map,
     files: [
-      { path: "packages/ui/src/button.tsx", status: "M", changes: 1 },
-      { path: "packages/utils/src/date.ts", status: "M", changes: 1 },
-      { path: "packages/utils/src/slug.ts", status: "D", changes: 1 },
+      {
+        path: "packages/ui/src/button.tsx",
+        status: "M",
+        changes: 1,
+        consumers: consumersOn("file:packages/ui/src/button.tsx", place),
+      },
+      {
+        path: "packages/utils/src/date.ts",
+        status: "M",
+        changes: 1,
+        consumers: consumersOn("file:packages/utils/src/date.ts", place),
+      },
+      {
+        path: "packages/utils/src/slug.ts",
+        status: "D",
+        changes: 1,
+        consumers: consumersOn("file:packages/utils/src/slug.ts", place),
+      },
     ],
     changes: [
       {
@@ -163,6 +268,7 @@ export function reviewData(
           exported: true,
         },
         callers: 2,
+        consumers: consumersOn(BUTTON, place),
         untrusted_description: "Renders a labelled button.",
       },
       {
@@ -190,6 +296,7 @@ export function reviewData(
           exported: true,
         },
         callers: 1,
+        consumers: consumersOn(DATE, place),
         untrusted_description: null,
       },
       {
@@ -210,6 +317,7 @@ export function reviewData(
           exported: true,
         },
         callers: 1,
+        consumers: consumersOn(SLUG, place),
         untrusted_description: null,
       },
     ],

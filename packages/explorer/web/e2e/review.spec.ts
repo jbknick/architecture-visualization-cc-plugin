@@ -108,7 +108,7 @@ interface ReviewProbe {
       changed: number;
       affected: number;
       faded: number;
-      links: { src: string; dst: string; change: string; colour: string }[];
+      links: { src: string; dst: string; change: string; colour: string; soft?: boolean }[];
     } | null;
   } | null;
 }
@@ -230,6 +230,68 @@ test("clicking a changed symbol in the panel focuses its file on the map and ope
   // The map zoomed in to the file that holds Button.
   await expect(page.getByTestId("map-crumb")).toBeVisible({ timeout: 10_000 });
   await page.screenshot({ path: join(shots, "review-inspector-fixture.png") });
+});
+
+const esc = (s: string) => encodeURIComponent(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+test("consumers on the map: expanding a change lists who uses it; only its lines stay; a consumer click focuses it", async ({
+  page,
+}) => {
+  await open(page, "#/review?range=main...feature");
+  await probe2d(page);
+  const list = page.getByRole("region", { name: "Changed symbols" });
+  await list.getByRole("button", { name: /^Button/ }).click();
+  const tiers = list.getByRole("region", { name: "Consumers of Button" });
+  await expect(tiers.getByRole("heading", { name: "Directly affected (3)" })).toBeVisible();
+  await expect(tiers.getByRole("heading", { name: /^Potentially affected \(\d+\)$/ })).toBeVisible();
+  const home = tiers.getByRole("button", { name: /^HomePage/ });
+  await expect(home).toContainText("renders");
+  await expect(home).toContainText("app uses a package");
+  await expect(tiers.getByRole("button", { name: /^index\.ts/ })).toContainText("imports");
+  const inspector = page.getByRole("complementary", { name: "Inspector" });
+  await expect(inspector.getByRole("heading", { name: /^Used by \(\d+\)$/ })).toBeVisible();
+
+  // Only Button's consumers keep their colour and lines: direct ones strong, potential ones soft.
+  await page.mouse.move(2, 2);
+  const p = await probe2d(page);
+  const links = p.review?.drawn?.links ?? [];
+  expect(links.length).toBeGreaterThan(0);
+  for (const l of links) {
+    if (!l.soft) expect(l.dst).toBe(BUTTON_FILE);
+  }
+  expect(links).toContainEqual(expect.objectContaining({ src: HOME_FILE, dst: BUTTON_FILE }));
+  expect(links.some((l) => l.soft)).toBe(true);
+  await page.screenshot({ path: join(shots, "review-consumers-fixture.png") });
+
+  // Clicking a consumer selects it and zooms to it; Button stays in focus.
+  await home.click();
+  await expect(page).toHaveURL(new RegExp(`sel=${esc(HOME)}`));
+  await expect(home).toHaveAttribute("aria-current", "true");
+  await expect(tiers).toBeVisible();
+  await expect(page.getByTestId("map-crumb")).toBeVisible({ timeout: 10_000 });
+  await expectTidy(page);
+});
+
+test("consumers on the rings: a selected change keeps its direct consumers strong and the rest faded", async ({
+  page,
+}) => {
+  await open(page, "#/review?range=main...feature&mode=rings");
+  const canvas = page.getByTestId("review-canvas");
+  await page
+    .getByRole("region", { name: "Changed symbols" })
+    .getByRole("button", { name: /^Button/ })
+    .click();
+  const rings = canvas.locator(".rv-rings");
+  await expect(rings).toHaveAttribute("data-focus-change", BUTTON);
+  const home = canvas.getByRole("button", { name: "HomePage, calls the changed code directly" });
+  await expect(home).toHaveAttribute("data-tier", "direct");
+  await expect(canvas.getByRole("button", { name: /slugifyAll, added/ })).toHaveClass(/rv-dim/);
+  await expect(canvas.locator(`[data-edge="${HOME}->${BUTTON}"]`)).toHaveAttribute("data-tier", "direct");
+  const tiers = page.getByRole("region", { name: "Consumers of Button" });
+  await tiers.getByRole("button", { name: /^HomePage/ }).click();
+  await expect(page).toHaveURL(new RegExp(`sel=${esc(HOME)}`));
+  await expect(home.locator("circle")).toHaveClass(/rv-sel/);
+  await expect(rings).toHaveAttribute("data-focus-change", BUTTON);
 });
 
 test("a focus-only deep link (as gantry_open_view returns) opens that symbol in the inspector", async ({

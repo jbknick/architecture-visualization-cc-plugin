@@ -416,7 +416,22 @@ export class SettlementScene {
       }
       return m;
     };
-    const drawn: { src: string; dst: string; change: string }[] = [];
+    const drawn: { src: string; dst: string; change: string; soft?: boolean }[] = [];
+    const softMats = new Map<string, THREE.MeshBasicMaterial>();
+    // A potentially affected consumer's arc is thin and faint.
+    const softOf = (kind: string): THREE.MeshBasicMaterial => {
+      let m = softMats.get(kind);
+      if (!m) {
+        m = new THREE.MeshBasicMaterial({
+          color: color(colours[kind as keyof typeof colours] ?? "#888888"),
+          transparent: true,
+          opacity: 0.4,
+        });
+        softMats.set(kind, m);
+        this.reviewDisposables.push(m);
+      }
+      return m;
+    };
     for (const l of rv.links.slice(0, MAX_ARCS)) {
       const a = land.buildings[l.src];
       const b = land.buildings[l.dst];
@@ -427,9 +442,10 @@ export class SettlementScene {
       const mid = p0.clone().add(p2).multiplyScalar(0.5);
       mid.y = Math.max(p0.y, p2.y) + Math.max(2, dist * 0.35);
       const curve = new THREE.QuadraticBezierCurve3(p0, mid, p2);
-      const tube = new THREE.TubeGeometry(curve, 32, 0.07 + 0.04 * Math.min(4, l.weight), 6, false);
+      const radius = l.soft ? 0.04 : 0.07 + 0.04 * Math.min(4, l.weight);
+      const tube = new THREE.TubeGeometry(curve, 32, radius, 6, false);
       this.reviewDisposables.push(tube);
-      const mat = matOf(l.change);
+      const mat = l.soft ? softOf(l.change) : matOf(l.change);
       const mesh = new THREE.Mesh(tube, mat);
       mesh.renderOrder = 5;
       group.add(mesh);
@@ -438,7 +454,7 @@ export class SettlementScene {
       tip.position.copy(p2);
       tip.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
       group.add(tip);
-      drawn.push({ src: a.id, dst: b.id, change: l.change });
+      drawn.push({ src: a.id, dst: b.id, change: l.change, ...(l.soft ? { soft: true } : {}) });
     }
     this.content.add(group);
     this.reviewGroup = group;

@@ -10,7 +10,15 @@ import type { CanvasProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
 import { getBool } from "../views/filterUtils.ts";
-import { FAR_KEY, MARK_COLOURS, MARK_WORDS, paintLayer } from "../views/reviewModel.ts";
+import { useReviewFocus } from "../views/reviewFocus.ts";
+import {
+  FAR_KEY,
+  focusedChange,
+  layerFocus,
+  MARK_COLOURS,
+  MARK_WORDS,
+  paintLayer,
+} from "../views/reviewModel.ts";
 import { GROUP_KIND, kindTier, type TreeNode } from "./hierarchy.ts";
 import { Legend } from "./Legend.tsx";
 import { runLayout } from "./layoutClient.ts";
@@ -295,6 +303,10 @@ export function TreemapCanvas({
   // Review layer (#167): the review drawn over this very map; the layout above never sees it, so nothing moves.
   const layer = data?.review?.layer ?? null;
   const far = getBool(route.filters, FAR_KEY, false);
+  // A selected change (or one of its consumers, picked from the panel) shows only that change's consumers and lines.
+  const storedChange = useReviewFocus();
+  const focusChange = focusedChange(data?.review, focus, storedChange);
+  const reviewFocusOn = useMemo(() => layerFocus(data?.review, focusChange), [data?.review, focusChange]);
   const reviewPaint = useMemo<ReviewPaintEnv | null>(
     () =>
       layer
@@ -306,11 +318,12 @@ export function TreemapCanvas({
               },
               layer,
               far,
+              reviewFocusOn,
             ),
             colours: MARK_COLOURS[theme.scheme ?? currentScheme()],
           }
         : null,
-    [scene, layer, far, theme.scheme],
+    [scene, layer, far, theme.scheme, reviewFocusOn],
   );
 
   // Selection and highlight state shared with the draw loop. A changed symbol picked in the review panel selects the
@@ -1014,6 +1027,7 @@ function reviewProbe(rv: ReviewPaintEnv | null, last: DrawResult, id: (i: number
             dst: id(l.dst),
             change: l.change,
             colour: l.colour,
+            ...(l.soft ? { soft: true } : {}),
           })),
         }
       : null,

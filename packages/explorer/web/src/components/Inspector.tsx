@@ -1,10 +1,19 @@
 import { useEffect, useState } from "react";
-import type { GraphNode, NeighborRef, NodeDetail, ReviewChange, ReviewData } from "../api.ts";
+import type {
+  GraphNode,
+  NeighborRef,
+  NodeDetail,
+  ReviewChange,
+  ReviewConsumers,
+  ReviewData,
+} from "../api.ts";
 import { m2Of, m2Spec } from "../badges.ts";
 import { useNodeDetail, useOverview } from "../hooks.ts";
 import { useStore } from "../store.tsx";
 import { isServerNode } from "../views/drill.ts";
 import { expandedIds, withExpanded } from "../views/egoGroups.ts";
+import { ConsumerTiers } from "../views/ReviewConsumers.tsx";
+import { reviewFocus } from "../views/reviewFocus.ts";
 import { CHANGE_WORDS, markKindOf } from "../views/reviewModel.ts";
 import { KindBadge } from "./KindBadge.tsx";
 import { SourcePreview } from "./SourcePreview.tsx";
@@ -191,6 +200,28 @@ function OverviewSection({ id }: { id: string }) {
   );
 }
 
+/**
+ * Review view: "Used by (n)", the consumers of the selected change or changed file in two tiers (#169). Picking one
+ * selects it and keeps this change in focus on the map.
+ */
+function UsedBySection({ id, consumers }: { id: string; consumers: ReviewConsumers }) {
+  const { selectNode, state } = useStore();
+  return (
+    <section aria-label="Used by" className="rv-change rv-used-by">
+      <h3>Used by ({consumers.directTotal + consumers.potentialTotal})</h3>
+      <ConsumerTiers
+        consumers={consumers}
+        label="Consumers in two tiers"
+        sel={state.route.sel}
+        onPick={(c) => {
+          reviewFocus.set(id);
+          selectNode(c);
+        }}
+      />
+    </section>
+  );
+}
+
 /** Review view: how the selected symbol changed, with the signature before and after. */
 function ReviewChangeSection({ change }: { change: ReviewChange }) {
   const { before, after } = change;
@@ -224,8 +255,8 @@ function ReviewChangeSection({ change }: { change: ReviewChange }) {
       )}
       <p className="muted">
         {change.callers === 0
-          ? "No direct callers in the index."
-          : `${change.callers} direct ${change.callers === 1 ? "caller" : "callers"} (tinted on the map, with a line to this change).`}
+          ? "Nothing in the index uses it directly."
+          : `${change.callers} direct ${change.callers === 1 ? "consumer" : "consumers"} (tinted on the map, with a line to this change).`}
       </p>
       {change.untrusted_description && (
         <div className="description">
@@ -253,6 +284,8 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
   const hit = state.pickedHit?.id === id ? state.pickedHit : null;
   const graphNode = nodes.find((n) => n.id === id) ?? null;
   const reviewChange = review?.changes.find((c) => c.id === id) ?? null;
+  const reviewFile = review?.files.find((f) => `file:${f.path}` === id) ?? null;
+  const usedBy = reviewChange?.consumers ?? reviewFile?.consumers ?? null;
   const current = detail && detail.node.id === id ? detail : null;
   const body = current?.node;
 
@@ -362,6 +395,7 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
 
       <div className="inspector-body">
         {reviewChange && <ReviewChangeSection change={reviewChange} />}
+        {usedBy && <UsedBySection id={id} consumers={usedBy} />}
         {hasOverview && <OverviewSection id={id} />}
         {graphNode && !current && !reviewChange && <GraphNodeFacts node={graphNode} view={view} />}
 
