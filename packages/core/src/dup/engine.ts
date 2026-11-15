@@ -21,9 +21,12 @@ import {
 /**
  * Duplicate engine (spec section 17): four tiers from cheapest to most semantic.
  *
- * - exact: same `exactHash`, `stmtCount >= 3`;
- * - near: same `shapeHash` or MinHash Jaccard >= `nearJaccard`, `stmtCount >= 6`, parameter count within 1;
- * - code_vector: cosine >= `codeVector` between normalized-code embeddings (KNN, k = 10);
+ * - exact: same `exactHash`, or same `renamedHash` (the function's own name normalised, #151), `stmtCount >= 3`;
+ * - near: same `shapeHash` or shape MinHash Jaccard >= `nearJaccard`, and token MinHash Jaccard (literals,
+ *   property names and callees kept) >= `nearTokenJaccard`, `stmtCount >= 6`, parameter count within 1. The score
+ *   is the token Jaccard;
+ * - code_vector: cosine >= `codeVector` between normalized-code embeddings (KNN, k = 10), and token MinHash
+ *   Jaccard >= `codeVectorTokenJaccard` (the normalizer turns every string into "s", #131);
  * - semantic: cosine >= `semantic` between description embeddings, compatible signature.
  *
  * Exact and near need no model: they read hashes through in-memory indexes (an exact-hash map, a
@@ -100,8 +103,10 @@ interface Entry {
   exported: boolean;
   stmt: number;
   exactHash: string;
+  renamedHash: string;
   shapeHash: string;
   minhash: Uint32Array;
+  nearMinhash: Uint32Array;
   ckey: string;
   sig: SignatureShape;
 }
@@ -111,6 +116,7 @@ interface DupIndex {
   entries: Entry[];
   byId: Map<string, Entry>;
   byExact: Map<string, Entry[]>;
+  byRenamed: Map<string, Entry[]>;
   byShape: Map<string, Entry[]>;
   byCkey: Map<string, Entry[]>;
   bands: Map<number, Entry[]>[];
@@ -125,8 +131,10 @@ interface SymbolRow {
   signature: string;
   stmt_count: number;
   exact_hash: string;
+  renamed_hash: string | null;
   shape_hash: string;
   minhash: Buffer | null;
+  near_minhash: Buffer | null;
 }
 
 const LAYER_FILES = (layer: "effective" | "main"): string =>
@@ -157,7 +165,7 @@ function buildIndex(store: Store, layer: "effective" | "main"): DupIndex {
     .prepare(
       `WITH eff_files AS (${LAYER_FILES(layer)})
        SELECT s.id, s.file_id, f.path, s.kind, s.exported, s.signature, s.stmt_count, s.exact_hash,
-              s.shape_hash, s.minhash
+              s.shape_hash, s.minhash, s.near_minhash, s.renamed_hash
        FROM symbols s JOIN eff_files f ON f.id = s.file_id AND f.layer = s.layer
        WHERE f.deleted = 0 AND s.kind IN (${KINDS_SQL}) AND s.stmt_count >= ${EXACT_MIN_STMTS}
          AND s.exact_hash != ''
@@ -169,6 +177,7 @@ function buildIndex(store: Store, layer: "effective" | "main"): DupIndex {
     entries: [],
     byId: new Map(),
     byExact: new Map(),
+    byRenamed: new Map(),
     byShape: new Map(),
     byCkey: new Map(),
     bands: Array.from({ length: LSH_BANDS }, () => new Map()),
@@ -186,14 +195,17 @@ function buildIndex(store: Store, layer: "effective" | "main"): DupIndex {
       exported: r.exported === 1,
       stmt: r.stmt_count,
       exactHash: r.exact_hash,
+      renamedHash: r.renamed_hash ?? "",
       shapeHash: r.shape_hash,
       minhash: decodeMinhash(r.minhash),
+      nearMinhash: decodeMinhash(r.near_minhash),
       ckey: contentKey(r.exact_hash),
       sig: signatureShape(r.signature),
     };
     index.entries.push(e);
     index.byId.set(e.id, e);
     push(index.byExact, e.exactHash, e);
+    if (e.renamedHash !== "") push(index.byRenamed, e.renamedHash, e);
     push(index.byCkey, e.ckey, e);
     if (e.stmt >= NEAR_MIN_STMTS) {
       if (e.shapeHash !== "") push(index.byShape, e.shapeHash, e);
@@ -224,8 +236,10 @@ interface Features {
   family: KindFamily;
   stmt: number;
   exactHash: string;
+  renamedHash: string;
   shapeHash: string;
   minhash: Uint32Array;
+  nearMinhash: Uint32Array;
   ckey: string;
   sig: SignatureShape;
 }
@@ -247,8 +261,10 @@ function featuresOfCode(q: DupQuery): Features | null {
     family,
     stmt: sym.stmtCount,
     exactHash: h.exactHash,
+    renamedHash: h.renamedHash,
     shapeHash: h.shapeHash,
     minhash: h.minhash,
+    nearMinhash: h.nearMinhash,
     ckey: contentKey(h.exactHash),
     sig: signatureShape(sym.signature),
   };
@@ -262,8 +278,10 @@ function featuresOfSymbol(s: SymbolRecord, kind?: SymbolKind): Features | null {
     family,
     stmt: s.stmtCount,
     exactHash: s.exactHash,
+    renamedHash: s.renamedHash ?? "",
     shapeHash: s.shapeHash,
     minhash: s.minhash,
+    nearMinhash: s.nearMinhash ?? new Uint32Array(0),
     ckey: contentKey(s.exactHash),
     sig: signatureShape(s.signature),
   };
@@ -275,8 +293,10 @@ function featuresOfEntry(e: Entry): Features {
     family: e.family,
     stmt: e.stmt,
     exactHash: e.exactHash,
+    renamedHash: e.renamedHash,
     shapeHash: e.shapeHash,
     minhash: e.minhash,
+    nearMinhash: e.nearMinhash,
     ckey: e.ckey,
     sig: e.sig,
   };
@@ -292,6 +312,8 @@ interface Deps {
 
 interface Thresholds {
   nearJaccard: number;
+  nearTokenJaccard: number;
+  codeVectorTokenJaccard: number;
   codeVector: number;
   semantic: number;
 }
@@ -311,6 +333,46 @@ interface RunInput {
   hasDescriptionText: boolean;
   /** Skip reasons are reported only when a caller asked for them. */
   skipped?: DupSkip[];
+}
+
+/**
+ * Near-tier verdict for a pair: null when it is not near, else its score. The shape gate (same `shapeHash`, or shape
+ * Jaccard >= `nearJaccard`) finds same-structured code; the token gate (token Jaccard >= `nearTokenJaccard`) drops
+ * pairs that only share a shape, such as two lookup functions that map different strings (#131). The score is the
+ * token Jaccard. A side without a token MinHash (a row from before schema v5) is judged by the shape gate alone.
+ */
+export function nearScore(
+  f: Pick<Features, "shapeHash" | "minhash" | "nearMinhash">,
+  e: Pick<Features, "shapeHash" | "minhash" | "nearMinhash">,
+  t: Pick<Thresholds, "nearJaccard" | "nearTokenJaccard">,
+): number | null {
+  const sameShape = f.shapeHash !== "" && e.shapeHash === f.shapeHash;
+  const shape =
+    e.minhash.length === f.minhash.length && f.minhash.length > 0
+      ? minhashJaccard(f.minhash, e.minhash)
+      : sameShape
+        ? 1
+        : 0;
+  if (!(sameShape || shape >= t.nearJaccard)) return null;
+  if (f.nearMinhash.length !== MINHASH_PERMUTATIONS || e.nearMinhash.length !== MINHASH_PERMUTATIONS)
+    return shape;
+  const tokens = minhashJaccard(f.nearMinhash, e.nearMinhash);
+  return tokens >= t.nearTokenJaccard ? tokens : null;
+}
+
+/**
+ * Code-vector gate (#131): the embedding text replaces every string literal with "s", so two lookup functions that
+ * map different strings embed alike. A code-vector pair must also share this much of the token stream. True when a
+ * side has no token MinHash (a row from before schema v5).
+ */
+export function tokensShared(
+  f: Pick<Features, "nearMinhash">,
+  e: Pick<Features, "nearMinhash">,
+  min: number,
+): boolean {
+  if (f.nearMinhash.length !== MINHASH_PERMUTATIONS || e.nearMinhash.length !== MINHASH_PERMUTATIONS)
+    return true;
+  return minhashJaccard(f.nearMinhash, e.nearMinhash) >= min;
 }
 
 const byScore = (a: DupCandidate, b: DupCandidate): number =>
@@ -355,9 +417,12 @@ function runTiers(inp: RunInput): DupCandidate[] {
     if (f.stmt < EXACT_MIN_STMTS || f.exactHash === "") {
       skip("exact", "below_statement_floor", `fewer than ${EXACT_MIN_STMTS} statements`);
     } else {
+      // The same code, or the same code under another name (renamedHash; rows from before schema v6 have none).
+      const same = new Set<Entry>(index.byExact.get(f.exactHash) ?? []);
+      if (f.renamedHash !== "") for (const e of index.byRenamed.get(f.renamedHash) ?? []) same.add(e);
       take(
         "exact",
-        (index.byExact.get(f.exactHash) ?? []).filter(eligible).map((e) => ({ e, score: 1 })),
+        [...same].filter(eligible).map((e) => ({ e, score: 1 })),
       );
     }
   }
@@ -377,14 +442,8 @@ function runTiers(inp: RunInput): DupCandidate[] {
       const hits: { e: Entry; score: number }[] = [];
       for (const e of cand) {
         if (!eligible(e) || !paramsClose(f.sig.params, e.sig.params)) continue;
-        const sameShape = f.shapeHash !== "" && e.shapeHash === f.shapeHash;
-        const score =
-          e.minhash.length === f.minhash.length && f.minhash.length > 0
-            ? minhashJaccard(f.minhash, e.minhash)
-            : sameShape
-              ? 1
-              : 0;
-        if (sameShape || score >= thresholds.nearJaccard) hits.push({ e, score });
+        const n = nearScore(f, e, thresholds);
+        if (n !== null) hits.push({ e, score: n });
       }
       take("near", hits);
     }
@@ -405,7 +464,8 @@ function runTiers(inp: RunInput): DupCandidate[] {
         for (const n of inp.deps.knn("vec_code", qv, KNN_K, f.ckey)) {
           if (n.cosine < thresholds.codeVector) continue;
           for (const e of index.byCkey.get(n.contentKey) ?? [])
-            if (eligible(e)) hits.push({ e, score: n.cosine });
+            if (eligible(e) && tokensShared(f, e, thresholds.codeVectorTokenJaccard))
+              hits.push({ e, score: n.cosine });
         }
         take("code_vector", hits);
       }

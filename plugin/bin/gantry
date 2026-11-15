@@ -1,2 +1,9 @@
 #!/bin/sh
-exec node "$(dirname "$0")/../dist/cli.js" "$@"
+# Commands Claude runs through the Bash tool do not get CLAUDE_PLUGIN_ROOT or CLAUDE_PLUGIN_DATA, but the MCP server
+# and hooks do. Export the root so the CLI derives the same plugin data dir (spec section 4).
+self=$(cd "$(dirname "$0")/.." && pwd -P)
+if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+  CLAUDE_PLUGIN_ROOT=$self
+  export CLAUDE_PLUGIN_ROOT
+fi
+exec node "$self/dist/cli.js" "$@"

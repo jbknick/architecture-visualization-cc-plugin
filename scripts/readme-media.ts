@@ -1,5 +1,6 @@
 // Regenerates the README's screenshots and GIF in docs/readme/ from the running app on PUBLIC data only:
-//   - the real server (`gantry map`) on a temp copy of fixtures/pnpm-turbo, and
+//   - the real server (`gantry map`) on a temp copy of fixtures/pnpm-turbo (plus a `feature` branch for the review
+//     view), and
 //   - the explorer's mock API with its synthetic `scenario=large` / `scenario=hub` / `scenario=dups` data (web/mock).
 // Never point this at a private repo. Run: `pnpm build && pnpm readme:media` (or `pnpm tsx scripts/readme-media.ts`).
 // Options: --only <name,name>  regenerate just those PNGs (names without .png, or `gif`).
@@ -126,9 +127,28 @@ async function startReal(): Promise<{ url: string; stop: () => void }> {
     GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z",
     GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z",
   };
-  sh("git", ["init", "-q"], { cwd: repo, env });
+  sh("git", ["-c", "init.defaultBranch=main", "init", "-q"], { cwd: repo, env });
   sh("git", ["add", "-A"], { cwd: repo, env });
   sh("git", ["commit", "-q", "-m", "fixture"], { cwd: repo, env });
+  // A `feature` branch for the review view: Button's props gain `size` and slug.ts gains slugifyAll. The index and
+  // the checked-out tree stay at `main`, so every other shot is unchanged.
+  sh("git", ["checkout", "-q", "-b", "feature"], { cwd: repo, env });
+  const button = join(repo, "packages/ui/src/button.tsx");
+  writeFileSync(
+    button,
+    readFileSync(button, "utf8").replace(
+      "{ label, onClick }: { label: string; onClick?: () => void }",
+      "{ label, onClick, size }: { label: string; onClick?: () => void; size?: number }",
+    ),
+  );
+  const slug = join(repo, "packages/utils/src/slug.ts");
+  writeFileSync(
+    slug,
+    `${readFileSync(slug, "utf8")}export function slugifyAll(xs: string[]): string[] {\n  return xs.map(slugify);\n}\n`,
+  );
+  sh("git", ["add", "-A"], { cwd: repo, env });
+  sh("git", ["commit", "-q", "-m", "feature"], { cwd: repo, env });
+  sh("git", ["checkout", "-q", "main"], { cwd: repo, env });
   sh("node", [cliJs, "init"], { cwd: repo, env });
   const server = spawn("node", [cliJs, "map", "--no-open"], {
     cwd: repo,
@@ -435,7 +455,15 @@ async function stills(browser: Browser, mockBase: string) {
 }
 
 async function fixtureStills(browser: Browser) {
-  if (!want("fixture-project-map") && !want("fixture-caller-graph") && !want("fixture-settlements")) return;
+  if (
+    !want("fixture-project-map") &&
+    !want("fixture-caller-graph") &&
+    !want("fixture-settlements") &&
+    !want("fixture-review") &&
+    !want("fixture-review-3d") &&
+    !want("fixture-review-rings")
+  )
+    return;
   const real = await startReal();
   try {
     const page = await newPage(browser);
@@ -468,11 +496,41 @@ async function fixtureStills(browser: Browser) {
       await settle(page);
       await save(page, "fixture-caller-graph");
     }
+    if (want("fixture-review")) {
+      // The review on the 2D map (#167), Button selected from the left panel: the inspector shows its signature.
+      const button = encodeURIComponent("sym:packages/ui/src/button.tsx#Button");
+      await page.goto(`${base}#/review?range=main...feature&sel=${button}`);
+      await page.locator("[data-testid=review-canvas][data-ready=true]").waitFor({ timeout: 30_000 });
+      await page.locator(".gc-sigma[data-ready=true]").waitFor({ timeout: 30_000 });
+      await page.getByRole("region", { name: "Change in this review" }).waitFor();
+      await page.getByRole("button", { name: "Fit" }).click();
+      await cameraIdle(page);
+      await settle(page);
+      await save(page, "fixture-review");
+    }
+    if (want("fixture-review-rings")) {
+      // Button in focus: its direct callers strong, its potential ones soft, the rest faded (#169).
+      const focusButton = encodeURIComponent("sym:packages/ui/src/button.tsx#Button");
+      await page.goto(`${base}#/review?range=main...feature&mode=rings&sel=${focusButton}`);
+      await page.locator("[data-testid=review-canvas][data-mode=rings]").waitFor({ timeout: 30_000 });
+      await settle(page);
+      await save(page, "fixture-review-rings");
+    }
     await page.context().close();
     if (want("fixture-settlements")) {
       const p = await newPage(browser, "light", true);
       await openSettlements(p, `${base}#/map-3d`);
       await save(p, "fixture-settlements");
+      await p.context().close();
+    }
+    if (want("fixture-review-3d")) {
+      const p = await newPage(browser, "light", true);
+      await p.goto(`${base}#/review?range=main...feature&map=3d`);
+      await p.locator(".map3d[data-ready='true'][data-style='settlements']").waitFor({ timeout: 30_000 });
+      await p.locator("[data-testid=map3d-canvas][data-review]").waitFor({ timeout: 30_000 });
+      await p.locator("[data-testid=map3d-canvas][data-frames]").waitFor();
+      await settle(p);
+      await save(p, "fixture-review-3d");
       await p.context().close();
     }
   } finally {

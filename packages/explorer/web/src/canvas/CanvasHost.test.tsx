@@ -26,6 +26,8 @@ describe("graph canvas slot", () => {
     }
     // The duplicates view is a ranked list with a detail pane, so "clusters" has its own renderer.
     expect(getCanvas("clusters")).not.toBe(CanvasHost);
+    // The review view (#167) wraps the 2D and 3D map canvases with its legend: hint "review".
+    expect(getCanvas("review")).not.toBe(CanvasHost);
     expect(getCanvas("3d")).not.toBe(CanvasHost);
 
     vi.stubGlobal("WebGL2RenderingContext", class {});

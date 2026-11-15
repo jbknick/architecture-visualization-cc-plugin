@@ -5,10 +5,20 @@ import { badgeTipLines } from "../badges.ts";
 import { debugEnabled } from "../debug.ts";
 import { useRankView } from "../rankedFiles/store.ts";
 import { useRanked } from "../rankedFiles/useRanked.ts";
+import { useRefresh } from "../refresh.ts";
 import type { CanvasProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
 import { getBool } from "../views/filterUtils.ts";
+import { useReviewFocus } from "../views/reviewFocus.ts";
+import {
+  FAR_KEY,
+  focusedChange,
+  layerFocus,
+  MARK_COLOURS,
+  MARK_WORDS,
+  paintLayer,
+} from "../views/reviewModel.ts";
 import { GROUP_KIND, kindTier, type TreeNode } from "./hierarchy.ts";
 import { Legend } from "./Legend.tsx";
 import { runLayout } from "./layoutClient.ts";
@@ -22,9 +32,10 @@ import {
   type EdgeHit,
   locatePath,
   pickCell,
+  type ReviewPaintEnv,
 } from "./mapDraw.ts";
 import { rootRect, worldRectOf } from "./mapGeom.ts";
-import { DEFAULT_VIEWPORT, FIT_INSETS } from "./mapLayout.ts";
+import { DEFAULT_VIEWPORT, FIT_INSETS, keepFrom } from "./mapLayout.ts";
 import { mapView, useMapView } from "./mapView.ts";
 import { hashPositions } from "./prng.ts";
 import {
@@ -37,7 +48,7 @@ import {
   selectionLinks,
 } from "./scene.ts";
 import { type CanvasTheme, readTheme } from "./style.ts";
-import type { LayoutResult, Rect } from "./types.ts";
+import type { KeepLayout, LayoutResult, MapGeometry, Rect } from "./types.ts";
 import { type Level, levelForRatio } from "./zoom.ts";
 
 export interface TreemapCanvasProps extends CanvasProps {
@@ -68,6 +79,21 @@ function plain(id: string): string {
   return id.replace(/^(sym|file|ws|dir):/, "");
 }
 
+/** The last finished layout of a canvas, so a refresh can keep it (spec section 11 (c)). */
+interface LastLayout {
+  /** View, focus, level, filters and hint: a refresh keeps the layout only for the same picture. */
+  routeKey: string;
+  generation: number;
+  /** This layout itself kept an earlier one: later layouts of the same picture keep it too. */
+  kept: boolean;
+  ids: string[];
+  roots: boolean[];
+  map: MapGeometry;
+  /** The camera when the canvas was last drawn, and whether the user had moved it. */
+  cam: Camera | null;
+  userMoved: boolean;
+}
+
 /** File nodes fetched in the background for the Folders-level mosaic, by request (focus + filters). */
 const mosaicCache = new Map<string, GraphNode[]>();
 
@@ -80,8 +106,9 @@ function useMosaicFiles(
   view: string | null,
   focus: string | null,
   filters: Filters,
+  generation: number,
 ): GraphNode[] | null {
-  const key = JSON.stringify([view, focus, filters]);
+  const key = JSON.stringify([view, focus, filters, generation]);
   const [loaded, setLoaded] = useState<{ key: string; files: GraphNode[] } | null>(() => {
     const hit = mosaicCache.get(key);
     return hit ? { key, files: hit } : null;
@@ -118,26 +145,31 @@ export function TreemapCanvas({
   onHover,
   onDrill,
   panelLegend,
+  data,
 }: TreemapCanvasProps) {
   const { view, state } = useStore();
   const { route } = state;
+  const { generation, fresh } = useRefresh();
   // Folders level: file cells arrive in the background and are drawn as a faint mosaic (see `useMosaicFiles`).
   const wantMosaic =
     route.level === "dirs" && layoutHint === "nested-elk" && !baseScene.nodes.some((n) => n.kind === "file");
-  const mosaicFiles = useMosaicFiles(wantMosaic, view, route.focus, route.filters);
+  const mosaicFiles = useMosaicFiles(wantMosaic, view, route.focus, route.filters, generation);
   const scene = useMemo(() => {
     if (!mosaicFiles || mosaicFiles.length === 0) return baseScene;
     const known = new Set(baseScene.nodes.map((n) => n.id));
     const files = mosaicFiles.filter((f) => f.parent && known.has(f.parent) && !known.has(f.id));
     return files.length === 0
       ? baseScene
-      : buildScene([...baseScene.nodes, ...files], edges, layoutHint, { mosaic: true });
+      : buildScene([...baseScene.nodes, ...files], edges, layoutHint, {
+          mosaic: true,
+          ...(baseScene.sticky ? { sticky: baseScene.sticky } : {}),
+        });
   }, [baseScene, mosaicFiles, edges, layoutHint]);
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<CanvasTheme>(() => readTheme(null));
-  const [layout, setLayout] = useState<(LayoutResult & { key: string }) | null>(null);
+  const [layout, setLayout] = useState<(LayoutResult & { key: string; kept?: boolean }) | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [level, setLevel] = useState<Level>("far");
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
@@ -145,10 +177,18 @@ export function TreemapCanvas({
   const [crumbs, setCrumbs] = useState<Crumb[] | null>(null);
   const [zoomedIn, setZoomedIn] = useState(false);
   const layoutViewport = useRef<{ w: number; h: number } | null>(null);
+  const lastLayout = useRef<LastLayout | null>(null);
+  /** Set by the Re-layout button: the next layout starts from scratch instead of keeping the last one. */
+  const fromScratch = useRef(false);
+  const routeKey = JSON.stringify([view, route.focus, route.level, route.filters, layoutHint]);
   const ui = useMapView();
   // Files level: the largest files get numbered markers on their tiles (the same ranking as the left panel's list).
   const filesLevel = route.level === "files" || (route.level === null && !route.focus);
-  const ranked = useRanked(nodes, getBool(route.filters, "hideTests", true), filesLevel && !baseScene.mosaic);
+  const ranked = useRanked(
+    nodes,
+    getBool(route.filters, "hideTests", true),
+    filesLevel && !baseScene.mosaic && !data?.review,
+  );
   const debug = useMemo(debugEnabled, []);
   const callbacks = useRef({ onSelect, onHover, onDrill });
   callbacks.current = { onSelect, onHover, onDrill };
@@ -171,12 +211,14 @@ export function TreemapCanvas({
     hoverEdge: null as string | null,
     ranks: [] as { index: number; rank: number }[],
     rankHover: null as number | null,
+    fresh: [] as number[],
+    review: null as ReviewPaintEnv | null,
   });
 
   const sceneKey = useMemo(
     () =>
-      `${scene.nodes.length}:${scene.edges.length}:${scene.nodes[0]?.id ?? ""}:${scene.nodes.at(-1)?.id ?? ""}`,
-    [scene],
+      `${generation}:${scene.nodes.length}:${scene.edges.length}:${scene.nodes[0]?.id ?? ""}:${scene.nodes.at(-1)?.id ?? ""}`,
+    [scene, generation],
   );
 
   // Theme: follow the shell's CSS variables and the OS colour scheme.
@@ -207,11 +249,34 @@ export function TreemapCanvas({
       }
       const viewport = sized ? { w: box.clientWidth, h: box.clientHeight } : DEFAULT_VIEWPORT;
       layoutViewport.current = viewport;
-      const job = runLayout(layoutInputFor(scene, layoutHint, null, undefined, viewport));
+      // After a refresh, the same picture keeps its layout: boxes and the weights of every node that was there.
+      const last = lastLayout.current;
+      const keepIt =
+        !fromScratch.current &&
+        last !== null &&
+        last.routeKey === routeKey &&
+        (last.generation < generation || last.kept);
+      fromScratch.current = false;
+      const keep: KeepLayout | undefined =
+        keepIt && last ? keepFrom(last.ids, last.map, (i) => last.roots[i] === true) : undefined;
+      const job = runLayout({ ...layoutInputFor(scene, layoutHint, null, undefined, viewport), keep });
       cancel = job.cancel;
       job.promise.then(
         (result) => {
-          if (alive) setLayout({ ...result, key: sceneKey });
+          if (!alive) return;
+          if (result.map) {
+            lastLayout.current = {
+              routeKey,
+              generation,
+              kept: keepIt,
+              ids: scene.nodes.map((n) => n.id),
+              roots: scene.tree.nodes.map((n) => n.parent === -1),
+              map: result.map,
+              cam: keepIt ? (last?.cam ?? null) : null,
+              userMoved: keepIt ? (last?.userMoved ?? false) : false,
+            };
+          }
+          setLayout({ ...result, key: sceneKey, kept: keepIt });
         },
         (err: unknown) => {
           if (alive) setError(err instanceof Error ? err.message : String(err));
@@ -225,8 +290,47 @@ export function TreemapCanvas({
     };
   }, [scene, sceneKey, layoutHint, tick]);
 
-  // Selection and highlight state shared with the draw loop.
-  const selectedIndex = focus ? (scene.tree.index.get(focus) ?? null) : null;
+  // Cells the last refresh added or changed (leaves only: the functions, or the files at the Files level).
+  const freshIndex = useMemo(() => {
+    const out: number[] = [];
+    if (fresh.size === 0) return out;
+    scene.tree.nodes.forEach((n, i) => {
+      if (n.children.length === 0 && fresh.has(n.id)) out.push(i);
+    });
+    return out;
+  }, [scene, fresh]);
+
+  // Review layer (#167): the review drawn over this very map; the layout above never sees it, so nothing moves.
+  const layer = data?.review?.layer ?? null;
+  const far = getBool(route.filters, FAR_KEY, false);
+  // A selected change (or one of its consumers, picked from the panel) shows only that change's consumers and lines.
+  const storedChange = useReviewFocus();
+  const focusChange = focusedChange(data?.review, focus, storedChange);
+  const reviewFocusOn = useMemo(() => layerFocus(data?.review, focusChange), [data?.review, focusChange]);
+  const reviewPaint = useMemo<ReviewPaintEnv | null>(
+    () =>
+      layer
+        ? {
+            ...paintLayer(
+              {
+                ids: scene.tree.nodes.map((n) => n.id),
+                parents: scene.tree.nodes.map((n) => n.parent),
+              },
+              layer,
+              far,
+              reviewFocusOn,
+            ),
+            colours: MARK_COLOURS[theme.scheme ?? currentScheme()],
+          }
+        : null,
+    [scene, layer, far, theme.scheme, reviewFocusOn],
+  );
+
+  // Selection and highlight state shared with the draw loop. A changed symbol picked in the review panel selects the
+  // cell that shows it at this level (its file, folder or workspace).
+  const selectedIndex = focus
+    ? (scene.tree.index.get(focus) ?? reviewPaint?.placed.get(focus) ?? null)
+    : null;
   const hoverWsIndex = ui.hoverWorkspace ? (scene.tree.index.get(ui.hoverWorkspace) ?? null) : null;
   const rankIndex = useMemo(
     () =>
@@ -244,12 +348,18 @@ export function TreemapCanvas({
       ...live.current,
       theme,
       selected: selectedIndex,
-      bright: selectedIndex === null ? null : brightSet(scene, selectedIndex),
-      links: selectedIndex !== null && selectedTier > 0 ? selectionLinks(scene, selectedIndex) : [],
+      // With the review layer on, its own colours and lines say what matters; the selection only gets its outline.
+      bright: selectedIndex === null || reviewPaint ? null : brightSet(scene, selectedIndex),
+      links:
+        selectedIndex !== null && selectedTier > 0 && !reviewPaint
+          ? selectionLinks(scene, selectedIndex)
+          : [],
       showDeclared: ui.showDeclared,
       panelHover: hoverWsIndex,
       ranks: rankIndex,
       rankHover: rankHoverIndex,
+      fresh: freshIndex,
+      review: reviewPaint,
       highlightWs:
         selectedIndex !== null && selectedTier === 0
           ? selectedIndex
@@ -258,7 +368,17 @@ export function TreemapCanvas({
             : null,
     };
     engine.current?.redraw();
-  }, [scene, selectedIndex, theme, ui.showDeclared, hoverWsIndex, rankIndex, rankHoverIndex]);
+  }, [
+    scene,
+    selectedIndex,
+    theme,
+    ui.showDeclared,
+    hoverWsIndex,
+    rankIndex,
+    rankHoverIndex,
+    freshIndex,
+    reviewPaint,
+  ]);
 
   // The camera, pointer handling and the draw loop, rebuilt whenever the layout changes.
   useEffect(() => {
@@ -355,7 +475,14 @@ export function TreemapCanvas({
         reserved: keyRects(),
         ranks: l.ranks,
         rankHover: l.rankHover,
+        fresh: l.fresh,
+        review: l.review,
       });
+      const remembered = lastLayout.current;
+      if (remembered && remembered.map === geo) {
+        remembered.cam = { ...cam };
+        remembered.userMoved = userMoved;
+      }
       const pastFit = cam.scale > fitScale * ZOOMED_PAST_FIT;
       if (pastFit !== zoomedPast) {
         zoomedPast = pastFit;
@@ -525,6 +652,11 @@ export function TreemapCanvas({
       lines.push(bits.join(" · "));
       lines.push(node?.path ?? plain(n.id));
       if (cls >= 3) lines.push(...badgeTipLines(node?.badges));
+      const rv = live.current.review;
+      const ch = rv?.change[i];
+      const hop = rv?.hop[i] ?? 0;
+      if (ch) lines.push(`Review: ${MARK_WORDS[ch].label.toLowerCase()}`);
+      else if (hop > 0) lines.push(`Review: calls changed code (hop ${hop})`);
       return lines;
     };
     /** The tile of the rank marker under a point (markers sit on top of the tiles), or null. */
@@ -631,10 +763,16 @@ export function TreemapCanvas({
     box.addEventListener("dblclick", onDouble);
     box.addEventListener("wheel", onWheel, { passive: false });
 
-    // Test hook: write the last frame's hit geometry and a hash of the positions to `data-probe`.
-    const onProbe = () => {
+    // Test hook: write the last frame's hit geometry and a hash of the positions to `data-probe`. With
+    // `{ positions: true }` as the event detail it also writes every node's position (refresh tests compare them).
+    const onProbe = (e: Event) => {
+      const withPositions = (e as CustomEvent<{ positions?: boolean } | null>).detail?.positions === true;
       box.dataset.probe = JSON.stringify({
         hash: hashPositions(layout.positions),
+        ...(withPositions ? { positions: layout.positions } : {}),
+        kept: layout.kept === true,
+        generation,
+        fresh: live.current.fresh.map((i) => scene.nodes[i]?.id),
         scale: cam.scale,
         fitScale,
         panelHover: live.current.panelHover === null ? null : scene.nodes[live.current.panelHover]?.id,
@@ -664,6 +802,7 @@ export function TreemapCanvas({
           };
         }),
         badged: last.badged,
+        review: reviewProbe(live.current.review, last, (i) => scene.nodes[i]?.id),
         regions: last.boxes.map((b) => ({ id: scene.nodes[b.index]?.id, x: b.x, y: b.y, w: b.w, h: b.h })),
       });
     };
@@ -690,6 +829,12 @@ export function TreemapCanvas({
     resizeObserver.observe(box);
 
     doFit(false);
+    // A refresh keeps the camera where the user left it (the layout is kept too).
+    const before = lastLayout.current;
+    if (layout.kept && before?.map === geo && before.cam && before.userMoved) {
+      setCam(before.cam);
+      userMoved = true;
+    }
     box.dataset.nodes = String(tree.nodes.length);
     box.dataset.mosaic = String(scene.mosaic);
     requestDraw();
@@ -710,7 +855,7 @@ export function TreemapCanvas({
       box.removeEventListener("gantry:probe", onProbe);
       engine.current = null;
     };
-  }, [layout, scene, sceneKey]);
+  }, [layout, scene, sceneKey, generation]);
 
   // Selecting from outside the canvas (search, inspector, deep link) brings the node into view.
   useEffect(() => {
@@ -767,6 +912,7 @@ export function TreemapCanvas({
   }, [scene]);
 
   const relayout = useCallback(() => {
+    fromScratch.current = true;
     setLayout(null);
     setTick((t) => t + 1);
   }, []);
@@ -862,4 +1008,28 @@ export function TreemapCanvas({
       )}
     </div>
   );
+}
+
+/** Test hook: what the review layer marked and what the last frame drew of it, by node id. */
+function reviewProbe(rv: ReviewPaintEnv | null, last: DrawResult, id: (i: number) => string | undefined) {
+  if (!rv) return null;
+  return {
+    changed: rv.change.flatMap((c, i) => (c ? [{ id: id(i), change: c }] : [])),
+    affected: [...rv.hop].flatMap((h, i) => (h > 0 ? [{ id: id(i), hop: h }] : [])),
+    lit: [...rv.lit].filter((x) => x === 1).length,
+    drawn: last.review
+      ? {
+          changed: last.review.changed,
+          affected: last.review.affected,
+          faded: last.review.faded,
+          links: last.review.links.map((l) => ({
+            src: id(l.src),
+            dst: id(l.dst),
+            change: l.change,
+            colour: l.colour,
+            ...(l.soft ? { soft: true } : {}),
+          })),
+        }
+      : null,
+  };
 }

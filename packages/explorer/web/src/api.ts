@@ -41,8 +41,12 @@ export interface GraphNode {
   members?: GroupMember[];
   /** Ego group nodes: true when expanded; the members then follow as separate nodes. */
   expanded?: boolean;
-  /** Ego view: id of the expanded group a node is listed under. */
+  /** Ego view: id of the expanded group a node is listed under. Review rings: the node's file path. */
   group?: string;
+  /** Review view, rings mode: how a changed symbol changed. */
+  change?: ChangeKind;
+  /** Review view, rings mode: the changed symbol's signature differs between the two sides. */
+  signatureChanged?: boolean;
   x?: number;
   y?: number;
 }
@@ -68,11 +72,27 @@ export interface ViewInfo {
   enabled: boolean;
 }
 
+/** Files changed since the index was last brought up to date (spec section 11 (c)). */
+export interface Stale {
+  files: number;
+}
+
 export interface Meta {
   repo: string;
   headSha: string | null;
   counts: { workspaces: number; files: number; symbols: number; edges: number } & Record<string, number>;
   views: ViewInfo[];
+  stale?: Stale;
+}
+
+/** `POST /api/refresh`: what the heal plus working-layer re-index changed. */
+export interface RefreshResult {
+  changed: { files: number; functions: number };
+  ms: number;
+  healed: boolean;
+  /** Ids of the changed files (`file:<path>`). */
+  files: string[];
+  functions: { added: string[]; changed: string[]; removed: string[] };
 }
 
 export type DupTier = "exact" | "near" | "code_vector" | "semantic";
@@ -173,7 +193,145 @@ export interface SharedSymbol {
   usedBy: { id: string; label: string }[];
 }
 
+export type ChangeKind = "added" | "modified" | "removed" | "moved" | "renamed";
+
+/** One side (before or after) of a changed symbol. */
+export interface ReviewSide {
+  id: string;
+  path: string;
+  line: number;
+  signature: string;
+  exported: boolean;
+}
+
+/** How a consumer uses the changed item (or, for a potential consumer, the node one step nearer). */
+export type UseKind =
+  | "calls"
+  | "renders"
+  | "uses_hook"
+  | "extends"
+  | "implements"
+  | "references_type"
+  | "imports"
+  | "serves"
+  | "handles"
+  | "requests";
+
+/** One consumer of a change (#169): names and paths only. */
+export interface ReviewConsumer {
+  id: string;
+  name: string;
+  kind: string;
+  path: string;
+  line: number | null;
+  workspace: string | null;
+  /** 1: directly affected; 2 or 3: potentially affected. */
+  hop: number;
+  uses: UseKind[];
+  crosses: ("workspace" | "app" | "client_server")[];
+  /** Potential only: the direct consumer it reaches the change through. */
+  via?: string;
+  /** Potential only: the node it uses, one step nearer the change. */
+  next?: string;
+  /** The node of this map that shows it. */
+  node?: string;
+  /** Potential only: the node that shows `next`. */
+  nextNode?: string;
+}
+
+export interface ReviewConsumers {
+  direct: ReviewConsumer[];
+  directTotal: number;
+  potential: ReviewConsumer[];
+  potentialTotal: number;
+}
+
+export interface ReviewChange {
+  id: string;
+  kind: ChangeKind;
+  name: string;
+  symbolKind: string;
+  path: string;
+  line: number;
+  signatureChanged: boolean;
+  exportedChanged: boolean;
+  locDelta: number;
+  before?: ReviewSide;
+  after?: ReviewSide;
+  /** Distinct direct consumers (`consumers.directTotal`). */
+  callers: number;
+  /** Directly and potentially affected consumers. */
+  consumers: ReviewConsumers;
+  /** Model-written text about untrusted code. Untrusted: render as plain text only. */
+  untrusted_description: string | null;
+}
+
+export interface ReviewRiskRule {
+  id: string;
+  label: string;
+  points: number;
+  perUnit?: boolean;
+  max?: number;
+}
+
+/** How a map node looks in the review layer (`moved` covers renamed and moved). */
+export type ReviewMarkKind = "added" | "modified" | "signature" | "moved" | "removed";
+
+export interface ReviewMark {
+  id: string;
+  change?: ReviewMarkKind;
+  changes?: number;
+  hop?: number;
+}
+
+export interface ReviewLink {
+  id: string;
+  src: string;
+  dst: string;
+  change: ReviewMarkKind;
+  weight: number;
+}
+
+/** The review as a layer on the map in the same response: marks and lines by node id, at the map's level. */
+export interface ReviewLayer {
+  marks: ReviewMark[];
+  links: ReviewLink[];
+  linksTotal: number;
+  /** Changed symbol and file ids, and consumer ids -> the node that shows them. */
+  placed: [string, string][];
+  unplaced: string[];
+}
+
+/** `review` of the review view and of a project map with `range` (packages/explorer/server/views/review.ts). */
+export interface ReviewData {
+  range: string;
+  pr?: number;
+  base: string;
+  head: string;
+  mergeBase: string;
+  headSha: string;
+  /** `map`: the layer on the project map (default); `rings`: changed code in the centre, callers by hop. */
+  mode: "map" | "rings";
+  /** The map the review view draws on. */
+  map: "2d" | "3d";
+  /** Rings mode: edges between rings before the cap. */
+  edgesTotal?: number;
+  files: { path: string; status: "A" | "M" | "D" | "R"; changes: number; consumers: ReviewConsumers }[];
+  changes: ReviewChange[];
+  callersByHop: { hop: number; count: number }[];
+  crossings: { from: string; to: string; kind: "workspace" | "app" | "client_server" }[];
+  risk: { score: number; level: "low" | "medium" | "high"; reasons: string[] };
+  rules: ReviewRiskRule[];
+  levels: { medium: number; high: number };
+  notes: string[];
+  layer: ReviewLayer;
+  ms: number;
+  cached: boolean;
+}
+
 export interface ViewData extends Partial<DuplicatesData> {
+  /** Review view: the diff, impact and risk. Null when no range or pull request was given. */
+  review?: ReviewData | null;
   /** Pages view: every app with routes, whatever the filter says. */
   apps?: PagesApp[];
   /** Slices view: functions used from at least two other slices. */
@@ -183,6 +341,7 @@ export interface ViewData extends Partial<DuplicatesData> {
   nodes: GraphNode[];
   edges: GraphEdge[];
   layoutHint: string;
+  stale?: Stale;
 }
 
 export interface DismissResult {
@@ -345,6 +504,27 @@ export const api = {
       body: JSON.stringify({ positions }),
     });
     if (!res.ok) throw new ApiError(res.status, `layout save failed with ${res.status}`);
+  },
+
+  /** Re-indexes what changed (heal plus the working layer). One at a time on the server. */
+  refresh: async (): Promise<RefreshResult> => {
+    const res = await fetch("/api/refresh", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    if (!res.ok) {
+      let detail = "";
+      try {
+        const body = (await res.json()) as { error?: unknown };
+        if (typeof body.error === "string") detail = body.error;
+      } catch {
+        // not JSON
+      }
+      throw new ApiError(res.status, detail || `refresh failed with ${res.status}`);
+    }
+    return (await res.json()) as RefreshResult;
   },
 
   /** Marks two functions as "not a duplicate". Hidden for good, and in the duplicate guard too. */

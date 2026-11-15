@@ -5,6 +5,10 @@
  * issue); results go only to `$GANTRY_PRIVATE_DIR/m2/`: `labels.json` (key to true/false), `label-detail.jsonl`
  * (key, verdict, one-line reason), Prints aggregate counts. The operator's spot-check sample is drawn by `spotcheck.ts`.
  *
+ * Since #131 the labeller judges the post-batch state, as the replay's checks do: the existing function as it is at
+ * the alert's commit (its parent's version only when the commit has none) and the nearest package.json at the commit.
+ * Alerts the double-check dropped are not shown to anyone and are not labelled.
+ *
  * Usage: GANTRY_PRIVATE_DIR=... CLAUDE_PLUGIN_DATA=<data dir> pnpm tsx evals/m2/label.ts <clone>
  * <clone> only supplies git history (`git show <commit>^:<path>`); it is not modified.
  */
@@ -84,9 +88,9 @@ for (const e of edits) {
   const newText = showOr(e.commit, e.path);
   for (const c of e.cands as Cand[]) {
     const k = dupKey(e, c);
-    if (items.has(k)) continue;
+    if (items.has(k) || c.verified === false) continue;
     const m = symLoc(c.match);
-    const oldText = showOr(`${e.commit}^`, m.path);
+    const oldText = showOr(e.commit, m.path) || showOr(`${e.commit}^`, m.path);
     items.set(k, {
       key: k,
       prompt: `Duplicate alert [${c.tier} ${c.score.toFixed(2)}]\nNEW (${e.path}, edit):\n${symbolText(newText, symLoc(c.sym).name, c.line)}\n\nEXISTING (${m.path}):\n${symbolText(oldText, m.name)}`,
@@ -94,13 +98,13 @@ for (const e of edits) {
   }
   for (const i of e.imports) {
     const k = importKey(e, i);
-    if (items.has(k)) continue;
+    if (items.has(k) || i.verified === false) continue;
     const dir = e.path.split("/");
     let pkg = "";
     while (dir.length > 0) {
       dir.pop();
       const cand = [...dir, "package.json"].join("/");
-      const t = showOr(`${e.commit}^`, cand);
+      const t = showOr(e.commit, cand);
       if (t) {
         pkg = `${cand}:\n${t.slice(0, 3000)}`;
         break;
@@ -108,7 +112,7 @@ for (const e of edits) {
     }
     items.set(k, {
       key: k,
-      prompt: `Import alert: "${i.action}"\nFile ${e.path} line ${i.line}: ${sliceLines(newText, i.line, i.line)}\nNearest package.json at the parent commit:\n${pkg || "(none)"}`,
+      prompt: `Import alert: "${i.action}"\nFile ${e.path} line ${i.line}: ${sliceLines(newText, i.line, i.line)}\nNearest package.json at the same commit (after the change):\n${pkg || "(none)"}`,
     });
   }
 }

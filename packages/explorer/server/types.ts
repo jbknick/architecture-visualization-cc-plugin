@@ -26,6 +26,10 @@ export interface GraphNode {
   expanded?: boolean;
   /** Ego view: id of the (expanded) group a node was listed under. */
   group?: string;
+  /** Review view, rings mode: how a changed symbol changed (added, modified, removed, moved, renamed). */
+  change?: string;
+  /** Review view, rings mode: the changed symbol's signature differs between the two sides. */
+  signatureChanged?: boolean;
   x?: number;
   y?: number;
 }
@@ -70,7 +74,9 @@ export type LayoutHint =
   | "columns"
   | "clusters"
   | "bowtie"
-  | "force-3d";
+  | "force-3d"
+  /** The review view (#167): the project map, 2D or 3D, with the review layer on it. */
+  | "review";
 
 export type ViewLevel = "workspaces" | "dirs" | "files" | "symbols";
 
@@ -107,5 +113,6 @@ export interface ViewModule {
   id: string;
   title: string;
   enabled: boolean;
-  build(ctx: ApiContext, params: ViewParams): ViewResult;
+  /** May return a promise (the review view reads git). */
+  build(ctx: ApiContext, params: ViewParams): ViewResult | Promise<ViewResult>;
 }

@@ -1,4 +1,5 @@
 import type { Meta } from "../api.ts";
+import { StaleMarker } from "./TopBar.tsx";
 
 interface Props {
   meta: Meta | null;
@@ -22,6 +23,7 @@ export function StatusBar({ meta, shownNodes, shownEdges, loading, error }: Prop
       <span className="spacer" />
       {error && <span className="status-error">View failed: {error}</span>}
       {loading && <span>Loading…</span>}
+      <StaleMarker />
       {/* The server only reports these once descriptions and working-tree overlays exist (M2, M4). */}
       {c.backlog !== undefined && <span>Backlog: {c.backlog}</span>}
       {c.workingFiles !== undefined && <span>Working changes: {c.workingFiles} files</span>}

@@ -69,7 +69,7 @@ describe("pre-v3 database", () => {
 
     const s = openStore(ix.paths.dbPath);
     try {
-      expect(s.getMeta("schema_version")).toBe("4");
+      expect(s.getMeta("schema_version")).toBe("6");
       expect(s.effectiveFile(`file:${CLIENT}`)).toBeDefined();
       expect(s.effectiveFile(`file:${CLIENT}`)?.directives).toBeUndefined();
       // Behaves as "no directive": no boundary crossing is reported until re-indexed.

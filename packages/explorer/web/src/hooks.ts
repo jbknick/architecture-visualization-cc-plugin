@@ -9,6 +9,7 @@ import {
   type ViewData,
   type ViewLevel,
 } from "./api.ts";
+import { refreshStore, useRefresh } from "./refresh.ts";
 
 /** Dispatch on `window` to fetch the current view again (after a write such as a dismissal). */
 export const RELOAD_VIEW_EVENT = "gantry:reload-view";
@@ -57,9 +58,10 @@ export function useViewData(
     window.addEventListener(RELOAD_VIEW_EVENT, onReload);
     return () => window.removeEventListener(RELOAD_VIEW_EVENT, onReload);
   }, []);
-  const key = view === null ? null : JSON.stringify([view, params, tick]);
-  return useLoad(key, (signal) =>
-    api.view(
+  const { generation } = useRefresh();
+  const key = view === null ? null : JSON.stringify([view, params, tick, generation]);
+  return useLoad(key, async (signal) => {
+    const data = await api.view(
       view ?? "",
       {
         focus: params.focus ?? undefined,
@@ -68,12 +70,20 @@ export function useViewData(
         filters: params.filters,
       },
       signal,
-    ),
-  );
+    );
+    refreshStore.noteStale(data.stale?.files);
+    return data;
+  });
+}
+
+/** `key` plus the refresh generation, so a refresh fetches it again; null stays null (no request). */
+function useFreshKey(key: string | null): string | null {
+  const { generation } = useRefresh();
+  return key === null ? null : `${generation}\u0000${key}`;
 }
 
 export function useNodeDetail(id: string | null): Loadable<NodeDetail> {
-  return useLoad(id, (signal) => api.node(id ?? "", signal));
+  return useLoad(useFreshKey(id), (signal) => api.node(id ?? "", signal));
 }
 
 /**
@@ -82,7 +92,10 @@ export function useNodeDetail(id: string | null): Loadable<NodeDetail> {
  * the `node_id` it carries. Data from an earlier id is hidden and counts as loading.
  */
 export function useOverview(id: string | null): Loadable<OverviewDetail> {
-  const r = useLoad(id, async (signal) => ({ asked: id, detail: await api.overview(id ?? "", signal) }));
+  const r = useLoad(useFreshKey(id), async (signal) => ({
+    asked: id,
+    detail: await api.overview(id ?? "", signal),
+  }));
   if (id === null) return { data: null, loading: false, error: null };
   const fetched = r.data !== null && r.data.asked === id ? r.data.detail : null;
   return {
@@ -93,7 +106,7 @@ export function useOverview(id: string | null): Loadable<OverviewDetail> {
 }
 
 export function useSource(path: string | null, start: number, end: number): Loadable<SourceSlice> {
-  const key = path === null ? null : `${path}:${start}:${end}`;
+  const key = useFreshKey(path === null ? null : `${path}:${start}:${end}`);
   return useLoad(key, (signal) => api.source(path ?? "", start, end, signal));
 }
 

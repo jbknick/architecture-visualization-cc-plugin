@@ -5,8 +5,9 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { GantryConfigSchema, loadConfigForDb } from "../config/index.js";
 import { contentKey } from "../describe/factsheet.js";
 import { ensureVecTables, putVectors, vecAvailable } from "../embed/index.js";
-import { MINHASH_PERMUTATIONS } from "../hash/index.js";
+import { hashSymbol, MINHASH_PERMUTATIONS } from "../hash/index.js";
 import { indexRepo } from "../indexer.js";
+import { parseSource } from "../parse/index.js";
 import { type GantryPaths, resolvePaths } from "../paths/index.js";
 import { openStore, type Store } from "../store/index.js";
 import type { FileRecord, SymbolRecord } from "../types.js";
@@ -15,7 +16,9 @@ import {
   dismiss,
   findDuplicates,
   findDuplicatesDetailed,
+  nearScore,
   rebuildSimilarEdges,
+  tokensShared,
 } from "./index.js";
 
 // The fixture helper lives outside tsconfig rootDir (src), so load it dynamically by path.
@@ -75,8 +78,10 @@ interface SymSpec {
   signature?: string;
   stmtCount?: number;
   exactHash: string;
+  renamedHash?: string;
   shapeHash: string;
   minhash: Uint32Array;
+  nearMinhash?: Uint32Array;
 }
 
 function addFile(store: Store, path: string, syms: SymSpec[]): SymbolRecord[] {
@@ -103,8 +108,10 @@ function addFile(store: Store, path: string, syms: SymSpec[]): SymbolRecord[] {
       complexity: 1,
       stmtCount: s.stmtCount ?? 8,
       exactHash: s.exactHash,
+      ...(s.renamedHash ? { renamedHash: s.renamedHash } : {}),
       shapeHash: s.shapeHash,
       minhash: s.minhash,
+      ...(s.nearMinhash ? { nearMinhash: s.nearMinhash } : {}),
     }),
   );
   store.replaceFile("main", file, records, []);
@@ -142,6 +149,74 @@ const sym = (store: Store, id: string): SymbolRecord => {
   return s;
 };
 
+describe("renamed copies of short functions (#151)", () => {
+  const short = (
+    name: string,
+  ): string => `export function ${name}(value: number, lo: number, hi: number): number {
+  const floor = Math.max(value, lo);
+  const capped = Math.min(floor, hi);
+  const scaled = capped * 2;
+  return scaled;
+}`;
+
+  function addReal(store: Store, path: string, name: string, withRenamed = true): string {
+    const source = short(name);
+    const parsed = parseSource(path, source);
+    const sym = parsed.symbols.find((x) => x.name === name);
+    const range = sym && parsed.bodies.get(sym.id);
+    if (!sym || !range) throw new Error("no symbol");
+    const h = hashSymbol(source, range, "ts");
+    expect(sym.stmtCount).toBe(4);
+    const [rec] = addFile(store, path, [
+      {
+        name,
+        signature: sym.signature,
+        stmtCount: sym.stmtCount,
+        exactHash: h.exactHash,
+        ...(withRenamed ? { renamedHash: h.renamedHash } : {}),
+        shapeHash: h.shapeHash,
+        minhash: h.minhash,
+        nearMinhash: h.nearMinhash,
+      },
+    ]);
+    return (rec as SymbolRecord).id;
+  }
+
+  it("flags a renamed copy of a 4-statement function as exact, for unsaved code and for an indexed symbol", async () => {
+    const { store } = tmpStore();
+    const original = addReal(store, "src/a.ts", "clampDouble");
+    const copy = addReal(store, "src/b.ts", "limitTwice");
+    // Different names, so the plain exact hash differs, and 5 statements are below the near floor.
+    expect(sym(store, original).exactHash).not.toBe(sym(store, copy).exactHash);
+    expect(sym(store, original).renamedHash).toBe(sym(store, copy).renamedHash);
+    expect(await findDuplicates(store, { symbol: sym(store, copy) })).toEqual([
+      { symbolId: original, tier: "exact", score: 1 },
+    ]);
+    const unsaved = await findDuplicates(store, { code: { source: short("brandNewName"), lang: "ts" } });
+    expect(unsaved.map((c) => [c.symbolId, c.tier]).sort()).toEqual([
+      [original, "exact"],
+      [copy, "exact"],
+    ]);
+  });
+
+  it("does not flag a different function, nor a stored row without renamedHash under another name", async () => {
+    const { store } = tmpStore();
+    addReal(store, "src/a.ts", "clampDouble", false);
+    const other = `export function clampDouble(value: number, lo: number, hi: number): number {
+  const floor = Math.max(value, lo);
+  const capped = Math.min(floor, hi);
+  const scaled = capped * 3;
+  return scaled;
+}`;
+    expect(await findDuplicates(store, { code: { source: other, lang: "ts" } })).toEqual([]);
+    expect(await findDuplicates(store, { code: { source: short("elsewhere"), lang: "ts" } })).toEqual([]);
+    // The same name still matches on exactHash alone.
+    expect((await findDuplicates(store, { code: { source: short("clampDouble"), lang: "ts" } })).length).toBe(
+      1,
+    );
+  });
+});
+
 describe("fixture pnpm-turbo", () => {
   it("finds formatRelativeDate from parseTimestamp (misleading name) and the slugify copy as exact", async () => {
     const { store } = await fixtureStore();
@@ -150,8 +225,8 @@ describe("fixture pnpm-turbo", () => {
     const found = await findDuplicates(store, { symbol: parse });
     expect(ids(found)).toContain(fmt);
     const hit = found.find((c) => c.symbolId === fmt);
-    // Same logic, different identifiers in the exact token stream: the near tier carries the misleading-name pair.
-    expect(hit?.tier).toBe("near");
+    // Same logic under another function name (and other locals): the renamed hash makes it exact (#151).
+    expect(hit?.tier).toBe("exact");
     expect(hit?.score).toBe(1);
     expect(ids(found)).not.toContain(parse.id);
 
@@ -222,7 +297,7 @@ describe("fixture pnpm-turbo", () => {
     const date = "sym:packages/utils/src/date.ts#formatRelativeDate";
     const time = "sym:packages/utils/src/time.ts#parseTimestamp";
     expect(edges).toContainEqual(
-      expect.objectContaining({ src: date, dst: time, confidence: "high", evidence: ["near"] }),
+      expect.objectContaining({ src: date, dst: time, confidence: "high", evidence: ["exact"] }),
     );
     expect(edges).toContainEqual(
       expect.objectContaining({
@@ -474,6 +549,41 @@ describe("vector tiers", () => {
     return { store, mk };
   }
 
+  it("code_vector: a pair that shares too little of the token stream is dropped, whatever its cosine (#131)", async () => {
+    const { store } = tmpStore();
+    if (!vecAvailable(store)) return;
+    ensureVecTables(store, D, "fake/test");
+    const tokens = randomMinhash(r);
+    const mk = (name: string, near: Uint32Array) =>
+      addFile(store, `src/${name}.ts`, [
+        {
+          name,
+          exactHash: `H-${name}`,
+          shapeHash: `S-${name}`,
+          minhash: randomMinhash(r),
+          nearMinhash: near,
+        },
+      ])[0] as SymbolRecord;
+    const q = mk("q", tokens);
+    const sameStrings = mk("sameStrings", perturb(tokens, 16)); // token Jaccard 0.75
+    const otherStrings = mk("otherStrings", randomMinhash(r)); // token Jaccard about 0
+    const legacy = addFile(store, "src/legacy.ts", [
+      { name: "legacy", exactHash: "H-legacy", shapeHash: "S-legacy", minhash: randomMinhash(r) },
+    ])[0] as SymbolRecord; // no token MinHash: a row from before schema v5
+    putVectors(
+      store,
+      "vec_code",
+      [q, sameStrings, otherStrings, legacy].map((s) => ({
+        contentKey: contentKey(s.exactHash),
+        vector: unit(0),
+      })),
+    );
+    const found = await findDuplicates(store, { symbol: q }, { tiers: ["code_vector"] });
+    expect(ids(found).sort()).toEqual([legacy.id, sameStrings.id].sort());
+    expect(tokensShared({ nearMinhash: tokens }, { nearMinhash: randomMinhash(r) }, 0.5)).toBe(false);
+    expect(tokensShared({ nearMinhash: tokens }, { nearMinhash: new Uint32Array(0) }, 0.5)).toBe(true);
+  });
+
   it("code_vector: cosine at or above the threshold, nearest first; semantic needs a compatible signature", async () => {
     const w = vecWorld();
     if (!w) return;
@@ -656,9 +766,13 @@ describe("rebuildSimilarEdges (synthetic)", () => {
 // --- performance --------------------------------------------------------------------------------------
 
 describe("performance", () => {
-  // Timing assertion: retried because parallel builds on the same machine can stall one run.
+  // Absolute speed is asserted only under `pnpm perf` (GANTRY_PERF=1), which is meant to run on a quiet machine
+  // before a release. In `pnpm check` the same test keeps loose sanity bounds (about 10x the targets), so a
+  // quadratic blow-up still fails but a machine running other suites does not. Results are asserted either way.
+  const PERF = process.env.GANTRY_PERF === "1";
+  const limit = (strict: number, loose: number): number => (PERF ? strict : loose);
   it("checks one function against a 6,000-function index well inside the hook budget", {
-    retry: 2,
+    retry: PERF ? 2 : 0,
   }, async () => {
     const { store } = tmpStore();
     const r = rng(42);
@@ -711,10 +825,10 @@ describe("performance", () => {
     process.stderr.write(
       `dup perf: ${count} functions, cold (index build + query) ${coldMs.toFixed(1)} ms, warm query ${warmMs.toFixed(2)} ms\n`,
     );
-    expect(warmMs).toBeLessThan(10);
+    expect(warmMs).toBeLessThan(limit(10, 100));
     // A hook starts a fresh process per edit, so the cold path (index build included) is what counts. The
-    // target is well under 100 ms; the bound is looser only so a busy machine does not fail the suite.
-    expect(coldMs).toBeLessThan(250);
+    // target is well under 100 ms; `pnpm perf` holds it to 250 ms, `pnpm check` to a loose sanity bound.
+    expect(coldMs).toBeLessThan(limit(250, 5000));
 
     // code_vector on 6,000 real-size (768-dimension) vectors: one KNN over the whole table.
     if (vecAvailable(store)) {
@@ -740,8 +854,67 @@ describe("performance", () => {
       process.stderr.write(
         `dup perf: exact+near+code_vector with ${rows.length} vectors ${vecMs.toFixed(1)} ms\n`,
       );
-      expect(vecMs).toBeLessThan(150);
+      expect(vecMs).toBeLessThan(limit(150, 3000));
       expect(withVec.map((c) => c.tier)).toEqual(["exact", "near", "code_vector"]);
     }
+  });
+});
+
+describe("near tier keeps literals (#131)", () => {
+  const STATUS = (name: string, a: string, b: string, c: string, d: string) =>
+    `export function ${name}(status: string): string {\n  if (status === "${a}") return "${b}";\n  if (status === "${c}") return "${d}";\n  if (status === "x${a}") return "x${b}";\n  if (status === "y${a}") return "y${b}";\n  if (status === "z${a}") return "z${b}";\n  return "${d}${b}";\n}\n`;
+  const features = (code: string) => {
+    const parsed = parseSource("x.ts", code);
+    const s = parsed.symbols[0] as (typeof parsed.symbols)[number];
+    const range = parsed.bodies.get(s.id) as { start: number; end: number };
+    return { stmt: s.stmtCount, ...hashSymbol(code, range, "ts") };
+  };
+  const t = { nearJaccard: 0.85, nearTokenJaccard: 0.75 };
+
+  it("two lookup functions of the same shape with different strings are not near", () => {
+    const a = features(STATUS("programText", "open", "Open now", "closed", "Closed"));
+    const b = features(STATUS("requestTitle", "draft", "Draft saved", "sent", "Sent to reviewer"));
+    expect(a.stmt).toBeGreaterThanOrEqual(6);
+    expect(a.shapeHash).toBe(b.shapeHash);
+    expect(nearScore(a, b, t)).toBeNull();
+  });
+
+  it("a renamed copy (function name and locals) scores 1, a small edit stays above the token threshold", () => {
+    const a = features(STATUS("programText", "open", "Open now", "closed", "Closed"));
+    const renamed = features(
+      STATUS("labelFor", "open", "Open now", "closed", "Closed").replace(/status/g, "s"),
+    );
+    expect(nearScore(a, renamed, t)).toBe(1);
+    const edited = features(STATUS("programText", "open", "Open now", "closed", "Closed!"));
+    const score = nearScore(a, edited, t);
+    expect(score).not.toBeNull();
+    expect(score as number).toBeGreaterThanOrEqual(0.75);
+    expect(score as number).toBeLessThan(1);
+  });
+
+  it("a row without a token MinHash (before schema v5) is judged by the shape gate alone", () => {
+    const a = features(STATUS("programText", "open", "Open now", "closed", "Closed"));
+    const b = features(STATUS("requestTitle", "draft", "Draft saved", "sent", "Sent to reviewer"));
+    expect(nearScore(a, { ...b, nearMinhash: new Uint32Array(0) }, t)).toBe(1);
+  });
+
+  it("the engine applies it: the code form does not return a same-shaped lookup as near", async () => {
+    const { store, paths } = await fixtureStore();
+    mkdirSync(join(paths.root, "packages/utils/src"), { recursive: true });
+    writeFileSync(
+      join(paths.root, "packages/utils/src/status.ts"),
+      STATUS("programText", "open", "Open now", "closed", "Closed"),
+    );
+    await indexRepo(paths, { layer: "working", files: ["packages/utils/src/status.ts"], store });
+    const target = "sym:packages/utils/src/status.ts#programText";
+    const other = await findDuplicates(store, {
+      code: { source: STATUS("requestTitle", "draft", "Draft saved", "sent", "Sent"), lang: "ts" },
+    });
+    expect(ids(other)).not.toContain(target);
+    const copy = await findDuplicates(store, {
+      code: { source: STATUS("copied", "open", "Open now", "closed", "Closed"), lang: "ts" },
+    });
+    // A copy under a new name is the same code: exact since #151 (it was near, score 1, before).
+    expect(copy.find((c) => c.symbolId === target)).toMatchObject({ tier: "exact", score: 1 });
   });
 });

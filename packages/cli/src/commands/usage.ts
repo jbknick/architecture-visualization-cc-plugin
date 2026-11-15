@@ -1,4 +1,5 @@
-import { ensureDataDir, openStore, resolvePaths, usageSummary } from "@gantry/core";
+import fs from "node:fs";
+import { openStore, resolvePaths, usageSummary } from "@gantry/core";
 import type { Command } from "commander";
 import { table } from "./lookup.js";
 import { EXIT_OK, fail, writeStdout } from "./shared.js";
@@ -11,10 +12,10 @@ export function registerUsage(program: Command): void {
     .action((opts: { json?: boolean }) => {
       try {
         const paths = resolvePaths(process.cwd());
-        ensureDataDir(paths);
-        const store = openStore(paths.dbPath);
+        // Read-only: no data dir is created for a repository that has no index (#147).
+        const store = fs.existsSync(paths.dbPath) ? openStore(paths.dbPath) : undefined;
         try {
-          const rows = usageSummary(store);
+          const rows = store ? usageSummary(store) : [];
           if (opts.json) writeStdout(`${JSON.stringify(rows, null, 2)}\n`);
           else {
             writeStdout(
@@ -33,7 +34,7 @@ export function registerUsage(program: Command): void {
             );
           }
         } finally {
-          store.close();
+          store?.close();
         }
         process.exitCode = EXIT_OK;
       } catch (err) {

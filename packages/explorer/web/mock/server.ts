@@ -32,6 +32,20 @@ const server = createServer(async (req, res) => {
     }
     return;
   }
+  if (req.method === "POST" && url.pathname === "/api/refresh") {
+    // The mock's data never changes on disk: a refresh finds nothing (the real server's contract, spec 11 (c)).
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(
+      JSON.stringify({
+        changed: { files: 0, functions: 0 },
+        ms: 0,
+        healed: false,
+        files: [],
+        functions: { added: [], changed: [], removed: [] },
+      }),
+    );
+    return;
+  }
   if (req.method === "PUT" && url.pathname === "/api/dismiss") {
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk as Buffer);

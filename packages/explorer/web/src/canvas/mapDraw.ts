@@ -4,6 +4,7 @@
 
 import { drawBadgeMarks, m2Spec } from "../badges.ts";
 import { decollideMarkers } from "../rankedFiles/markers.ts";
+import type { LayerPaint } from "../views/reviewModel.ts";
 import { GROUP_KIND, kindTier, type TreeNode } from "./hierarchy.ts";
 import {
   actualInner,
@@ -23,6 +24,7 @@ import {
 import { edgeNoun, folderTitle, nodeTitle, type Scene, subtitleParts } from "./scene.ts";
 import {
   type CanvasTheme,
+  contrastRatio,
   hexToRgba,
   inkAgainst,
   kindColor,
@@ -68,6 +70,26 @@ export interface DrawEnv {
   ranks?: { index: number; rank: number }[];
   /** Tree index of the file the pointer is over in the "Largest files" list: its tile and marker are highlighted. */
   rankHover?: number | null;
+  /** Tree indices of the cells the last refresh added or changed: outlined until the next refresh. */
+  fresh?: readonly number[];
+  /**
+   * Review layer (#167): unlit cells fade back (low opacity, desaturated) in their usual place, changed cells take
+   * their change's colour, hop-1 callers a soft tint, and lines join changed cells to their callers.
+   */
+  review?: ReviewPaintEnv | null;
+}
+
+/** The review layer as the draw loop needs it: tree indices plus the theme's colours. */
+export interface ReviewPaintEnv extends LayerPaint {
+  colours: Record<string, string>;
+}
+
+/** What the last frame drew of the review layer (test hook). */
+export interface ReviewDrawn {
+  changed: number;
+  affected: number;
+  faded: number;
+  links: { src: number; dst: number; change: string; colour: string; soft?: boolean }[];
 }
 
 /** A rank marker as drawn: a numbered circle on (or beside) the tile of one of the largest files. */
@@ -121,6 +143,8 @@ export interface DrawResult {
   markers: RankMarker[];
   /** Function tiles that got M2 badge marks (ids and badge names), for tests. */
   badged: { id: string; badges: string[] }[];
+  /** Review layer counts of the frame (cells on screen), when the layer is on. */
+  review?: ReviewDrawn;
 }
 
 export { FONT };
@@ -402,9 +426,39 @@ export function drawMap(env: DrawEnv): DrawResult {
   };
 
   const panelHover = env.panelHover != null && env.panelHover < tree.nodes.length ? env.panelHover : null;
+  const rv = env.review && env.review.lit.length === tree.nodes.length ? env.review : null;
+  const drawn: ReviewDrawn | undefined = rv ? { changed: 0, affected: 0, faded: 0, links: [] } : undefined;
+  if (drawn) result.review = drawn;
   const dimmed = (i: number): boolean =>
     (env.bright !== null && !env.bright.has(i)) ||
-    (panelHover !== null && (tree.nodes[i] as TreeNode).root !== panelHover);
+    (panelHover !== null && (tree.nodes[i] as TreeNode).root !== panelHover) ||
+    (rv !== null && !rv.lit[i]);
+  /** Review layer: the fill of cell `i` (a leaf takes its change's colour or the caller tint; the rest go grey). */
+  const reviewFill = (i: number, base: string, leaf: boolean): string => {
+    if (!rv) return base;
+    if (!rv.lit[i]) {
+      if (drawn && leaf) drawn.faded++;
+      return fadeColour(base, theme.surface);
+    }
+    const ch = rv.change[i];
+    if (ch && leaf) {
+      if (drawn) drawn.changed++;
+      return rv.colours[ch] ?? base;
+    }
+    const hop = rv.hop[i] ?? 0;
+    if (hop > 0 && leaf) {
+      if (drawn) drawn.affected++;
+      return mix(rv.colours.affected ?? base, base, hop === 1 ? 0.55 : 0.25);
+    }
+    return base;
+  };
+  /** Text on a cell filled with a change colour: black or white, whichever reads better. */
+  const inkOnChange = (i: number, fallback: string): string => {
+    const ch = rv && (tree.nodes[i] as TreeNode).children.length === 0 ? rv.change[i] : null;
+    const c = ch ? rv?.colours[ch] : undefined;
+    if (!c) return fallback;
+    return contrastRatio(c, "#ffffff") >= contrastRatio(c, "#111418") ? "#ffffff" : "#111418";
+  };
 
   // The largest file of each folder (most functions, then first in order) gets a third chance at a label.
   const largestCache = new Map<number, number>();
@@ -463,7 +517,7 @@ export function drawMap(env: DrawEnv): DrawResult {
     ctx.globalAlpha = dimmed(i) ? 0.3 : 1;
 
     if (cls >= 3) {
-      ctx.fillStyle = kindOf(node.kind);
+      ctx.fillStyle = reviewFill(i, kindOf(node.kind), !container);
       ctx.fillRect(x, y, pw, ph);
       if (pw >= 5 && ph >= 5) {
         ctx.strokeStyle = tint.sep;
@@ -475,7 +529,7 @@ export function drawMap(env: DrawEnv): DrawResult {
       const text = fitCellLabel((t) => measure(`500 ${fs}px ${FONT}`, t), label, pw, ph, fs, 3);
       if (text) {
         ctx.font = `500 ${fs}px ${FONT}`;
-        ctx.fillStyle = "rgba(255,255,255,0.96)";
+        ctx.fillStyle = inkOnChange(i, "rgba(255,255,255,0.96)");
         ctx.fillText(text, x + 3, y + (ph - fs) / 2);
       }
       const marks = scene.nodes[i]?.badges;
@@ -489,7 +543,7 @@ export function drawMap(env: DrawEnv): DrawResult {
     if (scene.mosaic && cls === 2 && !container) {
       // Folders level: files are only a faint mosaic that shows how big and how dense a folder is.
       ctx.globalAlpha = (dimmed(i) ? 0.3 : 1) * MOSAIC_ALPHA;
-      ctx.fillStyle = tint.file[sib & 1] as string;
+      ctx.fillStyle = reviewFill(i, tint.file[sib & 1] as string, true);
       ctx.fillRect(x, y, pw, ph);
       if (pw >= 4 && ph >= 4) {
         ctx.strokeStyle = tint.sep;
@@ -499,7 +553,7 @@ export function drawMap(env: DrawEnv): DrawResult {
       ctx.globalAlpha = 1;
       return;
     }
-    ctx.fillStyle = (cls === 1 ? tint.folder : tint.file)[sib & 1] as string;
+    ctx.fillStyle = reviewFill(i, (cls === 1 ? tint.folder : tint.file)[sib & 1] as string, !container);
     ctx.fillRect(x, y, pw, ph);
     if (pw >= 4 && ph >= 4) {
       ctx.strokeStyle = tint.sep;
@@ -525,7 +579,7 @@ export function drawMap(env: DrawEnv): DrawResult {
         const paintStrip = (): void => {
           ctx.globalAlpha = dimmed(i) ? 0.3 : 1;
           const depth = Math.min(3, Math.max(1, scene.depth[i] as number));
-          ctx.fillStyle = tint.band[depth - 1] as string;
+          ctx.fillStyle = reviewFill(i, tint.band[depth - 1] as string, false);
           ctx.fillRect(x + 1, sy + 1, pw - 2, head - 1);
           // `headPx` only reserves a strip when the whole name fits (wrapped, at 10 to 11px), so this layout exists;
           // the name is never cut and the glyph never stands alone.
@@ -578,7 +632,7 @@ export function drawMap(env: DrawEnv): DrawResult {
           box: { x: vx + 3, y: y + 2, w: lw, h: label.lines.length * lh },
         });
         ctx.font = `400 ${label.font}px ${FONT}`;
-        ctx.fillStyle = tint.ink;
+        ctx.fillStyle = inkOnChange(i, tint.ink);
         label.lines.forEach((line, k) => {
           ctx.fillText(line, vx + 3, y + 2 + k * lh);
         });
@@ -606,10 +660,14 @@ export function drawMap(env: DrawEnv): DrawResult {
     const tint = tintOf(r);
     ctx.globalAlpha = dimmed(r) ? 0.3 : 1;
     roundRect(ctx, bx, by, bw, bh, Math.min(12, 12 * cam.scale + 2));
-    ctx.fillStyle = tint.box;
+    // A childless box (the Workspaces level) is the marked node itself: a soft wash of its change's colour.
+    const boxMark = rv && (tree.nodes[r] as TreeNode).children.length === 0 ? rv.change[r] : null;
+    ctx.fillStyle = boxMark
+      ? mix(rv?.colours[boxMark] ?? tint.box, tint.box, 0.35)
+      : reviewFill(r, tint.box, false);
     ctx.fill();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = hexToRgba(tint.colour, 0.9);
+    ctx.strokeStyle = hexToRgba(rv && !rv.lit[r] ? fadeColour(tint.colour, theme.surface) : tint.colour, 0.9);
     ctx.stroke();
     if (!isTinyBox(rb)) drawKids(r, rb, r, tint, stickyTop);
   }
@@ -647,8 +705,9 @@ export function drawMap(env: DrawEnv): DrawResult {
   drawWsEdges(env, result, placed, free, measure, linkInk);
   linesToAvoid = true;
 
-  // 3. Links of the selected cell.
+  // 3. Links of the selected cell, then the review layer's lines (changed cells and their callers).
   drawCellLinks(env);
+  if (rv && drawn) drawReviewLinks(env, rv, drawn);
 
   // 4. Hover and selection outlines.
   const outline = (i: number | null, width: number, colour: string) => {
@@ -659,6 +718,25 @@ export function drawMap(env: DrawEnv): DrawResult {
     ctx.strokeRect(x + width / 2, y + width / 2, Math.max(1, pw - width), Math.max(1, ph - width));
   };
   ctx.globalAlpha = 1;
+  if (rv) {
+    // Containers that hold a change of their own (a file whose imports changed, a folder at the Folders level) or a
+    // caller, and workspace boxes, get an outline in the layer's colour; other leaves are filled instead.
+    const boxed = (i: number) => {
+      const n = tree.nodes[i] as TreeNode;
+      return n.children.length > 0 || n.parent === -1;
+    };
+    rv.change.forEach((ch, i) => {
+      if (ch && boxed(i)) outline(i, 3, rv.colours[ch] ?? theme.accent);
+    });
+    rv.hop.forEach((h, i) => {
+      if (h > 0 && !rv.change[i] && boxed(i))
+        outline(i, h === 1 ? 2 : 1, rv.colours.affected ?? theme.accent);
+    });
+  }
+  if (env.fresh && env.fresh.length > 0) {
+    const colour = theme.fresh ?? "#d97706";
+    for (const i of env.fresh) outline(i, 2, colour);
+  }
   if (panelHover !== null) outline(panelHover, 3, theme.accent);
   if (env.hovered !== null && env.hovered !== env.selected) outline(env.hovered, 2, theme.text);
   outline(env.selected, 3, theme.accent);
@@ -1066,6 +1144,7 @@ function drawWsEdges(
     if (incident || hovered) alpha = 1;
     if (dim) alpha = 0.07;
     else if (selectedCell && env.bright) alpha = Math.min(alpha, 0.14);
+    else if (env.review && !hovered) alpha = Math.min(alpha, 0.16); // the review's own lines lead
     const ink = inkOf(e.src);
 
     const last = pts[pts.length - 1] as Pt;
@@ -1314,6 +1393,70 @@ function drawCellLinks(env: DrawEnv): void {
     // Dots at the source so the direction reads at both ends.
     ctx.beginPath();
     ctx.arc(a[0], a[1], 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.lineCap = "butt";
+}
+
+/** A colour moved to grey and toward the surface: an untouched cell of the review layer. */
+export function fadeColour(hex: string, surface: string): string {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const g = Math.round(0.3 * ((n >> 16) & 255) + 0.59 * ((n >> 8) & 255) + 0.11 * (n & 255));
+  const grey = `#${g.toString(16).padStart(2, "0").repeat(3)}`;
+  return mix(grey, surface, 0.45);
+}
+
+/**
+ * The review layer's lines: a curve from each caller cell to the changed cell it calls, in the change's colour (made
+ * to read against the canvas), an arrowhead at the changed end and a dot at the caller's.
+ */
+function drawReviewLinks(env: DrawEnv, rv: ReviewPaintEnv, drawn: ReviewDrawn): void {
+  const { ctx, scene, geo, cam, theme } = env;
+  if (rv.links.length === 0) return;
+  const centre = (i: number): Pt => {
+    const r = screenRectOf(scene, geo, cam, i);
+    return [r.x + r.w / 2, r.y + r.h / 2];
+  };
+  const inks = new Map<string, string>();
+  const inkOf = (kind: string): string => {
+    let c = inks.get(kind);
+    if (!c) {
+      c = inkAgainst(rv.colours[kind] ?? theme.accent, theme.bg, theme.scheme, 3);
+      inks.set(kind, c);
+    }
+    return c;
+  };
+  const maxW = Math.max(...rv.links.map((l) => l.weight), 1);
+  const off = (p: Pt) => p[0] < -40 || p[1] < -40 || p[0] > env.w + 40 || p[1] > env.h + 40;
+  ctx.lineCap = "round";
+  for (const l of rv.links) {
+    const a = centre(l.src);
+    const b = centre(l.dst);
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy);
+    if (len < 4) continue;
+    const colour = inkOf(l.change);
+    drawn.links.push({ src: l.src, dst: l.dst, change: l.change, colour, ...(l.soft ? { soft: true } : {}) });
+    if (off(a) && off(b)) continue;
+    const bow = Math.min(80, len * 0.2);
+    const cx = (a[0] + b[0]) / 2 - (dy / len) * bow;
+    const cy = (a[1] + b[1]) / 2 + (dx / len) * bow;
+    // A potentially affected consumer's line (to the node one step nearer the change) is faint and dashed.
+    ctx.globalAlpha = l.soft ? 0.45 : 0.92;
+    ctx.strokeStyle = colour;
+    ctx.fillStyle = colour;
+    ctx.lineWidth = l.soft ? 1.2 : 1.5 + 1.5 * Math.sqrt(l.weight / maxW);
+    ctx.setLineDash(l.soft ? [5, 4] : []);
+    ctx.beginPath();
+    ctx.moveTo(a[0], a[1]);
+    ctx.quadraticCurveTo(cx, cy, b[0], b[1]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    arrowHead(ctx, b[0], b[1], Math.atan2(b[1] - cy, b[0] - cx), 9);
+    ctx.beginPath();
+    ctx.arc(a[0], a[1], 2.6, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.globalAlpha = 1;

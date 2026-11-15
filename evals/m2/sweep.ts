@@ -1,7 +1,9 @@
 /**
  * Threshold sweep (issue #32, step 3) over the private replay candidates, the Sonnet labels and the seeded results.
- * nearJaccard 0.80..0.90 and codeVector 0.91..1.00 in 0.01 steps; semantic 0.55..0.65 on its own (the hook and
- * find_similar never apply it to a draft: it only gates the description-to-description tier). Prints aggregates only.
+ * nearJaccard 0.80..0.90 and codeVector 0.91..1.00 in 0.01 steps (at the configured nearTokenJaccard), nearTokenJaccard
+ * 0.50..0.95 on its own, semantic 0.55..0.65 on its own (the hook and find_similar never apply it to a draft: it only
+ * gates the description-to-description tier). Candidates and imports the double-check dropped (`verified: false`,
+ * #131) are never shown. A replay from before #131 has no token scores or verdicts: they pass. Prints aggregates only.
  *
  * Usage: GANTRY_PRIVATE_DIR=... pnpm tsx evals/m2/sweep.ts [--json]
  */
@@ -19,8 +21,13 @@ export interface Cand {
   match: string;
   tier: "exact" | "near" | "code_vector";
   score: number;
+  /** Shape and token MinHash Jaccard (#131); absent in a replay from before it. */
+  shapeScore?: number | null;
+  tokenScore?: number | null;
   sameShape: boolean;
   inline: boolean;
+  /** The double-check against disk kept it (#131). */
+  verified?: boolean;
 }
 export interface Edit {
   commit: string;
@@ -30,11 +37,20 @@ export interface Edit {
   shipped: string | null;
   hookMs: number;
   cands: Cand[];
-  imports: { line: number; action: string }[];
+  imports: { line: number; action: string; verified?: boolean }[];
+  /** The real Stop hook ran out of time before it showed this edit's findings (#131 fix round). */
+  stopLost?: boolean;
+  /** On the batch's last edit: the Stop hook's wall time and whether it was cut off at the budget. */
+  stopMs?: number;
+  stopTimedOut?: boolean;
 }
 export interface Thresholds {
   nearJaccard: number;
   codeVector: number;
+  nearTokenJaccard?: number;
+  codeVectorTokenJaccard?: number;
+  /** Score what the checks found even where the Stop hook ran out of time (default: lost findings are not shown). */
+  includeLost?: boolean;
 }
 export type Labels = Record<string, boolean>;
 
@@ -51,10 +67,19 @@ export function loadEdits(): Edit[] {
 
 /** The findings the hook would print for one edit at `t` (limit 2 per symbol, inline-only when any is inline). */
 export function findingsFor(e: Edit, t: Thresholds): string[] {
+  if (t.includeLost !== true && e.stopLost === true) return [];
+  const nearOk = (c: Cand): boolean =>
+    (c.sameShape || (c.shapeScore ?? c.score) >= t.nearJaccard) &&
+    (c.tokenScore === undefined || c.tokenScore === null || c.tokenScore >= (t.nearTokenJaccard ?? 0));
   const passes = (c: Cand): boolean =>
-    c.tier === "exact" ||
-    (c.tier === "near" && (c.sameShape || c.score >= t.nearJaccard)) ||
-    (c.tier === "code_vector" && c.score >= t.codeVector);
+    c.verified !== false &&
+    (c.tier === "exact" ||
+      (c.tier === "near" && nearOk(c)) ||
+      (c.tier === "code_vector" &&
+        c.score >= t.codeVector &&
+        (c.tokenScore === undefined ||
+          c.tokenScore === null ||
+          c.tokenScore >= (t.codeVectorTokenJaccard ?? 0))));
   const bySym = new Map<string, Cand[]>();
   for (const c of e.cands.filter(passes)) bySym.set(c.sym, [...(bySym.get(c.sym) ?? []), c]);
   const keys: string[] = [];
@@ -64,13 +89,15 @@ export function findingsFor(e: Edit, t: Thresholds): string[] {
     const shown = top.some((c) => c.inline) ? top.filter((c) => c.inline) : top;
     for (const c of shown) keys.push(dupKey(e, c));
   }
-  for (const i of e.imports) keys.push(importKey(e, i));
+  for (const i of e.imports) if (i.verified !== false) keys.push(importKey(e, i));
   return keys;
 }
 
 export interface Point {
   nearJaccard: number;
   codeVector: number;
+  nearTokenJaccard?: number;
+  codeVectorTokenJaccard?: number;
   edits: number;
   alerts: number;
   editsAlerting: number;
@@ -136,8 +163,13 @@ const range = (from: number, to: number, step = 0.01): number[] => {
   return out;
 };
 
-export function runSweep(): {
+/** The token gates of #131; a replay from before them has no token scores, so they do not change its numbers. */
+export type TokenGates = Pick<Thresholds, "nearTokenJaccard" | "codeVectorTokenJaccard">;
+
+export function runSweep(gates: TokenGates = {}): {
   rows: (Point & ReturnType<typeof seededRecall>)[];
+  tokens: Point[];
+  cvTokens: Point[];
   semantic: { t: number; recall: number; falseHits: number }[];
 } {
   const edits = loadEdits();
@@ -146,7 +178,7 @@ export function runSweep(): {
   const rows = [];
   for (const nj of range(0.8, 0.9)) {
     for (const cv of range(0.91, 1.0)) {
-      const t = { nearJaccard: nj, codeVector: cv };
+      const t = { nearJaccard: nj, codeVector: cv, ...gates };
       rows.push({ ...measure(edits, labels, t), ...seededRecall(seeded, t) });
     }
   }
@@ -155,12 +187,29 @@ export function runSweep(): {
     recall: seeded.filter((r) => (r.queryDescCosine ?? 0) >= t).length,
     falseHits: seeded.filter((r) => (r.queryBestOtherCosine ?? 0) >= t).length,
   }));
-  return { rows, semantic };
+  const steps = [0, 0.3, 0.4, 0.5, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95];
+  const base = { nearJaccard: 0.85, codeVector: 0.98, ...gates };
+  const tokens = steps.map((x) => measure(edits, labels, { ...base, nearTokenJaccard: x }));
+  const cvTokens = steps.map((x) => measure(edits, labels, { ...base, codeVectorTokenJaccard: x }));
+  return { rows, tokens, cvTokens, semantic };
 }
 
 if (process.argv[1]?.endsWith("sweep.ts")) {
-  const { rows, semantic } = runSweep();
+  const gates = { nearTokenJaccard: 0.75, codeVectorTokenJaccard: 0.5 };
+  const { rows, tokens, cvTokens, semantic } = runSweep(gates);
   const meets = rows.filter((r) => r.alertRate < 0.05 && r.falseRate < 0.1 && r.unlabelled === 0);
+  const gateTable = (name: string, key: keyof TokenGates, ps: Point[]): string =>
+    `${name} at nearJaccard 0.85, codeVector 0.98 (the other gate at its default):\n${table(
+      [name, "alerts", "edits alerting", "alert rate", "false", "false rate"],
+      ps.map((p) => [
+        p[key] ?? 0,
+        p.alerts,
+        p.editsAlerting,
+        pct(p.editsAlerting, p.edits),
+        p.falseAlerts,
+        pct(p.falseAlerts, p.alerts),
+      ]),
+    )}`;
   process.stdout.write(
     `${table(
       [
@@ -187,22 +236,10 @@ if (process.argv[1]?.endsWith("sweep.ts")) {
           r.product,
           r.withDraftVector,
         ]),
-    )}\n\nChosen codeVector against the current one, at nearJaccard 0.85:\n${table(
-      ["variant", "alerts", "edits alerting", "alert rate", "false", "false rate"],
-      [
-        ["codeVector 0.96 (current)", { nearJaccard: 0.85, codeVector: 0.96 }],
-        ["codeVector 0.99", { nearJaccard: 0.85, codeVector: 0.99 }],
-      ].map(([name, t]) => {
-        const p = measure(loadEdits(), readPrivate<Labels>("labels.json"), t as Thresholds);
-        return [
-          name as string,
-          p.alerts,
-          p.editsAlerting,
-          pct(p.editsAlerting, p.edits),
-          p.falseAlerts,
-          pct(p.falseAlerts, p.alerts),
-        ];
-      }),
+    )}\n\n${gateTable("nearTokenJaccard", "nearTokenJaccard", tokens)}\n\n${gateTable(
+      "codeVectorTokenJaccard",
+      "codeVectorTokenJaccard",
+      cvTokens,
     )}\n\nsettings meeting both budgets: ${meets.length} of ${rows.length}\n\n${table(
       ["semantic", "seeded queries at/above", "queries whose best other description is at/above"],
       semantic.map((s) => [s.t, s.recall, s.falseHits]),

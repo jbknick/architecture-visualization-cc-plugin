@@ -29,6 +29,7 @@ const MARKDOWN = [
   "skills/explain/SKILL.md",
   "skills/overview/SKILL.md",
   "skills/map/SKILL.md",
+  "skills/review/SKILL.md",
 ];
 
 describe("plugin manifest and MCP config", () => {
@@ -48,7 +49,7 @@ describe("plugin manifest and MCP config", () => {
   it("has a launcher that is executable and runs the bundled CLI", () => {
     const p = join(pluginDir, "bin/gantry");
     expect(statSync(p).mode & 0o111).not.toBe(0);
-    expect(readFileSync(p, "utf8")).toContain('node "$(dirname "$0")/../dist/cli.js" "$@"');
+    expect(readFileSync(p, "utf8")).toContain('exec node "$self/dist/cli.js" "$@"');
   });
 
   it("is listed by the dev marketplace at the repo root, which points at ./plugin", () => {
@@ -72,8 +73,8 @@ describe("hooks/hooks.json", () => {
   const launcher = (name: string): string =>
     `"${["$", "{CLAUDE_PLUGIN_ROOT}"].join("")}/bin/gantry" hook ${name}`;
 
-  it("declares exactly SessionStart and PostToolUse command hooks", () => {
-    expect(Object.keys(hooks).sort()).toEqual(["PostToolUse", "SessionStart"]);
+  it("declares exactly SessionStart, PostToolUse and Stop command hooks", () => {
+    expect(Object.keys(hooks).sort()).toEqual(["PostToolUse", "SessionStart", "Stop"]);
     expect(hooks.SessionStart).toEqual([
       { hooks: [{ type: "command", command: launcher("session-start"), timeout: 30 }] },
     ]);
@@ -86,6 +87,10 @@ describe("hooks/hooks.json", () => {
         hooks: [{ type: "command", command: launcher("post-tool-use"), timeout: 5 }],
       },
     ]);
+  });
+
+  it("settles the batch of edits at Stop (no matcher) with a 5 second timeout", () => {
+    expect(hooks.Stop).toEqual([{ hooks: [{ type: "command", command: launcher("stop"), timeout: 5 }] }]);
   });
 });
 
@@ -125,12 +130,42 @@ describe("describer agent", () => {
       expect(p1).toContain(phrase);
       expect(body).toContain(phrase);
     }
-    expect(body).toContain('"size": 40');
+    expect(body).toContain('"size": 10');
+  });
+
+  it("hands back on every stop reason and never reports an unindexed store as an empty backlog (#147)", () => {
+    for (const s of ["`run_limit`", "`backlog_empty`", "`not_indexed`", "MORE WORK", "DONE", "NOT INDEXED"]) {
+      expect(body).toContain(s);
+    }
+    expect(body).toMatch(/Never call this an empty backlog/);
+    expect(body).toMatch(/submit those items once more with the same `batch_id`/);
+  });
+});
+
+describe("describer restarts (#147)", () => {
+  it.each(["init", "sync"])(
+    "%s restarts a describer that hands back with work left, as a fresh agent",
+    (name) => {
+      const { body } = frontmatter(read(`skills/${name}/SKILL.md`));
+      expect(body).toContain("`MORE WORK`");
+      expect(body).toMatch(/start a fresh `describer` in the background with the same prompt and worker id/);
+      expect(body).toMatch(/do not resume the old one with SendMessage/);
+      expect(body).toContain("`NOT INDEXED`");
+      expect(body).toContain("backlog --failed");
+      expect(body).toContain("backlog --retry-failed");
+    },
+  );
+
+  it("the run limit leaves room under the describer's maxTurns for submits and resubmits", async () => {
+    const { DESCRIBER_RUN_CLAIMS } = await import("../packages/core/src/describe/backlog.js");
+    const maxTurns = Number(frontmatter(read("agents/describer.md")).data.maxTurns);
+    // claim + submit + one corrected resubmit per batch, plus the final claim that says stop
+    expect(DESCRIBER_RUN_CLAIMS * 3 + 1).toBeLessThan(maxTurns);
   });
 });
 
 describe("skills", () => {
-  it.each(["init", "sync", "explain", "overview", "map"])("%s is user-invoked only", (name) => {
+  it.each(["init", "sync", "explain", "overview", "map", "review"])("%s is user-invoked only", (name) => {
     const { data } = frontmatter(read(`skills/${name}/SKILL.md`));
     expect(data.name).toBe(name);
     expect(data["disable-model-invocation"]).toBe("true");
@@ -192,6 +227,56 @@ describe("explain, overview and map skills (#35)", () => {
     expect(overview).toContain('effort: "low"');
     expect(overview).toContain("untrusted_overview");
     expect(frontmatter(read("skills/explain/SKILL.md")).body).toContain("explainer");
+  });
+
+  it("explain keeps answers at 200 words: a hard limit and a count before replying (#146)", () => {
+    const { body } = frontmatter(read("agents/explainer.md"));
+    expect(body).toMatch(/Hard limit: the answer is at most 200 words/);
+    expect(body).toMatch(/count the words/);
+    expect(frontmatter(read("skills/explain/SKILL.md")).body).toContain("at most 200 words");
+  });
+
+  it("overview grounds the text in code and shows the saved text unchanged (#146)", () => {
+    const agent = frontmatter(read("agents/explainer.md")).body;
+    for (const s of ["gantry_browse", "gantry_node", "`Read`", "never write an overview from names only"]) {
+      expect(agent).toContain(s);
+    }
+    expect(agent).toMatch(/Reply with the saved text exactly as you saved it/);
+    const skill = frontmatter(read("skills/overview/SKILL.md")).body;
+    expect(skill).toContain("gantry_node");
+    expect(skill).toContain("Read");
+    expect(skill).toContain("never write from names alone");
+    expect(skill).toContain("verbatim");
+    expect(skill).toMatch(/never reword/);
+  });
+});
+
+describe("review skill (#44)", () => {
+  const { data, body } = frontmatter(read("skills/review/SKILL.md"));
+
+  it("runs gantry review --json, reads callers of changed signatures and ends with the review view link", () => {
+    expect(data["argument-hint"]).toContain("--pr <n>");
+    expect(body.trim().split("\n").length).toBeLessThan(20);
+    expect(body).toContain('"${CLAUDE_PLUGIN_ROOT}/bin/gantry" review $ARGUMENTS --json');
+    for (const s of [
+      "signatureChanged",
+      "callersByHop[0].ids",
+      "consumers",
+      "direct",
+      "crossings",
+      "notes",
+      "path:line",
+    ]) {
+      expect(body).toContain(s);
+    }
+    expect(body).toContain("mcp__plugin_gantry_gantry__gantry_open_view");
+    expect(body).toContain('view: "review"');
+  });
+
+  it("is read-only, posts nothing and explains a missing or logged-out gh", () => {
+    expect(body).toMatch(/Read only: never edit, commit, push or post anything/);
+    expect(body).toContain("gh auth login");
+    for (const tool of ["Write", "Edit", "gh pr comment", "gh pr review"]) expect(body).not.toContain(tool);
   });
 });
 

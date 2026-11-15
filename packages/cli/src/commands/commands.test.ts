@@ -14,7 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openStore, type Store } from "@gantry/core";
+import { openStore, resolvePaths, type Store } from "@gantry/core";
 import { build } from "tsup";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -181,7 +181,7 @@ describe("bundled CLI: vector tables and embeddings", () => {
     expect(r.code).toBe(0);
     const db = openBundleDb();
     try {
-      expect(db.getMeta("schema_version")).toBe("4");
+      expect(db.getMeta("schema_version")).toBe("6");
       expect(db.getMeta("vec_available")).toBe("1");
       expect(db.getMeta("embed_model")).toBe("jinaai/jina-embeddings-v2-base-code");
       expect(db.getMeta("embed_dim")).toBe("768");
@@ -306,6 +306,211 @@ describe("gantry heal", () => {
     expect(a.out).toMatch(/^Healed 1 file \(incremental\) in \d+ ms$/m);
     expect(run(fx.dir, ["heal"]).out).toMatch(/^Healed 0 files \(incremental\)/m);
     expect(run(fx.dir, ["heal", "--from", "deadbeef"]).out).toMatch(/\(full re-index\)/);
+  });
+});
+
+describe("gantry review", () => {
+  it("prints the symbol diff as JSON on a clean stdout, creates no data dir and leaves the repo alone", async () => {
+    const fx = await fixture("pnpm-turbo");
+    fx.git(["checkout", "-b", "feature"]);
+    const file = join(fx.dir, "packages/utils/src/slug.ts");
+    const extra = "export function slugifyAll(xs: string[]): string[] {\n  return xs.map(slugify);\n}\n";
+    writeFileSync(file, `${readFileSync(file, "utf8")}${extra}`);
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-m", "add"]);
+    const data = join(dataDir, "review-data");
+    const r = run(fx.dir, ["review", "main...feature", "--json"], { CLAUDE_PLUGIN_DATA: data });
+    expect(r.err).toBe("");
+    expect(r.code).toBe(0);
+    const j = JSON.parse(r.out) as {
+      base: string;
+      head: string;
+      files: { path: string; status: string }[];
+      changes: { id: string; kind: string }[];
+    };
+    expect(j.base).toBe("main");
+    expect(j.head).toBe("feature");
+    expect(j.files).toEqual([{ path: "packages/utils/src/slug.ts", status: "M" }]);
+    expect(j.changes.map((c) => [c.kind, c.id])).toEqual([
+      ["added", "sym:packages/utils/src/slug.ts#slugifyAll"],
+    ]);
+    expect(existsSync(data)).toBe(false);
+    expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
+  });
+
+  it("fails with a clear message for a bad range, an unknown ref and a missing mode", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const bad = run(fx.dir, ["review", "main", "--json"]);
+    expect(bad.code).toBe(1);
+    expect(bad.err).toContain("expected <base>...<head>");
+    expect(bad.out).toBe("");
+    const unknown = run(fx.dir, ["review", "main...nope", "--json"]);
+    expect(unknown.code).toBe(1);
+    expect(unknown.err).toContain("unknown git ref: nope");
+    expect(unknown.out).toBe("");
+    expect(run(fx.dir, ["review", "--json"]).code).toBe(1);
+  });
+
+  it("prints a short text summary without --json: risk, reasons, hop counts, crossings, consumers", async () => {
+    const fx = await fixture("pnpm-turbo");
+    fx.git(["checkout", "-b", "feature"]);
+    const file = join(fx.dir, "packages/ui/src/button.tsx");
+    writeFileSync(
+      file,
+      readFileSync(file, "utf8").replace(
+        "{ label: string; onClick?: () => void }",
+        "{ label: string; onClick?: () => void; size?: number }",
+      ),
+    );
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-m", "button"]);
+    const env = { CLAUDE_PLUGIN_DATA: join(dataDir, "review-text-data") };
+    const r = run(fx.dir, ["review", "main...feature"], env);
+    expect(r.err).toBe("");
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("Risk: medium (56/100)");
+    expect(r.out).toContain("+30 signature changed on an exported symbol");
+    expect(r.out).toContain(
+      "hop 1: 3 (file:packages/ui/src/index.ts, sym:apps/web/src/routes/index.tsx#HomePage",
+    );
+    expect(r.out).toContain("Crossings: 2");
+    expect(r.out).toContain(
+      [
+        "Consumers of sym:packages/ui/src/button.tsx#Button:",
+        "  Directly affected (3):",
+        "    index.ts (file, packages/ui/src/index.ts) imports",
+        "    HomePage (component, apps/web/src/routes/index.tsx:7) renders; crosses app",
+        "    ProfilePage (component, apps/web/src/routes/settings/profile.tsx:7) renders; crosses app",
+        "  Potentially affected (",
+      ].join("\n"),
+    );
+    expect(r.out).toMatch(/\/ \(route, apps\/web\/src\/routes\/index\.tsx\) serves hop 2 via HomePage/);
+    expect(r.out).toBe(run(fx.dir, ["review", "main...feature"], env).out);
+  });
+
+  it("--json adds the impact from the index as it is (no heal, no re-index) once the repo is indexed", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const env = { CLAUDE_PLUGIN_DATA: join(dataDir, "review-json-impact") };
+    expect(run(fx.dir, ["init"], env).code).toBe(0);
+    const db = resolvePaths(fx.dir, { HOME: join(dataDir, "home"), ...env }).dbPath;
+    expect(existsSync(db)).toBe(true);
+    fx.git(["checkout", "-b", "feature"]);
+    const file = join(fx.dir, "packages/ui/src/button.tsx");
+    writeFileSync(
+      file,
+      readFileSync(file, "utf8").replace(
+        "{ label: string; onClick?: () => void }",
+        "{ label: string; onClick?: () => void; size?: number }",
+      ),
+    );
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-m", "button"]);
+    const before = openStore(db);
+    const indexedAt = before.getMeta("head_sha");
+    before.close();
+    const r = run(fx.dir, ["review", "main...feature", "--json"], env);
+    expect(r.err).toBe("");
+    expect(r.code).toBe(0);
+    const j = JSON.parse(r.out) as {
+      changes: { id: string }[];
+      impact: {
+        risk: { score: number; level: string };
+        callersByHop: { hop: number; ids: string[] }[];
+        consumers: {
+          id: string;
+          target: string;
+          direct: { id: string; uses: string[]; crosses: string[] }[];
+          directTotal: number;
+          potential: { id: string; hop: number; via: string }[];
+          potentialTotal: number;
+        }[];
+      } | null;
+    };
+    expect(j.changes.map((c) => c.id)).toEqual(["sym:packages/ui/src/button.tsx#Button"]);
+    expect(j.impact?.risk).toMatchObject({ score: 56, level: "medium" });
+    const button = j.impact?.consumers.find((c) => c.id === "sym:packages/ui/src/button.tsx#Button");
+    expect(button?.target).toBe("symbol");
+    expect(button?.directTotal).toBe(3);
+    expect(button?.direct[1]).toMatchObject({
+      id: "sym:apps/web/src/routes/index.tsx#HomePage",
+      uses: ["renders"],
+      crosses: ["app"],
+    });
+    expect(
+      button?.potential.some((p) => p.hop === 2 && p.via === "sym:apps/web/src/routes/index.tsx#HomePage"),
+    ).toBe(true);
+    expect(j.impact?.consumers.map((c) => c.id)).toContain("file:packages/ui/src/button.tsx");
+    expect(j.impact?.callersByHop[0]?.ids).toContain("sym:apps/web/src/routes/index.tsx#HomePage");
+    // The index was not brought to the new HEAD: --json never heals.
+    const after = openStore(db);
+    expect(after.getMeta("head_sha")).toBe(indexedAt);
+    after.close();
+  });
+
+  it("--open starts the explorer like gantry_open_view and opens the review view of the range", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const data = join(dataDir, "review-open");
+    const bin = join(dataDir, "fake-open-bin");
+    mkdirSync(bin, { recursive: true });
+    const opened = join(dataDir, "opened.txt");
+    for (const name of ["open", "xdg-open"])
+      writeFileSync(join(bin, name), `#!/bin/sh\necho "$1" >> "${opened}"\n`, { mode: 0o755 });
+    const env = { CLAUDE_PLUGIN_DATA: data, PATH: `${bin}:${process.env.PATH ?? ""}` };
+    expect(run(fx.dir, ["init"], env).code).toBe(0);
+    fx.git(["checkout", "-q", "-b", "feature"]);
+    writeFileSync(join(fx.dir, "packages/utils/src/extra.ts"), "export function extra() {\n  return 1;\n}\n");
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-q", "-m", "extra"]);
+    const r = run(fx.dir, ["review", "main...feature", "--open"], env);
+    try {
+      expect(r.err).toBe("");
+      expect(r.code).toBe(0);
+      const url =
+        /Review view: (http:\/\/127\.0\.0\.1:\d+\/\?t=[^#\s]+#\/review\?range=main\.\.\.feature)\n/.exec(
+          r.out,
+        )?.[1];
+      expect(url).toBeDefined();
+      for (let i = 0; i < 50 && !existsSync(opened); i++) await new Promise((res) => setTimeout(res, 50));
+      expect(readFileSync(opened, "utf8").trim()).toBe(url);
+      // The explorer answers the review view with the same range.
+      const u = new URL(url as string);
+      const token = u.searchParams.get("t") ?? "";
+      const res = await fetch(
+        `${u.origin}/api/view/review?filters=${encodeURIComponent(JSON.stringify({ range: "main...feature" }))}`,
+        { headers: { "x-gantry-token": token } },
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { review: { changes: { id: string; kind: string }[] } };
+      expect(body.review.changes).toEqual([
+        expect.objectContaining({ id: "sym:packages/utils/src/extra.ts#extra", kind: "added" }),
+      ]);
+    } finally {
+      const f = join(resolvePaths(fx.dir, { HOME: join(dataDir, "home"), ...env }).dataDir, "explorer.json");
+      if (existsSync(f))
+        process.kill((JSON.parse(readFileSync(f, "utf8")) as { pid: number }).pid, "SIGTERM");
+    }
+  });
+
+  it("--pr takes only a pull request number", async () => {
+    const fx = await fixture("pnpm-turbo");
+    for (const bad of ["abc", "0", "7x", "-1", "1e3"]) {
+      const r = run(fx.dir, ["review", "--pr", bad, "--json"]);
+      expect(r.code).toBe(1);
+      expect(r.err).toContain(`invalid pull request number: ${bad}`);
+      expect(r.out).toBe("");
+    }
+  });
+
+  it("--pr without a usable gh prints the range form as the way out", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const bin = join(dataDir, "fake-gh-bin");
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(join(bin, "gh"), "#!/bin/sh\necho 'not logged in' >&2\nexit 1\n", { mode: 0o755 });
+    const r = run(fx.dir, ["review", "--pr", "7", "--json"], { PATH: `${bin}:${process.env.PATH ?? ""}` });
+    expect(r.code).toBe(1);
+    expect(r.err).toMatch(/gh pr view 7 failed \(not logged in\)/);
+    expect(r.err).toContain("gantry review <base>...<head>");
+    expect(r.out).toBe("");
   });
 });
 
@@ -447,9 +652,81 @@ describe("gantry backlog", () => {
     expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
   });
 
-  it("reports zeros on an empty backlog", async () => {
+  it("reports zeros and indexed: false for a repository with no index, and creates no data dir", async () => {
     const fx = await fixture("single-pkg");
+    const before = existsSync(join(dataDir, "repos")) ? readdirSync(join(dataDir, "repos")) : [];
     const c = JSON.parse(run(fx.dir, ["backlog", "--json"]).out);
-    expect(c).toEqual({ total: 0, byStatus: { pending: 0, claimed: 0, failed: 0 }, byPriority: {} });
+    expect(c).toMatchObject({
+      total: 0,
+      byStatus: { pending: 0, claimed: 0, failed: 0 },
+      byPriority: {},
+      indexed: false,
+    });
+    expect(c.data_dir).toMatch(
+      new RegExp(`^${dataDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/repos/[0-9a-f]{16}$`),
+    );
+    const text = run(fx.dir, ["backlog"]);
+    expect(text.code).toBe(0);
+    expect(text.out).toContain(`No Gantry index for this repository in ${c.data_dir}`);
+    // Neither backlog, usage nor heal creates the data dir of a repository that has no index (#147).
+    expect(run(fx.dir, ["usage", "--json"]).out.trim()).toBe("[]");
+    const h = run(fx.dir, ["heal"]);
+    expect(h.code).toBe(0);
+    expect(h.err).toContain("no index for this repository");
+    const after = existsSync(join(dataDir, "repos")) ? readdirSync(join(dataDir, "repos")) : [];
+    expect(after.sort()).toEqual(before.sort());
+    expect(existsSync(c.data_dir)).toBe(false);
+  });
+
+  it("prints the data dir it read, as text and as JSON, after init", async () => {
+    const fx = await fixture("single-pkg");
+    const init = run(fx.dir, ["init"]);
+    const dir = /data:\s+(\S+)/.exec(init.out)?.[1];
+    expect(dir).toBeDefined();
+    const j = JSON.parse(run(fx.dir, ["backlog", "--json"]).out);
+    expect(j).toMatchObject({ data_dir: dir, indexed: true });
+    expect(run(fx.dir, ["backlog"]).out).toContain(`Data: ${dir}`);
+  });
+
+  it("--failed lists failed functions with rule names only, and --retry-failed puts them back to pending", async () => {
+    const fx = await fixture("pnpm-turbo");
+    expect(run(fx.dir, ["init"]).code).toBe(0);
+    const dir = JSON.parse(run(fx.dir, ["backlog", "--json"]).out).data_dir as string;
+    const MARK = "zqxmarkerzq";
+    const db = openStore(join(dir, "gantry.db"));
+    let keys: string[];
+    try {
+      keys = (
+        db.db.prepare("SELECT content_key FROM backlog ORDER BY priority, symbol_id LIMIT 2").all() as {
+          content_key: string;
+        }[]
+      ).map((r) => r.content_key);
+      const set = db.db.prepare(
+        "UPDATE backlog SET status = 'failed', attempts = 2, last_error = ? WHERE content_key = ?",
+      );
+      set.run(`identifier: ${MARK}… is not a word`, keys[0]);
+      set.run(`injection: searchTerms: ${MARK} imperative term`, keys[1]);
+    } finally {
+      db.close();
+    }
+    const j = JSON.parse(run(fx.dir, ["backlog", "--failed", "--json"]).out) as {
+      failed: { content_key: string; symbol_id: string; reason: string; field?: string; attempts: number }[];
+    };
+    expect(j.failed.map((f) => [f.content_key, f.reason, f.field, f.attempts])).toEqual([
+      [keys[0], "identifier", undefined, 2],
+      [keys[1], "injection", "searchTerms", 2],
+    ]);
+    const text = run(fx.dir, ["backlog", "--failed"]);
+    expect(text.out).toMatch(/^Failed: 2 /);
+    expect(text.out).toMatch(/ identifier {2}attempts 2$/m);
+    // Description text never appears, only rule names.
+    expect(`${text.out}${JSON.stringify(j)}`).not.toContain(MARK);
+
+    const r = JSON.parse(run(fx.dir, ["backlog", "--retry-failed", "--json"]).out);
+    expect(r.retried).toBe(2);
+    const c = JSON.parse(run(fx.dir, ["backlog", "--json"]).out);
+    expect(c.byStatus.failed).toBe(0);
+    expect(JSON.parse(run(fx.dir, ["backlog", "--failed", "--json"]).out).failed).toEqual([]);
+    expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
   });
 });

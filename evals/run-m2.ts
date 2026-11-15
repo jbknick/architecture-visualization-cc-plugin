@@ -48,7 +48,9 @@ if (existsSync(join(privateDir(), "replay.jsonl")) && existsSync(join(privateDir
   const edits = loadEdits();
   const labels = readPrivate<Labels>("labels.json");
   const p = measure(edits, labels, DEFAULT_CONFIG_THRESHOLDS);
-  out(`\n## Replay at the configured defaults (nearJaccard ${p.nearJaccard}, codeVector ${p.codeVector})\n`);
+  out(
+    `\n## Replay at the configured defaults (nearJaccard ${p.nearJaccard}, nearTokenJaccard ${p.nearTokenJaccard}, codeVector ${p.codeVector}, codeVectorTokenJaccard ${p.codeVectorTokenJaccard})\n`,
+  );
   out(
     table(
       ["edits", "edits with an alert", "alert rate", "alerts", "false alerts", "false rate", "unlabelled"],
@@ -65,9 +67,26 @@ if (existsSync(join(privateDir(), "replay.jsonl")) && existsSync(join(privateDir
       ],
     ),
   );
+  const all = measure(edits, labels, { ...DEFAULT_CONFIG_THRESHOLDS, includeLost: true });
+  const lostEdits = edits.filter((e) => e.stopLost === true).length;
+  const stops = edits
+    .map((e) => e.stopMs)
+    .filter((m): m is number => typeof m === "number")
+    .sort((a, b) => a - b);
+  if (stops.length > 0) {
+    out(
+      `\nStop hook (built CLI, 1,500 ms budget): ${stops.length} batches, p50 ${stops[Math.floor(stops.length / 2)]} ms, max ${stops[stops.length - 1]} ms, ${stops.filter((m) => m >= 1500).length} at or over the budget; ${lostEdits} edits' findings lost to it.`,
+    );
+    out(
+      `Without the losses: ${all.alerts} alerts (${all.falseAlerts} false) on ${all.editsAlerting} edits; shown: ${p.alerts} alerts (${p.falseAlerts} false), true alerts shown ${p.alerts - p.falseAlerts - p.unlabelled} of ${all.alerts - all.falseAlerts - all.unlabelled}.`,
+    );
+  }
   if (p.alertRate >= 0.05 || p.falseRate >= 0.1)
     miss.push(`replay: alert rate ${pct(p.editsAlerting, p.edits)}, false ${pct(p.falseAlerts, p.alerts)}`);
-  const sweep = runSweep();
+  const sweep = runSweep({
+    nearTokenJaccard: DEFAULT_CONFIG_THRESHOLDS.nearTokenJaccard,
+    codeVectorTokenJaccard: DEFAULT_CONFIG_THRESHOLDS.codeVectorTokenJaccard,
+  });
   const meets = sweep.rows.filter((r) => r.alertRate < 0.05 && r.falseRate < 0.1);
   out(
     `\nSweep: ${meets.length} of ${sweep.rows.length} (nearJaccard, codeVector) settings meet both budgets.`,

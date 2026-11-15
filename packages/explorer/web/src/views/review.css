@@ -1,0 +1,438 @@
+/* Review view (#44, on the map since #167): the layer's legend over the map, the left panel and the inspector's change
+   block. The canvases draw the layer with the same colours (views/reviewModel.ts, MARK_COLOURS). */
+:root {
+  --rv-added: #1f8a4c;
+  --rv-modified: #c98a00;
+  --rv-signature: #c2255c;
+  --rv-removed: #c62828;
+  --rv-moved: #2f6fd6;
+  --rv-affected: #8b5cf6;
+  --rv-faded: #d9dce2;
+  --rv-caller-1: #5f6b7d;
+  --rv-caller-2: #8e99aa;
+  --rv-caller-3: #b9c0cb;
+  --rv-ring: #c9ced8;
+  --rv-group: #e3e6ec;
+  --rv-edge: #8d97a8;
+  --rv-edge-hot: #2159d6;
+  --rv-sig: #1a1d23;
+  --rv-risk-low-bg: #e4f4ea;
+  --rv-risk-medium-bg: #fff1cf;
+  --rv-risk-high-bg: #fde2e0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rv-added: #4cc483;
+    --rv-modified: #f0b43c;
+    --rv-signature: #f06595;
+    --rv-removed: #ff6b62;
+    --rv-moved: #6fa2ff;
+    --rv-affected: #a78bfa;
+    --rv-faded: #343a45;
+    --rv-caller-1: #a3adbd;
+    --rv-caller-2: #76829a;
+    --rv-caller-3: #535d70;
+    --rv-ring: #343c49;
+    --rv-group: #2a313c;
+    --rv-edge: #5d687b;
+    --rv-edge-hot: #7ba6ff;
+    --rv-sig: #f3f5f9;
+    --rv-risk-low-bg: #15301f;
+    --rv-risk-medium-bg: #33290d;
+    --rv-risk-high-bg: #3a1716;
+  }
+}
+
+.rv-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rv-legend {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 6;
+  max-width: 230px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  font-size: 12px;
+  pointer-events: auto;
+}
+.rv-legend ul {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.rv-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rv-swatch {
+  flex: none;
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.rv-line {
+  flex: none;
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--rv-signature);
+  position: relative;
+}
+.rv-line::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: -3px;
+  border-left: 6px solid var(--rv-signature);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+.rv-banner {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 12px;
+}
+.rv-mark-added {
+  background: var(--rv-added);
+}
+.rv-mark-modified {
+  background: var(--rv-modified);
+}
+.rv-mark-signature {
+  background: var(--rv-signature);
+}
+.rv-mark-moved {
+  background: var(--rv-moved);
+}
+.rv-mark-removed {
+  background: var(--rv-removed);
+}
+.rv-mark-affected {
+  background: color-mix(in srgb, var(--rv-affected) 55%, var(--surface));
+}
+.rv-mark-faded {
+  background: var(--rv-faded);
+}
+.rv-levels {
+  margin-top: 6px;
+}
+.rv-caller-swatch {
+  background: linear-gradient(90deg, var(--rv-caller-1), var(--rv-caller-3));
+  border-radius: 50%;
+}
+
+/* Rings mode */
+.rv-rings {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+.rv-caption {
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+}
+.rv-svg {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.rv-ring {
+  fill: none;
+  stroke: var(--rv-ring);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.rv-ring-label {
+  fill: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.rv-group-arc {
+  fill: none;
+  stroke: var(--rv-group);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.rv-group-label {
+  fill: var(--muted);
+  font-size: 10px;
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+}
+.rv-edge {
+  stroke: var(--rv-edge);
+  stroke-width: 1.2;
+  opacity: 0.7;
+}
+.rv-arrow {
+  fill: var(--rv-edge);
+}
+.rv-edge-hot {
+  stroke: var(--rv-edge-hot);
+  stroke-width: 2.2;
+  opacity: 1;
+}
+.rv-arrow-hot {
+  fill: var(--rv-edge-hot);
+}
+.rv-node-g {
+  cursor: pointer;
+  outline: none;
+}
+.rv-node {
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+.rv-node-g:focus-visible .rv-node {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.rv-fill-added {
+  fill: var(--rv-added);
+}
+.rv-fill-modified {
+  fill: var(--rv-modified);
+}
+.rv-fill-signature {
+  fill: var(--rv-signature);
+}
+.rv-fill-moved {
+  fill: var(--rv-moved);
+}
+.rv-fill-removed {
+  fill: var(--rv-removed);
+}
+.rv-caller-1 {
+  fill: var(--rv-caller-1);
+}
+.rv-caller-2 {
+  fill: var(--rv-caller-2);
+}
+.rv-caller-3 {
+  fill: var(--rv-caller-3);
+}
+.rv-node.rv-sel {
+  stroke: var(--accent);
+  stroke-width: 4;
+}
+.rv-dim {
+  opacity: 0.18;
+}
+.rv-label {
+  fill: var(--text);
+  font-size: 12px;
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.rv-label-strong {
+  font-weight: 600;
+  font-size: 13px;
+}
+.rv-zoom {
+  position: absolute;
+  top: 46px;
+  left: 10px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.rv-zoom .icon-btn {
+  border-color: var(--border);
+  background: var(--surface);
+}
+.rv-fit {
+  padding: 3px 10px;
+}
+.rv-tip {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 12px;
+  max-width: 360px;
+  overflow-wrap: anywhere;
+}
+
+/* Left panel */
+.rv-range {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.rv-range input {
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 0;
+}
+.rv-risk {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.rv-risk-low {
+  background: var(--rv-risk-low-bg);
+}
+.rv-risk-medium {
+  background: var(--rv-risk-medium-bg);
+}
+.rv-risk-high {
+  background: var(--rv-risk-high-bg);
+}
+.rv-reasons,
+.rv-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.rv-counts,
+.rv-meta {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.rv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rv-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  padding: 3px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.rv-item:hover,
+.rv-item.is-current {
+  background: var(--accent-soft);
+}
+.rv-item-name {
+  grid-column: 2;
+  overflow-wrap: anywhere;
+}
+.rv-item-meta {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 12px;
+}
+.rv-path {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.rv-dot {
+  grid-row: span 2;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Inspector */
+.rv-change {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rv-change h4 {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* Consumers of a change (#169): directly affected strong, potentially affected soft */
+.rv-edge-soft {
+  stroke: var(--rv-edge-hot);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+  opacity: 0.5;
+}
+.rv-node-g.rv-tier-direct .rv-node {
+  stroke: var(--rv-edge-hot);
+  stroke-width: 2.5;
+}
+.rv-tier-potential {
+  opacity: 0.6;
+}
+.rv-consumers {
+  margin: 2px 0 6px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rv-consumers h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+.inspector .rv-used-by .rv-consumers {
+  padding-top: 0;
+  margin-left: 0;
+}
+.rv-consumer-file {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  margin-top: 2px;
+}
+.rv-consumer-potential .rv-item-name {
+  opacity: 0.8;
+}
+.rv-more {
+  font-size: 12px;
+}

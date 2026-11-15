@@ -198,6 +198,10 @@ paginate paginated paginates paginating pagination
 timestamps timestamped timezone timezones
 sandboxed sandboxing sandboxes
 readonly writable readable
+classify classified classifies classifying classification classifications reclassify reclassified
+roadmap roadmaps waitlist waitlists waitlisted waitlisting allowlist allowlists allowlisted allowlisting
+denylist denylists blocklist blocklists blocklisted closeout closeouts rowid rowids numeric numerics
+editable editability nav navs utm utms posthog
 hotkey hotkeys keybinding keybindings keymap keymaps keystroke keystrokes
 stdlib stdio stdin stdout stderr
 mutex mutexes spinlock

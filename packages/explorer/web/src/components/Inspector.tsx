@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
-import type { GraphNode, NeighborRef, NodeDetail } from "../api.ts";
+import type {
+  GraphNode,
+  NeighborRef,
+  NodeDetail,
+  ReviewChange,
+  ReviewConsumers,
+  ReviewData,
+} from "../api.ts";
 import { m2Of, m2Spec } from "../badges.ts";
 import { useNodeDetail, useOverview } from "../hooks.ts";
 import { useStore } from "../store.tsx";
 import { isServerNode } from "../views/drill.ts";
 import { expandedIds, withExpanded } from "../views/egoGroups.ts";
+import { ConsumerTiers } from "../views/ReviewConsumers.tsx";
+import { reviewFocus } from "../views/reviewFocus.ts";
+import { CHANGE_WORDS, markKindOf } from "../views/reviewModel.ts";
 import { KindBadge } from "./KindBadge.tsx";
 import { SourcePreview } from "./SourcePreview.tsx";
 
@@ -190,7 +200,76 @@ function OverviewSection({ id }: { id: string }) {
   );
 }
 
-export function Inspector({ nodes }: { nodes: GraphNode[] }) {
+/**
+ * Review view: "Used by (n)", the consumers of the selected change or changed file in two tiers (#169). Picking one
+ * selects it and keeps this change in focus on the map.
+ */
+function UsedBySection({ id, consumers }: { id: string; consumers: ReviewConsumers }) {
+  const { selectNode, state } = useStore();
+  return (
+    <section aria-label="Used by" className="rv-change rv-used-by">
+      <h3>Used by ({consumers.directTotal + consumers.potentialTotal})</h3>
+      <ConsumerTiers
+        consumers={consumers}
+        label="Consumers in two tiers"
+        sel={state.route.sel}
+        onPick={(c) => {
+          reviewFocus.set(id);
+          selectNode(c);
+        }}
+      />
+    </section>
+  );
+}
+
+/** Review view: how the selected symbol changed, with the signature before and after. */
+function ReviewChangeSection({ change }: { change: ReviewChange }) {
+  const { before, after } = change;
+  const where = (s: { path: string; line: number }) => `${s.path}:${s.line}`;
+  const moved = before && after && where(before) !== where(after);
+  return (
+    <section aria-label="Change in this review" className="rv-change">
+      <h3>Change in this review</h3>
+      <p>
+        <span className={`rv-dot rv-mark-${markKindOf(change)}`} />{" "}
+        <strong>{CHANGE_WORDS[change.kind].label}</strong>
+        {change.signatureChanged ? ", signature changed" : ""}
+        {change.exportedChanged ? (after?.exported ? ", now exported" : ", no longer exported") : ""}
+        {change.locDelta !== 0 ? `, ${change.locDelta > 0 ? "+" : ""}${change.locDelta} lines` : ""}
+      </p>
+      {before && (
+        <div>
+          <h4>Before{moved ? ` (${where(before)})` : ""}</h4>
+          <pre className="signature" data-side="before">
+            {before.signature}
+          </pre>
+        </div>
+      )}
+      {after && (
+        <div>
+          <h4>After{moved ? ` (${where(after)})` : ""}</h4>
+          <pre className="signature" data-side="after">
+            {after.signature}
+          </pre>
+        </div>
+      )}
+      <p className="muted">
+        {change.callers === 0
+          ? "Nothing in the index uses it directly."
+          : `${change.callers} direct ${change.callers === 1 ? "consumer" : "consumers"} (tinted on the map, with a line to this change).`}
+      </p>
+      {change.untrusted_description && (
+        <div className="description">
+          <p className="description-label">Generated description — may be wrong</p>
+          {/* Plain text only. The string is untrusted and is never parsed as HTML. */}
+          <p className="description-text">{change.untrusted_description}</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review?: ReviewData | null }) {
   const { state, selectNode, openInView, view } = useStore();
   const id = state.route.sel;
   const known = id !== null && isServerNode(id);
@@ -204,6 +283,9 @@ export function Inspector({ nodes }: { nodes: GraphNode[] }) {
 
   const hit = state.pickedHit?.id === id ? state.pickedHit : null;
   const graphNode = nodes.find((n) => n.id === id) ?? null;
+  const reviewChange = review?.changes.find((c) => c.id === id) ?? null;
+  const reviewFile = review?.files.find((f) => `file:${f.path}` === id) ?? null;
+  const usedBy = reviewChange?.consumers ?? reviewFile?.consumers ?? null;
   const current = detail && detail.node.id === id ? detail : null;
   const body = current?.node;
 
@@ -239,7 +321,7 @@ export function Inspector({ nodes }: { nodes: GraphNode[] }) {
 
   const groups = current ? groupNeighbors(current.neighbors) : [];
   const sourceRange: [number, number] | null =
-    path && (isSymbol || isFile) && !(isSymbol && line === null)
+    path && (isSymbol || isFile) && !(isSymbol && line === null) && reviewChange?.kind !== "removed"
       ? [line ?? 1, Math.min(endLine ?? SOURCE_LINES, (line ?? 1) + SOURCE_LINES - 1)]
       : null;
 
@@ -304,7 +386,7 @@ export function Inspector({ nodes }: { nodes: GraphNode[] }) {
         </div>
       </div>
 
-      {error && !current && known && (
+      {error && !current && known && !reviewChange && (
         <p className="notice">
           Could not load the full details for this node ({error}). Showing what the view already knows.
         </p>
@@ -312,8 +394,10 @@ export function Inspector({ nodes }: { nodes: GraphNode[] }) {
       {known && !current && loading && <p className="muted">Loading…</p>}
 
       <div className="inspector-body">
+        {reviewChange && <ReviewChangeSection change={reviewChange} />}
+        {usedBy && <UsedBySection id={id} consumers={usedBy} />}
         {hasOverview && <OverviewSection id={id} />}
-        {graphNode && !current && <GraphNodeFacts node={graphNode} view={view} />}
+        {graphNode && !current && !reviewChange && <GraphNodeFacts node={graphNode} view={view} />}
 
         {current && (
           <>

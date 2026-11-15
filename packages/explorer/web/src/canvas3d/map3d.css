@@ -742,3 +742,18 @@
 .s3-tiers .s3-legend-icon {
   margin-top: 0;
 }
+
+/* The map-3d view with a review range in the city or islands style (#167): the layer is drawn in the settlements. */
+.map3d-review-note {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  margin: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 12px;
+}

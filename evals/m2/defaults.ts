@@ -5,5 +5,7 @@ export const DEFAULT_THRESHOLDS = loadConfigForDb("/nonexistent/gantry.db", { HO
   .duplicates.thresholds;
 export const DEFAULT_CONFIG_THRESHOLDS = {
   nearJaccard: DEFAULT_THRESHOLDS.nearJaccard,
+  nearTokenJaccard: DEFAULT_THRESHOLDS.nearTokenJaccard,
+  codeVectorTokenJaccard: DEFAULT_THRESHOLDS.codeVectorTokenJaccard,
   codeVector: DEFAULT_THRESHOLDS.codeVector,
 };

@@ -91,20 +91,31 @@ function isSymlink(p: string): boolean {
 }
 
 /** Gantry call line: stdin is cut off so a following hook still sees git's stdin (pre-push, post-rewrite). */
-function callLine(name: string): string {
-  return `[ "$GANTRY_WORKER" = 1 ] || "$HOME/.gantry/bin/gantry" hook ${name} "$@" </dev/null || true`;
+function callLine(name: string, dataBase?: string): string {
+  const env = dataBase === undefined ? "" : `CLAUDE_PLUGIN_DATA=${q(dataBase)} `;
+  return `[ "$GANTRY_WORKER" = 1 ] || ${env}"$HOME/.gantry/bin/gantry" hook ${name} "$@" </dev/null || true`;
+}
+
+/**
+ * The data base the hooks must run with (spec sections 4 and 12): git runs them without the plugin environment, so
+ * the install records the base `paths.dataDir` lives under (`<base>/repos/<hash>`) whenever it is not the default
+ * `~/.gantry/data`; the hook then reads the same store the plugin wrote.
+ */
+export function hookDataBase(paths: GantryPaths): string | undefined {
+  const base = path.dirname(path.dirname(paths.dataDir));
+  return base === path.join(path.dirname(paths.globalConfigPath), "data") ? undefined : base;
 }
 
 /** The 3-line script for `.git/hooks` (the original, if any, was renamed to `<name>.gantry-prev`). */
-export function hookScript(name: string, chained: boolean): string {
+export function hookScript(name: string, chained: boolean, dataBase?: string): string {
   const last = chained ? `[ -x "$0${PREV_SUFFIX}" ] && exec "$0${PREV_SUFFIX}" "$@"; exit 0` : "exit 0";
-  return `#!/bin/sh\n${callLine(name)}\n${last}\n`;
+  return `#!/bin/sh\n${callLine(name, dataBase)}\n${last}\n`;
 }
 
 /** Wrapper for the `core.hooksPath` case: Gantry (for its own hooks), then the original with the same args. */
-export function wrapperScript(name: string, origDir: string): string {
+export function wrapperScript(name: string, origDir: string, dataBase?: string): string {
   const orig = q(`${origDir}/${name}`);
-  const first = (GANTRY_HOOKS as readonly string[]).includes(name) ? `${callLine(name)}\n` : "";
+  const first = (GANTRY_HOOKS as readonly string[]).includes(name) ? `${callLine(name, dataBase)}\n` : "";
   return `#!/bin/sh\n${first}[ -x ${orig} ] && exec ${orig} "$@"; exit 0\n`;
 }
 
@@ -184,7 +195,7 @@ export function installHooks(
       }
       const hasPrev = exists(prev);
       if (hasPrev) chained.push(name);
-      writeExec(file, hookScript(name, hasPrev));
+      writeExec(file, hookScript(name, hasPrev, hookDataBase(paths)));
     }
     return { mode: "git-hooks", dir, chained, warnings };
   }
@@ -213,7 +224,7 @@ export function installHooks(
     // original dir missing: wrappers just exit 0
   }
   for (const name of [...names].sort()) {
-    writeExec(path.join(wrapperDir, name), wrapperScript(name, origDir));
+    writeExec(path.join(wrapperDir, name), wrapperScript(name, origDir, hookDataBase(paths)));
     if (fs.existsSync(path.join(origDir, name)) && (GANTRY_HOOKS as readonly string[]).includes(name)) {
       chained.push(name);
     }

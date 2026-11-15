@@ -6,6 +6,7 @@ import { applyKindVariables, currentScheme } from "./theme.ts";
 import "./styles.css";
 import "./views/views.css";
 import "./views/duplicates.css";
+import "./views/review.css";
 
 const media = window.matchMedia("(prefers-color-scheme: dark)");
 const applyScheme = () => applyKindVariables(document.documentElement, currentScheme());

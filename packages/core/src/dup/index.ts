@@ -12,11 +12,13 @@ export {
   findDuplicatesDetailed,
   KNN_K,
   NEAR_MIN_STMTS,
+  nearScore,
   type RebuildOptions,
   rebuildSimilarEdges,
   type SkipReason,
   TIER_RANK,
   type Tier,
+  tokensShared,
 } from "./engine.js";
 export {
   isExcludedPath,

@@ -323,6 +323,35 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       }
       store.tx(() => store.db.exec("DELETE FROM fts_symbols"));
     }
+    // A targeted run looks FTS rows up by rowid: one scan of the table per write batch instead of one per symbol
+    // (a delete by the UNINDEXED symbol_id column scans the whole table; on 9,000 symbols that was most of a
+    // 20-file refresh). Rebuilt at the start of every batch transaction, so a concurrent writer is seen.
+    let ftsRowids: Map<string, number[]> | null = null;
+    const ftsDelete = store.db.prepare("DELETE FROM fts_symbols WHERE rowid = ?");
+    const rowidsOf = (): Map<string, number[]> => {
+      if (ftsRowids) return ftsRowids;
+      const map = new Map<string, number[]>();
+      for (const r of store.db.prepare("SELECT rowid AS r, symbol_id AS id FROM fts_symbols").all() as {
+        r: number;
+        id: string;
+      }[]) {
+        const list = map.get(r.id);
+        if (list) list.push(r.r);
+        else map.set(r.id, [r.r]);
+      }
+      ftsRowids = map;
+      return map;
+    };
+    const ftsRemove = (id: string): void => {
+      const map = rowidsOf();
+      for (const r of map.get(id) ?? []) ftsDelete.run(r);
+      map.delete(id);
+    };
+    const ftsUpsert = (id: string, cols: [string, string, string, string, string]): void => {
+      ftsRemove(id);
+      const r = ftsInsert.run(id, ...cols);
+      rowidsOf().set(id, [Number(r.lastInsertRowid)]);
+    };
     const oldFtsIds = (l: Layer, fileId: string): string[] =>
       (
         store.db.prepare("SELECT id FROM symbols WHERE layer = ? AND file_id = ?").all(l, fileId) as {
@@ -338,7 +367,13 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
         const body = pf.bodies.get(s.id);
         const h = body
           ? hashSymbol(source, body, lang)
-          : { exactHash: "", shapeHash: "", minhash: new Uint32Array(64) };
+          : {
+              exactHash: "",
+              renamedHash: "",
+              shapeHash: "",
+              minhash: new Uint32Array(64),
+              nearMinhash: new Uint32Array(0),
+            };
         return { ...s, ...h };
       });
       const edges = [...resolver.edgesForFile(e.id), ...(routeEdges.get(e.id) ?? [])];
@@ -351,23 +386,20 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
         deleted: false,
         ...(pf.directives && pf.directives.length > 0 ? { directives: pf.directives } : {}),
       };
-      const old = layer === "main" && !rebuildFts ? oldFtsIds("main", e.id) : [];
+      // Rows of symbols this write drops. On the working layer a symbol that main still has keeps its row (main's
+      // copy is still in the store); one that only the old working row had is gone for good.
+      const old = rebuildFts ? [] : oldFtsIds(layer, e.id);
       store.replaceFile(layer, file, symbols, edges, routeNodes.get(e.id) ?? []);
       const keep = new Set(symbols.map((s) => s.id));
-      for (const id of old) if (!keep.has(id)) store.fts.remove(id);
+      if (layer === "working" && old.length > 0) for (const id of oldFtsIds("main", e.id)) keep.add(id);
+      for (const id of old) if (!keep.has(id)) ftsRemove(id);
       for (const s of symbols) {
         const nameTokens = splitIdentifier(s.name).join(" ");
         if (rebuildFts) {
           const p = prevFts.get(s.id);
           ftsInsert.run(s.id, nameTokens, p?.suggested ?? "", e.path, p?.behavior ?? "", p?.terms ?? "");
         } else {
-          store.fts.upsert(s.id, {
-            nameTokens,
-            suggestedName: "",
-            path: e.path,
-            behavior: "",
-            searchTerms: "",
-          });
+          ftsUpsert(s.id, [nameTokens, "", e.path, "", ""]);
         }
       }
       written.add(e.id);
@@ -381,8 +413,10 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     for (let i = 0; i < toWrite.length; i += TX_BATCH) {
       const batch = toWrite.slice(i, i + TX_BATCH);
       store.tx(() => {
+        ftsRowids = null;
         for (const e of batch) writeOne(e);
       });
+      ftsRowids = null;
     }
 
     store.tx(() => {
@@ -525,8 +559,10 @@ export function dumpGraph(store: Store): {
     contentHash: f.contentHash,
     ...(f.directives && f.directives.length > 0 ? { directives: f.directives } : {}),
   }));
-  // minhash is omitted: it is 64 words per symbol and is fully determined by the source.
-  const symbols = store.effectiveSymbols().map(({ minhash: _m, ...s }) => s);
+  // minhash, nearMinhash and renamedHash are omitted: 64 words per symbol each, fully determined by the source.
+  const symbols = store
+    .effectiveSymbols()
+    .map(({ minhash: _m, nearMinhash: _t, renamedHash: _r, ...s }) => s);
   // similar_to edges are derived (rebuilt by init/heal/embed from hashes and vectors), not part of the index.
   const edges = store.effectiveEdges().filter((e) => e.kind !== "similar_to");
   // Adapter nodes (routes) appear only when an adapter found some, so repositories without them dump as before.

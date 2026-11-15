@@ -196,7 +196,9 @@ function relation(
   ownTier: Tier | undefined,
 ): { tier: Tier; score: number | null } {
   const { keep } = inp;
-  const identical = keep.exactHash !== "" && keep.exactHash === m.exactHash;
+  const identical =
+    (keep.exactHash !== "" && keep.exactHash === m.exactHash) ||
+    (!!keep.renamedHash && keep.renamedHash === m.renamedHash);
   const sameShape = keep.shapeHash !== "" && keep.shapeHash === m.shapeHash;
   const jac =
     keep.minhash.length > 0 && keep.minhash.length === m.minhash.length

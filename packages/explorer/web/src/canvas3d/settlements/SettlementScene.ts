@@ -10,6 +10,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { Scheme } from "../../theme.ts";
+import { type LayerPaint, MARK_COLOURS } from "../../views/reviewModel.ts";
 import { workspaceColorAt } from "../../workspacePalette.ts";
 import { rectsOverlap, type ScreenRect } from "../city/labels.ts";
 import { type BuiltBuildings, buildBuildings } from "./buildings3d.ts";
@@ -23,6 +24,9 @@ import { makePath, type Pt, sampleAt, segPoint } from "./path.ts";
 import { rngFor } from "./rng.ts";
 import type { Road } from "./roads.ts";
 import { TIER_LABEL } from "./tiers.ts";
+
+/** The review layer draws at most this many arcs (the panel lists every change). */
+const MAX_ARCS = 600;
 
 export interface SettlementTip {
   title: string;
@@ -89,6 +93,9 @@ export class SettlementScene {
   private readonly hoverOutline: THREE.LineSegments;
   private readonly ringSel: THREE.Mesh;
   private look: Look;
+  private review: LayerPaint | null = null;
+  private reviewGroup: THREE.Group | null = null;
+  private reviewDisposables: { dispose(): void }[] = [];
   private land: Landscape | null = null;
   private built: BuiltBuildings | null = null;
   private life: Life | null = null;
@@ -232,6 +239,18 @@ export class SettlementScene {
     this.invalidate();
   }
 
+  /**
+   * The review layer (#167), resolved against `land.buildings` (one index per building): untouched buildings fade to
+   * grey, changed ones take their change's colour, hop-1 callers a soft tint, and arcs join each caller building to
+   * the changed building it calls. Null clears it. Positions never change.
+   */
+  setReview(paint: LayerPaint | null): void {
+    this.review = paint;
+    this.applyReview();
+    this.applyEmphasis();
+    this.invalidate();
+  }
+
   setAutoRotate(on: boolean): void {
     this.controls.autoRotate = on && !this.opts.reducedMotion;
     this.controls.autoRotateSpeed = 0.8;
@@ -335,7 +354,121 @@ export class SettlementScene {
     this.invalidate();
   }
 
+  private clearReviewArcs(): void {
+    if (this.reviewGroup) this.content.remove(this.reviewGroup);
+    this.reviewGroup = null;
+    for (const d of this.reviewDisposables) d.dispose();
+    this.reviewDisposables = [];
+  }
+
+  /** Recolours the building instances for the review layer (from their own colours) and draws its arcs. */
+  private applyReview(): void {
+    const land = this.land;
+    const built = this.built;
+    this.clearReviewArcs();
+    if (!land || !built) return;
+    const rv = this.review && this.review.lit.length === land.buildings.length ? this.review : null;
+    const colours = MARK_COLOURS[this.look.scheme];
+    const fade = color(this.look.night ? "#2b3039" : "#cfd2d8");
+    const affected = color(colours.affected);
+    const tmp = new THREE.Color();
+    for (const p of built.pickables) {
+      const attr = p.mesh.instanceColor;
+      if (!attr) continue;
+      let base = p.mesh.userData.baseColors as Float32Array | undefined;
+      if (!base) {
+        base = Float32Array.from(attr.array as ArrayLike<number>);
+        p.mesh.userData.baseColors = base;
+      }
+      for (let i = 0; i < p.owner.length; i++) {
+        tmp.setRGB(base[i * 3] as number, base[i * 3 + 1] as number, base[i * 3 + 2] as number);
+        const b = p.owner[i] as number;
+        if (rv) {
+          const ch = rv.change[b];
+          const hop = rv.hop[b] ?? 0;
+          if (ch) tmp.copy(color(colours[ch])).lerp(color("#ffffff"), 0.08);
+          else if (hop > 0) tmp.lerp(affected, hop === 1 ? 0.6 : 0.3);
+          else {
+            const l = tmp.r * 0.3 + tmp.g * 0.59 + tmp.b * 0.11;
+            tmp.setRGB(l, l, l).lerp(fade, 0.65);
+          }
+        }
+        p.mesh.setColorAt(i, tmp);
+      }
+      attr.needsUpdate = true;
+    }
+    if (!rv) {
+      delete this.host.dataset.review;
+      return;
+    }
+    // Arcs from the top of each caller building to the top of the changed one, with a cone at the changed end.
+    const group = new THREE.Group();
+    group.userData.review = true;
+    const cone = new THREE.ConeGeometry(0.22, 0.6, 10);
+    this.reviewDisposables.push(cone);
+    const mats = new Map<string, THREE.MeshBasicMaterial>();
+    const matOf = (kind: string): THREE.MeshBasicMaterial => {
+      let m = mats.get(kind);
+      if (!m) {
+        m = new THREE.MeshBasicMaterial({ color: color(colours[kind as keyof typeof colours] ?? "#888888") });
+        mats.set(kind, m);
+        this.reviewDisposables.push(m);
+      }
+      return m;
+    };
+    const drawn: { src: string; dst: string; change: string; soft?: boolean }[] = [];
+    const softMats = new Map<string, THREE.MeshBasicMaterial>();
+    // A potentially affected consumer's arc is thin and faint.
+    const softOf = (kind: string): THREE.MeshBasicMaterial => {
+      let m = softMats.get(kind);
+      if (!m) {
+        m = new THREE.MeshBasicMaterial({
+          color: color(colours[kind as keyof typeof colours] ?? "#888888"),
+          transparent: true,
+          opacity: 0.4,
+        });
+        softMats.set(kind, m);
+        this.reviewDisposables.push(m);
+      }
+      return m;
+    };
+    for (const l of rv.links.slice(0, MAX_ARCS)) {
+      const a = land.buildings[l.src];
+      const b = land.buildings[l.dst];
+      if (!a || !b) continue;
+      const p0 = new THREE.Vector3(a.x, a.h + 0.25, a.z);
+      const p2 = new THREE.Vector3(b.x, b.h + 0.25, b.z);
+      const dist = p0.distanceTo(p2);
+      const mid = p0.clone().add(p2).multiplyScalar(0.5);
+      mid.y = Math.max(p0.y, p2.y) + Math.max(2, dist * 0.35);
+      const curve = new THREE.QuadraticBezierCurve3(p0, mid, p2);
+      const radius = l.soft ? 0.04 : 0.07 + 0.04 * Math.min(4, l.weight);
+      const tube = new THREE.TubeGeometry(curve, 32, radius, 6, false);
+      this.reviewDisposables.push(tube);
+      const mat = l.soft ? softOf(l.change) : matOf(l.change);
+      const mesh = new THREE.Mesh(tube, mat);
+      mesh.renderOrder = 5;
+      group.add(mesh);
+      const tip = new THREE.Mesh(cone, mat);
+      const dir = curve.getTangent(1).normalize();
+      tip.position.copy(p2);
+      tip.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      group.add(tip);
+      drawn.push({ src: a.id, dst: b.id, change: l.change, ...(l.soft ? { soft: true } : {}) });
+    }
+    this.content.add(group);
+    this.reviewGroup = group;
+    const ids = (pick: (i: number) => boolean) => land.buildings.flatMap((b, i) => (pick(i) ? [b.id] : []));
+    this.host.dataset.review = JSON.stringify({
+      changed: ids((i) => rv.change[i] !== null),
+      affected: ids((i) => !rv.change[i] && (rv.hop[i] ?? 0) > 0),
+      faded: land.buildings.filter((_, i) => !rv.lit[i]).length,
+      links: drawn,
+    });
+  }
+
   private clear(): void {
+    this.clearReviewArcs();
     this.built?.dispose();
     this.life?.dispose();
     for (const d of this.disposables) d.dispose();
@@ -408,6 +541,7 @@ export class SettlementScene {
     this.controls.maxDistance = E * 10;
 
     this.buildLabels(land);
+    this.applyReview();
     this.updateSelection();
     this.applyEmphasis();
     this.publishState();
@@ -558,8 +692,9 @@ export class SettlementScene {
     this.land?.roads.forEach((r, i) => {
       const mat = this.roadMeshes[i]?.material as THREE.MeshLambertMaterial | undefined;
       if (!mat) return;
-      const on = !f || r.a === f || r.b === f;
-      mat.opacity = on ? 1 : 0.35;
+      // With the review layer on, the roads recede so the review's arcs lead.
+      const on = (!f || r.a === f || r.b === f) && !this.review;
+      mat.opacity = on ? 1 : this.review ? 0.3 : 0.35;
       mat.depthWrite = on;
     });
     this.dirtyLabels = true;

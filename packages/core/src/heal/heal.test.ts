@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { dumpGraph, indexRepo } from "../indexer.js";
 import { type GantryPaths, resolvePaths } from "../paths/index.js";
 import { openStore } from "../store/index.js";
-import { heal, refreshWorking } from "./index.js";
+import { heal, refreshWorking, staleFiles } from "./index.js";
 
 // The helper lives outside tsconfig rootDir (src), so load it dynamically by path.
 interface MaterializedFixture {
@@ -410,6 +410,59 @@ describe("refreshWorking", () => {
     write(fx, rel, "export const changedSlug = 1;\n");
     await refreshWorking(paths);
     expect(await refreshWorking(paths)).toMatchObject({ reindexed: 0, cleared: 0 });
+  });
+});
+
+describe("staleFiles", () => {
+  const rel = "packages/utils/src/slug.ts";
+  const stale = (paths: GantryPaths) => {
+    const s = openStore(paths.dbPath);
+    try {
+      return staleFiles(paths, s);
+    } finally {
+      s.close();
+    }
+  };
+
+  it("lists edited, new, deleted and reverted files until refreshWorking catches up, and writes nothing", async () => {
+    const { fx, paths } = await setup();
+    await heal(paths);
+    expect(stale(paths)).toEqual({ files: [], head: false });
+    const before = dump(paths);
+
+    write(fx, rel, "export const changedSlug = 1;\n");
+    write(fx, "packages/utils/src/fresh.ts", "export const fresh = 1;\n");
+    unlinkSync(join(fx.dir, "packages/utils/src/time.ts"));
+    write(fx, "README.notes", "not indexable\n");
+    expect(stale(paths).files).toEqual(["packages/utils/src/fresh.ts", rel, "packages/utils/src/time.ts"]);
+    expect(dump(paths)).toBe(before);
+
+    await refreshWorking(paths);
+    expect(stale(paths).files).toEqual([]);
+
+    // Typed again after the refresh: stale again, by mtime.
+    await new Promise((res) => setTimeout(res, 20));
+    write(fx, rel, "export const changedSlug = 2;\n");
+    expect(stale(paths).files).toEqual([rel]);
+    await refreshWorking(paths);
+
+    // Reverted through git: the working rows are now out of date.
+    fx.git(["checkout", "--", "."]);
+    fx.git(["clean", "-fdq"]);
+    expect(stale(paths).files).toEqual(["packages/utils/src/fresh.ts", rel, "packages/utils/src/time.ts"]);
+    await refreshWorking(paths);
+    expect(stale(paths).files).toEqual([]);
+  });
+
+  it("reports a pending heal with the files the commit changed", async () => {
+    const { fx, paths } = await setup();
+    await heal(paths);
+    featureCommit(fx, "stale");
+    const r = stale(paths);
+    expect(r.head).toBe(true);
+    expect(r.files).toEqual(["packages/utils/src/stale.ts", "packages/utils/src/time.ts"]);
+    await heal(paths);
+    expect(stale(paths)).toEqual({ files: [], head: false });
   });
 });
 

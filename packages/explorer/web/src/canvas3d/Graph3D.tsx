@@ -161,8 +161,29 @@ function IslandsCanvas({ nodes, edges, focus, onSelect, onHover }: CanvasProps) 
 /** The map-3d canvas: the settlements (default), or with style=city the code city, with style=islands the islands. */
 export default function Graph3D(props: CanvasProps) {
   useMapUi(); // the remembered style can change without the hash changing
-  const style = readStyle(useStore().state.route.filters);
-  if (style === "islands") return <IslandsCanvas {...props} />;
-  if (style === "city") return <CityCanvas {...props} />;
+  const filters = useStore().state.route.filters;
+  // The review layer (#167) is drawn in the settlements: the review view always uses them.
+  if (props.data?.review) return <SettlementCanvas {...props} />;
+  const style = readStyle(filters);
+  const reviewing = Boolean(filters.range || filters.pr);
+  const note = reviewing ? (
+    <p className="map3d-review-note" role="status">
+      The review layer is drawn in the Settlements style only.
+    </p>
+  ) : null;
+  if (style === "islands")
+    return (
+      <>
+        <IslandsCanvas {...props} />
+        {note}
+      </>
+    );
+  if (style === "city")
+    return (
+      <>
+        <CityCanvas {...props} />
+        {note}
+      </>
+    );
   return <SettlementCanvas {...props} />;
 }

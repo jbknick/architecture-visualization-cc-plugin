@@ -94,6 +94,8 @@ interface SymbolRow {
   exact_hash: string;
   shape_hash: string;
   minhash: Buffer;
+  near_minhash?: Buffer | null;
+  renamed_hash?: string | null;
 }
 interface AdapterNodeRow {
   id: string;
@@ -142,6 +144,8 @@ const toSymbol = (r: SymbolRow): SymbolRecord => ({
   exactHash: r.exact_hash,
   shapeHash: r.shape_hash,
   minhash: decodeMinhash(r.minhash),
+  ...(r.near_minhash ? { nearMinhash: decodeMinhash(r.near_minhash) } : {}),
+  ...(r.renamed_hash ? { renamedHash: r.renamed_hash } : {}),
 });
 
 const toAdapterNode = (r: AdapterNodeRow): AdapterNodeRecord => {
@@ -240,6 +244,22 @@ export function createStore(db: Database): Store {
     );
   };
 
+  /**
+   * Search rows of working-layer symbols that main does not have, for one file or all: removed with the working
+   * rows so `fts_symbols` keeps no row for a symbol that is in neither layer. Skips the FTS scan when there are none.
+   */
+  const dropWorkingOnlyFts = (fileId?: string): void => {
+    const only =
+      "SELECT w.id FROM symbols w WHERE w.layer = 'working' AND NOT EXISTS (SELECT 1 FROM symbols m WHERE m.id = w.id AND m.layer = 'main')";
+    const ids = (fileId === undefined ? stmt(only).all() : stmt(`${only} AND w.file_id = ?`).all(fileId)) as {
+      id: string;
+    }[];
+    if (ids.length === 0) return;
+    stmt("DELETE FROM fts_symbols WHERE symbol_id IN (SELECT value FROM json_each(?))").run(
+      JSON.stringify(ids.map((r) => r.id)),
+    );
+  };
+
   const deleteFileRows = (layer: Layer, fileId: string): void => {
     stmt("DELETE FROM symbols WHERE layer = ? AND file_id = ?").run(layer, fileId);
     stmt("DELETE FROM edges WHERE layer = ? AND file_id = ?").run(layer, fileId);
@@ -296,13 +316,14 @@ export function createStore(db: Database): Store {
         putFile(layer, file);
         const si = stmt(
           `INSERT INTO symbols(id, layer, file_id, name, kind, exported, signature, start_line, end_line,
-             loc, complexity, stmt_count, exact_hash, shape_hash, minhash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             loc, complexity, stmt_count, exact_hash, shape_hash, minhash, near_minhash, renamed_hash)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id, layer) DO UPDATE SET file_id = excluded.file_id, name = excluded.name,
              kind = excluded.kind, exported = excluded.exported, signature = excluded.signature,
              start_line = excluded.start_line, end_line = excluded.end_line, loc = excluded.loc,
              complexity = excluded.complexity, stmt_count = excluded.stmt_count,
-             exact_hash = excluded.exact_hash, shape_hash = excluded.shape_hash, minhash = excluded.minhash`,
+             exact_hash = excluded.exact_hash, shape_hash = excluded.shape_hash, minhash = excluded.minhash,
+             near_minhash = excluded.near_minhash, renamed_hash = excluded.renamed_hash`,
         );
         for (const s of symbols) {
           si.run(
@@ -321,6 +342,8 @@ export function createStore(db: Database): Store {
             s.exactHash,
             s.shapeHash,
             encodeMinhash(s.minhash),
+            s.nearMinhash && s.nearMinhash.length > 0 ? encodeMinhash(s.nearMinhash) : null,
+            s.renamedHash ? s.renamedHash : null,
           );
         }
         const ei = stmt(
@@ -345,6 +368,7 @@ export function createStore(db: Database): Store {
     markDeleted(layer, fileId) {
       localWrites++;
       tx(() => {
+        if (layer === "working") dropWorkingOnlyFts(fileId);
         deleteFileRows(layer, fileId);
         const existing = stmt("SELECT * FROM files WHERE id = ? AND layer = ?").get(fileId, layer) as
           | FileRow
@@ -365,6 +389,7 @@ export function createStore(db: Database): Store {
     clearWorking(fileId) {
       localWrites++;
       tx(() => {
+        dropWorkingOnlyFts(fileId);
         if (fileId === undefined) {
           stmt("DELETE FROM files WHERE layer = 'working'").run();
           stmt("DELETE FROM symbols WHERE layer = 'working'").run();

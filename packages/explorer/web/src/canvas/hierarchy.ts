@@ -120,7 +120,16 @@ export interface ChainInfo {
  * with loose files is never collapsed. Purely structural, so the layout worker and the renderer agree; ids and
  * selection are untouched.
  */
-export function collapseChains(t: Tree, files?: ArrayLike<number>, functions?: ArrayLike<number>): ChainInfo {
+export function collapseChains(
+  t: Tree,
+  files?: ArrayLike<number>,
+  functions?: ArrayLike<number>,
+  /**
+   * After a refresh (spec section 11 (c)): containers in `known` keep the decision they had, `skipped` naming the
+   * folders that were lifted, so one more function in a loose file cannot change the picture around it.
+   */
+  keep?: { known: ReadonlySet<string>; skipped: ReadonlySet<string> },
+): ChainInfo {
   const skipped = new Uint8Array(t.nodes.length);
   const isGroup = (k: number) => (t.nodes[k] as TreeNode).kind === GROUP_KIND;
   const isFolder = (k: number) => kindTier((t.nodes[k] as TreeNode).kind) === TIER_DIR && !isGroup(k);
@@ -136,6 +145,10 @@ export function collapseChains(t: Tree, files?: ArrayLike<number>, functions?: A
   t.nodes.forEach((n, i) => {
     const c = loneFolder(i);
     if (c === -1) return;
+    if (keep?.known.has(n.id)) {
+      if (keep.skipped.has((t.nodes[c] as TreeNode).id)) skipped[c] = 1;
+      return;
+    }
     const hasGroup = n.children.some(isGroup);
     const loose = files ? (files[i] as number) - (files[c] as number) : 0;
     if (!hasGroup && loose > 0) {
