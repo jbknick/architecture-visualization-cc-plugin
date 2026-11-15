@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { encodeFilters } from "./api.ts";
-import { formatHash, parseHash } from "./route.ts";
+import { formatHash, parseHash, parseInitialHash } from "./route.ts";
 
 describe("hash route", () => {
   it("parses view, focus, level, hops, selection and filters", () => {
@@ -60,5 +60,36 @@ describe("filters sent to the server", () => {
     expect(encodeFilters({ hideTests: "false", workspaces: "ws:a|ws:b" })).toBe(
       '{"hideTests":"false","workspaces":"ws:a|ws:b"}',
     );
+  });
+});
+
+describe("initial hash", () => {
+  it("selects the focus node when there is no sel key", () => {
+    expect(parseInitialHash("#/ego?focus=sym%3Aa%23B&hops=2").sel).toBe("sym:a#B");
+  });
+  it("lets an explicit sel win, including an empty one", () => {
+    expect(parseInitialHash("#/ego?focus=sym%3Aa%23B&sel=sym%3Ac%23D").sel).toBe("sym:c#D");
+    expect(parseInitialHash("#/ego?focus=sym%3Aa%23B&sel=").sel).toBeNull();
+  });
+  it("selects nothing without a focus", () => {
+    expect(parseInitialHash("#/duplicates").sel).toBeNull();
+  });
+});
+
+describe("empty sel and question marks", () => {
+  it("keeps an explicit empty sel through the load-time rewrite", () => {
+    const hash = formatHash(parseInitialHash("#/ego?focus=X&sel="));
+    expect(hash).toBe("#/ego?focus=X&sel=");
+    expect(parseInitialHash(hash).sel).toBeNull();
+  });
+  it("writes sel= for a focus with nothing selected, and nothing without a focus", () => {
+    expect(formatHash({ ...parseHash("#/ego?focus=X&sel=Y"), sel: null })).toBe("#/ego?focus=X&sel=");
+    expect(formatHash(parseHash("#/duplicates"))).toBe("#/duplicates");
+  });
+  it("splits at the first ? only", () => {
+    const route = parseInitialHash(`#/ego?focus=${encodeURIComponent("ep:GET /a?b")}&q=a?b`);
+    expect(route.focus).toBe("ep:GET /a?b");
+    expect(route.filters.q).toBe("a?b");
+    expect(parseHash("#/ego?focus=X&q=a?b=c").filters.q).toBe("a?b=c");
   });
 });

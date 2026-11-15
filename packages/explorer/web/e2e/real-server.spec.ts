@@ -363,3 +363,65 @@ test("slices: cross-slice imports with their counts, the shared-by list, and imp
   await page.waitForTimeout(700);
   await page.screenshot({ path: join(shots, "slices-fixture.png") });
 });
+
+// A link with a focus and no sel (what gantry_open_view returns) opens that node in the inspector (#136).
+test.describe("focus-only deep links", () => {
+  const base = () => url.replace(/#.*$/, "");
+  const ids: Record<string, string> = {};
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await page.goto(url);
+    const found = await page.evaluate(async () => {
+      // biome-ignore lint/suspicious/noExplicitAny: ad hoc JSON
+      const get = async (p: string): Promise<any> => (await fetch(p)).json();
+      const first = (v: { nodes?: { id: string }[] }, prefix: string) =>
+        (v.nodes ?? []).find((n) => n.id.startsWith(prefix))?.id ?? "";
+      const ws = first(await get("/api/view/project-map?level=workspaces"), "ws:");
+      const sym = first(await get("/api/view/project-map?level=symbols"), "sym:");
+      return {
+        "project-map": ws,
+        "map-3d": ws,
+        ego: sym,
+        duplicates: first(await get("/api/view/duplicates"), "sym:"),
+        pages: first(await get("/api/view/pages"), "route:"),
+        slices: first(await get("/api/view/slices"), "slice:"),
+      };
+    });
+    Object.assign(ids, found);
+    await page.close();
+  });
+
+  for (const view of ["project-map", "ego", "duplicates", "map-3d", "pages", "slices"]) {
+    test(`${view}: the inspector shows the focus node`, async ({ page }) => {
+      const focus = ids[view];
+      expect(focus, `a focus id for ${view}`).toBeTruthy();
+      await page.goto(`${base()}#/${view}?focus=${encodeURIComponent(focus ?? "")}`);
+      const heading = page.locator("aside[aria-label=Inspector] h2").first();
+      await expect(heading).toBeVisible({ timeout: 20_000 });
+      await expect(heading).toHaveAttribute("title", focus ?? "");
+    });
+  }
+
+  test("closing the inspector keeps it closed after a reload", async ({ page }) => {
+    const focus = ids["project-map"] ?? "";
+    await page.goto(`${base()}#/project-map?focus=${encodeURIComponent(focus)}`);
+    const inspector = page.locator("aside[aria-label=Inspector]");
+    await expect(inspector.locator("h2").first()).toBeVisible({ timeout: 20_000 });
+    await inspector.getByRole("button", { name: "Close inspector" }).click();
+    await expect(inspector).toHaveCount(0);
+    await expect(page).toHaveURL(/sel=(&|$)/);
+    await page.reload();
+    await expect(page.getByText("pnpm-turbo").first()).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(inspector).toHaveCount(0);
+  });
+
+  test("an explicit sel wins over the focus", async ({ page }) => {
+    const sel = ids["project-map"] ?? "";
+    const focus = ids.ego ?? "";
+    await page.goto(`${base()}#/ego?focus=${encodeURIComponent(focus)}&sel=${encodeURIComponent(sel)}`);
+    const heading = page.locator("aside[aria-label=Inspector] h2").first();
+    await expect(heading).toHaveAttribute("title", sel, { timeout: 20_000 });
+  });
+});
