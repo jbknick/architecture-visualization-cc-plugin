@@ -13,6 +13,7 @@
 // scanner reads is capped before any regex runs.
 
 import type { FactSheet } from "../types.js";
+import { VERBS_INSTRUCTIVE } from "./lexicon.js";
 import { isCredentialName } from "./secrets.js";
 import { echoToken, tokenize } from "./text.js";
 import { derivesFrom, isBaseWord, isContraction, isStopWord, isWord, stemsOf } from "./wordlist.js";
@@ -41,6 +42,7 @@ urlsearchparams abortcontroller settimeout setinterval cleartimeout clearinterva
 removeeventlistener queryselector getelementbyid innerhtml textcontent classname parseint parsefloat tostring
 tolowercase touppercase foreach hasownproperty isarray isnan nodelist htmlelement eventemitter xmlhttprequest
 camelcase pascalcase snakecase kebabcase
+json_object json_array json_extract json_each json_group_array json_group_object
 `;
 export const IDENTIFIER_STOP_LIST: ReadonlySet<string> = new Set(STOP_WORDS.split(/\s+/).filter(Boolean));
 
@@ -62,11 +64,13 @@ read-write deep-copy deep-clone shallow-copy json-ld llms.txt llms-full.txt plai
 x-forwarded-for retry-after utf-8 utf-16 sha-1 sha-256 sha-512 iso-8601 base-64 and/or client/server read/write
 true/false yes/no on/off input/output i/o ci/cd tcp/ip http/1.1 http/2 hh:mm
 aes-128-cbc aes-256-cbc aes-128-gcm aes-256-gcm aes-gcm aes-cbc rsa-oaep rsa-pss hmac-sha256 sha-384 x-www-form-urlencoded
+strict-transport-security content-security-policy x-frame-options x-content-type-options referrer-policy
+permissions-policy access-control-allow-origin cross-origin-opener-policy cross-origin-resource-policy
 multi-part look-up look-ahead look-behind write-ahead time-to-live key-derivation
 camelcase snake_case kebab-case title-case camel-case pascal-case signed-in signed-out human-readable machine-readable percent-encoded url-safe html-safe type-safe thread-safe fail-safe fail-fast fire-and-forget first-come last-modified last-write-wins
 case-folding word-by-word day-to-day day-of-week one-based zero-based
 package.json tsconfig.json package-lock.json .env .gitignore .npmrc readme.md index.ts index.js index.tsx
-node_modules pnpm-lock.yaml yarn.lock docker-compose.yml node.js next.js vue.js d3.js three.js e.g i.e
+schema.org node_modules pnpm-lock.yaml yarn.lock docker-compose.yml node.js next.js vue.js d3.js three.js e.g i.e
 robots.txt sitemap.xml favicon.ico manifest.json license.md changelog.md
 `;
 const HYPHENATED_OK: ReadonlySet<string> = new Set(HYPHENATED_TEXT.split(/\s+/).filter(Boolean));
@@ -76,7 +80,7 @@ const KNOWN_ALNUM: ReadonlySet<string> = new Set(
   `oauth2 base64 base32 sha1 sha256 sha384 sha512 base64url base32hex md5 utf8 utf16 es5 es6 es2015 es2020 es2022 http2 http3 ipv4 ipv6
   i18n l10n a11y k8s web3 ec2 s3 sqs sns uint8 uint16 uint32 int8 int16 int32 int64 float32 float64 vec2 vec3 vec4
   mp3 mp4 h264 x86 x64 arm64 win32 py3 python3 node18 node20 react18 vue3 angular2 oauth1 jwt2 tls1 ssl3 ecmascript2020
-  2fa b2b b2c p2p 3d 2d 4k 5g aes128 aes256 hs256 rs256 es256 ed25519 x25519 pbkdf2 argon2 argon2id sha3 bm25 fts5 gpt4
+  e2e 2fa b2b b2c p2p 3d 2d 4k 5g aes128 aes256 hs256 rs256 es256 ed25519 x25519 pbkdf2 argon2 argon2id sha3 bm25 fts5 gpt4
   html5 css3 utf32 crc32 md4 ripemd160 vp9 av1 h265 ipv`.split(/\s+/),
 );
 
@@ -93,6 +97,8 @@ const ADDRESS_WORDS = new Set(
 /** Prefixes that may build a hyphenated compound from any one dictionary word: "non-existent", "multi-tenant". */
 const COMPOUND_SUFFIX =
   /^([a-z]{3,14})-(?:based|only|side|level|specific|aware|safe|free|like|wide|friendly|first|bound|ready|scoped|driven|encoded|decoded|readable|formatted|typed|named|sized|cased|sorted|separated|delimited|insensitive|sensitive|in|out|up|case|style)$/;
+const ROUTE_SEGMENT = /^\/([a-z]{2,20})\/$/;
+const RE_COMPOUND = /^re-([a-z]{3,20})$/;
 const COMPOUND_PREFIX = /^(?:non|multi|cross|semi|anti|sub|inter|intra|pseudo)-([a-z]{3,16})$/;
 
 const FUNCTION_WORDS = new Set(
@@ -280,6 +286,18 @@ export function isGrounded(token: string, g: Grounding): boolean {
   )
     return true;
   if (DECIMAL.test(token)) return false; // "8.8" can be a host; only a number the code itself holds (in names) counts
+  // A URL path segment ("/rpc/"): ONE ordinary word between two slashes. Two segments ("/skip/tests/") are not
+  // accepted, so a path cannot carry a phrase, and a lone leading slash is not (it is a closing tag, "</details>").
+  const segment = ROUTE_SEGMENT.exec(lower);
+  if (segment !== null && isWord(segment[1] as string)) return true;
+  // "re-validates", "re-journals": the re- prefix joined by a hyphen to an ordinary (possibly inflected) word.
+  const again = RE_COMPOUND.exec(lower);
+  if (
+    again !== null &&
+    wordGrounded(again[1] as string, g) &&
+    ![again[1] as string, ...stemsOf(again[1] as string)].some((w) => VERBS_INSTRUCTIVE.has(w))
+  )
+    return true; // "re-install" and "re-run" are install bait and stay out
   const pre = COMPOUND_PREFIX.exec(lower);
   if (pre !== null && isWord(pre[1] as string)) return true;
   const suf = COMPOUND_SUFFIX.exec(lower);

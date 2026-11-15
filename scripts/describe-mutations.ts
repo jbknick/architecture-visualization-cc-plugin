@@ -170,6 +170,79 @@ const MUTATIONS: Mutation[] = [
     find: "export const ENTROPY_THRESHOLD = 4.0;",
     replace: "export const ENTROPY_THRESHOLD = 99;",
   },
+  // Issue #150: each exemption that loosened a rule is widened here, and a "stays rejected" row must fail.
+  {
+    name: "route literal: any slash-wrapped token grounds",
+    file: "identifiers.ts",
+    find: "const ROUTE_SEGMENT = /^\\/([a-z]{2,20})\\/$/;",
+    replace: "const ROUTE_SEGMENT = /^\\/?([a-z]{2,20}(?:\\/[a-z]{2,20}){0,3})\\/?$/;",
+  },
+  {
+    name: "re- compounds: install bait allowed",
+    file: "identifiers.ts",
+    find: "![again[1] as string, ...stemsOf(again[1] as string)].some((w) => VERBS_INSTRUCTIVE.has(w))",
+    replace: "true",
+  },
+  {
+    name: "`should` allowed everywhere after whether",
+    file: "shape.ts",
+    find: "i - lastWhether <= 8 && !NEW_CLAUSE.has",
+    replace: "i - lastWhether <= 800 && !NEW_CLAUSE.has",
+  },
+  {
+    name: "`should` allowed in a new clause",
+    file: "shape.ts",
+    find: '!NEW_CLAUSE.has((tokens[i - 1] ?? "").toLowerCase())',
+    replace: "true",
+  },
+  {
+    name: "noun-use exemption: every always-flagged verb is a noun",
+    file: "shape.ts",
+    find: "if (isNounUse(items, i)) continue;",
+    replace: "continue;",
+  },
+  {
+    name: "verb list after to: an object no longer matters",
+    file: "shape.ts",
+    find: "if (OBJECT_STARTS.has(nxt)) return false;",
+    replace: "",
+  },
+  {
+    name: "verb list after to: protective code allowed",
+    file: "shape.ts",
+    find: "return !SENSITIVE_OBJECTS.has(nxt);",
+    replace: "return true;",
+  },
+  {
+    name: "compound heads: skip policy is a noun",
+    file: "shape.ts",
+    find: "!(COMPOUND_HEADS.has(nw) && !VERBS_INSTRUCTIVE.has(it.w))",
+    replace: "!COMPOUND_HEADS.has(nw)",
+  },
+  {
+    name: "participle exemption: any inflection before a person",
+    file: "speech.ts",
+    find: "const adjective = j === i + 1 && /ed$/.test(word);",
+    replace: "const adjective = true;",
+  },
+  {
+    name: "participle exemption: tail ignored",
+    file: "speech.ts",
+    find: "j + (adjective ? 4 : 11)",
+    replace: "j + 1",
+  },
+  {
+    name: "search-term noun compound: any previous word",
+    file: "speech.ts",
+    find: "return COMPOUND_LEAD.has(prev) || VERBS_AMBIGUOUS.has(prev);",
+    replace: "return true;",
+  },
+  {
+    name: "search-term noun compound: always-flagged verbs too",
+    file: "speech.ts",
+    find: "if (from === 0 || VERBS_ALWAYS.has(verb) ||",
+    replace: "if (from === 0 ||",
+  },
 ];
 
 const TEST_CMD =

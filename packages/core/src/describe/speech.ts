@@ -4,12 +4,15 @@
 import {
   ADDRESSEES_AI,
   ADDRESSEES_HUMAN,
+  CLAUSE_TRIGGERS,
   FILLERS,
   MODALS_AFTER_ADDRESSEE,
   OBJECT_STARTS,
   PERMISSION_WORDS,
   SENSITIVE_OBJECTS,
   SPEECH_VERBS,
+  VERBS_ALWAYS,
+  VERBS_AMBIGUOUS,
   VERBS_INSTRUCTIVE,
 } from "./lexicon.js";
 
@@ -87,7 +90,7 @@ function addresseeKind(w: string): "ai" | "human" | null {
 
 /** Speech and desire verbs that make a bare request; the causatives (let, allow, make, help, ...) describe a feature. */
 const CAUSATIVE_STEMS =
-  /^(?:let|lets|letting|allow|allows|allowed|allowing|make|makes|made|making|help|helps|helped|helping|enable|enables|enabled|enabling|permit|permits|permitted|permitting|authorize|authorizes|authorise|authorises|authorized|authorized|need|needs|needed|needing|cause|causes|caused|causing|empower|empowers|empowered|entitle|entitles|entitled)$/;
+  /^(?:let|lets|letting|allow|allows|allowed|allowing|make|makes|made|making|help|helps|helped|helping|enable|enables|enabled|enabling|permit|permits|permitted|permitting|authorize|authorizes|authorise|authorises|authorized|authorized|need|needs|needed|needing|require|requires|required|requiring|expect|expects|expected|expecting|cause|causes|caused|causing|empower|empowers|empowered|entitle|entitles|entitled)$/;
 
 /**
  * Names the rule that fires, or null. Rules:
@@ -118,8 +121,12 @@ export function speechProblem(text: string): string | null {
         const kind = addresseeKind(t);
         if (kind === null) continue;
         if (kind === "ai") return "speech-act";
-        if (!CAUSATIVE_STEMS.test(word)) return "speech-act";
-        const tail = w.slice(j + 1, j + 11);
+        // A past participle right before a human addressee is an adjective ("suggested contributors"): judged like a
+        // causative, by what follows. `told`, `ordered`, `asked` stay speech acts when an action verb follows too.
+        const adjective = j === i + 1 && /ed$/.test(word);
+        if (!CAUSATIVE_STEMS.test(word) && !adjective) return "speech-act";
+        // An adjective participle is judged on the next three words only ("suggested maintainers to skip tests").
+        const tail = w.slice(j + 1, j + (adjective ? 4 : 11));
         if (tail.some((x) => VERBS_INSTRUCTIVE.has(x)) || hasSensitive(tail)) return "speech-act";
       }
     }
@@ -198,4 +205,24 @@ export function sensitivePhrases(words: readonly string[]): { from: number; to: 
     out.push({ from: i, to: j - 1 });
   }
   return out;
+}
+
+/** Nouns (besides the verb-or-noun words of the lexicon) that make a following verb a noun: "merge commit", "db push". */
+const COMPOUND_LEAD = new Set("db sql code post unit pull auto".split(" "));
+
+/**
+ * The phrase verb at `from` is a noun inside a compound ("db push", "merge commit", "review commit validation"): it is
+ * not the first word of its search term, it is not an always-flagged verb, and the word before it (same term) is a
+ * verb-or-noun of the lexicon that is not itself a command lead ("review", "test", "build") or one of a few noun
+ * leads ("db", "sql", "code"). "important skip", "please skip" and "go skip" are not compounds. `owner[i]` is the term
+ * that word `i` came from. Used for search terms only.
+ */
+export function isNounCompound(words: readonly string[], owner: readonly number[], from: number): boolean {
+  const verb = words[from] as string;
+  if (from === 0 || VERBS_ALWAYS.has(verb) || owner[from - 1] !== owner[from]) return false;
+  const prev = words[from - 1] as string;
+  if (CLAUSE_TRIGGERS.has(prev) || FILLERS.has(prev) || VERBS_ALWAYS.has(prev)) return false;
+  if (prev === "try" || prev === "attempt" || prev === "let" || prev === "make" || prev === "kindly")
+    return false;
+  return COMPOUND_LEAD.has(prev) || VERBS_AMBIGUOUS.has(prev);
 }

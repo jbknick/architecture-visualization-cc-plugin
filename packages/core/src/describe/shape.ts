@@ -11,6 +11,7 @@ import {
   OBJECT_STARTS,
   SENSITIVE_OBJECTS,
   VERBS_ALWAYS,
+  VERBS_INSTRUCTIVE,
 } from "./lexicon.js";
 import { tokenize } from "./text.js";
 import { isBaseWord, isWord, stemsOf } from "./wordlist.js";
@@ -137,13 +138,23 @@ export const ADDRESSING_DROPPED: readonly string[] = [
   "instead",
 ];
 
+/** A `should` right after one of these opens a new clause, so it is not part of a reported condition. */
+const NEW_CLAUSE = new Set("and or but then so also just now".split(" "));
+
 /** Addressing words and phrases in `text` (deduplicated). Second person and deontic words in any case; `us`, `we`, `i`, `me`, `our` only as written here. */
 export function addressingHits(text: string): string[] {
   const hits: string[] = [];
-  for (const t of tokenize(text)) {
+  const tokens = tokenize(text);
+  let lastWhether = -100;
+  tokens.forEach((t, i) => {
     const low = t.toLowerCase();
+    if (low === "whether") lastWhether = i;
+    // "whether the sidebar should show": a reported condition, not an order. Only `should`, and only within eight
+    // words of `whether`; `must`, `please`, `ought` and the second person stay addressing everywhere.
+    if (low === "should" && i - lastWhether <= 8 && !NEW_CLAUSE.has((tokens[i - 1] ?? "").toLowerCase()))
+      return;
     if ((ADDRESSING_WORDS.has(low) || CASE_SENSITIVE_PRONOUNS.has(t)) && !hits.includes(low)) hits.push(low);
-  }
+  });
   const m = ADDRESSING_PHRASES.exec(text.toLowerCase().replace(/\s+/g, " "));
   if (m !== null && !hits.includes(m[0])) hits.push(m[0]);
   return hits;
@@ -280,6 +291,89 @@ function inVerbList(items: readonly Item[], i: number): boolean {
   return aw !== undefined && isActionVerb(aw);
 }
 
+/** Finite verbs after which a lexicon word is a subject noun: "a confirmation or override was stored". */
+const FINITE_AFTER_NOUN = new Set(
+  "was were is are has have had will would can could may might does did".split(" "),
+);
+/** Nouns that form a compound with an ambiguous verb: "return policy", "retry guidelines". */
+const COMPOUND_HEADS = new Set("policy policies guideline guidelines".split(" "));
+
+/**
+ * The verb at `i` is the subject of a finite verb ("a confirmation or override was stored"), or the last item of a
+ * comma list of nouns that heads a plural noun ("audit, confirmation and override records"). Both are nouns. An object
+ * start, a protective object or another action verb after it keeps it an instruction.
+ */
+function isNounUse(items: readonly Item[], i: number): boolean {
+  const nw = wordOf(items[i + 1]);
+  if (nw === undefined) return false;
+  if (FINITE_AFTER_NOUN.has(nw)) return true;
+  const sep = wordOf(items[i - 1]);
+  const prevItem = items[i - 2];
+  const listPunct = items[i - 3];
+  if ((sep !== "and" && sep !== "or") || wordOf(prevItem) === undefined || !isCommaItem(listPunct))
+    return false;
+  if (isActionVerb(wordOf(prevItem) as string)) return false;
+  if (OBJECT_STARTS.has(nw) || SENSITIVE_OBJECTS.has(nw) || isActionVerb(nw) || !nw.endsWith("s"))
+    return false;
+  const after = items[i + 2];
+  return (
+    after === undefined ||
+    "p" in after ||
+    OBJECT_STARTS.has(wordOf(after) as string) ||
+    FINITE_AFTER_NOUN.has(wordOf(after) as string)
+  );
+}
+const isCommaItem = (it: Item | undefined): boolean => it !== undefined && "p" in it && it.p === ",";
+
+/** A word that reads as a verb right after `to`: "respond", "offer", "load" (a listed verb or the base of a listed -s form). */
+function verbish(w: string): boolean {
+  return (
+    isActionVerb(w) ||
+    DESCRIPTION_VERBS.has(`${w}s`) ||
+    DESCRIPTION_VERBS.has(`${w}es`) ||
+    (w.endsWith("y") && DESCRIPTION_VERBS.has(`${w.slice(0, -1)}ies`))
+  );
+}
+
+/**
+ * The verb at `i` ends a list of bare verbs that an earlier `to` governs: "helpers to offer, respond, load and
+ * execute commands". Only comma, `and` and `or` stand between single words, the first of them reads as a verb, and
+ * the verb is not followed by protective code ("to read, parse and delete the tests" stays an instruction).
+ */
+function governedByVerbList(items: readonly Item[], i: number): boolean {
+  let k = i - 1;
+  let words = 0;
+  let wantSeparator = true;
+  while (k >= 0) {
+    const it = items[k] as Item;
+    if (wantSeparator) {
+      const w = wordOf(it);
+      if (!(("p" in it && it.p === ",") || w === "and" || w === "or")) return false;
+      // ", and" counts as one separator
+      if (isCommaItem(items[k - 1]) && (w === "and" || w === "or")) k--;
+      wantSeparator = false;
+      k--;
+      continue;
+    }
+    const w = wordOf(it);
+    if (w === undefined) return false;
+    words++;
+    const before = items[k - 1];
+    if (wordOf(before) === "to") {
+      if (!verbish(w)) return false;
+      // A determiner or pronoun after the verb ("delete the rows") makes it a command with an object; a bare noun
+      // ("execute commands") does not. Protective code after it ("delete tests") is always a command.
+      const nxt = wordOf(items[i + 1]) ?? "";
+      if (OBJECT_STARTS.has(nxt)) return false;
+      return !SENSITIVE_OBJECTS.has(nxt);
+    }
+    if (words > 6) return false;
+    wantSeparator = true;
+    k--;
+  }
+  return false;
+}
+
 /** True when `text` holds an imperative clause. Linear in the length of `text`. */
 export function hasImperativeClause(text: string): boolean {
   const items = itemsOf(text);
@@ -299,14 +393,20 @@ export function hasImperativeClause(text: string): boolean {
     const prev = wordOf(items[i - 1]);
     if (prev === "to" || (prev !== undefined && NOUN_CONTEXT.has(prev))) continue;
     if (causative && !punctSinceFirst) continue;
-    if (governedByInfinitive(items, i)) continue;
+    if (governedByInfinitive(items, i) || governedByVerbList(items, i)) continue;
     if (inVerbList(items, i)) continue;
-    if (VERBS_ALWAYS.has(it.w)) return true;
+    if (VERBS_ALWAYS.has(it.w)) {
+      if (isNounUse(items, i)) continue;
+      return true;
+    }
     const next = items[i + 1];
     const nw = wordOf(next);
     if (
       next === undefined ||
-      (nw !== undefined && (OBJECT_STARTS.has(nw) || SENSITIVE_OBJECTS.has(nw) || VERBS_ALWAYS.has(nw)))
+      (nw !== undefined &&
+        (OBJECT_STARTS.has(nw) ||
+          (SENSITIVE_OBJECTS.has(nw) && !(COMPOUND_HEADS.has(nw) && !VERBS_INSTRUCTIVE.has(it.w))) ||
+          VERBS_ALWAYS.has(nw)))
     )
       return true;
     // "then call fetchUser2": an identifier, path or number right after the verb is its object.
