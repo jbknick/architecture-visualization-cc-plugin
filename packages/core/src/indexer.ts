@@ -338,7 +338,13 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
         const body = pf.bodies.get(s.id);
         const h = body
           ? hashSymbol(source, body, lang)
-          : { exactHash: "", shapeHash: "", minhash: new Uint32Array(64), nearMinhash: new Uint32Array(0) };
+          : {
+              exactHash: "",
+              renamedHash: "",
+              shapeHash: "",
+              minhash: new Uint32Array(64),
+              nearMinhash: new Uint32Array(0),
+            };
         return { ...s, ...h };
       });
       const edges = [...resolver.edgesForFile(e.id), ...(routeEdges.get(e.id) ?? [])];
@@ -525,8 +531,10 @@ export function dumpGraph(store: Store): {
     contentHash: f.contentHash,
     ...(f.directives && f.directives.length > 0 ? { directives: f.directives } : {}),
   }));
-  // minhash and nearMinhash are omitted: 64 words per symbol each, fully determined by the source.
-  const symbols = store.effectiveSymbols().map(({ minhash: _m, nearMinhash: _t, ...s }) => s);
+  // minhash, nearMinhash and renamedHash are omitted: 64 words per symbol each, fully determined by the source.
+  const symbols = store
+    .effectiveSymbols()
+    .map(({ minhash: _m, nearMinhash: _t, renamedHash: _r, ...s }) => s);
   // similar_to edges are derived (rebuilt by init/heal/embed from hashes and vectors), not part of the index.
   const edges = store.effectiveEdges().filter((e) => e.kind !== "similar_to");
   // Adapter nodes (routes) appear only when an adapter found some, so repositories without them dump as before.

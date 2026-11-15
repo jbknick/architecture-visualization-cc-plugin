@@ -57,16 +57,15 @@ describe("duplicates view", () => {
     expect(c?.keepReason).toContain("shared package");
   });
 
-  it("lists formatRelativeDate / parseTimestamp as a near pair with the keep candidate in packages/utils", () => {
+  it("lists formatRelativeDate / parseTimestamp as an exact pair (a renamed copy, #151) with the keep candidate in packages/utils", () => {
     const c = dups().clusters.find((x) => x.members.some((m) => m.id === DATE));
     expect(c?.members.map((m) => m.id).sort()).toEqual([DATE, TIME].sort());
-    expect(c?.tier).toBe("near");
+    expect(c?.tier).toBe("exact");
     const keep = c?.members.find((m) => m.keep);
     expect(keep?.path.startsWith("packages/utils/")).toBe(true);
     const other = c?.members.find((m) => !m.keep);
-    expect(other?.tier).toBe("near");
-    expect(other?.score).toBeGreaterThan(0.85);
-    expect(other?.score).toBeLessThanOrEqual(1);
+    expect(other?.tier).toBe("exact");
+    expect(other?.score).toBe(1);
   });
 
   it("ranks by size x total lines, with totals and a summary that add up", () => {

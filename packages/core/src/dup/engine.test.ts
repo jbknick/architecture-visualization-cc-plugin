@@ -78,6 +78,7 @@ interface SymSpec {
   signature?: string;
   stmtCount?: number;
   exactHash: string;
+  renamedHash?: string;
   shapeHash: string;
   minhash: Uint32Array;
   nearMinhash?: Uint32Array;
@@ -107,6 +108,7 @@ function addFile(store: Store, path: string, syms: SymSpec[]): SymbolRecord[] {
       complexity: 1,
       stmtCount: s.stmtCount ?? 8,
       exactHash: s.exactHash,
+      ...(s.renamedHash ? { renamedHash: s.renamedHash } : {}),
       shapeHash: s.shapeHash,
       minhash: s.minhash,
       ...(s.nearMinhash ? { nearMinhash: s.nearMinhash } : {}),
@@ -147,6 +149,74 @@ const sym = (store: Store, id: string): SymbolRecord => {
   return s;
 };
 
+describe("renamed copies of short functions (#151)", () => {
+  const short = (
+    name: string,
+  ): string => `export function ${name}(value: number, lo: number, hi: number): number {
+  const floor = Math.max(value, lo);
+  const capped = Math.min(floor, hi);
+  const scaled = capped * 2;
+  return scaled;
+}`;
+
+  function addReal(store: Store, path: string, name: string, withRenamed = true): string {
+    const source = short(name);
+    const parsed = parseSource(path, source);
+    const sym = parsed.symbols.find((x) => x.name === name);
+    const range = sym && parsed.bodies.get(sym.id);
+    if (!sym || !range) throw new Error("no symbol");
+    const h = hashSymbol(source, range, "ts");
+    expect(sym.stmtCount).toBe(4);
+    const [rec] = addFile(store, path, [
+      {
+        name,
+        signature: sym.signature,
+        stmtCount: sym.stmtCount,
+        exactHash: h.exactHash,
+        ...(withRenamed ? { renamedHash: h.renamedHash } : {}),
+        shapeHash: h.shapeHash,
+        minhash: h.minhash,
+        nearMinhash: h.nearMinhash,
+      },
+    ]);
+    return (rec as SymbolRecord).id;
+  }
+
+  it("flags a renamed copy of a 4-statement function as exact, for unsaved code and for an indexed symbol", async () => {
+    const { store } = tmpStore();
+    const original = addReal(store, "src/a.ts", "clampDouble");
+    const copy = addReal(store, "src/b.ts", "limitTwice");
+    // Different names, so the plain exact hash differs, and 5 statements are below the near floor.
+    expect(sym(store, original).exactHash).not.toBe(sym(store, copy).exactHash);
+    expect(sym(store, original).renamedHash).toBe(sym(store, copy).renamedHash);
+    expect(await findDuplicates(store, { symbol: sym(store, copy) })).toEqual([
+      { symbolId: original, tier: "exact", score: 1 },
+    ]);
+    const unsaved = await findDuplicates(store, { code: { source: short("brandNewName"), lang: "ts" } });
+    expect(unsaved.map((c) => [c.symbolId, c.tier]).sort()).toEqual([
+      [original, "exact"],
+      [copy, "exact"],
+    ]);
+  });
+
+  it("does not flag a different function, nor a stored row without renamedHash under another name", async () => {
+    const { store } = tmpStore();
+    addReal(store, "src/a.ts", "clampDouble", false);
+    const other = `export function clampDouble(value: number, lo: number, hi: number): number {
+  const floor = Math.max(value, lo);
+  const capped = Math.min(floor, hi);
+  const scaled = capped * 3;
+  return scaled;
+}`;
+    expect(await findDuplicates(store, { code: { source: other, lang: "ts" } })).toEqual([]);
+    expect(await findDuplicates(store, { code: { source: short("elsewhere"), lang: "ts" } })).toEqual([]);
+    // The same name still matches on exactHash alone.
+    expect((await findDuplicates(store, { code: { source: short("clampDouble"), lang: "ts" } })).length).toBe(
+      1,
+    );
+  });
+});
+
 describe("fixture pnpm-turbo", () => {
   it("finds formatRelativeDate from parseTimestamp (misleading name) and the slugify copy as exact", async () => {
     const { store } = await fixtureStore();
@@ -155,8 +225,8 @@ describe("fixture pnpm-turbo", () => {
     const found = await findDuplicates(store, { symbol: parse });
     expect(ids(found)).toContain(fmt);
     const hit = found.find((c) => c.symbolId === fmt);
-    // Same logic, different identifiers in the exact token stream: the near tier carries the misleading-name pair.
-    expect(hit?.tier).toBe("near");
+    // Same logic under another function name (and other locals): the renamed hash makes it exact (#151).
+    expect(hit?.tier).toBe("exact");
     expect(hit?.score).toBe(1);
     expect(ids(found)).not.toContain(parse.id);
 
@@ -227,7 +297,7 @@ describe("fixture pnpm-turbo", () => {
     const date = "sym:packages/utils/src/date.ts#formatRelativeDate";
     const time = "sym:packages/utils/src/time.ts#parseTimestamp";
     expect(edges).toContainEqual(
-      expect.objectContaining({ src: date, dst: time, confidence: "high", evidence: ["near"] }),
+      expect.objectContaining({ src: date, dst: time, confidence: "high", evidence: ["exact"] }),
     );
     expect(edges).toContainEqual(
       expect.objectContaining({
@@ -840,6 +910,7 @@ describe("near tier keeps literals (#131)", () => {
     const copy = await findDuplicates(store, {
       code: { source: STATUS("copied", "open", "Open now", "closed", "Closed"), lang: "ts" },
     });
-    expect(copy.find((c) => c.symbolId === target)).toMatchObject({ tier: "near", score: 1 });
+    // A copy under a new name is the same code: exact since #151 (it was near, score 1, before).
+    expect(copy.find((c) => c.symbolId === target)).toMatchObject({ tier: "exact", score: 1 });
   });
 });

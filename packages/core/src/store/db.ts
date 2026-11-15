@@ -68,6 +68,17 @@ const MIGRATIONS: Migration[] = [
       db.exec("DELETE FROM meta WHERE key = 'head_sha'");
     },
   },
+  {
+    // symbols.renamed_hash (exact tier for renamed copies, #151). Forgetting head_sha makes the next heal a full main
+    // re-index, which fills renamed_hash for every symbol (spec section 9).
+    version: 6,
+    apply(db) {
+      const cols = db.prepare("PRAGMA table_info(symbols)").all() as { name: string }[];
+      if (!cols.some((c) => c.name === "renamed_hash"))
+        db.exec("ALTER TABLE symbols ADD COLUMN renamed_hash TEXT");
+      db.exec("DELETE FROM meta WHERE key = 'head_sha'");
+    },
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;

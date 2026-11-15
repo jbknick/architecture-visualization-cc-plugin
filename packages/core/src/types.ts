@@ -22,6 +22,8 @@ export interface SymbolRecord {
   complexity: number;
   stmtCount: number;
   exactHash: string;
+  /** Hash of the exact token stream with the symbol's own name as `$0` (spec section 17, #151); absent on rows from before schema v6. */
+  renamedHash?: string;
   shapeHash: string;
   minhash: Uint32Array; // 64 permutations
   /** MinHash (64) of the near tier's literal-aware token stream (spec section 17); empty on rows from before schema v5. */
@@ -121,4 +123,7 @@ export interface FtsRow {
 }
 
 /** A symbol as produced by the parser: everything except the hashing fields (issue #14 fills those in). */
-export type ParsedSymbol = Omit<SymbolRecord, "exactHash" | "shapeHash" | "minhash" | "nearMinhash">;
+export type ParsedSymbol = Omit<
+  SymbolRecord,
+  "exactHash" | "renamedHash" | "shapeHash" | "minhash" | "nearMinhash"
+>;
