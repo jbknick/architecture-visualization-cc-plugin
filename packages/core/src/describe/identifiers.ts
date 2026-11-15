@@ -41,6 +41,7 @@ urlsearchparams abortcontroller settimeout setinterval cleartimeout clearinterva
 removeeventlistener queryselector getelementbyid innerhtml textcontent classname parseint parsefloat tostring
 tolowercase touppercase foreach hasownproperty isarray isnan nodelist htmlelement eventemitter xmlhttprequest
 camelcase pascalcase snakecase kebabcase
+json_object json_array json_extract json_each json_group_array json_group_object
 `;
 export const IDENTIFIER_STOP_LIST: ReadonlySet<string> = new Set(STOP_WORDS.split(/\s+/).filter(Boolean));
 
@@ -62,11 +63,13 @@ read-write deep-copy deep-clone shallow-copy json-ld llms.txt llms-full.txt plai
 x-forwarded-for retry-after utf-8 utf-16 sha-1 sha-256 sha-512 iso-8601 base-64 and/or client/server read/write
 true/false yes/no on/off input/output i/o ci/cd tcp/ip http/1.1 http/2 hh:mm
 aes-128-cbc aes-256-cbc aes-128-gcm aes-256-gcm aes-gcm aes-cbc rsa-oaep rsa-pss hmac-sha256 sha-384 x-www-form-urlencoded
+strict-transport-security content-security-policy x-frame-options x-content-type-options referrer-policy
+permissions-policy access-control-allow-origin cross-origin-opener-policy cross-origin-resource-policy
 multi-part look-up look-ahead look-behind write-ahead time-to-live key-derivation
 camelcase snake_case kebab-case title-case camel-case pascal-case signed-in signed-out human-readable machine-readable percent-encoded url-safe html-safe type-safe thread-safe fail-safe fail-fast fire-and-forget first-come last-modified last-write-wins
 case-folding word-by-word day-to-day day-of-week one-based zero-based
 package.json tsconfig.json package-lock.json .env .gitignore .npmrc readme.md index.ts index.js index.tsx
-node_modules pnpm-lock.yaml yarn.lock docker-compose.yml node.js next.js vue.js d3.js three.js e.g i.e
+schema.org node_modules pnpm-lock.yaml yarn.lock docker-compose.yml node.js next.js vue.js d3.js three.js e.g i.e
 robots.txt sitemap.xml favicon.ico manifest.json license.md changelog.md
 `;
 const HYPHENATED_OK: ReadonlySet<string> = new Set(HYPHENATED_TEXT.split(/\s+/).filter(Boolean));
@@ -76,7 +79,7 @@ const KNOWN_ALNUM: ReadonlySet<string> = new Set(
   `oauth2 base64 base32 sha1 sha256 sha384 sha512 base64url base32hex md5 utf8 utf16 es5 es6 es2015 es2020 es2022 http2 http3 ipv4 ipv6
   i18n l10n a11y k8s web3 ec2 s3 sqs sns uint8 uint16 uint32 int8 int16 int32 int64 float32 float64 vec2 vec3 vec4
   mp3 mp4 h264 x86 x64 arm64 win32 py3 python3 node18 node20 react18 vue3 angular2 oauth1 jwt2 tls1 ssl3 ecmascript2020
-  2fa b2b b2c p2p 3d 2d 4k 5g aes128 aes256 hs256 rs256 es256 ed25519 x25519 pbkdf2 argon2 argon2id sha3 bm25 fts5 gpt4
+  e2e 2fa b2b b2c p2p 3d 2d 4k 5g aes128 aes256 hs256 rs256 es256 ed25519 x25519 pbkdf2 argon2 argon2id sha3 bm25 fts5 gpt4
   html5 css3 utf32 crc32 md4 ripemd160 vp9 av1 h265 ipv`.split(/\s+/),
 );
 

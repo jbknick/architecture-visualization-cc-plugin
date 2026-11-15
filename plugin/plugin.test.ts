@@ -227,6 +227,27 @@ describe("explain, overview and map skills (#35)", () => {
     expect(overview).toContain("untrusted_overview");
     expect(frontmatter(read("skills/explain/SKILL.md")).body).toContain("explainer");
   });
+
+  it("explain keeps answers at 200 words: a hard limit and a count before replying (#146)", () => {
+    const { body } = frontmatter(read("agents/explainer.md"));
+    expect(body).toMatch(/Hard limit: the answer is at most 200 words/);
+    expect(body).toMatch(/count the words/);
+    expect(frontmatter(read("skills/explain/SKILL.md")).body).toContain("at most 200 words");
+  });
+
+  it("overview grounds the text in code and shows the saved text unchanged (#146)", () => {
+    const agent = frontmatter(read("agents/explainer.md")).body;
+    for (const s of ["gantry_browse", "gantry_node", "`Read`", "never write an overview from names only"]) {
+      expect(agent).toContain(s);
+    }
+    expect(agent).toMatch(/Reply with the saved text exactly as you saved it/);
+    const skill = frontmatter(read("skills/overview/SKILL.md")).body;
+    expect(skill).toContain("gantry_node");
+    expect(skill).toContain("Read");
+    expect(skill).toContain("never write from names alone");
+    expect(skill).toContain("verbatim");
+    expect(skill).toMatch(/never reword/);
+  });
 });
 
 describe("reuse-first skill", () => {
