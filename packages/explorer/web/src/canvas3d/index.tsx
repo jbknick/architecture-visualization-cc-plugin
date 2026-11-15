@@ -5,13 +5,24 @@ import type { CanvasProps } from "../slots.ts";
 // three.js lives in this lazy chunk; the main bundle only holds this file and the left panel.
 const Graph3D = lazy(() => import("./Graph3D.tsx"));
 
+let webglChecked: boolean | null = null;
+
+/**
+ * Whether this browser can create a WebGL context. Probed once per page and the probe context released at once:
+ * this runs on every render of the 3D view (each hover re-renders it), and a probe per render used to pile up
+ * contexts until the browser dropped the oldest live one, the scene's own, blanking the view until it was restored.
+ */
 export function webglAvailable(): boolean {
+  if (webglChecked !== null) return webglChecked;
   try {
     const canvas = document.createElement("canvas");
-    return !!(canvas.getContext("webgl2") ?? canvas.getContext("webgl"));
+    const gl = (canvas.getContext("webgl2") ?? canvas.getContext("webgl")) as WebGLRenderingContext | null;
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    webglChecked = !!gl;
   } catch {
-    return false;
+    webglChecked = false;
   }
+  return webglChecked;
 }
 
 export function WebglFallback() {
