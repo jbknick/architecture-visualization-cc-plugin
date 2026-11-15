@@ -12,6 +12,7 @@ import { isSensitive } from "../discover/index.js";
 import type { Store } from "../store/index.js";
 import type { FactSheet } from "../types.js";
 import { BATCH_SIZE, backlogPriority } from "./backlog.js";
+import { injectionSignal } from "./feedback.js";
 import { routeFor } from "./route.js";
 import { BATCH_RESULT_JSON_SCHEMA } from "./schema.js";
 import { MAX_DESCRIBE_ATTEMPTS, recordDescribeFailure, storeDescriptions } from "./store.js";
@@ -308,10 +309,15 @@ function ensureQueued(store: Store, sheet: FactSheet): void {
     .run(sheet.contentKey, sheet.id, priority);
 }
 
-/** Counts one failed attempt (shared rule with the MCP path: `pending` after the first, `failed` after the second). */
-function markFailed(store: Store, sheet: FactSheet, why: string): void {
+/**
+ * Counts one failed attempt (shared rule with the MCP path: `pending` after the first, `failed` after the second, or
+ * `pending` for the describer's extra attempt after a clean `shape`/`identifier` second failure, #150).
+ */
+function markFailed(store: Store, sheet: FactSheet, why: string, raw?: unknown): void {
   ensureQueued(store, sheet);
-  recordDescribeFailure(store, sheet.contentKey, why.slice(0, 200));
+  recordDescribeFailure(store, sheet.contentKey, why.slice(0, 200), {
+    extendable: raw === undefined || !injectionSignal(raw),
+  });
 }
 
 /**
@@ -427,7 +433,7 @@ export async function describeWithWorker(
             model: route.model,
           });
         } else {
-          markFailed(store, sheet, `${v.reason}: ${v.detail}`);
+          markFailed(store, sheet, `${v.reason}: ${v.detail}`, byKey.get(sheet.contentKey));
           result.failed++;
         }
       }

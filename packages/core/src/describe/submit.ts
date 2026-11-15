@@ -4,7 +4,15 @@ import type { Store } from "../store/index.js";
 import type { FactSheet } from "../types.js";
 import type { SourceContext } from "./backlog.js";
 import { buildFactSheet, contentKey, pathOfFileId, SensitivePathError } from "./factsheet.js";
-import { type AcceptedDescription, recordDescribeFailure, storeDescriptions } from "./store.js";
+import { fallbackDescription } from "./fallback.js";
+import { type FeedbackField, injectionSignal, rejectionFeedback } from "./feedback.js";
+import {
+  type AcceptedDescription,
+  EXTRA_ATTEMPT_REASONS,
+  MAX_DESCRIBE_ATTEMPTS_EXTENDED,
+  recordDescribeFailure,
+  storeDescriptions,
+} from "./store.js";
 import { validateDescription } from "./validate.js";
 
 /** Model name written for descriptions that arrive through the describer tools. */
@@ -22,8 +30,21 @@ export interface SubmitRejection {
   contentKey: string;
   /** A validator reason (`schema`, `length`, `shape`, `identifier`, `injection`, `secret`) or `not_in_batch`, `attempts_exhausted`, `duplicate`, `stale`, `unavailable`. */
   reason: string;
-  /** Rule names from the validator, never matched text; cut to a short length. */
+  /**
+   * The validator's detail, for `last_error` and tests only: it can echo part of a token, so it never leaves the
+   * host (the MCP answer carries `rule` and `fix` instead).
+   */
   detail?: string;
+  /** Validator rejections: the sub-rule that fired (a fixed code such as `shape.first-word`), never matched text. */
+  rule?: string;
+  /** Validator rejections: the field the rule fired on. */
+  field?: FeedbackField;
+  /** Validator rejections: a fixed rewrite instruction for that rule (`rejectionFeedback`). */
+  fix?: string;
+  /** Validator rejections: true while the function is still in the batch with an attempt left, so a rewrite counts. */
+  resubmit?: boolean;
+  /** True when the function used its last attempt and the host stored a fallback description instead (#150). */
+  fallback?: boolean;
 }
 
 export interface SubmitResult {
@@ -33,6 +54,8 @@ export interface SubmitResult {
   batchKnown: boolean;
   /** Content keys that were accepted, in submission order. */
   acceptedKeys: string[];
+  /** Functions that got a fallback description (provenance `fallback`) after their last rejection. */
+  fallbacks: number;
 }
 
 interface ClaimedRow {
@@ -160,8 +183,10 @@ const cap = (s: string, n: number): string => (s.length <= n ? s : `${s.slice(0,
  * accepted one is stored (`provenance` model, model `haiku`, `PROMPT_MAJOR`), its backlog row deleted and the FTS
  * `behavior`, `search_terms` and `suggested_name` of every symbol with that content key updated; a rejected one adds
  * an attempt, records `last_error` and stays claimed in this batch, so a corrected resubmit under the same `batchId`
- * is checked again (#147), or becomes `failed` after `MAX_DESCRIBE_ATTEMPTS` (a later resubmit is then
- * `attempts_exhausted`). Items of the batch that are not mentioned stay claimed. One `usage_log` row is written per
+ * is checked again (#147), or becomes `failed` at its attempt limit (a later resubmit is then `attempts_exhausted`).
+ * Each validator rejection carries a fixed rule code and rewrite instruction (`rejectionFeedback`, #150). A function
+ * that fails its third (extra) attempt on `shape` or `identifier` gets a deterministic fallback description instead
+ * (`fallbackDescription`, provenance `fallback`) when one passes the validator; otherwise it stays `failed`. Items of the batch that are not mentioned stay claimed. One `usage_log` row is written per
  * call.
  */
 export function submitDescriptions(
@@ -177,6 +202,7 @@ export function submitDescriptions(
     rejected: [],
     batchKnown: rows.size > 0 || exhausted.size > 0,
     acceptedKeys: [],
+    fallbacks: 0,
   };
   const seen = new Set<string>();
   const files = new Map<string, string | undefined>();
@@ -229,8 +255,30 @@ export function submitDescriptions(
 
     const v = validateDescription(item.description, sheet);
     if (!v.ok) {
-      recordDescribeFailure(store, key, `${v.reason}: ${cap(v.detail, DETAIL_MAX)}`, { keepClaim: true });
-      reject(key, v.reason, v.detail);
+      // A wording rejection of text that also looks like an injection earns no extra attempt and no fallback.
+      const extendable = EXTRA_ATTEMPT_REASONS.has(v.reason) && !injectionSignal(item.description);
+      const now = recordDescribeFailure(store, key, `${v.reason}: ${cap(v.detail, DETAIL_MAX)}`, {
+        keepClaim: true,
+        extendable,
+      });
+      const fb = rejectionFeedback(v.reason, v.detail);
+      // The extended budget is used up on a wording rule: describe it from trusted data, if the validator agrees.
+      const fallback =
+        now.failed && now.attempts >= MAX_DESCRIBE_ATTEMPTS_EXTENDED && extendable
+          ? fallbackDescription(sym, sheet)
+          : null;
+      if (fallback !== null) {
+        accepted.push({ contentKey: key, description: fallback, model: null, provenance: "fallback" });
+        out.fallbacks++;
+      }
+      out.rejected.push({
+        contentKey: key,
+        reason: v.reason,
+        detail: cap(v.detail, DETAIL_MAX),
+        ...(fb ? { rule: fb.rule, field: fb.field, fix: fb.fix } : {}),
+        resubmit: !now.failed,
+        ...(fallback !== null ? { fallback: true } : {}),
+      });
       continue;
     }
     accepted.push({ contentKey: key, description: v.value, model: SUBMIT_MODEL });

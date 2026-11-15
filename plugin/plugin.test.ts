@@ -140,6 +140,13 @@ describe("describer agent", () => {
     expect(body).toMatch(/Never call this an empty backlog/);
     expect(body).toMatch(/submit those items once more with the same `batch_id`/);
   });
+
+  it("rewrites from the rejection's fix, resubmits once per submit and leaves the extra try to the next claim (#150)", () => {
+    expect(body).toMatch(/follows its `fix`/);
+    expect(body).toContain("`resubmit: true`");
+    expect(body).toMatch(/do not resubmit now: the item comes back with your next claim/);
+    expect(body).toContain("`fallback: true`");
+  });
 });
 
 describe("describer restarts (#147)", () => {
@@ -153,6 +160,11 @@ describe("describer restarts (#147)", () => {
       expect(body).toContain("`NOT INDEXED`");
       expect(body).toContain("backlog --failed");
       expect(body).toContain("backlog --retry-failed");
+      // #150: the describer prompt carries the feedback rule, and the final counts name the fallbacks.
+      expect(body).toMatch(
+        /rewrite it from the code following that rejection's fix and resubmit while resubmit is true/,
+      );
+      expect(body).toContain("`fallback` included");
     },
   );
 

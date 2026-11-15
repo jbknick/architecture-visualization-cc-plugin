@@ -450,6 +450,45 @@ describe("gantry_claim_batch and gantry_submit_descriptions", () => {
     expect(second.json.batch_status).toBeUndefined();
   });
 
+  it("answers a rejection with a fixed rule and fix, never the validator detail or the rejected text (#150)", async () => {
+    const { client, repo } = await setup();
+    const c = await claim(client, "w1", 10);
+    const slugKey = keyOf(c.items, "src/lib/slug.ts");
+    const marker = "zqxjvortle";
+    const bad = { behavior: `Returns the ${marker} slug for a text.`, searchTerms: ["slug"], nameFits: true };
+    const shape = { behavior: "The slug of a text.", searchTerms: ["slug"], nameFits: true };
+    const first = await call(client, "gantry_submit_descriptions", {
+      batch_id: c.batch,
+      results: [{ content_key: slugKey, description: bad }],
+    });
+    expect(first.json).toMatchObject({ accepted: 0, fallbacks: 0 });
+    const r = (first.json.rejected as Record<string, unknown>[])[0] as Record<string, unknown>;
+    expect(Object.keys(r).sort()).toEqual(["content_key", "field", "fix", "reason", "resubmit", "rule"]);
+    expect(r).toMatchObject({ reason: "identifier", rule: "identifier", field: "behavior", resubmit: true });
+    expect(first.text).not.toContain(marker.slice(0, 4));
+    // Two more wording rejections use the extra attempt, then the host stores a fallback description.
+    await call(client, "gantry_submit_descriptions", {
+      batch_id: c.batch,
+      results: [{ content_key: slugKey, description: shape }],
+    });
+    const third = await call(client, "gantry_submit_descriptions", {
+      batch_id: c.batch,
+      results: [{ content_key: slugKey, description: shape }],
+    });
+    expect(third.json).toMatchObject({
+      accepted: 0,
+      fallbacks: 1,
+      rejected: [
+        { content_key: slugKey, reason: "shape", rule: "shape.first-word", resubmit: false, fallback: true },
+      ],
+    });
+    repo.withStore((s) =>
+      expect(
+        s.db.prepare("SELECT provenance, model FROM descriptions WHERE content_key = ?").get(slugKey),
+      ).toEqual({ provenance: "fallback", model: null }),
+    );
+  });
+
   it("ends a describer run after DESCRIBER_RUN_CLAIMS claims with stop: run_limit, and a fresh run continues", async () => {
     const files: Record<string, string> = {};
     for (let i = 0; i < DESCRIBER_RUN_CLAIMS + 3; i++) files[`src/run/r${i}.ts`] = fn(`runner${i}`, `r${i}`);

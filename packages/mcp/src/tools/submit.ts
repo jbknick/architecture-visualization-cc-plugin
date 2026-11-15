@@ -4,14 +4,16 @@ import { defineTool } from "../tool.js";
 
 /** Budget for embedding the vectors of freshly accepted descriptions, when the model is already cached. */
 const EMBED_BUDGET_MS = 2000;
-const DETAIL_MAX = 80;
 
 export const submitTool = defineTool({
   name: "gantry_submit_descriptions",
   description:
     "Describer agents only. Submits the descriptions for a claimed batch as {batch_id, results: [{content_key, description}]}, where description is {behavior, searchTerms, nameFits, suggestedName?}: " +
     "behavior is one third-person sentence of at most 25 words, searchTerms are 1 to 6 short terms, suggestedName is required exactly when nameFits is false. " +
-    "Every description is checked; the answer is {accepted, rejected: [{content_key, reason, detail?}]}. A rejected function returns to the queue and is dropped after 2 failed attempts. " +
+    "Every description is checked; the answer is {accepted, rejected: [{content_key, reason, rule?, field?, fix?, resubmit?, fallback?}], fallbacks}. " +
+    "For a rule rejection (schema, length, shape, identifier, injection, secret), fix says how to rewrite for that rule; it never quotes what you wrote. " +
+    "While resubmit is true the function stays in your batch: write a new description that follows fix and submit it again with the same batch_id. " +
+    "A function has 2 attempts, 3 when the second rejection was shape or identifier; after the last one it is failed, or, with fallback: true, the server stored a description written without a model and it is done. " +
     "The batch is found by batch_id alone, whichever worker claimed it; a content_key that does not belong to batch_id is rejected as not_in_batch.",
   inputSchema: {
     batch_id: z.string().min(1).max(100).describe("The batch_id returned by gantry_claim_batch"),
@@ -55,13 +57,19 @@ export const submitTool = defineTool({
         log.error("catalog write after submit failed", err);
       }
     }
+    // The validator's detail stays on the host (it can echo part of a token): the describer gets fixed text only.
     return {
       accepted: r.accepted,
       rejected: r.rejected.map((x) => ({
         content_key: x.contentKey,
         reason: x.reason,
-        ...(x.detail ? { detail: x.detail.slice(0, DETAIL_MAX) } : {}),
+        ...(x.rule !== undefined ? { rule: x.rule } : {}),
+        ...(x.field !== undefined ? { field: x.field } : {}),
+        ...(x.fix !== undefined ? { fix: x.fix } : {}),
+        ...(x.resubmit !== undefined ? { resubmit: x.resubmit } : {}),
+        ...(x.fallback ? { fallback: true } : {}),
       })),
+      fallbacks: r.fallbacks,
       embedded,
       ...(r.batchKnown ? {} : { batch_status: "unknown_or_expired" }),
     };
