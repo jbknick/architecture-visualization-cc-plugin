@@ -5,7 +5,7 @@ import { useNodeDetail, useOverview } from "../hooks.ts";
 import { useStore } from "../store.tsx";
 import { isServerNode } from "../views/drill.ts";
 import { expandedIds, withExpanded } from "../views/egoGroups.ts";
-import { CHANGE_WORDS } from "../views/reviewModel.ts";
+import { CHANGE_WORDS, markKindOf } from "../views/reviewModel.ts";
 import { KindBadge } from "./KindBadge.tsx";
 import { SourcePreview } from "./SourcePreview.tsx";
 
@@ -200,7 +200,7 @@ function ReviewChangeSection({ change }: { change: ReviewChange }) {
     <section aria-label="Change in this review" className="rv-change">
       <h3>Change in this review</h3>
       <p>
-        <span className={`rv-dot rv-change-${change.kind}${change.signatureChanged ? " rv-sig" : ""}`} />{" "}
+        <span className={`rv-dot rv-mark-${markKindOf(change)}`} />{" "}
         <strong>{CHANGE_WORDS[change.kind].label}</strong>
         {change.signatureChanged ? ", signature changed" : ""}
         {change.exportedChanged ? (after?.exported ? ", now exported" : ", no longer exported") : ""}
@@ -225,7 +225,7 @@ function ReviewChangeSection({ change }: { change: ReviewChange }) {
       <p className="muted">
         {change.callers === 0
           ? "No direct callers in the index."
-          : `${change.callers} direct ${change.callers === 1 ? "caller" : "callers"} (rings 1 to 3 show the rest).`}
+          : `${change.callers} direct ${change.callers === 1 ? "caller" : "callers"} (tinted on the map, with a line to this change).`}
       </p>
       {change.untrusted_description && (
         <div className="description">

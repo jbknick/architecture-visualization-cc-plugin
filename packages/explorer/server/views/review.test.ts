@@ -16,7 +16,9 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { HttpError, handleApi } from "../api.js";
 import type { ApiContext } from "../types.js";
-import { buildReview, clearReviewCache, type ReviewResult, ringPosition, ringRadii } from "./review.js";
+import { projectMapView } from "./projectMap.js";
+import { clearReviewCache, type ReviewResult, ringPosition, ringRadii, ringSlots } from "./review.js";
+import { buildReview } from "./reviewView.js";
 
 interface MaterializedFixture {
   dir: string;
@@ -81,25 +83,18 @@ async function setup(
   return { ctx: { store, paths, config: loadConfig(paths) }, fx, paths };
 }
 
-const opts = (o: Record<string, unknown>) => ({ filters: [], options: o });
+const opts = (o: Record<string, unknown>, level?: "workspaces" | "dirs" | "files" | "symbols") => ({
+  filters: [],
+  options: o,
+  ...(level ? { level } : {}),
+});
 const strip = (r: ReviewResult) => ({
   ...r,
   review: r.review ? { ...r.review, ms: 0, cached: false } : null,
 });
-
-describe("ring layout", () => {
-  it("puts one changed symbol in the centre and spaces rings at least RING_GAP apart, wider when crowded", () => {
-    expect(ringRadii([1, 2, 1])).toEqual([0, 150, 300]);
-    const crowded = ringRadii([3, 80]);
-    expect(crowded[0]).toBe(70);
-    expect(crowded[1]).toBeGreaterThan(220 * 1.7);
-    expect(ringPosition(0, 1, 0, 0)).toEqual({ x: 0, y: 0 });
-    // Nobody sits at the top, where the ring label is: even rings start half a step in, odd rings a quarter.
-    expect(ringPosition(0, 4, 2, 100)).toEqual({ x: 70.7, y: -70.7 });
-    expect(ringPosition(0, 4, 1, 100)).toEqual({ x: 38.3, y: -92.4 });
-    expect(ringPosition(3, 4, 2, 100)).toEqual({ x: -70.7, y: -70.7 });
-  });
-});
+const fileId = (p: string) => `file:${p}`;
+const BUTTON_FILE = fileId("packages/ui/src/button.tsx");
+const HOME_FILE = fileId("apps/web/src/routes/index.tsx");
 
 describe("review view", () => {
   it("without range or pr returns an empty view and review: null", async () => {
@@ -107,37 +102,42 @@ describe("review view", () => {
     expect(await buildReview(ctx, opts({}))).toEqual({
       nodes: [],
       edges: [],
-      layoutHint: "radial",
+      layoutHint: "review",
       review: null,
     });
   });
 
-  it("rings: Button in the centre with its signature change, callers by hop, edges between rings, the risk of reviewImpact", async () => {
+  it("files level: the changed file coloured by kind, caller files by hop, file-to-file lines, the risk of reviewImpact", async () => {
     const { ctx, paths } = await setup();
     const r = await buildReview(ctx, opts({ range: "main...feature" }));
-    expect(r.layoutHint).toBe("radial");
-    const centre = r.nodes.filter((n) => n.hop === 0);
-    expect(centre).toEqual([
-      expect.objectContaining({
-        id: BUTTON,
-        change: "modified",
-        signatureChanged: true,
-        x: 0,
-        y: 0,
-        kind: "component",
-      }),
-    ]);
-    const ring1 = r.nodes.filter((n) => n.hop === 1).map((n) => n.id);
-    expect(ring1).toContain(HOME);
-    expect(ring1).toEqual([...ring1].sort());
-    // Every edge joins ring h + 1 to ring h.
-    const hop = new Map(r.nodes.map((n) => [n.id, n.hop ?? 0]));
-    for (const e of r.edges) expect((hop.get(e.src) ?? -1) - (hop.get(e.dst) ?? -9)).toBe(1);
-    expect(r.edges.some((e) => e.src === HOME && e.dst === BUTTON && e.kind === "renders")).toBe(true);
+    expect(r.layoutHint).toBe("review");
+    const layer = r.review?.layer;
+    const mark = (id: string) => layer?.marks.find((m) => m.id === id);
+    expect(mark(BUTTON_FILE)).toEqual({ id: BUTTON_FILE, change: "signature", changes: 1 });
+    expect(mark(HOME_FILE)).toEqual({ id: HOME_FILE, hop: 1 });
+    expect(layer?.placed).toContainEqual([BUTTON, BUTTON_FILE]);
+    expect(layer?.unplaced).toEqual([]);
+    expect(layer?.links).toContainEqual({
+      id: `${HOME_FILE}->${BUTTON_FILE}`,
+      src: HOME_FILE,
+      dst: BUTTON_FILE,
+      change: "signature",
+      weight: 1,
+    });
+    // Every line points at the changed file and starts at a marked caller; all ends are nodes of this response.
+    const ids = new Set(r.nodes.map((n) => n.id));
+    for (const l of layer?.links ?? []) {
+      expect(l.dst).toBe(BUTTON_FILE);
+      expect(mark(l.src)?.hop).toBe(1);
+      expect(ids.has(l.src) && ids.has(l.dst)).toBe(true);
+    }
+    for (const m of layer?.marks ?? []) expect(ids.has(m.id)).toBe(true);
+    expect(layer?.linksTotal).toBe(layer?.links.length);
 
     const diff = await reviewDiff(paths, "main", "feature");
     const impact = await reviewImpact(paths, ctx.store, diff);
     const review = r.review;
+    expect(review?.map).toBe("2d");
     expect(review?.risk).toEqual(impact.risk);
     expect(review?.crossings).toEqual(impact.crossings);
     expect(review?.notes).toEqual(impact.notes);
@@ -150,8 +150,121 @@ describe("review view", () => {
     expect(change?.id).toBe(BUTTON);
     expect(change?.before?.signature).not.toEqual(change?.after?.signature);
     expect(change?.after?.signature).toContain("size?: number");
-    expect(change?.callers).toBe(r.edges.filter((e) => e.dst === BUTTON).length);
+    expect(change?.callers).toBe(impact.callersByHop[0]?.ids.length);
     expect(review?.rules.map((x) => x.id)).toContain("signatureChangedExported");
+  });
+
+  it("function level: Button itself marked, function-to-function lines from its callers", async () => {
+    const { ctx } = await setup();
+    const r = await buildReview(ctx, opts({ range: "main...feature" }, "symbols"));
+    const layer = r.review?.layer;
+    expect(layer?.marks.find((m) => m.id === BUTTON)).toEqual({
+      id: BUTTON,
+      change: "signature",
+      changes: 1,
+    });
+    // The file still counts as changed (a diff entry), the caller as hop 1.
+    expect(layer?.marks.find((m) => m.id === BUTTON_FILE)?.change).toBe("modified");
+    expect(layer?.marks.find((m) => m.id === HOME)).toEqual({ id: HOME, hop: 1 });
+    expect(layer?.links).toContainEqual(
+      expect.objectContaining({ src: HOME, dst: BUTTON, change: "signature", weight: 1 }),
+    );
+    for (const l of layer?.links ?? []) expect(l.dst).toBe(BUTTON);
+    expect(layer?.placed).toContainEqual([BUTTON, BUTTON]);
+  });
+
+  it("workspace level: lines join workspaces, never a node to itself", async () => {
+    const { ctx } = await setup();
+    const r = await buildReview(ctx, opts({ range: "main...feature" }, "workspaces"));
+    const layer = r.review?.layer;
+    const ids = new Set(r.nodes.map((n) => n.id));
+    expect(layer?.marks.some((m) => m.change === "signature" && m.id.startsWith("ws:"))).toBe(true);
+    expect((layer?.links ?? []).length).toBeGreaterThan(0);
+    for (const l of layer?.links ?? []) {
+      expect(l.src).not.toBe(l.dst);
+      expect(ids.has(l.src) && ids.has(l.dst)).toBe(true);
+    }
+  });
+
+  it("positions: the review view's nodes and edges are the plain project map's for every level and filter", async () => {
+    const { ctx } = await setup();
+    const levels = ["workspaces", "dirs", "files", "symbols"] as const;
+    for (const level of levels) {
+      for (const extra of [{}, { hideTests: "false" }, { exportedOnly: "true" }]) {
+        const plain = await projectMapView.build(ctx, opts(extra, level));
+        const review = await buildReview(ctx, opts({ ...extra, range: "main...feature" }, level));
+        const layered = (await projectMapView.build(
+          ctx,
+          opts({ ...extra, range: "main...feature" }, level),
+        )) as ReviewResult;
+        expect(review.nodes).toEqual(plain.nodes);
+        expect(review.edges).toEqual(plain.edges);
+        expect(layered.nodes).toEqual(plain.nodes);
+        expect(layered.edges).toEqual(plain.edges);
+        expect(layered.review?.layer).toEqual(review.review?.layer);
+      }
+    }
+  });
+
+  it("rings: Button in the centre, callers by hop grouped by file, edges from caller to callee, the same review data", async () => {
+    const { ctx } = await setup();
+    const r = await buildReview(ctx, opts({ range: "main...feature", mode: "rings" }));
+    expect(r.review?.mode).toBe("rings");
+    expect(r.nodes.filter((n) => n.hop === 0)).toEqual([
+      expect.objectContaining({
+        id: BUTTON,
+        change: "modified",
+        signatureChanged: true,
+        group: "packages/ui/src/button.tsx",
+        x: 0,
+        y: 0,
+      }),
+    ]);
+    const hop = new Map(r.nodes.map((n) => [n.id, n.hop ?? 0]));
+    for (const e of r.edges) expect((hop.get(e.src) ?? -1) - (hop.get(e.dst) ?? -9)).toBe(1);
+    expect(r.edges.some((e) => e.src === HOME && e.dst === BUTTON)).toBe(true);
+    // Every caller carries its file as its group, and the layer marks the ring nodes themselves.
+    for (const n of r.nodes) expect(n.group).toBe(n.path);
+    expect(r.review?.layer.marks.find((m) => m.id === BUTTON)?.change).toBe("signature");
+    expect(r.review?.layer.marks.find((m) => m.id === HOME)?.hop).toBe(1);
+    const map = await buildReview(ctx, opts({ range: "main...feature" }));
+    expect(r.review?.risk).toEqual(map.review?.risk);
+    expect(r.review?.changes).toEqual(map.review?.changes);
+  });
+
+  it("ring slots: files grouped together with one empty slot between groups; radii fit the slots", () => {
+    const { slots, at } = ringSlots([
+      { id: "sym:b.ts#y", group: "b.ts" },
+      { id: "sym:a.ts#z", group: "a.ts" },
+      { id: "sym:b.ts#x", group: "b.ts" },
+      { id: "sym:a.ts#w", group: "a.ts" },
+      { id: "sym:c.ts#v", group: "c.ts" },
+    ]);
+    expect(Object.fromEntries(at)).toEqual({
+      "sym:a.ts#w": 0,
+      "sym:a.ts#z": 1,
+      "sym:b.ts#x": 3,
+      "sym:b.ts#y": 4,
+      "sym:c.ts#v": 6,
+    });
+    expect(slots).toBe(8);
+    expect(ringSlots([{ id: "x", group: "a" }])).toEqual({ slots: 1, at: new Map([["x", 0]]) });
+    expect(ringRadii([1, 2, 1])).toEqual([0, 150, 300]);
+    expect(ringRadii([3, 80])[1]).toBeGreaterThan(380);
+    expect(ringPosition(0, 1, 0, 0)).toEqual({ x: 0, y: 0 });
+    expect(ringPosition(0, 4, 2, 100)).toEqual({ x: 70.7, y: -70.7 });
+    expect(ringPosition(0, 4, 1, 100)).toEqual({ x: 38.3, y: -92.4 });
+  });
+
+  it("map=3d: the Files level (one building per file) whatever level is asked, and focus never narrows the map", async () => {
+    const { ctx } = await setup();
+    const plain = await projectMapView.build(ctx, opts({}, "files"));
+    const r = await buildReview(ctx, opts({ range: "main...feature", map: "3d" }, "symbols"));
+    expect(r.review?.map).toBe("3d");
+    expect(r.nodes).toEqual(plain.nodes);
+    expect(r.review?.layer.marks.find((m) => m.id === BUTTON_FILE)?.change).toBe("signature");
+    const focused = await buildReview(ctx, { ...opts({ range: "main...feature" }), focus: BUTTON });
+    expect(focused.nodes).toEqual(plain.nodes);
   });
 
   it("caches per (merge base, head): the second answer is cached and otherwise identical, and the index is unchanged", async () => {
@@ -168,18 +281,6 @@ describe("review view", () => {
     expect(b.review?.cached).toBe(true);
     expect(strip(b)).toEqual({ ...strip(a), review: { ...strip(a).review, range: "main...feature" } });
     expect(counts()).toEqual(before);
-  });
-
-  it("overlay: the project map's workspaces and files, the changed file and the caller files marked", async () => {
-    const { ctx } = await setup();
-    const r = await buildReview(ctx, opts({ range: "main...feature", mode: "overlay" }));
-    expect(r.review?.mode).toBe("overlay");
-    expect(r.edges).toEqual([]);
-    const file = (p: string) => r.nodes.find((n) => n.id === `file:${p}`);
-    expect(file("packages/ui/src/button.tsx")).toMatchObject({ mark: "changed", change: "modified" });
-    expect(file("apps/web/src/routes/index.tsx")).toMatchObject({ mark: "affected" });
-    expect(r.nodes.some((n) => n.kind === "file" && n.mark === undefined)).toBe(true);
-    expect(r.nodes.filter((n) => n.kind === "workspace").length).toBe(ctx.store.listWorkspaces().length);
   });
 
   it("is deterministic across runs (fresh caches)", async () => {
@@ -254,8 +355,11 @@ describe("review view", () => {
 
   it("returns a stored description only as untrusted_description", async () => {
     const { ctx } = await setup({ describe: true });
-    for (const mode of ["rings", "overlay"]) {
-      const r = await buildReview(ctx, opts({ range: "main...feature", mode }));
+    for (const map of ["2d", "3d", "rings"]) {
+      const r = await buildReview(
+        ctx,
+        opts(map === "rings" ? { range: "main...feature", mode: map } : { range: "main...feature", map }),
+      );
       const text = JSON.stringify(r);
       expect(r.review?.changes[0]?.untrusted_description).toContain(MARKER);
       const stripped = text.replaceAll(JSON.stringify(r.review?.changes[0]?.untrusted_description), '""');

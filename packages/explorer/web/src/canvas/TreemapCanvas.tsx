@@ -10,6 +10,7 @@ import type { CanvasProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
 import { getBool } from "../views/filterUtils.ts";
+import { FAR_KEY, MARK_COLOURS, MARK_WORDS, paintLayer } from "../views/reviewModel.ts";
 import { GROUP_KIND, kindTier, type TreeNode } from "./hierarchy.ts";
 import { Legend } from "./Legend.tsx";
 import { runLayout } from "./layoutClient.ts";
@@ -23,6 +24,7 @@ import {
   type EdgeHit,
   locatePath,
   pickCell,
+  type ReviewPaintEnv,
 } from "./mapDraw.ts";
 import { rootRect, worldRectOf } from "./mapGeom.ts";
 import { DEFAULT_VIEWPORT, FIT_INSETS, keepFrom } from "./mapLayout.ts";
@@ -135,6 +137,7 @@ export function TreemapCanvas({
   onHover,
   onDrill,
   panelLegend,
+  data,
 }: TreemapCanvasProps) {
   const { view, state } = useStore();
   const { route } = state;
@@ -173,7 +176,11 @@ export function TreemapCanvas({
   const ui = useMapView();
   // Files level: the largest files get numbered markers on their tiles (the same ranking as the left panel's list).
   const filesLevel = route.level === "files" || (route.level === null && !route.focus);
-  const ranked = useRanked(nodes, getBool(route.filters, "hideTests", true), filesLevel && !baseScene.mosaic);
+  const ranked = useRanked(
+    nodes,
+    getBool(route.filters, "hideTests", true),
+    filesLevel && !baseScene.mosaic && !data?.review,
+  );
   const debug = useMemo(debugEnabled, []);
   const callbacks = useRef({ onSelect, onHover, onDrill });
   callbacks.current = { onSelect, onHover, onDrill };
@@ -197,6 +204,7 @@ export function TreemapCanvas({
     ranks: [] as { index: number; rank: number }[],
     rankHover: null as number | null,
     fresh: [] as number[],
+    review: null as ReviewPaintEnv | null,
   });
 
   const sceneKey = useMemo(
@@ -284,8 +292,32 @@ export function TreemapCanvas({
     return out;
   }, [scene, fresh]);
 
-  // Selection and highlight state shared with the draw loop.
-  const selectedIndex = focus ? (scene.tree.index.get(focus) ?? null) : null;
+  // Review layer (#167): the review drawn over this very map; the layout above never sees it, so nothing moves.
+  const layer = data?.review?.layer ?? null;
+  const far = getBool(route.filters, FAR_KEY, false);
+  const reviewPaint = useMemo<ReviewPaintEnv | null>(
+    () =>
+      layer
+        ? {
+            ...paintLayer(
+              {
+                ids: scene.tree.nodes.map((n) => n.id),
+                parents: scene.tree.nodes.map((n) => n.parent),
+              },
+              layer,
+              far,
+            ),
+            colours: MARK_COLOURS[theme.scheme ?? currentScheme()],
+          }
+        : null,
+    [scene, layer, far, theme.scheme],
+  );
+
+  // Selection and highlight state shared with the draw loop. A changed symbol picked in the review panel selects the
+  // cell that shows it at this level (its file, folder or workspace).
+  const selectedIndex = focus
+    ? (scene.tree.index.get(focus) ?? reviewPaint?.placed.get(focus) ?? null)
+    : null;
   const hoverWsIndex = ui.hoverWorkspace ? (scene.tree.index.get(ui.hoverWorkspace) ?? null) : null;
   const rankIndex = useMemo(
     () =>
@@ -303,13 +335,18 @@ export function TreemapCanvas({
       ...live.current,
       theme,
       selected: selectedIndex,
-      bright: selectedIndex === null ? null : brightSet(scene, selectedIndex),
-      links: selectedIndex !== null && selectedTier > 0 ? selectionLinks(scene, selectedIndex) : [],
+      // With the review layer on, its own colours and lines say what matters; the selection only gets its outline.
+      bright: selectedIndex === null || reviewPaint ? null : brightSet(scene, selectedIndex),
+      links:
+        selectedIndex !== null && selectedTier > 0 && !reviewPaint
+          ? selectionLinks(scene, selectedIndex)
+          : [],
       showDeclared: ui.showDeclared,
       panelHover: hoverWsIndex,
       ranks: rankIndex,
       rankHover: rankHoverIndex,
       fresh: freshIndex,
+      review: reviewPaint,
       highlightWs:
         selectedIndex !== null && selectedTier === 0
           ? selectedIndex
@@ -318,7 +355,17 @@ export function TreemapCanvas({
             : null,
     };
     engine.current?.redraw();
-  }, [scene, selectedIndex, theme, ui.showDeclared, hoverWsIndex, rankIndex, rankHoverIndex, freshIndex]);
+  }, [
+    scene,
+    selectedIndex,
+    theme,
+    ui.showDeclared,
+    hoverWsIndex,
+    rankIndex,
+    rankHoverIndex,
+    freshIndex,
+    reviewPaint,
+  ]);
 
   // The camera, pointer handling and the draw loop, rebuilt whenever the layout changes.
   useEffect(() => {
@@ -416,6 +463,7 @@ export function TreemapCanvas({
         ranks: l.ranks,
         rankHover: l.rankHover,
         fresh: l.fresh,
+        review: l.review,
       });
       const remembered = lastLayout.current;
       if (remembered && remembered.map === geo) {
@@ -591,6 +639,11 @@ export function TreemapCanvas({
       lines.push(bits.join(" · "));
       lines.push(node?.path ?? plain(n.id));
       if (cls >= 3) lines.push(...badgeTipLines(node?.badges));
+      const rv = live.current.review;
+      const ch = rv?.change[i];
+      const hop = rv?.hop[i] ?? 0;
+      if (ch) lines.push(`Review: ${MARK_WORDS[ch].label.toLowerCase()}`);
+      else if (hop > 0) lines.push(`Review: calls changed code (hop ${hop})`);
       return lines;
     };
     /** The tile of the rank marker under a point (markers sit on top of the tiles), or null. */
@@ -736,6 +789,7 @@ export function TreemapCanvas({
           };
         }),
         badged: last.badged,
+        review: reviewProbe(live.current.review, last, (i) => scene.nodes[i]?.id),
         regions: last.boxes.map((b) => ({ id: scene.nodes[b.index]?.id, x: b.x, y: b.y, w: b.w, h: b.h })),
       });
     };
@@ -941,4 +995,27 @@ export function TreemapCanvas({
       )}
     </div>
   );
+}
+
+/** Test hook: what the review layer marked and what the last frame drew of it, by node id. */
+function reviewProbe(rv: ReviewPaintEnv | null, last: DrawResult, id: (i: number) => string | undefined) {
+  if (!rv) return null;
+  return {
+    changed: rv.change.flatMap((c, i) => (c ? [{ id: id(i), change: c }] : [])),
+    affected: [...rv.hop].flatMap((h, i) => (h > 0 ? [{ id: id(i), hop: h }] : [])),
+    lit: [...rv.lit].filter((x) => x === 1).length,
+    drawn: last.review
+      ? {
+          changed: last.review.changed,
+          affected: last.review.affected,
+          faded: last.review.faded,
+          links: last.review.links.map((l) => ({
+            src: id(l.src),
+            dst: id(l.dst),
+            change: l.change,
+            colour: l.colour,
+          })),
+        }
+      : null,
+  };
 }

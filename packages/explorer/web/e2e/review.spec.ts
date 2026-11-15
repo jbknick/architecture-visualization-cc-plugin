@@ -95,21 +95,55 @@ async function open(page: Page, hash: string) {
   await page.mouse.move(2, 2);
 }
 
-/** Labels inside the SVG stay inside the canvas and the left panel's rows do not overflow it. */
+const BUTTON_FILE = "file:packages/ui/src/button.tsx";
+const HOME_FILE = "file:apps/web/src/routes/index.tsx";
+const HOME = "sym:apps/web/src/routes/index.tsx#HomePage";
+
+interface ReviewProbe {
+  positions: Record<string, [number, number]>;
+  review: {
+    changed: { id: string; change: string }[];
+    affected: { id: string; hop: number }[];
+    drawn: {
+      changed: number;
+      affected: number;
+      faded: number;
+      links: { src: string; dst: string; change: string; colour: string }[];
+    } | null;
+  } | null;
+}
+
+const surface = (page: Page) => page.getByTestId("graph-canvas").locator(".gc-sigma");
+
+/** Waits for the 2D map to settle (laid out, camera still) and reads its probe. */
+async function probe2d(page: Page): Promise<ReviewProbe> {
+  const box = page.locator("[data-testid=graph-canvas] .gc-sigma[data-ready=true]");
+  await expect(box).toBeVisible({ timeout: 30_000 });
+  await expect(box).not.toHaveAttribute("data-moving", "true");
+  return JSON.parse(
+    await surface(page).evaluate((el) => {
+      el.dispatchEvent(new CustomEvent("gantry:probe", { detail: { positions: true } }));
+      return (el as HTMLElement).dataset.probe ?? "{}";
+    }),
+  ) as ReviewProbe;
+}
+
+/** The left panel's rows and the legend stay inside their boxes. */
 async function expectTidy(page: Page) {
   const out = await page.evaluate(() => {
     const bad: string[] = [];
-    const canvas = document.querySelector("[data-testid=review-canvas]")?.getBoundingClientRect();
-    if (!canvas) return ["no canvas"];
-    // The top bar holds one more tab now: everything in it, the search box included, stays on screen.
     for (const el of document.querySelectorAll(".topbar .tab, .topbar .search, .topbar .repo-name")) {
       const r = el.getBoundingClientRect();
       if (r.right > window.innerWidth + 1) bad.push(`top bar item runs off the edge: ${el.className}`);
     }
-    for (const t of document.querySelectorAll(".rv-label, .rv-ring-label")) {
+    const canvas = document.querySelector("[data-testid=review-canvas]")?.getBoundingClientRect();
+    const legend = document.querySelector(".rv-legend")?.getBoundingClientRect();
+    if (canvas && legend && (legend.right > canvas.right + 1 || legend.bottom > canvas.bottom + 1))
+      bad.push("legend leaves the canvas");
+    for (const t of document.querySelectorAll(".rv-ring-label")) {
       const r = t.getBoundingClientRect();
-      if (r.left < canvas.left - 1 || r.right > canvas.right + 1)
-        bad.push(`label leaves the canvas: ${t.textContent}`);
+      if (canvas && (r.left < canvas.left - 1 || r.right > canvas.right + 1))
+        bad.push(`ring label leaves the canvas: ${t.textContent}`);
     }
     const left = document.querySelector("aside.left")?.getBoundingClientRect();
     for (const row of document.querySelectorAll(".rv-item")) {
@@ -121,37 +155,70 @@ async function expectTidy(page: Page) {
   expect(out).toEqual([]);
 }
 
-test("rings: Button in the centre with its signature outlined, callers on rings, risk and reasons on the left", async ({
+test("2D map: Button's file coloured by its change, caller files tinted, file-to-file lines, the rest faded; risk on the left", async ({
   page,
 }) => {
   const t0 = Date.now();
   await open(page, "#/review?range=main...feature");
-  expect(Date.now() - t0).toBeLessThan(10_000);
   const canvas = page.getByTestId("review-canvas");
-  await expect(canvas).toHaveAttribute("data-mode", "rings");
-  const button = canvas.getByRole("button", { name: "Button, modified" });
-  await expect(button).toBeVisible();
-  await expect(button.locator("circle")).toHaveClass(/rv-sig/);
-  await expect(canvas.getByRole("button", { name: "slugifyAll, added" })).toBeVisible();
-  await expect(canvas.getByRole("button", { name: "HomePage, hop 1 callers" })).toBeVisible();
-  await expect(canvas.getByText(/^Hop 1 callers \(\d+\)$/)).toBeVisible();
+  await expect(canvas).toHaveAttribute("data-mode", "map");
+  await expect(canvas).toHaveAttribute("data-map", "2d");
+  const p = await probe2d(page);
+  expect(Date.now() - t0).toBeLessThan(15_000);
+  expect(p.review?.changed).toContainEqual({ id: BUTTON_FILE, change: "signature" });
+  expect(p.review?.affected).toContainEqual({ id: HOME_FILE, hop: 1 });
+  const drawn = p.review?.drawn;
+  expect(drawn?.changed).toBeGreaterThan(0);
+  expect(drawn?.affected).toBeGreaterThan(0);
+  expect(drawn?.faded).toBeGreaterThan(drawn?.changed ?? 0);
+  expect(drawn?.links).toContainEqual(
+    expect.objectContaining({ src: HOME_FILE, dst: BUTTON_FILE, change: "signature" }),
+  );
+  for (const l of drawn?.links ?? [])
+    expect([BUTTON_FILE, "file:packages/utils/src/slug.ts"]).toContain(l.dst);
 
+  await expect(page.getByRole("complementary", { name: "Review legend" })).toContainText("Signature changed");
   const risk = page.getByRole("region", { name: "Risk" });
   await expect(risk.getByText("Medium risk")).toBeVisible();
   await expect(risk.getByText("+30 signature changed on an exported symbol")).toBeVisible();
-  const files = page.getByRole("region", { name: "Changed files" });
-  await expect(files.getByRole("button")).toHaveCount(2);
-  await expect(page.getByRole("region", { name: "Crossings" }).getByRole("button").first()).toBeVisible();
+  await expect(page.getByRole("region", { name: "Changed files" }).getByRole("button")).toHaveCount(2);
   await expectTidy(page);
-  await page.screenshot({ path: join(shots, "review-rings-fixture.png") });
+  await page.screenshot({ path: join(shots, "review-map-fixture.png") });
 });
 
-test("clicking a ring node opens the inspector with the signature before and after", async ({ page }) => {
+test("positions: every node of the review map sits exactly where it sits on the plain project map", async ({
+  page,
+}) => {
+  for (const level of ["files", "symbols"]) {
+    await open(page, `#/review?range=main...feature&level=${level}`);
+    const review = await probe2d(page);
+    await page.goto(`${base}#/project-map?level=${level}`);
+    const plain = await probe2d(page);
+    expect(Object.keys(review.positions).length).toBeGreaterThan(10);
+    expect(review.positions).toEqual(plain.positions);
+    expect(plain.review).toBeNull();
+  }
+});
+
+test("function level: Button itself coloured, a function-to-function line from HomePage", async ({
+  page,
+}) => {
+  await open(page, "#/review?range=main...feature&level=symbols");
+  const p = await probe2d(page);
+  expect(p.review?.changed).toContainEqual({ id: BUTTON, change: "signature" });
+  expect(p.review?.drawn?.links).toContainEqual(
+    expect.objectContaining({ src: HOME, dst: BUTTON, change: "signature" }),
+  );
+});
+
+test("clicking a changed symbol in the panel focuses its file on the map and opens the inspector", async ({
+  page,
+}) => {
   await open(page, "#/review?range=main...feature");
+  await probe2d(page);
   await page
-    .getByTestId("review-canvas")
-    .getByRole("button", { name: "Button, modified" })
-    .locator("circle")
+    .getByRole("region", { name: "Changed symbols" })
+    .getByRole("button", { name: /Button/ })
     .click();
   await expect(page).toHaveURL(
     new RegExp(`sel=${encodeURIComponent(BUTTON).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
@@ -160,14 +227,8 @@ test("clicking a ring node opens the inspector with the signature before and aft
   const change = inspector.getByRole("region", { name: "Change in this review" });
   await expect(change.locator("[data-side=before]")).toContainText("onClick?: () => void }");
   await expect(change.locator("[data-side=after]")).toContainText("size?: number");
-  await expect(change.getByText(/direct callers?/)).toBeVisible();
-  // A left-panel item focuses its node too.
-  await page
-    .getByRole("region", { name: "Changed symbols" })
-    .getByRole("button", { name: /slugifyAll/ })
-    .click();
-  await expect(inspector.getByRole("heading", { name: "slugifyAll" })).toBeVisible();
-  await expect(change.getByText("Added")).toBeVisible();
+  // The map zoomed in to the file that holds Button.
+  await expect(page.getByTestId("map-crumb")).toBeVisible({ timeout: 10_000 });
   await page.screenshot({ path: join(shots, "review-inspector-fixture.png") });
 });
 
@@ -179,31 +240,67 @@ test("a focus-only deep link (as gantry_open_view returns) opens that symbol in 
   await expect(heading).toHaveAttribute("title", BUTTON);
 });
 
-test("overlay: the project map with the changed file and the caller files lit, the rest dimmed", async ({
+test("3D map: the settlements with Button's building coloured, caller buildings tinted, arcs between them", async ({
   page,
 }) => {
   await open(page, "#/review?range=main...feature");
-  await page.getByRole("radio", { name: "Map overlay" }).click();
-  await expect(page).toHaveURL(/mode=overlay/);
-  const canvas = page.locator("[data-testid=review-canvas][data-mode=overlay]");
-  await expect(canvas).toBeVisible();
-  await expect(canvas.locator('[data-mark="changed"]')).toHaveCount(2);
-  expect(await canvas.locator('[data-mark="affected"]').count()).toBeGreaterThan(0);
-  expect(await canvas.locator('[data-mark="none"]').count()).toBeGreaterThan(0);
-  await canvas.locator('[data-id="file:packages/ui/src/button.tsx"]').click();
+  await page.getByRole("radio", { name: "3D map" }).click();
+  await expect(page).toHaveURL(/map=3d/);
+  await expect(page.getByTestId("review-canvas")).toHaveAttribute("data-map", "3d");
+  await expect(page.locator(".map3d[data-ready='true'][data-style='settlements']")).toBeVisible({
+    timeout: 30_000,
+  });
+  const host = page.getByTestId("map3d-canvas");
+  await expect(host).toHaveAttribute("data-review", /signature|packages/, { timeout: 20_000 });
+  const review = JSON.parse((await host.getAttribute("data-review")) ?? "null") as {
+    changed: string[];
+    affected: string[];
+    faded: number;
+    links: { src: string; dst: string; change: string }[];
+  };
+  expect(review.changed).toContain(BUTTON_FILE);
+  expect(review.affected).toContain(HOME_FILE);
+  expect(review.faded).toBeGreaterThan(review.changed.length);
+  expect(review.links).toContainEqual({ src: HOME_FILE, dst: BUTTON_FILE, change: "signature" });
+  await page.getByTestId("map3d-pause").click();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: join(shots, "review-3d-fixture.png") });
+});
+
+test("rings: plain-words ring labels with counts, file groups, names on changed nodes, hover keeps the path", async ({
+  page,
+}) => {
+  await open(page, "#/review?range=main...feature&mode=rings");
+  const canvas = page.getByTestId("review-canvas");
+  await expect(canvas).toHaveAttribute("data-mode", "rings");
   await expect(
-    page.getByRole("complementary", { name: "Inspector" }).getByRole("heading", { name: "button.tsx" }),
+    canvas.getByText("Centre: what changed. Each ring out: code that calls the ring inside it."),
   ).toBeVisible();
-  await page.screenshot({ path: join(shots, "review-overlay-fixture.png") });
+  await expect(canvas.getByText(/^Changed in this range \(2\)$/)).toBeVisible();
+  await expect(canvas.getByText(/^Call the changed code directly \(\d+\)$/)).toBeVisible();
+  expect(await canvas.locator(".rv-group-label").count()).toBeGreaterThan(1);
+  const button = canvas.getByRole("button", { name: "Button, modified, signature changed" });
+  await expect(button.locator("circle")).toHaveClass(/rv-fill-signature/);
+  await expect(canvas.locator(".rv-label", { hasText: "Button" })).toBeVisible();
+  const home = canvas.getByRole("button", { name: "HomePage, calls the changed code directly" });
+  await home.locator("circle").hover();
+  await expect(canvas.getByRole("tooltip")).toContainText("apps/web/src/routes/index.tsx");
+  await expect(home).not.toHaveClass(/rv-dim/);
+  await expect(canvas.getByRole("button", { name: /slugifyAll, added/ })).toHaveClass(/rv-dim/);
+  await expect(canvas.locator(`[data-edge="${HOME}->${BUTTON}"]`)).toHaveClass(/rv-edge-hot/);
+  await page.mouse.move(2, 2);
+  await expectTidy(page);
+  await page.screenshot({ path: join(shots, "review-rings-fixture.png") });
 });
 
 test("dark theme", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await open(page, "#/review?range=main...feature");
+  await probe2d(page);
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   expect(bg).not.toBe("rgb(243, 244, 247)");
   await expectTidy(page);
-  await page.screenshot({ path: join(shots, "review-rings-fixture-dark.png") });
+  await page.screenshot({ path: join(shots, "review-map-fixture-dark.png") });
 });
 
 test("a bad range shows the server's message; an empty one asks for a range", async ({ page }) => {
@@ -222,14 +319,20 @@ test("a bad range shows the server's message; an empty one asks for a range", as
 test("the review API keeps the token, Origin and Host checks", async ({ request }) => {
   const q = encodeURIComponent(JSON.stringify({ range: "main...feature" }));
   const u = new URL(base);
-  expect((await request.get(`${u.origin}/api/view/review?filters=${q}`)).status()).toBe(403);
-  const token = u.searchParams.get("t") ?? "";
-  const ok = await request.get(`${u.origin}/api/view/review?filters=${q}`, {
-    headers: { "x-gantry-token": token },
-  });
-  expect(ok.status()).toBe(200);
-  const evil = await request.get(`${u.origin}/api/view/review?filters=${q}`, {
-    headers: { "x-gantry-token": token, origin: "http://evil.example" },
-  });
-  expect(evil.status()).toBe(403);
+  for (const view of ["review", "project-map"]) {
+    expect((await request.get(`${u.origin}/api/view/${view}?filters=${q}`)).status()).toBe(403);
+    const token = u.searchParams.get("t") ?? "";
+    const ok = await request.get(`${u.origin}/api/view/${view}?filters=${q}`, {
+      headers: { "x-gantry-token": token },
+    });
+    expect(ok.status()).toBe(200);
+    const evil = await request.get(`${u.origin}/api/view/${view}?filters=${q}`, {
+      headers: { "x-gantry-token": token, origin: "http://evil.example" },
+    });
+    expect(evil.status()).toBe(403);
+    const badHost = await request.get(`${u.origin}/api/view/${view}?filters=${q}`, {
+      headers: { "x-gantry-token": token, host: "evil.example" },
+    });
+    expect(badHost.status()).toBe(403);
+  }
 });

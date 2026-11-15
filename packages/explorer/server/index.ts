@@ -29,9 +29,13 @@ export type {
 export { buildExplorerUrl, type ExplorerUrlOptions } from "./url.js";
 export { getView, listViews, registerView } from "./views/index.js";
 export {
-  buildReview,
   clearReviewCache,
   type ReviewChangeRow,
   type ReviewData,
+  type ReviewLayer,
+  type ReviewLink,
+  type ReviewMark,
+  type ReviewMarkKind,
   type ReviewResult,
 } from "./views/review.js";
+export { buildReview } from "./views/reviewView.js";

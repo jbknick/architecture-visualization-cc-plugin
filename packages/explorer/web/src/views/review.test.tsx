@@ -1,72 +1,214 @@
 // @vitest-environment jsdom
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { overlayNodes, reviewNodes } from "../../mock/review.ts";
+import { handleMockApi } from "../../mock/fixture.ts";
+import type { ReviewLayer, ViewData } from "../api.ts";
 import "../canvases.ts";
+import { ringEdges, ringNodes } from "../../mock/review.ts";
+import { computeLayout } from "../canvas/layout.ts";
+import { buildScene, layoutInputFor } from "../canvas/scene.ts";
 import { installMockFetch, renderApp } from "../testUtils.tsx";
-import { labelRing, layoutOverlay, OVERLAY_SIZE, ringBounds, ringRadii, shortName } from "./reviewModel.ts";
+import {
+  MARK_COLOURS,
+  MARK_KINDS,
+  markKindOf,
+  paintLayer,
+  placedId,
+  RINGS_CAPTION,
+  ringGroups,
+  ringPath,
+  ringTitle,
+  shortName,
+} from "./reviewModel.ts";
 
 const BUTTON = "sym:packages/ui/src/button.tsx#Button";
+const BUTTON_FILE = "file:packages/ui/src/button.tsx";
+const CARD_FILE = "file:packages/ui/src/card.tsx";
+
+function mockView(view: string, filters: Record<string, string>, level?: string): ViewData {
+  const q = new URLSearchParams({ filters: JSON.stringify(filters), ...(level ? { level } : {}) });
+  const res = handleMockApi(new URL(`http://127.0.0.1/api/view/${view}?${q}`));
+  if (res?.status !== 200) throw new Error(`mock ${view}: ${JSON.stringify(res?.body)}`);
+  return res.body as ViewData;
+}
 
 describe("reviewModel", () => {
-  it("names, ring radii and bounds from the server positions", () => {
+  it("names, mark kinds and one colour per kind in both themes", () => {
     expect(shortName(BUTTON)).toBe("Button");
     expect(shortName("file:a/b/c.ts")).toBe("c.ts");
-    const nodes = reviewNodes();
-    expect(ringRadii(nodes).map((r) => [r.hop, Math.round(r.r), r.count])).toEqual([
-      [0, 70, 3],
-      [1, 220, 3],
-      [2, 370, 2],
-    ]);
-    const b = ringBounds(nodes);
-    expect(b.w).toBe(b.h);
-    expect(-b.x).toBeGreaterThan(370);
-    expect(labelRing(0, 30)).toBe(true);
-    expect(labelRing(0, 31)).toBe(false);
-    expect(labelRing(1, 41)).toBe(false);
-    expect(labelRing(2, 24)).toBe(true);
+    expect(markKindOf({ kind: "modified", signatureChanged: true })).toBe("signature");
+    expect(markKindOf({ kind: "modified", signatureChanged: false })).toBe("modified");
+    expect(markKindOf({ kind: "renamed", signatureChanged: true })).toBe("moved");
+    expect(markKindOf({ kind: "removed", signatureChanged: false })).toBe("removed");
+    for (const scheme of ["light", "dark"] as const) {
+      const colours = MARK_KINDS.map((k) => MARK_COLOURS[scheme][k]);
+      expect(new Set(colours).size).toBe(MARK_KINDS.length);
+    }
   });
 
-  it("overlay: one box per workspace, every file tiled inside its box, the same output for shuffled input", () => {
-    const nodes = overlayNodes();
-    const boxes = layoutOverlay(nodes);
-    expect(boxes.map((b) => b.id)).toEqual([
-      "ws:@acme/api",
-      "ws:@acme/db",
-      "ws:@acme/ui",
-      "ws:@acme/utils",
-      "ws:@acme/web",
-    ]);
-    for (const b of boxes) {
-      expect(b.rect.x + b.rect.w).toBeLessThanOrEqual(OVERLAY_SIZE.w + 0.01);
-      expect(b.rect.y + b.rect.h).toBeLessThanOrEqual(OVERLAY_SIZE.h + 0.01);
-      for (const f of b.files) {
-        expect(f.rect.x).toBeGreaterThanOrEqual(b.rect.x - 0.01);
-        expect(f.rect.x + f.rect.w).toBeLessThanOrEqual(b.rect.x + b.rect.w + 0.01);
-        expect(f.rect.y + f.rect.h).toBeLessThanOrEqual(b.rect.y + b.rect.h + 0.01);
-      }
+  it("paintLayer: marks by index, ancestors lit, hop 2 only with far, lines and placed ids", () => {
+    // ws -> dir -> {a.ts, b.ts, c.ts}; a.ts changed, b.ts hop 1, c.ts hop 2.
+    const tree = {
+      ids: ["ws:x", "dir:x", "file:a.ts", "file:b.ts", "file:c.ts", "ws:y"],
+      parents: [-1, 0, 1, 1, 1, -1],
+    };
+    const layer: ReviewLayer = {
+      marks: [
+        { id: "file:a.ts", change: "signature", changes: 1 },
+        { id: "file:b.ts", hop: 1 },
+        { id: "file:c.ts", hop: 2 },
+        { id: "file:gone.ts", change: "added" },
+      ],
+      links: [
+        { id: "file:b.ts->file:a.ts", src: "file:b.ts", dst: "file:a.ts", change: "signature", weight: 2 },
+        { id: "file:zz.ts->file:a.ts", src: "file:zz.ts", dst: "file:a.ts", change: "signature", weight: 1 },
+      ],
+      linksTotal: 2,
+      placed: [["sym:a.ts#f", "file:a.ts"]],
+      unplaced: [],
+    };
+    const p = paintLayer(tree, layer, false);
+    expect(p.change).toEqual([null, null, "signature", null, null, null]);
+    expect([...p.hop]).toEqual([0, 0, 0, 1, 0, 0]);
+    expect([...p.lit]).toEqual([1, 1, 1, 1, 0, 0]);
+    expect(p.links).toEqual([{ src: 3, dst: 2, change: "signature", weight: 2 }]);
+    expect(p.placed.get("sym:a.ts#f")).toBe(2);
+    const far = paintLayer(tree, layer, true);
+    expect([...far.hop]).toEqual([0, 0, 0, 1, 2, 0]);
+    expect([...far.lit]).toEqual([1, 1, 1, 1, 1, 0]);
+    expect(placedId(layer, "sym:a.ts#f")).toBe("file:a.ts");
+    expect(placedId(layer, "file:b.ts")).toBe("file:b.ts");
+  });
+
+  it("positions: the review map lays out exactly like the plain project map (same level and filters)", async () => {
+    for (const level of ["workspaces", "dirs", "files", "symbols"]) {
+      const plain = mockView("project-map", {}, level);
+      const review = mockView("review", { range: "main...feature" }, level);
+      expect(review.layoutHint).toBe("review");
+      expect(review.nodes).toEqual(plain.nodes);
+      expect(review.edges).toEqual(plain.edges);
+      const lay = async (d: ViewData) =>
+        (
+          await computeLayout(
+            layoutInputFor(buildScene(d.nodes, d.edges, "nested-elk"), "nested-elk", null, undefined, {
+              w: 1100,
+              h: 760,
+            }),
+          )
+        ).positions;
+      expect(await lay(review)).toEqual(await lay(plain));
     }
-    expect(boxes.find((b) => b.id === "ws:@acme/web")).toMatchObject({ changed: 0, affected: 3 });
-    expect(layoutOverlay([...nodes].reverse())).toEqual(boxes);
+  });
+
+  it("the mock layer on the map: Button's file coloured, Card's file tinted, a line Card -> Button", () => {
+    const v = mockView("review", { range: "main...feature" }, "files");
+    const layer = v.review?.layer as ReviewLayer;
+    expect(layer.marks.find((m) => m.id === BUTTON_FILE)).toMatchObject({ change: "signature" });
+    expect(layer.marks.find((m) => m.id === CARD_FILE)).toMatchObject({ hop: 1 });
+    expect(layer.links.map((l) => l.id)).toContain(`${CARD_FILE}->${BUTTON_FILE}`);
+    const scene = buildScene(v.nodes, v.edges, "nested-elk");
+    const p = paintLayer(
+      { ids: scene.tree.nodes.map((n) => n.id), parents: scene.tree.nodes.map((n) => n.parent) },
+      layer,
+      false,
+    );
+    const at = (id: string) => scene.tree.index.get(id) as number;
+    expect(p.change[at(BUTTON_FILE)]).toBe("signature");
+    expect(p.hop[at(CARD_FILE)]).toBe(1);
+    expect(p.lit[at("file:packages/db/src/queries.ts")]).toBe(0);
+    expect(p.placed.get(BUTTON)).toBe(at(BUTTON_FILE));
+  });
+});
+
+describe("rings model", () => {
+  it("names every ring in plain words", () => {
+    expect([0, 1, 2, 3].map(ringTitle)).toEqual([
+      "Changed in this range",
+      "Call the changed code directly",
+      "2 calls away",
+      "3 calls away",
+    ]);
+  });
+
+  it("groups each ring by file: a file's nodes sit side by side, groups in angle order", () => {
+    const groups = ringGroups(ringNodes());
+    const ring0 = groups.filter((g) => g.hop === 0).map((g) => g.label);
+    expect(ring0).toEqual(["button.tsx", "date.ts", "slug.ts"]);
+    for (const g of groups) expect(g.a1).toBeGreaterThanOrEqual(g.a0);
+    // No other group starts inside a group's arc on the same ring.
+    for (const g of groups)
+      for (const o of groups) if (o !== g && o.hop === g.hop) expect(o.a0 > g.a1 || o.a1 < g.a0).toBe(true);
+  });
+
+  it("a node's path runs inward to the centre and outward to its callers", () => {
+    const p = ringPath("sym:apps/web/src/components/PostList.tsx#PostList", ringEdges);
+    expect([...p.nodes].sort()).toEqual(
+      [
+        "sym:apps/web/src/components/PostList.tsx#PostList",
+        "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
+        "sym:packages/utils/src/date.ts#formatTimeAgo",
+      ].sort(),
+    );
+    expect(p.edges.size).toBe(2);
+    expect(p.nodes.has("sym:packages/ui/src/button.tsx#Button")).toBe(false);
   });
 });
 
 describe("review view", () => {
+  it("rings: caption, ring labels with counts, file groups, names on changed nodes, hover keeps the path", async () => {
+    installMockFetch();
+    renderApp("#/review?range=main...feature&mode=rings");
+    const canvas = await screen.findByTestId("review-canvas");
+    await waitFor(() => expect(canvas.getAttribute("data-mode")).toBe("rings"));
+    expect(within(canvas).getByText(RINGS_CAPTION)).toBeTruthy();
+    expect(within(canvas).getByText("Changed in this range (3)")).toBeTruthy();
+    expect(within(canvas).getByText("Call the changed code directly (4)")).toBeTruthy();
+    expect(within(canvas).getByText("2 calls away (1)")).toBeTruthy();
+    expect(canvas.querySelectorAll(".rv-group-label").length).toBeGreaterThanOrEqual(3);
+    const button = within(canvas).getByRole("button", { name: "Button, modified, signature changed" });
+    expect(button.querySelector("circle")?.getAttribute("class")).toContain("rv-fill-signature");
+    expect(within(canvas).getByText("formatTimeAgo")).toBeTruthy();
+    expect(
+      within(canvas).getByRole("button", { name: "Card, calls the changed code directly" }),
+    ).toBeTruthy();
+    // Edges point from the caller to the callee (an arrowhead at the callee).
+    const e = canvas.querySelector(
+      '[data-edge="sym:packages/ui/src/card.tsx#Card->sym:packages/ui/src/button.tsx#Button"]',
+    );
+    expect(e?.getAttribute("marker-end")).toContain("rv-arrow");
+    // Hover: its path stays, the rest fades; the tooltip names the file and the hop.
+    const post = within(canvas).getByRole("button", { name: "PostList, calls the changed code directly" });
+    fireEvent.pointerEnter(post, { clientX: 10, clientY: 10 });
+    expect(post.getAttribute("class")).not.toContain("rv-dim");
+    expect(button.getAttribute("class")).toContain("rv-dim");
+    expect(
+      within(canvas)
+        .getByRole("button", { name: /formatTimeAgo/ })
+        .getAttribute("class"),
+    ).not.toContain("rv-dim");
+    const tip = within(canvas).getByRole("tooltip");
+    expect(tip.textContent).toContain("apps/web/src/components/PostList.tsx");
+    expect(tip.textContent).toContain("calls the changed code directly");
+    expect(within(canvas).getByRole("complementary", { name: "Review legend" }).textContent).toContain(
+      "Caller (fainter = farther)",
+    );
+  });
+
   it("asks for a range when none is given", async () => {
     installMockFetch();
     renderApp("#/review");
     expect(await screen.findByRole("heading", { name: "Pick a change to review" })).toBeTruthy();
   });
 
-  it("rings: changed symbols, callers and the left panel's risk, files, crossings and notes", async () => {
+  it("renders on the 2D map with the legend; the left panel keeps risk, files, crossings and notes", async () => {
     installMockFetch();
     renderApp("#/review?range=main...feature");
     const canvas = await screen.findByTestId("review-canvas");
-    await waitFor(() => expect(canvas.getAttribute("data-mode")).toBe("rings"));
-    expect(within(canvas).getByRole("button", { name: "Button, modified" })).toBeTruthy();
-    expect(within(canvas).getByRole("button", { name: "slugify, removed" })).toBeTruthy();
-    expect(within(canvas).getByRole("button", { name: "HomePage, hop 1 callers" })).toBeTruthy();
-    expect(within(canvas).getByText("Hop 2 callers (2)")).toBeTruthy();
+    await waitFor(() => expect(canvas.getAttribute("data-map")).toBe("2d"));
+    const legend = within(canvas).getByRole("complementary", { name: "Review legend" });
+    expect(within(legend).getByText("Signature changed")).toBeTruthy();
+    expect(within(legend).getByText("Calls changed code")).toBeTruthy();
+    expect(within(legend).getByText("Untouched")).toBeTruthy();
 
     const risk = screen.getByRole("region", { name: "Risk" });
     expect(within(risk).getByText("Medium risk")).toBeTruthy();
@@ -88,6 +230,7 @@ describe("review view", () => {
     const change = within(inspector).getByRole("region", { name: "Change in this review" });
     expect(change.querySelector('[data-side="before"]')?.textContent).toContain("onClick?: () => void })");
     expect(change.querySelector('[data-side="after"]')?.textContent).toContain("size?: number");
+    // The description is plain text, inside the change block only.
     expect(within(change).getByText("Renders a labelled button.")).toBeTruthy();
     expect(window.location.hash).toContain(`sel=${encodeURIComponent(BUTTON)}`);
   });
@@ -103,17 +246,22 @@ describe("review view", () => {
     expect(change.querySelector('[data-side="before"]')?.textContent).toContain("formatRelativeDate");
   });
 
-  it("the range form and the mode toggle write the hash; overlay dims what is not affected", async () => {
+  it("the range form, the 2D/3D toggle, the level and the hop 2-3 tint write the hash", async () => {
     installMockFetch();
     renderApp("#/review?range=main...feature");
     await screen.findByRole("region", { name: "Risk" });
-    fireEvent.click(screen.getByRole("radio", { name: "Map overlay" }));
-    await waitFor(() => expect(window.location.hash).toContain("mode=overlay"));
+    fireEvent.click(screen.getByRole("radio", { name: "Rings" }));
+    await waitFor(() => expect(window.location.hash).toContain("mode=rings"));
+    fireEvent.click(screen.getByRole("radio", { name: "On the map" }));
+    await waitFor(() => expect(window.location.hash).not.toContain("mode=rings"));
+    fireEvent.click(screen.getByRole("radio", { name: "Functions" }));
+    await waitFor(() => expect(window.location.hash).toContain("level=symbols"));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Tint callers at hop 2 and 3" }));
+    await waitFor(() => expect(window.location.hash).toContain("far=true"));
+    fireEvent.click(screen.getByRole("radio", { name: "3D map" }));
+    await waitFor(() => expect(window.location.hash).toContain("map=3d"));
     const canvas = await screen.findByTestId("review-canvas");
-    await waitFor(() => expect(canvas.getAttribute("data-mode")).toBe("overlay"));
-    expect(canvas.querySelectorAll('[data-mark="changed"]')).toHaveLength(2);
-    expect(canvas.querySelectorAll('[data-mark="affected"]')).toHaveLength(4);
-    expect(canvas.querySelectorAll('[data-mark="none"]').length).toBeGreaterThan(0);
+    await waitFor(() => expect(canvas.getAttribute("data-map")).toBe("3d"));
 
     const input = screen.getByRole("textbox", { name: "Range to review" });
     fireEvent.change(input, { target: { value: "main...other" } });

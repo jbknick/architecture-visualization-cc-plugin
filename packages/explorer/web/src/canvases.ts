@@ -33,5 +33,5 @@ for (const hint of [
 
 // The duplicates view is a ranked list with a detail pane, not a graph: it takes over the "clusters" hint.
 registerCanvas("clusters", DuplicatesCanvas);
-// The review view (#44) draws its own rings and map overlay as SVG: it takes over the "radial" hint.
-registerCanvas("radial", ReviewCanvas);
+// The review view (#167) draws the review as a layer on the 2D project map or the 3D map: hint "review".
+registerCanvas("review", ReviewCanvas);
