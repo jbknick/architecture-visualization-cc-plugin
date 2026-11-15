@@ -139,7 +139,7 @@ export function App() {
         onRouteChange={navigate}
       />
       <main className="center">{center}</main>
-      {route.sel && <Inspector nodes={nodes} />}
+      {route.sel && <Inspector nodes={nodes} review={needsFocus ? null : (data?.review ?? null)} />}
       <StatusBar
         meta={meta}
         shownNodes={nodes.length}

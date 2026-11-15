@@ -122,4 +122,46 @@ describe("gantry_open_view", () => {
     },
     15000,
   );
+
+  it.skipIf(!built)(
+    "deep-links the review view (#44): the range travels as a filter and the server answers it",
+    async () => {
+      const { repo, client } = await setup();
+      repo.git("checkout", "-q", "-b", "feature");
+      repo.write(
+        "src/math.ts",
+        `${readFileSync(join(repo.dir, "src/math.ts"), "utf8")}export const two = 2;\n`,
+      );
+      repo.git("add", "-A");
+      repo.git("commit", "-q", "-m", "two");
+      repo.git("checkout", "-q", "main");
+      const r = await call(client, "gantry_open_view", {
+        view: "review",
+        focus: "sym:src/math.ts#two",
+        filters: { range: "main...feature" },
+      });
+      expect(r.isError).toBe(false);
+      const url = new URL(r.json.url as string);
+      expect(url.hash).toBe(
+        `#/review?focus=${encodeURIComponent("sym:src/math.ts#two")}&range=main...feature`,
+      );
+      const token = url.searchParams.get("t") ?? "";
+      const q = encodeURIComponent(JSON.stringify({ range: "main...feature" }));
+      const res = await fetch(`${url.origin}/api/view/review?filters=${q}`, {
+        headers: { "x-gantry-token": token },
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { review: { changes: { id: string; kind: string }[] } };
+      expect(body.review.changes).toEqual([
+        expect.objectContaining({ id: "sym:src/math.ts#two", kind: "added" }),
+      ]);
+      // Same token, Origin and Host checks as every other view.
+      expect((await fetch(`${url.origin}/api/view/review?filters=${q}`)).status).toBe(403);
+      const evil = await fetch(`${url.origin}/api/view/review?filters=${q}`, {
+        headers: { "x-gantry-token": token, origin: "http://evil.example" },
+      });
+      expect(evil.status).toBe(403);
+    },
+    15000,
+  );
 });

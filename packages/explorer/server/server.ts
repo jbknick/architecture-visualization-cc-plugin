@@ -38,6 +38,7 @@ import {
   stateFilePath,
 } from "./state.js";
 import { buildExplorerUrl } from "./url.js";
+import { clearReviewCache } from "./views/review.js";
 
 export {
   ExplorerAlreadyRunning,
@@ -233,7 +234,10 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
   const token = randomBytes(32).toString("base64url");
   const ctx = { store, paths, config, getEmbedder: opts.getEmbedder ?? cachedEmbedder() };
   let port = 0;
-  const refresh = singleFlight<RefreshResult>(() => runRefresh(paths, store));
+  // A refresh changes the graph the review view walked, so its cached impacts are dropped too.
+  const refresh = singleFlight<RefreshResult>(() =>
+    runRefresh(paths, store).finally(() => clearReviewCache()),
+  );
   const withStale = (pathname: string, body: unknown): unknown =>
     STALE_ROUTE.test(pathname) && typeof body === "object" && body !== null
       ? { ...body, stale: staleInfo(paths, store) }

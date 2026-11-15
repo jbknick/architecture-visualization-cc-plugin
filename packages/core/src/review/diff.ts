@@ -268,6 +268,23 @@ export async function reviewDiff(paths: GantryPaths, base: string, head: string)
   return { base, head, mergeBase, files, changes, importChanges, ms: Date.now() - t0 };
 }
 
+/**
+ * The commits a review of `base`...`head` compares: the merge base and the head commit sha. Cheap (two
+ * `rev-parse` calls and one `merge-base`), so a caller can key a cache on it before running `reviewDiff`.
+ */
+export function reviewCommits(
+  paths: GantryPaths,
+  base: string,
+  head: string,
+): { mergeBase: string; head: string } {
+  const baseSha = resolveCommit(paths.root, base);
+  const headSha = resolveCommit(paths.root, head);
+  const mb = git(paths.root, ["merge-base", baseSha, headSha]);
+  const mergeBase = mb.out.toString("utf8").trim();
+  if (!mb.ok || mergeBase === "") throw new Error(`no merge base between ${base} and ${head}`);
+  return { mergeBase, head: headSha };
+}
+
 /** Ranges are `base...head` (merge-base form) or `base..head`; both mean the same here. */
 export function parseRange(range: string): { base: string; head: string } {
   const m = /^(.+?)\.{2,3}(.+)$/.exec(range);

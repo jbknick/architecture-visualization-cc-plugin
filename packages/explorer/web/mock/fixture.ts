@@ -16,6 +16,7 @@ import { duplicatesDismiss, duplicatesSource, duplicatesView, rememberScenario }
 import { buildHierarchy } from "./hierarchy.ts";
 import { egoHub, hubCounts, hubNode } from "./hubEgo.ts";
 import { type Counts, largeMapCounts, largeMapNode, projectMapLarge } from "./largeMap.ts";
+import { reviewView } from "./review.ts";
 
 export const meta: Meta = {
   repo: "pnpm-turbo",
@@ -1293,7 +1294,9 @@ export function handleMockApi(url: URL): MockResponse | null {
               ? duplicatesView(q.options)
               : id === "map-3d"
                 ? map3dView(q)
-                : null;
+                : id === "review"
+                  ? reviewView(q.options)
+                  : null;
     if (!result) return { status: 404, body: { error: `Unknown view: ${id}` } };
     if ("error" in result) return { status: result.status, body: { error: result.error } };
     return { status: 200, body: result };

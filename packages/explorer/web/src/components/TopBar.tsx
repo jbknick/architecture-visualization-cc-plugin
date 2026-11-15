@@ -48,13 +48,16 @@ export function StaleMarker() {
   );
 }
 
+/** From this many view tabs on, the brand may shrink so the bar fits (see styles.css). */
+const MANY_TABS = 7;
+
 export function TopBar() {
   const { state, view, setView } = useStore();
   const { meta } = state;
   // The "Debug: workspaces" view is a developer aid: its tab shows only with ?debug=1 (or while it is the open view).
   const tabs = (meta?.views ?? []).filter((v) => v.id !== "debug" || v.id === view || debugEnabled());
   return (
-    <header className="topbar">
+    <header className={`topbar${tabs.length >= MANY_TABS ? " many-tabs" : ""}`}>
       <div className="topbar-id">
         <span className="brand">Claude Code Architecture Visualisation Plugin</span>
         {meta && (

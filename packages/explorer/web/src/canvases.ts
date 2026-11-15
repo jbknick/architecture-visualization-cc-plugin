@@ -7,6 +7,7 @@ import { MapPanel } from "./canvas3d/MapPanel.tsx";
 import { ListCanvas } from "./components/ListCanvas.tsx";
 import { registerCanvas, registerFilterPanel, setDefaultCanvas } from "./slots.ts";
 import { DuplicatesCanvas } from "./views/DuplicatesCanvas.tsx";
+import { ReviewCanvas } from "./views/ReviewCanvas.tsx";
 
 setDefaultCanvas(ListCanvas);
 registerCanvas("list", ListCanvas);
@@ -32,3 +33,5 @@ for (const hint of [
 
 // The duplicates view is a ranked list with a detail pane, not a graph: it takes over the "clusters" hint.
 registerCanvas("clusters", DuplicatesCanvas);
+// The review view (#44) draws its own rings and map overlay as SVG: it takes over the "radial" hint.
+registerCanvas("radial", ReviewCanvas);
