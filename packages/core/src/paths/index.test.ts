@@ -3,7 +3,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { ensureDataDir, NotAGitRepoError, pluginDataFromRoot, resolvePaths } from "./index.js";
+import {
+  ensureDataDir,
+  NotAGitRepoError,
+  orphanedLegacyDataDir,
+  pluginDataFromRoot,
+  resolvePaths,
+} from "./index.js";
 
 let tmp: string;
 let repo: string;
@@ -88,13 +94,24 @@ describe("resolvePaths", () => {
     const skillEnv = { HOME: home, CLAUDE_PLUGIN_ROOT: root };
     const hash = resolvePaths(repo, mcpEnv).worktreeHash;
     const legacy = path.join(home, ".gantry/data/repos", hash);
-    fs.mkdirSync(legacy, { recursive: true });
+    const plugin = path.join(mcpEnv.CLAUDE_PLUGIN_DATA, "repos", hash);
+    // An empty legacy directory (a stray one) never takes over (#147).
+    fs.mkdirSync(path.join(legacy, "logs"), { recursive: true });
+    expect(resolvePaths(repo, mcpEnv).dataDir).toBe(plugin);
+    fs.writeFileSync(path.join(legacy, "gantry.db"), "");
     expect(resolvePaths(repo, mcpEnv).dataDir).toBe(legacy);
     expect(resolvePaths(repo, skillEnv).dataDir).toBe(legacy);
-    // once the plugin data dir has its own copy, both entry points move to it together
-    fs.mkdirSync(path.join(mcpEnv.CLAUDE_PLUGIN_DATA, "repos", hash), { recursive: true });
-    expect(resolvePaths(repo, mcpEnv).dataDir).toBe(path.join(mcpEnv.CLAUDE_PLUGIN_DATA, "repos", hash));
+    expect(orphanedLegacyDataDir(resolvePaths(repo, mcpEnv))).toBeUndefined();
+    // A plugin data dir without a store (only logs) does not count as its own copy either.
+    fs.mkdirSync(path.join(plugin, "logs"), { recursive: true });
+    expect(resolvePaths(repo, mcpEnv).dataDir).toBe(legacy);
+    // once the plugin data dir has its own store, both entry points move to it together
+    fs.writeFileSync(path.join(plugin, "gantry.db"), "");
+    expect(resolvePaths(repo, mcpEnv).dataDir).toBe(plugin);
     expect(resolvePaths(repo, skillEnv).dataDir).toBe(resolvePaths(repo, mcpEnv).dataDir);
+    // and the old index is reported as an orphan that can be removed
+    expect(orphanedLegacyDataDir(resolvePaths(repo, mcpEnv))).toBe(legacy);
+    expect(orphanedLegacyDataDir(resolvePaths(repo, { HOME: home }))).toBeUndefined();
   });
 
   test("bin/gantry exports CLAUDE_PLUGIN_ROOT so a Bash-tool run resolves the plugin data dir", () => {

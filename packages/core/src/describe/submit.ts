@@ -20,7 +20,7 @@ export interface SubmitItem {
 
 export interface SubmitRejection {
   contentKey: string;
-  /** A validator reason (`schema`, `length`, `shape`, `identifier`, `injection`, `secret`) or `not_in_batch`, `duplicate`, `stale`, `unavailable`. */
+  /** A validator reason (`schema`, `length`, `shape`, `identifier`, `injection`, `secret`) or `not_in_batch`, `attempts_exhausted`, `duplicate`, `stale`, `unavailable`. */
   reason: string;
   /** Rule names from the validator, never matched text; cut to a short length. */
   detail?: string;
@@ -58,6 +58,19 @@ function claimedInBatch(store: Store, batchId: string): ClaimedRow[] {
       )
       .all() as ClaimedRow[]
   ).filter((r) => r.claimed_by.length > suffix.length && r.claimed_by.endsWith(suffix));
+}
+
+/** Content keys of `batchId` that used up their attempts (`failed` rows keep `claimed_by`, see `recordDescribeFailure`). */
+function failedInBatch(store: Store, batchId: string): Set<string> {
+  const suffix = `:${batchId}`;
+  const rows = store.db
+    .prepare("SELECT content_key, claimed_by FROM backlog WHERE status = 'failed' AND claimed_by IS NOT NULL")
+    .all() as { content_key: string; claimed_by: string }[];
+  return new Set(
+    rows
+      .filter((r) => r.claimed_by.length > suffix.length && r.claimed_by.endsWith(suffix))
+      .map((r) => r.content_key),
+  );
 }
 
 function readSource(store: Store, rel: string, ctx: SourceContext): string | undefined {
@@ -146,8 +159,10 @@ const cap = (s: string, n: number): string => (s.length <= n ? s : `${s.slice(0,
  * belong to the batch; the description goes through `validateDescription` against a freshly built fact sheet; an
  * accepted one is stored (`provenance` model, model `haiku`, `PROMPT_MAJOR`), its backlog row deleted and the FTS
  * `behavior`, `search_terms` and `suggested_name` of every symbol with that content key updated; a rejected one adds
- * an attempt, records `last_error` and returns to `pending` (or `failed` after `MAX_DESCRIBE_ATTEMPTS`). Items of the
- * batch that are not mentioned stay claimed. One `usage_log` row is written per call.
+ * an attempt, records `last_error` and stays claimed in this batch, so a corrected resubmit under the same `batchId`
+ * is checked again (#147), or becomes `failed` after `MAX_DESCRIBE_ATTEMPTS` (a later resubmit is then
+ * `attempts_exhausted`). Items of the batch that are not mentioned stay claimed. One `usage_log` row is written per
+ * call.
  */
 export function submitDescriptions(
   store: Store,
@@ -156,7 +171,13 @@ export function submitDescriptions(
   ctx: SourceContext = {},
 ): SubmitResult {
   const rows = new Map(claimedInBatch(store, batchId).map((r) => [r.content_key, r]));
-  const out: SubmitResult = { accepted: 0, rejected: [], batchKnown: rows.size > 0, acceptedKeys: [] };
+  const exhausted = failedInBatch(store, batchId);
+  const out: SubmitResult = {
+    accepted: 0,
+    rejected: [],
+    batchKnown: rows.size > 0 || exhausted.size > 0,
+    acceptedKeys: [],
+  };
   const seen = new Set<string>();
   const files = new Map<string, string | undefined>();
   const reject = (key: string, reason: string, detail?: string) =>
@@ -176,7 +197,7 @@ export function submitDescriptions(
     seen.add(key);
     const row = rows.get(key);
     if (!row) {
-      reject(key, "not_in_batch");
+      reject(key, exhausted.has(key) ? "attempts_exhausted" : "not_in_batch");
       continue;
     }
     const sym = store.getSymbol(row.symbol_id);
@@ -208,7 +229,7 @@ export function submitDescriptions(
 
     const v = validateDescription(item.description, sheet);
     if (!v.ok) {
-      recordDescribeFailure(store, key, `${v.reason}: ${cap(v.detail, DETAIL_MAX)}`);
+      recordDescribeFailure(store, key, `${v.reason}: ${cap(v.detail, DETAIL_MAX)}`, { keepClaim: true });
       reject(key, v.reason, v.detail);
       continue;
     }

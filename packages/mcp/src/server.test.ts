@@ -1,4 +1,4 @@
-import { CLAIM_TTL_MS, type Embedder, vecAvailable } from "@gantry/core";
+import { CLAIM_TTL_MS, DESCRIBER_RUN_CLAIMS, type Embedder, vecAvailable } from "@gantry/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { MAX_RESPONSE_CHARS } from "./envelope.js";
@@ -240,10 +240,11 @@ describe("gantry_claim_batch and gantry_submit_descriptions", () => {
       expect(
         store.db.prepare("SELECT 1 FROM backlog WHERE content_key = ?").get(slug.content_key),
       ).toBeUndefined();
+      // A rejected function stays in its batch for a corrected resubmit (#147).
       expect(
         store.db.prepare("SELECT status, attempts FROM backlog WHERE content_key = ?").get(clampKey),
       ).toEqual({
-        status: "pending",
+        status: "claimed",
         attempts: 1,
       });
       expect(store.db.prepare("SELECT task, model, functions, source FROM usage_log").all()).toEqual([
@@ -251,8 +252,10 @@ describe("gantry_claim_batch and gantry_submit_descriptions", () => {
       ]);
     });
 
-    // The second failure parks the function.
+    // The next claim hands the rejected function back in the same batch; the second failure parks it.
     const again = await claim(client);
+    expect(again.batch).toBe(c.batch);
+    expect(again.json.reissued).toBe(true);
     expect(again.items.map((i) => i.content_key)).toEqual([clampKey]);
     await call(client, "gantry_submit_descriptions", {
       batch_id: again.batch,
@@ -266,7 +269,9 @@ describe("gantry_claim_batch and gantry_submit_descriptions", () => {
         attempts: 2,
       }),
     );
-    expect((await claim(client)).items).toEqual([]);
+    const empty = await claim(client);
+    expect(empty.items).toEqual([]);
+    expect(empty.json).toMatchObject({ stop: "backlog_empty", indexed: true, remaining: 0 });
   });
 
   it("re-issues an unsubmitted batch before new items (two claims in a row)", async () => {
@@ -284,6 +289,14 @@ describe("gantry_claim_batch and gantry_submit_descriptions", () => {
       results: [{ content_key: first.items[0]?.content_key, description: 1 }],
     });
     expect(done.json.accepted).toBe(0);
+    // The rejected item is handed back once for a second try, then the worker moves on to new work.
+    const retry = await claim(client, "w1", 1);
+    expect(retry.batch).toBe(first.batch);
+    expect(retry.items.map((i) => i.content_key)).toEqual(first.items.map((i) => i.content_key));
+    await call(client, "gantry_submit_descriptions", {
+      batch_id: first.batch,
+      results: [{ content_key: first.items[0]?.content_key, description: 1 }],
+    });
     const third = await claim(client, "w1", 1);
     expect(third.json.reissued).toBeUndefined();
     expect(third.items).toHaveLength(1);
@@ -416,6 +429,85 @@ describe("gantry_claim_batch and gantry_submit_descriptions", () => {
         status: "claimed",
       });
     });
+  });
+
+  it("accepts a reworded resubmit in the same batch after a validation rejection (#147)", async () => {
+    const { client } = await setup();
+    const c = await claim(client, "w1", 10);
+    const slugKey = keyOf(c.items, "src/lib/slug.ts");
+    const first = await call(client, "gantry_submit_descriptions", {
+      batch_id: c.batch,
+      results: [{ content_key: slugKey, description: INJECTED }],
+    });
+    expect(first.json).toMatchObject({ accepted: 0, rejected: [{ content_key: slugKey }] });
+    const second = await call(client, "gantry_submit_descriptions", {
+      batch_id: c.batch,
+      results: [{ content_key: slugKey, description: GOOD_SLUG }],
+    });
+    expect(second.json).toMatchObject({ accepted: 1, rejected: [] });
+    expect(second.json.batch_status).toBeUndefined();
+  });
+
+  it("ends a describer run after DESCRIBER_RUN_CLAIMS claims with stop: run_limit, and a fresh run continues", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < DESCRIBER_RUN_CLAIMS + 3; i++) files[`src/run/r${i}.ts`] = fn(`runner${i}`, `r${i}`);
+    const { client } = await setup(files);
+    const plain = {
+      behavior: "Returns a value computed from its input.",
+      searchTerms: ["value"],
+      nameFits: true,
+    };
+    for (let i = 0; i < DESCRIBER_RUN_CLAIMS; i++) {
+      const c = await claim(client, "init-1", 1);
+      expect(c.items).toHaveLength(1);
+      const s = await call(client, "gantry_submit_descriptions", {
+        batch_id: c.batch,
+        results: c.items.map((x) => ({ content_key: x.content_key, description: plain })),
+      });
+      expect(s.json.accepted).toBe(1);
+    }
+    const stop = await claim(client, "init-1", 1);
+    expect(stop.items).toEqual([]);
+    expect(stop.json).toMatchObject({ worker_id: "init-1", batch_id: null, stop: "run_limit" });
+    expect(stop.json.remaining as number).toBeGreaterThan(0);
+    // Another describer is not affected, and the next run under the same id starts afresh.
+    expect((await claim(client, "init-2", 1)).items).toHaveLength(1);
+    expect((await claim(client, "init-1", 1)).items).toHaveLength(1);
+  });
+
+  it("a run past its limit still gets its unsubmitted batch back before it is told to stop", async () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < DESCRIBER_RUN_CLAIMS + 2; i++) files[`src/run/h${i}.ts`] = fn(`holder${i}`, `h${i}`);
+    const { client } = await setup(files);
+    const plain = {
+      behavior: "Returns a value computed from its input.",
+      searchTerms: ["value"],
+      nameFits: true,
+    };
+    let last: Awaited<ReturnType<typeof claim>> | undefined;
+    for (let i = 0; i < DESCRIBER_RUN_CLAIMS; i++) {
+      last = await claim(client, "w9", 1);
+      if (i < DESCRIBER_RUN_CLAIMS - 1) {
+        await call(client, "gantry_submit_descriptions", {
+          batch_id: last.batch,
+          results: last.items.map((x) => ({ content_key: x.content_key, description: plain })),
+        });
+      }
+    }
+    const held = await claim(client, "w9", 1);
+    expect(held.batch).toBe(last?.batch);
+    expect(held.json.reissued).toBe(true);
+  });
+
+  it("says not_indexed, not backlog empty, when the data dir has no Gantry index for the repo", async () => {
+    const repo = makeRepo();
+    repos.push(repo);
+    const conn = await connect(repo);
+    conns.push(conn);
+    const c = await claim(conn.client, "init-1", 10);
+    expect(c.isError).toBe(false);
+    expect(c.items).toEqual([]);
+    expect(c.json).toMatchObject({ stop: "not_indexed", indexed: false, data_dir: repo.paths.dataDir });
   });
 
   it("returns a full batch of 10 typical sheets in one response without truncation", async () => {
