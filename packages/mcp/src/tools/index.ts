@@ -2,6 +2,7 @@ import type { Tool } from "../tool.js";
 import { browseTool } from "./browse.js";
 import { claimTool } from "./claim.js";
 import { findSimilarTool } from "./findSimilar.js";
+import { impactTool } from "./impact.js";
 import { nodeTool } from "./node.js";
 import { openViewTool } from "./openView.js";
 import { getOverviewTool, saveOverviewTool } from "./overview.js";
@@ -20,6 +21,7 @@ export const TOOLS: Tool[] = [
   browseTool,
   nodeTool,
   openViewTool,
+  impactTool,
   getOverviewTool,
   saveOverviewTool,
 ];

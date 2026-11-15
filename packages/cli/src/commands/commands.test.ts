@@ -349,7 +349,30 @@ describe("gantry review", () => {
     expect(unknown.err).toContain("unknown git ref: nope");
     expect(unknown.out).toBe("");
     expect(run(fx.dir, ["review", "--json"]).code).toBe(1);
-    expect(run(fx.dir, ["review", "main...main"]).err).toContain("--json");
+  });
+
+  it("prints a short text summary without --json: risk, reasons, hop counts, crossings", async () => {
+    const fx = await fixture("pnpm-turbo");
+    fx.git(["checkout", "-b", "feature"]);
+    const file = join(fx.dir, "packages/ui/src/button.tsx");
+    writeFileSync(
+      file,
+      readFileSync(file, "utf8").replace(
+        "{ label: string; onClick?: () => void }",
+        "{ label: string; onClick?: () => void; size?: number }",
+      ),
+    );
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-m", "button"]);
+    const env = { CLAUDE_PLUGIN_DATA: join(dataDir, "review-text-data") };
+    const r = run(fx.dir, ["review", "main...feature"], env);
+    expect(r.err).toBe("");
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("Risk: medium (54/100)");
+    expect(r.out).toContain("+30 signature changed on an exported symbol");
+    expect(r.out).toContain("hop 1: 2 (sym:apps/web/src/routes/index.tsx#HomePage");
+    expect(r.out).toContain("Crossings: 2");
+    expect(r.out).toBe(run(fx.dir, ["review", "main...feature"], env).out);
   });
 
   it("--pr without a usable gh prints the range form as the way out", async () => {

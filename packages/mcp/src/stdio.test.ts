@@ -96,6 +96,7 @@ describe("node mcp.js over stdio", () => {
         "gantry_claim_batch",
         "gantry_find_similar",
         "gantry_get_overview",
+        "gantry_impact",
         "gantry_node",
         "gantry_open_view",
         "gantry_save_overview",
