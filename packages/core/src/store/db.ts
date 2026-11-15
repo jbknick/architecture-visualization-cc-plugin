@@ -96,6 +96,16 @@ function migrate(db: Database.Database): void {
   }).immediate();
 }
 
+/**
+ * A pending_files table written by a pre-release build of migration v5 lacks `reindexed`; the migration does not run
+ * again on such a database, so the column is added here, on open (#131). A read only when it is already there.
+ */
+function ensurePendingReindexed(db: Database.Database): void {
+  const cols = db.prepare("PRAGMA table_info(pending_files)").all() as { name: string }[];
+  if (cols.length > 0 && !cols.some((c) => c.name === "reindexed"))
+    db.exec("ALTER TABLE pending_files ADD COLUMN reindexed INTEGER NOT NULL DEFAULT 0");
+}
+
 export function openStore(dbPath: string): Store {
   if (dbPath !== ":memory:") mkdirSync(dirname(dbPath), { recursive: true });
   const db = new Database(dbPath, { timeout: 5000 });
@@ -106,6 +116,7 @@ export function openStore(dbPath: string): Store {
     db.pragma("foreign_keys = ON");
     const vec = loadVec(db); // fail open: without sqlite-vec everything but vector search still works
     migrate(db);
+    ensurePendingReindexed(db);
     db.prepare(
       "INSERT INTO meta(key, value) VALUES ('vec_available', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
     ).run(vec ? "1" : "0");

@@ -118,8 +118,16 @@ export async function postToolUse(
   const store = openStore(paths.dbPath);
   try {
     const session = input.sessionId ?? `once:${randomUUID()}`;
-    recordEdit(store, session, rel, source);
-    if (source) await indexRepo(paths, { layer: "working", files: [rel], store });
+    const recorded = recordEdit(store, session, rel, source);
+    if (source) {
+      await indexRepo(paths, { layer: "working", files: [rel], store });
+      // Only now is the file indexed: a trigger cut off before this line leaves reindexed = 0, and Stop indexes it.
+      store.db
+        .prepare(
+          "UPDATE pending_files SET reindexed = 1 WHERE session_id = ? AND path = ? AND created_at = ?",
+        )
+        .run(session, rel, recorded);
+    }
     if (input.sessionId !== undefined) return undefined;
     const r = await settle(paths, store, session, config, opts);
     // A batch of one that could not finish is not left behind under its throwaway key.
@@ -156,21 +164,24 @@ export async function settleBatch(
 }
 
 /**
- * Adds `rel` to the session's batch. The first baseline wins; a later edit of the same file only moves
- * `created_at`, so a settle that read the row before that edit does not delete it.
+ * Adds `rel` to the session's batch and returns the row's `created_at`. The first baseline wins; a later edit of the
+ * same file moves `created_at` (so a settle that read the row before that edit does not delete it) and sets
+ * `reindexed` back to 0 until that edit's own index finishes.
  */
-export function recordEdit(store: Store, session: string, rel: string, source: boolean): void {
+export function recordEdit(store: Store, session: string, rel: string, source: boolean): string {
   const baseline = source
     ? Object.fromEntries(store.effectiveSymbols({ fileId: `file:${rel}` }).map((s) => [s.id, s.exactHash]))
     : {};
+  const at = stamp();
   store.db
     .prepare(
       `INSERT INTO pending_files(session_id, path, baseline, created_at) VALUES (?, ?, ?, ?)
-       ON CONFLICT(session_id, path) DO UPDATE SET created_at = excluded.created_at`,
+       ON CONFLICT(session_id, path) DO UPDATE SET created_at = excluded.created_at, reindexed = 0`,
     )
-    .run(session, rel, JSON.stringify(baseline), stamp());
+    .run(session, rel, JSON.stringify(baseline), at);
   // A manifest edit changes how every file of the batch resolves: all of them are re-indexed again at Stop.
   if (!source) store.db.prepare("UPDATE pending_files SET reindexed = 0 WHERE session_id = ?").run(session);
+  return at;
 }
 
 /** ISO time with a per-process counter, so two edits in the same millisecond still get different stamps. */
@@ -255,8 +266,8 @@ export async function settle(
 
   // Re-index step, in chunks that each commit, so a batch too large for one Stop still makes progress.
   const gone = (r: { path: string }): boolean => !fs.existsSync(path.join(paths.root, r.path));
-  const todo =
-    manifests.length > 0 ? sources.filter((r) => r.reindexed === 0 || gone(r)) : sources.filter(gone);
+  // Not indexed since its last edit (a trigger cut off before its index, or a manifest edited since), or gone.
+  const todo = sources.filter((r) => r.reindexed === 0 || gone(r));
   const mark = store.db.prepare(
     "UPDATE pending_files SET reindexed = 1 WHERE session_id = ? AND path = ? AND created_at = ?",
   );

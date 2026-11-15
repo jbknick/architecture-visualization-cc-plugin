@@ -836,6 +836,30 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     expect(pendingPaths(fx)).toEqual([]);
   });
 
+  it("a trigger cut off before its index finished: Stop indexes the file and still reports the duplicate (#131)", async () => {
+    const fx = await indexedFx();
+    const p = pathsOf(fx.dir);
+    // What a PostToolUse killed at the budget leaves: the row is recorded, the file was never indexed.
+    writeFileSync(join(fx.dir, "apps/web/src/lib/new.ts"), SLUG);
+    const st = openStore(p.dbPath);
+    try {
+      recordEdit(st, "s", "apps/web/src/lib/new.ts", true);
+      expect(st.effectiveSymbols({ fileId: "file:apps/web/src/lib/new.ts" })).toEqual([]);
+      expect(st.db.prepare("SELECT reindexed FROM pending_files").get()).toEqual({ reindexed: 0 });
+    } finally {
+      st.close();
+    }
+    expect(ctxOf(await settleBatch(p, { sessionId: "s" }))).toBe(SLUG_LINE);
+    // A trigger that finished marks its row, so Stop does not index the file again.
+    touch(fx, "apps/web/src/lib/other.ts", "export const x = 1;\n");
+    const st2 = openStore(p.dbPath);
+    try {
+      expect(st2.db.prepare("SELECT reindexed FROM pending_files").get()).toEqual({ reindexed: 1 });
+    } finally {
+      st2.close();
+    }
+  });
+
   it("rows added or re-touched while a settle runs are kept for the next Stop (#131)", async () => {
     const fx = await indexedFx();
     touch(fx, "apps/web/src/lib/first.ts", "export const one = 1;\n");

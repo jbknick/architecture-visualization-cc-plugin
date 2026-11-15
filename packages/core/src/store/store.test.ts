@@ -373,6 +373,30 @@ describe("schema v4 (adapter_nodes)", () => {
     expect(norm(ddl)).toBe(norm(SCHEMA_V5));
   });
 
+  it("adds pending_files.reindexed on open to a v5 table that lacks it (pre-release v5)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "gantry-v5r-"));
+    const dbPath = join(dir, "g.db");
+    openStore(dbPath).close();
+    const raw = new Database(dbPath);
+    raw.exec("DROP TABLE pending_files");
+    raw.exec(
+      "CREATE TABLE pending_files(session_id TEXT, path TEXT, baseline TEXT, created_at TEXT, PRIMARY KEY(session_id, path))",
+    );
+    raw.prepare("INSERT INTO pending_files VALUES ('s', 'a.ts', '{}', 't')").run();
+    raw.close();
+    const again = openStore(dbPath);
+    try {
+      expect(again.getMeta("schema_version")).toBe("5");
+      expect(again.db.prepare("SELECT path, reindexed FROM pending_files").all()).toEqual([
+        { path: "a.ts", reindexed: 0 },
+      ]);
+    } finally {
+      again.close();
+    }
+    openStore(dbPath).close(); // idempotent
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it("migration v5 adds symbols.near_minhash, pending_files, and forgets head_sha", () => {
     const dir = mkdtempSync(join(tmpdir(), "gantry-v5-"));
     const dbPath = join(dir, "g.db");
