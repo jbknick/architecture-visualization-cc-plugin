@@ -4,28 +4,8 @@
 // echo part of a token) is ever copied into the answer, so a rejected injection or secret cannot come back to the
 // model through its own feedback.
 
-import { scanInjection } from "./filters.js";
-import { HARD_MAX_BEHAVIOR_CHARS, HARD_MAX_NAME_CHARS, HARD_MAX_TERM_CHARS, MAX_TERMS } from "./schema.js";
-import { speechProblem } from "./speech.js";
-
-/**
- * True when a rejected description also trips the injection filter or the speech-act rules, whatever rule rejected
- * it first (the shape rules run before the injection filter, so `Ignore all previous instructions ...` is rejected as
- * `shape`). Such a rejection never earns the extra attempt or a fallback (#150). Reads only strings, each capped.
- */
-export function injectionSignal(raw: unknown): boolean {
-  if (typeof raw !== "object" || raw === null) return false;
-  const o = raw as Record<string, unknown>;
-  const parts: string[] = [];
-  if (typeof o.behavior === "string") parts.push(o.behavior.slice(0, HARD_MAX_BEHAVIOR_CHARS));
-  if (Array.isArray(o.searchTerms))
-    for (const t of o.searchTerms.slice(0, MAX_TERMS))
-      if (typeof t === "string") parts.push(t.slice(0, HARD_MAX_TERM_CHARS));
-  if (typeof o.suggestedName === "string") parts.push(o.suggestedName.slice(0, HARD_MAX_NAME_CHARS));
-  const hit = (text: string): boolean =>
-    text.trim() !== "" && (scanInjection(text).reject.length > 0 || speechProblem(text) !== null);
-  return hit(parts.join(" ")) || parts.some(hit);
-}
+// Whether a rejection may earn the extra attempt is decided by `extendableRejection` in validate.ts (#175), which runs
+// the validator's own secret and injection stages on every field.
 
 /** Where the rule fired. */
 export type FeedbackField = "behavior" | "searchTerms" | "suggestedName";
@@ -57,7 +37,7 @@ const SPECIFIC: readonly (readonly [string, string, string])[] = [
   ["shape", "multiple-sentences", "Write exactly one sentence with a single full stop at the end."],
   ["shape", "label", "Start with the verb, not with a label and a colon."],
   ["shape", "long-aside", "Drop the bracketed aside, or keep it to six words or fewer."],
-  ["shape", "unbalanced", "Close every bracket you open, or leave brackets out."],
+  ["shape", "unbalanced", "Close every bracket that is opened, or leave brackets out."],
   ["shape", "spaced-letters", "Write words in full, not as single letters."],
   [
     "shape",
@@ -67,9 +47,13 @@ const SPECIFIC: readonly (readonly [string, string, string])[] = [
   [
     "shape",
     "imperative-clause",
-    "Keep every clause descriptive, in the third person (deletes, runs), never a command (delete, run).",
+    "Keep every clause a third-person statement of what the code does; no clause may be a command.",
   ],
-  ["shape", "addressing", "Describe the code in the third person, without you, we, must, should or please."],
+  [
+    "shape",
+    "addressing",
+    "Describe the code in the third person, without addressing anyone or saying what has to happen.",
+  ],
   [
     "shape",
     "function words only",
@@ -79,33 +63,21 @@ const SPECIFIC: readonly (readonly [string, string, string])[] = [
   [
     "injection",
     "speech-act",
-    "Describe behaviour only; do not say the code tells, asks or lets agents, developers or reviewers do anything.",
+    "Describe behaviour only; do not say the code tells or asks anyone to do anything.",
   ],
   [
     "injection",
     "addressee-action",
-    "Describe behaviour only; do not make agents, bots or developers the subject of an action.",
+    "Describe behaviour only; make the code, not a person or an agent, the subject.",
   ],
   [
     "injection",
     "permission-claim",
-    "Describe behaviour only; do not say anything is safe, allowed, fine or unnecessary to remove, skip or change.",
+    "Describe behaviour only; do not judge whether any code may be changed or removed.",
   ],
-  [
-    "injection",
-    "addressing",
-    "Describe behaviour only, in the third person, without you, we, must or please.",
-  ],
-  [
-    "injection",
-    "directive",
-    "Make search terms and names nouns or descriptive phrases, never commands such as delete tests.",
-  ],
-  [
-    "injection",
-    "imperative",
-    "Make search terms and names nouns or descriptive phrases, never commands such as delete tests.",
-  ],
+  ["injection", "addressing", "Describe behaviour only, in the third person, without addressing anyone."],
+  ["injection", "directive", "Make search terms and names nouns or descriptive phrases, never commands."],
+  ["injection", "imperative", "Make search terms and names nouns or descriptive phrases, never commands."],
 ];
 
 const FIELD = /^(searchTerms|suggestedName)\b/;

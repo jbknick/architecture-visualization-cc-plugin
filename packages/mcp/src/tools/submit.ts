@@ -38,19 +38,20 @@ export const submitTool = defineTool({
       results.map((x) => ({ contentKey: x.content_key, description: x.description })),
     );
     let embedded = 0;
-    if (r.accepted > 0) {
+    const stored = r.accepted + r.fallbacks; // fallbacks need vectors and catalog lines too (#175)
+    if (stored > 0) {
       try {
         // Only when the model is already cached; otherwise the vectors wait for `gantry embed`.
         const embedder = await getEmbedder();
         if (embedder) {
-          const e = await embedPending(store, { embedder, limit: r.accepted, timeBudgetMs: EMBED_BUDGET_MS });
+          const e = await embedPending(store, { embedder, limit: stored, timeBudgetMs: EMBED_BUDGET_MS });
           embedded = e.descriptions;
         }
       } catch (err) {
         log.error("embedding after submit failed; the vectors wait for gantry embed", err);
       }
     }
-    if (r.accepted > 0) {
+    if (stored > 0) {
       try {
         writeCatalogDebounced(store, paths); // at most once per 30 s; gantry_browse refreshes it on read
       } catch (err) {

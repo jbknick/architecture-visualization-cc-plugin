@@ -184,12 +184,6 @@ const MUTATIONS: Mutation[] = [
     replace: "    true &&",
   },
   {
-    name: "injection signal never seen",
-    file: "feedback.ts",
-    find: 'return hit(parts.join(" ")) || parts.some(hit);',
-    replace: "return false;",
-  },
-  {
     name: "fallback for any final rejection",
     file: "submit.ts",
     find: "now.failed && now.attempts >= MAX_DESCRIBE_ATTEMPTS_EXTENDED && extendable",
@@ -204,8 +198,105 @@ const MUTATIONS: Mutation[] = [
   {
     name: "fallback names not checked spelled out",
     file: "fallback.ts",
-    find: "if (!check(spelledOut(c), spelledTerms.length > 0 ? spelledTerms : [sym.kind]).ok) continue;",
+    find: "if (!check(spelled, spelledTerms.length > 0 ? spelledTerms : [sym.kind]).ok) continue;",
     replace: "",
+  },
+  // Extra-attempt gate and fallback hardening (#175).
+  {
+    name: "signal: injection filter on all fields together off",
+    file: "validate.ts",
+    find: "if (scanInjection(joined).reject.length > 0 || speechProblem(joined) !== null) return true;",
+    replace: "",
+  },
+  {
+    name: "signal: credential formats off",
+    file: "validate.ts",
+    find: "if (scanSecrets(joined).length > 0) return true;",
+    replace: "",
+  },
+  {
+    name: "signal: copied credential pieces off",
+    file: "validate.ts",
+    find: "if (low.length >= 6 && secretWords.some((s) => s.includes(low))) return true;",
+    replace: "",
+  },
+  {
+    name: "signal: term rules off",
+    file: "validate.ts",
+    find: "for (const t of terms) if (termInstruction(t, g) !== null) return true;",
+    replace: "",
+  },
+  {
+    name: "signal: name rules off",
+    file: "validate.ts",
+    find: 'if (name.trim() !== "" && nameInstruction(name, g) !== null) return true;',
+    replace: "",
+  },
+  {
+    name: "signal: behavior cues off",
+    file: "validate.ts",
+    find: "(speechProblem(behavior) !== null || behaviorInstructs(behavior))",
+    replace: "false",
+  },
+  {
+    name: "signal: addressee or bare verb at a clause start allowed",
+    file: "validate.ts",
+    find: "if (isActionVerb(first)) return true;",
+    replace: "",
+  },
+  {
+    name: "non-extendable shape codes ignored",
+    file: "validate.ts",
+    find: 'if (v.reason === "shape" && [...NON_EXTENDABLE_SHAPE].some((code) => v.detail.includes(code))) return true;',
+    replace: "",
+  },
+  {
+    name: "tainted rejection leaves no mark",
+    file: "store.ts",
+    find: "const error = tainted ? `${errorText}${NO_EXTRA_MARK}` : errorText;",
+    replace: "const error = errorText;",
+  },
+  {
+    name: "bare-verb clause after a semicolon or colon exempt again",
+    file: "shape.ts",
+    find: "if (inVerbList(items, i) && !verbListIsClause(items, i)) continue;",
+    replace: "if (inVerbList(items, i)) continue;",
+  },
+  {
+    name: "fallback marker accepted from a model",
+    file: "validate.ts",
+    find: 'if (claimsFallbackMarker([original, ...d.searchTerms, d.suggestedName ?? ""].join(" ")))',
+    replace: "if (false)",
+  },
+  {
+    name: "fallback repeats run-together names",
+    file: "fallback.ts",
+    find: "if (w.length > NAME_WORD_MAX || (w.length > NAME_WORD_FREE && !isWord(w))) return false;",
+    replace: "",
+  },
+  {
+    name: "fallback repeats agent and review words",
+    file: "fallback.ts",
+    find: "if (NAME_BANNED.has(w)) return false;",
+    replace: "",
+  },
+  {
+    name: "fallback names spelled without NFKC",
+    file: "fallback.ts",
+    find: 'return splitIdentifier(name.normalize("NFKC")).join(" ");',
+    replace: 'return splitIdentifier(name).join(" ");',
+  },
+  {
+    name: "fallback spelled-out sentence not used",
+    file: "fallback.ts",
+    find: "const spelled = spelledOut(c);",
+    replace: "const spelled = c.behavior;",
+  },
+  {
+    name: "fallback replaces an existing description",
+    file: "submit.ts",
+    find: "if (storeDescriptions(store, [f.description], { replace: false }) === 0) continue;",
+    replace: "if (storeDescriptions(store, [f.description], { replace: true }) === 0) continue;",
   },
 ];
 

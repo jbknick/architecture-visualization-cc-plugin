@@ -280,6 +280,29 @@ function inVerbList(items: readonly Item[], i: number): boolean {
   return aw !== undefined && isActionVerb(aw);
 }
 
+const isListJoin = (it: Item | undefined): boolean =>
+  it !== undefined && (("p" in it && it.p === ",") || wordOf(it) === "and" || wordOf(it) === "or");
+const isVerbItem = (it: Item | undefined): boolean => {
+  const w = wordOf(it);
+  return w !== undefined && isActionVerb(w);
+};
+
+/**
+ * The bare-verb list around `i` is a clause of its own (#175): it opens right after `;`, `:`, `,` or a dash and runs to
+ * the end of the clause ("…; approve and merge."), so it is a list of commands, not a list of names that modifies a
+ * noun ("edit, delete and cancel buttons") or sits in brackets ("(create, read, update, delete)").
+ */
+function verbListIsClause(items: readonly Item[], i: number): boolean {
+  let start = i;
+  while (isListJoin(items[start - 1]) && isVerbItem(items[start - 2])) start -= 2;
+  const opener = items[start - 1];
+  if (opener === undefined || !("p" in opener) || opener.p === "(") return false;
+  let end = i;
+  while (isListJoin(items[end + 1]) && isVerbItem(items[end + 2])) end += 2;
+  const after = items[end + 1];
+  return after === undefined || ("p" in after && after.p !== ")");
+}
+
 /** True when `text` holds an imperative clause. Linear in the length of `text`. */
 export function hasImperativeClause(text: string): boolean {
   const items = itemsOf(text);
@@ -300,7 +323,7 @@ export function hasImperativeClause(text: string): boolean {
     if (prev === "to" || (prev !== undefined && NOUN_CONTEXT.has(prev))) continue;
     if (causative && !punctSinceFirst) continue;
     if (governedByInfinitive(items, i)) continue;
-    if (inVerbList(items, i)) continue;
+    if (inVerbList(items, i) && !verbListIsClause(items, i)) continue;
     if (VERBS_ALWAYS.has(it.w)) return true;
     const next = items[i + 1];
     const nw = wordOf(next);

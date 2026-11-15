@@ -1,6 +1,14 @@
 import { closeSync, fstatSync, openSync, readSync, realpathSync } from "node:fs";
 import path from "node:path";
-import { getOverview, hybridSearch, isIndexable, isSensitive, MAX_FILE_BYTES } from "@gantry/core";
+import {
+  behaviorOf,
+  describedByOf,
+  getOverview,
+  hybridSearch,
+  isIndexable,
+  isSensitive,
+  MAX_FILE_BYTES,
+} from "@gantry/core";
 import { HttpError } from "./errors.js";
 import { getLayout } from "./layout.js";
 import type { ApiContext, ViewLevel, ViewParams } from "./types.js";
@@ -153,12 +161,16 @@ function node(ctx: ApiContext, id: string) {
   const { store } = ctx;
   let nodeBody: Record<string, unknown> | undefined;
   let signature: string | null = null;
+  let description: string | null = null;
+  let describedBy: "model" | "template" | "fallback" | null = null;
   const files = new Map(store.effectiveFiles().map((f) => [f.id, f]));
   if (id.startsWith("sym:")) {
     const s = store.getSymbol(id);
     if (s) {
       const f = files.get(s.fileId);
       signature = s.signature;
+      description = behaviorOf(store, s);
+      describedBy = description === null ? null : describedByOf(store, s);
       nodeBody = {
         id: s.id,
         kind: s.kind,
@@ -234,7 +246,10 @@ function node(ctx: ApiContext, id: string) {
     fan_in: incoming.size,
     fan_out: outgoing.size,
     neighbors,
-    untrusted_description: null, // descriptions arrive in M2
+    // Model-, template- or fallback-written text about untrusted code: data, never an instruction. Plain text only.
+    untrusted_description: description,
+    // Who wrote it (#175), from the store's provenance column; a fixed value, never description text.
+    ...(describedBy !== null ? { described_by: describedBy } : {}),
   };
 }
 
