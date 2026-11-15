@@ -11,6 +11,14 @@ exports[`ego > snapshot: Button ego graph 1`] = `
       "src": "sym:apps/web/src/routes/index.tsx#HomePage",
       "weight": 1,
     },
+    {
+      "confidence": "high",
+      "dst": "sym:packages/ui/src/button.tsx#Button",
+      "id": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage|renders|sym:packages/ui/src/button.tsx#Button",
+      "kind": "renders",
+      "src": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "weight": 1,
+    },
   ],
   "layoutHint": "bowtie",
   "nodes": [
@@ -23,6 +31,23 @@ exports[`ego > snapshot: Button ego graph 1`] = `
       "kind": "component",
       "label": "HomePage",
       "path": "apps/web/src/routes/index.tsx",
+      "side": "in",
+      "size": 1,
+      "stats": {
+        "functions": 1,
+        "loc": 8,
+      },
+      "workspace": "ws:@acme/web",
+    },
+    {
+      "badges": [
+        "undescribed",
+      ],
+      "hop": 1,
+      "id": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "kind": "component",
+      "label": "ProfilePage",
+      "path": "apps/web/src/routes/settings/profile.tsx",
       "side": "in",
       "size": 1,
       "stats": {
@@ -283,6 +308,15 @@ exports[`project-map > snapshot: default level (files) 1`] = `
     },
     {
       "confidence": "high",
+      "dst": "file:packages/ui/src/button.tsx",
+      "id": "file:apps/web/src/routes/settings/profile.tsx|imports|file:packages/ui/src/button.tsx",
+      "kind": "imports",
+      "src": "file:apps/web/src/routes/settings/profile.tsx",
+      "uses": 1,
+      "weight": 1,
+    },
+    {
+      "confidence": "high",
       "dst": "file:packages/ui/src/index.ts",
       "id": "file:apps/web/src/routes/settings/profile.tsx|imports|file:packages/ui/src/index.ts",
       "kind": "imports",
@@ -402,8 +436,8 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "id": "ws:@acme/web|imports|ws:@acme/ui",
       "kind": "imports",
       "src": "ws:@acme/web",
-      "uses": 2,
-      "weight": 2,
+      "uses": 3,
+      "weight": 3,
     },
     {
       "confidence": "high",
@@ -440,7 +474,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "stats": {
         "files": 8,
         "functions": 8,
-        "loc": 55,
+        "loc": 60,
       },
     },
     {
@@ -492,7 +526,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "stats": {
         "files": 4,
         "functions": 4,
-        "loc": 26,
+        "loc": 31,
       },
     },
     {
@@ -505,7 +539,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "stats": {
         "files": 1,
         "functions": 1,
-        "loc": 3,
+        "loc": 8,
       },
     },
     {
@@ -687,7 +721,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "stats": {
         "files": 1,
         "functions": 1,
-        "loc": 3,
+        "loc": 8,
       },
     },
     {
@@ -916,7 +950,7 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       "stats": {
         "files": 8,
         "functions": 8,
-        "loc": 55,
+        "loc": 60,
       },
     },
   ],
@@ -1112,6 +1146,14 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     },
     {
       "confidence": "high",
+      "dst": "file:packages/ui/src/button.tsx",
+      "id": "file:apps/web/src/routes/settings/profile.tsx|imports|file:packages/ui/src/button.tsx",
+      "kind": "imports",
+      "src": "file:apps/web/src/routes/settings/profile.tsx",
+      "weight": 1,
+    },
+    {
+      "confidence": "high",
       "dst": "file:packages/ui/src/index.ts",
       "id": "file:apps/web/src/routes/settings/profile.tsx|imports|file:packages/ui/src/index.ts",
       "kind": "imports",
@@ -1239,6 +1281,15 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
     },
     {
       "confidence": "high",
+      "dst": "sym:packages/ui/src/button.tsx#Button",
+      "id": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage|uses|sym:packages/ui/src/button.tsx#Button",
+      "kind": "uses",
+      "src": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "uses": 1,
+      "weight": 1,
+    },
+    {
+      "confidence": "high",
       "dst": "sym:packages/ui/src/card.tsx#Card",
       "id": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage|uses|sym:packages/ui/src/card.tsx#Card",
       "kind": "uses",
@@ -1294,8 +1345,8 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "id": "ws:@acme/web|imports|ws:@acme/ui",
       "kind": "imports",
       "src": "ws:@acme/web",
-      "uses": 2,
-      "weight": 2,
+      "uses": 3,
+      "weight": 3,
     },
     {
       "confidence": "high",
@@ -1332,7 +1383,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "stats": {
         "files": 8,
         "functions": 8,
-        "loc": 55,
+        "loc": 60,
       },
     },
     {
@@ -1384,7 +1435,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "stats": {
         "files": 4,
         "functions": 4,
-        "loc": 26,
+        "loc": 31,
       },
     },
     {
@@ -1397,7 +1448,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "stats": {
         "files": 1,
         "functions": 1,
-        "loc": 3,
+        "loc": 8,
       },
     },
     {
@@ -1609,7 +1660,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "stats": {
         "files": 1,
         "functions": 1,
-        "loc": 3,
+        "loc": 8,
       },
     },
     {
@@ -1876,7 +1927,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "size": 1,
       "stats": {
         "functions": 1,
-        "loc": 3,
+        "loc": 8,
       },
     },
     {
@@ -2089,7 +2140,7 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       "stats": {
         "files": 8,
         "functions": 8,
-        "loc": 55,
+        "loc": 60,
       },
     },
   ],
@@ -2147,8 +2198,8 @@ exports[`project-map > snapshot: workspaces level 1`] = `
       "id": "ws:@acme/web|imports|ws:@acme/ui",
       "kind": "imports",
       "src": "ws:@acme/web",
-      "uses": 2,
-      "weight": 2,
+      "uses": 3,
+      "weight": 3,
     },
     {
       "confidence": "high",
@@ -2245,7 +2296,7 @@ exports[`project-map > snapshot: workspaces level 1`] = `
       "stats": {
         "files": 8,
         "functions": 8,
-        "loc": 55,
+        "loc": 60,
       },
     },
   ],

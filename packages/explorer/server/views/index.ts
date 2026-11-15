@@ -3,7 +3,9 @@ import { debugView } from "./debug.js";
 import { duplicatesView } from "./duplicates.js";
 import { egoView } from "./ego.js";
 import { map3dView } from "./map3d.js";
+import { pagesView } from "./pages.js";
 import { projectMapView } from "./projectMap.js";
+import { slicesView } from "./slices.js";
 
 const registry = new Map<string, ViewModule>();
 
@@ -25,3 +27,5 @@ registerView(projectMapView);
 registerView(egoView);
 registerView(duplicatesView);
 registerView(map3dView);
+registerView(pagesView);
+registerView(slicesView);

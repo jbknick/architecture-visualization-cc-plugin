@@ -88,7 +88,7 @@ Routing defaults: `describe.init|sync|precommit` haiku/low, `describe.retry` son
 - Workspace `ws:<package name>` (e.g. `ws:@acme/ui`); root package `ws:.`
 - File `file:<repo-relative posix path>`
 - Symbol `sym:<path>#<name>`; class members `sym:<path>#<Class>.<member>`; default export without a name `#default`; a second symbol with the same id in one file gets `~2`, `~3` by source order.
-- Route `route:<ws>:<path>`; endpoint `ep:<ws>:<METHOD> <path>` or `ep:<ws>:rpc <procedure.path>` or `ep:<ws>:fn <exportName>`; table `table:<name>`.
+- Route `route:<ws>:<path>` (`<ws>` is the workspace package name, the workspace id without `ws:`; `<path>` is the TanStack route id, the string `createFileRoute` takes, such as `/posts/$postId` or `/_app/settings/`, and `__root__` for the root route); endpoint `ep:<ws>:<METHOD> <path>` or `ep:<ws>:rpc <procedure.path>` or `ep:<ws>:fn <exportName>`; table `table:<name>`.
 
 ## 7. Core types (`core/src/types.ts`)
 
@@ -225,9 +225,14 @@ CREATE VIRTUAL TABLE fts_symbols USING fts5(symbol_id UNINDEXED, name_tokens, su
 -- migration v3 (file directives, #105): ALTER TABLE files ADD COLUMN directives TEXT
 --   JSON array of the file's leading directive strings, e.g. ["use client"]. NULL (rows from before v3) and '[]' both mean none until the file is re-indexed.
 --   `FileRecord.directives` is absent when empty; `dumpGraph` adds `directives` to a file row only when non-empty.
--- migration v4 (pages view; was v3 before #105 took v3): adapter_nodes(id, layer, kind, ws, label, file_id, data), PRIMARY KEY(id, layer)
+-- migration v4 (pages view, #38; was v3 before #105 took v3): generic nodes from framework adapters (TanStack Router routes now; endpoints and tables in M6)
+CREATE TABLE IF NOT EXISTS adapter_nodes(id TEXT, layer TEXT CHECK(layer IN ('main','working')), kind TEXT, ws TEXT,
+  label TEXT, file_id TEXT, data TEXT, PRIMARY KEY(id, layer));
+CREATE INDEX IF NOT EXISTS adapter_nodes_file ON adapter_nodes(file_id, layer);
+--   ws: workspace id; file_id: the file the node was found in; data: adapter-specific JSON (routes: routeId, urlPath, path, options, component, loader, beforeLoad, root, index, pathless).
+--   Edges an adapter finds (`serves` route -> component symbol, `contains` parent route -> child route) go into `edges` with the file_id of the file they were found in.
 ```
-Effective view = working rows override main rows for the same file id; a working `files` row with `deleted=1` hides the main file. WAL mode; writers take an exclusive lock via `BEGIN IMMEDIATE` with a 5 s busy timeout.
+Effective view = working rows override main rows for the same file id; a working `files` row with `deleted=1` hides the main file. `adapter_nodes` follow the rule of `symbols`: a node belongs to its `file_id`, `replaceFile` replaces a file's symbols, edges and adapter nodes together, and the effective view takes a node from the layer chosen for its file. WAL mode; writers take an exclusive lock via `BEGIN IMMEDIATE` with a 5 s busy timeout.
 Backlog priority: exported functions and route/entry files 0, other exported 1, local 2.
 
 Search, browse and node tool details (#28). `gantry_search` runs hybrid search: keyword FTS over name tokens, suggested name, path, behavior and search terms (top 50) fused with the nearest description vectors (top 50, query embedded with the `query` prefix) by reciprocal rank fusion (k = 60), then exported ×1.2 and exact name ×2; with no cached model or no vectors it is keywords only, and the model is never downloaded by a search. Each hit is `{ id, name, kind, path, line, signature, score, untrusted_description }` (`limit` default 10, at most 50), sorted by score then id. `gantry_browse` items add `count` (function-like symbols in a `dir` or `file` item, else null); `kind` is a symbol kind, `dir` or `file`; `catalog_path` is the absolute path of a markdown file under the data dir's `catalog/` (`INDEX.md` when the directory defines no functions itself). `gantry_node` returns `node` as `{ id, name, kind, exported, path, line }` for a symbol or `{ id, kind: "file", path, workspace }` for a file, at most 20 neighbors per edge kind, and `more: { [kind]: n }` for the rest. An unknown target returns `{ error: "not_found", message }`. Catalog files: one per directory that defines functions (`catalog/packages/utils/src.md`, root-level functions in `_root.md`) plus `catalog/INDEX.md`; each starts with a note that descriptions are generated and may be wrong. A file is rewritten only when the hash kept in `meta` (`catalog_hash:*`) changes. They are written after `gantry init`, after `heal`, after submits (at most once per 30 s, `meta.catalog_written_at`) and on every `gantry_browse`. Stored descriptions (template and submitted) are copied into the FTS `behavior`, `search_terms` and `suggested_name` columns by one helper, `refreshDescriptionFts`.

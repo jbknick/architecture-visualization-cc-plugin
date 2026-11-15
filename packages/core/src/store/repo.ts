@@ -1,5 +1,6 @@
 import type BetterSqlite3 from "better-sqlite3";
 import type {
+  AdapterNodeRecord,
   EdgeKind,
   EdgeRecord,
   FileRecord,
@@ -22,8 +23,17 @@ export interface Store {
   upsertWorkspaces(ws: WorkspaceRecord[]): void;
   /** All workspaces ordered by id. */
   listWorkspaces(): WorkspaceRecord[];
-  /** Deletes the old rows for that file+layer first, then inserts the new ones. */
-  replaceFile(layer: Layer, file: FileRecord, symbols: SymbolRecord[], edges: EdgeRecord[]): void;
+  /**
+   * Deletes the old rows (symbols, edges, adapter nodes) for that file+layer first, then inserts the new ones.
+   * `adapterNodes` defaults to none, so a caller that rewrites a file must pass the nodes it wants to keep.
+   */
+  replaceFile(
+    layer: Layer,
+    file: FileRecord,
+    symbols: SymbolRecord[],
+    edges: EdgeRecord[],
+    adapterNodes?: AdapterNodeRecord[],
+  ): void;
   markDeleted(layer: Layer, fileId: string): void;
   clearWorking(fileId?: string): void;
   effectiveFiles(): FileRecord[];
@@ -36,6 +46,8 @@ export interface Store {
   effectiveSymbolsByName(text: string, excludeIds: string[], limit: number): SymbolRecord[];
   effectiveSymbols(filter?: { fileId?: string; kind?: SymbolKind[]; exported?: boolean }): SymbolRecord[];
   effectiveEdges(filter?: { src?: string; dst?: string; kind?: EdgeKind[] }): EdgeRecord[];
+  /** Adapter nodes of the effective view (working rows win per file, like symbols), ordered by id. */
+  effectiveAdapterNodes(filter?: { kind?: string; ws?: string; fileId?: string }): AdapterNodeRecord[];
   getSymbol(id: string): SymbolRecord | undefined;
   fts: { upsert(symbolId: string, row: FtsRow): void; remove(symbolId: string): void };
   /**
@@ -83,6 +95,14 @@ interface SymbolRow {
   shape_hash: string;
   minhash: Buffer;
 }
+interface AdapterNodeRow {
+  id: string;
+  kind: string;
+  ws: string | null;
+  label: string;
+  file_id: string;
+  data: string | null;
+}
 interface EdgeRow {
   src: string;
   dst: string;
@@ -123,6 +143,17 @@ const toSymbol = (r: SymbolRow): SymbolRecord => ({
   shapeHash: r.shape_hash,
   minhash: decodeMinhash(r.minhash),
 });
+
+const toAdapterNode = (r: AdapterNodeRow): AdapterNodeRecord => {
+  let data: Record<string, unknown> = {};
+  try {
+    const v: unknown = JSON.parse(r.data ?? "{}");
+    if (v && typeof v === "object" && !Array.isArray(v)) data = v as Record<string, unknown>;
+  } catch {
+    // malformed value: treat as no data
+  }
+  return { id: r.id, kind: r.kind, ws: r.ws, label: r.label, fileId: r.file_id, data };
+};
 
 const toEdge = (r: EdgeRow): EdgeRecord => ({
   src: r.src,
@@ -212,6 +243,7 @@ export function createStore(db: Database): Store {
   const deleteFileRows = (layer: Layer, fileId: string): void => {
     stmt("DELETE FROM symbols WHERE layer = ? AND file_id = ?").run(layer, fileId);
     stmt("DELETE FROM edges WHERE layer = ? AND file_id = ?").run(layer, fileId);
+    stmt("DELETE FROM adapter_nodes WHERE layer = ? AND file_id = ?").run(layer, fileId);
   };
 
   const store: Store = {
@@ -257,7 +289,7 @@ export function createStore(db: Database): Store {
     generation() {
       return `${localWrites}:${db.pragma("data_version", { simple: true }) as number}`;
     },
-    replaceFile(layer, file, symbols, edges) {
+    replaceFile(layer, file, symbols, edges, adapterNodes = []) {
       localWrites++;
       tx(() => {
         deleteFileRows(layer, file.id);
@@ -300,6 +332,14 @@ export function createStore(db: Database): Store {
         for (const e of edges) {
           ei.run(e.src, e.dst, e.kind, layer, e.confidence, e.count, JSON.stringify(e.evidence), e.fileId);
         }
+        const ai = stmt(
+          `INSERT INTO adapter_nodes(id, layer, kind, ws, label, file_id, data) VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id, layer) DO UPDATE SET kind = excluded.kind, ws = excluded.ws, label = excluded.label,
+             file_id = excluded.file_id, data = excluded.data`,
+        );
+        for (const n of adapterNodes) {
+          ai.run(n.id, layer, n.kind, n.ws, n.label, n.fileId, JSON.stringify(n.data));
+        }
       });
     },
     markDeleted(layer, fileId) {
@@ -329,6 +369,7 @@ export function createStore(db: Database): Store {
           stmt("DELETE FROM files WHERE layer = 'working'").run();
           stmt("DELETE FROM symbols WHERE layer = 'working'").run();
           stmt("DELETE FROM edges WHERE layer = 'working'").run();
+          stmt("DELETE FROM adapter_nodes WHERE layer = 'working'").run();
         } else {
           stmt("DELETE FROM files WHERE layer = 'working' AND id = ?").run(fileId);
           deleteFileRows("working", fileId);
@@ -396,6 +437,27 @@ export function createStore(db: Database): Store {
         WHERE f.deleted = 0${where.map((w) => ` AND ${w}`).join("")}
         ORDER BY e.src, e.dst, e.kind`;
       return (stmt(sql).all(...args) as EdgeRow[]).map(toEdge);
+    },
+    effectiveAdapterNodes(filter = {}) {
+      const where: string[] = [];
+      const args: string[] = [];
+      if (filter.kind !== undefined) {
+        where.push("n.kind = ?");
+        args.push(filter.kind);
+      }
+      if (filter.ws !== undefined) {
+        where.push("n.ws = ?");
+        args.push(filter.ws);
+      }
+      if (filter.fileId !== undefined) {
+        where.push("n.file_id = ?");
+        args.push(filter.fileId);
+      }
+      const sql = `WITH ${EFF_FILES}
+        SELECT n.* FROM adapter_nodes n JOIN eff_files f ON f.id = n.file_id AND f.layer = n.layer
+        WHERE f.deleted = 0${where.map((w) => ` AND ${w}`).join("")}
+        ORDER BY n.id`;
+      return (stmt(sql).all(...args) as AdapterNodeRow[]).map(toAdapterNode);
     },
     getSymbol(id) {
       const r = stmt(

@@ -3,7 +3,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  type AdapterNodeRecord,
   createResolver,
+  detectTanstackRoutes,
   detectWorkspaces,
   type EdgeRecord,
   type FileRecord,
@@ -15,6 +17,7 @@ import {
   parseSource,
   type Store,
   type SymbolRecord,
+  type WorkspaceRecord,
 } from "@gantry/core";
 
 /** Test helpers: load a fixture repo into a store with the core modules (stand-in until `indexRepo` lands). */
@@ -30,6 +33,14 @@ function walk(root: string, dir = ""): string[] {
   }
   return out;
 }
+
+function workspaceRecordOf(workspaces: WorkspaceRecord[], rel: string): WorkspaceRecord | undefined {
+  return workspaces
+    .filter((w) => w.dir === "." || rel.startsWith(`${w.dir}/`))
+    .sort((a, b) => b.dir.length - a.dir.length)[0];
+}
+const workspaceOf = (workspaces: WorkspaceRecord[], rel: string): string =>
+  workspaceRecordOf(workspaces, rel)?.id ?? "ws:.";
 
 export function fixtureStore(name: string): { store: Store; dir: string } {
   const root = join(fixturesRoot, name);
@@ -48,6 +59,22 @@ export function fixtureStore(name: string): { store: Store; dir: string } {
   store.upsertWorkspaces(workspaces);
   const resolver = createResolver({ root, workspaces, parsed });
   const wsEdges = resolver.workspaceEdges();
+  const routes = detectTanstackRoutes({
+    root,
+    workspaces,
+    files: [...parsed.keys()].map((id) => ({
+      id,
+      path: id.slice(5),
+      workspaceId: workspaceOf(workspaces, id.slice(5)),
+      source: sources.get(id.slice(5)) as string,
+    })),
+    parsed,
+    resolver,
+  });
+  const routeEdges = new Map<string, EdgeRecord[]>();
+  const routeNodes = new Map<string, AdapterNodeRecord[]>();
+  for (const e of routes.edges) routeEdges.set(e.fileId, [...(routeEdges.get(e.fileId) ?? []), e]);
+  for (const n of routes.nodes) routeNodes.set(n.fileId, [...(routeNodes.get(n.fileId) ?? []), n]);
   let first = true;
   for (const [fileId, pf] of [...parsed].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const rel = fileId.slice(5);
@@ -57,8 +84,7 @@ export function fixtureStore(name: string): { store: Store; dir: string } {
       const range = pf.bodies.get(s.id) ?? { start: 0, end: 0 };
       return { ...s, ...hashSymbol(src, range, lang) };
     });
-    const ws = workspaces.filter((w) => w.dir === "." || rel.startsWith(`${w.dir}/`));
-    ws.sort((a, b) => b.dir.length - a.dir.length);
+    const ws = [workspaceRecordOf(workspaces, rel)];
     const file: FileRecord = {
       id: fileId,
       path: rel,
@@ -67,11 +93,11 @@ export function fixtureStore(name: string): { store: Store; dir: string } {
       mtimeMs: 1,
       deleted: false,
     };
-    const edges: EdgeRecord[] = resolver.edgesForFile(fileId);
+    const edges: EdgeRecord[] = [...resolver.edgesForFile(fileId), ...(routeEdges.get(fileId) ?? [])];
     // depends_on edges belong to package.json files that are not indexed: hang them off the first file.
     if (first) edges.push(...wsEdges.map((e) => ({ ...e, fileId })));
     first = false;
-    store.replaceFile("main", file, symbols, edges);
+    store.replaceFile("main", file, symbols, edges, routeNodes.get(fileId) ?? []);
   }
   return { store, dir };
 }

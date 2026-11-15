@@ -1,4 +1,5 @@
 export const name = "@gantry/core";
+export * from "./adapters/tanstack-routes.js";
 export * from "./advice/index.js";
 export * from "./catalog/index.js";
 export * from "./config/index.js";
@@ -28,4 +29,5 @@ export * from "./search/index.js";
 export * from "./store/index.js";
 export * from "./types.js";
 export * from "./usage/index.js";
+export * from "./workspace/globs.js";
 export * from "./workspace/index.js";
