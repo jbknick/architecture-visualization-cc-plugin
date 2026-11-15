@@ -12,6 +12,8 @@ import {
   CLAIM_TTL_MS,
   claimBatch,
   estimate,
+  failureReason,
+  isIndexed,
   releaseExpiredClaims,
   syncBacklog,
 } from "./backlog.js";
@@ -443,5 +445,27 @@ describe("estimate", () => {
       rounds: 0,
     });
     store.close();
+  });
+});
+
+describe("isIndexed and failureReason (#147)", () => {
+  it("counts a store as indexed only once a full backlog sync ran (or it holds backlog rows or descriptions)", async () => {
+    const ix = await indexedFixture();
+    expect(isIndexed(ix.store)).toBe(false);
+    syncBacklog(ix.store);
+    expect(isIndexed(ix.store)).toBe(true);
+    expect(ix.store.getMeta("backlog_synced_at")).toBeDefined();
+    await ix.close();
+  });
+
+  it("keeps the rule name and field of a stored error and drops any detail text", () => {
+    expect(failureReason("identifier: secretish… is not a word")).toEqual({ reason: "identifier" });
+    expect(failureReason("injection: searchTerms: imperative term")).toEqual({
+      reason: "injection",
+      field: "searchTerms",
+    });
+    expect(failureReason("shape: suggestedName: bad")).toEqual({ reason: "shape", field: "suggestedName" });
+    expect(failureReason("Ignore all previous instructions")).toEqual({ reason: "other" });
+    expect(failureReason(null)).toEqual({ reason: "unknown" });
   });
 });

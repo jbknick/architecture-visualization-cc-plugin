@@ -59,8 +59,11 @@ export function resolvePaths(cwd: string, env: NodeJS.ProcessEnv = process.env):
   let dataDir = path.join(pluginBase ?? legacyBase, "repos", worktreeHash);
   if (pluginBase) {
     // Data created before the plugin data dir was used everywhere stays found until the new location has its own.
+    // Both sides are judged by their store file, so an empty directory (a stray `logs/`, an interrupted run) never
+    // decides where the index lives (#147).
     const legacy = path.join(legacyBase, "repos", worktreeHash);
-    if (!fs.existsSync(dataDir) && fs.existsSync(legacy)) dataDir = legacy;
+    const hasStore = (dir: string): boolean => fs.existsSync(path.join(dir, "gantry.db"));
+    if (!hasStore(dataDir) && hasStore(legacy)) dataDir = legacy;
   }
 
   return {
@@ -74,6 +77,17 @@ export function resolvePaths(cwd: string, env: NodeJS.ProcessEnv = process.env):
     globalConfigPath: path.join(gantryHome, "config.json"),
     shimPath: path.join(gantryHome, "bin", "gantry"),
   };
+}
+
+/**
+ * The legacy data dir `~/.gantry/data/repos/<worktreeHash>/` when it still holds an index (`gantry.db`) although this
+ * run uses another data dir: an orphan left from before the plugin data dir was used everywhere (#141), safe to
+ * remove once the plugin store has its own index (docs/INSTALL.md). `undefined` when there is none.
+ */
+export function orphanedLegacyDataDir(p: GantryPaths): string | undefined {
+  const legacy = path.join(path.dirname(p.globalConfigPath), "data", "repos", p.worktreeHash);
+  if (path.resolve(legacy) === path.resolve(p.dataDir)) return undefined;
+  return fs.existsSync(path.join(legacy, "gantry.db")) ? legacy : undefined;
 }
 
 /** mkdir -p the data dir and its subdirs with mode 0700. */

@@ -59,20 +59,38 @@ export function storeDescriptions(
 
 /**
  * Counts one failed attempt for a backlog row: `attempts + 1`, `last_error`, back to `pending` for another try, or
- * `failed` once `MAX_DESCRIBE_ATTEMPTS` is reached (then nobody retries it). Returns the new attempt count, or 0 when
- * there is no such row.
+ * `failed` once `MAX_DESCRIBE_ATTEMPTS` is reached (then nobody retries it until `gantry backlog --retry-failed`).
+ * With `keepClaim` (the describer submit path, #147) a row that still has an attempt left stays `claimed` in its batch,
+ * so the describer can resubmit a corrected description under the same `batch_id`, and a `failed` row keeps its
+ * `claimed_by` so a late resubmit is answered `attempts_exhausted` instead of `not_in_batch`. Returns the new
+ * attempt count, or 0 when there is no such row.
  */
-export function recordDescribeFailure(store: Store, key: string, error: string): number {
+export function recordDescribeFailure(
+  store: Store,
+  key: string,
+  error: string,
+  opts: { keepClaim?: boolean } = {},
+): number {
   const row = store.db.prepare("SELECT attempts FROM backlog WHERE content_key = ?").get(key) as
     | { attempts: number | null }
     | undefined;
   if (!row) return 0;
   const attempts = (row.attempts ?? 0) + 1;
+  const failed = attempts >= MAX_DESCRIBE_ATTEMPTS;
+  if (opts.keepClaim) {
+    store.db
+      .prepare(
+        `UPDATE backlog SET attempts = ?, last_error = ?, status = ?, claimed_at = CASE WHEN ? THEN NULL ELSE claimed_at END
+         WHERE content_key = ?`,
+      )
+      .run(attempts, error, failed ? "failed" : "claimed", failed ? 1 : 0, key);
+    return attempts;
+  }
   store.db
     .prepare(
       `UPDATE backlog SET attempts = ?, last_error = ?, status = ?, claimed_by = NULL, claimed_at = NULL
        WHERE content_key = ?`,
     )
-    .run(attempts, error, attempts >= MAX_DESCRIBE_ATTEMPTS ? "failed" : "pending", key);
+    .run(attempts, error, failed ? "failed" : "pending", key);
   return attempts;
 }
