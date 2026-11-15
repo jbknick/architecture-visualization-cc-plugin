@@ -21,8 +21,12 @@ const STRUCTURAL = /(^|\/)(package\.json|tsconfig[^/]*\.json|pnpm-workspace\.yam
 const sha256 = (b: Buffer | string): string => createHash("sha256").update(b).digest("hex");
 const fileId = (p: string): string => `file:${p}`;
 
+/**
+ * Every git call here only reads. `--no-optional-locks` keeps `git status` from taking `.git/index.lock` to refresh
+ * the index, so the explorer's stale check (on every request) never collides with the user's own commit or rebase.
+ */
 function git(root: string, args: string[], input?: string): { ok: boolean; out: Buffer } {
-  const r = spawnSync("git", ["-c", "core.quotepath=off", ...args], {
+  const r = spawnSync("git", ["--no-optional-locks", "-c", "core.quotepath=off", ...args], {
     cwd: root,
     input,
     maxBuffer: GIT_MAX_BUFFER,

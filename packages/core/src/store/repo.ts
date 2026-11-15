@@ -244,6 +244,22 @@ export function createStore(db: Database): Store {
     );
   };
 
+  /**
+   * Search rows of working-layer symbols that main does not have, for one file or all: removed with the working
+   * rows so `fts_symbols` keeps no row for a symbol that is in neither layer. Skips the FTS scan when there are none.
+   */
+  const dropWorkingOnlyFts = (fileId?: string): void => {
+    const only =
+      "SELECT w.id FROM symbols w WHERE w.layer = 'working' AND NOT EXISTS (SELECT 1 FROM symbols m WHERE m.id = w.id AND m.layer = 'main')";
+    const ids = (fileId === undefined ? stmt(only).all() : stmt(`${only} AND w.file_id = ?`).all(fileId)) as {
+      id: string;
+    }[];
+    if (ids.length === 0) return;
+    stmt("DELETE FROM fts_symbols WHERE symbol_id IN (SELECT value FROM json_each(?))").run(
+      JSON.stringify(ids.map((r) => r.id)),
+    );
+  };
+
   const deleteFileRows = (layer: Layer, fileId: string): void => {
     stmt("DELETE FROM symbols WHERE layer = ? AND file_id = ?").run(layer, fileId);
     stmt("DELETE FROM edges WHERE layer = ? AND file_id = ?").run(layer, fileId);
@@ -352,6 +368,7 @@ export function createStore(db: Database): Store {
     markDeleted(layer, fileId) {
       localWrites++;
       tx(() => {
+        if (layer === "working") dropWorkingOnlyFts(fileId);
         deleteFileRows(layer, fileId);
         const existing = stmt("SELECT * FROM files WHERE id = ? AND layer = ?").get(fileId, layer) as
           | FileRow
@@ -372,6 +389,7 @@ export function createStore(db: Database): Store {
     clearWorking(fileId) {
       localWrites++;
       tx(() => {
+        dropWorkingOnlyFts(fileId);
         if (fileId === undefined) {
           stmt("DELETE FROM files WHERE layer = 'working'").run();
           stmt("DELETE FROM symbols WHERE layer = 'working'").run();

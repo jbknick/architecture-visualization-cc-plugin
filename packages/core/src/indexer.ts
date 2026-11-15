@@ -386,9 +386,12 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
         deleted: false,
         ...(pf.directives && pf.directives.length > 0 ? { directives: pf.directives } : {}),
       };
-      const old = layer === "main" && !rebuildFts ? oldFtsIds("main", e.id) : [];
+      // Rows of symbols this write drops. On the working layer a symbol that main still has keeps its row (main's
+      // copy is still in the store); one that only the old working row had is gone for good.
+      const old = rebuildFts ? [] : oldFtsIds(layer, e.id);
       store.replaceFile(layer, file, symbols, edges, routeNodes.get(e.id) ?? []);
       const keep = new Set(symbols.map((s) => s.id));
+      if (layer === "working" && old.length > 0) for (const id of oldFtsIds("main", e.id)) keep.add(id);
       for (const id of old) if (!keep.has(id)) ftsRemove(id);
       for (const s of symbols) {
         const nameTokens = splitIdentifier(s.name).join(" ");
