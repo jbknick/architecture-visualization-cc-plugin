@@ -240,7 +240,7 @@ test("graph canvas: the treemap layout is the same after a reload; PUT /api/layo
   expect(status).toBe(403);
 });
 
-test("duplicates: lists the fixture's near pair with a side-by-side, and a dismissed pair stays gone after a reload", async ({
+test("duplicates: lists the fixture's renamed-copy pair as identical with a side-by-side, and a dismissed pair stays gone after a reload", async ({
   page,
 }) => {
   mkdirSync(shots, { recursive: true });
@@ -256,9 +256,9 @@ test("duplicates: lists the fixture's near pair with a side-by-side, and a dismi
   // The exact pair: slugify in apps/web and in packages/utils; the keep candidate is the shared package's.
   const slug = groups.getByRole("button").filter({ hasText: "slugify" });
   await expect(slug).toContainText("Identical");
-  // The near pair: formatRelativeDate and parseTimestamp, both in packages/utils.
+  // The renamed copy: formatRelativeDate and parseTimestamp, both in packages/utils (exact since #151).
   const near = groups.getByRole("button").filter({ hasText: "formatRelativeDate" });
-  await expect(near).toContainText("Nearly identical");
+  await expect(near).toContainText("Identical");
   await near.click();
   const cards = page.getByRole("list", { name: "Copies in this group" });
   await expect(cards.getByText("Keep this one")).toHaveCount(1);
