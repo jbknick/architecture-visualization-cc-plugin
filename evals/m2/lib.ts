@@ -32,17 +32,37 @@ export function git(cwd: string, args: string[]): string {
   return r.stdout;
 }
 
-/** Runs the built hook CLI exactly as Claude Code does: JSON on stdin, stdout captured. */
+/**
+ * Runs the built hook CLI exactly as Claude Code does (JSON on stdin, stdout captured): the PostToolUse trigger for
+ * the written file, then the Stop hook that settles the batch (spec section 14). `stdout` is what Stop printed.
+ */
 export function runPostToolHook(
   repo: string,
   file: string,
   env: NodeJS.ProcessEnv,
+  session = "m2-eval",
 ): { stdout: string; ms: number } {
   const t0 = Date.now();
-  const r = spawnSync("node", [cliJs, "hook", "post-tool-use"], {
+  spawnSync("node", [cliJs, "hook", "post-tool-use"], {
     cwd: repo,
     env,
-    input: JSON.stringify({ tool_name: "Write", tool_input: { file_path: join(repo, file) }, cwd: repo }),
+    input: JSON.stringify({
+      session_id: session,
+      tool_name: "Write",
+      tool_input: { file_path: join(repo, file) },
+      cwd: repo,
+    }),
+    encoding: "utf8",
+  });
+  const r = spawnSync("node", [cliJs, "hook", "stop"], {
+    cwd: repo,
+    env,
+    input: JSON.stringify({
+      session_id: session,
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      cwd: repo,
+    }),
     encoding: "utf8",
   });
   return { stdout: r.stdout ?? "", ms: Date.now() - t0 };

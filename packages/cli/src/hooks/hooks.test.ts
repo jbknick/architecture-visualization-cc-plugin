@@ -21,6 +21,7 @@ import { build } from "tsup";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { preCommit, runHook } from "./entry.js";
 import { hookScript, installHooks, shimScript, uninstallHooks } from "./install.js";
+import { recordEdit, settleBatch } from "./postToolUse.js";
 import { assertTempHome } from "./testkit.js";
 
 interface MaterializedFixture {
@@ -690,12 +691,35 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
   const SLUG_LINE =
     "Gantry: slugify (apps/web/src/lib/new.ts:1) looks like slugify in apps/web/src/lib/slug.ts:1 [exact 1.00]. Import it: import { slugify } from './slug'";
 
+  const UTILS_LINE =
+    "Gantry: slugify (apps/web/src/lib/moved.ts:1) looks like slugify in packages/utils/src/slug.ts:2 [exact 1.00]. Export it from @acme/utils (add to exports map) or move it to a shared package";
+
   async function indexedFx() {
     const fx = await fixture("pnpm-turbo");
     expect(gantry(fx.dir, ["init"]).code).toBe(0);
     return fx;
   }
-  /** Writes `content` to `rel` in the fixture and runs the post-tool-use hook with synthetic hook input. */
+  /** Runs `gantry hook <name>` with `payload` as stdin, from outside the repo. */
+  function hook(name: string, payload: unknown, extraEnv: NodeJS.ProcessEnv = {}) {
+    assertTempHome(env.HOME);
+    const r = spawnSync("node", [cli, "hook", name], {
+      cwd: tmpdir(),
+      encoding: "utf8",
+      env: { ...env, ...extraEnv },
+      input: typeof payload === "string" ? payload : JSON.stringify(payload),
+    });
+    return { code: r.status, out: r.stdout, err: r.stderr };
+  }
+  const stop = (fx: MaterializedFixture, session = "s", extraEnv: NodeJS.ProcessEnv = {}) =>
+    hook(
+      "stop",
+      { session_id: session, hook_event_name: "Stop", stop_hook_active: false, cwd: fx.dir },
+      extraEnv,
+    );
+  /**
+   * Writes `content` to `rel` in the fixture and runs the post-tool-use hook with synthetic hook input, then (when
+   * that printed nothing, as it does with a session id) the Stop hook that settles the batch: the alert's text.
+   */
   function edit(
     fx: MaterializedFixture,
     rel: string,
@@ -714,15 +738,22 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
       tool_input: { file_path: join(fx.dir, rel), content },
       cwd: fx.dir,
     };
-    assertTempHome(env.HOME);
-    const r = spawnSync("node", [cli, "hook", "post-tool-use"], {
-      cwd: tmpdir(),
-      encoding: "utf8",
-      env: { ...env, ...extraEnv },
-      input: typeof payload === "string" ? payload : JSON.stringify(payload),
-    });
-    return { code: r.status, out: r.stdout, err: r.stderr };
+    const r = hook("post-tool-use", payload, extraEnv);
+    if (r.out !== "" || input !== undefined) return r;
+    return stop(fx, "s", extraEnv);
   }
+  /** One PostToolUse trigger in session `s`, without settling. */
+  const touch = (fx: MaterializedFixture, rel: string, content: string) => {
+    mkdirSync(dirname(join(fx.dir, rel)), { recursive: true });
+    writeFileSync(join(fx.dir, rel), content);
+    return hook("post-tool-use", {
+      session_id: "s",
+      hook_event_name: "PostToolUse",
+      tool_name: "Write",
+      tool_input: { file_path: join(fx.dir, rel) },
+      cwd: fx.dir,
+    });
+  };
   const contextOf = (out: string): string =>
     (JSON.parse(out) as { hookSpecificOutput: { additionalContext: string } }).hookSpecificOutput
       .additionalContext;
@@ -736,10 +767,258 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     const j = JSON.parse(r.out) as { hookSpecificOutput: { hookEventName: string } };
     expect(Object.keys(j)).toEqual(["hookSpecificOutput"]);
     expect(Object.keys(j.hookSpecificOutput)).toEqual(["hookEventName", "additionalContext"]);
-    expect(j.hookSpecificOutput.hookEventName).toBe("PostToolUse");
+    expect(j.hookSpecificOutput.hookEventName).toBe("Stop");
     const ctx = contextOf(r.out);
     expect(ctx.length).toBeLessThanOrEqual(600);
     expect(ctx).toBe(SLUG_LINE);
+  });
+
+  const pendingPaths = (fx: MaterializedFixture, session = "s"): string[] => {
+    const st = openStore(pathsOf(fx.dir).dbPath);
+    try {
+      return (
+        st.db.prepare("SELECT path FROM pending_files WHERE session_id = ? ORDER BY path").all(session) as {
+          path: string;
+        }[]
+      ).map((r) => r.path);
+    } finally {
+      st.close();
+    }
+  };
+  const ctxOf = (out: string | undefined): string => (out === undefined ? "" : contextOf(out));
+
+  it("a batch larger than one Stop can settle makes progress on every Stop and is cleared in the end (#131)", async () => {
+    const fx = await indexedFx();
+    for (const n of ["a", "b", "c"])
+      touch(fx, `apps/web/src/lib/copy-${n}.ts`, SLUG.replace("slugify", `slug${n}`));
+    expect(pendingPaths(fx)).toHaveLength(3);
+    const p = pathsOf(fx.dir);
+    // Out of time before the first file: nothing is lost, everything stays.
+    expect(await settleBatch(p, { sessionId: "s" }, { deadline: 0 })).toBeUndefined();
+    expect(pendingPaths(fx)).toHaveLength(3);
+    // One file per Stop: each Stop reports that file and removes it.
+    const seen: string[] = [];
+    for (let i = 3; i > 0; i--) {
+      const ctx = ctxOf(await settleBatch(p, { sessionId: "s" }, { maxFiles: 1 }));
+      expect(ctx).toContain(") looks like ");
+      seen.push(ctx);
+      expect(pendingPaths(fx)).toHaveLength(i - 1);
+    }
+    expect(new Set(seen).size).toBe(3);
+    expect(await settleBatch(p, { sessionId: "s" })).toBeUndefined();
+  });
+
+  it("a manifest batch is re-indexed in committed chunks, so a Stop cut short still makes progress (#131)", async () => {
+    const fx = await indexedFx();
+    for (let i = 0; i < 10; i++) touch(fx, `apps/web/src/lib/n${i}.ts`, `export const n${i} = ${i};\n`);
+    const pkgPath = join(fx.dir, "apps/web/package.json");
+    touch(fx, "apps/web/package.json", readFileSync(pkgPath, "utf8"));
+    const p = pathsOf(fx.dir);
+    const reindexed = (): number => {
+      const st = openStore(p.dbPath);
+      try {
+        return (
+          st.db.prepare("SELECT COUNT(*) AS n FROM pending_files WHERE reindexed = 1").get() as { n: number }
+        ).n;
+      } finally {
+        st.close();
+      }
+    };
+    // The clock runs out after the first chunk: 8 files are re-indexed and kept, nothing is checked yet.
+    let calls = 0;
+    expect(
+      await settleBatch(p, { sessionId: "s" }, { deadline: 1, now: () => (calls++ < 1 ? 0 : 2) }),
+    ).toBeUndefined();
+    expect(reindexed()).toBe(8);
+    expect(pendingPaths(fx)).toHaveLength(11);
+    // The next Stop does the rest and clears the batch.
+    expect(await settleBatch(p, { sessionId: "s" })).toBeUndefined();
+    expect(pendingPaths(fx)).toEqual([]);
+  });
+
+  it("a trigger cut off before its index finished: Stop indexes the file and still reports the duplicate (#131)", async () => {
+    const fx = await indexedFx();
+    const p = pathsOf(fx.dir);
+    // What a PostToolUse killed at the budget leaves: the row is recorded, the file was never indexed.
+    writeFileSync(join(fx.dir, "apps/web/src/lib/new.ts"), SLUG);
+    const st = openStore(p.dbPath);
+    try {
+      recordEdit(st, "s", "apps/web/src/lib/new.ts", true);
+      expect(st.effectiveSymbols({ fileId: "file:apps/web/src/lib/new.ts" })).toEqual([]);
+      expect(st.db.prepare("SELECT reindexed FROM pending_files").get()).toEqual({ reindexed: 0 });
+    } finally {
+      st.close();
+    }
+    expect(ctxOf(await settleBatch(p, { sessionId: "s" }))).toBe(SLUG_LINE);
+    // A trigger that finished marks its row, so Stop does not index the file again.
+    touch(fx, "apps/web/src/lib/other.ts", "export const x = 1;\n");
+    const st2 = openStore(p.dbPath);
+    try {
+      expect(st2.db.prepare("SELECT reindexed FROM pending_files").get()).toEqual({ reindexed: 1 });
+    } finally {
+      st2.close();
+    }
+  });
+
+  it("rows added or re-touched while a settle runs are kept for the next Stop (#131)", async () => {
+    const fx = await indexedFx();
+    touch(fx, "apps/web/src/lib/first.ts", "export const one = 1;\n");
+    touch(fx, "apps/web/src/lib/second.ts", "export const two = 2;\n");
+    const p = pathsOf(fx.dir);
+    await settleBatch(
+      p,
+      { sessionId: "s" },
+      {
+        afterRead: () => {
+          const st = openStore(p.dbPath);
+          try {
+            recordEdit(st, "s", "apps/web/src/lib/first.ts", true); // edited again
+            recordEdit(st, "s", "apps/web/src/lib/third.ts", true); // new
+          } finally {
+            st.close();
+          }
+        },
+      },
+    );
+    expect(pendingPaths(fx)).toEqual(["apps/web/src/lib/first.ts", "apps/web/src/lib/third.ts"]);
+  });
+
+  it("a Stop that cannot get the write lock in time fails open and leaves the batch (#131)", async () => {
+    const fx = await indexedFx();
+    touch(fx, "apps/web/src/lib/new.ts", SLUG);
+    const p = pathsOf(fx.dir);
+    let other: ReturnType<typeof openStore> | undefined;
+    try {
+      const t0 = Date.now();
+      const out = await settleBatch(
+        p,
+        { sessionId: "s" },
+        {
+          lockWaitMs: 50,
+          // Another settle or index takes the write lock right after this one read the batch.
+          afterRead: () => {
+            other = openStore(p.dbPath);
+            other.db.exec("BEGIN IMMEDIATE");
+          },
+        },
+      );
+      expect(out).toBeUndefined();
+      expect(Date.now() - t0).toBeLessThan(1500);
+    } finally {
+      other?.db.exec("ROLLBACK");
+      other?.close();
+    }
+    expect(pendingPaths(fx)).toEqual(["apps/web/src/lib/new.ts"]);
+    expect(ctxOf(await settleBatch(p, { sessionId: "s" }))).toBe(SLUG_LINE);
+    expect(pendingPaths(fx)).toEqual([]);
+  });
+
+  it("rows older than a day are pruned before any work, and a batch of one leaves no row behind", async () => {
+    const fx = await indexedFx();
+    touch(fx, "apps/web/src/lib/new.ts", SLUG);
+    const p = pathsOf(fx.dir);
+    const st = openStore(p.dbPath);
+    st.db.prepare("UPDATE pending_files SET created_at = '2000-01-01T00:00:00.000Z'").run();
+    st.close();
+    expect(await settleBatch(p, { sessionId: "s" }, { deadline: 0 })).toBeUndefined();
+    expect(pendingPaths(fx)).toEqual([]);
+    writeFileSync(join(fx.dir, "apps/web/src/lib/once.ts"), SLUG);
+    hook("post-tool-use", {
+      tool_name: "Write",
+      tool_input: { file_path: join(fx.dir, "apps/web/src/lib/once.ts") },
+      cwd: fx.dir,
+    });
+    const all = openStore(p.dbPath);
+    try {
+      expect(all.db.prepare("SELECT COUNT(*) AS n FROM pending_files").get()).toEqual({ n: 0 });
+    } finally {
+      all.close();
+    }
+  });
+
+  it("with a session id, post-tool-use only records the edit and Stop settles it once", async () => {
+    const fx = await indexedFx();
+    expect(touch(fx, "apps/web/src/lib/new.ts", SLUG)).toEqual({ code: 0, out: "", err: "" });
+    expect(contextOf(stop(fx).out)).toBe(SLUG_LINE);
+    // The batch is cleared: a second Stop in the same turn says nothing, and so does another session.
+    expect(stop(fx).out).toBe("");
+    expect(stop(fx, "other").out).toBe("");
+  });
+
+  it("without a session id the edit is a batch of one and alerts at once as PostToolUse", async () => {
+    const fx = await indexedFx();
+    writeFileSync(join(fx.dir, "apps/web/src/lib/new.ts"), SLUG);
+    const r = hook("post-tool-use", {
+      tool_name: "Write",
+      tool_input: { file_path: join(fx.dir, "apps/web/src/lib/new.ts") },
+      cwd: fx.dir,
+    });
+    const j = JSON.parse(r.out) as {
+      hookSpecificOutput: { hookEventName: string; additionalContext: string };
+    };
+    expect(j.hookSpecificOutput).toEqual({ hookEventName: "PostToolUse", additionalContext: SLUG_LINE });
+  });
+
+  it("a function moved to a new file with the old copy deleted does not alert (#131)", async () => {
+    const fx = await indexedFx();
+    expect(touch(fx, "apps/web/src/lib/moved.ts", SLUG).out).toBe("");
+    // The old file is removed by a shell command: no PostToolUse hook runs for it.
+    rmSync(join(fx.dir, "apps/web/src/lib/slug.ts"));
+    // Only the half-moved pair is dropped: the fixture's third copy, in packages/utils, is still a real duplicate.
+    expect(contextOf(stop(fx).out)).toBe(UTILS_LINE);
+  });
+
+  it("a moved function whose old copy is rewritten in the same batch does not alert (#131)", async () => {
+    const fx = await indexedFx();
+    expect(touch(fx, "apps/web/src/lib/moved.ts", SLUG).out).toBe("");
+    expect(touch(fx, "apps/web/src/lib/slug.ts", 'export { slugify } from "./moved";\n').out).toBe("");
+    expect(contextOf(stop(fx).out)).toBe(UTILS_LINE);
+  });
+
+  it("an import added before its dependency, then the package.json edit, then the next edit: no alert (#131)", async () => {
+    const fx = await indexedFx();
+    expect(
+      touch(fx, "apps/web/src/lib/db.ts", 'import { db } from "@acme/db";\nexport const handle = db;\n').out,
+    ).toBe("");
+    const pkgPath = join(fx.dir, "apps/web/package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as { dependencies?: Record<string, string> };
+    pkg.dependencies = { ...(pkg.dependencies ?? {}), "@acme/db": "workspace:*" };
+    expect(touch(fx, "apps/web/package.json", `${JSON.stringify(pkg, null, 2)}\n`).out).toBe("");
+    expect(touch(fx, "apps/web/src/lib/plain.ts", "export const answer = 42;\n").out).toBe("");
+    expect(stop(fx)).toEqual({ code: 0, out: "", err: "" });
+    // The stored workspace record was refreshed from disk, so a later batch is quiet too.
+    expect(
+      touch(fx, "apps/web/src/lib/db2.ts", 'import { db } from "@acme/db";\nexport const h2 = db;\n').out,
+    ).toBe("");
+    expect(stop(fx).out).toBe("");
+  });
+
+  it("a package.json declared on disk after the last index is honoured by the double-check (#131)", async () => {
+    const fx = await indexedFx();
+    expect(
+      touch(fx, "apps/web/src/lib/db.ts", 'import { db } from "@acme/db";\nexport const handle = db;\n').out,
+    ).toBe("");
+    // Changed without a hook (a shell command): only the double-check against disk can see it.
+    const pkgPath = join(fx.dir, "apps/web/package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as { dependencies?: Record<string, string> };
+    pkg.dependencies = { ...(pkg.dependencies ?? {}), "@acme/db": "workspace:*" };
+    writeFileSync(pkgPath, JSON.stringify(pkg));
+    expect(stop(fx).out).toBe("");
+  });
+
+  it("an edit to tsconfig paths makes the alias resolve on the next check (#131)", async () => {
+    const fx = await indexedFx();
+    const src = 'import { slugify } from "@lib/slug";\nexport const s = slugify;\n';
+    expect(touch(fx, "apps/web/src/lib/alias.ts", src).out).toBe("");
+    expect(contextOf(stop(fx).out)).toContain('Declare "@lib/slug"');
+    const tsconfig = join(fx.dir, "apps/web/tsconfig.json");
+    writeFileSync(
+      tsconfig,
+      JSON.stringify({ compilerOptions: { baseUrl: ".", paths: { "@lib/*": ["src/lib/*"] } } }),
+    );
+    expect(touch(fx, "apps/web/tsconfig.json", readFileSync(tsconfig, "utf8")).out).toBe("");
+    expect(touch(fx, "apps/web/src/lib/alias.ts", `${src}// touched\n`).out).toBe("");
+    expect(stop(fx)).toEqual({ code: 0, out: "", err: "" });
   });
 
   it("an unrelated edit prints nothing at all", async () => {
@@ -763,6 +1042,20 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     );
     expect(r.code).toBe(0);
     expect(contextOf(r.out)).toBe('Gantry: Declare "@acme/db" in apps/web/package.json (line 1)');
+  });
+
+  it("drops a duplicate whose match changed on disk so that it no longer matches (double-check)", async () => {
+    const fx = await indexedFx();
+    expect(touch(fx, "apps/web/src/lib/new.ts", SLUG).out).toBe("");
+    // The old copy is rewritten by a shell command into something else.
+    writeFileSync(
+      join(fx.dir, "apps/web/src/lib/slug.ts"),
+      "export function slugify(input: string): string {\n  return input;\n}\n",
+    );
+    // The stale match is dropped and the next one, the copy in packages/utils, takes its place.
+    const ctx = contextOf(stop(fx).out);
+    expect(ctx).not.toContain("apps/web/src/lib/slug.ts");
+    expect(ctx).toContain("looks like slugify in packages/utils/src/slug.ts:2 [exact 1.00]");
   });
 
   it("only imports added by the edit are reported (one already in HEAD stays quiet)", async () => {

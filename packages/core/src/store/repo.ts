@@ -94,6 +94,7 @@ interface SymbolRow {
   exact_hash: string;
   shape_hash: string;
   minhash: Buffer;
+  near_minhash?: Buffer | null;
 }
 interface AdapterNodeRow {
   id: string;
@@ -142,6 +143,7 @@ const toSymbol = (r: SymbolRow): SymbolRecord => ({
   exactHash: r.exact_hash,
   shapeHash: r.shape_hash,
   minhash: decodeMinhash(r.minhash),
+  ...(r.near_minhash ? { nearMinhash: decodeMinhash(r.near_minhash) } : {}),
 });
 
 const toAdapterNode = (r: AdapterNodeRow): AdapterNodeRecord => {
@@ -296,13 +298,14 @@ export function createStore(db: Database): Store {
         putFile(layer, file);
         const si = stmt(
           `INSERT INTO symbols(id, layer, file_id, name, kind, exported, signature, start_line, end_line,
-             loc, complexity, stmt_count, exact_hash, shape_hash, minhash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             loc, complexity, stmt_count, exact_hash, shape_hash, minhash, near_minhash)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id, layer) DO UPDATE SET file_id = excluded.file_id, name = excluded.name,
              kind = excluded.kind, exported = excluded.exported, signature = excluded.signature,
              start_line = excluded.start_line, end_line = excluded.end_line, loc = excluded.loc,
              complexity = excluded.complexity, stmt_count = excluded.stmt_count,
-             exact_hash = excluded.exact_hash, shape_hash = excluded.shape_hash, minhash = excluded.minhash`,
+             exact_hash = excluded.exact_hash, shape_hash = excluded.shape_hash, minhash = excluded.minhash,
+             near_minhash = excluded.near_minhash`,
         );
         for (const s of symbols) {
           si.run(
@@ -321,6 +324,7 @@ export function createStore(db: Database): Store {
             s.exactHash,
             s.shapeHash,
             encodeMinhash(s.minhash),
+            s.nearMinhash && s.nearMinhash.length > 0 ? encodeMinhash(s.nearMinhash) : null,
           );
         }
         const ei = stmt(

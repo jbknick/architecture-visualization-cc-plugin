@@ -1,5 +1,5 @@
 {
-  "description": "Gantry reuse guard: session reminder and duplicate/import findings after edits",
+  "description": "Gantry reuse guard: session reminder; edits are recorded after each tool call and checked for duplicates and undeclared imports when the turn ends",
   "hooks": {
     "SessionStart": [
       {
@@ -19,6 +19,17 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/gantry\" hook post-tool-use",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/gantry\" hook stop",
             "timeout": 5
           }
         ]

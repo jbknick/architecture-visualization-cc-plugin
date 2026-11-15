@@ -72,8 +72,8 @@ describe("hooks/hooks.json", () => {
   const launcher = (name: string): string =>
     `"${["$", "{CLAUDE_PLUGIN_ROOT}"].join("")}/bin/gantry" hook ${name}`;
 
-  it("declares exactly SessionStart and PostToolUse command hooks", () => {
-    expect(Object.keys(hooks).sort()).toEqual(["PostToolUse", "SessionStart"]);
+  it("declares exactly SessionStart, PostToolUse and Stop command hooks", () => {
+    expect(Object.keys(hooks).sort()).toEqual(["PostToolUse", "SessionStart", "Stop"]);
     expect(hooks.SessionStart).toEqual([
       { hooks: [{ type: "command", command: launcher("session-start"), timeout: 30 }] },
     ]);
@@ -86,6 +86,10 @@ describe("hooks/hooks.json", () => {
         hooks: [{ type: "command", command: launcher("post-tool-use"), timeout: 5 }],
       },
     ]);
+  });
+
+  it("settles the batch of edits at Stop (no matcher) with a 5 second timeout", () => {
+    expect(hooks.Stop).toEqual([{ hooks: [{ type: "command", command: launcher("stop"), timeout: 5 }] }]);
   });
 });
 

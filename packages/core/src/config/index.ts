@@ -41,6 +41,8 @@ export const GantryConfigSchema = z.object({
     ignore: z.array(z.string()),
     thresholds: z.object({
       nearJaccard: z.number().min(0).max(1),
+      nearTokenJaccard: z.number().min(0).max(1),
+      codeVectorTokenJaccard: z.number().min(0).max(1),
       codeVector: z.number().min(0).max(1),
       semantic: z.number().min(0).max(1),
     }),
@@ -103,7 +105,13 @@ function defaults(): GantryConfig {
     duplicates: {
       mode: "warn",
       ignore: [],
-      thresholds: { nearJaccard: 0.85, codeVector: 0.98, semantic: 0.6 },
+      thresholds: {
+        nearJaccard: 0.85,
+        nearTokenJaccard: 0.75,
+        codeVector: 0.98,
+        codeVectorTokenJaccard: 0.5,
+        semantic: 0.6,
+      },
     },
     backlogReminderThreshold: 100,
     renameSuggestions: false,

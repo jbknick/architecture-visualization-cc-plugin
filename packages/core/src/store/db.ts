@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import Database from "better-sqlite3";
 import { applyVecMigration, loadVec } from "../embed/vec.js";
 import { createStore, type Store } from "./repo.js";
-import { SCHEMA_V1, SCHEMA_V4 } from "./schema.js";
+import { SCHEMA_V1, SCHEMA_V4, SCHEMA_V5 } from "./schema.js";
 
 export class SchemaTooNewError extends Error {
   constructor(
@@ -52,6 +52,22 @@ const MIGRATIONS: Migration[] = [
       db.exec(SCHEMA_V4);
     },
   },
+  {
+    // symbols.near_minhash (near tier, #131) and pending_files (the hook's batch of edits, #131). Forgetting head_sha
+    // makes the next heal a full main re-index, which fills near_minhash for every symbol (spec section 9).
+    version: 5,
+    apply(db) {
+      const cols = db.prepare("PRAGMA table_info(symbols)").all() as { name: string }[];
+      if (!cols.some((c) => c.name === "near_minhash"))
+        db.exec("ALTER TABLE symbols ADD COLUMN near_minhash BLOB");
+      db.exec(SCHEMA_V5);
+      // A pending_files table from a pre-release build of v5 lacks this column.
+      const pcols = db.prepare("PRAGMA table_info(pending_files)").all() as { name: string }[];
+      if (!pcols.some((c) => c.name === "reindexed"))
+        db.exec("ALTER TABLE pending_files ADD COLUMN reindexed INTEGER NOT NULL DEFAULT 0");
+      db.exec("DELETE FROM meta WHERE key = 'head_sha'");
+    },
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;
@@ -80,6 +96,16 @@ function migrate(db: Database.Database): void {
   }).immediate();
 }
 
+/**
+ * A pending_files table written by a pre-release build of migration v5 lacks `reindexed`; the migration does not run
+ * again on such a database, so the column is added here, on open (#131). A read only when it is already there.
+ */
+function ensurePendingReindexed(db: Database.Database): void {
+  const cols = db.prepare("PRAGMA table_info(pending_files)").all() as { name: string }[];
+  if (cols.length > 0 && !cols.some((c) => c.name === "reindexed"))
+    db.exec("ALTER TABLE pending_files ADD COLUMN reindexed INTEGER NOT NULL DEFAULT 0");
+}
+
 export function openStore(dbPath: string): Store {
   if (dbPath !== ":memory:") mkdirSync(dirname(dbPath), { recursive: true });
   const db = new Database(dbPath, { timeout: 5000 });
@@ -90,6 +116,7 @@ export function openStore(dbPath: string): Store {
     db.pragma("foreign_keys = ON");
     const vec = loadVec(db); // fail open: without sqlite-vec everything but vector search still works
     migrate(db);
+    ensurePendingReindexed(db);
     db.prepare(
       "INSERT INTO meta(key, value) VALUES ('vec_available', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
     ).run(vec ? "1" : "0");

@@ -3,6 +3,8 @@ import { type DupFinding, formatCapped, formatFinding, formatLines, type ImportL
 
 const dup = (i: number): DupFinding => ({
   kind: "duplicate",
+  symbolId: `sym:apps/web/src/lib/new.ts#newFn${i}`,
+  existingId: "sym:packages/utils/src/slug.ts#slugify",
   name: `newFn${i}`,
   path: "apps/web/src/lib/new.ts",
   line: i,
@@ -14,7 +16,13 @@ const dup = (i: number): DupFinding => ({
   action: "Import it: import { slugify } from '@acme/utils'",
   inline: true,
 });
-const imp: ImportLine = { kind: "import", line: 4, action: 'Declare "@acme/db" in apps/web/package.json' };
+const imp: ImportLine = {
+  kind: "import",
+  line: 4,
+  action: 'Declare "@acme/db" in apps/web/package.json',
+  pkg: "@acme/db",
+  manifests: ["apps/web/package.json", "package.json"],
+};
 
 describe("findings formatter", () => {
   it("formats duplicates and imports as the spec lines", () => {
