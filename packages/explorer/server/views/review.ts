@@ -97,15 +97,44 @@ interface Computed {
   diff: ReviewDiff;
   impact: Impact;
   ms: number;
-  /** `meta.head_sha` of the index the impact was computed on; a heal invalidates the entry. */
-  indexHead: string | null;
+  /** The index state the impact was computed on (see `indexMarker`); any index write invalidates the entry. */
+  marker: string;
 }
 
 /** Per process: (data dir, merge base, head) -> computed review. Small LRU, newest last. */
 const cache = new Map<string, Computed>();
 
+/** `pr` -> resolved refs, so a view request does not run `gh pr view` (and maybe `git fetch`) every time. */
+const prCache = new Map<string, { refs: { base: string; head: string }; at: number }>();
+/** How long a resolved pull request is reused. A push to the PR shows after this long, or after Refresh. */
+export const PR_CACHE_MS = 60_000;
+
 export function clearReviewCache(): void {
   cache.clear();
+  prCache.clear();
+}
+
+/**
+ * Changes whenever the index changes: `head_sha` (heal) plus `store.generation()`, which counts graph writes made
+ * through this store and moves with SQLite's `data_version` on every commit by another connection (the hooks and the
+ * MCP server re-index working edits from other processes). A write that does not touch the graph only costs a
+ * recompute.
+ */
+function indexMarker(store: ApiContext["store"]): string {
+  return `${store.getMeta("head_sha") ?? ""}\0${store.generation()}`;
+}
+
+/**
+ * Resolves `pr` through `gh`, reusing an answer younger than PR_CACHE_MS. `resolvePullRequest` is synchronous, so
+ * two requests can never run a lookup at the same time in this single-threaded server: one lookup per PR at a time.
+ */
+function resolvePr(ctx: ApiContext, n: number): { base: string; head: string } {
+  const key = `${ctx.paths.dataDir}\0${n}`;
+  const hit = prCache.get(key);
+  if (hit && Date.now() - hit.at < PR_CACHE_MS) return hit.refs;
+  const refs = resolvePullRequest(ctx.paths, n);
+  prCache.set(key, { refs, at: Date.now() });
+  return refs;
 }
 
 const nameOf = (id: string): string => {
@@ -158,7 +187,7 @@ function resolveRefs(
     }
     if (!/^[1-9]\d{0,8}$/.test(pr)) throw new Error(`invalid pull request number: ${pr}`);
     const n = Number(pr);
-    return { ...resolvePullRequest(ctx.paths, n), pr: n };
+    return { ...resolvePr(ctx, n), pr: n };
   } catch (err) {
     throw new HttpError(400, err instanceof Error ? err.message : String(err));
   }
@@ -176,9 +205,9 @@ async function compute(
     throw new HttpError(400, err instanceof Error ? err.message : String(err));
   }
   const key = `${ctx.paths.dataDir}\0${commits.mergeBase}\0${commits.head}`;
-  const indexHead = ctx.store.getMeta("head_sha") ?? null;
+  const marker = indexMarker(ctx.store);
   const hit = cache.get(key);
-  if (hit && hit.indexHead === indexHead) {
+  if (hit && hit.marker === marker) {
     cache.delete(key);
     cache.set(key, hit);
     return { c: hit, cached: true };
@@ -187,7 +216,7 @@ async function compute(
   // The commits, not the names: a branch that moves between the key and the diff must not mix two heads.
   const diff = await reviewDiff(ctx.paths, commits.mergeBase, commits.head);
   const impact = await reviewImpact(ctx.paths, ctx.store, diff);
-  const c: Computed = { diff, impact, ms: Date.now() - t0, indexHead };
+  const c: Computed = { diff, impact, ms: Date.now() - t0, marker };
   cache.set(key, c);
   while (cache.size > REVIEW_CACHE_SIZE) cache.delete(cache.keys().next().value as string);
   return { c, cached: false };

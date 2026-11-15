@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -204,6 +204,45 @@ describe("review view", () => {
     expect(await status({ range: "--output=x...main" })).toMatch(/^400 invalid git ref/);
     expect(await status({ range: "main...feature", pr: "3" })).toBe("400 Give either range or pr, not both");
     expect(await status({ pr: "1; rm -rf" })).toMatch(/^400 invalid pull request number/);
+  });
+
+  it("recomputes after another process writes to the index (hooks and the MCP server re-index working edits)", async () => {
+    const { ctx, paths } = await setup();
+    expect((await buildReview(ctx, opts({ range: "main...feature" }))).review?.cached).toBe(false);
+    expect((await buildReview(ctx, opts({ range: "main...feature" }))).review?.cached).toBe(true);
+    // Another connection commits, as a hook process would; head_sha stays the same.
+    const other = openStore(paths.dbPath);
+    other.setMeta("last_refresh_at", "2026-01-01T00:00:00.000Z");
+    other.close();
+    expect((await buildReview(ctx, opts({ range: "main...feature" }))).review?.cached).toBe(false);
+  });
+
+  it("pr: resolves the pull request with gh once and reuses the refs for the next requests", async () => {
+    const { ctx, fx } = await setup();
+    const featureSha = fx.git(["rev-parse", "feature"]).trim();
+    // As after a clone: the base branch is known as origin/main, so nothing is fetched.
+    fx.git(["update-ref", "refs/remotes/origin/main", "main"]);
+    const bin = mkdtempSync(join(tmpdir(), "gantry-fake-gh-"));
+    dataDirs.push(bin);
+    mkdirSync(bin, { recursive: true });
+    const calls = join(bin, "calls.txt");
+    writeFileSync(
+      join(bin, "gh"),
+      `#!/bin/sh\necho x >> "${calls}"\necho '{"baseRefName":"main","headRefOid":"${featureSha}"}'\n`,
+    );
+    chmodSync(join(bin, "gh"), 0o755);
+    const path = process.env.PATH;
+    process.env.PATH = `${bin}:${path ?? ""}`;
+    try {
+      const a = await buildReview(ctx, opts({ pr: "7" }));
+      const b = await buildReview(ctx, opts({ pr: "7" }));
+      expect(a.review?.pr).toBe(7);
+      expect(a.review?.changes.map((c) => c.id)).toEqual([BUTTON]);
+      expect(b.review?.cached).toBe(true);
+      expect(readFileSync(calls, "utf8").trim().split("\n")).toHaveLength(1);
+    } finally {
+      process.env.PATH = path;
+    }
   });
 
   it("is served through /api/view/review with the filters JSON, like the web sends it", async () => {

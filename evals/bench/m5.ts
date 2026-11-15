@@ -88,7 +88,7 @@ const gitEnv = {
   GIT_COMMITTER_EMAIL: "test@example.com",
 };
 
-/** fixtures/pnpm-turbo plus three commits: Button's props, a new helper, a removed export. */
+/** fixtures/pnpm-turbo plus three commits: Button's props, a new helper, a renamed export. */
 function prepareFixture(): string {
   const repo = join(scratch, "pnpm-turbo");
   cpSync(join(root, "fixtures", "pnpm-turbo"), repo, { recursive: true });

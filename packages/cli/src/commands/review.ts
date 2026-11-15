@@ -18,6 +18,10 @@ import { openFresh } from "./lookup.js";
 import { openBrowser } from "./map.js";
 import { EXIT_ERROR, EXIT_OK, fail, writeStdout } from "./shared.js";
 
+/** How long `--open` waits for a freshly started explorer. */
+const CLI_START_TIMEOUT_MS = 10_000;
+const PR_RE = /^[1-9]\d{0,8}$/;
+
 /** This bundle (`plugin/dist/cli.js`), or the repo's bundle when running from source. */
 function cliBundle(): string | undefined {
   const here = dirname(fileURLToPath(import.meta.url));
@@ -28,7 +32,13 @@ function cliBundle(): string | undefined {
 
 /** Opens the review view the way `gantry_open_view` does (start or reuse the explorer); returns the URL. */
 async function openReviewView(paths: GantryPaths, range: string): Promise<string> {
-  const r = await ensureExplorer({ paths, cli: cliBundle(), env: process.env });
+  // A command line can wait longer than `gantry_open_view`'s 3 s contract: a cold start on a large repo may need it.
+  const r = await ensureExplorer({
+    paths,
+    cli: cliBundle(),
+    env: process.env,
+    timeoutMs: CLI_START_TIMEOUT_MS,
+  });
   if (!r.ok) throw new Error(`cannot open the explorer: ${r.message}`);
   const url = buildExplorerUrl({ ...r.state, view: "review", filters: { range } });
   openBrowser(url);
@@ -55,6 +65,11 @@ export function registerReview(program: Command): void {
           return;
         }
         const paths = resolvePaths(process.cwd());
+        if (opts.pr !== undefined && !PR_RE.test(opts.pr)) {
+          process.stderr.write(`gantry: invalid pull request number: ${opts.pr}\n`);
+          process.exitCode = EXIT_ERROR;
+          return;
+        }
         const refs = range !== undefined ? parseRange(range) : resolvePullRequest(paths, Number(opts.pr));
         const resolved = `${refs.base}...${refs.head}`;
         if (opts.json) {

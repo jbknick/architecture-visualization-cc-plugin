@@ -90,7 +90,7 @@ export async function ensureExplorer(opts: {
   if (!state) {
     return {
       ok: false,
-      message: `The explorer did not start within ${timeoutMs} ms. See ${join(paths.logsDir, "explorer.log")}.`,
+      message: `The explorer did not start within ${timeoutMs} ms (it may still be starting on a large repo or a busy machine): retry in a few seconds. See ${join(paths.logsDir, "explorer.log")}.`,
     };
   }
   return { ok: true, state: { port: state.port, token: state.token } };

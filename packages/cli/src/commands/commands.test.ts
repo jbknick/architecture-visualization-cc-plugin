@@ -458,6 +458,16 @@ describe("gantry review", () => {
     }
   });
 
+  it("--pr takes only a pull request number", async () => {
+    const fx = await fixture("pnpm-turbo");
+    for (const bad of ["abc", "0", "7x", "-1", "1e3"]) {
+      const r = run(fx.dir, ["review", "--pr", bad, "--json"]);
+      expect(r.code).toBe(1);
+      expect(r.err).toContain(`invalid pull request number: ${bad}`);
+      expect(r.out).toBe("");
+    }
+  });
+
   it("--pr without a usable gh prints the range form as the way out", async () => {
     const fx = await fixture("pnpm-turbo");
     const bin = join(dataDir, "fake-gh-bin");
