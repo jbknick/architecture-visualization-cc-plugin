@@ -147,7 +147,19 @@ export default function SettlementCanvas({ focus, onSelect, onHover, data: viewD
     const id = shown(focus);
     scene.current?.setSelected(id);
     mapUi.selectIsland(scene.current?.settlementOf(id) ?? null);
-    if (reviewing && id && !internalSelect.current && scene.current?.hasId(id)) scene.current.flyTo(id);
+    if (reviewing && id && !internalSelect.current && scene.current?.hasId(id)) {
+      // A selected change: the camera frames it and its direct consumers (#171); a consumer or a file flies to itself.
+      const group =
+        focusChange && focus === focusChange
+          ? (layerFocus(data?.review, focusChange)?.direct ?? []).flatMap((n) => {
+              const i = paint?.placed.get(n);
+              const b = i === undefined ? undefined : land?.buildings[i]?.id;
+              return b && b !== id && scene.current?.hasId(b) ? [b] : [];
+            })
+          : [];
+      if (group.length > 0) scene.current.flyToGroup(id, group);
+      else scene.current.flyTo(id);
+    }
     internalSelect.current = false;
   }, [focus, paint]);
   useEffect(() => scene.current?.setAutoRotate(ui.autoRotate), [ui.autoRotate]);

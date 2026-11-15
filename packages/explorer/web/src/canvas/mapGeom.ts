@@ -215,3 +215,19 @@ export function worldRectOf(scene: Scene, geo: MapGeometry, i: number, scale: nu
   const r = screenRectOf(scene, geo, { scale, tx: 0, ty: 0 }, i);
   return { x: r.x / scale, y: r.y / scale, w: r.w / scale, h: r.h / scale };
 }
+
+/** The smallest rectangle holding all of `rects` (the review's fit box: a change's node and its direct consumers). */
+export function unionRect(rects: readonly Rect[]): Rect | null {
+  if (rects.length === 0) return null;
+  let x0 = Number.POSITIVE_INFINITY;
+  let y0 = Number.POSITIVE_INFINITY;
+  let x1 = Number.NEGATIVE_INFINITY;
+  let y1 = Number.NEGATIVE_INFINITY;
+  for (const r of rects) {
+    x0 = Math.min(x0, r.x);
+    y0 = Math.min(y0, r.y);
+    x1 = Math.max(x1, r.x + r.w);
+    y1 = Math.max(y1, r.y + r.h);
+  }
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}

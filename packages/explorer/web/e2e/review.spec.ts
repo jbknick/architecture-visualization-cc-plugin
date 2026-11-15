@@ -101,6 +101,8 @@ const HOME = "sym:apps/web/src/routes/index.tsx#HomePage";
 
 interface ReviewProbe {
   positions: Record<string, [number, number]>;
+  viewport: { w: number; h: number };
+  reviewRects: { id: string; x: number; y: number; w: number; h: number }[];
   review: {
     changed: { id: string; change: string }[];
     affected: { id: string; hop: number }[];
@@ -270,6 +272,34 @@ test("consumers on the map: expanding a change lists who uses it; only its lines
   await expect(tiers).toBeVisible();
   await expect(page.getByTestId("map-crumb")).toBeVisible({ timeout: 10_000 });
   await expectTidy(page);
+});
+
+test("selecting a change fits its node and all its direct consumers in the viewport, not the node alone", async ({
+  page,
+}) => {
+  await open(page, "#/review?range=main...feature");
+  await probe2d(page);
+  const list = page.getByRole("region", { name: "Changed symbols" });
+  await list.getByRole("button", { name: /^Button/ }).click();
+  await page.mouse.move(2, 2);
+  const p = await probe2d(page);
+  const rect = (id: string) => p.reviewRects.find((r) => r.id === id);
+  const change = rect(BUTTON_FILE);
+  expect(change).toBeDefined();
+  const direct = p.review?.affected.filter((a) => a.hop === 1) ?? [];
+  expect(direct.length).toBeGreaterThan(0);
+  const { w, h } = p.viewport;
+  for (const id of [BUTTON_FILE, ...direct.map((d) => d.id)]) {
+    const r = rect(id);
+    expect(r, id).toBeDefined();
+    const c = r as { x: number; y: number; w: number; h: number };
+    expect(c.x).toBeGreaterThanOrEqual(0);
+    expect(c.y).toBeGreaterThanOrEqual(0);
+    expect(c.x + c.w).toBeLessThanOrEqual(w);
+    expect(c.y + c.h).toBeLessThanOrEqual(h);
+  }
+  const c = change as { w: number; h: number };
+  expect(c.w * c.h).toBeLessThan(w * h * 0.5);
 });
 
 test("consumers on the rings: a selected change keeps its direct consumers strong and the rest faded", async ({

@@ -310,6 +310,33 @@ export class SettlementScene {
     this.animateTo(target.clone().addScaledVector(dir, dist), target, !this.opts.reducedMotion);
   }
 
+  /** Review (#171): frames building `id` and the `others` (its direct consumers) together, from the current heading. */
+  flyToGroup(id: string, others: readonly string[]): void {
+    const l = this.land;
+    if (!l) return;
+    const pts: { x: number; y: number; z: number; r: number }[] = [];
+    for (const k of [id, ...others]) {
+      const e = l.byId.get(k);
+      if (e?.type !== "building") continue;
+      const b = l.buildings[e.i] as SBuilding;
+      pts.push({ x: b.x, y: b.h / 2, z: b.z, r: Math.max(b.h / 2, 3) });
+    }
+    if (pts.length < 2) {
+      this.flyTo(id);
+      return;
+    }
+    const target = new THREE.Vector3();
+    for (const p of pts) target.add(new THREE.Vector3(p.x, p.y, p.z));
+    target.multiplyScalar(1 / pts.length);
+    let radius = 0;
+    for (const p of pts) radius = Math.max(radius, target.distanceTo(new THREE.Vector3(p.x, p.y, p.z)) + p.r);
+    const dist = Math.max(14, (radius * 1.25) / Math.sin((FOV * Math.PI) / 360));
+    const dir = this.camera.position.clone().sub(this.controls.target).normalize();
+    if (dir.y < 0.35) dir.setY(0.35).normalize();
+    this.autoFit = false;
+    this.animateTo(target.clone().addScaledVector(dir, dist), target, !this.opts.reducedMotion);
+  }
+
   dispose(): void {
     this.disposed = true;
     cancelAnimationFrame(this.raf);

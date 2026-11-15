@@ -34,7 +34,7 @@ import {
   pickCell,
   type ReviewPaintEnv,
 } from "./mapDraw.ts";
-import { rootRect, worldRectOf } from "./mapGeom.ts";
+import { rootRect, screenRectOf, unionRect, worldRectOf } from "./mapGeom.ts";
 import { DEFAULT_VIEWPORT, FIT_INSETS, keepFrom } from "./mapLayout.ts";
 import { mapView, useMapView } from "./mapView.ts";
 import { hashPositions } from "./prng.ts";
@@ -197,6 +197,7 @@ export function TreemapCanvas({
     fit(animate?: boolean): void;
     zoom(factor: number): void;
     zoomTo(index: number): void;
+    zoomToGroup(index: number, others: number[]): void;
     redraw(): void;
   } | null>(null);
   const live = useRef({
@@ -307,6 +308,8 @@ export function TreemapCanvas({
   const storedChange = useReviewFocus();
   const focusChange = focusedChange(data?.review, focus, storedChange);
   const reviewFocusOn = useMemo(() => layerFocus(data?.review, focusChange), [data?.review, focusChange]);
+  const reviewFocusRef = useRef(reviewFocusOn);
+  reviewFocusRef.current = reviewFocusOn;
   const reviewPaint = useMemo<ReviewPaintEnv | null>(
     () =>
       layer
@@ -604,6 +607,17 @@ export function TreemapCanvas({
         userMoved = true;
         animateTo({ ...t, scale: Math.min(t.scale, fitScale * MAX_SCALE) }, 450);
       },
+      zoomToGroup: (index, others) => {
+        // Review (#171): the change's node and its direct consumers, padded.
+        const pad = { top: 70, right: 60, bottom: 60, left: 60 };
+        const all = [index, ...others];
+        const fitAll = (at: number) => unionRect(all.map((i) => worldRectOf(scene, geo, i, at))) as Rect;
+        let t = fitTarget(fitAll(fitScale), pad);
+        for (let k = 0; k < 2; k++) t = fitTarget(fitAll(t.scale), pad);
+        // The union holds the node, so it never fits closer than the node alone (what zoomTo does).
+        userMoved = true;
+        animateTo({ ...t, scale: Math.min(t.scale, fitScale * MAX_SCALE) }, 450);
+      },
       redraw: requestDraw,
     };
 
@@ -803,6 +817,13 @@ export function TreemapCanvas({
         }),
         badged: last.badged,
         review: reviewProbe(live.current.review, last, (i) => scene.nodes[i]?.id),
+        viewport: size(),
+        reviewRects: scene.nodes.flatMap((n, i) => {
+          const rv = live.current.review;
+          if (!rv || !(rv.change[i] || (rv.hop[i] ?? 0) > 0)) return [];
+          const r = screenRectOf(scene, geo, cam, i);
+          return [{ id: n.id, x: r.x, y: r.y, w: r.w, h: r.h }];
+        }),
         regions: last.boxes.map((b) => ({ id: scene.nodes[b.index]?.id, x: b.x, y: b.y, w: b.w, h: b.h })),
       });
     };
@@ -858,11 +879,24 @@ export function TreemapCanvas({
   }, [layout, scene, sceneKey, generation]);
 
   // Selecting from outside the canvas (search, inspector, deep link) brings the node into view.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fires per selection; the review focus is read from a ref
   useEffect(() => {
     if (selectedIndex === null) return;
     if (internalSelect.current) {
       internalSelect.current = false;
       return;
+    }
+    // A change selected in the review: fit it and its direct consumers, so the lines between them stay in view.
+    const rf = reviewFocusRef.current;
+    if (rf && focus && focus === focusChange) {
+      const others = rf.direct.flatMap((id) => {
+        const i = scene.tree.index.get(id);
+        return i === undefined || i === selectedIndex ? [] : [i];
+      });
+      if (others.length > 0) {
+        engine.current?.zoomToGroup(selectedIndex, others);
+        return;
+      }
     }
     engine.current?.zoomTo(selectedIndex);
   }, [selectedIndex]);

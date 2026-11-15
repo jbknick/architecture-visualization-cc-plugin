@@ -14,6 +14,7 @@ import {
   mapChild,
   normInner,
   screenRectOf,
+  unionRect,
   WS_HEAD_MAX,
 } from "./mapGeom.ts";
 import { buildScene, folderTitle, layoutInputFor, subtitleParts } from "./scene.ts";
@@ -191,5 +192,20 @@ describe("folder strips", () => {
               .replace(/\s/g, ""),
           ).toBe("participants-pause");
       }
+  });
+});
+
+describe("unionRect (the review fit box)", () => {
+  it("holds a change and its consumers", () => {
+    const box = unionRect([
+      { x: 10, y: 10, w: 5, h: 5 },
+      { x: 40, y: 2, w: 10, h: 4 },
+      { x: 20, y: 30, w: 3, h: 8 },
+    ]);
+    expect(box).toEqual({ x: 10, y: 2, w: 40, h: 36 });
+  });
+  it("is the node itself when there are no consumers, and null for nothing", () => {
+    expect(unionRect([{ x: 1, y: 2, w: 3, h: 4 }])).toEqual({ x: 1, y: 2, w: 3, h: 4 });
+    expect(unionRect([])).toBeNull();
   });
 });
