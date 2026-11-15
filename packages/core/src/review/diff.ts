@@ -4,6 +4,7 @@ import { isIndexable, MAX_FILE_BYTES } from "../discover/index.js";
 import { hashSymbol } from "../hash/index.js";
 import { parseSource } from "../parse/index.js";
 import type { GantryPaths } from "../paths/index.js";
+import type { SymbolKind } from "../types.js";
 
 /** One side of a changed symbol. */
 export interface SymbolSide {
@@ -12,6 +13,10 @@ export interface SymbolSide {
   line: number;
   signature: string;
   exactHash: string;
+  /** Added for #43 (impact and risk read them from the diff, not from a store that may sit on another commit). */
+  kind: SymbolKind;
+  exported: boolean;
+  complexity: number;
 }
 
 export interface SymbolChange {
@@ -57,6 +62,13 @@ function git(root: string, args: string[]): { ok: boolean; out: Buffer; err: str
   };
 }
 
+/** The text of `path` at `ref` (`git show`), or undefined when it is missing, not text or too large to index. */
+export function readBlobText(root: string, ref: string, path: string): string | undefined {
+  const r = git(root, ["show", `${ref}:${path}`]);
+  if (!r.ok || r.out.length > MAX_FILE_BYTES) return undefined;
+  return r.out.toString("utf8");
+}
+
 function resolveCommit(root: string, ref: string): string {
   if (ref === "" || ref.startsWith("-")) throw new Error(`invalid git ref: "${ref}"`);
   const r = git(root, ["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`]);
@@ -98,7 +110,6 @@ function parseNameStatus(raw: string): ChangedFile[] {
 interface Sym extends SymbolSide {
   name: string;
   renamedHash: string;
-  exported: boolean;
   loc: number;
 }
 
@@ -128,6 +139,8 @@ function readSide(root: string, sha: string, path: string): Side | undefined {
       name: s.name,
       renamedHash: h.renamedHash,
       exported: s.exported,
+      kind: s.kind,
+      complexity: s.complexity,
       loc: s.loc,
     };
   });
@@ -141,6 +154,9 @@ const sideOf = (s: Sym): SymbolSide => ({
   line: s.line,
   signature: s.signature,
   exactHash: s.exactHash,
+  kind: s.kind,
+  exported: s.exported,
+  complexity: s.complexity,
 });
 
 function change(kind: SymbolChange["kind"], before?: Sym, after?: Sym): SymbolChange {
