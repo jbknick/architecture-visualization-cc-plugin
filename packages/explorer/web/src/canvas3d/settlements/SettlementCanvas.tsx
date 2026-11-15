@@ -68,6 +68,12 @@ export default function SettlementCanvas({ focus, onSelect, onHover, data: viewD
       { scheme: currentScheme(), reducedMotion: prefersReducedMotion() },
     );
     scene.current = s;
+    // Test hook: `data-projected` gets where the buildings in the event's `detail.ids` are on screen now.
+    const onProject = (e: Event) => {
+      const ids = (e as CustomEvent<{ ids?: string[] }>).detail?.ids ?? [];
+      el.dataset.projected = JSON.stringify(s.projectIds(ids));
+    };
+    el.addEventListener("gantry:project", onProject);
     s.setAutoRotate(mapUi.get().autoRotate);
     const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
     const onScheme = () => s.setScheme(currentScheme());
@@ -78,6 +84,7 @@ export default function SettlementCanvas({ focus, onSelect, onHover, data: viewD
     };
     rm?.addEventListener?.("change", onMotion);
     return () => {
+      el.removeEventListener("gantry:project", onProject);
       mq?.removeEventListener?.("change", onScheme);
       rm?.removeEventListener?.("change", onMotion);
       scene.current = null;
@@ -147,7 +154,18 @@ export default function SettlementCanvas({ focus, onSelect, onHover, data: viewD
     const id = shown(focus);
     scene.current?.setSelected(id);
     mapUi.selectIsland(scene.current?.settlementOf(id) ?? null);
-    if (reviewing && id && !internalSelect.current && scene.current?.hasId(id)) scene.current.flyTo(id);
+    if (reviewing && id && !internalSelect.current && scene.current?.hasId(id)) {
+      // A selected change: the camera frames it and its direct consumers (#171); a consumer or a file flies to itself.
+      const group =
+        focusChange && focus === focusChange
+          ? [...new Set(layerFocus(data?.review, focusChange)?.direct ?? [])].filter(
+              // Node ids of the files level are the buildings' ids.
+              (n) => n !== id && scene.current?.hasId(n),
+            )
+          : [];
+      if (group.length > 0) scene.current.flyToGroup(id, group);
+      else scene.current.flyTo(id);
+    }
     internalSelect.current = false;
   }, [focus, paint]);
   useEffect(() => scene.current?.setAutoRotate(ui.autoRotate), [ui.autoRotate]);

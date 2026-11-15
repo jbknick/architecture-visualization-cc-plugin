@@ -58,7 +58,7 @@ test.beforeAll(async () => {
     readFileSync(button, "utf8").replace(
       "{ label, onClick }: { label: string; onClick?: () => void }",
       "{ label, onClick, size }: { label: string; onClick?: () => void; size?: number }",
-    ),
+    ) + "\nexport function Chip({ text }: { text: string }) {\n  return <i>{text}</i>;\n}\n",
   );
   const slug = join(repo, "packages/utils/src/slug.ts");
   writeFileSync(
@@ -101,6 +101,10 @@ const HOME = "sym:apps/web/src/routes/index.tsx#HomePage";
 
 interface ReviewProbe {
   positions: Record<string, [number, number]>;
+  viewport: { w: number; h: number };
+  scale: number;
+  fitScale: number;
+  reviewRects: { id: string; x: number; y: number; w: number; h: number }[];
   review: {
     changed: { id: string; change: string }[];
     affected: { id: string; hop: number }[];
@@ -272,6 +276,90 @@ test("consumers on the map: expanding a change lists who uses it; only its lines
   await expectTidy(page);
 });
 
+test("selecting a change fits its node and all its direct consumers in view, zoomed in but not past a single node", async ({
+  page,
+}) => {
+  await open(page, "#/review?range=main...feature");
+  const full = await probe2d(page);
+  const list = page.getByRole("region", { name: "Changed symbols" });
+  await list.getByRole("button", { name: /^Button/ }).click();
+  await page.mouse.move(2, 2);
+  const p = await probe2d(page);
+  const rect = (id: string) => p.reviewRects.find((r) => r.id === id);
+  const change = rect(BUTTON_FILE);
+  expect(change).toBeDefined();
+  const direct = p.review?.affected.filter((a) => a.hop === 1) ?? [];
+  expect(direct.length).toBeGreaterThan(0);
+  expect(direct.map((d) => d.id)).toContain(HOME_FILE);
+  // The visible area: the canvas minus the key and legend that sit over it.
+  const canvasBox = (await surface(page).boundingBox()) as { x: number; y: number };
+  const overlays = await page
+    .locator(".gc-key, .rv-legend")
+    .evaluateAll((els) =>
+      els.map((el) => el.getBoundingClientRect()).map((r) => ({ x: r.x, y: r.y, w: r.width, h: r.height })),
+    );
+  const { w, h } = p.viewport;
+  for (const id of [BUTTON_FILE, ...direct.map((d) => d.id)]) {
+    const c = rect(id) as { x: number; y: number; w: number; h: number };
+    expect(c, id).toBeDefined();
+    expect(c.x).toBeGreaterThanOrEqual(0);
+    expect(c.y).toBeGreaterThanOrEqual(0);
+    expect(c.x + c.w).toBeLessThanOrEqual(w);
+    expect(c.y + c.h).toBeLessThanOrEqual(h);
+    for (const o of overlays) {
+      const ox = o.x - canvasBox.x;
+      const oy = o.y - canvasBox.y;
+      const overlap = c.x < ox + o.w && c.x + c.w > ox && c.y < oy + o.h && c.y + c.h > oy;
+      expect(overlap, `${id} under an overlay`).toBe(false);
+    }
+  }
+  const c = change as { w: number; h: number };
+  expect(c.w * c.h).toBeLessThan(w * h * 0.5);
+
+  // Zoomed in on the full map, but never past the zoom of the plain map to the change's node alone.
+  expect(p.scale).toBeGreaterThan(full.fitScale * 1.05);
+  await surface(page).evaluate((el, id) => {
+    el.dispatchEvent(new CustomEvent("gantry:zoom-to", { detail: { id } }));
+  }, BUTTON_FILE);
+  const single = await probe2d(page);
+  expect(p.scale).toBeLessThanOrEqual(single.scale + 1e-6);
+});
+
+test("another change in the same file re-fits the view; a consumer click zooms to that consumer", async ({
+  page,
+}) => {
+  await open(page, "#/review?range=main...feature");
+  await probe2d(page);
+  const list = page.getByRole("region", { name: "Changed symbols" });
+  await list.getByRole("button", { name: /^Button/ }).click();
+  await page.mouse.move(2, 2);
+  const group = await probe2d(page);
+  // Chip is in the same file but has no consumers: the view settles on the file alone, closer than the group.
+  await list.getByRole("button", { name: /^Chip/ }).click();
+  await page.mouse.move(2, 2);
+  await expect.poll(async () => (await probe2d(page)).scale).toBeGreaterThan(group.scale * 1.05);
+  await list.getByRole("button", { name: /^Button/ }).click();
+  await page.mouse.move(2, 2);
+  await expect.poll(async () => (await probe2d(page)).scale).toBeCloseTo(group.scale, 3);
+
+  // Clicking a consumer afterwards keeps zooming to the consumer itself.
+  const tiers = list.getByRole("region", { name: "Consumers of Button" });
+  await tiers.getByRole("button", { name: /^HomePage/ }).click();
+  await page.mouse.move(2, 2);
+  const home = await probe2d(page);
+  const r = home.reviewRects.find((x) => x.id === HOME_FILE) as {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  };
+  expect(r).toBeDefined();
+  expect(r.x).toBeGreaterThanOrEqual(0);
+  expect(r.x + r.w).toBeLessThanOrEqual(home.viewport.w);
+  expect(r.y + r.h).toBeLessThanOrEqual(home.viewport.h);
+  expect(home.scale).toBeGreaterThan(group.scale * 1.05);
+});
+
 test("consumers on the rings: a selected change keeps its direct consumers strong and the rest faded", async ({
   page,
 }) => {
@@ -329,6 +417,37 @@ test("3D map: the settlements with Button's building coloured, caller buildings 
   await page.screenshot({ path: join(shots, "review-3d-fixture.png") });
 });
 
+test("3D settlements: selecting a change frames its building and every direct consumer building", async ({
+  page,
+}) => {
+  await open(page, "#/review?range=main...feature&map=3d");
+  await expect(page.locator(".map3d[data-ready='true'][data-style='settlements']")).toBeVisible({
+    timeout: 30_000,
+  });
+  const host = page.getByTestId("map3d-canvas");
+  await expect(host).toHaveAttribute("data-review", /signature/, { timeout: 20_000 });
+  await page.getByTestId("map3d-pause").click();
+  await page
+    .getByRole("region", { name: "Changed symbols" })
+    .getByRole("button", { name: /^Button/ })
+    .click();
+  await expect(host).toHaveAttribute("data-animating", "false", { timeout: 10_000 });
+  await page.waitForTimeout(1000);
+  const ids = [BUTTON_FILE, HOME_FILE];
+  const projected = JSON.parse(
+    await host.evaluate((el, want) => {
+      el.dispatchEvent(new CustomEvent("gantry:project", { detail: { ids: want } }));
+      return (el as HTMLElement).dataset.projected ?? "[]";
+    }, ids),
+  ) as { id: string; x: number; y: number; z: number }[];
+  expect(projected.map((q) => q.id).sort()).toEqual([...ids].sort());
+  for (const q of projected) {
+    expect(Math.abs(q.x), q.id).toBeLessThan(0.95);
+    expect(Math.abs(q.y), q.id).toBeLessThan(0.95);
+    expect(q.z, q.id).toBeLessThan(1);
+  }
+});
+
 test("rings: plain-words ring labels with counts, file groups, names on changed nodes, hover keeps the path", async ({
   page,
 }) => {
@@ -338,7 +457,7 @@ test("rings: plain-words ring labels with counts, file groups, names on changed 
   await expect(
     canvas.getByText("Centre: what changed. Each ring out: code that calls the ring inside it."),
   ).toBeVisible();
-  await expect(canvas.getByText(/^Changed in this range \(2\)$/)).toBeVisible();
+  await expect(canvas.getByText(/^Changed in this range \(3\)$/)).toBeVisible();
   await expect(canvas.getByText(/^Call the changed code directly \(\d+\)$/)).toBeVisible();
   expect(await canvas.locator(".rv-group-label").count()).toBeGreaterThan(1);
   const button = canvas.getByRole("button", { name: "Button, modified, signature changed" });

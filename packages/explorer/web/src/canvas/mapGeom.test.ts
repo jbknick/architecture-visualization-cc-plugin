@@ -9,11 +9,14 @@ import {
   DIR_STRIP_MAX,
   DIR_STRIP_TWO,
   FILE_STRIP_MAX,
+  fitCamera,
+  fitGroupCamera,
   folderStrip,
   headPx,
   mapChild,
   normInner,
   screenRectOf,
+  unionRect,
   WS_HEAD_MAX,
 } from "./mapGeom.ts";
 import { buildScene, folderTitle, layoutInputFor, subtitleParts } from "./scene.ts";
@@ -191,5 +194,57 @@ describe("folder strips", () => {
               .replace(/\s/g, ""),
           ).toBe("participants-pause");
       }
+  });
+});
+
+describe("unionRect (the review fit box)", () => {
+  it("holds a change and its consumers", () => {
+    const box = unionRect([
+      { x: 10, y: 10, w: 5, h: 5 },
+      { x: 40, y: 2, w: 10, h: 4 },
+      { x: 20, y: 30, w: 3, h: 8 },
+    ]);
+    expect(box).toEqual({ x: 10, y: 2, w: 40, h: 36 });
+  });
+  it("is the node itself when there are no consumers, and null for nothing", () => {
+    expect(unionRect([{ x: 1, y: 2, w: 3, h: 4 }])).toEqual({ x: 1, y: 2, w: 3, h: 4 });
+    expect(unionRect([])).toBeNull();
+  });
+});
+
+describe("review fit (#171)", () => {
+  const size = { w: 1000, h: 700 };
+  const pad = { top: 70, right: 60, bottom: 60, left: 60 };
+  const inside = (
+    r: { x: number; y: number; w: number; h: number },
+    c: { scale: number; tx: number; ty: number },
+  ) => {
+    const x0 = r.x * c.scale + c.tx;
+    const y0 = r.y * c.scale + c.ty;
+    return [x0, y0, x0 + r.w * c.scale, y0 + r.h * c.scale] as const;
+  };
+  it("pads the fit: every rectangle sits inside the viewport minus the padding", () => {
+    const rects = [
+      { x: 100, y: 100, w: 40, h: 30 },
+      { x: 600, y: 400, w: 50, h: 80 },
+    ];
+    const c = fitGroupCamera(() => rects, pad, size, 1, 90);
+    for (const r of rects) {
+      const [x0, y0, x1, y1] = inside(r, c);
+      expect(x0).toBeGreaterThanOrEqual(pad.left - 1e-6);
+      expect(y0).toBeGreaterThanOrEqual(pad.top - 1e-6);
+      expect(x1).toBeLessThanOrEqual(size.w - pad.right + 1e-6);
+      expect(y1).toBeLessThanOrEqual(size.h - pad.bottom + 1e-6);
+    }
+  });
+  it("never zooms closer than the node alone, nor past the map's limit", () => {
+    const node = { x: 100, y: 100, w: 40, h: 30 };
+    const far = { x: 600, y: 400, w: 50, h: 80 };
+    const alone = fitGroupCamera(() => [node], pad, size, 1, 90);
+    const group = fitGroupCamera(() => [node, far], pad, size, 1, 90);
+    expect(group.scale).toBeLessThan(alone.scale);
+    const tiny = fitGroupCamera(() => [{ x: 0, y: 0, w: 0.001, h: 0.001 }], pad, size, 2, 90);
+    expect(tiny.scale).toBe(180);
+    expect(fitCamera(node, pad, size).scale).toBeCloseTo(alone.scale, 9);
   });
 });
