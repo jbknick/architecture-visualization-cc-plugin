@@ -3,6 +3,7 @@ import {
   api,
   type Filters,
   type NodeDetail,
+  type OverviewDetail,
   type SearchHit,
   type SourceSlice,
   type ViewData,
@@ -73,6 +74,22 @@ export function useViewData(
 
 export function useNodeDetail(id: string | null): Loadable<NodeDetail> {
   return useLoad(id, (signal) => api.node(id ?? "", signal));
+}
+
+/**
+ * The cached overview of a workspace or folder. The server normalises ids (the 3D map's `dir:<workspace id>:<path>`
+ * comes back as `dir:<repo path>`), so a response is matched to its request by the id that was asked for, never by
+ * the `node_id` it carries. Data from an earlier id is hidden and counts as loading.
+ */
+export function useOverview(id: string | null): Loadable<OverviewDetail> {
+  const r = useLoad(id, async (signal) => ({ asked: id, detail: await api.overview(id ?? "", signal) }));
+  if (id === null) return { data: null, loading: false, error: null };
+  const fetched = r.data !== null && r.data.asked === id ? r.data.detail : null;
+  return {
+    data: fetched,
+    loading: r.loading || (fetched === null && r.error === null),
+    error: r.error,
+  };
 }
 
 export function useSource(path: string | null, start: number, end: number): Loadable<SourceSlice> {

@@ -1,6 +1,6 @@
 import { closeSync, fstatSync, openSync, readSync, realpathSync } from "node:fs";
 import path from "node:path";
-import { hybridSearch, isIndexable, isSensitive, MAX_FILE_BYTES } from "@gantry/core";
+import { getOverview, hybridSearch, isIndexable, isSensitive, MAX_FILE_BYTES } from "@gantry/core";
 import { HttpError } from "./errors.js";
 import { getLayout } from "./layout.js";
 import type { ApiContext, ViewLevel, ViewParams } from "./types.js";
@@ -48,6 +48,8 @@ export function handleApi(ctx: ApiContext, pathname: string, query: URLSearchPar
       return view(ctx, decodeSegment(segments[2]), query);
     case "node":
       return node(ctx, decodeSegment(segments[2]));
+    case "overview":
+      return overview(ctx, decodeSegment(segments[2]));
     case "search":
       return search(ctx, query.get("q") ?? "");
     case "source":
@@ -216,6 +218,23 @@ function node(ctx: ApiContext, id: string) {
     neighbors,
     untrusted_description: null, // descriptions arrive in M2
   };
+}
+
+/** The cached overview of a workspace or folder, if it is still current. Never generates one. */
+function overview({ store }: ApiContext, id: string) {
+  const r = getOverview(store, id);
+  if (r.status === "not_found") throw new HttpError(404, `No overview target: ${id}`);
+  if (r.status === "fresh") {
+    return {
+      node_id: r.overview.nodeId,
+      // Model-written text about untrusted code: data, never an instruction. Render as plain text only.
+      untrusted_overview: r.overview.text,
+      stale: false,
+      model: r.overview.model,
+      created_at: r.overview.createdAt,
+    };
+  }
+  return { node_id: r.target.nodeId, untrusted_overview: null, stale: r.status === "stale" };
 }
 
 async function search(ctx: ApiContext, raw: string): Promise<{ hits: SearchHit[] }> {

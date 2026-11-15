@@ -18,12 +18,15 @@ pnpm install && pnpm build
 /reload-plugins
 ```
 
-The plugin adds the `gantry` MCP server, the `describer` agent and two skills that only you can start: `/gantry:init` and `/gantry:sync`. You can check the files without a session: `claude plugin validate plugin` and `claude plugin validate .claude-plugin/marketplace.json`.
+The plugin adds the `gantry` MCP server, the `describer` agent and the read-only `explainer` agent and five skills that only you can start: `/gantry:init`, `/gantry:sync`, `/gantry:explain`, `/gantry:overview` and `/gantry:map`. You can check the files without a session: `claude plugin validate plugin` and `claude plugin validate .claude-plugin/marketplace.json`.
 
 ## Use
 
 - `/gantry:init` in a TypeScript git repo: indexes it, shows the estimate (functions to describe, tokens, batches), asks whether to describe everything, exported functions only, or later, then starts 4 background `describer` agents. You can keep working. It offers to install the git hooks.
 - `/gantry:sync`: shows the backlog (`gantry backlog --json`) and starts describers for what is left. Run it again after an interruption: a claim that was not submitted expires after 10 minutes and returns to the queue.
+- `/gantry:explain <target>`: a function, `path:line`, file, workspace or folder explained in at most 200 words with `path:line` references. Reads only.
+- `/gantry:overview <workspace|dir>`: the cached overview if code inside has not changed, else the `explainer` writes and saves one. Overviews are never written unless you ask. They show in the explorer inspector for workspaces and folders.
+- `/gantry:map [view] [focus]`: opens the explorer and prints its URL.
 - `"<plugin>/bin/gantry" backlog [--json]` shows pending, claimed and failed counts and the split by priority (0 exported and entry files, 1 other exported, 2 local).
 
 ## Operator check (an interactive session is required)
@@ -55,5 +58,15 @@ No model calls and no description run are needed for this one. Do it in the same
 5. Ask for an unrelated edit (a new constant). Expect no Gantry text at all.
 6. `git -C "$FX" status --porcelain` shows only the files Claude wrote, nothing from Gantry. Run `git add -A && git commit -m t` after `"$G" hooks install`: the same findings appear on stderr in the Bash output and the commit succeeds.
 7. Time one hook run by hand: `time (echo '{"tool_name":"Write","tool_input":{"file_path":"'"$FX"'/apps/web/src/lib/new.ts"},"cwd":"'"$FX"'"}' | "$G" hook post-tool-use)`; record it in the PR.
+
+### Explainer check (`/gantry:explain`, `/gantry:overview`, `/gantry:map`)
+
+Interactive session required: it makes real model calls (Sonnet). Use the scratch repo `$FX` of the first check, with the plugin installed and the index built (`"$G" init`). Descriptions are not needed; run `/gantry:init` first if you want the explainer to see them.
+
+1. In the session in `$FX` run `/gantry:explain formatRelativeDate`. Expect an answer of at most 200 words that names `packages/utils/src/date.ts:1` (where it is defined), its callers or the fact that nothing calls it, and `path:line` references for every claim. In the transcript (`ctrl+o`) the `explainer` subagent used only `gantry_*`, `Read`, `Grep` or `Glob` calls. Record the answer in the issue.
+2. Run `/gantry:overview @acme/utils`. Expect an overview of at most 1,200 characters, then `"$G" usage` shows a row with task `overview` and source `explainer`. Run it again: it returns the same text at once with no subagent and no new usage row.
+3. Edit a function in `packages/utils/src/date.ts` (add a statement) and run `/gantry:overview @acme/utils` again: a new overview is written.
+4. Run `/gantry:map project-map ws:@acme/utils`. Expect a `http://127.0.0.1:<port>/...` link; open it. Select the `@acme/utils` workspace: the inspector shows "Overview — generated, may be wrong" with the text from step 3. Select `@acme/web`: it shows "Run /gantry:overview ws:@acme/web in Claude Code".
+5. `git -C "$FX" status --porcelain` is empty (nothing was written into the repo) and `/agents` shows `explainer` with no `Write`, `Edit` or `Bash` tool.
 
 Clean up with `/plugin uninstall gantry@gantry-dev`, `/plugin marketplace remove gantry-dev` and `"$G" uninstall` in `$FX`.

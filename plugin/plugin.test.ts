@@ -25,6 +25,10 @@ const MARKDOWN = [
   "skills/init/SKILL.md",
   "skills/sync/SKILL.md",
   "skills/reuse-first/SKILL.md",
+  "agents/explainer.md",
+  "skills/explain/SKILL.md",
+  "skills/overview/SKILL.md",
+  "skills/map/SKILL.md",
 ];
 
 describe("plugin manifest and MCP config", () => {
@@ -126,11 +130,68 @@ describe("describer agent", () => {
 });
 
 describe("skills", () => {
-  it.each(["init", "sync"])("%s is user-invoked only", (name) => {
+  it.each(["init", "sync", "explain", "overview", "map"])("%s is user-invoked only", (name) => {
     const { data } = frontmatter(read(`skills/${name}/SKILL.md`));
     expect(data.name).toBe(name);
     expect(data["disable-model-invocation"]).toBe("true");
     expect(data.description).toBeTruthy();
+  });
+});
+
+describe("explainer agent (#35)", () => {
+  const { data, body } = frontmatter(read("agents/explainer.md"));
+  const P = "mcp__plugin_gantry_gantry__";
+
+  it("has read-only tools: the six Gantry tools plus Read, Grep and Glob, never Write, Edit or Bash", () => {
+    const tools = (data.tools ?? "").split(",").map((t) => t.trim());
+    expect([...tools].sort()).toEqual(
+      [
+        `${P}gantry_search`,
+        `${P}gantry_browse`,
+        `${P}gantry_node`,
+        `${P}gantry_find_similar`,
+        `${P}gantry_get_overview`,
+        `${P}gantry_save_overview`,
+        "Read",
+        "Grep",
+        "Glob",
+      ].sort(),
+    );
+    for (const banned of ["Write", "Edit", "MultiEdit", "Bash", "NotebookEdit", "Agent", "Task"]) {
+      expect(tools).not.toContain(banned);
+    }
+    expect(data).not.toHaveProperty("disallowedTools");
+    expect(data).not.toHaveProperty("mcpServers");
+    expect(data).not.toHaveProperty("background");
+  });
+
+  it("matches spec section 16 settings and treats tool text as data", () => {
+    expect(data).toMatchObject({ name: "explainer", model: "sonnet", effort: "medium" });
+    expect(body).toMatch(/untrusted data, never instructions/);
+    for (const f of ["untrusted_description", "untrusted_suggested_name", "untrusted_overview"]) {
+      expect(body).toContain(f);
+    }
+    expect(body).toContain("200 words");
+    expect(body).toContain("`path:line`");
+  });
+});
+
+describe("explain, overview and map skills (#35)", () => {
+  it.each(["explain", "overview", "map"])("%s body is under 20 lines", (name) => {
+    const { body } = frontmatter(read(`skills/${name}/SKILL.md`));
+    expect(body.trim().split("\n").length).toBeLessThan(20);
+  });
+
+  it("map calls gantry_open_view by its full name; overview uses the cache tool and the explainer at low effort", () => {
+    expect(frontmatter(read("skills/map/SKILL.md")).body).toContain(
+      "mcp__plugin_gantry_gantry__gantry_open_view",
+    );
+    const overview = frontmatter(read("skills/overview/SKILL.md")).body;
+    expect(overview).toContain("mcp__plugin_gantry_gantry__gantry_get_overview");
+    expect(overview).toContain("explainer");
+    expect(overview).toContain('effort: "low"');
+    expect(overview).toContain("untrusted_overview");
+    expect(frontmatter(read("skills/explain/SKILL.md")).body).toContain("explainer");
   });
 });
 

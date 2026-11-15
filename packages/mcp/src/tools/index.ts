@@ -4,6 +4,7 @@ import { claimTool } from "./claim.js";
 import { findSimilarTool } from "./findSimilar.js";
 import { nodeTool } from "./node.js";
 import { openViewTool } from "./openView.js";
+import { getOverviewTool, saveOverviewTool } from "./overview.js";
 import { searchTool } from "./search.js";
 import { submitTool } from "./submit.js";
 
@@ -19,4 +20,6 @@ export const TOOLS: Tool[] = [
   browseTool,
   nodeTool,
   openViewTool,
+  getOverviewTool,
+  saveOverviewTool,
 ];
