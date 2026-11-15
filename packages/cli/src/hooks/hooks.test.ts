@@ -921,4 +921,56 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     expect(lines.some((l) => l.includes('Declare "@acme/db" in apps/web/package.json (line 9)'))).toBe(true);
     expect(r.out).not.toContain("hookSpecificOutput");
   });
+
+  it("a staged copy of slugify at the repo root and under apps/web is reported on stderr, exit 0 (#144)", async () => {
+    const fx = await indexedFx();
+    writeFileSync(join(fx.dir, "slug-copy.ts"), SLUG);
+    mkdirSync(join(fx.dir, "apps/web/src"), { recursive: true });
+    writeFileSync(join(fx.dir, "apps/web/src/slug-copy.ts"), SLUG);
+    git(fx.dir, ["add", "slug-copy.ts", "apps/web/src/slug-copy.ts"]);
+    const r = gantry(fx.dir, ["hook", "pre-commit"]);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe("");
+    expect(r.err).toContain(
+      "Gantry: slugify (slug-copy.ts:1) looks like slugify in apps/web/src/lib/slug.ts:1 [exact 1.00]",
+    );
+    expect(r.err).toContain(
+      "Gantry: slugify (apps/web/src/slug-copy.ts:1) looks like slugify in apps/web/src/lib/slug.ts:1 [exact 1.00]. Import it: import { slugify } from './lib/slug'",
+    );
+  });
+
+  it("a copy PostToolUse already indexed into the working layer is still reported by pre-commit (#144)", async () => {
+    const fx = await indexedFx();
+    const e = edit(fx, "apps/web/src/lib/new.ts", SLUG);
+    expect(e.out).toContain("looks like slugify");
+    git(fx.dir, ["add", "apps/web/src/lib/new.ts"]);
+    const r = gantry(fx.dir, ["hook", "pre-commit"]);
+    expect(r.code).toBe(0);
+    expect(r.err).toContain(SLUG_LINE);
+  });
+
+  it("the installed git hook finds the plugin data store without any plugin env var (#144)", async () => {
+    const fx = await indexedFx();
+    install(fx.dir);
+    // The legacy location has no store for this repo, so only the data base recorded at install can find it.
+    expect(existsSync(join(home, ".gantry/data/repos", pathsOf(fx.dir).worktreeHash))).toBe(false);
+    expect(readFileSync(join(fx.dir, ".git/hooks/pre-commit"), "utf8")).toContain(
+      `CLAUDE_PLUGIN_DATA='${dataRoot}' "$HOME/.gantry/bin/gantry" hook pre-commit`,
+    );
+    writeFileSync(join(fx.dir, "slug-copy.ts"), SLUG);
+    git(fx.dir, ["add", "slug-copy.ts"]);
+    const r = git(fx.dir, ["commit", "-m", "dup"], { CLAUDE_PLUGIN_DATA: "", CLAUDE_PLUGIN_ROOT: "" });
+    expect(r.code).toBe(0);
+    expect(r.err).toContain(
+      "Gantry: slugify (slug-copy.ts:1) looks like slugify in apps/web/src/lib/slug.ts:1",
+    );
+  });
+
+  it("an install against the default data dir writes the plain call line", () => {
+    const line = hookScript("pre-commit", false).split("\n")[1];
+    expect(line).toBe(
+      '[ "$GANTRY_WORKER" = 1 ] || "$HOME/.gantry/bin/gantry" hook pre-commit "$@" </dev/null || true',
+    );
+    expect(hookScript("pre-commit", false, "/d/it's")).toContain(`CLAUDE_PLUGIN_DATA='/d/it'\\''s' "$HOME`);
+  });
 });

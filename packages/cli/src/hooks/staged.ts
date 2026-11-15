@@ -102,7 +102,13 @@ async function withStaged<T>(
  */
 async function stagedFindings(paths: GantryPaths, c: StagedContext): Promise<string[]> {
   const config = loadConfig(paths);
-  const previous = new Map(c.real.effectiveSymbols().map((s) => [s.id, s.exactHash]));
+  // Against the main layer (what the last commit indexed), not the effective view: PostToolUse already put an
+  // edited-but-uncommitted file into the working layer, and a copy it flagged there must be flagged again here.
+  const rows = c.real.db.prepare("SELECT id, exact_hash FROM symbols WHERE layer = 'main'").all() as {
+    id: string;
+    exact_hash: string;
+  }[];
+  const previous = new Map(rows.map((r) => [r.id, r.exact_hash]));
   const findings: Finding[] = await duplicateFindings(c.scratch, changedSymbols(c.staged, previous), config);
   for (const [p, text] of [...c.sources].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const head = git(paths.root, ["show", `HEAD:${p}`]);
