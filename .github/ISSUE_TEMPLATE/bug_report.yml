@@ -1,0 +1,62 @@
+name: Bug report
+description: Something does not work as described in the README or the spec
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please do not paste code, file names, graph dumps or screenshots from a private repository: this issue is public. If you can, reproduce the problem on one of the repo's `fixtures/` instead.
+        Security problems go through [SECURITY.md](https://github.com/jbknick/architecture-visualization-cc-plugin/blob/main/SECURITY.md), not here.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Indexer / CLI
+        - Explorer (2D map, caller graph, duplicates)
+        - Explorer (3D views)
+        - MCP server
+        - Plugin (hooks, skills, agents)
+        - Git hooks / pre-commit describer
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Commands you ran, and which fixture or kind of repo (monorepo tool, size) you ran them on.
+      placeholder: |
+        1. pnpm install && pnpm build
+        2. cd fixtures/pnpm-turbo && node ../../plugin/dist/cli.js init
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output or logs
+      description: Error messages or console output. Remove anything private first.
+      render: text
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: Output of `git rev-parse --short HEAD`.
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: OS, Node version, pnpm version, browser (for explorer bugs), Claude Code version (for plugin bugs).
+    validations:
+      required: true
