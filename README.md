@@ -156,7 +156,7 @@ pnpm fmt      # apply Biome fixes
 pnpm readme:media   # regenerate the screenshots in docs/readme/ (add --gif to redo the GIFs too)
 ```
 
-[`docs/SPEC.md`](docs/SPEC.md) holds the contracts and the repo layout, and [`CLAUDE.md`](CLAUDE.md) the contribution rules. The explorer's own notes, including how to run it against the mock API, are in [`packages/explorer/web/README.md`](packages/explorer/web/README.md). `pnpm readme:media` needs Chromium for Playwright (`pnpm --filter @gantry/explorer exec playwright install chromium`).
+[`docs/SPEC.md`](docs/SPEC.md) holds the contracts and the repo layout. Contributions are welcome: start with [`CONTRIBUTING.md`](CONTRIBUTING.md), which covers setup, the PR rules (from [`CLAUDE.md`](CLAUDE.md)) and where to ask questions. Report security problems as described in [`SECURITY.md`](SECURITY.md). The explorer's own notes, including how to run it against the mock API, are in [`packages/explorer/web/README.md`](packages/explorer/web/README.md). `pnpm readme:media` needs Chromium for Playwright (`pnpm --filter @gantry/explorer exec playwright install chromium`).
 
 The repository is named `architecture-visualization-cc-plugin`.
 
