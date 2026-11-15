@@ -231,3 +231,46 @@ export function unionRect(rects: readonly Rect[]): Rect | null {
   }
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
+
+export interface FitPad {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+export interface FitCam {
+  scale: number;
+  tx: number;
+  ty: number;
+}
+
+/** The camera that shows world rectangle `rect` centred in a `size` viewport, inside `pad` (at least 40 px free). */
+export function fitCamera(rect: Rect, pad: FitPad, size: { w: number; h: number }): FitCam {
+  const aw = Math.max(40, size.w - pad.left - pad.right);
+  const ah = Math.max(40, size.h - pad.top - pad.bottom);
+  const scale = Math.min(aw / Math.max(rect.w, 1), ah / Math.max(rect.h, 1));
+  return {
+    scale,
+    tx: pad.left + (aw - rect.w * scale) / 2 - rect.x * scale,
+    ty: pad.top + (ah - rect.h * scale) / 2 - rect.y * scale,
+  };
+}
+
+/**
+ * The review's zoom (#171): fits a change's node and its direct consumers' nodes together. `rectsAt(scale)` gives
+ * their world rectangles at a zoom (headers keep their screen size, so the rectangles depend on it); the fit is
+ * repeated twice at the scale it found. The scale never passes `fitScale * maxScale` (the plain map's limit when
+ * zooming to a single node) and, as the box holds the change's node, never the scale that fits that node alone.
+ */
+export function fitGroupCamera(
+  rectsAt: (scale: number) => Rect[],
+  pad: FitPad,
+  size: { w: number; h: number },
+  fitScale: number,
+  maxScale: number,
+): FitCam {
+  const at = (s: number) => unionRect(rectsAt(s)) as Rect;
+  let t = fitCamera(at(fitScale), pad, size);
+  for (let k = 0; k < 2; k++) t = fitCamera(at(t.scale), pad, size);
+  return { ...t, scale: Math.min(t.scale, fitScale * maxScale) };
+}

@@ -319,7 +319,8 @@ export class SettlementScene {
       const e = l.byId.get(k);
       if (e?.type !== "building") continue;
       const b = l.buildings[e.i] as SBuilding;
-      pts.push({ x: b.x, y: b.h / 2, z: b.z, r: Math.max(b.h / 2, 3) });
+      // The sphere around the whole building: footprint and height.
+      pts.push({ x: b.x, y: b.h / 2, z: b.z, r: Math.hypot(Math.hypot(b.w, b.d) / 2, b.h / 2) });
     }
     if (pts.length < 2) {
       this.flyTo(id);
@@ -330,11 +331,28 @@ export class SettlementScene {
     target.multiplyScalar(1 / pts.length);
     let radius = 0;
     for (const p of pts) radius = Math.max(radius, target.distanceTo(new THREE.Vector3(p.x, p.y, p.z)) + p.r);
-    const dist = Math.max(14, (radius * 1.25) / Math.sin((FOV * Math.PI) / 360));
+    // The narrower of the vertical and horizontal half angles decides how far back the sphere fits.
+    const vHalf = (FOV * Math.PI) / 360;
+    const hHalf = Math.atan(Math.tan(vHalf) * (this.w / Math.max(1, this.h)));
+    const dist = Math.max(14, (radius * 1.2) / Math.sin(Math.min(vHalf, hHalf)));
     const dir = this.camera.position.clone().sub(this.controls.target).normalize();
     if (dir.y < 0.35) dir.setY(0.35).normalize();
     this.autoFit = false;
     this.animateTo(target.clone().addScaledVector(dir, dist), target, !this.opts.reducedMotion);
+  }
+
+  /** Test hook: where the buildings `ids` project on screen now, in normalised device coordinates (-1 to 1). */
+  projectIds(ids: readonly string[]): { id: string; x: number; y: number; z: number }[] {
+    const l = this.land;
+    if (!l) return [];
+    this.camera.updateMatrixWorld(true);
+    return ids.flatMap((id) => {
+      const e = l.byId.get(id);
+      if (e?.type !== "building") return [];
+      const b = l.buildings[e.i] as SBuilding;
+      const q = new THREE.Vector3(b.x, b.h / 2, b.z).project(this.camera);
+      return [{ id, x: q.x, y: q.y, z: q.z }];
+    });
   }
 
   dispose(): void {
