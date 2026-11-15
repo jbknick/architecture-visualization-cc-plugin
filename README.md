@@ -10,8 +10,6 @@ The screenshots on this page are the real app. The larger ones come from the exp
 
 ## What you can see
 
-![Switching the 2D levels, then the 3D settlements with their traffic](docs/readme/explorer-tour.gif)
-
 ### 2D project map
 
 Boxes are workspaces and their area is their function count. A line goes from the workspace that imports to the workspace it imports from, in the importing workspace's colour; the number on it is how many files import across that link, and thicker means more. Double-click a box to look inside.
@@ -51,36 +49,6 @@ Groups of functions that are copies of each other, biggest first (number of copi
 Without `gantry embed` only identical and nearly identical code is found: copies that were renamed or rewritten are found by the vector tier, which needs the embeddings, and the page says so in a banner until they exist. The page cannot undo a dismissal yet.
 
 ![The duplicates view: ranked groups on the left, the selected group and a side-by-side comparison on the right](docs/readme/duplicates.png)
-
-### 3D map (just for fun)
-
-The 3D map is just for fun and is not very useful for real work. The 2D views are the ones to use. It shows the repo as a landscape. Each workspace is a settlement, and its size sets the tier: **village** (cottages, fields, a windmill), **town** (houses inside a wall, a church), **city** (blocks, cranes) or **metropolis** (a core of towers with suburbs round it). Tiers are ranked within the repo, and a workspace with fewer than 20 functions is always a village. Every file is one building: taller means more functions, wider means more lines. Its shape comes from the tier and from what the file is (a dome for a test, a water tower for config, a shop awning for a component, a columned porch for a route). Roofs and kerbs take the workspace's colour, as in the 2D map. Imports between workspaces are drawn as roads on the ground: a dirt lane for a few imports, a road, or a dual-carriageway highway for the heaviest. Vehicles and yellow arrows travel from the importing workspace to the imported one, and more imports means more traffic. The label on a road reads `A → B N`: A imports from B N times. The motion stops with "Pause life", stops when the tab is hidden, and is off when the system asks for reduced motion.
-
-![3D settlements: a metropolis, two cities, walled towns and villages, joined by roads and highways](docs/readme/settlements.png)
-
-"Street level" puts the camera in one of the metropolis's avenues, and clicking a workspace in the list flies to it:
-
-![Street level in the metropolis](docs/readme/settlements-street.png)
-
-![A walled town with its church, roads and traffic](docs/readme/settlements-town.png)
-
-![Traffic on the roads round a city](docs/readme/settlements-traffic.gif)
-
-In the dark theme it is night, with lit windows and street lights:
-
-![3D settlements at night](docs/readme/settlements-dark.png)
-
-The pnpm-turbo fixture: five small workspaces, so five villages.
-
-![The pnpm-turbo fixture as settlements](docs/readme/fixture-settlements.png)
-
-The older renderings are still one click away. "City" stands the 2D layout up in 3D: each district is a workspace with its ground area as its function count, and arches between districts carry the import counts. "Islands" is the first 3D rendering.
-
-![3D city, Workspaces level](docs/readme/city-workspaces.png)
-
-At Files level of the city every file is a building and its height is its function count. The numbered flags mark the largest files, matching the list on the left.
-
-![3D city, Files level, with numbered flags](docs/readme/city-files.png)
 
 ## Quick start
 
@@ -195,3 +163,35 @@ The repository is named `architecture-visualization-cc-plugin`.
 ## Licence
 
 [MIT](LICENSE).
+
+## 3D map (just for fun)
+
+![Switching the 2D levels, then the 3D settlements with their traffic](docs/readme/explorer-tour.gif)
+
+The 3D map is just for fun and is not very useful for real work. The 2D views are the ones to use. It shows the repo as a landscape. Each workspace is a settlement, and its size sets the tier: **village** (cottages, fields, a windmill), **town** (houses inside a wall, a church), **city** (blocks, cranes) or **metropolis** (a core of towers with suburbs round it). Tiers are ranked within the repo, and a workspace with fewer than 20 functions is always a village. Every file is one building: taller means more functions, wider means more lines. Its shape comes from the tier and from what the file is (a dome for a test, a water tower for config, a shop awning for a component, a columned porch for a route). Roofs and kerbs take the workspace's colour, as in the 2D map. Imports between workspaces are drawn as roads on the ground: a dirt lane for a few imports, a road, or a dual-carriageway highway for the heaviest. Vehicles and yellow arrows travel from the importing workspace to the imported one, and more imports means more traffic. The label on a road reads `A → B N`: A imports from B N times. The motion stops with "Pause life", stops when the tab is hidden, and is off when the system asks for reduced motion.
+
+![3D settlements: a metropolis, two cities, walled towns and villages, joined by roads and highways](docs/readme/settlements.png)
+
+"Street level" puts the camera in one of the metropolis's avenues, and clicking a workspace in the list flies to it:
+
+![Street level in the metropolis](docs/readme/settlements-street.png)
+
+![A walled town with its church, roads and traffic](docs/readme/settlements-town.png)
+
+![Traffic on the roads round a city](docs/readme/settlements-traffic.gif)
+
+In the dark theme it is night, with lit windows and street lights:
+
+![3D settlements at night](docs/readme/settlements-dark.png)
+
+The pnpm-turbo fixture: five small workspaces, so five villages.
+
+![The pnpm-turbo fixture as settlements](docs/readme/fixture-settlements.png)
+
+The older renderings are still one click away. "City" stands the 2D layout up in 3D: each district is a workspace with its ground area as its function count, and arches between districts carry the import counts. "Islands" is the first 3D rendering.
+
+![3D city, Workspaces level](docs/readme/city-workspaces.png)
+
+At Files level of the city every file is a building and its height is its function count. The numbered flags mark the largest files, matching the list on the left.
+
+![3D city, Files level, with numbered flags](docs/readme/city-files.png)
