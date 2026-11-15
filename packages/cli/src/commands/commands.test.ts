@@ -309,6 +309,62 @@ describe("gantry heal", () => {
   });
 });
 
+describe("gantry review", () => {
+  it("prints the symbol diff as JSON on a clean stdout, creates no data dir and leaves the repo alone", async () => {
+    const fx = await fixture("pnpm-turbo");
+    fx.git(["checkout", "-b", "feature"]);
+    const file = join(fx.dir, "packages/utils/src/slug.ts");
+    const extra = "export function slugifyAll(xs: string[]): string[] {\n  return xs.map(slugify);\n}\n";
+    writeFileSync(file, `${readFileSync(file, "utf8")}${extra}`);
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-m", "add"]);
+    const data = join(dataDir, "review-data");
+    const r = run(fx.dir, ["review", "main...feature", "--json"], { CLAUDE_PLUGIN_DATA: data });
+    expect(r.err).toBe("");
+    expect(r.code).toBe(0);
+    const j = JSON.parse(r.out) as {
+      base: string;
+      head: string;
+      files: { path: string; status: string }[];
+      changes: { id: string; kind: string }[];
+    };
+    expect(j.base).toBe("main");
+    expect(j.head).toBe("feature");
+    expect(j.files).toEqual([{ path: "packages/utils/src/slug.ts", status: "M" }]);
+    expect(j.changes.map((c) => [c.kind, c.id])).toEqual([
+      ["added", "sym:packages/utils/src/slug.ts#slugifyAll"],
+    ]);
+    expect(existsSync(data)).toBe(false);
+    expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
+  });
+
+  it("fails with a clear message for a bad range, an unknown ref and a missing mode", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const bad = run(fx.dir, ["review", "main", "--json"]);
+    expect(bad.code).toBe(1);
+    expect(bad.err).toContain("expected <base>...<head>");
+    expect(bad.out).toBe("");
+    const unknown = run(fx.dir, ["review", "main...nope", "--json"]);
+    expect(unknown.code).toBe(1);
+    expect(unknown.err).toContain("unknown git ref: nope");
+    expect(unknown.out).toBe("");
+    expect(run(fx.dir, ["review", "--json"]).code).toBe(1);
+    expect(run(fx.dir, ["review", "main...main"]).err).toContain("--json");
+  });
+
+  it("--pr without a usable gh prints the range form as the way out", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const bin = join(dataDir, "fake-gh-bin");
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(join(bin, "gh"), "#!/bin/sh\necho 'not logged in' >&2\nexit 1\n", { mode: 0o755 });
+    const r = run(fx.dir, ["review", "--pr", "7", "--json"], { PATH: `${bin}:${process.env.PATH ?? ""}` });
+    expect(r.code).toBe(1);
+    expect(r.err).toMatch(/gh pr view 7 failed \(not logged in\)/);
+    expect(r.err).toContain("gantry review <base>...<head>");
+    expect(r.out).toBe("");
+  });
+});
+
 describe("gantry search / node", () => {
   it("search 'relative date' lists formatRelativeDate first, as a table and as JSON", async () => {
     const fx = await fixture("pnpm-turbo");
