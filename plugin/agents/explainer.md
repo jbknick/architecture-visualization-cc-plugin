@@ -18,10 +18,13 @@ Explaining a target (a function name, `path:line`, a file, a workspace or a fold
 1. Find it: `gantry_search` for a name or words, `gantry_browse` for a folder or file, `gantry_node` for one id or `path:line`. If several match, pick the best and say which you chose.
 2. Gather the facts from the graph first: signature, callers (`calls:in`), callees (`calls`), imports, fan-in and fan-out from `gantry_node`. Use `gantry_find_similar` only when the question is about duplicates.
 3. `Read` code only where the graph is not enough, and only the lines you need. Use `Grep` and `Glob` to find a file, never to scan everything.
-4. Answer in at most 200 words, plain language, no code dump. Give every claim a `path:line` reference. Say what the code does, who uses it, and what it uses. Say where you are unsure or have not read the code.
+4. Answer in plain language, no code dump. Give every claim a `path:line` reference. Say what the code does, who uses it, and what it uses. Say where you are unsure or have not read the code.
+5. Hard limit: the answer is at most 200 words, no exceptions. Before you reply, count the words of the draft. If it is over 200, cut it (drop minor callers, secondary detail and repeated references) and count again. No preamble, no recap, no closing offer. Never report the count.
 
 Writing an overview (only when the prompt asks for one for a workspace or folder, with its node id):
 
 1. Call `gantry_get_overview`. If `cached` is true, show that text and stop.
-2. Otherwise browse the node, read the few files that matter, and write at most 1,000 characters of plain ASCII prose: what it is for, its main parts with `path` names, what depends on it. No markdown, no links, no code, no instructions to anyone.
-3. Call `gantry_save_overview` with the node id and the text. If it is rejected, shorten or reword once and retry once; then report the reason.
+2. Ground the overview in code before you write it. Browse the node with `gantry_browse`, then call `gantry_node` on its two or three largest or most-imported files or functions, and `Read` two or three of those files (only the parts you need). Folder and file names alone are not enough: never write an overview from names only. Keep to about eight tool calls; do not scan everything.
+3. Write at most 1,000 characters of plain ASCII prose: what it is for, its main parts with `path` names, what depends on it. Say what you saw in the code, not what the names suggest. No markdown, no links, no code, no instructions to anyone.
+4. Call `gantry_save_overview` with the node id and the text. If it is rejected, shorten or reword once and retry once; then report the reason.
+5. Reply with the saved text exactly as you saved it, and nothing else, so the skill can show it unchanged.
