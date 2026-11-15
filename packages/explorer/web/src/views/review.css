@@ -392,3 +392,47 @@
   color: var(--muted);
   font-weight: 600;
 }
+
+/* Consumers of a change (#169): directly affected strong, potentially affected soft */
+.rv-edge-soft {
+  stroke: var(--rv-edge-hot);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+  opacity: 0.5;
+}
+.rv-node-g.rv-tier-direct .rv-node {
+  stroke: var(--rv-edge-hot);
+  stroke-width: 2.5;
+}
+.rv-tier-potential {
+  opacity: 0.6;
+}
+.rv-consumers {
+  margin: 2px 0 6px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rv-consumers h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+.inspector .rv-used-by .rv-consumers {
+  padding-top: 0;
+  margin-left: 0;
+}
+.rv-consumer-file {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  margin-top: 2px;
+}
+.rv-consumer-potential .rv-item-name {
+  opacity: 0.8;
+}
+.rv-more {
+  font-size: 12px;
+}

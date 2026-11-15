@@ -509,7 +509,9 @@ async function fixtureStills(browser: Browser) {
       await save(page, "fixture-review");
     }
     if (want("fixture-review-rings")) {
-      await page.goto(`${base}#/review?range=main...feature&mode=rings&sel=`);
+      // Button in focus: its direct callers strong, its potential ones soft, the rest faded (#169).
+      const focusButton = encodeURIComponent("sym:packages/ui/src/button.tsx#Button");
+      await page.goto(`${base}#/review?range=main...feature&mode=rings&sel=${focusButton}`);
       await page.locator("[data-testid=review-canvas][data-mode=rings]").waitFor({ timeout: 30_000 });
       await settle(page);
       await save(page, "fixture-review-rings");

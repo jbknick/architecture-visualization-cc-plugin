@@ -145,13 +145,55 @@ describe("review view", () => {
       impact.callersByHop.map((h) => ({ hop: h.hop, count: h.ids.length })),
     );
     expect(review?.range).toBe("main...feature");
-    expect(review?.files).toEqual([{ path: "packages/ui/src/button.tsx", status: "M", changes: 1 }]);
+    expect(review?.files).toEqual([
+      expect.objectContaining({ path: "packages/ui/src/button.tsx", status: "M", changes: 1 }),
+    ]);
+    expect(review?.files[0]?.consumers.direct.map((d) => [d.id, d.uses, d.node])).toEqual([
+      ["file:packages/ui/src/index.ts", ["imports"], "file:packages/ui/src/index.ts"],
+      [HOME_FILE, ["imports"], HOME_FILE],
+      [
+        "file:apps/web/src/routes/settings/profile.tsx",
+        ["imports"],
+        "file:apps/web/src/routes/settings/profile.tsx",
+      ],
+    ]);
     const change = review?.changes[0];
     expect(change?.id).toBe(BUTTON);
     expect(change?.before?.signature).not.toEqual(change?.after?.signature);
     expect(change?.after?.signature).toContain("size?: number");
     expect(change?.callers).toBe(impact.callersByHop[0]?.ids.length);
     expect(review?.rules.map((x) => x.id)).toContain("signatureChangedExported");
+  });
+
+  it("consumers: each change lists who uses it directly and potentially, placed on this map's nodes", async () => {
+    const { ctx } = await setup();
+    const r = await buildReview(ctx, opts({ range: "main...feature" }));
+    const c = r.review?.changes[0]?.consumers;
+    expect(c?.directTotal).toBe(3);
+    expect(c?.direct.map((d) => [d.id, d.uses, d.crosses, d.node])).toEqual([
+      ["file:packages/ui/src/index.ts", ["imports"], [], "file:packages/ui/src/index.ts"],
+      [HOME, ["renders"], ["app"], HOME_FILE],
+      [
+        "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+        ["renders"],
+        ["app"],
+        "file:apps/web/src/routes/settings/profile.tsx",
+      ],
+    ]);
+    const route = c?.potential.find((p) => p.id === "route:@acme/web:/");
+    expect(route).toMatchObject({ hop: 2, via: HOME, next: HOME, node: HOME_FILE, nextNode: HOME_FILE });
+    // reached through the barrel: its line runs to the barrel's node
+    expect(c?.potential.find((p) => p.id === "file:apps/web/src/routes/settings/profile.tsx")).toMatchObject({
+      hop: 2,
+      via: "file:packages/ui/src/index.ts",
+      nextNode: "file:packages/ui/src/index.ts",
+    });
+    // every consumer id is placed, so clicking one selects and zooms to its node
+    const placed = new Map(r.review?.layer.placed);
+    for (const x of [...(c?.direct ?? []), ...(c?.potential ?? [])]) expect(placed.get(x.id)).toBe(x.node);
+    // at the function level the consumer is its own node
+    const fn = await buildReview(ctx, opts({ range: "main...feature" }, "symbols"));
+    expect(fn.review?.changes[0]?.consumers.direct.find((d) => d.id === HOME)?.node).toBe(HOME);
   });
 
   it("function level: Button itself marked, function-to-function lines from its callers", async () => {
@@ -229,7 +271,11 @@ describe("review view", () => {
     expect(r.review?.layer.marks.find((m) => m.id === HOME)?.hop).toBe(1);
     const map = await buildReview(ctx, opts({ range: "main...feature" }));
     expect(r.review?.risk).toEqual(map.review?.risk);
-    expect(r.review?.changes).toEqual(map.review?.changes);
+    // the same changes; only the nodes that show the consumers differ (ring nodes instead of map cells)
+    const strip = <T extends { consumers: { directTotal: number } }>(xs: T[] = []) =>
+      xs.map((x) => ({ ...x, consumers: x.consumers.directTotal }));
+    expect(strip(r.review?.changes)).toEqual(strip(map.review?.changes));
+    expect(r.review?.changes[0]?.consumers.direct.find((d) => d.id === HOME)?.node).toBe(HOME);
   });
 
   it("ring slots: files grouped together with one empty slot between groups; radii fit the slots", () => {
@@ -364,6 +410,10 @@ describe("review view", () => {
       expect(r.review?.changes[0]?.untrusted_description).toContain(MARKER);
       const stripped = text.replaceAll(JSON.stringify(r.review?.changes[0]?.untrusted_description), '""');
       expect(stripped.includes(MARKER)).toBe(false);
+      // the consumer lists (of the change and of the changed file) are covered and carry no description
+      const lists = [r.review?.changes[0]?.consumers, r.review?.files[0]?.consumers];
+      expect(lists.every((l) => (l?.direct.length ?? 0) > 0)).toBe(true);
+      expect(JSON.stringify(lists).includes(MARKER)).toBe(false);
     }
   });
 });

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, type GraphEdge, type GraphNode, type ReviewLayer } from "../../api.ts";
+import { api, type GraphEdge, type GraphNode, type ReviewData, type ReviewLayer } from "../../api.ts";
 import { buildScene } from "../../canvas/scene.ts";
 import type { CanvasProps } from "../../slots.ts";
 import { useStore } from "../../store.tsx";
 import { currentScheme } from "../../theme.ts";
 import { getBool } from "../../views/filterUtils.ts";
-import { FAR_KEY, paintLayer } from "../../views/reviewModel.ts";
+import { useReviewFocus } from "../../views/reviewFocus.ts";
+import { FAR_KEY, focusedChange, layerFocus, paintLayer } from "../../views/reviewModel.ts";
 import { mapUi, prefersReducedMotion, useMapUi } from "../ui.ts";
 import { buildLandscape } from "./model.ts";
 import { SettlementScene, type SettlementTip } from "./SettlementScene.ts";
@@ -39,6 +40,7 @@ export default function SettlementCanvas({ focus, onSelect, onHover, data: viewD
     nodes: GraphNode[];
     edges: GraphEdge[];
     layer: ReviewLayer | null;
+    review: ReviewData | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(() => !prefersReducedMotion());
@@ -91,7 +93,7 @@ export default function SettlementCanvas({ focus, onSelect, onHover, data: viewD
     const filters = JSON.parse(filtersKey) as Record<string, string>;
     api.view("project-map", { level: "files", filters }, ctl.signal).then(
       (v) => {
-        setData({ nodes: v.nodes, edges: v.edges, layer: v.review?.layer ?? null });
+        setData({ nodes: v.nodes, edges: v.edges, layer: v.review?.layer ?? null, review: v.review ?? null });
         mapUi.setCityData({ nodes: v.nodes, edges: v.edges });
       },
       (err: unknown) => {
@@ -110,6 +112,9 @@ export default function SettlementCanvas({ focus, onSelect, onHover, data: viewD
   );
 
   // The review layer resolved against the buildings (one per file); only in the review view or with a range filter.
+  // A selected change (or one of its consumers, picked from the panel) shows only that change's consumers and arcs.
+  const storedChange = useReviewFocus();
+  const focusChange = focusedChange(data?.review, focus, storedChange);
   const paint = useMemo(
     () =>
       land && data?.layer
@@ -117,9 +122,10 @@ export default function SettlementCanvas({ focus, onSelect, onHover, data: viewD
             { ids: land.buildings.map((b) => b.id), parents: land.buildings.map(() => -1) },
             data.layer,
             far,
+            layerFocus(data.review, focusChange),
           )
         : null,
-    [land, data, far],
+    [land, data, far, focusChange],
   );
   // A changed symbol picked in the review panel selects (and flies to) the building of its file.
   const shown = (id: string | null): string | null => {

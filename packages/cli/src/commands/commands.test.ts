@@ -351,7 +351,7 @@ describe("gantry review", () => {
     expect(run(fx.dir, ["review", "--json"]).code).toBe(1);
   });
 
-  it("prints a short text summary without --json: risk, reasons, hop counts, crossings", async () => {
+  it("prints a short text summary without --json: risk, reasons, hop counts, crossings, consumers", async () => {
     const fx = await fixture("pnpm-turbo");
     fx.git(["checkout", "-b", "feature"]);
     const file = join(fx.dir, "packages/ui/src/button.tsx");
@@ -368,10 +368,23 @@ describe("gantry review", () => {
     const r = run(fx.dir, ["review", "main...feature"], env);
     expect(r.err).toBe("");
     expect(r.code).toBe(0);
-    expect(r.out).toContain("Risk: medium (54/100)");
+    expect(r.out).toContain("Risk: medium (56/100)");
     expect(r.out).toContain("+30 signature changed on an exported symbol");
-    expect(r.out).toContain("hop 1: 2 (sym:apps/web/src/routes/index.tsx#HomePage");
+    expect(r.out).toContain(
+      "hop 1: 3 (file:packages/ui/src/index.ts, sym:apps/web/src/routes/index.tsx#HomePage",
+    );
     expect(r.out).toContain("Crossings: 2");
+    expect(r.out).toContain(
+      [
+        "Consumers of sym:packages/ui/src/button.tsx#Button:",
+        "  Directly affected (3):",
+        "    index.ts (file, packages/ui/src/index.ts) imports",
+        "    HomePage (component, apps/web/src/routes/index.tsx:7) renders; crosses app",
+        "    ProfilePage (component, apps/web/src/routes/settings/profile.tsx:7) renders; crosses app",
+        "  Potentially affected (",
+      ].join("\n"),
+    );
+    expect(r.out).toMatch(/\/ \(route, apps\/web\/src\/routes\/index\.tsx\) serves hop 2 via HomePage/);
     expect(r.out).toBe(run(fx.dir, ["review", "main...feature"], env).out);
   });
 
@@ -403,10 +416,30 @@ describe("gantry review", () => {
       impact: {
         risk: { score: number; level: string };
         callersByHop: { hop: number; ids: string[] }[];
+        consumers: {
+          id: string;
+          target: string;
+          direct: { id: string; uses: string[]; crosses: string[] }[];
+          directTotal: number;
+          potential: { id: string; hop: number; via: string }[];
+          potentialTotal: number;
+        }[];
       } | null;
     };
     expect(j.changes.map((c) => c.id)).toEqual(["sym:packages/ui/src/button.tsx#Button"]);
-    expect(j.impact?.risk).toMatchObject({ score: 54, level: "medium" });
+    expect(j.impact?.risk).toMatchObject({ score: 56, level: "medium" });
+    const button = j.impact?.consumers.find((c) => c.id === "sym:packages/ui/src/button.tsx#Button");
+    expect(button?.target).toBe("symbol");
+    expect(button?.directTotal).toBe(3);
+    expect(button?.direct[1]).toMatchObject({
+      id: "sym:apps/web/src/routes/index.tsx#HomePage",
+      uses: ["renders"],
+      crosses: ["app"],
+    });
+    expect(
+      button?.potential.some((p) => p.hop === 2 && p.via === "sym:apps/web/src/routes/index.tsx#HomePage"),
+    ).toBe(true);
+    expect(j.impact?.consumers.map((c) => c.id)).toContain("file:packages/ui/src/button.tsx");
     expect(j.impact?.callersByHop[0]?.ids).toContain("sym:apps/web/src/routes/index.tsx#HomePage");
     // The index was not brought to the new HEAD: --json never heals.
     const after = openStore(db);

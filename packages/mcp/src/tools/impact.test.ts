@@ -124,11 +124,32 @@ describe("gantry_impact", () => {
     expect(j.changed[0]?.signature_changed).toBe(true);
     expect(j.callers_by_hop[0]).toEqual({
       hop: 1,
-      count: 2,
+      count: 3,
       ids: [
+        "file:packages/ui/src/index.ts",
         "sym:apps/web/src/routes/index.tsx#HomePage",
         "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
       ],
+    });
+    const consumers = (r.json as { consumers: Record<string, unknown>[] }).consumers;
+    expect(consumers).toHaveLength(1);
+    expect(consumers[0]).toMatchObject({
+      id: BUTTON,
+      direct_total: 3,
+      direct: [
+        { id: "file:packages/ui/src/index.ts", uses: ["imports"] },
+        { id: "sym:apps/web/src/routes/index.tsx#HomePage", uses: ["renders"], crosses: ["app"] },
+        {
+          id: "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+          uses: ["renders"],
+          crosses: ["app"],
+        },
+      ],
+    });
+    expect(consumers[0]?.potential).toContainEqual({
+      id: "route:@acme/web:/",
+      hop: 2,
+      via: "sym:apps/web/src/routes/index.tsx#HomePage",
     });
     expect(j.crossings.map((c) => c.kind)).toEqual(["app", "app"]);
     expect(j.risk.level).toBe("medium");
@@ -140,7 +161,7 @@ describe("gantry_impact", () => {
     const a = await call(client, "gantry_impact", { symbol: BUTTON });
     const b = await call(client, "gantry_impact", { paths: ["packages/ui/src/button.tsx"] });
     const aj = a.json as { callers_by_hop: { hop: number; count: number }[]; risk: { score: number } };
-    expect(aj.callers_by_hop[0]?.count).toBe(2);
+    expect(aj.callers_by_hop[0]?.count).toBe(3);
     expect(JSON.stringify(a.json)).toBe(
       JSON.stringify((await call(client, "gantry_impact", { symbol: BUTTON })).json),
     );
@@ -189,10 +210,14 @@ describe("gantry_impact", () => {
       ...files.filter((p) => /\.tsx?$/.test(p)).map((p) => ({ paths: [p] })),
     ];
     let surfaced = 0;
+    let consumers = 0;
     for (const args of calls) {
       const r = await call(client, "gantry_impact", args);
       surfaced += assertContained(JSON.stringify(args), r.json, r.text);
+      consumers += ((r.json as { consumers?: unknown[] }).consumers ?? []).length;
     }
+    // the consumer lists are covered too (they carry names and ids only)
+    expect(consumers).toBeGreaterThan(0);
     // not vacuous: the description really is returned for a changed symbol
     expect(surfaced).toBeGreaterThan(0);
   });

@@ -204,6 +204,48 @@ export interface ReviewSide {
   exported: boolean;
 }
 
+/** How a consumer uses the changed item (or, for a potential consumer, the node one step nearer). */
+export type UseKind =
+  | "calls"
+  | "renders"
+  | "uses_hook"
+  | "extends"
+  | "implements"
+  | "references_type"
+  | "imports"
+  | "serves"
+  | "handles"
+  | "requests";
+
+/** One consumer of a change (#169): names and paths only. */
+export interface ReviewConsumer {
+  id: string;
+  name: string;
+  kind: string;
+  path: string;
+  line: number | null;
+  workspace: string | null;
+  /** 1: directly affected; 2 or 3: potentially affected. */
+  hop: number;
+  uses: UseKind[];
+  crosses: ("workspace" | "app" | "client_server")[];
+  /** Potential only: the direct consumer it reaches the change through. */
+  via?: string;
+  /** Potential only: the node it uses, one step nearer the change. */
+  next?: string;
+  /** The node of this map that shows it. */
+  node?: string;
+  /** Potential only: the node that shows `next`. */
+  nextNode?: string;
+}
+
+export interface ReviewConsumers {
+  direct: ReviewConsumer[];
+  directTotal: number;
+  potential: ReviewConsumer[];
+  potentialTotal: number;
+}
+
 export interface ReviewChange {
   id: string;
   kind: ChangeKind;
@@ -216,8 +258,10 @@ export interface ReviewChange {
   locDelta: number;
   before?: ReviewSide;
   after?: ReviewSide;
-  /** Distinct direct callers (and importers of a removed export's file). */
+  /** Distinct direct consumers (`consumers.directTotal`). */
   callers: number;
+  /** Directly and potentially affected consumers. */
+  consumers: ReviewConsumers;
   /** Model-written text about untrusted code. Untrusted: render as plain text only. */
   untrusted_description: string | null;
 }
@@ -253,7 +297,7 @@ export interface ReviewLayer {
   marks: ReviewMark[];
   links: ReviewLink[];
   linksTotal: number;
-  /** Changed symbol and file ids -> the node that shows them. */
+  /** Changed symbol and file ids, and consumer ids -> the node that shows them. */
   placed: [string, string][];
   unplaced: string[];
 }
@@ -272,7 +316,7 @@ export interface ReviewData {
   map: "2d" | "3d";
   /** Rings mode: edges between rings before the cap. */
   edgesTotal?: number;
-  files: { path: string; status: "A" | "M" | "D" | "R"; changes: number }[];
+  files: { path: string; status: "A" | "M" | "D" | "R"; changes: number; consumers: ReviewConsumers }[];
   changes: ReviewChange[];
   callersByHop: { hop: number; count: number }[];
   crossings: { from: string; to: string; kind: "workspace" | "app" | "client_server" }[];

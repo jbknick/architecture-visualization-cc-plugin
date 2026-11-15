@@ -1,6 +1,15 @@
 // Pure helpers for the review view (#44, on the map since #167): words, the layer's colours, and the review layer
 // resolved against a map scene (tree indices). No DOM, no randomness.
-import type { ChangeKind, GraphNode, ReviewData, ReviewLayer, ReviewMarkKind } from "../api.ts";
+import type {
+  ChangeKind,
+  GraphNode,
+  ReviewConsumer,
+  ReviewConsumers,
+  ReviewData,
+  ReviewLayer,
+  ReviewMarkKind,
+  UseKind,
+} from "../api.ts";
 import type { Rect } from "../canvas/types.ts";
 import type { Scheme } from "../theme.ts";
 
@@ -86,20 +95,109 @@ export interface LayerTree {
 export interface LayerPaint {
   /** Change kind per index (only on the node the server marked). */
   change: (ReviewMarkKind | null)[];
-  /** Nearest caller hop per index (0: none). Hops 2 and 3 only when `far` is on. */
+  /** Nearest caller hop per index (0: none). Hops 2 and 3 only when `far` is on, or for a focused change. */
   hop: Uint8Array;
   /** 1 for a node that is marked or holds a marked node (it keeps its colours); the rest fade back. */
   lit: Uint8Array;
-  links: { src: number; dst: number; change: ReviewMarkKind; weight: number }[];
-  /** Changed symbol or file id -> the index that shows it. */
+  /** `soft`: a potentially affected consumer's line (to the node one step nearer the change), drawn faintly. */
+  links: { src: number; dst: number; change: ReviewMarkKind; weight: number; soft?: boolean }[];
+  /** Changed symbol, file or consumer id -> the index that shows it. */
   placed: Map<string, number>;
+}
+
+// ---- Consumers (#169) ---------------------------------------------------------------------------------------------
+
+export const DIRECT_HEADING = "Directly affected";
+export const POTENTIAL_HEADING = "Potentially affected";
+
+export const USE_WORDS: Record<UseKind, string> = {
+  calls: "calls",
+  renders: "renders",
+  uses_hook: "uses the hook",
+  extends: "extends",
+  implements: "implements",
+  references_type: "uses the type",
+  imports: "imports",
+  serves: "serves (route)",
+  handles: "handles",
+  requests: "requests",
+};
+
+/** The consumers of every change and changed file (`file:<path>`) of a review, by id. */
+export function consumersById(review: ReviewData | null | undefined): Map<string, ReviewConsumers> {
+  const out = new Map<string, ReviewConsumers>();
+  if (!review) return out;
+  for (const c of review.changes) if (c.consumers) out.set(c.id, c.consumers);
+  for (const f of review.files) if (f.consumers) out.set(`file:${f.path}`, f.consumers);
+  return out;
+}
+
+/**
+ * The change whose consumers are shown: the selection when it is a change or a changed file, else the change kept
+ * in focus (`stored`) while the selection is one of its consumers. Null otherwise.
+ */
+export function focusedChange(
+  review: ReviewData | null | undefined,
+  sel: string | null,
+  stored: string | null,
+): string | null {
+  if (!review || !sel) return null;
+  const by = consumersById(review);
+  if (by.has(sel)) return sel;
+  const c = stored ? by.get(stored) : undefined;
+  if (c && [...c.direct, ...c.potential].some((x) => x.id === sel)) return stored;
+  return null;
+}
+
+/** Consumers grouped by file, in the order they come (the server sorts by workspace, then path, then name). */
+export function groupByFile(list: readonly ReviewConsumer[]): { path: string; items: ReviewConsumer[] }[] {
+  const out: { path: string; items: ReviewConsumer[] }[] = [];
+  for (const x of list) {
+    const last = out[out.length - 1];
+    if (last && last.path === x.path) last.items.push(x);
+    else out.push({ path: x.path, items: [x] });
+  }
+  return out;
+}
+
+/** A focused change as node ids of the map: its node, its direct consumers' and its potential ones' (with `next`). */
+export interface LayerFocus {
+  node: string | null;
+  kind: ReviewMarkKind | null;
+  direct: string[];
+  potential: { node: string; next: string | null }[];
+}
+
+/** The focus of change `id` on the map of `review` (null when the id is not a change or changed file). */
+export function layerFocus(review: ReviewData | null | undefined, id: string | null): LayerFocus | null {
+  if (!review || !id) return null;
+  const c = consumersById(review).get(id);
+  if (!c) return null;
+  const node = placedId(review.layer, id);
+  const ch = review.changes.find((x) => x.id === id);
+  const kind = ch
+    ? markKindOf(ch)
+    : (review.layer.marks.find((m) => m.id === node)?.change ?? ("modified" as ReviewMarkKind));
+  return {
+    node,
+    kind,
+    direct: c.direct.flatMap((x) => (x.node ? [x.node] : [])),
+    potential: c.potential.flatMap((x) => (x.node ? [{ node: x.node, next: x.nextNode ?? null }] : [])),
+  };
 }
 
 /**
  * Resolves `layer` against a tree: marks by index, every ancestor of a marked node lit, lines between indices.
- * Marks and lines whose node is not in the tree (a mosaic, a filter) are skipped. Deterministic.
+ * Marks and lines whose node is not in the tree (a mosaic, a filter) are skipped. With `focus` (a selected change),
+ * only that change, its direct consumers (strong tint and lines) and its potential ones (soft tint and lines) stay
+ * lit; the rest fade. Deterministic.
  */
-export function paintLayer(tree: LayerTree, layer: ReviewLayer, far: boolean): LayerPaint {
+export function paintLayer(
+  tree: LayerTree,
+  layer: ReviewLayer,
+  far: boolean,
+  focus: LayerFocus | null = null,
+): LayerPaint {
   const n = tree.ids.length;
   const index = new Map<string, number>();
   tree.ids.forEach((id, i) => {
@@ -111,6 +209,12 @@ export function paintLayer(tree: LayerTree, layer: ReviewLayer, far: boolean): L
   const light = (i: number) => {
     for (let k = i; k !== -1 && !lit[k]; k = tree.parents[k] ?? -1) lit[k] = 1;
   };
+  const placed = new Map<string, number>();
+  for (const [id, node] of layer.placed) {
+    const i = index.get(node);
+    if (i !== undefined) placed.set(id, i);
+  }
+  if (focus) return paintFocus(tree, index, focus, { change, hop, lit, light, placed });
   for (const m of layer.marks) {
     const i = index.get(m.id);
     if (i === undefined) continue;
@@ -129,12 +233,91 @@ export function paintLayer(tree: LayerTree, layer: ReviewLayer, far: boolean): L
     if (src === undefined || dst === undefined) continue;
     links.push({ src, dst, change: l.change, weight: l.weight });
   }
-  const placed = new Map<string, number>();
-  for (const [id, node] of layer.placed) {
-    const i = index.get(node);
-    if (i !== undefined) placed.set(id, i);
-  }
   return { change, hop, lit, links, placed };
+}
+
+/** `paintLayer` for one focused change: its node, its consumers' tints and lines (direct strong, potential soft). */
+function paintFocus(
+  tree: LayerTree,
+  index: Map<string, number>,
+  focus: LayerFocus,
+  out: Omit<LayerPaint, "links"> & { light: (i: number) => void },
+): LayerPaint {
+  const { change, hop, lit, light, placed } = out;
+  const contains = (a: number, b: number): boolean => {
+    for (let k = tree.parents[b] ?? -1; k !== -1; k = tree.parents[k] ?? -1) if (k === a) return true;
+    return false;
+  };
+  const kind = focus.kind ?? "modified";
+  const dst = focus.node !== null ? index.get(focus.node) : undefined;
+  if (dst !== undefined) {
+    change[dst] = kind;
+    light(dst);
+  }
+  const links = new Map<string, LayerPaint["links"][number]>();
+  const link = (a: number | undefined, b: number | undefined, soft: boolean) => {
+    if (a === undefined || b === undefined || a === b || contains(a, b) || contains(b, a)) return;
+    const key = `${a}>${b}`;
+    const l = links.get(key);
+    if (l) {
+      l.weight += 1;
+      if (!soft) delete l.soft;
+    } else links.set(key, { src: a, dst: b, change: kind, weight: 1, ...(soft ? { soft: true } : {}) });
+  };
+  for (const id of focus.direct) {
+    const i = index.get(id);
+    if (i === undefined) continue;
+    if (i !== dst && !change[i]) hop[i] = 1;
+    light(i);
+    link(i, dst, false);
+  }
+  for (const p of focus.potential) {
+    const i = index.get(p.node);
+    if (i === undefined) continue;
+    if (i !== dst && !change[i] && hop[i] !== 1) hop[i] = 2;
+    light(i);
+    link(i, p.next !== null ? index.get(p.next) : undefined, true);
+  }
+  const sorted = [...links.values()].sort((a, b) => a.src - b.src || a.dst - b.dst);
+  return { change, hop, lit, links: sorted, placed };
+}
+
+/**
+ * Rings mode, a focused change: its direct consumers (strong) and potential ones (soft), and the ring edges between
+ * them (direct consumer -> change strong, potential -> its `next` soft). Ids are ring node ids.
+ */
+export function ringFocus(
+  review: ReviewData | null | undefined,
+  id: string | null,
+  edges: readonly { id: string; src: string; dst: string }[],
+): {
+  centre: string;
+  direct: Set<string>;
+  potential: Set<string>;
+  strong: Set<string>;
+  soft: Set<string>;
+} | null {
+  const c = id ? consumersById(review).get(id) : undefined;
+  if (!c || !id) return null;
+  const centre = placedId(review?.layer, id) ?? id;
+  const direct = new Set(c.direct.flatMap((x) => (x.node ? [x.node] : [])));
+  const potential = new Set(
+    c.potential.flatMap((x) => (x.node && !direct.has(x.node) && x.node !== centre ? [x.node] : [])),
+  );
+  const pairs = new Map<string, "strong" | "soft">();
+  for (const d of direct) pairs.set(`${d}->${centre}`, "strong");
+  for (const p of c.potential) {
+    if (p.node && p.nextNode && !pairs.has(`${p.node}->${p.nextNode}`))
+      pairs.set(`${p.node}->${p.nextNode}`, "soft");
+  }
+  const strong = new Set<string>();
+  const soft = new Set<string>();
+  for (const e of edges) {
+    const t = pairs.get(`${e.src}->${e.dst}`);
+    if (t === "strong") strong.add(e.id);
+    else if (t === "soft") soft.add(e.id);
+  }
+  return { centre, direct, potential, strong, soft };
 }
 
 // ---- Rings mode ----------------------------------------------------------------------------------------------------

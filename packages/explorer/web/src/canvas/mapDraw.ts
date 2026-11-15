@@ -89,7 +89,7 @@ export interface ReviewDrawn {
   changed: number;
   affected: number;
   faded: number;
-  links: { src: number; dst: number; change: string; colour: string }[];
+  links: { src: number; dst: number; change: string; colour: string; soft?: boolean }[];
 }
 
 /** A rank marker as drawn: a numbered circle on (or beside) the tile of one of the largest files. */
@@ -1438,19 +1438,22 @@ function drawReviewLinks(env: DrawEnv, rv: ReviewPaintEnv, drawn: ReviewDrawn): 
     const len = Math.hypot(dx, dy);
     if (len < 4) continue;
     const colour = inkOf(l.change);
-    drawn.links.push({ src: l.src, dst: l.dst, change: l.change, colour });
+    drawn.links.push({ src: l.src, dst: l.dst, change: l.change, colour, ...(l.soft ? { soft: true } : {}) });
     if (off(a) && off(b)) continue;
     const bow = Math.min(80, len * 0.2);
     const cx = (a[0] + b[0]) / 2 - (dy / len) * bow;
     const cy = (a[1] + b[1]) / 2 + (dx / len) * bow;
-    ctx.globalAlpha = 0.92;
+    // A potentially affected consumer's line (to the node one step nearer the change) is faint and dashed.
+    ctx.globalAlpha = l.soft ? 0.45 : 0.92;
     ctx.strokeStyle = colour;
     ctx.fillStyle = colour;
-    ctx.lineWidth = 1.5 + 1.5 * Math.sqrt(l.weight / maxW);
+    ctx.lineWidth = l.soft ? 1.2 : 1.5 + 1.5 * Math.sqrt(l.weight / maxW);
+    ctx.setLineDash(l.soft ? [5, 4] : []);
     ctx.beginPath();
     ctx.moveTo(a[0], a[1]);
     ctx.quadraticCurveTo(cx, cy, b[0], b[1]);
     ctx.stroke();
+    ctx.setLineDash([]);
     arrowHead(ctx, b[0], b[1], Math.atan2(b[1] - cy, b[0] - cx), 9);
     ctx.beginPath();
     ctx.arc(a[0], a[1], 2.6, 0, Math.PI * 2);

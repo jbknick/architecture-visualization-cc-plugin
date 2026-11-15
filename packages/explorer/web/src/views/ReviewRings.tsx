@@ -1,12 +1,15 @@
 import { type PointerEvent as ReactPointerEvent, useMemo, useRef, useState, type WheelEvent } from "react";
 import type { GraphNode } from "../api.ts";
 import type { CanvasProps } from "../slots.ts";
+import { useReviewFocus } from "./reviewFocus.ts";
 import {
   CHANGE_WORDS,
+  focusedChange,
   labelRing,
   markKindOf,
   RINGS_CAPTION,
   ringBounds,
+  ringFocus,
   ringGroups,
   ringPath,
   ringRadii,
@@ -88,7 +91,7 @@ interface Tip {
  * fades by hop. Edges point from caller to callee; hovering or selecting a node keeps its own path through the rings
  * and fades the rest.
  */
-export function ReviewRings({ nodes, edges, focus, onSelect, onHover }: CanvasProps) {
+export function ReviewRings({ nodes, edges, focus, onSelect, onHover, data }: CanvasProps) {
   const bounds = useMemo(() => ringBounds(nodes), [nodes]);
   const radii = useMemo(() => ringRadii(nodes), [nodes]);
   const groups = useMemo(() => ringGroups(nodes), [nodes]);
@@ -98,7 +101,18 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover }: CanvasPr
   const wrap = useRef<HTMLDivElement>(null);
   const pos = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
   const active = hover ?? (focus && pos.has(focus) ? focus : null);
-  const path = useMemo(() => (active ? ringPath(active, edges) : null), [active, edges]);
+  // A selected change (or one of its consumers, picked from the panel): its direct consumers strong, its potential
+  // ones soft, the rest faded. Hovering a node still shows that node's own path.
+  const storedChange = useReviewFocus();
+  const focusChange = focusedChange(data?.review, focus, storedChange);
+  const changeFocus = useMemo(
+    () => (hover ? null : ringFocus(data?.review, focusChange, edges)),
+    [hover, data?.review, focusChange, edges],
+  );
+  const path = useMemo(
+    () => (changeFocus ? null : active ? ringPath(active, edges) : null),
+    [changeFocus, active, edges],
+  );
   const countByHop = new Map(radii.map((r) => [r.hop, r.count]));
   const centreR = radii.find((r) => r.hop === 0)?.r ?? 0;
 
@@ -111,7 +125,12 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover }: CanvasPr
   };
 
   return (
-    <div className="rv-rings" ref={wrap} data-active={active ?? ""}>
+    <div
+      className="rv-rings"
+      ref={wrap}
+      data-active={active ?? ""}
+      data-focus-change={changeFocus ? (focusChange ?? "") : ""}
+    >
       <p className="rv-caption">{RINGS_CAPTION}</p>
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: a background click clears the selection; Escape does that from the keyboard */}
       <svg
@@ -216,7 +235,9 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover }: CanvasPr
             const stop = ((b.hop ?? 0) === 0 ? R_CHANGED : R_CALLER) + 2;
             const ex = bx - ((bx - ax) / len) * stop;
             const ey = by - ((by - ay) / len) * stop;
-            const hot = path?.edges.has(e.id) ?? false;
+            const strong = changeFocus?.strong.has(e.id) ?? false;
+            const soft = changeFocus?.soft.has(e.id) ?? false;
+            const hot = (path?.edges.has(e.id) ?? false) || strong;
             return (
               <line
                 key={e.id}
@@ -226,7 +247,8 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover }: CanvasPr
                 x2={ex}
                 y2={ey}
                 markerEnd={`url(#${hot ? "rv-arrow-hot" : "rv-arrow"})`}
-                className={`rv-edge${hot ? " rv-edge-hot" : path ? " rv-dim" : ""}`}
+                data-tier={strong ? "direct" : soft ? "potential" : undefined}
+                className={`rv-edge${hot ? " rv-edge-hot" : soft ? " rv-edge-soft" : path || changeFocus ? " rv-dim" : ""}`}
               />
             );
           })}
@@ -237,7 +259,16 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover }: CanvasPr
             const x = n.x ?? 0;
             const y = n.y ?? 0;
             const selected = focus === n.id;
-            const dim = path !== null && !path.nodes.has(n.id);
+            const tier = changeFocus
+              ? n.id === changeFocus.centre
+                ? "change"
+                : changeFocus.direct.has(n.id)
+                  ? "direct"
+                  : changeFocus.potential.has(n.id)
+                    ? "potential"
+                    : null
+              : undefined;
+            const dim = (path !== null && !path.nodes.has(n.id)) || tier === null;
             const label = labelRing(hop, countByHop.get(hop) ?? 0) || selected || hover === n.id;
             const right = x >= 0;
             const cls =
@@ -254,7 +285,8 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover }: CanvasPr
                 aria-pressed={selected}
                 data-id={n.id}
                 data-hop={hop}
-                className={`rv-node-g${dim ? " rv-dim" : ""}`}
+                data-tier={tier ?? undefined}
+                className={`rv-node-g${dim ? " rv-dim" : ""}${tier === "direct" ? " rv-tier-direct" : tier === "potential" ? " rv-tier-potential" : ""}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!dragged()) onSelect(n.id);

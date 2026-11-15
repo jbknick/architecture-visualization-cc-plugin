@@ -3,7 +3,17 @@ import type { Filters, ViewLevel } from "../api.ts";
 import type { FilterPanelProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { getBool, setBool } from "./filterUtils.ts";
-import { CHANGE_WORDS, CROSSING_WORDS, FAR_KEY, markKindOf, RISK_WORDS, shortName } from "./reviewModel.ts";
+import { ConsumerTiers } from "./ReviewConsumers.tsx";
+import { reviewFocus, useReviewFocus } from "./reviewFocus.ts";
+import {
+  CHANGE_WORDS,
+  CROSSING_WORDS,
+  FAR_KEY,
+  focusedChange,
+  markKindOf,
+  RISK_WORDS,
+  shortName,
+} from "./reviewModel.ts";
 
 const MAPS = [
   {
@@ -44,7 +54,9 @@ function without(filters: Filters, ...keys: string[]): Filters {
 
 /**
  * Left panel of the review view: the range, which map (2D or 3D) and how much detail, risk and its reasons, changed
- * symbols and files, crossings and notes. Clicking an item selects it: the map focuses the node that shows it.
+ * symbols and files, crossings and notes. Clicking an item selects it: the map focuses the node that shows it. A
+ * selected change or file expands to its consumers ("Directly affected", "Potentially affected"); clicking one selects
+ * and zooms to it while the map keeps showing that change's consumers only.
  */
 export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChange }: FilterPanelProps) {
   const { selectNode, state } = useStore();
@@ -56,6 +68,8 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
   const level = route?.level ?? "files";
   const far = getBool(filters, FAR_KEY, false);
   const sel = state.route.sel;
+  const stored = useReviewFocus();
+  const expanded = focusedChange(review, sel, stored);
 
   const apply = (e: FormEvent) => {
     e.preventDefault();
@@ -63,13 +77,23 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
     onFiltersChange(r ? { ...without(filters, "pr"), range: r } : without(filters, "pr", "range"));
   };
   const pick = (id: string) => selectNode(id);
-  const item = (id: string, children: ReactNode, title?: string) => (
+  /** A change or changed file: selecting it keeps it in focus, so its consumers stay listed and drawn. */
+  const pickChange = (id: string) => {
+    reviewFocus.set(id);
+    selectNode(id);
+  };
+  const pickConsumer = (change: string, id: string) => {
+    reviewFocus.set(change);
+    selectNode(id);
+  };
+  const item = (id: string, children: ReactNode, title?: string, change = false) => (
     <button
       type="button"
       className={`rv-item${sel === id ? " is-current" : ""}`}
       aria-current={sel === id ? "true" : undefined}
+      aria-expanded={change ? expanded === id : undefined}
       title={title ?? id}
-      onClick={() => pick(id)}
+      onClick={() => (change ? pickChange(id) : pick(id))}
     >
       {children}
     </button>
@@ -211,10 +235,20 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
                       <span className="rv-item-meta">
                         {CHANGE_WORDS[c.kind].label.toLowerCase()}
                         {c.signatureChanged ? ", signature" : ""}
-                        {c.callers > 0 ? `, ${c.callers} direct` : ""}
+                        {c.callers > 0 ? `, used by ${c.callers}` : ""}
                         {unplaced.has(c.id) ? ", not on the map" : ""}
                       </span>
                     </>,
+                    undefined,
+                    true,
+                  )}
+                  {expanded === c.id && c.consumers && (
+                    <ConsumerTiers
+                      consumers={c.consumers}
+                      label={`Consumers of ${c.name}`}
+                      sel={sel}
+                      onPick={(id) => pickConsumer(c.id, id)}
+                    />
                   )}
                 </li>
               ))}
@@ -241,9 +275,19 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
                       <span className="rv-item-meta">
                         {STATUS_WORDS[f.status] ?? f.status}
                         {f.changes > 0 ? `, ${f.changes} ${f.changes === 1 ? "symbol" : "symbols"}` : ""}
+                        {f.consumers?.directTotal ? `, imported by ${f.consumers.directTotal}` : ""}
                       </span>
                     </>,
                     f.path,
+                    true,
+                  )}
+                  {expanded === `file:${f.path}` && f.consumers && (
+                    <ConsumerTiers
+                      consumers={f.consumers}
+                      label={`Consumers of ${f.path}`}
+                      sel={sel}
+                      onPick={(id) => pickConsumer(`file:${f.path}`, id)}
+                    />
                   )}
                 </li>
               ))}
