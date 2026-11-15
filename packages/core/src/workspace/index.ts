@@ -142,6 +142,23 @@ export function flattenExports(exp: unknown): ExportsEntry[] | null {
   return entries.sort((a, b) => (a.subpath < b.subpath ? -1 : a.subpath > b.subpath ? 1 : 0));
 }
 
+/**
+ * Dependency names a package.json declares, read from disk now (not from the stored workspace records):
+ * the double-check of an undeclared-import finding (spec section 14). Undefined when the file is missing or invalid.
+ */
+export function declaredOnDisk(root: string, manifest: string): string[] | undefined {
+  try {
+    const j = JSON.parse(readFileSync(join(root, manifest), "utf8")) as unknown;
+    if (!j || typeof j !== "object" || Array.isArray(j)) return undefined;
+    const names = new Set(depNames(j as Json));
+    const opt = (j as Json).optionalDependencies;
+    if (opt && typeof opt === "object") for (const k of Object.keys(opt)) names.add(k);
+    return [...names].sort();
+  } catch {
+    return undefined;
+  }
+}
+
 function depNames(pkg: Json | null): string[] {
   const names = new Set<string>();
   for (const f of ["dependencies", "devDependencies", "peerDependencies"]) {

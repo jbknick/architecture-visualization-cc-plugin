@@ -48,7 +48,9 @@ if (existsSync(join(privateDir(), "replay.jsonl")) && existsSync(join(privateDir
   const edits = loadEdits();
   const labels = readPrivate<Labels>("labels.json");
   const p = measure(edits, labels, DEFAULT_CONFIG_THRESHOLDS);
-  out(`\n## Replay at the configured defaults (nearJaccard ${p.nearJaccard}, codeVector ${p.codeVector})\n`);
+  out(
+    `\n## Replay at the configured defaults (nearJaccard ${p.nearJaccard}, nearTokenJaccard ${p.nearTokenJaccard}, codeVector ${p.codeVector}, codeVectorTokenJaccard ${p.codeVectorTokenJaccard})\n`,
+  );
   out(
     table(
       ["edits", "edits with an alert", "alert rate", "alerts", "false alerts", "false rate", "unlabelled"],
@@ -67,7 +69,10 @@ if (existsSync(join(privateDir(), "replay.jsonl")) && existsSync(join(privateDir
   );
   if (p.alertRate >= 0.05 || p.falseRate >= 0.1)
     miss.push(`replay: alert rate ${pct(p.editsAlerting, p.edits)}, false ${pct(p.falseAlerts, p.alerts)}`);
-  const sweep = runSweep();
+  const sweep = runSweep({
+    nearTokenJaccard: DEFAULT_CONFIG_THRESHOLDS.nearTokenJaccard,
+    codeVectorTokenJaccard: DEFAULT_CONFIG_THRESHOLDS.codeVectorTokenJaccard,
+  });
   const meets = sweep.rows.filter((r) => r.alertRate < 0.05 && r.falseRate < 0.1);
   out(
     `\nSweep: ${meets.length} of ${sweep.rows.length} (nearJaccard, codeVector) settings meet both budgets.`,

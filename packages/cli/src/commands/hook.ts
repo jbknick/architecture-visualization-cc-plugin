@@ -30,7 +30,7 @@ export function registerHook(program: Command): void {
     .description("Hook entry point called by git and Claude Code hooks; always exits 0")
     .argument(
       "<name>",
-      "session-start|post-tool-use|pre-commit|pre-push|post-checkout|post-merge|post-rewrite",
+      "session-start|post-tool-use|stop|pre-commit|pre-push|post-checkout|post-merge|post-rewrite",
     )
     .argument("[args...]", "arguments git passes to the hook")
     .allowUnknownOption()
@@ -39,13 +39,13 @@ export function registerHook(program: Command): void {
       // Worker guard first: no Gantry code runs for a describer's own commits.
       if (process.env.GANTRY_WORKER === "1") return;
       try {
-        const stdin = name === "post-tool-use" ? await readStdin(500) : undefined;
+        const stdin = name === "post-tool-use" || name === "stop" ? await readStdin(500) : undefined;
         const line = await runHook(name, args, process.cwd(), process.env, undefined, stdin);
         if (line) process.stdout.write(`${line}\n`);
       } catch {
         // fail open
       }
-      // A timed-out post-tool-use may still have work in flight; do not wait for it.
-      if (name === "post-tool-use") process.stdout.write("", () => process.exit(0));
+      // A timed-out post-tool-use or stop may still have work in flight; do not wait for it.
+      if (name === "post-tool-use" || name === "stop") process.stdout.write("", () => process.exit(0));
     });
 }

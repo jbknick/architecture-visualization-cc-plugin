@@ -29,3 +29,10 @@ export const SCHEMA_V4 = `CREATE TABLE IF NOT EXISTS adapter_nodes(id TEXT, laye
   label TEXT, file_id TEXT, data TEXT, PRIMARY KEY(id, layer));
 CREATE INDEX IF NOT EXISTS adapter_nodes_file ON adapter_nodes(file_id, layer);
 `;
+
+// Migration v5 (spec section 9, #131), besides the symbols.near_minhash column: the files a session's batch of
+// edits touched, with the function hashes they had before the batch; settled and cleared at Stop.
+// store.test.ts asserts it equals the migration v5 block of the spec.
+export const SCHEMA_V5 = `CREATE TABLE IF NOT EXISTS pending_files(session_id TEXT, path TEXT, baseline TEXT, created_at TEXT,
+  PRIMARY KEY(session_id, path));
+`;

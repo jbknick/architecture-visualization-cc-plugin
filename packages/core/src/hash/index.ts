@@ -9,6 +9,8 @@ import { isNode, type Node } from "../parse/ast.js";
  * - the exact token stream: node types, flags, operators and literal values in source order, with
  *   local identifiers (declared inside the symbol) renamed `$1, $2…` in first-appearance order;
  * - the shape token stream: node types only, identifiers/strings/numbers/templates collapsed;
+ * - the token stream of the near tier: the exact stream with the symbol's own name replaced by `$0`, so
+ *   two functions of the same shape that differ in their literals, property names or callees differ here;
  * - text edits that turn the source slice into the embedding text.
  * Comments and whitespace never reach the AST, so they cannot influence any output.
  */
@@ -237,6 +239,8 @@ interface Analysis {
   /** Shape token stream (pre-order node types). */
   shape: string[];
   edits: Edit[];
+  /** Root names that stood for the symbol itself (unresolved references to its own name). */
+  rootNames: ReadonlySet<string>;
 }
 
 const SKIP_KEYS = new Set(["type", "start", "end", "range", "parent", "raw", "shorthand"]);
@@ -271,7 +275,7 @@ class Walker {
   /** Identifier nodes that stand for both key and value of a shorthand property. */
   private readonly shorthandValues = new Set<Node>();
   /** Names of the symbols being walked (function, class or variable); renamed in the embedding text only. */
-  private readonly rootNames = new Set<string>();
+  readonly rootNames = new Set<string>();
 
   private pushShape(s: string): void {
     if (this.shapeMute === 0) this.shape.push(s);
@@ -549,11 +553,11 @@ function analyze(source: string, range: Range, lang: Lang): { a: Analysis; locat
   const located = locate(source, range, lang);
   if (!located) {
     const toks = fallbackTokens(source.slice(Math.max(0, range.start), Math.max(0, range.end)));
-    return { a: { tokens: toks, shape: toks, edits: [] }, located: null };
+    return { a: { tokens: toks, shape: toks, edits: [], rootNames: new Set() }, located: null };
   }
   const w = new Walker();
   for (const r of located.roots) w.walkRoot(r);
-  return { a: { tokens: w.tokens, shape: w.shape, edits: w.edits }, located };
+  return { a: { tokens: w.tokens, shape: w.shape, edits: w.edits, rootNames: w.rootNames }, located };
 }
 
 // --- outputs ----------------------------------------------------------------------------------
@@ -577,6 +581,12 @@ const BASES: number[] = Array.from(
   { length: MINHASH_PERMUTATIONS },
   (_, i) => (FNV_BASIS ^ Math.imul(i + 1, 0x9e3779b1)) >>> 0,
 );
+
+/** The near tier's literal-aware stream: exact tokens with the symbol's own name as `$0` (a renamed copy matches). */
+function nearTokens(a: Analysis): string[] {
+  if (a.rootNames.size === 0) return a.tokens;
+  return a.tokens.map((t) => (t.startsWith("I:") && a.rootNames.has(t.slice(2)) ? "$0" : t));
+}
 
 function computeMinhash(shape: string[]): Uint32Array {
   const sig = new Uint32Array(MINHASH_PERMUTATIONS).fill(EMPTY_SLOT);
@@ -606,9 +616,14 @@ export function hashSymbol(
   source: string,
   range: { start: number; end: number },
   lang: "ts" | "tsx",
-): { exactHash: string; shapeHash: string; minhash: Uint32Array } {
+): { exactHash: string; shapeHash: string; minhash: Uint32Array; nearMinhash: Uint32Array } {
   const { a } = analyze(source, range, lang);
-  return { exactHash: sha32(a.tokens), shapeHash: sha32(a.shape), minhash: computeMinhash(a.shape) };
+  return {
+    exactHash: sha32(a.tokens),
+    shapeHash: sha32(a.shape),
+    minhash: computeMinhash(a.shape),
+    nearMinhash: computeMinhash(nearTokens(a)),
+  };
 }
 
 /** Fraction of equal MinHash slots: an estimate of the Jaccard similarity of the shingle sets. */

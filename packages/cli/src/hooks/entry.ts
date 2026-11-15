@@ -1,7 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { type GantryPaths, heal, loadConfig, openStore, resolvePaths } from "@gantry/core";
-import { POST_TOOL_BUDGET_MS, parsePostToolInput, postToolUse } from "./postToolUse.js";
+import {
+  POST_TOOL_BUDGET_MS,
+  parsePostToolInput,
+  parseStopInput,
+  postToolUse,
+  settleBatch,
+} from "./postToolUse.js";
 import { sessionStart } from "./sessionStart.js";
 import { describeStaged, git, preCommit } from "./staged.js";
 
@@ -10,6 +16,7 @@ export { preCommit };
 export const HOOK_NAMES = [
   "session-start",
   "post-tool-use",
+  "stop",
   "pre-commit",
   "pre-push",
   "post-checkout",
@@ -54,8 +61,8 @@ function pushBacklog(paths: GantryPaths): number {
 
 /**
  * Runs one hook. Never throws and never writes to stdout except where the spec says so (session-start's
- * single line, post-tool-use's JSON); the caller exits 0 regardless. Returns the stdout line, if any.
- * `stdin` is the hook's input text (post-tool-use only).
+ * single line, post-tool-use's and stop's JSON); the caller exits 0 regardless. Returns the stdout line, if any.
+ * `stdin` is the hook's input text (post-tool-use and stop only).
  */
 export async function runHook(
   name: string,
@@ -70,8 +77,10 @@ export async function runHook(
   let paths: GantryPaths;
   const toolInput = name === "post-tool-use" ? parsePostToolInput(stdin) : undefined;
   if (name === "post-tool-use" && !toolInput) return undefined;
+  const stopInput = name === "stop" ? parseStopInput(stdin) : undefined;
+  if (name === "stop" && !stopInput) return undefined;
   try {
-    paths = resolvePaths(toolInput?.cwd ?? cwd, env);
+    paths = resolvePaths(toolInput?.cwd ?? stopInput?.cwd ?? cwd, env);
   } catch {
     return undefined; // not a repo: nowhere to log, nothing to do
   }
@@ -107,7 +116,8 @@ export async function runHook(
       }
       case "session-start":
         return await sessionStart(paths);
-      case "post-tool-use": {
+      case "post-tool-use":
+      case "stop": {
         const budget = Number(env.GANTRY_POST_TOOL_BUDGET_MS);
         const ms =
           env.GANTRY_POST_TOOL_BUDGET_MS && Number.isFinite(budget) && budget >= 0
@@ -117,7 +127,11 @@ export async function runHook(
         const late = new Promise<undefined>((resolve) => {
           timer = setTimeout(() => resolve(undefined), ms);
         });
-        const work = postToolUse(paths, toolInput as NonNullable<typeof toolInput>).catch((err) => {
+        const job =
+          name === "stop"
+            ? settleBatch(paths, stopInput as NonNullable<typeof stopInput>)
+            : postToolUse(paths, toolInput as NonNullable<typeof toolInput>);
+        const work = job.catch((err) => {
           logHook(paths, name, `error: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
           return undefined;
         });

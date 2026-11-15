@@ -37,7 +37,9 @@ test("defaults match spec section 5", () => {
         "mode": "warn",
         "thresholds": {
           "codeVector": 0.98,
+          "codeVectorTokenJaccard": 0.5,
           "nearJaccard": 0.85,
+          "nearTokenJaccard": 0.75,
           "semantic": 0.6,
         },
       },

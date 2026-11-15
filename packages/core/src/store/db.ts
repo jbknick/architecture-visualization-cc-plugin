@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import Database from "better-sqlite3";
 import { applyVecMigration, loadVec } from "../embed/vec.js";
 import { createStore, type Store } from "./repo.js";
-import { SCHEMA_V1, SCHEMA_V4 } from "./schema.js";
+import { SCHEMA_V1, SCHEMA_V4, SCHEMA_V5 } from "./schema.js";
 
 export class SchemaTooNewError extends Error {
   constructor(
@@ -50,6 +50,18 @@ const MIGRATIONS: Migration[] = [
     version: 4,
     apply(db) {
       db.exec(SCHEMA_V4);
+    },
+  },
+  {
+    // symbols.near_minhash (near tier, #131) and pending_files (the hook's batch of edits, #131). Forgetting head_sha
+    // makes the next heal a full main re-index, which fills near_minhash for every symbol (spec section 9).
+    version: 5,
+    apply(db) {
+      const cols = db.prepare("PRAGMA table_info(symbols)").all() as { name: string }[];
+      if (!cols.some((c) => c.name === "near_minhash"))
+        db.exec("ALTER TABLE symbols ADD COLUMN near_minhash BLOB");
+      db.exec(SCHEMA_V5);
+      db.exec("DELETE FROM meta WHERE key = 'head_sha'");
     },
   },
 ];

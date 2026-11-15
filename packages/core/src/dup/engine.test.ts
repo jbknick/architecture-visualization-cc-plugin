@@ -5,8 +5,9 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { GantryConfigSchema, loadConfigForDb } from "../config/index.js";
 import { contentKey } from "../describe/factsheet.js";
 import { ensureVecTables, putVectors, vecAvailable } from "../embed/index.js";
-import { MINHASH_PERMUTATIONS } from "../hash/index.js";
+import { hashSymbol, MINHASH_PERMUTATIONS } from "../hash/index.js";
 import { indexRepo } from "../indexer.js";
+import { parseSource } from "../parse/index.js";
 import { type GantryPaths, resolvePaths } from "../paths/index.js";
 import { openStore, type Store } from "../store/index.js";
 import type { FileRecord, SymbolRecord } from "../types.js";
@@ -15,7 +16,9 @@ import {
   dismiss,
   findDuplicates,
   findDuplicatesDetailed,
+  nearScore,
   rebuildSimilarEdges,
+  tokensShared,
 } from "./index.js";
 
 // The fixture helper lives outside tsconfig rootDir (src), so load it dynamically by path.
@@ -77,6 +80,7 @@ interface SymSpec {
   exactHash: string;
   shapeHash: string;
   minhash: Uint32Array;
+  nearMinhash?: Uint32Array;
 }
 
 function addFile(store: Store, path: string, syms: SymSpec[]): SymbolRecord[] {
@@ -105,6 +109,7 @@ function addFile(store: Store, path: string, syms: SymSpec[]): SymbolRecord[] {
       exactHash: s.exactHash,
       shapeHash: s.shapeHash,
       minhash: s.minhash,
+      ...(s.nearMinhash ? { nearMinhash: s.nearMinhash } : {}),
     }),
   );
   store.replaceFile("main", file, records, []);
@@ -474,6 +479,41 @@ describe("vector tiers", () => {
     return { store, mk };
   }
 
+  it("code_vector: a pair that shares too little of the token stream is dropped, whatever its cosine (#131)", async () => {
+    const { store } = tmpStore();
+    if (!vecAvailable(store)) return;
+    ensureVecTables(store, D, "fake/test");
+    const tokens = randomMinhash(r);
+    const mk = (name: string, near: Uint32Array) =>
+      addFile(store, `src/${name}.ts`, [
+        {
+          name,
+          exactHash: `H-${name}`,
+          shapeHash: `S-${name}`,
+          minhash: randomMinhash(r),
+          nearMinhash: near,
+        },
+      ])[0] as SymbolRecord;
+    const q = mk("q", tokens);
+    const sameStrings = mk("sameStrings", perturb(tokens, 16)); // token Jaccard 0.75
+    const otherStrings = mk("otherStrings", randomMinhash(r)); // token Jaccard about 0
+    const legacy = addFile(store, "src/legacy.ts", [
+      { name: "legacy", exactHash: "H-legacy", shapeHash: "S-legacy", minhash: randomMinhash(r) },
+    ])[0] as SymbolRecord; // no token MinHash: a row from before schema v5
+    putVectors(
+      store,
+      "vec_code",
+      [q, sameStrings, otherStrings, legacy].map((s) => ({
+        contentKey: contentKey(s.exactHash),
+        vector: unit(0),
+      })),
+    );
+    const found = await findDuplicates(store, { symbol: q }, { tiers: ["code_vector"] });
+    expect(ids(found).sort()).toEqual([legacy.id, sameStrings.id].sort());
+    expect(tokensShared({ nearMinhash: tokens }, { nearMinhash: randomMinhash(r) }, 0.5)).toBe(false);
+    expect(tokensShared({ nearMinhash: tokens }, { nearMinhash: new Uint32Array(0) }, 0.5)).toBe(true);
+  });
+
   it("code_vector: cosine at or above the threshold, nearest first; semantic needs a compatible signature", async () => {
     const w = vecWorld();
     if (!w) return;
@@ -743,5 +783,63 @@ describe("performance", () => {
       expect(vecMs).toBeLessThan(150);
       expect(withVec.map((c) => c.tier)).toEqual(["exact", "near", "code_vector"]);
     }
+  });
+});
+
+describe("near tier keeps literals (#131)", () => {
+  const STATUS = (name: string, a: string, b: string, c: string, d: string) =>
+    `export function ${name}(status: string): string {\n  if (status === "${a}") return "${b}";\n  if (status === "${c}") return "${d}";\n  if (status === "x${a}") return "x${b}";\n  if (status === "y${a}") return "y${b}";\n  if (status === "z${a}") return "z${b}";\n  return "${d}${b}";\n}\n`;
+  const features = (code: string) => {
+    const parsed = parseSource("x.ts", code);
+    const s = parsed.symbols[0] as (typeof parsed.symbols)[number];
+    const range = parsed.bodies.get(s.id) as { start: number; end: number };
+    return { stmt: s.stmtCount, ...hashSymbol(code, range, "ts") };
+  };
+  const t = { nearJaccard: 0.85, nearTokenJaccard: 0.75 };
+
+  it("two lookup functions of the same shape with different strings are not near", () => {
+    const a = features(STATUS("programText", "open", "Open now", "closed", "Closed"));
+    const b = features(STATUS("requestTitle", "draft", "Draft saved", "sent", "Sent to reviewer"));
+    expect(a.stmt).toBeGreaterThanOrEqual(6);
+    expect(a.shapeHash).toBe(b.shapeHash);
+    expect(nearScore(a, b, t)).toBeNull();
+  });
+
+  it("a renamed copy (function name and locals) scores 1, a small edit stays above the token threshold", () => {
+    const a = features(STATUS("programText", "open", "Open now", "closed", "Closed"));
+    const renamed = features(
+      STATUS("labelFor", "open", "Open now", "closed", "Closed").replace(/status/g, "s"),
+    );
+    expect(nearScore(a, renamed, t)).toBe(1);
+    const edited = features(STATUS("programText", "open", "Open now", "closed", "Closed!"));
+    const score = nearScore(a, edited, t);
+    expect(score).not.toBeNull();
+    expect(score as number).toBeGreaterThanOrEqual(0.75);
+    expect(score as number).toBeLessThan(1);
+  });
+
+  it("a row without a token MinHash (before schema v5) is judged by the shape gate alone", () => {
+    const a = features(STATUS("programText", "open", "Open now", "closed", "Closed"));
+    const b = features(STATUS("requestTitle", "draft", "Draft saved", "sent", "Sent to reviewer"));
+    expect(nearScore(a, { ...b, nearMinhash: new Uint32Array(0) }, t)).toBe(1);
+  });
+
+  it("the engine applies it: the code form does not return a same-shaped lookup as near", async () => {
+    const { store, paths } = await fixtureStore();
+    mkdirSync(join(paths.root, "packages/utils/src"), { recursive: true });
+    writeFileSync(
+      join(paths.root, "packages/utils/src/status.ts"),
+      STATUS("programText", "open", "Open now", "closed", "Closed"),
+    );
+    await indexRepo(paths, { layer: "working", files: ["packages/utils/src/status.ts"], store });
+    const target = "sym:packages/utils/src/status.ts#programText";
+    const other = await findDuplicates(store, {
+      code: { source: STATUS("requestTitle", "draft", "Draft saved", "sent", "Sent"), lang: "ts" },
+    });
+    expect(ids(other)).not.toContain(target);
+    const copy = await findDuplicates(store, {
+      code: { source: STATUS("copied", "open", "Open now", "closed", "Closed"), lang: "ts" },
+    });
+    expect(copy.find((c) => c.symbolId === target)).toMatchObject({ tier: "near", score: 1 });
   });
 });

@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EdgeRecord, FileRecord, SymbolRecord } from "../types.js";
 import { openStore, SchemaTooNewError, splitIdentifier } from "./index.js";
 import type { Store } from "./repo.js";
-import { SCHEMA_V1, SCHEMA_V4 } from "./schema.js";
+import { SCHEMA_V1, SCHEMA_V4, SCHEMA_V5 } from "./schema.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -85,7 +85,7 @@ describe("openStore", () => {
     }
     expect(names).toContain("vec_descriptions"); // migration v2 (sqlite-vec loaded by openStore)
     expect(names).toContain("vec_code");
-    expect(store.getMeta("schema_version")).toBe("4");
+    expect(store.getMeta("schema_version")).toBe("5");
     expect(store.db.pragma("journal_mode", { simple: true })).toBe("wal");
     expect(store.db.pragma("busy_timeout", { simple: true })).toBe(5000);
     expect(store.db.pragma("foreign_keys", { simple: true })).toBe(1);
@@ -134,7 +134,7 @@ describe("openStore", () => {
     raw.close();
     const s = openStore(p);
     try {
-      expect(s.getMeta("schema_version")).toBe("4");
+      expect(s.getMeta("schema_version")).toBe("5");
       const f = s.effectiveFile("file:old.tsx");
       expect(f?.path).toBe("old.tsx");
       expect(f?.directives).toBeUndefined();
@@ -350,7 +350,7 @@ describe("schema v4 (adapter_nodes)", () => {
     const spec = readFileSync(join(here, "../../../../docs/SPEC.md"), "utf8");
     const sec = spec.split("## 9. SQLite schema v1")[1] ?? "";
     const block = /```sql\n([\s\S]*?)```/.exec(sec)?.[1] ?? "";
-    const v4 = block.split("-- migration v4")[1] ?? "";
+    const v4 = (block.split("-- migration v4")[1] ?? "").split("-- migration v5")[0] ?? "";
     const ddl = v4
       .split("\n")
       .slice(1)
@@ -358,6 +358,46 @@ describe("schema v4 (adapter_nodes)", () => {
       .join("\n");
     const norm = (sql: string) => sql.replace(/\s+/g, " ").trim();
     expect(norm(ddl)).toBe(norm(SCHEMA_V4));
+  });
+
+  it("SCHEMA_V5 equals the migration v5 DDL of spec section 9", () => {
+    const spec = readFileSync(join(here, "../../../../docs/SPEC.md"), "utf8");
+    const sec = spec.split("## 9. SQLite schema v1")[1] ?? "";
+    const block = /```sql\n([\s\S]*?)```/.exec(sec)?.[1] ?? "";
+    const ddl = (block.split("-- migration v5")[1] ?? "")
+      .split("\n")
+      .slice(1)
+      .filter((l) => !l.trim().startsWith("--"))
+      .join("\n");
+    const norm = (sql: string) => sql.replace(/\s+/g, " ").trim();
+    expect(norm(ddl)).toBe(norm(SCHEMA_V5));
+  });
+
+  it("migration v5 adds symbols.near_minhash, pending_files, and forgets head_sha", () => {
+    const dir = mkdtempSync(join(tmpdir(), "gantry-v5-"));
+    const dbPath = join(dir, "g.db");
+    const s = openStore(dbPath);
+    s.setMeta("head_sha", "abc");
+    s.setMeta("schema_version", "4");
+    s.close();
+    const raw = new Database(dbPath);
+    raw.exec("DROP TABLE pending_files");
+    raw.close();
+    const again = openStore(dbPath);
+    try {
+      expect(again.getMeta("schema_version")).toBe("5");
+      expect(again.getMeta("head_sha")).toBeUndefined();
+      const cols = (again.db.prepare("PRAGMA table_info(symbols)").all() as { name: string }[]).map(
+        (c) => c.name,
+      );
+      expect(cols).toContain("near_minhash");
+      expect(
+        again.db.prepare("SELECT name FROM sqlite_master WHERE name = 'pending_files'").get(),
+      ).toBeTruthy();
+    } finally {
+      again.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("keeps adapter nodes per file and layer, like symbols", () => {

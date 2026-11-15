@@ -22,7 +22,13 @@ const config = {
   duplicates: {
     mode: "warn",
     ignore: [],
-    thresholds: { nearJaccard: 0.85, codeVector: 0.96, semantic: 0.6 },
+    thresholds: {
+      nearJaccard: 0.85,
+      nearTokenJaccard: 0.75,
+      codeVector: 0.96,
+      codeVectorTokenJaccard: 0.5,
+      semantic: 0.6,
+    },
   },
 } as unknown as GantryConfig;
 
