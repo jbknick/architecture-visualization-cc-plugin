@@ -9,8 +9,8 @@
   --rv-affected: #8b5cf6;
   --rv-faded: #d9dce2;
   --rv-caller-1: #5f6b7d;
-  --rv-caller-2: #8e99aa;
-  --rv-caller-3: #b9c0cb;
+  --rv-caller-2: #76829a;
+  --rv-caller-3: #8e99aa;
   --rv-ring: #c9ced8;
   --rv-group: #e3e6ec;
   --rv-edge: #8d97a8;
@@ -31,8 +31,8 @@
     --rv-affected: #a78bfa;
     --rv-faded: #343a45;
     --rv-caller-1: #a3adbd;
-    --rv-caller-2: #76829a;
-    --rv-caller-3: #535d70;
+    --rv-caller-2: #8e99ad;
+    --rv-caller-3: #78849a;
     --rv-ring: #343c49;
     --rv-group: #2a313c;
     --rv-edge: #5d687b;
@@ -134,6 +134,31 @@
 }
 .rv-levels {
   margin-top: 6px;
+}
+/* The Show filter (#173): one choice per row, the labels are longer than a segment's half width. */
+.segmented.rv-show {
+  grid-template-columns: 1fr;
+}
+.rv-show .segment {
+  text-align: left;
+}
+.rv-show .segment:nth-child(even) {
+  border-left: 0;
+}
+.rv-show .segment:nth-child(n + 2) {
+  border-top: 1px solid var(--border);
+}
+.rv-totals {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.rv-mark-potential {
+  background: color-mix(in srgb, var(--rv-affected) 25%, var(--surface));
+}
+.rv-line-dashed {
+  background: repeating-linear-gradient(90deg, var(--rv-signature) 0 5px, transparent 5px 9px);
+  opacity: 0.7;
 }
 .rv-caller-swatch {
   background: linear-gradient(90deg, var(--rv-caller-1), var(--rv-caller-3));

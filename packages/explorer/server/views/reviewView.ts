@@ -7,8 +7,9 @@ import { type ReviewResult, reviewFor, reviewMapOf, reviewRings, wantsReview } f
  * request number, resolved with `gh`); without either the view is empty and `review` is null.
  *
  * The nodes and edges are the project map's for the same level and filters (so every node sits where it sits on the
- * plain map), and `review` carries the diff, impact and risk plus `review.layer`: marks by node id and the lines
- * between changed symbols and their direct callers, lifted to the map's level. `map=3d` draws the same review on the
+ * plain map), and `review` carries the diff, impact and risk plus `review.layer`: marks by node id and the lines from
+ * direct consumers to the changed symbols and from potential consumers to the node one step nearer, lifted to the
+ * map's level. `map=3d` draws the same review on the
  * 3D map (settlements, one building per file), so the nodes are the project map's Files level. Hint `review`: the web
  * renders it through the 2D map canvas or the 3D one.
  */

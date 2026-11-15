@@ -1,7 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
+import { handleMockApi } from "../../mock/fixture.ts";
 import { buildHierarchy } from "../../mock/hierarchy.ts";
 import { projectMapLarge } from "../../mock/largeMap.ts";
+import type { ReviewLayer, ViewData } from "../api.ts";
+import { MARK_COLOURS, paintLayer } from "../views/reviewModel.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
 import { kindTier } from "./hierarchy.ts";
 import { computeLayout } from "./layout.ts";
@@ -402,5 +405,90 @@ describe("the large mock, drawn at the fit zoom of a 1180 x 812 canvas", () => {
     const files = await drawLarge("files");
     for (const l of files.result.labels.filter((x) => x.kind === "file"))
       if (l.cellW < 140) expect(l.lines.join(""), l.id).not.toContain("…");
+  });
+});
+
+describe("the review layer (#173)", () => {
+  it("paints potential lines dashed and faint, under the solid direct ones, and names affected cells", async () => {
+    const q = new URLSearchParams({ filters: JSON.stringify({ range: "main...feature" }), level: "files" });
+    const res = handleMockApi(new URL(`http://127.0.0.1/api/view/review?${q}`));
+    const view = res?.body as ViewData;
+    const scene = buildScene(view.nodes, view.edges, "nested-elk");
+    const out = await computeLayout(
+      layoutInputFor(scene, "nested-elk", null, undefined, { w: 1180, h: 812 }),
+    );
+    if (!out.map) throw new Error("no map geometry");
+    const geo = out.map;
+    const layer = view.review?.layer as ReviewLayer;
+    // A context that records every stroke with the dash pattern, alpha and width it was made with.
+    const strokes: { dash: number[]; alpha: number; width: number }[] = [];
+    let dash: number[] = [];
+    const state: Record<string, unknown> = {};
+    const ctx = new Proxy(state, {
+      get: (t, key: string) => {
+        if (key === "measureText") return (text: string) => ({ width: text.length * 6 });
+        if (key === "setLineDash")
+          return (d: number[]) => {
+            dash = [...d];
+          };
+        if (key === "stroke")
+          return () => {
+            strokes.push({ dash, alpha: t.globalAlpha as number, width: t.lineWidth as number });
+          };
+        return t[key] ?? (() => {});
+      },
+      set: (t, key: string, value) => {
+        t[key] = value;
+        return true;
+      },
+    }) as unknown as CanvasRenderingContext2D;
+    const b = geo.bounds;
+    const scale = Math.min(1100 / (b.w + 6), 780 / (b.h + 6));
+    const draw = (show: "direct" | "potential") =>
+      drawMap({
+        ctx,
+        w: 1180,
+        h: 812,
+        scene,
+        geo,
+        theme: readTheme(null),
+        cam: { scale, tx: 20 - b.x * scale, ty: 20 - b.y * scale },
+        selected: null,
+        hovered: null,
+        highlightWs: null,
+        showDeclared: false,
+        bright: null,
+        links: [],
+        hoverEdge: null,
+        review: {
+          ...paintLayer(
+            { ids: scene.tree.nodes.map((n) => n.id), parents: scene.tree.nodes.map((n) => n.parent) },
+            layer,
+            show,
+          ),
+          colours: MARK_COLOURS.light,
+        },
+      });
+    const result = draw("potential");
+    const links = result.review?.links ?? [];
+    const soft = links.filter((l) => l.soft);
+    expect(soft.length).toBeGreaterThan(0);
+    expect(links.length).toBeGreaterThan(soft.length);
+    // Soft first: every direct line is drawn after (over) every dashed one.
+    expect(links.findIndex((l) => !l.soft)).toBe(soft.length);
+    const dashed = strokes.filter((s) => s.dash.length === 2 && s.dash[0] === 5 && s.dash[1] === 4);
+    expect(dashed).toHaveLength(soft.length);
+    for (const s of dashed) {
+      expect(s.alpha).toBeLessThan(0.6);
+      expect(s.width).toBeLessThan(1.5);
+    }
+    // Affected cells (direct and potential) carry their names when the cell has room.
+    const at = (id: string) => scene.tree.index.get(id) as number;
+    expect(result.review?.named).toContain(at("file:apps/web/src/hooks/useDebounce.ts"));
+    // + Directly affected: no dashed line at all.
+    strokes.length = 0;
+    const direct = draw("direct");
+    expect(direct.review?.links.some((l) => l.soft)).toBe(false);
+    expect(strokes.some((s) => s.dash[0] === 5)).toBe(false);
   });
 });

@@ -130,8 +130,9 @@ async function startReal(): Promise<{ url: string; stop: () => void }> {
   sh("git", ["-c", "init.defaultBranch=main", "init", "-q"], { cwd: repo, env });
   sh("git", ["add", "-A"], { cwd: repo, env });
   sh("git", ["commit", "-q", "-m", "fixture"], { cwd: repo, env });
-  // A `feature` branch for the review view: Button's props gain `size` and slug.ts gains slugifyAll. The index and
-  // the checked-out tree stay at `main`, so every other shot is unchanged.
+  // A `feature` branch for the review view: Button's props gain `size`, slug.ts gains slugifyAll and getPost's body
+  // changes (its callers' importers make a chain two steps out, #173). The index and the checked-out tree stay at
+  // `main`, so every other shot is unchanged.
   sh("git", ["checkout", "-q", "-b", "feature"], { cwd: repo, env });
   const button = join(repo, "packages/ui/src/button.tsx");
   writeFileSync(
@@ -145,6 +146,11 @@ async function startReal(): Promise<{ url: string; stop: () => void }> {
   writeFileSync(
     slug,
     `${readFileSync(slug, "utf8")}export function slugifyAll(xs: string[]): string[] {\n  return xs.map(slugify);\n}\n`,
+  );
+  const queries = join(repo, "packages/db/src/queries.ts");
+  writeFileSync(
+    queries,
+    readFileSync(queries, "utf8").replace("where(eq(posts.id, id))", "where(eq(posts.id, id)).limit(1)"),
   );
   sh("git", ["add", "-A"], { cwd: repo, env });
   sh("git", ["commit", "-q", "-m", "feature"], { cwd: repo, env });
@@ -497,12 +503,12 @@ async function fixtureStills(browser: Browser) {
       await save(page, "fixture-caller-graph");
     }
     if (want("fixture-review")) {
-      // The review on the 2D map (#167), Button selected from the left panel: the inspector shows its signature.
-      const button = encodeURIComponent("sym:packages/ui/src/button.tsx#Button");
-      await page.goto(`${base}#/review?range=main...feature&sel=${button}`);
+      // The review on the 2D map (#167), nothing selected: the whole affected chain, directly affected code with
+      // solid lines to the change and potentially affected code with dashed lines one step nearer (#173).
+      await page.goto(`${base}#/review?range=main...feature`);
       await page.locator("[data-testid=review-canvas][data-ready=true]").waitFor({ timeout: 30_000 });
       await page.locator(".gc-sigma[data-ready=true]").waitFor({ timeout: 30_000 });
-      await page.getByRole("region", { name: "Change in this review" }).waitFor();
+      await page.getByTestId("review-totals").waitFor();
       await page.getByRole("button", { name: "Fit" }).click();
       await cameraIdle(page);
       await settle(page);

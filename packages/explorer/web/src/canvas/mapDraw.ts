@@ -90,6 +90,8 @@ export interface ReviewDrawn {
   affected: number;
   faded: number;
   links: { src: number; dst: number; change: string; colour: string; soft?: boolean }[];
+  /** Changed or affected leaves that got a name label this frame. */
+  named: number[];
 }
 
 /** A rank marker as drawn: a numbered circle on (or beside) the tile of one of the largest files. */
@@ -427,7 +429,11 @@ export function drawMap(env: DrawEnv): DrawResult {
 
   const panelHover = env.panelHover != null && env.panelHover < tree.nodes.length ? env.panelHover : null;
   const rv = env.review && env.review.lit.length === tree.nodes.length ? env.review : null;
-  const drawn: ReviewDrawn | undefined = rv ? { changed: 0, affected: 0, faded: 0, links: [] } : undefined;
+  const drawn: ReviewDrawn | undefined = rv
+    ? { changed: 0, affected: 0, faded: 0, links: [], named: [] }
+    : undefined;
+  /** A changed or affected cell of the review layer: it gets a name whenever any label fits (#173). */
+  const reviewNamed = (i: number): boolean => rv !== null && (rv.change[i] !== null || (rv.hop[i] ?? 0) > 0);
   if (drawn) result.review = drawn;
   const dimmed = (i: number): boolean =>
     (env.bright !== null && !env.bright.has(i)) ||
@@ -531,6 +537,7 @@ export function drawMap(env: DrawEnv): DrawResult {
         ctx.font = `500 ${fs}px ${FONT}`;
         ctx.fillStyle = inkOnChange(i, "rgba(255,255,255,0.96)");
         ctx.fillText(text, x + 3, y + (ph - fs) / 2);
+        if (drawn && reviewNamed(i)) drawn.named.push(i);
       }
       const marks = scene.nodes[i]?.badges;
       if (marks && pw >= 16 && ph >= 12) {
@@ -618,9 +625,11 @@ export function drawMap(env: DrawEnv): DrawResult {
       // a second small line with its function count when the cell has room. A name that does not fit gets no
       // label: zooming in reveals it.
       let label = fitFileLabel((t, f) => measureAt(400, t, f), name, vw, ph, 3);
-      if (!label && node.parent !== -1 && largestFileOf(node.parent) === i)
+      // The largest file of its folder, and a changed or affected file of the review, also try a smaller font.
+      if (!label && ((node.parent !== -1 && largestFileOf(node.parent) === i) || reviewNamed(i)))
         label = fitLargestFileLabel((t, f) => measureAt(400, t, f), name, vw, ph, 3);
       if (label) {
+        if (drawn && reviewNamed(i)) drawn.named.push(i);
         const font = label.font;
         const lh = font * 1.15;
         const lw = Math.max(...label.lines.map((t) => measureAt(400, t, font)));

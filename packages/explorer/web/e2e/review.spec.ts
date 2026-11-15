@@ -69,6 +69,17 @@ test.beforeAll(async () => {
   );
   git("add", "-A");
   git("commit", "-q", "-m", "feature");
+  // A `chain` branch (#173): getPost's body changes. app.ts calls it and the db barrel re-exports it (directly
+  // affected); the api barrel imports app.ts, router.ts and the post route import the db barrel (potentially).
+  git("checkout", "-q", "main");
+  git("checkout", "-q", "-b", "chain");
+  const queries = join(repo, "packages/db/src/queries.ts");
+  writeFileSync(
+    queries,
+    readFileSync(queries, "utf8").replace("where(eq(posts.id, id))", "where(eq(posts.id, id)).limit(1)"),
+  );
+  git("add", "-A");
+  git("commit", "-q", "-m", "chain");
   git("checkout", "-q", "main");
   execFileSync("node", [cliJs, "init"], { cwd: repo, env, stdio: "ignore", timeout: 100_000 });
 
@@ -115,6 +126,7 @@ interface ReviewProbe {
       affected: number;
       faded: number;
       links: { src: string; dst: string; change: string; colour: string; soft?: boolean }[];
+      named: string[];
     } | null;
   } | null;
 }
@@ -181,7 +193,7 @@ test("2D map: Button's file coloured by its change, caller files tinted, file-to
     expect.objectContaining({ src: HOME_FILE, dst: BUTTON_FILE, change: "signature" }),
   );
   for (const l of drawn?.links ?? [])
-    expect([BUTTON_FILE, "file:packages/utils/src/slug.ts"]).toContain(l.dst);
+    if (!l.soft) expect([BUTTON_FILE, "file:packages/utils/src/slug.ts"]).toContain(l.dst);
 
   await expect(page.getByRole("complementary", { name: "Review legend" })).toContainText("Signature changed");
   const risk = page.getByRole("region", { name: "Risk" });
@@ -190,6 +202,102 @@ test("2D map: Button's file coloured by its change, caller files tinted, file-to
   await expect(page.getByRole("region", { name: "Changed files" }).getByRole("button")).toHaveCount(2);
   await expectTidy(page);
   await page.screenshot({ path: join(shots, "review-map-fixture.png") });
+});
+
+const QUERIES = "file:packages/db/src/queries.ts";
+const DB_INDEX = "file:packages/db/src/index.ts";
+const APP = "file:apps/api/src/app.ts";
+const API_INDEX = "file:apps/api/src/index.ts";
+const POST_ROUTE = "file:apps/web/src/routes/posts.$postId.tsx";
+
+test("secondary chain (#173): nothing selected, hop-2 consumers tinted with dashed lines to the step nearer; Show filters them", async ({
+  page,
+}) => {
+  await open(page, "#/review?range=main...chain");
+  const p = await probe2d(page);
+  expect(p.review?.changed).toContainEqual({ id: QUERIES, change: "modified" });
+  expect(p.review?.affected).toContainEqual({ id: APP, hop: 1 });
+  expect(p.review?.affected).toContainEqual({ id: API_INDEX, hop: 2 });
+  const links = p.review?.drawn?.links ?? [];
+  expect(links).toContainEqual(expect.objectContaining({ src: APP, dst: QUERIES, change: "modified" }));
+  expect(links.find((l) => l.src === APP && l.dst === QUERIES)?.soft).toBeUndefined();
+  expect(links).toContainEqual(expect.objectContaining({ src: API_INDEX, dst: APP, soft: true }));
+  expect(links).toContainEqual(
+    expect.objectContaining({ src: "file:apps/api/src/router.ts", dst: DB_INDEX, soft: true }),
+  );
+  // Dashed lines are drawn first, under the solid ones.
+  const firstSolid = links.findIndex((l) => !l.soft);
+  expect(links.slice(firstSolid).every((l) => !l.soft)).toBe(true);
+  // Affected files with room carry their names (the api files hold no functions, so they have no area to name).
+  expect(p.review?.drawn?.named).toEqual(expect.arrayContaining([DB_INDEX, POST_ROUTE]));
+  await expect(page.getByTestId("review-totals")).toHaveText(
+    /^Directly affected 2 · Potentially affected [3-9]$/,
+  );
+  const legend = page.getByRole("complementary", { name: "Review legend" });
+  await expect(legend).toContainText("Potentially affected");
+  await expect(legend).toContainText("Dashed: one step nearer");
+
+  // Hover: the name, the hop and the path to the change.
+  const r = p.reviewRects.find((x) => x.id === POST_ROUTE) as { x: number; y: number; w: number; h: number };
+  const box = (await surface(page).boundingBox()) as { x: number; y: number };
+  await page.mouse.move(box.x + r.x + r.w / 2, box.y + r.y + r.h / 2);
+  const tip = page.getByRole("tooltip");
+  await expect(tip).toContainText("Review: potentially affected (hop 2)");
+  await expect(tip).toContainText("Path to the change: posts.$postId.tsx → index.ts → queries.ts");
+  await page.mouse.move(2, 2);
+  await expectTidy(page);
+
+  // Show: + Directly affected drops the hop-2 tint and the dashed lines; Changed only drops the consumers.
+  const show = page.getByRole("radiogroup", { name: "Show" });
+  await expect(show.getByRole("radio", { name: "+ Potentially affected" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await show.getByRole("radio", { name: "+ Directly affected" }).click();
+  await expect(page).toHaveURL(/show=direct/);
+  await expect
+    .poll(async () => (await probe2d(page)).review?.affected.some((a) => a.id === API_INDEX))
+    .toBe(false);
+  const direct = await probe2d(page);
+  expect(direct.review?.affected).toContainEqual({ id: APP, hop: 1 });
+  expect(direct.review?.drawn?.links.some((l) => l.soft)).toBe(false);
+  expect(direct.review?.drawn?.links).toContainEqual(expect.objectContaining({ src: APP, dst: QUERIES }));
+  await show.getByRole("radio", { name: "Changed only" }).click();
+  await expect(page).toHaveURL(/show=changed/);
+  await expect.poll(async () => (await probe2d(page)).review?.affected.length).toBe(0);
+  expect((await probe2d(page)).review?.drawn?.links).toEqual([]);
+});
+
+test("secondary chain in 3D (#173): the hop-2 building is tinted and joined by a dashed arc; Show filters it", async ({
+  page,
+}) => {
+  await open(page, "#/review?range=main...chain&map=3d");
+  await expect(page.locator(".map3d[data-ready='true'][data-style='settlements']")).toBeVisible({
+    timeout: 30_000,
+  });
+  const host = page.getByTestId("map3d-canvas");
+  await expect(host).toHaveAttribute("data-review", /queries/, { timeout: 20_000 });
+  type Probe3d = {
+    affected: string[];
+    hops: Record<string, number>;
+    links: { src: string; dst: string; change: string; soft?: boolean }[];
+  };
+  const read = async () => JSON.parse((await host.getAttribute("data-review")) ?? "null") as Probe3d;
+  const review = await read();
+  expect(review.affected).toContain(API_INDEX);
+  expect(review.hops[API_INDEX]).toBe(2);
+  expect(review.hops[APP]).toBe(1);
+  expect(review.links).toContainEqual({ src: API_INDEX, dst: APP, change: "modified", soft: true });
+  expect(review.links).toContainEqual({ src: APP, dst: QUERIES, change: "modified" });
+  await page.getByTestId("map3d-pause").click();
+  await page.waitForTimeout(400);
+  await page
+    .getByRole("radiogroup", { name: "Show" })
+    .getByRole("radio", { name: "+ Directly affected" })
+    .click();
+  await expect(page).toHaveURL(/show=direct/);
+  await expect.poll(async () => (await read()).affected.includes(API_INDEX)).toBe(false);
+  expect((await read()).links.some((l) => l.soft)).toBe(false);
 });
 
 test("positions: every node of the review map sits exactly where it sits on the plain project map", async ({

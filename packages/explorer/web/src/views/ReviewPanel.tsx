@@ -2,17 +2,19 @@ import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import type { Filters, ViewLevel } from "../api.ts";
 import type { FilterPanelProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
-import { getBool, setBool } from "./filterUtils.ts";
 import { ConsumerTiers } from "./ReviewConsumers.tsx";
 import { reviewFocus, useReviewFocus } from "./reviewFocus.ts";
 import {
+  affectedTotals,
   CHANGE_WORDS,
   CROSSING_WORDS,
-  FAR_KEY,
   focusedChange,
   markKindOf,
   RISK_WORDS,
+  SHOW_CHOICES,
+  SHOW_KEY,
   shortName,
+  showOf,
 } from "./reviewModel.ts";
 
 const MAPS = [
@@ -66,7 +68,7 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
   const map = filters.map === "3d" ? "3d" : "2d";
   const mode = filters.mode === "rings" ? "rings" : "map";
   const level = route?.level ?? "files";
-  const far = getBool(filters, FAR_KEY, false);
+  const show = showOf(filters);
   const sel = state.route.sel;
   const stored = useReviewFocus();
   const expanded = focusedChange(review, sel, stored);
@@ -99,6 +101,7 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
     </button>
   );
   const unplaced = new Set(review?.layer.unplaced ?? []);
+  const totals = affectedTotals(review);
 
   return (
     <div className="filter-panel rv-panel">
@@ -121,9 +124,9 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
         {filters.pr && !filters.range && <p className="muted">Pull request #{filters.pr}</p>}
       </form>
 
-      <section className="filter-group" aria-label="Show">
-        <h3>Show</h3>
-        <div className="segmented" role="radiogroup" aria-label="Show">
+      <section className="filter-group" aria-label="View">
+        <h3>View</h3>
+        <div className="segmented" role="radiogroup" aria-label="View">
           {MODES.map((m) => (
             // biome-ignore lint/a11y/useSemanticElements: a segmented control is a radio group of buttons
             <button
@@ -184,16 +187,32 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
           ) : (
             <p className="muted">One building per file: lines run from file to file.</p>
           )}
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={far}
-              onChange={(e) => onFiltersChange(setBool(filters, FAR_KEY, e.target.checked, false))}
-            />
-            <span className="check-text">
-              <span className="check-label">Tint callers at hop 2 and 3</span>
-            </span>
-          </label>
+        </section>
+      )}
+
+      {mode === "map" && (
+        <section className="filter-group" aria-label="Show">
+          <h3>Show</h3>
+          <div className="segmented rv-show" role="radiogroup" aria-label="Show">
+            {SHOW_CHOICES.map((c) => (
+              // biome-ignore lint/a11y/useSemanticElements: a segmented control is a radio group of buttons
+              <button
+                key={c.id}
+                type="button"
+                role="radio"
+                aria-checked={show === c.id}
+                title={c.hint}
+                className="segment"
+                onClick={() =>
+                  onFiltersChange(
+                    c.id === "potential" ? without(filters, SHOW_KEY) : { ...filters, [SHOW_KEY]: c.id },
+                  )
+                }
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
         </section>
       )}
 
@@ -218,6 +237,16 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
               {review.changes.length === 1 ? "symbol change" : "symbol changes"}
               {review.callersByHop.map((h) => ` · hop ${h.hop}: ${h.count}`).join("")}
             </p>
+            <p className="rv-totals" data-testid="review-totals">
+              Directly affected {totals.direct.toLocaleString("en-US")} · Potentially affected{" "}
+              {totals.potential.toLocaleString("en-US")}
+            </p>
+            {review.layer.linksTotal > review.layer.links.length && (
+              <p className="muted">
+                Lines: {review.layer.links.length.toLocaleString("en-US")} of{" "}
+                {review.layer.linksTotal.toLocaleString("en-US")} drawn (direct ones first).
+              </p>
+            )}
           </section>
 
           <section className="filter-group" aria-label="Changed symbols">

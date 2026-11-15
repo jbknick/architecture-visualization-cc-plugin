@@ -1,7 +1,9 @@
+import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { projectMapLarge } from "../../../mock/largeMap.ts";
 import type { ViewData } from "../../api.ts";
 import { buildScene } from "../../canvas/scene.ts";
+import { dashesOf } from "./kit.ts";
 import { archetypeFor, buildLandscape, districtKeys } from "./model.ts";
 import { makePath, type Pt, sampleAt, segPoint } from "./path.ts";
 import { placeSettlements } from "./placement.ts";
@@ -286,5 +288,27 @@ describe("landscape from the mock large repo", () => {
       const archs = new Set(s.buildings.map((i) => land.buildings[i]?.arch));
       expect(archs.size).toBeGreaterThanOrEqual(3);
     }
+  });
+});
+
+describe("review arcs (#173)", () => {
+  it("a potential arc is cut into dashes along the curve, with gaps between them", () => {
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(5, 6, 0),
+      new THREE.Vector3(10, 1, 0),
+    );
+    const len = curve.getLength();
+    const pieces = dashesOf(curve, 0.9, 0.55);
+    expect(pieces.length).toBe(Math.floor((len + 0.55) / 1.45));
+    let drawn = 0;
+    for (const p of pieces) drawn += p.getLength();
+    // About dash / (dash + gap) of the arc is drawn: the rest is gaps.
+    expect(drawn / len).toBeGreaterThan(0.5);
+    expect(drawn / len).toBeLessThan(0.75);
+    expect(pieces[0]?.getPoint(0).distanceTo(curve.getPoint(0))).toBeLessThan(1e-6);
+    // A very short arc still shows as one piece.
+    const short = new THREE.LineCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.3, 0, 0));
+    expect(dashesOf(short, 0.9, 0.55)).toHaveLength(1);
   });
 });

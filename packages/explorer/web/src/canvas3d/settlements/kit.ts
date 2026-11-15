@@ -302,3 +302,25 @@ export const FACADES: Record<"house" | "block" | "tower" | "hall", FacadeStyle> 
   tower: { cellW: 0.3, cellH: 0.42, glassW: 0.72, glassH: 0.62, amount: 0.9, lit: 0.35, base: 0.42 },
   hall: { cellW: 0.5, cellH: 0.7, glassW: 0.34, glassH: 0.6, amount: 0.65, lit: 0.5, base: 0.15 },
 };
+
+/**
+ * Dashes along a curve: pieces `dash` long with `gap` between them (world units), each a short curve of its own. At
+ * least one piece, so a very short arc still shows.
+ */
+export function dashesOf(
+  curve: THREE.Curve<THREE.Vector3>,
+  dash: number,
+  gap: number,
+): THREE.Curve<THREE.Vector3>[] {
+  const len = curve.getLength();
+  const step = dash + gap;
+  const n = Math.max(1, Math.floor((len + gap) / step));
+  const out: THREE.Curve<THREE.Vector3>[] = [];
+  for (let k = 0; k < n; k++) {
+    const u0 = (k * step) / len;
+    const u1 = Math.min(1, (k * step + dash) / len);
+    const pts = [0, 0.5, 1].map((t) => curve.getPointAt(Math.min(1, u0 + (u1 - u0) * t)));
+    out.push(new THREE.CatmullRomCurve3(pts));
+  }
+  return out;
+}

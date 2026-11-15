@@ -81,8 +81,92 @@ export function markKindOf(c: { kind: ChangeKind; signatureChanged: boolean }): 
   return c.signatureChanged ? "signature" : "modified";
 }
 
-/** `far=true` in the filters: callers at hop 2 and 3 get a faint tint too. */
-export const FAR_KEY = "far";
+/** The "Show" filter (#173): how much of the affected chain the map draws. */
+export type ReviewShow = "changed" | "direct" | "potential";
+/** `show=changed|direct` in the filters; absent means `potential` (the whole chain). */
+export const SHOW_KEY = "show";
+export const SHOW_CHOICES: readonly { id: ReviewShow; label: string; hint: string }[] = [
+  { id: "changed", label: "Changed only", hint: "Only the changed code, no consumers and no lines" },
+  {
+    id: "direct",
+    label: "+ Directly affected",
+    hint: "Also the code that uses the changed code itself (hop 1): clear tint, solid lines",
+  },
+  {
+    id: "potential",
+    label: "+ Potentially affected",
+    hint: "Also the code that uses those (hops 2 and 3): softer tint, dashed lines to the step nearer the change",
+  },
+];
+
+/** The Show filter of a route's filters (default: the whole chain). */
+export function showOf(filters: Readonly<Record<string, string | undefined>>): ReviewShow {
+  const v = filters[SHOW_KEY];
+  return v === "changed" || v === "direct" ? v : "potential";
+}
+
+/** The panel's totals: distinct consumers at hop 1, and at hops 2 and 3 (each counted at its nearest hop). */
+export function affectedTotals(review: ReviewData | null | undefined): { direct: number; potential: number } {
+  let direct = 0;
+  let potential = 0;
+  for (const h of review?.callersByHop ?? []) {
+    if (h.hop === 1) direct += h.count;
+    else potential += h.count;
+  }
+  return { direct, potential };
+}
+
+/** How a node relates to the change, in words: "directly affected (hop 1)" or "potentially affected (hop 2)". */
+export function hopWords(hop: number): string {
+  return hop <= 1 ? "directly affected (hop 1)" : `potentially affected (hop ${hop})`;
+}
+
+/**
+ * The path from node `i` to the change, following the painted lines (a direct line first, else the dashed line to
+ * the node one step nearer), at most four steps. Returns the indices, `i` first; just `[i]` when no line leaves it.
+ */
+export function pathToChange(paint: Pick<LayerPaint, "change" | "links">, i: number): number[] {
+  const out = [i];
+  const seen = new Set([i]);
+  let k = i;
+  for (let step = 0; step < 4 && !paint.change[k]; step++) {
+    const from = paint.links.filter((l) => l.src === k && !seen.has(l.dst));
+    const next = from.find((l) => !l.soft) ?? from[0];
+    if (!next) break;
+    k = next.dst;
+    seen.add(k);
+    out.push(k);
+  }
+  return out;
+}
+
+/**
+ * At most `max` painted lines, direct ones kept first (a dashed line never pushes out a solid one), in drawing order:
+ * soft before direct.
+ */
+export function capPaintLinks<T extends { soft?: boolean }>(links: readonly T[], max: number): T[] {
+  const direct = links.filter((l) => !l.soft).slice(0, max);
+  const soft = links.filter((l) => l.soft).slice(0, Math.max(0, max - direct.length));
+  return [...soft, ...direct];
+}
+
+/** Tooltip lines of a review node: its change, or its hop and the path to the change (names from `nameOf`). */
+export function reviewTipLines(
+  paint: LayerPaint | null | undefined,
+  i: number,
+  nameOf: (i: number) => string,
+): string[] {
+  if (!paint) return [];
+  const ch = paint.change[i];
+  if (ch) return [`Review: ${MARK_WORDS[ch].label.toLowerCase()}`];
+  const hop = paint.hop[i] ?? 0;
+  if (hop === 0) return [];
+  const path = pathToChange(paint, i);
+  return [
+    `Review: ${hopWords(hop)}`,
+    ...(path.length > 1 ? [`Path to the change: ${path.map(nameOf).join(" → ")}`] : []),
+  ];
+}
 
 /** The minimal tree a layer is resolved against: the map scene's (2D) or the settlements' building ids (3D). */
 export interface LayerTree {
@@ -95,11 +179,14 @@ export interface LayerTree {
 export interface LayerPaint {
   /** Change kind per index (only on the node the server marked). */
   change: (ReviewMarkKind | null)[];
-  /** Nearest caller hop per index (0: none). Hops 2 and 3 only when `far` is on, or for a focused change. */
+  /** Nearest caller hop per index (0: none), as far as the Show filter reaches. */
   hop: Uint8Array;
   /** 1 for a node that is marked or holds a marked node (it keeps its colours); the rest fade back. */
   lit: Uint8Array;
-  /** `soft`: a potentially affected consumer's line (to the node one step nearer the change), drawn faintly. */
+  /**
+   * `soft`: a potentially affected consumer's line (to the node one step nearer the change), drawn faint and dashed.
+   * Soft lines come first so they are drawn under the direct ones.
+   */
   links: { src: number; dst: number; change: ReviewMarkKind; weight: number; soft?: boolean }[];
   /** Changed symbol, file or consumer id -> the index that shows it. */
   placed: Map<string, number>;
@@ -188,14 +275,15 @@ export function layerFocus(review: ReviewData | null | undefined, id: string | n
 
 /**
  * Resolves `layer` against a tree: marks by index, every ancestor of a marked node lit, lines between indices.
- * Marks and lines whose node is not in the tree (a mosaic, a filter) are skipped. With `focus` (a selected change),
- * only that change, its direct consumers (strong tint and lines) and its potential ones (soft tint and lines) stay
- * lit; the rest fade. Deterministic.
+ * Marks and lines whose node is not in the tree (a mosaic, a filter) are skipped. `show` sets how far the chain
+ * goes: the changed code only, plus its direct consumers (hop 1: clear tint, solid lines), or plus the potential
+ * ones too (hops 2-3: soft tint, dashed lines to the node one step nearer). With `focus` (a selected change), only
+ * that change and its own consumers stay lit; the rest fade. Soft lines come before direct ones. Deterministic.
  */
 export function paintLayer(
   tree: LayerTree,
   layer: ReviewLayer,
-  far: boolean,
+  show: ReviewShow = "potential",
   focus: LayerFocus | null = null,
 ): LayerPaint {
   const n = tree.ids.length;
@@ -214,26 +302,31 @@ export function paintLayer(
     const i = index.get(node);
     if (i !== undefined) placed.set(id, i);
   }
-  if (focus) return paintFocus(tree, index, focus, { change, hop, lit, light, placed });
+  const reach = show === "changed" ? 0 : show === "direct" ? 1 : 3;
+  if (focus) return paintFocus(tree, index, focus, reach, { change, hop, lit, light, placed });
   for (const m of layer.marks) {
     const i = index.get(m.id);
     if (i === undefined) continue;
     if (m.change) {
       change[i] = m.change;
       light(i);
-    } else if (m.hop !== undefined && (m.hop === 1 || far)) {
+    } else if (m.hop !== undefined && m.hop <= reach) {
       hop[i] = m.hop;
       light(i);
     }
   }
-  const links: LayerPaint["links"] = [];
+  const direct: LayerPaint["links"] = [];
+  const soft: LayerPaint["links"] = [];
   for (const l of layer.links) {
     const src = index.get(l.src);
     const dst = index.get(l.dst);
     if (src === undefined || dst === undefined) continue;
-    links.push({ src, dst, change: l.change, weight: l.weight });
+    const potential = l.tier === "potential";
+    if ((potential ? 2 : 1) > reach) continue;
+    if (potential) soft.push({ src, dst, change: l.change, weight: l.weight, soft: true });
+    else direct.push({ src, dst, change: l.change, weight: l.weight });
   }
-  return { change, hop, lit, links, placed };
+  return { change, hop, lit, links: [...soft, ...direct], placed };
 }
 
 /** `paintLayer` for one focused change: its node, its consumers' tints and lines (direct strong, potential soft). */
@@ -241,6 +334,7 @@ function paintFocus(
   tree: LayerTree,
   index: Map<string, number>,
   focus: LayerFocus,
+  reach: number,
   out: Omit<LayerPaint, "links"> & { light: (i: number) => void },
 ): LayerPaint {
   const { change, hop, lit, light, placed } = out;
@@ -264,21 +358,24 @@ function paintFocus(
       if (!soft) delete l.soft;
     } else links.set(key, { src: a, dst: b, change: kind, weight: 1, ...(soft ? { soft: true } : {}) });
   };
-  for (const id of focus.direct) {
+  for (const id of reach >= 1 ? focus.direct : []) {
     const i = index.get(id);
     if (i === undefined) continue;
     if (i !== dst && !change[i]) hop[i] = 1;
     light(i);
     link(i, dst, false);
   }
-  for (const p of focus.potential) {
+  for (const p of reach >= 2 ? focus.potential : []) {
     const i = index.get(p.node);
     if (i === undefined) continue;
     if (i !== dst && !change[i] && hop[i] !== 1) hop[i] = 2;
     light(i);
     link(i, p.next !== null ? index.get(p.next) : undefined, true);
   }
-  const sorted = [...links.values()].sort((a, b) => a.src - b.src || a.dst - b.dst);
+  // Soft lines first, so the direct ones are drawn over them.
+  const sorted = [...links.values()].sort(
+    (a, b) => Number(!a.soft) - Number(!b.soft) || a.src - b.src || a.dst - b.dst,
+  );
   return { change, hop, lit, links: sorted, placed };
 }
 
@@ -352,9 +449,12 @@ export function ringBounds(nodes: readonly GraphNode[], pad = 110): Rect {
   return { x: -half, y: -half, w: 2 * half, h: 2 * half };
 }
 
-/** Whether a ring's callers get text labels without hover: only when there is room. Changed nodes always do. */
+/**
+ * Whether a ring's callers get text labels without hover: only when there is room (the same room on every ring, so
+ * the outer rings read like the first, #173). Changed nodes always do.
+ */
 export function labelRing(hop: number, count: number): boolean {
-  return hop === 0 || count <= (hop === 1 ? 40 : 24);
+  return hop === 0 || count <= 40;
 }
 
 /** Angle clockwise from the top, 0 to 2pi, as the server places slots. */

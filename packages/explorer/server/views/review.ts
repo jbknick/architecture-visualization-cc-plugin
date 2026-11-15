@@ -96,25 +96,30 @@ export interface ReviewMark {
 
 export interface ReviewLink {
   id: string;
-  /** The caller's node, on this map. */
+  /** The consumer's node, on this map. */
   src: string;
-  /** The changed symbol's node, on this map. */
+  /** `direct`: the changed symbol's node. `potential`: the node of the consumer's `next` (one step nearer). */
   dst: string;
   /** The change the line points to (its colour). */
   change: ReviewMarkKind;
-  /** Direct call, render, hook or import edges between the two nodes. */
+  /** Edges (direct) or potential consumers (potential) joined by this line. */
   weight: number;
+  /** `direct` (hop 1, a solid line to the change) or `potential` (hops 2-3, a dashed line to `next`). */
+  tier: "direct" | "potential";
+  /** The nearest hop of the consumers the line stands for: 1 for direct, 2 or 3 for potential. */
+  hop: number;
 }
 
 /**
- * The review as a layer over a map response: marks by node id and connection lines between the changed symbols'
- * nodes and their direct callers' nodes, both lifted to the map's level (function to function, file to file, folder
- * to folder). The map's own nodes and edges are untouched, so the positions stay the plain map's.
+ * The review as a layer over a map response: marks by node id and connection lines from the direct consumers' nodes
+ * to the changed symbols' nodes and from the potentially affected consumers' nodes to their `next` nodes, all lifted
+ * to the map's level (function to function, file to file, folder to folder). The map's own nodes and edges are untouched, so the positions stay the plain map's.
  */
 export interface ReviewLayer {
   marks: ReviewMark[];
+  /** Direct links first, then potential ones, each sorted by id; at most MAX_REVIEW_LINKS in all. */
   links: ReviewLink[];
-  /** Links before the cap. */
+  /** Links before the cap (both tiers). */
   linksTotal: number;
   /** Changed symbol ids, changed file ids (`file:<path>`) and consumer ids -> the node that shows them on this map. */
   placed: [string, string][];
@@ -372,8 +377,9 @@ function placeChange(c: SymbolChange, place: MapPlacement): string | undefined {
 
 /**
  * The review layer of a map: every changed symbol and changed file marked on the node that shows it (the strongest
- * kind wins on a shared node), callers marked by their nearest hop where nothing changed, and one line per pair of
- * nodes joined by a direct edge into a changed symbol. Deterministic: everything is sorted by id.
+ * kind wins on a shared node), callers marked by their nearest hop where nothing changed, one direct line per pair of
+ * nodes joined by a direct edge into a changed symbol, and one potential line per pair joining a potentially affected
+ * consumer to its `next` (#173). Deterministic: everything is sorted by id.
  */
 function buildLayer(c: Computed, place: MapPlacement): ReviewLayer {
   const { diff, impact } = c;
@@ -445,16 +451,53 @@ function buildLayer(c: Computed, place: MapPlacement): ReviewLayer {
     if (l) {
       l.weight += 1;
       l.change = stronger(l.change, kind);
-    } else links.set(id, { id, src, dst, change: kind, weight: 1 });
+    } else links.set(id, { id, src, dst, change: kind, weight: 1, tier: "direct", hop: 1 });
   }
-  const allLinks = [...links.values()].sort((a, b) => cmp(a.id, b.id));
+
+  // Potentially affected consumers (hops 2-3, #173): a line from each one's node to the node of its `next`, the node
+  // one step nearer the change. A pair already joined by a direct line keeps only the direct one.
+  const soft = new Map<string, ReviewLink>();
+  for (const cc of impact.consumers) {
+    const kind = kindOfChange.get(cc.id);
+    if (kind === undefined || !nodeOfChange.has(cc.id)) continue;
+    const pathOfAny = new Map([...cc.direct, ...cc.potential].map((x) => [x.id, x.path]));
+    for (const x of cc.potential) {
+      if (x.next === undefined) continue;
+      const src = placeId(place, x.id, x.path);
+      const dst = placeId(place, x.next, pathOfAny.get(x.next));
+      if (src === undefined || dst === undefined || src === dst) continue;
+      if (place.contains(src, dst) || place.contains(dst, src)) continue;
+      const id = `${src}->${dst}`;
+      if (links.has(id)) continue;
+      const l = soft.get(id);
+      if (l) {
+        l.weight += 1;
+        l.change = stronger(l.change, kind);
+        l.hop = Math.min(l.hop, x.hop);
+      } else soft.set(id, { id, src, dst, change: kind, weight: 1, tier: "potential", hop: x.hop });
+    }
+  }
+  const capped = capLinks([...links.values()], [...soft.values()]);
   return {
     marks: [...marks.values()].sort((a, b) => cmp(a.id, b.id)),
-    links: allLinks.slice(0, MAX_REVIEW_LINKS),
-    linksTotal: allLinks.length,
+    ...capped,
     placed: [...placed.entries()].sort((a, b) => cmp(a[0], b[0])),
     unplaced,
   };
+}
+
+/**
+ * The layer's lines in drawing priority: the direct ones (sorted by id), then the potential ones (sorted by id), cut
+ * at `max` so a direct line is never dropped for a potential one. `linksTotal` counts both tiers before the cut.
+ */
+export function capLinks(
+  direct: readonly ReviewLink[],
+  potential: readonly ReviewLink[],
+  max = MAX_REVIEW_LINKS,
+): { links: ReviewLink[]; linksTotal: number } {
+  const all = [...direct].sort((a, b) => cmp(a.id, b.id));
+  all.push(...[...potential].sort((a, b) => cmp(a.id, b.id)));
+  return { links: all.slice(0, max), linksTotal: all.length };
 }
 
 /**
