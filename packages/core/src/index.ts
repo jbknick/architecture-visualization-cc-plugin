@@ -26,6 +26,7 @@ export * from "./overview/index.js";
 export * from "./parse/index.js";
 export * from "./paths/index.js";
 export * from "./resolve/index.js";
+export * from "./review/index.js";
 export * from "./search/index.js";
 export * from "./store/index.js";
 export * from "./types.js";
