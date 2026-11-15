@@ -24,9 +24,15 @@ export const VIEW_LEVELS: readonly ViewLevel[] = ["workspaces", "dirs", "files",
 
 const isLevel = (v: string): v is ViewLevel => (VIEW_LEVELS as readonly string[]).includes(v);
 
+/** Splits at the first `?` only; later `?` characters stay in the query. */
+function splitHash(body: string): [string, string] {
+  const i = body.indexOf("?");
+  return i < 0 ? [body, ""] : [body.slice(0, i), body.slice(i + 1)];
+}
+
 export function parseHash(hash: string): Route {
   const body = hash.replace(/^#\/?/, "");
-  const [path = "", query = ""] = body.split("?", 2) as [string, string?];
+  const [path, query] = splitHash(body);
   const params = new URLSearchParams(query);
   const route: Route = { ...emptyRoute, filters: {} };
   for (const [key, value] of params) {
@@ -47,7 +53,9 @@ export function formatHash(route: Route): string {
   if (route.focus) params.set("focus", route.focus);
   if (route.level) params.set("level", route.level);
   if (route.hops !== null) params.set("hops", String(route.hops));
+  // With a focus, an empty `sel=` records "nothing selected", so a reload does not select the focus again.
   if (route.sel) params.set("sel", route.sel);
+  else if (route.focus) params.set("sel", "");
   for (const key of Object.keys(route.filters).sort()) params.set(key, route.filters[key] ?? "");
   const qs = params.toString();
   return `#/${encodeURIComponent(route.view ?? "")}${qs ? `?${qs}` : ""}`;
@@ -55,12 +63,12 @@ export function formatHash(route: Route): string {
 
 /**
  * The route for a page load. A link with a `focus` and no `sel` key opens that node in the inspector, as a click in
- * the app does (`focusOn` sets both). A `sel` key, even an empty one, is explicit and wins. Applied once at load, not
- * on later hash changes, so closing the inspector inside the app is not undone.
+ * the app does (`focusOn` sets both). A `sel` key, even an empty one, is explicit and wins. Applied once at load; closing
+ * the inspector writes `sel=`, so a reload keeps it closed.
  */
 export function parseInitialHash(hash: string): Route {
   const route = parseHash(hash);
-  const query = hash.split("?", 2)[1] ?? "";
+  const query = splitHash(hash.replace(/^#\/?/, ""))[1];
   if (route.focus && !new URLSearchParams(query).has("sel")) route.sel = route.focus;
   return route;
 }

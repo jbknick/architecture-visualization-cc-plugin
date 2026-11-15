@@ -16,7 +16,8 @@ test.use({ viewport: { width: 1440, height: 900 } });
 
 const canvas = (page: Page) => page.getByTestId("graph-canvas");
 const hubUrl = (extra = "") => `/#/ego?focus=${encodeURIComponent(hubFocus)}&sel=&scenario=hub${extra}`;
-const thinUrl = (extra = "") => `/#/ego?focus=${encodeURIComponent(thinFocus)}&sel=&scenario=hub-thin${extra}`;
+const thinUrl = (extra = "") =>
+  `/#/ego?focus=${encodeURIComponent(thinFocus)}&sel=&scenario=hub-thin${extra}`;
 
 interface Label {
   id: string;
@@ -124,6 +125,16 @@ test("hub-thin: 221 thinly spread callers stay within the row budget and readabl
   expect(rows.every((r) => r.h >= 26)).toBe(true);
   await expect(page.getByText(/221 callers in 2 workspaces · \d+ files/)).toBeVisible();
   await page.screenshot({ path: resolve(shots, "ego-hub-thin-grouped.png") });
+});
+
+test("hub-thin, opened by a focus-only deep link (inspector open): rows stay readable", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await open(page, `/#/ego?focus=${encodeURIComponent(thinFocus)}&scenario=hub-thin`);
+  await expect(page.locator("aside[aria-label=Inspector] h2").first()).toHaveAttribute("title", thinFocus);
+  const p = await probe(page);
+  const rows = p.rects.filter((r) => r.type !== "focus");
+  expect(rows.length).toBeGreaterThanOrEqual(8);
+  for (const r of rows) expect(r.h, `${r.id} is ${r.h}px`).toBeGreaterThanOrEqual(18);
 });
 
 test("hub-thin: expanding the largest group adds at most 15 rows and keeps every row readable", async ({

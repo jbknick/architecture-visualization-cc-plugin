@@ -75,3 +75,21 @@ describe("initial hash", () => {
     expect(parseInitialHash("#/duplicates").sel).toBeNull();
   });
 });
+
+describe("empty sel and question marks", () => {
+  it("keeps an explicit empty sel through the load-time rewrite", () => {
+    const hash = formatHash(parseInitialHash("#/ego?focus=X&sel="));
+    expect(hash).toBe("#/ego?focus=X&sel=");
+    expect(parseInitialHash(hash).sel).toBeNull();
+  });
+  it("writes sel= for a focus with nothing selected, and nothing without a focus", () => {
+    expect(formatHash({ ...parseHash("#/ego?focus=X&sel=Y"), sel: null })).toBe("#/ego?focus=X&sel=");
+    expect(formatHash(parseHash("#/duplicates"))).toBe("#/duplicates");
+  });
+  it("splits at the first ? only", () => {
+    const route = parseInitialHash(`#/ego?focus=${encodeURIComponent("ep:GET /a?b")}&q=a?b`);
+    expect(route.focus).toBe("ep:GET /a?b");
+    expect(route.filters.q).toBe("a?b");
+    expect(parseHash("#/ego?focus=X&q=a?b=c").filters.q).toBe("a?b=c");
+  });
+});

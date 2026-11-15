@@ -65,7 +65,7 @@ export const openViewTool = defineTool({
     "Give the url to the user as is; do not fetch it. view is a view id (for example project-map, ego, duplicates, map-3d); focus is a node id (sym:..., file:..., ws:...) to center on and open in the inspector; filters are view options as string key/value pairs. " +
     "Unknown view ids return {error: unknown_view, views}.",
   inputSchema: {
-    view: z.string().min(1).max(50).describe("View id, for example project-map, ego, duplicates, map3d"),
+    view: z.string().min(1).max(50).describe("View id, for example project-map, ego, duplicates, map-3d"),
     focus: z.string().min(1).max(500).optional().describe("Node id to focus (sym:..., file:..., ws:...)"),
     filters: z
       .record(z.string().max(100), z.string().max(500))

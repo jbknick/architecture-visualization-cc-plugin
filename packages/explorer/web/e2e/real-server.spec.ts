@@ -403,6 +403,20 @@ test.describe("focus-only deep links", () => {
     });
   }
 
+  test("closing the inspector keeps it closed after a reload", async ({ page }) => {
+    const focus = ids["project-map"] ?? "";
+    await page.goto(`${base()}#/project-map?focus=${encodeURIComponent(focus)}`);
+    const inspector = page.locator("aside[aria-label=Inspector]");
+    await expect(inspector.locator("h2").first()).toBeVisible({ timeout: 20_000 });
+    await inspector.getByRole("button", { name: "Close inspector" }).click();
+    await expect(inspector).toHaveCount(0);
+    await expect(page).toHaveURL(/sel=(&|$)/);
+    await page.reload();
+    await expect(page.getByText("pnpm-turbo").first()).toBeVisible();
+    await page.waitForTimeout(500);
+    await expect(inspector).toHaveCount(0);
+  });
+
   test("an explicit sel wins over the focus", async ({ page }) => {
     const sel = ids["project-map"] ?? "";
     const focus = ids.ego ?? "";
