@@ -192,6 +192,7 @@ export function diskCheck(root: string, store: Store, config: GantryConfig): (f:
     const mine = store.getSymbol(f.symbolId);
     if (!mine) return false;
     if (fresh.exactHash === mine.exactHash) return true;
+    if (f.tier === "exact" && mine.renamedHash && fresh.renamedHash === mine.renamedHash) return true;
     if (f.tier === "code_vector") return false;
     return (
       nearScore(

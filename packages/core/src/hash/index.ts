@@ -609,20 +609,28 @@ function computeMinhash(shape: string[]): Uint32Array {
 }
 
 /**
- * exactHash / shapeHash / minhash of the code in `range`. `range` is a symbol body range from the
+ * exactHash / renamedHash (exactHash with the symbol's own name as `$0`) / shapeHash / minhash of the code in `range`. `range` is a symbol body range from the
  * parser (UTF-16 offsets into `source`).
  */
 export function hashSymbol(
   source: string,
   range: { start: number; end: number },
   lang: "ts" | "tsx",
-): { exactHash: string; shapeHash: string; minhash: Uint32Array; nearMinhash: Uint32Array } {
+): {
+  exactHash: string;
+  renamedHash: string;
+  shapeHash: string;
+  minhash: Uint32Array;
+  nearMinhash: Uint32Array;
+} {
   const { a } = analyze(source, range, lang);
+  const near = nearTokens(a);
   return {
     exactHash: sha32(a.tokens),
+    renamedHash: sha32(near),
     shapeHash: sha32(a.shape),
     minhash: computeMinhash(a.shape),
-    nearMinhash: computeMinhash(nearTokens(a)),
+    nearMinhash: computeMinhash(near),
   };
 }
 

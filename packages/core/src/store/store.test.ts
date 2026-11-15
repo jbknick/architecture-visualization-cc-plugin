@@ -85,7 +85,7 @@ describe("openStore", () => {
     }
     expect(names).toContain("vec_descriptions"); // migration v2 (sqlite-vec loaded by openStore)
     expect(names).toContain("vec_code");
-    expect(store.getMeta("schema_version")).toBe("5");
+    expect(store.getMeta("schema_version")).toBe("6");
     expect(store.db.pragma("journal_mode", { simple: true })).toBe("wal");
     expect(store.db.pragma("busy_timeout", { simple: true })).toBe(5000);
     expect(store.db.pragma("foreign_keys", { simple: true })).toBe(1);
@@ -134,7 +134,7 @@ describe("openStore", () => {
     raw.close();
     const s = openStore(p);
     try {
-      expect(s.getMeta("schema_version")).toBe("5");
+      expect(s.getMeta("schema_version")).toBe("6");
       const f = s.effectiveFile("file:old.tsx");
       expect(f?.path).toBe("old.tsx");
       expect(f?.directives).toBeUndefined();
@@ -386,7 +386,7 @@ describe("schema v4 (adapter_nodes)", () => {
     raw.close();
     const again = openStore(dbPath);
     try {
-      expect(again.getMeta("schema_version")).toBe("5");
+      expect(again.getMeta("schema_version")).toBe("6");
       expect(again.db.prepare("SELECT path, reindexed FROM pending_files").all()).toEqual([
         { path: "a.ts", reindexed: 0 },
       ]);
@@ -395,6 +395,30 @@ describe("schema v4 (adapter_nodes)", () => {
     }
     openStore(dbPath).close(); // idempotent
     rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("migration v6 adds symbols.renamed_hash and forgets head_sha", () => {
+    const dir = mkdtempSync(join(tmpdir(), "gantry-v6-"));
+    const dbPath = join(dir, "g.db");
+    const s = openStore(dbPath);
+    s.setMeta("head_sha", "abc");
+    s.setMeta("schema_version", "5");
+    s.close();
+    const raw = new Database(dbPath);
+    raw.exec("ALTER TABLE symbols DROP COLUMN renamed_hash");
+    raw.close();
+    const again = openStore(dbPath);
+    try {
+      expect(again.getMeta("schema_version")).toBe("6");
+      expect(again.getMeta("head_sha")).toBeUndefined();
+      const cols = (again.db.prepare("PRAGMA table_info(symbols)").all() as { name: string }[]).map(
+        (c) => c.name,
+      );
+      expect(cols).toContain("renamed_hash");
+    } finally {
+      again.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("migration v5 adds symbols.near_minhash, pending_files, and forgets head_sha", () => {
@@ -409,7 +433,7 @@ describe("schema v4 (adapter_nodes)", () => {
     raw.close();
     const again = openStore(dbPath);
     try {
-      expect(again.getMeta("schema_version")).toBe("5");
+      expect(again.getMeta("schema_version")).toBe("6");
       expect(again.getMeta("head_sha")).toBeUndefined();
       const cols = (again.db.prepare("PRAGMA table_info(symbols)").all() as { name: string }[]).map(
         (c) => c.name,
