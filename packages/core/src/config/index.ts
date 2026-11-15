@@ -103,7 +103,7 @@ function defaults(): GantryConfig {
     duplicates: {
       mode: "warn",
       ignore: [],
-      thresholds: { nearJaccard: 0.85, codeVector: 0.96, semantic: 0.6 },
+      thresholds: { nearJaccard: 0.85, codeVector: 0.98, semantic: 0.6 },
     },
     backlogReminderThreshold: 100,
     renameSuggestions: false,

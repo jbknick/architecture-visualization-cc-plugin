@@ -72,7 +72,7 @@ type GantryConfig = {
     mode: "warn" | "block";
     ignore: string[];
     thresholds: { nearJaccard: number; codeVector: number; semantic: number };
-  }; // 0.85, 0.96 (measured in M0), 0.60 (measured in M0): initial values, to be re-fit in M2 (#32)
+  }; // 0.85, 0.98, 0.60: fitted in M2 (#32), see docs/milestones/M2.md; codeVector was 0.96 in M0
   backlogReminderThreshold: number; // 100
   renameSuggestions: boolean; // false (measured in M0: Haiku flagged 0 of 23 misleading names, so precision is not measurable; stays false)
   views: { slices: string[] }; // ["apps/*/src/features/*", "apps/*/src/modules/*", "packages/*"]
@@ -323,21 +323,23 @@ Describer tool details (#24). `gantry_claim_batch` items are `{ content_key, pat
   - Gate on `claude auth status` (prints JSON): proceed only when `loggedIn === true`; `false` means "no worker, enqueue only", not an error. Only a claude.ai login was tested; API-key, Bedrock and Vertex logins were not.
   - Budget (measured in M0, Haiku/low): about 3.3 s cold start, 1 / 10 / 40 sheets in about 2.7 / 7.0 / 16.3 s (median of 3), so about 0.4 s per extra function. Batches of 10 to 40 per call; 40 is the spec batch size. The host enforces the 25-word limit (section 8).
 
-## 17. Duplicate tiers (initial thresholds, measured in M0 and re-fit in M2 (#32))
+## 17. Duplicate tiers (thresholds measured in M0, re-fit in M2 (#32))
 
 | Tier        | Rule                                                                                 |
 | ----------- | ------------------------------------------------------------------------------------ |
 | exact       | same `exactHash`, `stmtCount ≥ 3`                                                    |
 | near        | same `shapeHash` or MinHash Jaccard ≥ 0.85, `stmtCount ≥ 6`, same parameter count ±1 |
-| code_vector | cosine ≥ 0.96 (measured in M0) between normalized-code embeddings                    |
+| code_vector | cosine ≥ 0.98 (M2) between normalized-code embeddings                                |
 | semantic    | cosine ≥ 0.60 (measured in M0) between description embeddings, compatible signature  |
 
 Embedding scope: only function-like symbols with `stmtCount ≥ 3` get a `vec_code` row (smaller ones are never compared by any tier), and the text is the normalized code cut to its first 1,500 characters (`CODE_EMBED_MAX_CHARS`, the fact-sheet body budget) with the tokenizer capped at 512 tokens, so the cost per function is bounded. Embedding is lazy (section 11).
 
-Embedding model (measured in M0): `jinaai/jina-embeddings-v2-base-code` (q8 ONNX, mean pooling, L2-normalized) for both descriptions and normalized code, dimension D = 768, so `vec_descriptions` and `vec_code` are `float[768]` (section 9 migration v2). The two thresholds are initial values from a small hand-written set (15 + 15 pairs per task), not final: code_vector 0.96 gave recall 93% and 7% false positives (1 of 15), semantic 0.60 gave recall 80% and 7% false positives; the old 0.92 and 0.85 gave 33% false positives and 0% recall. Re-fit both in M2 (#32) on real LLM-written descriptions.
+Embedding model (measured in M0): `jinaai/jina-embeddings-v2-base-code` (q8 ONNX, mean pooling, L2-normalized) for both descriptions and normalized code, dimension D = 768, so `vec_descriptions` and `vec_code` are `float[768]` (section 9 migration v2). The two thresholds are initial values from a small hand-written set (15 + 15 pairs per task), not final: code_vector 0.96 gave recall 93% and 7% false positives (1 of 15), semantic 0.60 gave recall 80% and 7% false positives; the old 0.92 and 0.85 gave 33% false positives and 0% recall. M2 (#32) re-fit them on a real replay and real LLM-written descriptions (`docs/milestones/M2.md`): `codeVector` moved to 0.98 (on 1,416 replayed edits, 1 of 98 code-vector candidates at 0.91 or above was a true duplicate and none at 0.93 or above, and between 0.96 and 0.98 they added 4 alerts, all false; the M0 code pairs find 14 of 15 at 0.98 with no false positive, against 15 of 15 and one false positive at 0.96), `nearJaccard` 0.85 and `semantic` 0.60 are kept (the sweep was flat for the first; for the second, 0.65 would drop recall on the M0 description pairs from 11 to 6 of 15 with no fewer false positives). `semantic` only gates the description-to-description tier of `findDuplicates`; neither the hook nor `gantry_find_similar` applies it to a draft.
 Normalizer for `vec_code` (decided in M0, approved by the operator on 2026-11-14): rename local identifiers (parameters, `const`/`let` names, the function name) to `v1, v2, …`, drop comments, collapse whitespace, replace string and template literals with `"s"`, but keep property names after `.` and well-known globals (and any other identifier not declared inside the function, such as an imported helper). The function's own name is renamed too, recursive calls included. Renaming everything made `capitalize` and `decapitalize` identical (cosine 1.000); keeping them raised Jina's best accuracy from 93.3% to 96.7% (measured in M0).
 
-Compare only within kind family (function/method together; component; hook). Skip tests, fixtures, generated files, barrels and `duplicates.ignore`. Dismissed pairs never alert. Budget: < 1 in 10 hook alerts false; alerts on < 5% of edits.
+Compare only within kind family (function/method together; component; hook). Skip tests, fixtures, generated files, barrels and `duplicates.ignore`. Dismissed pairs never alert. Budget: < 1 in 10 hook alerts false; alerts on < 5% of edits. M2 measured the alert rate at 1.3% and the false rate at 45.2%: the false budget is missed (`docs/milestones/M2.md`).
+
+Seeded-case format (M2, #32; supersedes the one-line description in section 13): `evals/seeded-duplicates/cases.json`: 10 cases (3 with misleading names) each as `{ id, misleading, query, newCode | copyAs, expected: { tiers, situation } }`. `newCode` is written by hand; `copyAs` means "copy the existing function under this name" at run time, so no private code is committed. The `existing` symbol id and the target file of each case live only in git-ignored `evals/private/` (`GANTRY_PRIVATE_DIR`). `evals/m2/` and `evals/run-m2.ts` hold the M2 scripts (seeded cases, replay, labelling, sweep, timing).
 
 ## 18. Reuse advice (deterministic)
 
