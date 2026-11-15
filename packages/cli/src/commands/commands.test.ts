@@ -447,9 +447,81 @@ describe("gantry backlog", () => {
     expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
   });
 
-  it("reports zeros on an empty backlog", async () => {
+  it("reports zeros and indexed: false for a repository with no index, and creates no data dir", async () => {
     const fx = await fixture("single-pkg");
+    const before = existsSync(join(dataDir, "repos")) ? readdirSync(join(dataDir, "repos")) : [];
     const c = JSON.parse(run(fx.dir, ["backlog", "--json"]).out);
-    expect(c).toEqual({ total: 0, byStatus: { pending: 0, claimed: 0, failed: 0 }, byPriority: {} });
+    expect(c).toMatchObject({
+      total: 0,
+      byStatus: { pending: 0, claimed: 0, failed: 0 },
+      byPriority: {},
+      indexed: false,
+    });
+    expect(c.data_dir).toMatch(
+      new RegExp(`^${dataDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/repos/[0-9a-f]{16}$`),
+    );
+    const text = run(fx.dir, ["backlog"]);
+    expect(text.code).toBe(0);
+    expect(text.out).toContain(`No Gantry index for this repository in ${c.data_dir}`);
+    // Neither backlog, usage nor heal creates the data dir of a repository that has no index (#147).
+    expect(run(fx.dir, ["usage", "--json"]).out.trim()).toBe("[]");
+    const h = run(fx.dir, ["heal"]);
+    expect(h.code).toBe(0);
+    expect(h.err).toContain("no index for this repository");
+    const after = existsSync(join(dataDir, "repos")) ? readdirSync(join(dataDir, "repos")) : [];
+    expect(after.sort()).toEqual(before.sort());
+    expect(existsSync(c.data_dir)).toBe(false);
+  });
+
+  it("prints the data dir it read, as text and as JSON, after init", async () => {
+    const fx = await fixture("single-pkg");
+    const init = run(fx.dir, ["init"]);
+    const dir = /data:\s+(\S+)/.exec(init.out)?.[1];
+    expect(dir).toBeDefined();
+    const j = JSON.parse(run(fx.dir, ["backlog", "--json"]).out);
+    expect(j).toMatchObject({ data_dir: dir, indexed: true });
+    expect(run(fx.dir, ["backlog"]).out).toContain(`Data: ${dir}`);
+  });
+
+  it("--failed lists failed functions with rule names only, and --retry-failed puts them back to pending", async () => {
+    const fx = await fixture("pnpm-turbo");
+    expect(run(fx.dir, ["init"]).code).toBe(0);
+    const dir = JSON.parse(run(fx.dir, ["backlog", "--json"]).out).data_dir as string;
+    const MARK = "zqxmarkerzq";
+    const db = openStore(join(dir, "gantry.db"));
+    let keys: string[];
+    try {
+      keys = (
+        db.db.prepare("SELECT content_key FROM backlog ORDER BY priority, symbol_id LIMIT 2").all() as {
+          content_key: string;
+        }[]
+      ).map((r) => r.content_key);
+      const set = db.db.prepare(
+        "UPDATE backlog SET status = 'failed', attempts = 2, last_error = ? WHERE content_key = ?",
+      );
+      set.run(`identifier: ${MARK}… is not a word`, keys[0]);
+      set.run(`injection: searchTerms: ${MARK} imperative term`, keys[1]);
+    } finally {
+      db.close();
+    }
+    const j = JSON.parse(run(fx.dir, ["backlog", "--failed", "--json"]).out) as {
+      failed: { content_key: string; symbol_id: string; reason: string; field?: string; attempts: number }[];
+    };
+    expect(j.failed.map((f) => [f.content_key, f.reason, f.field, f.attempts])).toEqual([
+      [keys[0], "identifier", undefined, 2],
+      [keys[1], "injection", "searchTerms", 2],
+    ]);
+    const text = run(fx.dir, ["backlog", "--failed"]);
+    expect(text.out).toMatch(/^Failed: 2 /);
+    expect(text.out).toMatch(/ identifier {2}attempts 2$/m);
+    // Description text never appears, only rule names.
+    expect(`${text.out}${JSON.stringify(j)}`).not.toContain(MARK);
+
+    const r = JSON.parse(run(fx.dir, ["backlog", "--retry-failed", "--json"]).out);
+    expect(r.retried).toBe(2);
+    const c = JSON.parse(run(fx.dir, ["backlog", "--json"]).out);
+    expect(c.byStatus.failed).toBe(0);
+    expect(JSON.parse(run(fx.dir, ["backlog", "--failed", "--json"]).out).failed).toEqual([]);
+    expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
   });
 });

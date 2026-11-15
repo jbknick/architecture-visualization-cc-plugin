@@ -644,6 +644,23 @@ describe("entry points", () => {
     expect(gantry(fx.dir, ["hook", "session-start"])).toEqual({ code: 0, out: "", err: "" });
   });
 
+  it("session-start and the git hooks create no data dir for a repository without an index (#147)", async () => {
+    const fx = await fixture();
+    const p = pathsOf(fx.dir);
+    for (const h of ["session-start", "post-checkout", "post-merge", "post-rewrite", "pre-push"]) {
+      expect(gantry(fx.dir, ["hook", h]).code).toBe(0);
+    }
+    expect(existsSync(p.dataDir)).toBe(false);
+    // A store a lookup created (symbols, no backlog) is not an init: the reminder still shows.
+    expect(gantry(fx.dir, ["search", "anything"]).code).toBe(0);
+    expect(existsSync(p.dbPath)).toBe(true);
+    expect(gantry(fx.dir, ["hook", "session-start"]).out).toBe(
+      "Gantry: run /gantry:init to index this repo\n",
+    );
+    expect(gantry(fx.dir, ["init"]).code).toBe(0);
+    expect(gantry(fx.dir, ["hook", "session-start"]).out).toBe("");
+  });
+
   it("session-start reminds about the backlog at the threshold and not below it", async () => {
     const fx = await indexed();
     const p = pathsOf(fx.dir);

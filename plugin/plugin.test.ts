@@ -131,6 +131,36 @@ describe("describer agent", () => {
     }
     expect(body).toContain('"size": 10');
   });
+
+  it("hands back on every stop reason and never reports an unindexed store as an empty backlog (#147)", () => {
+    for (const s of ["`run_limit`", "`backlog_empty`", "`not_indexed`", "MORE WORK", "DONE", "NOT INDEXED"]) {
+      expect(body).toContain(s);
+    }
+    expect(body).toMatch(/Never call this an empty backlog/);
+    expect(body).toMatch(/submit those items once more with the same `batch_id`/);
+  });
+});
+
+describe("describer restarts (#147)", () => {
+  it.each(["init", "sync"])(
+    "%s restarts a describer that hands back with work left, as a fresh agent",
+    (name) => {
+      const { body } = frontmatter(read(`skills/${name}/SKILL.md`));
+      expect(body).toContain("`MORE WORK`");
+      expect(body).toMatch(/start a fresh `describer` in the background with the same prompt and worker id/);
+      expect(body).toMatch(/do not resume the old one with SendMessage/);
+      expect(body).toContain("`NOT INDEXED`");
+      expect(body).toContain("backlog --failed");
+      expect(body).toContain("backlog --retry-failed");
+    },
+  );
+
+  it("the run limit leaves room under the describer's maxTurns for submits and resubmits", async () => {
+    const { DESCRIBER_RUN_CLAIMS } = await import("../packages/core/src/describe/backlog.js");
+    const maxTurns = Number(frontmatter(read("agents/describer.md")).data.maxTurns);
+    // claim + submit + one corrected resubmit per batch, plus the final claim that says stop
+    expect(DESCRIBER_RUN_CLAIMS * 3 + 1).toBeLessThan(maxTurns);
+  });
 });
 
 describe("skills", () => {

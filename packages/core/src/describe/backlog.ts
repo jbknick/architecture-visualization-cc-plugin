@@ -30,6 +30,12 @@ export const BATCH_SIZE = 40;
  */
 export const CLAIM_SIZE = 10;
 export const BATCHES_PER_ROUND = 4;
+/**
+ * Claims one describer run makes before the server tells it to stop and hand back (#147). A run is then at most
+ * 15 claims, 15 submits and a few corrected resubmits, well inside the describer's `maxTurns` of 60, so it always
+ * reports instead of being cut off; the skill starts a fresh describer with the same worker id while work is left.
+ */
+export const DESCRIBER_RUN_CLAIMS = 15;
 /** Measured in M0: sequential headless worker time per function. */
 export const SECONDS_PER_FUNCTION_SEQUENTIAL = 0.96;
 
@@ -212,6 +218,7 @@ export function syncBacklog(store: Store, opts: SyncOptions = {}): BacklogSyncRe
           store.db.prepare("DELETE FROM backlog WHERE content_key = ?").run(content_key);
         }
       }
+      store.setMeta("backlog_synced_at", now);
     }
   });
   // Stored descriptions into the FTS columns (an incremental index rewrites rows without them).
@@ -351,4 +358,75 @@ export function backlogCounts(store: Store): BacklogCounts {
     p.total += r.n;
   }
   return out;
+}
+
+/**
+ * Whether this store holds a Gantry index whose backlog was built (`gantry init` ran against this data dir). A store
+ * that only a lookup, a hook or the MCP lazy refresh created has symbols but no backlog, so an empty claim there
+ * means "not initialised", never "backlog empty" (#147). Stores from before `meta.backlog_synced_at` count as
+ * indexed when they hold any backlog row or description.
+ */
+export function isIndexed(store: Store): boolean {
+  if (store.getMeta("backlog_synced_at") !== undefined) return true;
+  const any = (sql: string): boolean => store.db.prepare(sql).get() !== undefined;
+  return any("SELECT 1 FROM backlog LIMIT 1") || any("SELECT 1 FROM descriptions LIMIT 1");
+}
+
+export interface FailedItem {
+  contentKey: string;
+  symbolId: string;
+  attempts: number;
+  /** Rule name of the last rejection (`schema`, `length`, `shape`, `identifier`, `injection`, `secret`, ...). */
+  reason: string;
+  /** The description field the rule fired on, when it was not `behavior`. */
+  field?: "searchTerms" | "suggestedName";
+}
+
+const REASON = /^[a-z][a-z_-]{0,39}$/;
+
+/**
+ * The rule name of a stored `last_error` (`<reason>: <detail>`). Only the leading rule name is kept: a detail can
+ * echo part of a token from the description, and description text is untrusted, so it is never shown.
+ */
+export function failureReason(lastError: string | null): Pick<FailedItem, "reason" | "field"> {
+  if (!lastError) return { reason: "unknown" };
+  const colon = lastError.indexOf(":");
+  const head = colon < 0 ? lastError : lastError.slice(0, colon);
+  const tail = colon < 0 ? "" : lastError.slice(colon + 1).trimStart();
+  const reason = REASON.test(head) ? head : "other";
+  const field = /^(searchTerms|suggestedName):/.exec(tail)?.[1] as FailedItem["field"] | undefined;
+  return field ? { reason, field } : { reason };
+}
+
+/** Failed backlog rows (`gantry backlog --failed`), by priority then symbol id, with rule names only. Read-only. */
+export function failedItems(store: Store): FailedItem[] {
+  const rows = store.db
+    .prepare(
+      "SELECT content_key, symbol_id, attempts, last_error FROM backlog WHERE status = 'failed' ORDER BY priority, symbol_id",
+    )
+    .all() as {
+    content_key: string;
+    symbol_id: string;
+    attempts: number | null;
+    last_error: string | null;
+  }[];
+  return rows.map((r) => ({
+    contentKey: r.content_key,
+    symbolId: r.symbol_id,
+    attempts: r.attempts ?? 0,
+    ...failureReason(r.last_error),
+  }));
+}
+
+/** Puts every failed row back to `pending` with its attempts reset (`gantry backlog --retry-failed`). */
+export function retryFailed(store: Store): number {
+  return store.tx(
+    () =>
+      store.db
+        .prepare(
+          `UPDATE backlog SET status = 'pending', attempts = 0, last_error = NULL, claimed_by = NULL, claimed_at = NULL
+           WHERE status = 'failed'`,
+        )
+        .run().changes,
+  );
 }
