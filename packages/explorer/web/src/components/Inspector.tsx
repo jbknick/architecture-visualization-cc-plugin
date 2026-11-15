@@ -163,7 +163,7 @@ function GraphNodeFacts({ node, view }: { node: GraphNode; view: string | null }
  */
 function OverviewSection({ id }: { id: string }) {
   const { data, loading, error } = useOverview(id);
-  const text = data && data.node_id === id ? data.untrusted_overview : null;
+  const text = data ? data.untrusted_overview : null;
   return (
     <section aria-label="Overview">
       <h3>Overview</h3>
@@ -220,6 +220,8 @@ export function Inspector({ nodes }: { nodes: GraphNode[] }) {
   const isFile = id.startsWith("file:");
   const kindOfNode = graphNode?.kind ?? kind;
   const canMap = isSymbol || isFile || id.startsWith("ws:") || kindOfNode === "dir";
+  // Only nodes the server knows as a workspace or a folder have an overview; the 3D map's own cluster ids do not.
+  const hasOverview = id.startsWith("ws:") || (id.startsWith("dir:") && kindOfNode === "dir");
   const egoReady = state.meta?.views.some((v) => v.id === "ego" && v.enabled) ?? true;
   const mapReady = state.meta?.views.some((v) => v.id === "project-map" && v.enabled) ?? true;
   // A function is shown inside its file in the project map; folders, files and workspaces are shown as themselves.
@@ -310,7 +312,7 @@ export function Inspector({ nodes }: { nodes: GraphNode[] }) {
       {known && !current && loading && <p className="muted">Loading…</p>}
 
       <div className="inspector-body">
-        {(id.startsWith("ws:") || id.startsWith("dir:")) && <OverviewSection id={id} />}
+        {hasOverview && <OverviewSection id={id} />}
         {graphNode && !current && <GraphNodeFacts node={graphNode} view={view} />}
 
         {current && (

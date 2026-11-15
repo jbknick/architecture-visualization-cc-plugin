@@ -189,7 +189,7 @@ describe("explain, overview and map skills (#35)", () => {
     const overview = frontmatter(read("skills/overview/SKILL.md")).body;
     expect(overview).toContain("mcp__plugin_gantry_gantry__gantry_get_overview");
     expect(overview).toContain("explainer");
-    expect(overview).toContain("effort: low");
+    expect(overview).toContain('effort: "low"');
     expect(overview).toContain("untrusted_overview");
     expect(frontmatter(read("skills/explain/SKILL.md")).body).toContain("explainer");
   });

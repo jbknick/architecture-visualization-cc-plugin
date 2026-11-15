@@ -69,6 +69,24 @@ describe("saveOverview and getOverview", () => {
     expect(ix.store.db.prepare("SELECT count(*) AS n FROM overviews").get()).toEqual({ n: 1 });
   });
 
+  it("goes stale when a file inside is renamed, with the same code in it", () => {
+    saveOverview(ix.store, ix.paths, "ws:@acme/utils", "Before the rename.");
+    expect(getOverview(ix.store, "ws:@acme/utils").status).toBe("fresh");
+    const row = ix.store.db
+      .prepare(
+        "SELECT id, path FROM files WHERE workspace_id = '@acme/utils' OR workspace_id = 'ws:@acme/utils' LIMIT 1",
+      )
+      .get() as { id: number; path: string } | undefined;
+    expect(row).toBeDefined();
+    ix.store.db.prepare("UPDATE files SET path = ? WHERE id = ?").run(`${row?.path}.moved`, row?.id);
+    try {
+      expect(getOverview(ix.store, "ws:@acme/utils").status).toBe("stale");
+    } finally {
+      ix.store.db.prepare("UPDATE files SET path = ? WHERE id = ?").run(row?.path, row?.id);
+    }
+    expect(getOverview(ix.store, "ws:@acme/utils").status).toBe("fresh");
+  });
+
   it("goes stale when the stored input_key no longer matches", () => {
     ix.store.db.prepare("UPDATE overviews SET input_key = 'old' WHERE node_id = 'ws:@acme/utils'").run();
     expect(getOverview(ix.store, "ws:@acme/utils").status).toBe("stale");

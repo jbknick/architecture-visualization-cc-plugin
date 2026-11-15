@@ -61,8 +61,17 @@ const WORKSPACES: MockWorkspace[] = [
 const MOCK_OVERVIEWS: Record<string, string> = {
   "ws:@acme/utils":
     "Small shared helpers for dates and slugs. formatRelativeDate in src/date.ts turns a date into text like 3 hours ago. Both web and api import slugify.",
+  "dir:packages/db/src": "The database package's source folder: schema, queries and the client.",
   "ws:@acme/db": 'Database access. <img src=x onerror="window.__overviewXss=1"> <b>bold?</b>',
 };
+
+function normaliseOverviewId(id: string): string {
+  const m = /^dir:(ws:[^:]+):(.*)$/.exec(id);
+  const w = m ? WORKSPACES.find((x) => `ws:${x.name}` === m[1]) : undefined;
+  if (!m || !w) return id;
+  const rel = m[2] as string;
+  return `dir:${rel === "." ? w.dir : `${w.dir}/${rel}`}`;
+}
 
 const MOCK_DUP = new Set(["slugify", "formatRelativeDate"]);
 const MOCK_DESCRIBED = new Set(["Button", "Card", "Header", "formatRelativeDate"]);
@@ -1291,7 +1300,8 @@ export function handleMockApi(url: URL): MockResponse | null {
   }
 
   if (path.startsWith("/api/overview/")) {
-    const id = decodeURIComponent(path.slice("/api/overview/".length));
+    // Like the real server: the 3D map's `dir:<workspace id>:<path>` is answered as `dir:<repo path>`.
+    const id = normaliseOverviewId(decodeURIComponent(path.slice("/api/overview/".length)));
     const text = MOCK_OVERVIEWS[id];
     return {
       status: 200,

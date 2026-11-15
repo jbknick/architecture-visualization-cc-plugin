@@ -17,7 +17,7 @@ export interface OverviewTarget {
   nodeId: string;
   /** Function-like symbols inside the node. */
   functions: number;
-  /** sha256 of the sorted contentKeys of those functions plus, for a workspace, the sorted child workspace ids. */
+  /** sha256 of the sorted file paths, the sorted contentKeys of the functions and, for a workspace, the sorted child workspace ids. */
   inputKey: string;
 }
 
@@ -68,7 +68,10 @@ export function overviewTarget(store: Store, rawId: string): OverviewTarget | nu
     return null;
   }
 
-  const fileIds = new Set(files.filter(inside).map((f) => f.id));
+  const covered = files.filter(inside);
+  const fileIds = new Set(covered.map((f) => f.id));
+  // Paths are part of the key so moving or renaming a file makes the overview stale.
+  const paths = covered.map((f) => f.path).sort();
   const keys: string[] = [];
   for (const s of store.effectiveSymbols()) {
     if (!fileIds.has(s.fileId) || !FUNCTION_LIKE.has(s.kind) || s.exactHash === "") continue;
@@ -77,7 +80,7 @@ export function overviewTarget(store: Store, rawId: string): OverviewTarget | nu
   keys.sort();
   children.sort();
   const inputKey = createHash("sha256")
-    .update(`${keys.join("\n")}\n--\n${children.join("\n")}`)
+    .update(`${paths.join("\n")}\n--\n${keys.join("\n")}\n--\n${children.join("\n")}`)
     .digest("hex");
   return { nodeId, functions: keys.length, inputKey };
 }
