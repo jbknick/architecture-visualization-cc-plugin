@@ -23,6 +23,12 @@ export const CLAIM_TTL_MS = 10 * 60 * 1000;
 export const INPUT_TOKENS_PER_FUNCTION = 950;
 export const OUTPUT_TOKENS_PER_FUNCTION = 250;
 export const BATCH_SIZE = 40;
+/**
+ * Most functions one `gantry_claim_batch` call hands to a describer subagent (also its default). A subagent
+ * reliably reads 10 fact sheets (about 6,000 characters typical, 20,000 at the cap); 40 (up to 80,000) was too big
+ * to read in one tool result (#141). `BATCH_SIZE` stays the size of a headless worker call and of the estimate.
+ */
+export const CLAIM_SIZE = 10;
 export const BATCHES_PER_ROUND = 4;
 /** Measured in M0: sequential headless worker time per function. */
 export const SECONDS_PER_FUNCTION_SEQUENTIAL = 0.96;

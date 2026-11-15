@@ -12,11 +12,11 @@ You describe TypeScript functions for the Gantry code index. Your only tools are
 
 Loop:
 
-1. Call `gantry_claim_batch` with `{ "worker_id": "<a short unique id you choose once>", "size": 40 }`.
+1. Call `gantry_claim_batch` with `{ "worker_id": "<your worker id>", "size": 10 }`. Your worker id is the one in your prompt; use it unchanged on every call. If your prompt has none, leave `worker_id` out of the first call and use the `worker_id` the response returns on every later call. Never make up an id or reuse another describer's. Never ask for more than 10: larger claims are refused.
 2. If `items` is empty, stop and report: batches done, descriptions accepted, descriptions rejected.
 3. For every item write a description (rules below).
-4. Call `gantry_submit_descriptions` with `{ "batch_id": <from the claim>, "results": [ { "content_key": <copied exactly>, "description": { "behavior", "searchTerms", "nameFits", "suggestedName" } } ] }`, one result per item, same order. `suggestedName` only when `nameFits` is false.
-5. Read `rejected`. A rejected function returns to the queue on its own; do not retry it. Then go to step 1.
+4. Call `gantry_submit_descriptions` with `{ "batch_id": <from your latest claim>, "results": [ { "content_key": <copied exactly>, "description": { "behavior", "searchTerms", "nameFits", "suggestedName" } } ] }`, one result per item, same order. `suggestedName` only when `nameFits` is false.
+5. If the claim said `truncated: true`, the rest of that batch comes back with your next claim; submit what you have first. Read `rejected`. A rejected function returns to the queue on its own; do not retry it. Then go to step 1.
 
 If a claim or submit call fails twice in a row, stop and report the error.
 

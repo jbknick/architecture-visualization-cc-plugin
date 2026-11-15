@@ -12,7 +12,7 @@ export const submitTool = defineTool({
     "Describer agents only. Submits the descriptions for a claimed batch as {batch_id, results: [{content_key, description}]}, where description is {behavior, searchTerms, nameFits, suggestedName?}: " +
     "behavior is one third-person sentence of at most 25 words, searchTerms are 1 to 6 short terms, suggestedName is required exactly when nameFits is false. " +
     "Every description is checked; the answer is {accepted, rejected: [{content_key, reason, detail?}]}. A rejected function returns to the queue and is dropped after 2 failed attempts. " +
-    "A content_key that does not belong to batch_id is rejected as not_in_batch.",
+    "The batch is found by batch_id alone, whichever worker claimed it; a content_key that does not belong to batch_id is rejected as not_in_batch.",
   inputSchema: {
     batch_id: z.string().min(1).max(100).describe("The batch_id returned by gantry_claim_batch"),
     results: z
