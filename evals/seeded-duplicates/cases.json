@@ -1,0 +1,98 @@
+[
+  {
+    "id": "s01",
+    "misleading": true,
+    "query": "format a date for display in a short form",
+    "newCode": "export function describeDay(input: Date | string | number, now: Date = new Date()): string {\n  const moment = new Date(input);\n  if (Number.isNaN(moment.getTime())) return \"\";\n  const sameYear = moment.getUTCFullYear() === now.getUTCFullYear();\n  const formatter = new Intl.DateTimeFormat(\"en-US\", {\n    day: \"numeric\",\n    month: \"short\",\n    year: sameYear ? undefined : \"numeric\",\n    timeZone: \"UTC\",\n  });\n  return formatter.format(moment);\n}\n",
+    "expected": {
+      "tiers": ["code_vector", "semantic"],
+      "situation": 1
+    }
+  },
+  {
+    "id": "s02",
+    "misleading": true,
+    "query": "turn a past timestamp into text like '3 days ago'",
+    "newCode": "export function timeSinceLabel(then: number, reference: number): string {\n  const elapsedDays = Math.max(0, Math.floor((reference - then) / 86_400_000));\n  const steps: [string, number][] = [\n    [\"year\", 365],\n    [\"month\", 30],\n    [\"day\", 1],\n  ];\n  for (const [unit, size] of steps) {\n    const count = Math.floor(elapsedDays / size);\n    if (count >= 1) return `${count} ${unit}${count === 1 ? \"\" : \"s\"} ago`;\n  }\n  return \"today\";\n}\n",
+    "expected": {
+      "tiers": ["code_vector", "semantic"],
+      "situation": 1
+    }
+  },
+  {
+    "id": "s03",
+    "misleading": true,
+    "query": "check that a URL uses an allowed protocol",
+    "newCode": "export function looksNavigable(candidate: unknown): boolean {\n  if (typeof candidate !== \"string\") return false;\n  const text = candidate.trim();\n  if (text.length === 0) return false;\n  let parsed: URL;\n  try {\n    parsed = new URL(text);\n  } catch {\n    return false;\n  }\n  const allowed = [\"http:\", \"https:\", \"mailto:\"];\n  return allowed.indexOf(parsed.protocol) !== -1;\n}\n",
+    "expected": {
+      "tiers": ["code_vector", "semantic"],
+      "situation": 2
+    }
+  },
+  {
+    "id": "s04",
+    "misleading": false,
+    "query": "escape the special characters of a string for XML",
+    "newCode": "export function escapeForXml(value: string): string {\n  const table: Record<string, string> = {\n    \"&\": \"&amp;\",\n    \"<\": \"&lt;\",\n    \">\": \"&gt;\",\n    '\"': \"&quot;\",\n    \"'\": \"&apos;\",\n  };\n  let out = \"\";\n  for (const ch of value) {\n    out += table[ch] ?? ch;\n  }\n  return out;\n}\n",
+    "expected": {
+      "tiers": ["exact", "near", "code_vector", "semantic"],
+      "situation": 4
+    }
+  },
+  {
+    "id": "s05",
+    "misleading": false,
+    "query": "remove entries with a repeated id from a list, keeping the first",
+    "newCode": "export function dedupeById<T extends { id: string }>(list: T[]): T[] {\n  const kept = new Map<string, T>();\n  for (const entry of list) {\n    if (!kept.has(entry.id)) kept.set(entry.id, entry);\n  }\n  return [...kept.values()];\n}\n",
+    "expected": {
+      "tiers": ["exact", "near", "code_vector", "semantic"],
+      "situation": 3
+    }
+  },
+  {
+    "id": "s06",
+    "misleading": false,
+    "query": "get the time zone name of the current environment, falling back to UTC",
+    "newCode": "export function localZoneName(): string {\n  try {\n    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;\n    return zone ? zone : \"UTC\";\n  } catch {\n    return \"UTC\";\n  }\n}\n",
+    "expected": {
+      "tiers": ["exact", "near", "code_vector", "semantic"],
+      "situation": 3
+    }
+  },
+  {
+    "id": "s07",
+    "misleading": false,
+    "copyOfExisting": true,
+    "expected": {
+      "tiers": ["exact", "near"],
+      "situation": 1
+    }
+  },
+  {
+    "id": "s08",
+    "misleading": false,
+    "copyOfExisting": true,
+    "expected": {
+      "tiers": ["exact", "near"],
+      "situation": 3
+    }
+  },
+  {
+    "id": "s09",
+    "misleading": false,
+    "copyOfExisting": true,
+    "expected": {
+      "tiers": ["exact", "near"],
+      "situation": 3
+    }
+  },
+  {
+    "id": "s10",
+    "misleading": false,
+    "copyOfExisting": true,
+    "expected": {
+      "tiers": ["exact", "near"],
+      "situation": 1
+    }
+  }
+]
