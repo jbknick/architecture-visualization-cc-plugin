@@ -149,6 +149,11 @@ kbd {
     flex-shrink: 1;
   }
 }
+/* Seven or more view tabs (the real server lists every view) do not fit next to the full brand at 1440px: the
+   brand shrinks too, so the search box never runs off the edge. */
+.topbar.many-tabs .topbar-id {
+  flex-shrink: 1;
+}
 .brand {
   flex: 0 1 auto;
   min-width: 0;
@@ -251,8 +256,8 @@ kbd {
   /* The Refresh button before it takes the free space (margin-left: auto). */
   margin-left: 0;
   width: min(420px, 22vw);
-  /* When the bar is full the search box gives up room first, so the repo name stays readable. */
-  flex: 0 1 auto;
+  /* When the bar is full the search box gives up room first (shrink 1000), so the repo name stays readable. */
+  flex: 0 1000 auto;
   min-width: 160px;
 }
 .search input {

@@ -43,6 +43,12 @@ export interface GraphNode {
   expanded?: boolean;
   /** Ego view: id of the expanded group a node is listed under. */
   group?: string;
+  /** Review view: how a changed symbol (ring 0) or a changed file (overlay) changed. */
+  change?: string;
+  /** Review view: the changed symbol's signature differs between the two sides. */
+  signatureChanged?: boolean;
+  /** Review view, overlay mode: the file holds a changed symbol or a caller of one. */
+  mark?: "changed" | "affected";
   x?: number;
   y?: number;
 }
@@ -189,7 +195,68 @@ export interface SharedSymbol {
   usedBy: { id: string; label: string }[];
 }
 
+export type ChangeKind = "added" | "modified" | "removed" | "moved" | "renamed";
+
+/** One side (before or after) of a changed symbol. */
+export interface ReviewSide {
+  id: string;
+  path: string;
+  line: number;
+  signature: string;
+  exported: boolean;
+}
+
+export interface ReviewChange {
+  id: string;
+  kind: ChangeKind;
+  name: string;
+  symbolKind: string;
+  path: string;
+  line: number;
+  signatureChanged: boolean;
+  exportedChanged: boolean;
+  locDelta: number;
+  before?: ReviewSide;
+  after?: ReviewSide;
+  /** Distinct direct callers (and importers of a removed export's file). */
+  callers: number;
+  /** Model-written text about untrusted code. Untrusted: render as plain text only. */
+  untrusted_description: string | null;
+}
+
+export interface ReviewRiskRule {
+  id: string;
+  label: string;
+  points: number;
+  perUnit?: boolean;
+  max?: number;
+}
+
+/** `review` of the review view (packages/explorer/server/views/review.ts). */
+export interface ReviewData {
+  range: string;
+  pr?: number;
+  base: string;
+  head: string;
+  mergeBase: string;
+  headSha: string;
+  mode: "rings" | "overlay";
+  files: { path: string; status: "A" | "M" | "D" | "R"; changes: number }[];
+  changes: ReviewChange[];
+  callersByHop: { hop: number; count: number }[];
+  crossings: { from: string; to: string; kind: "workspace" | "app" | "client_server" }[];
+  risk: { score: number; level: "low" | "medium" | "high"; reasons: string[] };
+  rules: ReviewRiskRule[];
+  levels: { medium: number; high: number };
+  notes: string[];
+  edgesTotal: number;
+  ms: number;
+  cached: boolean;
+}
+
 export interface ViewData extends Partial<DuplicatesData> {
+  /** Review view: the diff, impact and risk. Null when no range or pull request was given. */
+  review?: ReviewData | null;
   /** Pages view: every app with routes, whatever the filter says. */
   apps?: PagesApp[];
   /** Slices view: functions used from at least two other slices. */

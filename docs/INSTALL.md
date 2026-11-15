@@ -18,7 +18,7 @@ pnpm install && pnpm build
 /reload-plugins
 ```
 
-The plugin adds the `gantry` MCP server, the `describer` agent and the read-only `explainer` agent and five skills that only you can start: `/gantry:init`, `/gantry:sync`, `/gantry:explain`, `/gantry:overview` and `/gantry:map`. You can check the files without a session: `claude plugin validate plugin` and `claude plugin validate .claude-plugin/marketplace.json`.
+The plugin adds the `gantry` MCP server, the `describer` agent and the read-only `explainer` agent and six skills that only you can start: `/gantry:init`, `/gantry:sync`, `/gantry:explain`, `/gantry:overview`, `/gantry:map` and `/gantry:review`. You can check the files without a session: `claude plugin validate plugin` and `claude plugin validate .claude-plugin/marketplace.json`.
 
 ## Where the data lives
 
@@ -46,6 +46,7 @@ To start over with a fresh index instead, delete `~/.gantry/data/repos/<hash>/` 
 - `/gantry:explain <target>`: a function, `path:line`, file, workspace or folder explained in at most 200 words with `path:line` references. Reads only.
 - `/gantry:overview <workspace|dir>`: the cached overview if code inside has not changed, else the `explainer` writes and saves one. Overviews are never written unless you ask. They show in the explorer inspector for workspaces and folders.
 - `/gantry:map [view] [focus]`: opens the explorer and prints its URL.
+- `/gantry:review <base>...<head>` or `/gantry:review --pr <n>`: reviews a branch or pull request from its blast radius (`gantry review --json`): risk first, then changed signatures with their direct callers, crossings and notes, and ends with a short list of findings and a link to the review view. Reads only; it never posts to GitHub. `--pr` needs a logged-in `gh`.
 - `"<plugin>/bin/gantry" backlog [--json]` shows pending, claimed and failed counts, the split by priority (0 exported and entry files, 1 other exported, 2 local) and the data dir. `backlog --failed [--json]` lists each failed function with the rule name of its last rejection (for example `identifier` or `shape`; the description text is never shown), and `backlog --retry-failed` puts them back to pending for the next `/gantry:sync`.
 
 ## Operator check (an interactive session is required)

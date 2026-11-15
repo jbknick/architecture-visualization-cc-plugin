@@ -14,7 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openStore, type Store } from "@gantry/core";
+import { openStore, resolvePaths, type Store } from "@gantry/core";
 import { build } from "tsup";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -373,6 +373,89 @@ describe("gantry review", () => {
     expect(r.out).toContain("hop 1: 2 (sym:apps/web/src/routes/index.tsx#HomePage");
     expect(r.out).toContain("Crossings: 2");
     expect(r.out).toBe(run(fx.dir, ["review", "main...feature"], env).out);
+  });
+
+  it("--json adds the impact from the index as it is (no heal, no re-index) once the repo is indexed", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const env = { CLAUDE_PLUGIN_DATA: join(dataDir, "review-json-impact") };
+    expect(run(fx.dir, ["init"], env).code).toBe(0);
+    const db = resolvePaths(fx.dir, { HOME: join(dataDir, "home"), ...env }).dbPath;
+    expect(existsSync(db)).toBe(true);
+    fx.git(["checkout", "-b", "feature"]);
+    const file = join(fx.dir, "packages/ui/src/button.tsx");
+    writeFileSync(
+      file,
+      readFileSync(file, "utf8").replace(
+        "{ label: string; onClick?: () => void }",
+        "{ label: string; onClick?: () => void; size?: number }",
+      ),
+    );
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-m", "button"]);
+    const before = openStore(db);
+    const indexedAt = before.getMeta("head_sha");
+    before.close();
+    const r = run(fx.dir, ["review", "main...feature", "--json"], env);
+    expect(r.err).toBe("");
+    expect(r.code).toBe(0);
+    const j = JSON.parse(r.out) as {
+      changes: { id: string }[];
+      impact: {
+        risk: { score: number; level: string };
+        callersByHop: { hop: number; ids: string[] }[];
+      } | null;
+    };
+    expect(j.changes.map((c) => c.id)).toEqual(["sym:packages/ui/src/button.tsx#Button"]);
+    expect(j.impact?.risk).toMatchObject({ score: 54, level: "medium" });
+    expect(j.impact?.callersByHop[0]?.ids).toContain("sym:apps/web/src/routes/index.tsx#HomePage");
+    // The index was not brought to the new HEAD: --json never heals.
+    const after = openStore(db);
+    expect(after.getMeta("head_sha")).toBe(indexedAt);
+    after.close();
+  });
+
+  it("--open starts the explorer like gantry_open_view and opens the review view of the range", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const data = join(dataDir, "review-open");
+    const bin = join(dataDir, "fake-open-bin");
+    mkdirSync(bin, { recursive: true });
+    const opened = join(dataDir, "opened.txt");
+    for (const name of ["open", "xdg-open"])
+      writeFileSync(join(bin, name), `#!/bin/sh\necho "$1" >> "${opened}"\n`, { mode: 0o755 });
+    const env = { CLAUDE_PLUGIN_DATA: data, PATH: `${bin}:${process.env.PATH ?? ""}` };
+    expect(run(fx.dir, ["init"], env).code).toBe(0);
+    fx.git(["checkout", "-q", "-b", "feature"]);
+    writeFileSync(join(fx.dir, "packages/utils/src/extra.ts"), "export function extra() {\n  return 1;\n}\n");
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-q", "-m", "extra"]);
+    const r = run(fx.dir, ["review", "main...feature", "--open"], env);
+    try {
+      expect(r.err).toBe("");
+      expect(r.code).toBe(0);
+      const url =
+        /Review view: (http:\/\/127\.0\.0\.1:\d+\/\?t=[^#\s]+#\/review\?range=main\.\.\.feature)\n/.exec(
+          r.out,
+        )?.[1];
+      expect(url).toBeDefined();
+      for (let i = 0; i < 50 && !existsSync(opened); i++) await new Promise((res) => setTimeout(res, 50));
+      expect(readFileSync(opened, "utf8").trim()).toBe(url);
+      // The explorer answers the review view with the same range.
+      const u = new URL(url as string);
+      const token = u.searchParams.get("t") ?? "";
+      const res = await fetch(
+        `${u.origin}/api/view/review?filters=${encodeURIComponent(JSON.stringify({ range: "main...feature" }))}`,
+        { headers: { "x-gantry-token": token } },
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { review: { changes: { id: string; kind: string }[] } };
+      expect(body.review.changes).toEqual([
+        expect.objectContaining({ id: "sym:packages/utils/src/extra.ts#extra", kind: "added" }),
+      ]);
+    } finally {
+      const f = join(resolvePaths(fx.dir, { HOME: join(dataDir, "home"), ...env }).dataDir, "explorer.json");
+      if (existsSync(f))
+        process.kill((JSON.parse(readFileSync(f, "utf8")) as { pid: number }).pid, "SIGTERM");
+    }
   });
 
   it("--pr without a usable gh prints the range form as the way out", async () => {

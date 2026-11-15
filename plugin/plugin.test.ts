@@ -29,6 +29,7 @@ const MARKDOWN = [
   "skills/explain/SKILL.md",
   "skills/overview/SKILL.md",
   "skills/map/SKILL.md",
+  "skills/review/SKILL.md",
 ];
 
 describe("plugin manifest and MCP config", () => {
@@ -164,7 +165,7 @@ describe("describer restarts (#147)", () => {
 });
 
 describe("skills", () => {
-  it.each(["init", "sync", "explain", "overview", "map"])("%s is user-invoked only", (name) => {
+  it.each(["init", "sync", "explain", "overview", "map", "review"])("%s is user-invoked only", (name) => {
     const { data } = frontmatter(read(`skills/${name}/SKILL.md`));
     expect(data.name).toBe(name);
     expect(data["disable-model-invocation"]).toBe("true");
@@ -247,6 +248,27 @@ describe("explain, overview and map skills (#35)", () => {
     expect(skill).toContain("never write from names alone");
     expect(skill).toContain("verbatim");
     expect(skill).toMatch(/never reword/);
+  });
+});
+
+describe("review skill (#44)", () => {
+  const { data, body } = frontmatter(read("skills/review/SKILL.md"));
+
+  it("runs gantry review --json, reads callers of changed signatures and ends with the review view link", () => {
+    expect(data["argument-hint"]).toContain("--pr <n>");
+    expect(body.trim().split("\n").length).toBeLessThan(20);
+    expect(body).toContain('"${CLAUDE_PLUGIN_ROOT}/bin/gantry" review $ARGUMENTS --json');
+    for (const s of ["signatureChanged", "callersByHop[0].ids", "crossings", "notes", "path:line"]) {
+      expect(body).toContain(s);
+    }
+    expect(body).toContain("mcp__plugin_gantry_gantry__gantry_open_view");
+    expect(body).toContain('view: "review"');
+  });
+
+  it("is read-only, posts nothing and explains a missing or logged-out gh", () => {
+    expect(body).toMatch(/Read only: never edit, commit, push or post anything/);
+    expect(body).toContain("gh auth login");
+    for (const tool of ["Write", "Edit", "gh pr comment", "gh pr review"]) expect(body).not.toContain(tool);
   });
 });
 

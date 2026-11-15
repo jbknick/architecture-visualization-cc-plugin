@@ -26,6 +26,12 @@ export interface GraphNode {
   expanded?: boolean;
   /** Ego view: id of the (expanded) group a node was listed under. */
   group?: string;
+  /** Review view: how a changed symbol changed (added, modified, removed, moved, renamed). */
+  change?: string;
+  /** Review view: the changed symbol's signature differs between the two sides. */
+  signatureChanged?: boolean;
+  /** Review view, overlay mode: the file holds a changed symbol or a caller of one. */
+  mark?: "changed" | "affected";
   x?: number;
   y?: number;
 }
@@ -107,5 +113,6 @@ export interface ViewModule {
   id: string;
   title: string;
   enabled: boolean;
-  build(ctx: ApiContext, params: ViewParams): ViewResult;
+  /** May return a promise (the review view reads git). */
+  build(ctx: ApiContext, params: ViewParams): ViewResult | Promise<ViewResult>;
 }

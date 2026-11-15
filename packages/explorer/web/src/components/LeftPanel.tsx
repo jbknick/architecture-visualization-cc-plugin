@@ -37,6 +37,7 @@ export function LeftPanel({
     viewId !== "ego" &&
     viewId !== "map-3d" &&
     viewId !== "duplicates" &&
+    viewId !== "review" &&
     ((viewId !== "project-map" && viewId !== "slices") || route?.level === "symbols");
   return (
     <aside className={`left ${open ? "" : "is-collapsed"}`} aria-label="Filters">

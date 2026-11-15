@@ -1,5 +1,6 @@
 export type { SearchHit } from "./api.js";
 export { HttpError, handleApi, MAX_SOURCE_LINES, SEARCH_LIMIT } from "./api.js";
+export { type EnsureResult, ensureExplorer, START_TIMEOUT_MS } from "./launch.js";
 export {
   cookieName,
   ExplorerAlreadyRunning,
@@ -27,3 +28,10 @@ export type {
 } from "./types.js";
 export { buildExplorerUrl, type ExplorerUrlOptions } from "./url.js";
 export { getView, listViews, registerView } from "./views/index.js";
+export {
+  buildReview,
+  clearReviewCache,
+  type ReviewChangeRow,
+  type ReviewData,
+  type ReviewResult,
+} from "./views/review.js";
