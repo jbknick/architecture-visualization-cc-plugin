@@ -20,11 +20,11 @@
  */
 import { type ChildProcess, execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolvePaths } from "../../packages/core/src/index.js";
 import { openViewTool } from "../../packages/mcp/src/tools/openView.js";
@@ -59,14 +59,44 @@ const glArgs =
     : ["--use-angle=metal", "--ignore-gpu-blocklist"];
 
 const scratch = mkdtempSync(join(tmpdir(), "gantry-m3-"));
-if (outDir) mkdirSync(outDir, { recursive: true });
+const insideDir = (child: string, parent: string) => {
+  const r = relative(resolve(parent), resolve(child));
+  return r === "" || (!r.startsWith("..") && !r.startsWith("/"));
+};
+// --out holds index data of the repo under test: keep it out of this (public) repo, except the git-ignored evals/private/,
+// and out of the target repo.
+if (outDir) {
+  if (insideDir(outDir, root) && !insideDir(outDir, join(root, "evals", "private")))
+    throw new Error("--out is inside this repository (only evals/private/ is allowed)");
+  if (target !== "fixture" && insideDir(outDir, resolve(target)))
+    throw new Error("--out is inside the repository under test");
+  mkdirSync(outDir, { recursive: true });
+}
 const dataBase = outDir ? join(outDir, "data") : join(scratch, "data");
 const children: ChildProcess[] = [];
+// biome-ignore lint/suspicious/noExplicitAny: playwright browsers
+const browsers: any[] = [];
 const cleanups: (() => void)[] = [];
-process.on("exit", () => {
+let cleaned = false;
+function runCleanups() {
+  if (cleaned) return;
+  cleaned = true;
   for (const c of children) c.kill("SIGTERM");
-  for (const f of cleanups) f();
-});
+  for (const f of cleanups.splice(0).reverse()) {
+    try {
+      f();
+    } catch {
+      // best effort
+    }
+  }
+  rmSync(scratch, { recursive: true, force: true });
+}
+process.on("exit", runCleanups);
+for (const sig of ["SIGINT", "SIGTERM"] as const)
+  process.on(sig, () => {
+    runCleanups();
+    process.exit(130);
+  });
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -123,25 +153,31 @@ async function startExplorer(
   const init = spawnSync("node", [cli, "init"], { cwd: repo, env, encoding: "utf8", maxBuffer: 64 << 20 });
   if (init.status !== 0) throw new Error("gantry init failed");
   const initMs = Date.now() - t0;
+  const stopLater = registerExplorerStop(repo, env);
   const url = await openUrl(repo, env, { view: "project-map" });
   const u = new URL(url);
-  const state = JSON.parse(readFileSync(join(resolvePaths(repo, env).dataDir, "explorer.json"), "utf8")) as {
-    pid: number;
-  };
   return {
     url,
     origin: u.origin,
     port: Number(u.port),
     initMs,
     env,
-    stop: () => {
-      try {
-        process.kill(state.pid, "SIGTERM");
-      } catch {
-        // already gone
-      }
-    },
+    stop: stopLater,
   };
+}
+
+/** Stops the detached explorer that serves `env`'s data dir (read from explorer.json when called); safe to call twice. */
+function registerExplorerStop(repo: string, env: NodeJS.ProcessEnv): () => void {
+  const stop = () => {
+    try {
+      const f = join(resolvePaths(repo, env).dataDir, "explorer.json");
+      process.kill((JSON.parse(readFileSync(f, "utf8")) as { pid: number }).pid, "SIGTERM");
+    } catch {
+      // not started or already gone
+    }
+  };
+  cleanups.push(stop);
+  return stop;
 }
 
 /** The `gantry_open_view` tool's own code path (starts or reuses the explorer, builds the tokenised URL). */
@@ -162,6 +198,7 @@ const NAME_SHIM = "window.__name = (f) => f;";
 
 async function launch() {
   const browser = await pw.chromium.launch({ headless: !headed, args: glArgs });
+  browsers.push(browser);
   const newContext = browser.newContext.bind(browser);
   browser.newContext = async (opts?: unknown) => {
     const ctx = await newContext(opts);
@@ -400,13 +437,16 @@ async function stepPerf30k() {
   });
   children.push(mock);
   const base = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 100; i++) {
+  let up = false;
+  for (let i = 0; i < 150 && !up; i++) {
     try {
-      if ((await fetch(`${base}/api/meta`)).ok) break;
+      up = (await fetch(`${base}/api/meta`)).ok;
     } catch {
-      await sleep(200);
+      // not listening yet
     }
+    if (!up) await sleep(200);
   }
+  if (!up) throw new Error("the mock server did not come up");
   const browser = await launch();
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
@@ -521,6 +561,8 @@ async function layoutHash(page: Page, view: string): Promise<{ hash: string; nod
   return { hash: hash ?? "no-probe", nodes };
 }
 
+const real = (h: string | undefined) => h !== undefined && h !== "empty" && h !== "no-probe";
+
 async function stepDeterminism(repo: string) {
   const views = ["project-map", "pages", "slices"];
   const runs: Record<string, { hash: string; nodes: number }>[] = [];
@@ -553,9 +595,9 @@ async function stepDeterminism(repo: string) {
   return views.map((v) => ({
     view: v,
     nodes: runs[0]?.[v]?.nodes ?? 0,
-    identicalAcrossFreshDataDirs:
-      runs[0]?.[v]?.hash === runs[1]?.[v]?.hash && runs[0]?.[v]?.hash !== "no-probe",
-    identicalAfterReload: reload[v] === runs[0]?.[v]?.hash,
+    // "empty" or "no-probe" is no evidence: it never counts as identical.
+    identicalAcrossFreshDataDirs: real(runs[0]?.[v]?.hash) && runs[0]?.[v]?.hash === runs[1]?.[v]?.hash,
+    identicalAfterReload: real(runs[0]?.[v]?.hash) && reload[v] === runs[0]?.[v]?.hash,
     empty: runs[0]?.[v]?.hash === "empty",
   }));
 }
@@ -568,12 +610,10 @@ async function stepDeepLinks(repo: string) {
   const env = dataEnv(dataDir);
   const init = spawnSync("node", [cli, "init"], { cwd: repo, env, encoding: "utf8", maxBuffer: 64 << 20 });
   if (init.status !== 0) throw new Error("gantry init failed");
+  const stopExplorer = registerExplorerStop(repo, env);
   const t0 = Date.now();
   const first = await openUrl(repo, env, { view: "project-map" }); // starts the explorer through the tool
   const startMs = Date.now() - t0;
-  const state = JSON.parse(readFileSync(join(resolvePaths(repo, env).dataDir, "explorer.json"), "utf8")) as {
-    pid: number;
-  };
   const u = new URL(first);
   const browser = await launch();
   const { ctx, page } = await newPage(browser, u.origin, u.searchParams.get("t") ?? undefined);
@@ -609,7 +649,7 @@ async function stepDeepLinks(repo: string) {
           await p
             .locator("aside[aria-label=Inspector] h2")
             .first()
-            .waitFor({ state: "visible", timeout: withSel ? 20_000 : 10_000 });
+            .waitFor({ state: "visible", timeout: 20_000 });
           shown = await p.evaluate(
             (id: string) =>
               document.querySelector("aside[aria-label=Inspector] h2")?.getAttribute("title") === id,
@@ -629,27 +669,59 @@ async function stepDeepLinks(repo: string) {
     );
   }
   await browser.close();
-  try {
-    process.kill(state.pid, "SIGTERM");
-  } catch {
-    // gone
-  }
+  stopExplorer();
   return { explorerStartMs: startMs, rows: out };
 }
 
 // ---- step: cross-origin 403 ---------------------------------------------------------------------------------------
 
-/** Statuses the network stack saw for /api/view/project-map on `page` (CDP sees responses a CORS check hides from the page). */
-async function watchStatuses(ctx: Page, page: Page): Promise<(number | string)[]> {
-  const seen: (number | string)[] = [];
+/**
+ * What the browser's network stack saw for the page's own request to `target`, matched by requestId: the status of the
+ * response it received (a CORS check hides it from the page, CDP does not) and, separately, a later load failure.
+ */
+interface Seen {
+  status: number | null;
+  failure: string | null;
+  sentOrigin: string | null;
+  sentCookie: boolean;
+}
+async function watchRequest(ctx: Page, page: Page, target: string): Promise<Seen> {
+  const seen: Seen = { status: null, failure: null, sentOrigin: null, sentCookie: false };
   const cdp = await ctx.newCDPSession(page);
   await cdp.send("Network.enable");
-  cdp.on("Network.responseReceived", (e: { response: { url: string; status: number } }) => {
-    if (new URL(e.response.url).pathname === "/api/view/project-map") seen.push(e.response.status);
+  const ids = new Set<string>();
+  cdp.on(
+    "Network.requestWillBeSent",
+    (e: { requestId: string; request: { url: string; headers: Record<string, string> } }) => {
+      if (e.request.url !== target) return;
+      ids.add(e.requestId);
+      seen.sentOrigin = e.request.headers.Origin ?? e.request.headers.origin ?? null;
+    },
+  );
+  cdp.on(
+    "Network.requestWillBeSentExtraInfo",
+    (e: { requestId: string; headers: Record<string, string> }) => {
+      if (!ids.has(e.requestId)) return;
+      const names = Object.keys(e.headers);
+      seen.sentCookie = names.some((h) => h.toLowerCase() === "cookie");
+      const o = names.find((h) => h.toLowerCase() === "origin");
+      seen.sentOrigin = o ? (e.headers[o] ?? null) : seen.sentOrigin;
+    },
+  );
+  // The raw response the network stack received. For a CORS-blocked request only this "extra info" event carries it
+  // (Network.responseReceived is not emitted), so this is the status the browser really got from the server.
+  cdp.on("Network.responseReceivedExtraInfo", (e: { requestId: string; statusCode: number }) => {
+    if (ids.has(e.requestId)) seen.status = e.statusCode;
   });
-  cdp.on("Network.loadingFailed", (e: { errorText: string; corsErrorStatus?: { corsError: string } }) => {
-    seen.push(`failed: ${e.errorText} ${e.corsErrorStatus?.corsError ?? ""}`.trim());
+  cdp.on("Network.responseReceived", (e: { requestId: string; response: { status: number } }) => {
+    if (ids.has(e.requestId)) seen.status = e.response.status;
   });
+  cdp.on(
+    "Network.loadingFailed",
+    (e: { requestId: string; errorText: string; corsErrorStatus?: { corsError: string } }) => {
+      if (ids.has(e.requestId)) seen.failure = `${e.errorText} ${e.corsErrorStatus?.corsError ?? ""}`.trim();
+    },
+  );
   return seen;
 }
 
@@ -672,7 +744,7 @@ async function stepSecurity(repo: string) {
 
   const run = async (host: string, mode: "cors" | "no-cors") => {
     const page = await ctx.newPage();
-    const seen = await watchStatuses(ctx, page);
+    const seen = await watchRequest(ctx, page, target);
     await page.goto(`http://${host}:${aport}/`);
     const result = await page.evaluate(
       async ([t, m]: [string, string]) => {
@@ -687,13 +759,18 @@ async function stepSecurity(repo: string) {
     );
     await page.waitForTimeout(500);
     await page.close();
-    return { networkStatus: seen.at(-1) ?? null, ...result };
+    return {
+      browserReceivedStatus: seen.status,
+      browserLoadFailure: seen.failure,
+      originHeaderSent: seen.sentOrigin,
+      cookieSent: seen.sentCookie,
+      ...result,
+    };
   };
   const cors = await run("127.0.0.1", "cors");
   const noCors = await run("127.0.0.1", "no-cors");
   const otherSite = await run("localhost", "cors");
-  // What the server answers to the request the browser sent (the page itself cannot read a cross-origin status):
-  // same cookie jar, Origin header of the second origin.
+  // Supplementary: Node (not a page) sends the same request with the second origin's Origin header and the same cookie jar.
   const foreign = await ctx.request.get(target, { headers: { origin: `http://127.0.0.1:${aport}` } });
   const foreignStatus = foreign.status();
   const sameOrigin = await ctx.request.get(target, { headers: { origin: ex.origin } });
@@ -702,8 +779,8 @@ async function stepSecurity(repo: string) {
   ex.stop();
   return {
     sameOriginControlStatus: control,
-    sameOriginHeaderStatus: sameOrigin.status(),
-    serverStatusForSecondOriginRequest: foreignStatus,
+    supplementaryNodeRequestWithOwnOriginStatus: sameOrigin.status(),
+    supplementaryNodeRequestWithForgedOriginStatus: foreignStatus,
     secondOriginCorsFetch: cors,
     secondOriginNoCorsFetch: noCors,
     secondSiteLocalhostCorsFetch: otherSite,
@@ -750,10 +827,17 @@ async function main() {
   process.stdout.write(text);
 }
 
-main().then(
-  () => process.exit(0),
-  (e) => {
+async function run(): Promise<number> {
+  try {
+    await main();
+    return 0;
+  } catch (e) {
     log(`m3 failed: ${e instanceof Error ? e.message : String(e)}`);
-    process.exit(1);
-  },
-);
+    return 1;
+  } finally {
+    for (const b of browsers) await b.close().catch(() => {});
+    runCleanups();
+  }
+}
+
+run().then((code) => process.exit(code));
