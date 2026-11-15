@@ -285,14 +285,23 @@ describe("timeboxed and strict", () => {
 });
 
 describe("deadline", () => {
-  it("a hanging worker is killed at precommit.budgetMs: the hook returns within budget + 500 ms and queues the rest", async () => {
-    // 4500 ms is just enough for a call to be started (batchSizeFor(~4000) = 1); the fake then never answers.
-    const s = await setup({ mode: "timeboxed", budgetMs: 4500 }, { mode: "hang" });
+  it("a hanging worker is killed at precommit.budgetMs: the hook returns shortly after it and queues the rest", async () => {
+    // The fake never answers. The budget leaves plenty of room for a call to be started even on a busy machine
+    // (batchSizeFor needs about 3.7 s left), and the cached auth answer keeps an auth process from using it up.
+    const budgetMs = 10_000;
+    const s = await setup({ mode: "timeboxed", budgetMs }, { mode: "hang" });
+    const store = openStore(s.p.dbPath);
+    try {
+      store.setMeta("worker_auth", JSON.stringify({ at: Date.now(), bin: s.fake.bin, loggedIn: true }));
+    } finally {
+      store.close();
+    }
     const errs: string[] = [];
     const t0 = Date.now();
     await runHook("pre-commit", [], s.dir, env, (x) => void errs.push(x));
     const ms = Date.now() - t0;
-    expect(ms).toBeLessThan(4500 + 500);
+    // Killed at the budget, not waited out (the fake hangs for 60 s); the slack covers a stalled event loop.
+    expect(ms).toBeLessThan(budgetMs + 5000);
     expect(s.fake.runCalls().length).toBeGreaterThanOrEqual(1);
     expect(errs.join("")).toBe("gantry: described 0, queued 3\n");
     expect(workerDescriptions(s.p)).toHaveLength(0);

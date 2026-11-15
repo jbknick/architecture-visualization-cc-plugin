@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -319,15 +320,28 @@ describe("describeWithWorker", () => {
     expect(fake.runCalls()[0]?.keys).not.toContain("sens:p1");
   });
 
-  // Deadline assertion: retried because parallel builds on the same machine can stall one run.
-  it("kills the child at the deadline, queues the rest and returns within budget + 500 ms", {
-    retry: 2,
-  }, async () => {
+  // The deadline tests must not depend on how fast this machine starts a process. Two things make that so: the
+  // auth answer is cached beforehand (no auth process eats into the deadline), and the deadline is a multiple of
+  // the measured cost of starting the fake, so a loaded machine gets a longer deadline, not a flaky test.
+  const seedAuth = (): void =>
+    ix.store.setMeta("worker_auth", JSON.stringify({ at: Date.now(), bin: fake.bin, loggedIn: true }));
+  const spawnCostMs = (): number => {
+    const t = Date.now();
+    execFileSync(fake.bin, ["auth", "status"], { stdio: "ignore" });
+    return Date.now() - t;
+  };
+
+  it("kills the child at the deadline, queues the rest and returns promptly after it", async () => {
     fake.configure({ mode: "hang" });
+    seedAuth();
+    const deadlineMs = Math.max(1500, 12 * spawnCostMs());
     const t0 = Date.now();
-    const r = await run(sheets, { deadlineMs: 700 });
+    const r = await run(sheets, { deadlineMs });
     const ms = Date.now() - t0;
-    expect(ms).toBeLessThan(700 + 500);
+    // Killed, not waited out: the fake would hang for 60 s. The slack covers a stalled event loop under load.
+    expect(ms).toBeGreaterThanOrEqual(deadlineMs - 50);
+    expect(ms).toBeLessThan(deadlineMs + 5000);
+    expect(fake.runCalls()).toHaveLength(1);
     expect(r).toMatchObject({ described: 0, queued: sheets.length });
     for (const s of sheets) expect(status(s.contentKey)?.status).toBe("pending");
     // the whole process group is gone, not only the direct child
@@ -339,11 +353,13 @@ describe("describeWithWorker", () => {
   });
 
   it("keeps the batches that finished before the deadline and queues the rest", async () => {
-    fake.configure({ delayMs: 800 });
-    const r = await run(sheets, { deadlineMs: 2000, batchSize: 2 });
-    // batch 1 ends at about 800 ms (over a second of slack for process start under load), batch 3 is always cut
-    expect(r.described).toBeGreaterThanOrEqual(2);
-    expect(r.described).toBeLessThan(sheets.length);
+    // The first call answers at once and every later call hangs, so which batch is cut does not depend on speed:
+    // batch 1 is kept, batch 2 is killed at the deadline, the rest never starts.
+    fake.configure({ hangAfter: 1 });
+    seedAuth();
+    const r = await run(sheets, { deadlineMs: Math.max(3000, 15 * spawnCostMs()), batchSize: 2 });
+    expect(r.described).toBe(2);
+    expect(fake.runCalls()).toHaveLength(2);
     expect(r.described + r.queued).toBe(sheets.length);
     expect(descCount()).toBe(r.described);
   });

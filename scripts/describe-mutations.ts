@@ -355,9 +355,13 @@ async function acquireLock(): Promise<void> {
 
 await acquireLock();
 
+// One retry: a busy machine can stall a test that is green on its own. A real failure fails twice.
 if ((await runTests()) !== "green") {
-  console.log("baseline: the describe tests are not green without any mutation; fix them first");
-  process.exit(1);
+  console.log("baseline: not green; retrying once in case the machine was busy");
+  if ((await runTests()) !== "green") {
+    console.log("baseline: the describe tests are not green without any mutation; fix them first");
+    process.exit(1);
+  }
 }
 
 const limit = Number(process.env.GANTRY_MUTATION_LIMIT ?? MUTATIONS.length);
