@@ -5,7 +5,7 @@ import { egoView } from "./ego.js";
 import { map3dView } from "./map3d.js";
 import { pagesView } from "./pages.js";
 import { projectMapView } from "./projectMap.js";
-import { reviewView } from "./review.js";
+import { reviewView } from "./reviewView.js";
 import { slicesView } from "./slices.js";
 
 const registry = new Map<string, ViewModule>();

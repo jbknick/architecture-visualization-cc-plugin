@@ -41,14 +41,12 @@ export interface GraphNode {
   members?: GroupMember[];
   /** Ego group nodes: true when expanded; the members then follow as separate nodes. */
   expanded?: boolean;
-  /** Ego view: id of the expanded group a node is listed under. */
+  /** Ego view: id of the expanded group a node is listed under. Review rings: the node's file path. */
   group?: string;
-  /** Review view: how a changed symbol (ring 0) or a changed file (overlay) changed. */
-  change?: string;
-  /** Review view: the changed symbol's signature differs between the two sides. */
+  /** Review view, rings mode: how a changed symbol changed. */
+  change?: ChangeKind;
+  /** Review view, rings mode: the changed symbol's signature differs between the two sides. */
   signatureChanged?: boolean;
-  /** Review view, overlay mode: the file holds a changed symbol or a caller of one. */
-  mark?: "changed" | "affected";
   x?: number;
   y?: number;
 }
@@ -232,7 +230,35 @@ export interface ReviewRiskRule {
   max?: number;
 }
 
-/** `review` of the review view (packages/explorer/server/views/review.ts). */
+/** How a map node looks in the review layer (`moved` covers renamed and moved). */
+export type ReviewMarkKind = "added" | "modified" | "signature" | "moved" | "removed";
+
+export interface ReviewMark {
+  id: string;
+  change?: ReviewMarkKind;
+  changes?: number;
+  hop?: number;
+}
+
+export interface ReviewLink {
+  id: string;
+  src: string;
+  dst: string;
+  change: ReviewMarkKind;
+  weight: number;
+}
+
+/** The review as a layer on the map in the same response: marks and lines by node id, at the map's level. */
+export interface ReviewLayer {
+  marks: ReviewMark[];
+  links: ReviewLink[];
+  linksTotal: number;
+  /** Changed symbol and file ids -> the node that shows them. */
+  placed: [string, string][];
+  unplaced: string[];
+}
+
+/** `review` of the review view and of a project map with `range` (packages/explorer/server/views/review.ts). */
 export interface ReviewData {
   range: string;
   pr?: number;
@@ -240,7 +266,12 @@ export interface ReviewData {
   head: string;
   mergeBase: string;
   headSha: string;
-  mode: "rings" | "overlay";
+  /** `map`: the layer on the project map (default); `rings`: changed code in the centre, callers by hop. */
+  mode: "map" | "rings";
+  /** The map the review view draws on. */
+  map: "2d" | "3d";
+  /** Rings mode: edges between rings before the cap. */
+  edgesTotal?: number;
   files: { path: string; status: "A" | "M" | "D" | "R"; changes: number }[];
   changes: ReviewChange[];
   callersByHop: { hop: number; count: number }[];
@@ -249,7 +280,7 @@ export interface ReviewData {
   rules: ReviewRiskRule[];
   levels: { medium: number; high: number };
   notes: string[];
-  edgesTotal: number;
+  layer: ReviewLayer;
   ms: number;
   cached: boolean;
 }

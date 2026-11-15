@@ -1,19 +1,21 @@
-/* Review / blast radius view (#44): rings by hop, the map overlay, the left panel and the inspector's change block. */
+/* Review view (#44, on the map since #167): the layer's legend over the map, the left panel and the inspector's change
+   block. The canvases draw the layer with the same colours (views/reviewModel.ts, MARK_COLOURS). */
 :root {
   --rv-added: #1f8a4c;
   --rv-modified: #c98a00;
+  --rv-signature: #c2255c;
   --rv-removed: #c62828;
   --rv-moved: #2f6fd6;
-  --rv-caller-1: #6b7a90;
-  --rv-caller-2: #8e9aac;
-  --rv-caller-3: #b3bcc9;
+  --rv-affected: #8b5cf6;
+  --rv-faded: #d9dce2;
+  --rv-caller-1: #5f6b7d;
+  --rv-caller-2: #8e99aa;
+  --rv-caller-3: #b9c0cb;
   --rv-ring: #c9ced8;
-  --rv-edge: #9aa4b4;
+  --rv-group: #e3e6ec;
+  --rv-edge: #8d97a8;
   --rv-edge-hot: #2159d6;
   --rv-sig: #1a1d23;
-  --rv-affected: #f2c46b;
-  --rv-file-dim: #dfe2e8;
-  --rv-ws: #f8f9fb;
   --rv-risk-low-bg: #e4f4ea;
   --rv-risk-medium-bg: #fff1cf;
   --rv-risk-high-bg: #fde2e0;
@@ -23,18 +25,19 @@
   :root {
     --rv-added: #4cc483;
     --rv-modified: #f0b43c;
+    --rv-signature: #f06595;
     --rv-removed: #ff6b62;
     --rv-moved: #6fa2ff;
-    --rv-caller-1: #9aa6b8;
+    --rv-affected: #a78bfa;
+    --rv-faded: #343a45;
+    --rv-caller-1: #a3adbd;
     --rv-caller-2: #76829a;
-    --rv-caller-3: #586276;
+    --rv-caller-3: #535d70;
     --rv-ring: #343c49;
-    --rv-edge: #566174;
+    --rv-group: #2a313c;
+    --rv-edge: #5d687b;
     --rv-edge-hot: #7ba6ff;
     --rv-sig: #f3f5f9;
-    --rv-affected: #8a6a24;
-    --rv-file-dim: #232933;
-    --rv-ws: #141820;
     --rv-risk-low-bg: #15301f;
     --rv-risk-medium-bg: #33290d;
     --rv-risk-high-bg: #3a1716;
@@ -47,7 +50,111 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+.rv-legend {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 6;
+  max-width: 230px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  font-size: 12px;
+  pointer-events: auto;
+}
+.rv-legend ul {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.rv-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rv-swatch {
+  flex: none;
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.rv-line {
+  flex: none;
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--rv-signature);
+  position: relative;
+}
+.rv-line::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: -3px;
+  border-left: 6px solid var(--rv-signature);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+.rv-banner {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   background: var(--surface);
+  font-size: 12px;
+}
+.rv-mark-added {
+  background: var(--rv-added);
+}
+.rv-mark-modified {
+  background: var(--rv-modified);
+}
+.rv-mark-signature {
+  background: var(--rv-signature);
+}
+.rv-mark-moved {
+  background: var(--rv-moved);
+}
+.rv-mark-removed {
+  background: var(--rv-removed);
+}
+.rv-mark-affected {
+  background: color-mix(in srgb, var(--rv-affected) 55%, var(--surface));
+}
+.rv-mark-faded {
+  background: var(--rv-faded);
+}
+.rv-levels {
+  margin-top: 6px;
+}
+.rv-caller-swatch {
+  background: linear-gradient(90deg, var(--rv-caller-1), var(--rv-caller-3));
+  border-radius: 50%;
+}
+
+/* Rings mode */
+.rv-rings {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+.rv-caption {
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
 }
 .rv-svg {
   flex: 1;
@@ -65,18 +172,42 @@
   stroke-dasharray: 4 4;
 }
 .rv-ring-label {
+  fill: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.rv-group-arc {
+  fill: none;
+  stroke: var(--rv-group);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.rv-group-label {
   fill: var(--muted);
-  font-size: 12px;
+  font-size: 10px;
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
 }
 .rv-edge {
   stroke: var(--rv-edge);
-  stroke-width: 1;
-  opacity: 0.55;
+  stroke-width: 1.2;
+  opacity: 0.7;
+}
+.rv-arrow {
+  fill: var(--rv-edge);
 }
 .rv-edge-hot {
   stroke: var(--rv-edge-hot);
-  stroke-width: 2;
+  stroke-width: 2.2;
   opacity: 1;
+}
+.rv-arrow-hot {
+  fill: var(--rv-edge-hot);
 }
 .rv-node-g {
   cursor: pointer;
@@ -90,38 +221,36 @@
   stroke: var(--accent);
   stroke-width: 3;
 }
-.rv-change-added {
+.rv-fill-added {
   fill: var(--rv-added);
 }
-.rv-change-modified {
+.rv-fill-modified {
   fill: var(--rv-modified);
 }
-.rv-change-removed {
-  fill: var(--rv-removed);
+.rv-fill-signature {
+  fill: var(--rv-signature);
 }
-.rv-change-moved,
-.rv-change-renamed {
+.rv-fill-moved {
   fill: var(--rv-moved);
 }
-.rv-hop-1 {
+.rv-fill-removed {
+  fill: var(--rv-removed);
+}
+.rv-caller-1 {
   fill: var(--rv-caller-1);
 }
-.rv-hop-2 {
+.rv-caller-2 {
   fill: var(--rv-caller-2);
 }
-.rv-hop-3 {
+.rv-caller-3 {
   fill: var(--rv-caller-3);
-}
-.rv-node.rv-sig {
-  stroke: var(--rv-sig);
-  stroke-width: 3;
 }
 .rv-node.rv-sel {
   stroke: var(--accent);
   stroke-width: 4;
 }
 .rv-dim {
-  opacity: 0.25;
+  opacity: 0.18;
 }
 .rv-label {
   fill: var(--text);
@@ -137,8 +266,8 @@
 }
 .rv-zoom {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 46px;
+  left: 10px;
   display: flex;
   gap: 4px;
   align-items: center;
@@ -150,64 +279,17 @@
 .rv-fit {
   padding: 3px 10px;
 }
-.rv-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  padding: 8px 12px;
-  border-top: 1px solid var(--border);
-  font-size: 12px;
-  color: var(--muted);
-}
-.rv-legend li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.rv-swatch {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+.rv-tip {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  padding: 6px 8px;
   border: 1px solid var(--border);
-}
-
-/* Overlay */
-.rv-ws {
-  fill: var(--rv-ws);
-  stroke: var(--border);
-}
-.rv-file-label {
-  fill: var(--text);
-  font-size: 13px;
-  font-family: var(--mono);
-  pointer-events: none;
-}
-.rv-ws-label {
-  fill: var(--text);
-  font-size: 15px;
-  font-weight: 600;
-  pointer-events: none;
-}
-.rv-file {
-  stroke: var(--surface);
-  stroke-width: 1;
-}
-.rv-dim-file,
-.rv-dim-swatch {
-  fill: var(--rv-file-dim);
-  background: var(--rv-file-dim);
-}
-.rv-mark-affected {
-  fill: var(--rv-affected);
-  background: var(--rv-affected);
-}
-.rv-file.rv-sel {
-  stroke: var(--accent);
-  stroke-width: 3;
-}
-.rv-overlay [role="button"] {
-  cursor: pointer;
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 12px;
+  max-width: 360px;
+  overflow-wrap: anywhere;
 }
 
 /* Left panel */
@@ -297,20 +379,6 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--rv-modified);
-}
-.rv-dot.rv-change-added {
-  background: var(--rv-added);
-}
-.rv-dot.rv-change-removed {
-  background: var(--rv-removed);
-}
-.rv-dot.rv-change-moved,
-.rv-dot.rv-change-renamed {
-  background: var(--rv-moved);
-}
-.rv-dot.rv-sig {
-  box-shadow: 0 0 0 2px var(--rv-sig);
 }
 
 /* Inspector */

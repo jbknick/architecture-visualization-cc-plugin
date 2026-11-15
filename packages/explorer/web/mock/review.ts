@@ -1,83 +1,128 @@
-// Mock answer of the review view (#44) on the synthetic pnpm-turbo-like fixture: Button's props gain `size`,
-// formatRelativeDate is renamed, slugify is removed. Positions follow the server's ring rule (radius by ring, angle by
-// id order). Nothing here comes from a private project.
-import type { GraphEdge, GraphNode, ReviewData, ViewData } from "../src/api.ts";
+// Mock review (#44, on the map since #167) on the synthetic pnpm-turbo-like fixture: Button's props gain `size`,
+// formatRelativeDate is renamed to formatTimeAgo, slugify is removed. The layer is placed on the mock project map the
+// same way the server places it (the deepest node of the response that shows an id). Nothing here comes from a
+// private project.
+import type {
+  GraphEdge,
+  GraphNode,
+  ReviewData,
+  ReviewLayer,
+  ReviewLink,
+  ReviewMark,
+  ReviewMarkKind,
+} from "../src/api.ts";
 
 const BUTTON = "sym:packages/ui/src/button.tsx#Button";
 const DATE = "sym:packages/utils/src/date.ts#formatTimeAgo";
+const DATE_BEFORE = "sym:packages/utils/src/date.ts#formatRelativeDate";
 const SLUG = "sym:packages/utils/src/slug.ts#slugify";
 const CARD = "sym:packages/ui/src/card.tsx#Card";
 const POSTLIST = "sym:apps/web/src/components/PostList.tsx#PostList";
 const HOME = "sym:apps/web/src/routes/index.tsx#HomePage";
-const ABOUT = "sym:apps/web/src/routes/about.tsx#AboutPage";
-const ROOT = "sym:apps/web/src/routes/__root.tsx#RootLayout";
+const ROUTER = "sym:apps/api/src/router.ts#createRouter";
 
-const pos = (i: number, n: number, h: number, r: number) => {
-  if (r === 0) return { x: 0, y: 0 };
-  const a = -Math.PI / 2 + (2 * Math.PI * (i + (h % 2 === 0 ? 0.5 : 0.25))) / n;
-  return { x: Math.round(r * Math.cos(a) * 10) / 10, y: Math.round(r * Math.sin(a) * 10) / 10 };
-};
-
-const ring0: { id: string; kind: string; change: string; sig: boolean; path: string }[] = [
-  { id: BUTTON, kind: "component", change: "modified", sig: true, path: "packages/ui/src/button.tsx" },
-  { id: DATE, kind: "function", change: "renamed", sig: true, path: "packages/utils/src/date.ts" },
-  { id: SLUG, kind: "function", change: "removed", sig: false, path: "packages/utils/src/slug.ts" },
-];
-const ring1 = [CARD, HOME, POSTLIST];
-const ring2 = [ABOUT, ROOT];
-
-export function reviewNodes(): GraphNode[] {
-  const nodes: GraphNode[] = [];
-  for (const [i, c] of ring0.entries()) {
-    nodes.push({
-      id: c.id,
-      kind: c.kind,
-      label: c.id.slice(c.id.lastIndexOf("#") + 1),
-      path: c.path,
-      size: 1,
-      hop: 0,
-      change: c.change,
-      signatureChanged: c.sig,
-      ...pos(i, ring0.length, 0, 70),
-    });
-  }
-  for (const [h, ring] of [
-    [1, ring1],
-    [2, ring2],
-  ] as const) {
-    for (const [i, id] of ring.entries()) {
-      nodes.push({
-        id,
-        kind: "component",
-        label: id.slice(id.lastIndexOf("#") + 1),
-        path: id.slice(4, id.lastIndexOf("#")),
-        size: 1,
-        hop: h,
-        ...pos(i, ring.length, h, 70 + 150 * h),
-      });
-    }
-  }
-  return nodes;
+/** Where a map puts ids, and whether one node holds another. */
+export interface MockPlacement {
+  rep(id: string): string | undefined;
+  contains(a: string, b: string): boolean;
 }
 
-const edge = (src: string, dst: string, kind = "renders"): GraphEdge => ({
-  id: `${src}->${dst}`,
-  src,
-  dst,
-  kind,
-  weight: 1,
-  confidence: "high",
-});
+const ORDER: ReviewMarkKind[] = ["removed", "signature", "moved", "modified", "added"];
+const stronger = (a: ReviewMarkKind | undefined, b: ReviewMarkKind) =>
+  a === undefined || ORDER.indexOf(b) < ORDER.indexOf(a) ? b : a;
 
-export const reviewEdges: GraphEdge[] = [
-  edge(CARD, BUTTON),
-  edge(HOME, BUTTON),
-  edge(POSTLIST, DATE, "calls"),
-  edge(ABOUT, CARD),
-  edge(ROOT, HOME),
+const changesOf: { id: string; ids: string[]; path: string; kind: ReviewMarkKind }[] = [
+  { id: BUTTON, ids: [BUTTON], path: "packages/ui/src/button.tsx", kind: "signature" },
+  { id: DATE, ids: [DATE, DATE_BEFORE], path: "packages/utils/src/date.ts", kind: "moved" },
+  { id: SLUG, ids: [SLUG], path: "packages/utils/src/slug.ts", kind: "removed" },
+];
+/** Direct callers (store ids) of each change. HOME is not in the mock index: it has no node, like a filtered file. */
+const direct: [string, string][] = [
+  [CARD, BUTTON],
+  [HOME, BUTTON],
+  [POSTLIST, DATE],
+  [ROUTER, SLUG],
+];
+const hops: [string, number][] = [
+  [CARD, 1],
+  [HOME, 1],
+  [POSTLIST, 1],
+  [ROUTER, 1],
+  ["sym:apps/web/src/hooks/useDebounce.ts#useDebounce", 2],
 ];
 
-export function reviewData(range: string, mode: "rings" | "overlay"): ReviewData {
+export function reviewLayer(place: MockPlacement): ReviewLayer {
+  const marks = new Map<string, ReviewMark>();
+  const markOf = (id: string) => {
+    const m = marks.get(id) ?? { id };
+    marks.set(id, m);
+    return m;
+  };
+  const placed = new Map<string, string>();
+  const nodeOf = new Map<string, string>();
+  const unplaced: string[] = [];
+  for (const c of changesOf) {
+    const node = [...c.ids, `file:${c.path}`].map((id) => place.rep(id)).find((x) => x !== undefined);
+    if (!node) {
+      unplaced.push(c.id);
+      continue;
+    }
+    placed.set(c.id, node);
+    nodeOf.set(c.id, node);
+    const m = markOf(node);
+    m.change = stronger(m.change, c.kind);
+    m.changes = (m.changes ?? 0) + 1;
+  }
+  for (const c of changesOf) {
+    const node = place.rep(`file:${c.path}`);
+    if (node && !placed.has(`file:${c.path}`)) placed.set(`file:${c.path}`, node);
+    if (node) {
+      const m = markOf(node);
+      if (!m.change) m.change = "modified";
+    }
+  }
+  for (const [id, hop] of hops) {
+    const node = place.rep(id);
+    if (!node) continue;
+    const m = markOf(node);
+    if (m.change) continue;
+    m.hop = Math.min(m.hop ?? hop, hop);
+  }
+  const links = new Map<string, ReviewLink>();
+  for (const [src0, dst0] of direct) {
+    const src = place.rep(src0);
+    const dst = nodeOf.get(dst0);
+    const kind = changesOf.find((c) => c.id === dst0)?.kind;
+    if (!src || !dst || !kind || src === dst || place.contains(src, dst) || place.contains(dst, src))
+      continue;
+    const id = `${src}->${dst}`;
+    const l = links.get(id);
+    if (l) {
+      l.weight += 1;
+      l.change = stronger(l.change, kind);
+    } else links.set(id, { id, src, dst, change: kind, weight: 1 });
+  }
+  const sorted = [...links.values()].sort((a, b) => (a.id < b.id ? -1 : 1));
+  return {
+    marks: [...marks.values()].sort((a, b) => (a.id < b.id ? -1 : 1)),
+    links: sorted,
+    linksTotal: sorted.length,
+    placed: [...placed.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)),
+    unplaced,
+  };
+}
+
+/** A range the mock accepts, or the server's message for one it does not. */
+export function checkRange(range: string): string | null {
+  return range.includes("...") || range.includes("..") ? null : `expected <base>...<head>, got "${range}"`;
+}
+
+export function reviewData(
+  range: string,
+  map: "2d" | "3d",
+  place: MockPlacement,
+  mode: "map" | "rings" = "map",
+): ReviewData {
   return {
     range,
     base: range.split("...")[0] ?? "main",
@@ -85,6 +130,7 @@ export function reviewData(range: string, mode: "rings" | "overlay"): ReviewData
     mergeBase: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
     headSha: "f0e1d2c3b4a5968778695a4b3c2d1e0f12345678",
     mode,
+    map,
     files: [
       { path: "packages/ui/src/button.tsx", status: "M", changes: 1 },
       { path: "packages/utils/src/date.ts", status: "M", changes: 1 },
@@ -130,7 +176,7 @@ export function reviewData(range: string, mode: "rings" | "overlay"): ReviewData
         exportedChanged: false,
         locDelta: 0,
         before: {
-          id: "sym:packages/utils/src/date.ts#formatRelativeDate",
+          id: DATE_BEFORE,
           path: "packages/utils/src/date.ts",
           line: 1,
           signature: "function formatRelativeDate(d: Date): string",
@@ -163,13 +209,13 @@ export function reviewData(range: string, mode: "rings" | "overlay"): ReviewData
           signature: "function slugify(s: string): string",
           exported: true,
         },
-        callers: 0,
+        callers: 1,
         untrusted_description: null,
       },
     ],
     callersByHop: [
-      { hop: 1, count: ring1.length },
-      { hop: 2, count: ring2.length },
+      { hop: 1, count: 4 },
+      { hop: 2, count: 1 },
     ],
     crossings: [
       { from: BUTTON, to: HOME, kind: "app" },
@@ -188,58 +234,111 @@ export function reviewData(range: string, mode: "rings" | "overlay"): ReviewData
     rules: [],
     levels: { medium: 30, high: 60 },
     notes: ['New undeclared import "left-pad" in packages/utils/src/date.ts:1.'],
-    edgesTotal: reviewEdges.length,
+    layer: reviewLayer(place),
     ms: 42,
     cached: false,
   };
 }
 
-/** Workspaces and files of the overlay mode, with the changed and affected files marked. */
-export function overlayNodes(): GraphNode[] {
-  const ws = (id: string, label: string): GraphNode => ({ id, kind: "workspace", label, size: 0 });
-  const file = (
-    path: string,
-    parent: string,
-    size: number,
-    mark?: "changed" | "affected",
-    change?: string,
-  ) => ({
-    id: `file:${path}`,
-    kind: "file",
-    label: path.slice(path.lastIndexOf("/") + 1),
-    path,
-    parent,
-    size,
-    ...(mark ? { mark } : {}),
-    ...(change ? { change } : {}),
-  });
-  return [
-    ws("ws:@acme/api", "@acme/api"),
-    ws("ws:@acme/web", "@acme/web"),
-    ws("ws:@acme/db", "@acme/db"),
-    ws("ws:@acme/ui", "@acme/ui"),
-    ws("ws:@acme/utils", "@acme/utils"),
-    file("apps/api/src/router.ts", "ws:@acme/api", 3),
-    file("apps/web/src/components/PostList.tsx", "ws:@acme/web", 2, "affected"),
-    file("apps/web/src/routes/index.tsx", "ws:@acme/web", 2, "affected"),
-    file("apps/web/src/routes/about.tsx", "ws:@acme/web", 1, "affected"),
-    file("apps/web/src/hooks/useDebounce.ts", "ws:@acme/web", 1),
-    file("packages/db/src/queries.ts", "ws:@acme/db", 2),
-    file("packages/ui/src/button.tsx", "ws:@acme/ui", 1, "changed", "modified"),
-    file("packages/ui/src/card.tsx", "ws:@acme/ui", 1, "affected"),
-    file("packages/utils/src/date.ts", "ws:@acme/utils", 1, "changed", "renamed"),
-  ];
+// ---- Rings mode: positions follow the server's rule (files grouped, one empty slot between files). ----
+
+const ringPos = (i: number, n: number, h: number, r: number) => {
+  if (r === 0) return { x: 0, y: 0 };
+  const a = -Math.PI / 2 + (2 * Math.PI * (i + (h % 2 === 0 ? 0.5 : 0.25))) / n;
+  return { x: Math.round(r * Math.cos(a) * 10) / 10, y: Math.round(r * Math.sin(a) * 10) / 10 };
+};
+const pathOf = (id: string) => id.slice(4, id.lastIndexOf("#"));
+const nameOf = (id: string) => id.slice(id.lastIndexOf("#") + 1);
+const RING0: { id: string; kind: string; change: "modified" | "renamed" | "removed"; sig: boolean }[] = [
+  { id: BUTTON, kind: "component", change: "modified", sig: true },
+  { id: DATE, kind: "function", change: "renamed", sig: true },
+  { id: SLUG, kind: "function", change: "removed", sig: false },
+];
+const RING1 = [CARD, HOME, POSTLIST, ROUTER];
+const RING2 = ["sym:apps/web/src/hooks/useDebounce.ts#useDebounce"];
+
+function slotsOf(ids: string[]): { n: number; at: Map<string, number> } {
+  const sorted = [...ids].sort((a, b) =>
+    pathOf(a) < pathOf(b) ? -1 : pathOf(a) > pathOf(b) ? 1 : a < b ? -1 : 1,
+  );
+  const at = new Map<string, number>();
+  let slot = 0;
+  let last: string | undefined;
+  for (const id of sorted) {
+    if (last !== undefined && pathOf(id) !== last) slot += 1;
+    at.set(id, slot++);
+    last = pathOf(id);
+  }
+  return { n: slot + (new Set(sorted.map(pathOf)).size > 1 ? 1 : 0), at };
 }
 
-export function reviewView(
-  options: Record<string, unknown>,
-): { status: number; error: string } | (ViewData & { review: ReviewData | null }) {
-  const range = typeof options.range === "string" ? options.range : "";
-  if (!range) return { nodes: [], edges: [], layoutHint: "radial", review: null };
-  if (!range.includes("...") && !range.includes(".."))
-    return { status: 400, error: `expected <base>...<head>, got "${range}"` };
-  const mode = options.mode === "overlay" ? "overlay" : "rings";
-  return mode === "overlay"
-    ? { nodes: overlayNodes(), edges: [], layoutHint: "radial", review: reviewData(range, mode) }
-    : { nodes: reviewNodes(), edges: reviewEdges, layoutHint: "radial", review: reviewData(range, mode) };
+export function ringNodes(): GraphNode[] {
+  const nodes: GraphNode[] = [];
+  const s0 = slotsOf(RING0.map((c) => c.id));
+  for (const c of RING0)
+    nodes.push({
+      id: c.id,
+      kind: c.kind,
+      label: nameOf(c.id),
+      path: pathOf(c.id),
+      group: pathOf(c.id),
+      size: 1,
+      hop: 0,
+      change: c.change,
+      signatureChanged: c.sig,
+      ...ringPos(s0.at.get(c.id) ?? 0, s0.n, 0, 70),
+    });
+  for (const [h, ring] of [
+    [1, RING1],
+    [2, RING2],
+  ] as const) {
+    const s = slotsOf([...ring]);
+    for (const id of ring)
+      nodes.push({
+        id,
+        kind: "component",
+        label: nameOf(id),
+        path: pathOf(id),
+        group: pathOf(id),
+        size: 1,
+        hop: h,
+        ...ringPos(s.at.get(id) ?? 0, s.n, h, 70 + 150 * h),
+      });
+  }
+  return nodes;
+}
+
+const edge = (src: string, dst: string, kind = "renders"): GraphEdge => ({
+  id: `${src}->${dst}`,
+  src,
+  dst,
+  kind,
+  weight: 1,
+  confidence: "high",
+});
+
+export const ringEdges: GraphEdge[] = [
+  edge(CARD, BUTTON),
+  edge(HOME, BUTTON),
+  edge(POSTLIST, DATE, "calls"),
+  edge(ROUTER, SLUG, "calls"),
+  edge("sym:apps/web/src/hooks/useDebounce.ts#useDebounce", POSTLIST, "calls"),
+];
+
+/** Rings mode of the mock review view: the ring nodes are the layer's nodes. */
+export function ringsView(range: string) {
+  const nodes = ringNodes();
+  const ids = new Set(nodes.map((n) => n.id));
+  const review = reviewData(
+    range,
+    "2d",
+    { rep: (id) => (ids.has(id) ? id : undefined), contains: () => false },
+    "rings",
+  );
+  return {
+    nodes,
+    edges: ringEdges,
+    layoutHint: "review",
+    review: { ...review, edgesTotal: ringEdges.length },
+  };
 }

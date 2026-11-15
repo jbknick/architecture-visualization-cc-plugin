@@ -16,7 +16,7 @@ import { duplicatesDismiss, duplicatesSource, duplicatesView, rememberScenario }
 import { buildHierarchy } from "./hierarchy.ts";
 import { egoHub, hubCounts, hubNode } from "./hubEgo.ts";
 import { type Counts, largeMapCounts, largeMapNode, projectMapLarge } from "./largeMap.ts";
-import { reviewView } from "./review.ts";
+import { checkRange, reviewData, ringsView } from "./review.ts";
 
 export const meta: Meta = {
   repo: "pnpm-turbo",
@@ -470,7 +470,7 @@ function projectMap(q: ParsedQuery): ViewData | { error: string; status: number 
     if (cur) cur.weight += 1;
     else agg.set(id, { id, src, dst, kind, weight: 1, confidence: e.confidence ?? "high" });
   }
-  return {
+  const result: ViewData = {
     nodes: [...returned].sort().map((id) => {
       const { tier: _tier, ...node } = nodes.get(id) as GraphNode & { tier: number };
       return node;
@@ -478,6 +478,30 @@ function projectMap(q: ParsedQuery): ViewData | { error: string; status: number 
     edges: [...agg.values()].sort((a, b) => (a.id < b.id ? -1 : 1)),
     layoutHint: "nested-elk",
   };
+  // A `range` adds the review layer (#167), like the server: the nodes and edges stay the plain map's.
+  const range = typeof q.options.range === "string" ? q.options.range : "";
+  if (!range) return result;
+  const bad = checkRange(range);
+  if (bad) return { status: 400, error: bad };
+  const contains = (a: string, b: string): boolean => {
+    for (let n = nodes.get(b)?.parent; n; n = nodes.get(n)?.parent) if (n === a) return true;
+    return false;
+  };
+  const map = q.options.map === "3d" ? "3d" : "2d";
+  return { ...result, review: reviewData(range, map, { rep, contains }) };
+}
+
+/** The review view: the project map (Files level for the 3D map) with the review layer, hint `review`. */
+function reviewView(q: ParsedQuery): ViewData | { error: string; status: number } {
+  const range = typeof q.options.range === "string" ? q.options.range : "";
+  if (!range) return { nodes: [], edges: [], layoutHint: "review", review: null };
+  if (q.options.mode === "rings") {
+    const bad = checkRange(range);
+    return bad ? { status: 400, error: bad } : ringsView(range);
+  }
+  const level = q.options.map === "3d" ? "files" : q.level;
+  const map = projectMap({ ...q, focus: null, level });
+  return "error" in map ? map : { ...map, layoutHint: "review" };
 }
 
 // ---------- view: ego ----------
@@ -1295,7 +1319,7 @@ export function handleMockApi(url: URL): MockResponse | null {
               : id === "map-3d"
                 ? map3dView(q)
                 : id === "review"
-                  ? reviewView(q.options)
+                  ? reviewView(q)
                   : null;
     if (!result) return { status: 404, body: { error: `Unknown view: ${id}` } };
     if ("error" in result) return { status: result.status, body: { error: result.error } };

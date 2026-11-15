@@ -26,12 +26,10 @@ export interface GraphNode {
   expanded?: boolean;
   /** Ego view: id of the (expanded) group a node was listed under. */
   group?: string;
-  /** Review view: how a changed symbol changed (added, modified, removed, moved, renamed). */
+  /** Review view, rings mode: how a changed symbol changed (added, modified, removed, moved, renamed). */
   change?: string;
-  /** Review view: the changed symbol's signature differs between the two sides. */
+  /** Review view, rings mode: the changed symbol's signature differs between the two sides. */
   signatureChanged?: boolean;
-  /** Review view, overlay mode: the file holds a changed symbol or a caller of one. */
-  mark?: "changed" | "affected";
   x?: number;
   y?: number;
 }
@@ -76,7 +74,9 @@ export type LayoutHint =
   | "columns"
   | "clusters"
   | "bowtie"
-  | "force-3d";
+  | "force-3d"
+  /** The review view (#167): the project map, 2D or 3D, with the review layer on it. */
+  | "review";
 
 export type ViewLevel = "workspaces" | "dirs" | "files" | "symbols";
 

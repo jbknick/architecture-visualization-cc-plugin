@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, type GraphEdge, type GraphNode } from "../../api.ts";
+import { api, type GraphEdge, type GraphNode, type ReviewLayer } from "../../api.ts";
 import { buildScene } from "../../canvas/scene.ts";
 import type { CanvasProps } from "../../slots.ts";
 import { useStore } from "../../store.tsx";
 import { currentScheme } from "../../theme.ts";
 import { getBool } from "../../views/filterUtils.ts";
+import { FAR_KEY, paintLayer } from "../../views/reviewModel.ts";
 import { mapUi, prefersReducedMotion, useMapUi } from "../ui.ts";
 import { buildLandscape } from "./model.ts";
 import { SettlementScene, type SettlementTip } from "./SettlementScene.ts";
@@ -19,18 +20,26 @@ interface Tip extends SettlementTip {
  * workspaces as roads and highways with traffic on them. Built from the project map's files-level data, so the counts
  * are the 2D map's.
  */
-export default function SettlementCanvas({ focus, onSelect, onHover }: CanvasProps) {
+export default function SettlementCanvas({ focus, onSelect, onHover, data: viewData }: CanvasProps) {
   const { state } = useStore();
   const route = state.route;
   const hideTests = getBool(route.filters, "hideTests", true);
+  // The review view's own options (2D/3D, the hop 2-3 tint) do not change the map's data; `range` and `pr` add the
+  // review layer to the project map response (#167).
   const filtersKey = useMemo(() => {
-    const { style: _style, ...rest } = route.filters;
+    const { style: _style, map: _map, [FAR_KEY]: _far, ...rest } = route.filters;
     return JSON.stringify(rest);
   }, [route.filters]);
+  const far = getBool(route.filters, FAR_KEY, false);
+  const reviewing = Boolean(viewData?.review);
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<SettlementScene | null>(null);
   const [tip, setTip] = useState<Tip | null>(null);
-  const [data, setData] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] } | null>(null);
+  const [data, setData] = useState<{
+    nodes: GraphNode[];
+    edges: GraphEdge[];
+    layer: ReviewLayer | null;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(() => !prefersReducedMotion());
   const ui = useMapUi();
@@ -38,6 +47,7 @@ export default function SettlementCanvas({ focus, onSelect, onHover }: CanvasPro
   handlers.current = { onSelect, onHover };
   const seenCamera = useRef(ui.cameraNonce);
   const seenFly = useRef(ui.flyNonce);
+  const internalSelect = useRef(false);
 
   useEffect(() => {
     const el = host.current;
@@ -45,7 +55,10 @@ export default function SettlementCanvas({ focus, onSelect, onHover }: CanvasPro
     const s = new SettlementScene(
       el,
       {
-        onSelect: (id) => handlers.current.onSelect(id),
+        onSelect: (id) => {
+          internalSelect.current = true;
+          handlers.current.onSelect(id);
+        },
         onHover: (id) => handlers.current.onHover(id),
         onTip: (t, x, y) => setTip(t ? { ...t, x, y } : null),
         onPlaying: setPlaying,
@@ -78,7 +91,7 @@ export default function SettlementCanvas({ focus, onSelect, onHover }: CanvasPro
     const filters = JSON.parse(filtersKey) as Record<string, string>;
     api.view("project-map", { level: "files", filters }, ctl.signal).then(
       (v) => {
-        setData({ nodes: v.nodes, edges: v.edges });
+        setData({ nodes: v.nodes, edges: v.edges, layer: v.review?.layer ?? null });
         mapUi.setCityData({ nodes: v.nodes, edges: v.edges });
       },
       (err: unknown) => {
@@ -96,17 +109,41 @@ export default function SettlementCanvas({ focus, onSelect, onHover }: CanvasPro
     [data, ui.showDeclared],
   );
 
+  // The review layer resolved against the buildings (one per file); only in the review view or with a range filter.
+  const paint = useMemo(
+    () =>
+      land && data?.layer
+        ? paintLayer(
+            { ids: land.buildings.map((b) => b.id), parents: land.buildings.map(() => -1) },
+            data.layer,
+            far,
+          )
+        : null,
+    [land, data, far],
+  );
+  // A changed symbol picked in the review panel selects (and flies to) the building of its file.
+  const shown = (id: string | null): string | null => {
+    if (!id || !paint || !land) return id;
+    const i = paint.placed.get(id);
+    return i === undefined ? id : (land.buildings[i]?.id ?? id);
+  };
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: focus has its own effect below
   useEffect(() => {
     if (!land) return;
     scene.current?.setLandscape(land);
-    scene.current?.setSelected(focus);
-    mapUi.selectIsland(scene.current?.settlementOf(focus) ?? null);
+    scene.current?.setSelected(shown(focus));
+    mapUi.selectIsland(scene.current?.settlementOf(shown(focus)) ?? null);
   }, [land]);
+  useEffect(() => scene.current?.setReview(paint), [paint]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `shown` follows `paint`
   useEffect(() => {
-    scene.current?.setSelected(focus);
-    mapUi.selectIsland(scene.current?.settlementOf(focus) ?? null);
-  }, [focus]);
+    const id = shown(focus);
+    scene.current?.setSelected(id);
+    mapUi.selectIsland(scene.current?.settlementOf(id) ?? null);
+    if (reviewing && id && !internalSelect.current && scene.current?.hasId(id)) scene.current.flyTo(id);
+    internalSelect.current = false;
+  }, [focus, paint]);
   useEffect(() => scene.current?.setAutoRotate(ui.autoRotate), [ui.autoRotate]);
   useEffect(() => scene.current?.setPanelHover(ui.hoverIsland), [ui.hoverIsland]);
   useEffect(() => {

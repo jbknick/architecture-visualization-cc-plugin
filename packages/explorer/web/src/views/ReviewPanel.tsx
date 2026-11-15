@@ -1,17 +1,38 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
-import type { Filters } from "../api.ts";
+import type { Filters, ViewLevel } from "../api.ts";
 import type { FilterPanelProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
-import { CHANGE_WORDS, CROSSING_WORDS, RISK_WORDS, shortName } from "./reviewModel.ts";
+import { getBool, setBool } from "./filterUtils.ts";
+import { CHANGE_WORDS, CROSSING_WORDS, FAR_KEY, markKindOf, RISK_WORDS, shortName } from "./reviewModel.ts";
+
+const MAPS = [
+  {
+    id: "2d",
+    label: "2D map",
+    hint: "The project map: workspaces, folders, files and functions in their usual place",
+  },
+  { id: "3d", label: "3D map", hint: "The settlements: one building per file, in its usual place" },
+] as const;
 
 const MODES = [
-  { id: "rings", label: "Rings", hint: "Changed code in the centre, callers on rings by hop" },
   {
-    id: "overlay",
-    label: "Map overlay",
-    hint: "The project map with changed and affected files highlighted",
+    id: "map",
+    label: "On the map",
+    hint: "The review as a layer on the project map, every node in its usual place",
+  },
+  {
+    id: "rings",
+    label: "Rings",
+    hint: "What changed in the centre; each ring out is code that calls the ring inside it",
   },
 ] as const;
+
+const LEVELS: { id: ViewLevel; label: string; hint: string }[] = [
+  { id: "workspaces", label: "Workspaces", hint: "Lines between workspaces" },
+  { id: "dirs", label: "Folders", hint: "Lines between folders" },
+  { id: "files", label: "Files", hint: "Lines from file to file" },
+  { id: "symbols", label: "Functions", hint: "Lines from function to function" },
+];
 
 const STATUS_WORDS: Record<string, string> = { A: "added", M: "modified", D: "deleted", R: "renamed" };
 
@@ -21,13 +42,19 @@ function without(filters: Filters, ...keys: string[]): Filters {
   return out;
 }
 
-/** Left panel of the review view: the range, the mode, risk and its reasons, files, changes, crossings and notes. */
-export function ReviewPanel({ data, filters, onFiltersChange }: FilterPanelProps) {
+/**
+ * Left panel of the review view: the range, which map (2D or 3D) and how much detail, risk and its reasons, changed
+ * symbols and files, crossings and notes. Clicking an item selects it: the map focuses the node that shows it.
+ */
+export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChange }: FilterPanelProps) {
   const { selectNode, state } = useStore();
   const review = data?.review ?? null;
   const [range, setRange] = useState(filters.range ?? "");
   useEffect(() => setRange(filters.range ?? ""), [filters.range]);
-  const mode = filters.mode === "overlay" ? "overlay" : "rings";
+  const map = filters.map === "3d" ? "3d" : "2d";
+  const mode = filters.mode === "rings" ? "rings" : "map";
+  const level = route?.level ?? "files";
+  const far = getBool(filters, FAR_KEY, false);
   const sel = state.route.sel;
 
   const apply = (e: FormEvent) => {
@@ -47,6 +74,7 @@ export function ReviewPanel({ data, filters, onFiltersChange }: FilterPanelProps
       {children}
     </button>
   );
+  const unplaced = new Set(review?.layer.unplaced ?? []);
 
   return (
     <div className="filter-panel rv-panel">
@@ -82,7 +110,7 @@ export function ReviewPanel({ data, filters, onFiltersChange }: FilterPanelProps
               title={m.hint}
               className="segment"
               onClick={() =>
-                onFiltersChange(m.id === "rings" ? without(filters, "mode") : { ...filters, mode: m.id })
+                onFiltersChange(m.id === "map" ? without(filters, "mode") : { ...filters, mode: m.id })
               }
             >
               {m.label}
@@ -90,6 +118,60 @@ export function ReviewPanel({ data, filters, onFiltersChange }: FilterPanelProps
           ))}
         </div>
       </section>
+
+      {mode === "map" && (
+        <section className="filter-group" aria-label="Map">
+          <h3>Map</h3>
+          <div className="segmented" role="radiogroup" aria-label="Map">
+            {MAPS.map((m) => (
+              // biome-ignore lint/a11y/useSemanticElements: a segmented control is a radio group of buttons
+              <button
+                key={m.id}
+                type="button"
+                role="radio"
+                aria-checked={map === m.id}
+                title={m.hint}
+                className="segment"
+                onClick={() =>
+                  onFiltersChange(m.id === "2d" ? without(filters, "map") : { ...filters, map: m.id })
+                }
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          {map === "2d" ? (
+            <div className="segmented rv-levels" role="radiogroup" aria-label="Detail level">
+              {LEVELS.map((l) => (
+                // biome-ignore lint/a11y/useSemanticElements: a segmented control is a radio group of buttons
+                <button
+                  key={l.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={level === l.id}
+                  title={l.hint}
+                  className="segment"
+                  onClick={() => onRouteChange?.({ level: l.id })}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">One building per file: lines run from file to file.</p>
+          )}
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={far}
+              onChange={(e) => onFiltersChange(setBool(filters, FAR_KEY, e.target.checked, false))}
+            />
+            <span className="check-text">
+              <span className="check-label">Tint callers at hop 2 and 3</span>
+            </span>
+          </label>
+        </section>
+      )}
 
       {review && (
         <>
@@ -124,18 +206,25 @@ export function ReviewPanel({ data, filters, onFiltersChange }: FilterPanelProps
                   {item(
                     c.id,
                     <>
-                      <span className={`rv-dot rv-change-${c.kind}${c.signatureChanged ? " rv-sig" : ""}`} />
+                      <span className={`rv-dot rv-mark-${markKindOf(c)}`} />
                       <span className="rv-item-name">{c.name}</span>
                       <span className="rv-item-meta">
                         {CHANGE_WORDS[c.kind].label.toLowerCase()}
                         {c.signatureChanged ? ", signature" : ""}
                         {c.callers > 0 ? `, ${c.callers} direct` : ""}
+                        {unplaced.has(c.id) ? ", not on the map" : ""}
                       </span>
                     </>,
                   )}
                 </li>
               ))}
             </ul>
+            {unplaced.size > 0 && (
+              <p className="muted">
+                {unplaced.size} {unplaced.size === 1 ? "change is" : "changes are"} not on this map (removed
+                with its file, or filtered out): listed only.
+              </p>
+            )}
           </section>
 
           <section className="filter-group" aria-label="Changed files">

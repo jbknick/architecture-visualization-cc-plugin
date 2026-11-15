@@ -460,7 +460,8 @@ async function fixtureStills(browser: Browser) {
     !want("fixture-caller-graph") &&
     !want("fixture-settlements") &&
     !want("fixture-review") &&
-    !want("fixture-review-overlay")
+    !want("fixture-review-3d") &&
+    !want("fixture-review-rings")
   )
     return;
   const real = await startReal();
@@ -496,24 +497,38 @@ async function fixtureStills(browser: Browser) {
       await save(page, "fixture-caller-graph");
     }
     if (want("fixture-review")) {
+      // The review on the 2D map (#167), Button selected from the left panel: the inspector shows its signature.
       const button = encodeURIComponent("sym:packages/ui/src/button.tsx#Button");
-      await page.goto(`${base}#/review?range=main...feature&focus=${button}`);
+      await page.goto(`${base}#/review?range=main...feature&sel=${button}`);
       await page.locator("[data-testid=review-canvas][data-ready=true]").waitFor({ timeout: 30_000 });
+      await page.locator(".gc-sigma[data-ready=true]").waitFor({ timeout: 30_000 });
       await page.getByRole("region", { name: "Change in this review" }).waitFor();
+      await page.getByRole("button", { name: "Fit" }).click();
+      await cameraIdle(page);
       await settle(page);
       await save(page, "fixture-review");
     }
-    if (want("fixture-review-overlay")) {
-      await page.goto(`${base}#/review?range=main...feature&mode=overlay&sel=`);
-      await page.locator("[data-testid=review-canvas][data-mode=overlay]").waitFor({ timeout: 30_000 });
+    if (want("fixture-review-rings")) {
+      await page.goto(`${base}#/review?range=main...feature&mode=rings&sel=`);
+      await page.locator("[data-testid=review-canvas][data-mode=rings]").waitFor({ timeout: 30_000 });
       await settle(page);
-      await save(page, "fixture-review-overlay");
+      await save(page, "fixture-review-rings");
     }
     await page.context().close();
     if (want("fixture-settlements")) {
       const p = await newPage(browser, "light", true);
       await openSettlements(p, `${base}#/map-3d`);
       await save(p, "fixture-settlements");
+      await p.context().close();
+    }
+    if (want("fixture-review-3d")) {
+      const p = await newPage(browser, "light", true);
+      await p.goto(`${base}#/review?range=main...feature&map=3d`);
+      await p.locator(".map3d[data-ready='true'][data-style='settlements']").waitFor({ timeout: 30_000 });
+      await p.locator("[data-testid=map3d-canvas][data-review]").waitFor({ timeout: 30_000 });
+      await p.locator("[data-testid=map3d-canvas][data-frames]").waitFor();
+      await settle(p);
+      await save(p, "fixture-review-3d");
       await p.context().close();
     }
   } finally {
