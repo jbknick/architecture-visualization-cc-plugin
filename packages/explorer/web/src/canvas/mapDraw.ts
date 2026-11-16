@@ -1026,49 +1026,108 @@ function drawTitle(
 }
 
 /** Distance from a segment to a rectangle (0 when they touch or cross). */
-function segmentRectDistance(a: Pt, b: Pt, r: Rect): number {
+export function segmentRectDistance(a: Pt, b: Pt, r: Rect): number {
+  // Runs for every candidate pill spot against every routed line, many times a frame (#135): no allocations.
+  const ax = a[0];
+  const ay = a[1];
+  const bx = b[0];
+  const by = b[1];
   const x0 = r.x;
   const y0 = r.y;
   const x1 = r.x + r.w;
   const y1 = r.y + r.h;
   // Clip the segment to the rectangle (Liang-Barsky): any overlap means distance 0.
+  const dx = bx - ax;
+  const dy = by - ay;
+  if (clipsInto(dx, dy, ax, ay, x0, y0, x1, y1)) return 0;
+  // Otherwise the closest points are an end of the segment or a corner of the rectangle.
+  let best = Math.min(
+    Math.hypot(Math.max(x0 - ax, 0, ax - x1), Math.max(y0 - ay, 0, ay - y1)),
+    Math.hypot(Math.max(x0 - bx, 0, bx - x1), Math.max(y0 - by, 0, by - y1)),
+  );
+  const len2 = dx * dx + dy * dy;
+  best = Math.min(best, cornerDistance(x0, y0, ax, ay, dx, dy, len2));
+  best = Math.min(best, cornerDistance(x1, y0, ax, ay, dx, dy, len2));
+  best = Math.min(best, cornerDistance(x0, y1, ax, ay, dx, dy, len2));
+  best = Math.min(best, cornerDistance(x1, y1, ax, ay, dx, dy, len2));
+  return best;
+}
+
+/** Liang-Barsky: whether the segment from (ax, ay) along (dx, dy) touches the rectangle. */
+function clipsInto(
+  dx: number,
+  dy: number,
+  ax: number,
+  ay: number,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+): boolean {
   let t0 = 0;
   let t1 = 1;
-  const dx = b[0] - a[0];
-  const dy = b[1] - a[1];
-  for (const [p, q] of [
-    [-dx, a[0] - x0],
-    [dx, x1 - a[0]],
-    [-dy, a[1] - y0],
-    [dy, y1 - a[1]],
-  ] as const) {
+  // The four edges as (p, q): left, right, top, bottom.
+  for (let k = 0; k < 4; k++) {
+    const p = k === 0 ? -dx : k === 1 ? dx : k === 2 ? -dy : dy;
+    const q = k === 0 ? ax - x0 : k === 1 ? x1 - ax : k === 2 ? ay - y0 : y1 - ay;
     if (p === 0) {
-      if (q < 0) {
-        t0 = 2;
-        break;
-      }
+      if (q < 0) return false;
     } else {
       const t = q / p;
       if (p < 0) t0 = Math.max(t0, t);
       else t1 = Math.min(t1, t);
     }
   }
-  if (t0 <= t1) return 0;
-  // Otherwise the closest points are an end of the segment or a corner of the rectangle.
-  const toRect = (p: Pt): number =>
-    Math.hypot(Math.max(x0 - p[0], 0, p[0] - x1), Math.max(y0 - p[1], 0, p[1] - y1));
-  let best = Math.min(toRect(a), toRect(b));
-  const len2 = dx * dx + dy * dy;
-  for (const c of [
-    [x0, y0],
-    [x1, y0],
-    [x0, y1],
-    [x1, y1],
-  ] as Pt[]) {
-    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((c[0] - a[0]) * dx + (c[1] - a[1]) * dy) / len2));
-    best = Math.min(best, Math.hypot(c[0] - (a[0] + t * dx), c[1] - (a[1] + t * dy)));
+  return t0 <= t1;
+}
+
+/** Distance from the corner (cx, cy) to the segment from (ax, ay) along (dx, dy). */
+function cornerDistance(
+  cx: number,
+  cy: number,
+  ax: number,
+  ay: number,
+  dx: number,
+  dy: number,
+  len2: number,
+): number {
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((cx - ax) * dx + (cy - ay) * dy) / len2));
+  return Math.hypot(cx - (ax + t * dx), cy - (ay + t * dy));
+}
+
+/**
+ * The bounding box of a routed line, so a pill spot far from the whole line skips its segments. Skipping is exact:
+ * a segment's distance to a rectangle is at least the gap between the line's box and the rectangle.
+ */
+interface RouteBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+function routeBox(route: Pt[]): RouteBox {
+  let x0 = Number.POSITIVE_INFINITY;
+  let y0 = Number.POSITIVE_INFINITY;
+  let x1 = Number.NEGATIVE_INFINITY;
+  let y1 = Number.NEGATIVE_INFINITY;
+  for (const p of route) {
+    if (p[0] < x0) x0 = p[0];
+    if (p[0] > x1) x1 = p[0];
+    if (p[1] < y0) y0 = p[1];
+    if (p[1] > y1) y1 = p[1];
   }
-  return best;
+  return { x0, y0, x1, y1 };
+}
+
+/** Whether the box lies farther than `reach` from the rectangle on one axis (then no segment in it is nearer). */
+function farFrom(b: RouteBox, rect: Rect, reach: number): boolean {
+  return (
+    b.x1 < rect.x - reach ||
+    b.x0 > rect.x + rect.w + reach ||
+    b.y1 < rect.y - reach ||
+    b.y0 > rect.y + rect.h + reach
+  );
 }
 
 /** The link ink of one workspace: the line colour (3:1 on the canvas) and the pill text colour (4.5:1 on the pill). */
@@ -1233,9 +1292,13 @@ function drawWsEdges(
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
   const wide = hl !== null;
+  // Every line is drawn by now: their boxes are fixed for the pill search below.
+  const hitBoxes = result.edgeHits.map((e) => routeBox(e.route));
   const clearOf = (rect: Rect, own: string, gap: number): boolean => {
-    for (const other of result.edgeHits) {
+    for (let k = 0; k < result.edgeHits.length; k++) {
+      const other = result.edgeHits[k] as EdgeHit;
       if (other.key === own) continue;
+      if (farFrom(hitBoxes[k] as RouteBox, rect, gap + other.width / 2)) continue;
       for (let s = 1; s < other.route.length; s++) {
         const a = other.route[s - 1] as Pt;
         const b = other.route[s] as Pt;
@@ -1295,13 +1358,26 @@ function drawWsEdges(
     /** How much other line the pill would cover: the sum of the widths of the lines that touch it. */
     const covered = (rect: Rect): number => {
       let sum = 0;
-      for (const other of result.edgeHits) {
+      for (let k = 0; k < result.edgeHits.length; k++) {
+        const other = result.edgeHits[k] as EdgeHit;
         if (other.key === p.key) continue;
-        for (let s = 1; s < other.route.length; s++)
-          if (segmentRectDistance(other.route[s - 1] as Pt, other.route[s] as Pt, rect) < other.width / 2) {
+        const reach = other.width / 2;
+        if (farFrom(hitBoxes[k] as RouteBox, rect, reach)) continue;
+        for (let s = 1; s < other.route.length; s++) {
+          const a = other.route[s - 1] as Pt;
+          const b = other.route[s] as Pt;
+          if (
+            Math.max(a[0], b[0]) < rect.x - reach ||
+            Math.min(a[0], b[0]) > rect.x + rect.w + reach ||
+            Math.max(a[1], b[1]) < rect.y - reach ||
+            Math.min(a[1], b[1]) > rect.y + rect.h + reach
+          )
+            continue;
+          if (segmentRectDistance(a, b, rect) < reach) {
             sum += other.width;
             break;
           }
+        }
       }
       return sum;
     };

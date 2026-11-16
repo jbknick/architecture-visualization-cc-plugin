@@ -13,11 +13,14 @@ interface FrameStats {
 
 async function startRecorder(page: Page) {
   await page.evaluate(() => {
-    const w = window as unknown as { __frames: number[]; __rec: boolean };
+    const w = window as unknown as { __frames: number[]; __gen: number };
     w.__frames = [];
-    w.__rec = true;
+    // A new generation ends the loop of the previous recording, which would otherwise still be running (its last
+    // frame is queued when it is stopped) and count every frame twice.
+    w.__gen = (w.__gen ?? 0) + 1;
+    const gen = w.__gen;
     const tick = (t: number) => {
-      if (!w.__rec) return;
+      if (w.__gen !== gen) return;
       w.__frames.push(t);
       requestAnimationFrame(tick);
     };
@@ -27,8 +30,8 @@ async function startRecorder(page: Page) {
 
 async function stopRecorder(page: Page): Promise<FrameStats> {
   return page.evaluate(() => {
-    const w = window as unknown as { __frames: number[]; __rec: boolean };
-    w.__rec = false;
+    const w = window as unknown as { __frames: number[]; __gen: number };
+    w.__gen += 1;
     const f = w.__frames;
     const gaps = f.slice(1).map((t, i) => t - (f[i] as number));
     const sorted = [...gaps].sort((a, b) => a - b);
@@ -127,6 +130,8 @@ test("30k-function graph: layout off the main thread, pan/zoom fps", async ({ pa
   console.log(`PERF_REPORT ${JSON.stringify(report)}`);
   expect(report.nodes).toBeGreaterThan(30_000);
   expect(results["near pan"]?.frames ?? 0).toBeGreaterThan(5);
+  // #135: wheel zoom at far zoom used to place every link's count pill with a slow search (45 fps headless).
+  if (process.env.PERF_GL === undefined) expect(results["far pan+zoom"]?.fps ?? 0).toBeGreaterThan(50);
 });
 
 // The 3D settlements on the large mock (about 300 buildings, traffic, shadows): the first frame and the frame rate
