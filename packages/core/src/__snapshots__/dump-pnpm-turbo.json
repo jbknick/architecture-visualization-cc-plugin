@@ -629,6 +629,28 @@
   ],
   "edges": [
     {
+      "src": "ep:@acme/api:GET /posts/:id",
+      "dst": "file:apps/api/src/app.ts",
+      "kind": "handles",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/api/src/app.ts:6"
+      ],
+      "fileId": "file:apps/api/src/app.ts"
+    },
+    {
+      "src": "ep:@acme/api:POST /posts",
+      "dst": "file:apps/api/src/app.ts",
+      "kind": "handles",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/api/src/app.ts:11"
+      ],
+      "fileId": "file:apps/api/src/app.ts"
+    },
+    {
       "src": "file:apps/api/src/app.ts",
       "dst": "ext:hono",
       "kind": "imports",
@@ -1913,6 +1935,40 @@
     }
   ],
   "adapterNodes": [
+    {
+      "id": "ep:@acme/api:GET /posts/:id",
+      "kind": "endpoint",
+      "ws": "ws:@acme/api",
+      "label": "GET /posts/:id",
+      "fileId": "file:apps/api/src/app.ts",
+      "data": {
+        "adapter": "hono",
+        "method": "GET",
+        "path": "/posts/:id",
+        "routePath": "/posts/:id",
+        "app": "apps/api/src/app.ts#app",
+        "handler": "inline",
+        "file": "apps/api/src/app.ts",
+        "line": 6
+      }
+    },
+    {
+      "id": "ep:@acme/api:POST /posts",
+      "kind": "endpoint",
+      "ws": "ws:@acme/api",
+      "label": "POST /posts",
+      "fileId": "file:apps/api/src/app.ts",
+      "data": {
+        "adapter": "hono",
+        "method": "POST",
+        "path": "/posts",
+        "routePath": "/posts",
+        "app": "apps/api/src/app.ts#app",
+        "handler": "inline",
+        "file": "apps/api/src/app.ts",
+        "line": 11
+      }
+    },
     {
       "id": "route:@acme/web:/",
       "kind": "route",

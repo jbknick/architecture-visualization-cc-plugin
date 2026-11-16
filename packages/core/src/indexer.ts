@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { detectTanstackRoutes, isRouterWorkspace } from "./adapters/tanstack-routes.js";
+import { runAdapters } from "./adapters/index.js";
 import { loadConfig } from "./config/index.js";
 import { discoverFiles, isIndexable } from "./discover/index.js";
 import { hashSymbol } from "./hash/index.js";
@@ -224,22 +224,21 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     const resolver = createResolver({ root, workspaces, parsed });
     store.upsertWorkspaces(workspaces);
 
-    // Framework adapters: TanStack Router file routes, for app workspaces that use it. They need every route
-    // file's text (parents and children come from the whole folder), so they run over the full read set.
-    const routes = workspaces.some(isRouterWorkspace)
-      ? detectTanstackRoutes({
-          root,
-          workspaces,
-          files: present.map((e) => ({
-            path: e.path,
-            id: e.id,
-            workspaceId: e.workspaceId,
-            source: e.source as string,
-          })),
-          parsed,
-          resolver,
-        })
-      : { nodes: [], edges: [] };
+    // Framework adapters (routes, server functions, Hono endpoints). Their results depend on other files (route
+    // parents, mounts across imports, loader calls), so they run over the full read set on every run; each node and
+    // edge is then stored with the file it names, replaced per file like symbols.
+    const routes = runAdapters({
+      root,
+      workspaces,
+      files: present.map((e) => ({
+        path: e.path,
+        id: e.id,
+        workspaceId: e.workspaceId,
+        source: e.source as string,
+      })),
+      parsed,
+      resolver,
+    });
     const routeEdges = groupByFile(routes.edges);
     const routeNodes = groupByFile(routes.nodes);
 
