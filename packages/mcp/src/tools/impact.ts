@@ -1,6 +1,7 @@
 import {
   behaviorOf,
   computeImpact,
+  describedByOf,
   type Impact,
   modifiedChanges,
   nodeInfo,
@@ -11,7 +12,7 @@ import {
 } from "@gantry/core";
 import { z } from "zod";
 import { defineTool } from "../tool.js";
-import { untrustedField } from "../untrusted.js";
+import { describedByField, untrustedField } from "../untrusted.js";
 
 /** List caps that keep a typical response well inside the 4,000-character limit; totals are always reported. */
 export const IMPACT_LIMITS = {
@@ -37,6 +38,7 @@ function shape(impact: Impact, store: Store) {
       path: (c.after ?? c.before)?.path ?? null,
       signature_changed: c.signatureChanged,
       ...untrustedField(sym ? clip(behaviorOf(store, sym) ?? "", L.text) || null : null),
+      ...(sym && behaviorOf(store, sym) ? describedByField(describedByOf(store, sym)) : {}),
     };
   });
   // Directly affected (hop 1) and potentially affected (hops 2-3) consumers per changed symbol: names and paths only.

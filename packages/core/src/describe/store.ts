@@ -9,15 +9,16 @@ import { PROMPT_MAJOR } from "./factsheet.js";
 export const MAX_DESCRIBE_ATTEMPTS = 2;
 /**
  * The bounded extra budget of #150: a function gets one more attempt (3 in all, never more) when its second rejection
- * was `shape` or `identifier`, neither rejected text tripped the injection filter (`injectionSignal`), and its first
- * rejection was not `injection` or `secret`. Those two rules are about wording, so a rewrite that follows the rule's
- * `fix` usually passes; anything that looks like an injection or a secret never earns another try.
+ * was an extendable `shape` or `identifier` one (`extendableRejection` in validate.ts: no secret or injection signal in
+ * any field, #175), and its first rejection was not `injection` or `secret` and carried no such signal either. Those
+ * two rules are about wording, so a rewrite that follows the rule's `fix` usually passes; anything that looks like an
+ * injection or a secret never earns another try.
  */
 export const EXTRA_ATTEMPT_REASONS: ReadonlySet<string> = new Set(["shape", "identifier"]);
 export const MAX_DESCRIBE_ATTEMPTS_EXTENDED = 3;
 /** Reasons after which no extra attempt is given, even when a later rejection is `shape` or `identifier`. */
 const NO_EXTRA_AFTER: ReadonlySet<string> = new Set(["injection", "secret"]);
-/** Appended to `last_error` when the rejected text also tripped the injection filter: no extra attempt follows it. */
+/** Appended to `last_error` when the rejected text carried a secret or injection signal: no extra attempt follows it. */
 export const NO_EXTRA_MARK = " [no-extra]";
 
 /** The rule name at the head of a stored `last_error` (`<reason>: <detail>`), or "" for none. */
@@ -37,15 +38,16 @@ export function describeAttemptLimit(
   attempts: number,
   reason: string,
   previousError: string | null | undefined,
-  extendable = true,
+  extendable = false,
 ): number {
+  // A failure after a tainted one never earns the extra attempt, whatever the count (#175 round 2).
+  if ((previousError ?? "").endsWith(NO_EXTRA_MARK)) return MAX_DESCRIBE_ATTEMPTS;
   if (attempts > MAX_DESCRIBE_ATTEMPTS) return MAX_DESCRIBE_ATTEMPTS_EXTENDED;
   if (
     attempts === MAX_DESCRIBE_ATTEMPTS &&
     extendable &&
     EXTRA_ATTEMPT_REASONS.has(reason) &&
-    !NO_EXTRA_AFTER.has(errorReason(previousError)) &&
-    !(previousError ?? "").endsWith(NO_EXTRA_MARK)
+    !NO_EXTRA_AFTER.has(errorReason(previousError))
   )
     return MAX_DESCRIBE_ATTEMPTS_EXTENDED;
   return MAX_DESCRIBE_ATTEMPTS;
@@ -110,38 +112,46 @@ export function storeDescriptions(
  * With `keepClaim` (the describer submit path, #147) a row that still has an attempt left stays `claimed` in its batch,
  * so the describer can resubmit a corrected description under the same `batch_id`, and a `failed` row keeps its
  * `claimed_by` so a late resubmit is answered `attempts_exhausted` instead of `not_in_batch`. Returns the new
- * attempt count and whether the row is now `failed` (attempts 0 when there is no such row). `extendable: false`
- * (the rejected text tripped the injection filter) rules out the extra attempt now and after this failure, and is
- * kept in `last_error` as `NO_EXTRA_MARK`.
+ * attempt count and whether the row is now `failed` (attempts 0 when there is no such row). `extendable` (default
+ * false: the caller must show it) allows the extra attempt for this failure; `tainted` (default true) marks
+ * `last_error` with `NO_EXTRA_MARK`, which rules the extra attempt out after this failure. The read and the write run
+ * in one transaction, so two processes recording a failure for the same row never lose an attempt (#175).
  */
 export function recordDescribeFailure(
   store: Store,
   key: string,
   errorText: string,
-  opts: { keepClaim?: boolean; extendable?: boolean } = {},
+  opts: { keepClaim?: boolean; extendable?: boolean; tainted?: boolean } = {},
 ): { attempts: number; failed: boolean } {
-  const row = store.db.prepare("SELECT attempts, last_error FROM backlog WHERE content_key = ?").get(key) as
-    | { attempts: number | null; last_error: string | null }
-    | undefined;
-  if (!row) return { attempts: 0, failed: false };
-  const extendable = opts.extendable ?? true;
-  const error = extendable ? errorText : `${errorText}${NO_EXTRA_MARK}`;
-  const attempts = (row.attempts ?? 0) + 1;
-  const failed = attempts >= describeAttemptLimit(attempts, errorReason(error), row.last_error, extendable);
-  if (opts.keepClaim) {
+  const extendable = opts.extendable ?? false;
+  const tainted = opts.tainted ?? true;
+  const error = tainted ? `${errorText}${NO_EXTRA_MARK}` : errorText;
+  return store.tx(() => {
+    // The describer path counts only a row still claimed; the worker path any row not already failed.
+    const row = store.db
+      .prepare(
+        `SELECT attempts, last_error FROM backlog WHERE content_key = ? AND ${opts.keepClaim ? "status = 'claimed'" : "status <> 'failed'"}`,
+      )
+      .get(key) as { attempts: number | null; last_error: string | null } | undefined;
+    if (!row) return { attempts: 0, failed: false };
+    const attempts = (row.attempts ?? 0) + 1;
+    const failed =
+      attempts >= describeAttemptLimit(attempts, errorReason(error), row.last_error, extendable && !tainted);
+    if (opts.keepClaim) {
+      store.db
+        .prepare(
+          `UPDATE backlog SET attempts = ?, last_error = ?, status = ?, claimed_at = CASE WHEN ? THEN NULL ELSE claimed_at END
+           WHERE content_key = ?`,
+        )
+        .run(attempts, error, failed ? "failed" : "claimed", failed ? 1 : 0, key);
+      return { attempts, failed };
+    }
     store.db
       .prepare(
-        `UPDATE backlog SET attempts = ?, last_error = ?, status = ?, claimed_at = CASE WHEN ? THEN NULL ELSE claimed_at END
+        `UPDATE backlog SET attempts = ?, last_error = ?, status = ?, claimed_by = NULL, claimed_at = NULL
          WHERE content_key = ?`,
       )
-      .run(attempts, error, failed ? "failed" : "claimed", failed ? 1 : 0, key);
+      .run(attempts, error, failed ? "failed" : "pending", key);
     return { attempts, failed };
-  }
-  store.db
-    .prepare(
-      `UPDATE backlog SET attempts = ?, last_error = ?, status = ?, claimed_by = NULL, claimed_at = NULL
-       WHERE content_key = ?`,
-    )
-    .run(attempts, error, failed ? "failed" : "pending", key);
-  return { attempts, failed };
+  });
 }

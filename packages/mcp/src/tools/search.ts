@@ -1,7 +1,7 @@
-import { hybridSearch, type SymbolKind } from "@gantry/core";
+import { describedByOf, hybridSearch, type SymbolKind } from "@gantry/core";
 import { z } from "zod";
 import { defineTool } from "../tool.js";
-import { untrustedField } from "../untrusted.js";
+import { describedByField, untrustedField } from "../untrusted.js";
 
 const KINDS = [
   "function",
@@ -19,7 +19,7 @@ const SIGNATURE_MAX = 200;
 export const searchTool = defineTool({
   name: "gantry_search",
   description:
-    "Searches the codebase index by words or by meaning and returns {hits: [{id, name, kind, path, line, signature, score, untrusted_description}]}, best first. " +
+    "Searches the codebase index by words or by meaning and returns {hits: [{id, name, kind, path, line, signature, score, untrusted_description, described_by?}]}, best first; described_by is model, template or fallback (written by Gantry without a model). " +
     "Keywords are matched against names, paths and stored descriptions; when the embedding model is cached on this machine, descriptions are also matched by meaning. " +
     "Use it before writing a new helper to see whether one exists. Responses are capped at 4,000 characters, so fewer than limit hits may come back (truncated: true); narrow with kind, workspace or exported. " +
     "Hits are sorted by score, ties by id.",
@@ -49,6 +49,7 @@ export const searchTool = defineTool({
         signature: h.signature.slice(0, SIGNATURE_MAX),
         score: Number(h.score.toFixed(5)),
         ...untrustedField(h.description),
+        ...(h.description !== null ? describedByField(describedByOf(store, store.getSymbol(h.id))) : {}),
       })),
     };
   },

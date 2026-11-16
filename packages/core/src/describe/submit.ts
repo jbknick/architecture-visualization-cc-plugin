@@ -5,15 +5,14 @@ import type { FactSheet } from "../types.js";
 import type { SourceContext } from "./backlog.js";
 import { buildFactSheet, contentKey, pathOfFileId, SensitivePathError } from "./factsheet.js";
 import { fallbackDescription } from "./fallback.js";
-import { type FeedbackField, injectionSignal, rejectionFeedback } from "./feedback.js";
+import { type FeedbackField, rejectionFeedback } from "./feedback.js";
 import {
   type AcceptedDescription,
-  EXTRA_ATTEMPT_REASONS,
   MAX_DESCRIBE_ATTEMPTS_EXTENDED,
   recordDescribeFailure,
   storeDescriptions,
 } from "./store.js";
-import { validateDescription } from "./validate.js";
+import { rejectionTainted, validateDescription } from "./validate.js";
 
 /** Model name written for descriptions that arrive through the describer tools. */
 export const SUBMIT_MODEL = "haiku";
@@ -56,6 +55,8 @@ export interface SubmitResult {
   acceptedKeys: string[];
   /** Functions that got a fallback description (provenance `fallback`) after their last rejection. */
   fallbacks: number;
+  /** Content keys that got a fallback description, in submission order. */
+  fallbackKeys: string[];
 }
 
 interface ClaimedRow {
@@ -203,6 +204,7 @@ export function submitDescriptions(
     batchKnown: rows.size > 0 || exhausted.size > 0,
     acceptedKeys: [],
     fallbacks: 0,
+    fallbackKeys: [],
   };
   const seen = new Set<string>();
   const files = new Map<string, string | undefined>();
@@ -214,6 +216,7 @@ export function submitDescriptions(
     "UPDATE backlog SET status = 'pending', claimed_by = NULL, claimed_at = NULL WHERE content_key = ?",
   );
   const accepted: AcceptedDescription[] = [];
+  const fallbacks: { description: AcceptedDescription; rejection: SubmitRejection }[] = [];
   for (const item of results) {
     const key = item.contentKey;
     if (seen.has(key)) {
@@ -255,11 +258,14 @@ export function submitDescriptions(
 
     const v = validateDescription(item.description, sheet);
     if (!v.ok) {
-      // A wording rejection of text that also looks like an injection earns no extra attempt and no fallback.
-      const extendable = EXTRA_ATTEMPT_REASONS.has(v.reason) && !injectionSignal(item.description);
+      // Only a wording rejection of text with no secret or injection signal in any field earns the extra attempt
+      // and, after it, the fallback (#150, #175).
+      const tainted = rejectionTainted(v, item.description, sheet);
+      const extendable = (v.reason === "shape" || v.reason === "identifier") && !tainted;
       const now = recordDescribeFailure(store, key, `${v.reason}: ${cap(v.detail, DETAIL_MAX)}`, {
         keepClaim: true,
         extendable,
+        tainted,
       });
       const fb = rejectionFeedback(v.reason, v.detail);
       // The extended budget is used up on a wording rule: describe it from trusted data, if the validator agrees.
@@ -267,18 +273,19 @@ export function submitDescriptions(
         now.failed && now.attempts >= MAX_DESCRIBE_ATTEMPTS_EXTENDED && extendable
           ? fallbackDescription(sym, sheet)
           : null;
-      if (fallback !== null) {
-        accepted.push({ contentKey: key, description: fallback, model: null, provenance: "fallback" });
-        out.fallbacks++;
-      }
-      out.rejected.push({
+      const rejection: SubmitRejection = {
         contentKey: key,
         reason: v.reason,
         detail: cap(v.detail, DETAIL_MAX),
         ...(fb ? { rule: fb.rule, field: fb.field, fix: fb.fix } : {}),
         resubmit: !now.failed,
-        ...(fallback !== null ? { fallback: true } : {}),
-      });
+      };
+      out.rejected.push(rejection);
+      if (fallback !== null)
+        fallbacks.push({
+          description: { contentKey: key, description: fallback, model: null, provenance: "fallback" },
+          rejection,
+        });
       continue;
     }
     accepted.push({ contentKey: key, description: v.value, model: SUBMIT_MODEL });
@@ -287,6 +294,13 @@ export function submitDescriptions(
   }
 
   storeDescriptions(store, accepted, { replace: true });
+  // A fallback never replaces a description that exists (a concurrent model description wins, #175).
+  for (const f of fallbacks) {
+    if (storeDescriptions(store, [f.description], { replace: false }) === 0) continue;
+    f.rejection.fallback = true;
+    out.fallbacks++;
+    out.fallbackKeys.push(f.description.contentKey);
+  }
   store.db
     .prepare(
       `INSERT INTO usage_log(at, task, model, effort, functions, input_tokens, output_tokens, cost_estimate_usd, source)

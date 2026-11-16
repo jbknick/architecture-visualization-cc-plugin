@@ -8,3 +8,14 @@ export const UNTRUSTED_FIELD = "untrusted_description";
 export function untrustedField<T>(description: T): { untrusted_description: T } {
   return { [UNTRUSTED_FIELD]: description } as { untrusted_description: T };
 }
+
+/**
+ * `{ described_by }` when a description exists (#175): `model`, `template` or `fallback` (written by Gantry without a
+ * model). A fixed value from the store's provenance column, never description text, so it sits outside the untrusted
+ * field; the fallback marker inside the text can be imitated, this field cannot.
+ */
+export function describedByField(by: "model" | "template" | "fallback" | null): {
+  described_by?: "model" | "template" | "fallback";
+} {
+  return by === null ? {} : { described_by: by };
+}

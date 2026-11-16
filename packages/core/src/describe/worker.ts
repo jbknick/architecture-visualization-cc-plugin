@@ -12,12 +12,11 @@ import { isSensitive } from "../discover/index.js";
 import type { Store } from "../store/index.js";
 import type { FactSheet } from "../types.js";
 import { BATCH_SIZE, backlogPriority } from "./backlog.js";
-import { injectionSignal } from "./feedback.js";
 import { routeFor } from "./route.js";
 import { BATCH_RESULT_JSON_SCHEMA } from "./schema.js";
 import { MAX_DESCRIBE_ATTEMPTS, recordDescribeFailure, storeDescriptions } from "./store.js";
 import { logUsage } from "./usage.js";
-import { validateDescription } from "./validate.js";
+import { extendableRejection, rejectionTainted, validateDescription } from "./validate.js";
 
 export interface WorkerResult {
   described: number;
@@ -313,11 +312,9 @@ function ensureQueued(store: Store, sheet: FactSheet): void {
  * Counts one failed attempt (shared rule with the MCP path: `pending` after the first, `failed` after the second, or
  * `pending` for the describer's extra attempt after a clean `shape`/`identifier` second failure, #150).
  */
-function markFailed(store: Store, sheet: FactSheet, why: string, raw?: unknown): void {
+function markFailed(store: Store, sheet: FactSheet, why: string, tainted: boolean, extendable = false): void {
   ensureQueued(store, sheet);
-  recordDescribeFailure(store, sheet.contentKey, why.slice(0, 200), {
-    extendable: raw === undefined || !injectionSignal(raw),
-  });
+  recordDescribeFailure(store, sheet.contentKey, why.slice(0, 200), { extendable, tainted });
 }
 
 /**
@@ -421,7 +418,7 @@ export async function describeWithWorker(
       const accepted: Parameters<typeof storeDescriptions>[1] = [];
       for (const sheet of batch) {
         if (!byKey.has(sheet.contentKey)) {
-          markFailed(store, sheet, "missing from worker output");
+          markFailed(store, sheet, "missing from worker output", false);
           result.failed++;
           continue;
         }
@@ -433,7 +430,14 @@ export async function describeWithWorker(
             model: route.model,
           });
         } else {
-          markFailed(store, sheet, `${v.reason}: ${v.detail}`, byKey.get(sheet.contentKey));
+          const raw = byKey.get(sheet.contentKey);
+          markFailed(
+            store,
+            sheet,
+            `${v.reason}: ${v.detail}`,
+            rejectionTainted(v, raw, sheet),
+            extendableRejection(v, raw, sheet),
+          );
           result.failed++;
         }
       }

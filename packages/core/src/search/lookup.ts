@@ -14,6 +14,34 @@ export function behaviorMap(store: Store): Map<string, string> {
   return out;
 }
 
+/** Who wrote a stored description (#175): a model, a deterministic template, or the host's fallback after rejections. */
+export type DescribedBy = "model" | "template" | "fallback";
+
+const asDescribedBy = (p: string | null | undefined): DescribedBy | null =>
+  p === "model" || p === "template" || p === "fallback" ? p : null;
+
+/** Provenance of every stored description by content key (fixed values only, never description text). */
+export function describedByMap(store: Store): Map<string, DescribedBy> {
+  const out = new Map<string, DescribedBy>();
+  for (const r of store.db.prepare("SELECT content_key, provenance FROM descriptions").all() as {
+    content_key: string;
+    provenance: string | null;
+  }[]) {
+    const d = asDescribedBy(r.provenance);
+    if (d !== null) out.set(r.content_key, d);
+  }
+  return out;
+}
+
+/** Provenance of one symbol's stored description, or null when it has none. */
+export function describedByOf(store: Store, sym: SymbolRecord | undefined): DescribedBy | null {
+  if (!sym || sym.exactHash === "") return null;
+  const r = store.db
+    .prepare("SELECT provenance FROM descriptions WHERE content_key = ?")
+    .get(contentKey(sym.exactHash)) as { provenance: string | null } | undefined;
+  return asDescribedBy(r?.provenance);
+}
+
 /** The stored behavior text of one symbol, or null when it has none. */
 export function behaviorOf(store: Store, sym: SymbolRecord): string | null {
   if (sym.exactHash === "") return null;
