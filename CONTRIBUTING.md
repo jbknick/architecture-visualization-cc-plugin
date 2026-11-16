@@ -34,6 +34,16 @@ These come from [`CLAUDE.md`](CLAUDE.md), which also guides the coding agents th
 5. **One issue per PR.** Keep a PR to one issue and say `Closes #<n>` in the description. A branch name like `gantry/<issue-number>-<slug>` is welcome but not required on forks.
 6. **Keep the README current.** If you change user-visible behaviour, commands or views, update `README.md` in the same PR (the Commands table, Status table and Quick start must match `main`). If a view's look changed, run `pnpm build && pnpm readme:media` and commit the changed files under `docs/readme/`. That needs Chromium for Playwright: `pnpm --filter @gantry/explorer exec playwright install chromium`.
 
+## Releases
+
+The root `package.json` holds the version; `plugin/.claude-plugin/plugin.json` and the workspace `package.json` files must equal it, and `pnpm check` fails (naming the file) when one does not. `claude plugin update` only picks up a build when the plugin version changed, so maintainers cut a release when plugin content should reach users:
+
+```sh
+pnpm release <patch|minor|major|x.y.z>   # clean tree required
+```
+
+It bumps every version file, adds a dated section to `CHANGELOG.md` from the commit subjects since the last `v*` tag, commits `Release v<version>` and tags `v<version>`. It never pushes; review the commit, then push the branch and the tag yourself. Do not bump versions in ordinary PRs. `pnpm check` only warns when `plugin/` or the packages bundled into `plugin/dist` changed since the last tag without a bump (a feature branch would otherwise fail every PR); `pnpm version:check --strict` turns that warning into an error, to run before tagging.
+
 ## Review
 
 `main` is protected: changes land through PRs only. A maintainer reviews each PR, may ask for changes, and merges when it is ready. Pushes to a PR branch update the PR, so there is no need to open a new one.

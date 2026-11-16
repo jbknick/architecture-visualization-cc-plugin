@@ -83,6 +83,18 @@ The explorer does not watch your files. After you save, the status bar says "Out
 
 The index lives outside your repo, in `repos/<hash>/` under the plugin's data directory (`~/.claude/plugins/data/gantry-gantry-dev/` when installed from the local marketplace; the skills, the hooks and the MCP server all use it). Outside the plugin the CLI falls back to `~/.gantry/data/repos/<hash>/`, and an index already there is still found; once the plugin directory has its own, `gantry backlog` points out the old one, and [`docs/INSTALL.md`](docs/INSTALL.md) says how to remove it. Commands that only read (`backlog`, `usage`, `heal`) and the session-start hook create no data directory for a repo that has no index. Nothing is written into the repo's working tree. The one exception is `gantry hooks install`, which you run yourself and which writes git hooks under `.git/hooks/` (or sets a local `core.hooksPath` if you already use one); `hooks uninstall` and `uninstall` put everything back.
 
+## Updating the plugin
+
+`claude plugin update` compares the version in `plugin/.claude-plugin/plugin.json` with the installed one. A new build with the same version reads as "already up to date", so every release bumps it (`pnpm release`, see [`CONTRIBUTING.md`](CONTRIBUTING.md)). To pick up a new version:
+
+```sh
+git pull                                   # in your clone, when you installed from one
+claude plugin marketplace update gantry-dev
+claude plugin update gantry@gantry-dev
+```
+
+Restart Claude Code afterwards. Run `gantry --version` (or `node <path>/plugin/dist/cli.js --version`) to see the version of a build. A reinstall (`/plugin uninstall gantry@gantry-dev`, then `/plugin install gantry@gantry-dev`) is only needed when an update still says "already up to date" because the clone is at a commit with no version bump (a build from a branch between releases), or after you moved the clone. Run `pnpm build` in the clone first: the plugin ships `plugin/dist/`, which is not committed.
+
 ## Commands
 
 Run as `node <path>/plugin/dist/cli.js <command>`. Every command below exists today (`--help` on each shows its options).
@@ -167,6 +179,7 @@ pnpm install
 pnpm build    # tsc -b && tsup && the explorer web build; writes plugin/dist/
 pnpm check    # biome + tsc + vitest, the local quality gate
 pnpm fmt      # apply Biome fixes
+pnpm release patch   # bump every version file, write CHANGELOG.md, commit and tag v<version> (never pushes)
 pnpm perf     # absolute-speed checks (duplicate engine on a 6,000-function index); not part of check, run before releases
 pnpm readme:media   # regenerate the screenshots in docs/readme/ (add --gif to redo the GIFs too)
 ```
