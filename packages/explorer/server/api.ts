@@ -212,7 +212,7 @@ function node(ctx: ApiContext, id: string) {
         workspaceId: r.ws,
       };
     }
-  } else if (/^(ep|table|mw|call):/.test(id)) {
+  } else if (/^(ep|table|mw|mwref|call):/.test(id)) {
     nodeBody = adapterNodeBody(ctx, id) ?? undefined;
   } else if (id.startsWith("ws:")) {
     const w = store.listWorkspaces().find((x) => x.id === id);

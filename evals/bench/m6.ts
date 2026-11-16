@@ -11,7 +11,8 @@
  * those endpoints; `pages` must appear in trace(table) (up) for every table. Raw-SQL tables are listed apart and
  * not expected (the Drizzle adapter does not read raw SQL).
  *
- * The repo is only read: a fresh index is built into --data (default a temp dir; refused inside the repo), and
+ * The repo is only read: a fresh index is built into `<--data>/gantry-m6-bench` (a directory the bench owns and
+ * clears; --data defaults to a temp dir and is refused inside the repo), and
  * `git status --porcelain` is compared before and after. The same checks run through the views' API (page -> API,
  * API -> tables, feature path, table usage), so the views are diffed too.
  *
@@ -69,8 +70,11 @@ const inside = (child: string, parent: string) => {
   return r === "" || (!r.startsWith("..") && !r.startsWith("/"));
 };
 const scratch = mkdtempSync(join(tmpdir(), "gantry-m6-"));
-const dataDir = resolve(arg("--data") ?? join(scratch, "data"));
-if (inside(dataDir, repo)) throw new Error("--data is inside the repository under test");
+// The index goes into a subdirectory the bench owns (`<--data>/gantry-m6-bench`), never into --data itself, so the
+// fresh-index delete below can only remove what an earlier bench run wrote.
+const dataRoot = resolve(arg("--data") ?? join(scratch, "data"));
+if (inside(dataRoot, repo)) throw new Error("--data is inside the repository under test");
+const dataDir = join(dataRoot, "gantry-m6-bench");
 const outDir = arg("--out") ? resolve(arg("--out") as string) : undefined;
 if (outDir) {
   if (inside(outDir, root) && !inside(outDir, join(root, "evals", "private")))
@@ -78,7 +82,21 @@ if (outDir) {
   if (inside(outDir, repo)) throw new Error("--out is inside the repository under test");
   mkdirSync(outDir, { recursive: true });
 }
-process.on("exit", () => rmSync(scratch, { recursive: true, force: true }));
+/** Stops the explorer `gantry_open_view` started, if any (it is named in the bench's own data dir). */
+function stopExplorer(dir: string | undefined) {
+  if (!dir) return;
+  try {
+    const pid = (JSON.parse(readFileSync(join(dir, "explorer.json"), "utf8")) as { pid: number }).pid;
+    process.kill(pid, "SIGTERM");
+  } catch {
+    // none started, or already gone
+  }
+}
+let explorerDir: string | undefined;
+process.on("exit", () => {
+  stopExplorer(explorerDir);
+  rmSync(scratch, { recursive: true, force: true });
+});
 
 interface Feature {
   name: string;
@@ -101,7 +119,9 @@ const round = (x: number) => Math.round(x * 10) / 10;
 // ---- fresh index ------------------------------------------------------------------------------------------------
 const before = gitStatus();
 const paths: GantryPaths = resolvePaths(repo, { HOME: join(scratch, "home"), CLAUDE_PLUGIN_DATA: dataDir });
+if (!inside(paths.dataDir, dataDir)) throw new Error("the data dir is not inside the bench's own directory");
 rmSync(paths.dataDir, { recursive: true, force: true });
+explorerDir = paths.dataDir;
 log(`indexing into a fresh data dir ...`);
 let t0 = process.hrtime.bigint();
 await indexRepo(paths, { layer: "main" });
@@ -274,12 +294,13 @@ for (const [id, qs] of timed) {
 
 // Page loads: the production explorer on the fresh data dir, timed to the drawn canvas.
 const pageLoads: Record<string, { medianMs: number }> = {};
-let explorerPid: number | undefined;
+// biome-ignore lint/suspicious/noExplicitAny: playwright is resolved from packages/explorer at run time
+let browser: any;
 try {
   // biome-ignore lint/suspicious/noExplicitAny: playwright is resolved from packages/explorer at run time
   const pw = requireFromExplorer("playwright") as any;
   const env: NodeJS.ProcessEnv = { ...process.env, CLAUDE_PLUGIN_DATA: dataDir };
-  const browser = await pw.chromium.launch({ headless: true });
+  browser = await pw.chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   for (const [id, qs] of timed) {
@@ -290,13 +311,6 @@ try {
       error?: string;
     };
     if (!r.url) throw new Error(`gantry_open_view: ${r.error ?? "no url"}`);
-    try {
-      explorerPid = (
-        JSON.parse(readFileSync(join(paths.dataDir, "explorer.json"), "utf8")) as { pid: number }
-      ).pid;
-    } catch {
-      // reused
-    }
     const times: number[] = [];
     for (let i = 0; i < runs; i++) {
       await page.goto("about:blank");
@@ -307,17 +321,11 @@ try {
     }
     pageLoads[id] = { medianMs: Math.round(median(times)) };
   }
-  await browser.close();
 } catch (err) {
   log(`page loads skipped: ${err instanceof Error ? err.message : String(err)}`);
 } finally {
-  if (explorerPid) {
-    try {
-      process.kill(explorerPid, "SIGTERM");
-    } catch {
-      // gone
-    }
-  }
+  await browser?.close().catch(() => {});
+  stopExplorer(paths.dataDir);
 }
 store.close();
 const after = gitStatus();

@@ -48,6 +48,35 @@ export interface TableFacts {
 }
 
 const SAMPLE = 8;
+
+/**
+ * A middleware an oRPC procedure or server function names (`data.middleware`), drawn by the endpoints view as
+ * `mwref:<package>:<name>`: no adapter node stands behind it, so the body is its name and the endpoints that use it.
+ */
+function middlewareRefBody(ctx: ApiContext, id: string): Record<string, unknown> | null {
+  const c = crossCtx(ctx.store);
+  const rest = id.slice("mwref:".length);
+  const cut = rest.lastIndexOf(":");
+  if (cut < 0) return null;
+  const pkg = rest.slice(0, cut);
+  const name = rest.slice(cut + 1);
+  const users = (c.byKind.get("endpoint") ?? []).filter(
+    (e) =>
+      (e.ws ? (c.wsName.get(e.ws) ?? e.ws) : "") === pkg &&
+      Array.isArray(e.data.middleware) &&
+      e.data.middleware.map(String).includes(name),
+  );
+  if (users.length === 0) return null;
+  const ws = users[0]?.ws ?? null;
+  return {
+    id,
+    kind: "middleware",
+    name,
+    path: null,
+    workspaceId: ws,
+    middlewareRef: { name, endpoints: users.map((e) => ref(ctx, e.id)) },
+  };
+}
 const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 
 function ref(ctx: ApiContext, id: string): NodeRef {
@@ -65,6 +94,7 @@ function ref(ctx: ApiContext, id: string): NodeRef {
  */
 export function adapterNodeBody(ctx: ApiContext, id: string): Record<string, unknown> | null {
   const c = crossCtx(ctx.store);
+  if (id.startsWith("mwref:")) return middlewareRefBody(ctx, id);
   const a = c.adapters.get(id);
   if (!a) return null;
   const d = a.data;

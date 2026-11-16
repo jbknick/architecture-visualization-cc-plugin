@@ -4,6 +4,7 @@ import type {
   GraphNode,
   NeighborRef,
   NodeDetail,
+  NodeRef,
   ReviewChange,
   ReviewConsumers,
   ReviewData,
@@ -271,9 +272,42 @@ function ReviewChangeSection({ change }: { change: ReviewChange }) {
   );
 }
 
+/**
+ * Key/value facts of an adapter node (#48): one row per fact, the key in a narrow column and the value wrapping in
+ * the rest of the width (the `.fan` stat tiles are for short numbers only).
+ */
+function Facts({ label, rows }: { label: string; rows: [string, React.ReactNode][] }) {
+  return (
+    <dl className="kv-facts" aria-label={label}>
+      {rows.map(([k, v]) => (
+        <div className="kv-row" key={k}>
+          <dt>{k}</dt>
+          <dd>{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function RefLinks({ refs }: { refs: NodeRef[] }) {
+  const { selectNode } = useStore();
+  if (refs.length === 0) return <>none</>;
+  return (
+    <>
+      {refs.map((t, i) => (
+        <span key={t.id}>
+          {i > 0 ? ", " : ""}
+          <button type="button" className="link-btn" title={t.id} onClick={() => selectNode(t.id)}>
+            {t.label}
+          </button>
+        </span>
+      ))}
+    </>
+  );
+}
+
 /** Endpoints (#48): what it answers, what handles it, what it passes through and which tables it touches. */
 function EndpointSection({ facts }: { facts: EndpointFacts }) {
-  const { selectNode } = useStore();
   const rows: [string, React.ReactNode][] = [
     ["Kind", `${facts.group} (${facts.adapter})`],
     ["Method", facts.method],
@@ -283,103 +317,60 @@ function EndpointSection({ facts }: { facts: EndpointFacts }) {
   rows.push([
     "Handler",
     facts.handler ? (
-      <button
-        key="h"
-        type="button"
-        className="link-btn"
-        title={facts.handler.id}
-        onClick={() => selectNode(facts.handler?.id ?? null)}
-      >
-        {facts.handler.label}
+      <span key="h">
+        <RefLinks refs={[facts.handler]} />
         {facts.handlerName === "inline" ? " (inline)" : ""}
-      </button>
+      </span>
     ) : (
       "not resolved"
     ),
   ]);
   if (facts.middleware.length > 0) rows.push(["Middleware", facts.middleware.join(", ")]);
   rows.push(["Requested from", `${facts.requestedBy} ${facts.requestedBy === 1 ? "place" : "places"}`]);
-  const tables = (list: EndpointFacts["reads"]) =>
-    list.length === 0
-      ? "none"
-      : list.map((t, i) => (
-          <span key={t.id}>
-            {i > 0 ? ", " : ""}
-            <button type="button" className="link-btn" title={t.id} onClick={() => selectNode(t.id)}>
-              {t.label}
-            </button>
-          </span>
-        ));
-  rows.push(["Reads", tables(facts.reads)], ["Writes", tables(facts.writes)]);
+  rows.push(
+    ["Reads", <RefLinks key="r" refs={facts.reads} />],
+    ["Writes", <RefLinks key="w" refs={facts.writes} />],
+  );
   return (
     <section aria-label="Endpoint">
       <h3>Endpoint</h3>
-      <dl className="fan endpoint-facts">
-        {rows.map(([k, v]) => (
-          <div key={k}>
-            <dt>{k}</dt>
-            <dd>{v}</dd>
-          </div>
-        ))}
-      </dl>
+      <Facts label="Endpoint facts" rows={rows} />
     </section>
   );
 }
 
-/** Tables (#48): columns, and how much code reads and writes it. */
+/** Tables (#48): columns, and how much code reads and writes it (the code itself is under Connections). */
 function TableSection({ facts }: { facts: TableFacts }) {
-  const { selectNode } = useStore();
-  const list = (refs: TableFacts["readerSample"], total: number) =>
-    refs.length === 0 ? (
-      <p className="muted">None found.</p>
-    ) : (
-      <ul>
-        {refs.map((r) => (
-          <li key={r.id}>
-            <button type="button" className="link-btn" title={r.id} onClick={() => selectNode(r.id)}>
-              {r.label}
-            </button>
-          </li>
-        ))}
-        {total > refs.length && <li className="muted">and {total - refs.length} more</li>}
-      </ul>
-    );
+  const rows: [string, React.ReactNode][] = [
+    ["Writers", String(facts.writers)],
+    ["Readers", String(facts.readers)],
+  ];
+  if (facts.dialect) rows.push(["Dialect", facts.dialect]);
+  rows.push([
+    `Columns (${facts.columns.length})`,
+    <code key="c">{facts.columns.join(", ") || "none read"}</code>,
+  ]);
   return (
     <section aria-label="Table">
       <h3>Table</h3>
-      <dl className="fan table-facts">
-        <div>
-          <dt>Writers</dt>
-          <dd>{facts.writers}</dd>
-        </div>
-        <div>
-          <dt>Readers</dt>
-          <dd>{facts.readers}</dd>
-        </div>
-        {facts.dialect && (
-          <div>
-            <dt>Dialect</dt>
-            <dd>{facts.dialect}</dd>
-          </div>
-        )}
-      </dl>
-      <h4>Columns ({facts.columns.length})</h4>
-      <p>
-        <code>{facts.columns.join(", ") || "none read"}</code>
-      </p>
-      <div className="neighbor-group">
-        <h4>
-          Written by <span className="count">{facts.writers}</span>
-        </h4>
-        {list(facts.writerSample, facts.writers)}
-      </div>
-      <div className="neighbor-group">
-        <h4>
-          Read by <span className="count">{facts.readers}</span>
-        </h4>
-        {list(facts.readerSample, facts.readers)}
-      </div>
+      <Facts label="Table facts" rows={rows} />
       <p className="muted">Raw SQL is not read, so tables used only through it are missing.</p>
+    </section>
+  );
+}
+
+/** A middleware named by oRPC procedures or server functions (#48): the endpoints that use it. */
+function MiddlewareRefSection({ facts }: { facts: { name: string; endpoints: NodeRef[] } }) {
+  return (
+    <section aria-label="Middleware">
+      <h3>Middleware</h3>
+      <Facts
+        label="Middleware facts"
+        rows={[
+          ["Name", <code key="n">{facts.name}</code>],
+          [`Used by (${facts.endpoints.length})`, <RefLinks key="u" refs={facts.endpoints} />],
+        ]}
+      />
     </section>
   );
 }
@@ -416,7 +407,7 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
   const isSymbol = id.startsWith("sym:");
   const isFile = id.startsWith("file:");
   const kindOfNode = graphNode?.kind ?? kind;
-  const isAdapter = /^(route|ep|table|mw|call):/.test(id);
+  const isAdapter = /^(route|ep|table|mw|mwref|call):/.test(id);
   const canMap =
     isSymbol || isFile || id.startsWith("ws:") || kindOfNode === "dir" || (isAdapter && path !== null);
   // Only nodes the server knows as a workspace or a folder have an overview; the 3D map's own cluster ids do not.
@@ -543,6 +534,7 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
           <>
             {body?.endpoint && <EndpointSection facts={body.endpoint} />}
             {body?.table && <TableSection facts={body.table} />}
+            {body?.middlewareRef && <MiddlewareRefSection facts={body.middlewareRef} />}
             {current.signature && (
               <section>
                 <h3>Signature</h3>

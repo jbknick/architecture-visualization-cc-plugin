@@ -420,6 +420,8 @@ export interface NodeBody {
   endpoint?: EndpointFacts;
   /** Tables (#48): columns and who reads and writes it. */
   table?: TableFacts;
+  /** A middleware an oRPC procedure or server function names (`mwref:` ids, #48): the endpoints that use it. */
+  middlewareRef?: { name: string; endpoints: NodeRef[] };
 }
 
 export interface NodeRef {

@@ -16,6 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { HttpError, handleApi } from "../api.js";
 import type { ApiContext, ViewResult } from "../types.js";
 import type { ApiTablesResult } from "./apiTables.js";
+import { adapterCounts } from "./crossStack.js";
 import type { EndpointsResult } from "./endpoints.js";
 import type { FeaturePathResult } from "./featurePath.js";
 import type { PageApiResult } from "./pageApi.js";
@@ -178,7 +179,14 @@ describe("page -> API view", () => {
     expect(patch?.viaSample).toEqual(["usePostActions"]);
     expect(r.nodes.find((n) => n.id === ROUTE)?.badges).toContain("2 unmatched");
     for (const n of r.nodes) expect(n.lane).toBe(n.kind === "route" ? 0 : 1);
-    expect(r.totals.unmatched).toBeGreaterThan(0);
+    // Distinct unmatched calls over every page (a shared hook's call counts once), not a sum per route.
+    const callers = new Set(
+      fx.store
+        .effectiveAdapterNodes({ kind: "client_call" })
+        .filter((u) => u.data.caller === "sym:apps/web/src/hooks/usePostActions.ts#usePostActions")
+        .map((u) => u.id),
+    );
+    expect(r.totals.unmatched).toBe(callers.size);
   });
 
   it("filters by prefix and shows unlinked nodes with all=true", () => {
@@ -257,6 +265,25 @@ describe("table usage view", () => {
   });
 });
 
+describe("enabling counts", () => {
+  it("counts adapter nodes by kind in SQL, equal to the effective nodes", () => {
+    const want: Record<string, number> = {};
+    for (const n of fx.store.effectiveAdapterNodes()) want[n.kind] = (want[n.kind] ?? 0) + 1;
+    expect(adapterCounts(fx.store)).toEqual(want);
+    expect(adapterCounts(single.store)).toEqual({});
+  });
+});
+
+describe("collapsed services", () => {
+  it("marks a collapsed path low only when no high-confidence way leads to the database call", () => {
+    const r = run<ApiTablesResult>("api-tables");
+    const uses = r.edges.filter((e) => e.kind === "uses");
+    expect(uses.length).toBeGreaterThan(0);
+    // Every way into the fixture's database callers is a resolved call, so every collapsed path is high.
+    for (const e of uses) expect(e.confidence).toBe("high");
+  });
+});
+
 describe("inspector facts", () => {
   it("describes endpoints and tables", () => {
     const node = (id: string) =>
@@ -277,6 +304,11 @@ describe("inspector facts", () => {
     });
     const rpc = node(GET);
     expect(rpc.node.endpoint).toMatchObject({ method: "RPC", rpcPath: "posts.get", path: "/rpc/posts/get" });
+    const mw = node("mwref:@demo/web:requireUser") as unknown as {
+      node: { kind: string; middlewareRef: { name: string; endpoints: { id: string }[] } };
+    };
+    expect(mw.node.kind).toBe("middleware");
+    expect(mw.node.middlewareRef.endpoints.map((e) => e.id)).toEqual(["ep:@demo/web:fn savePost"]);
     const t = node("table:users");
     expect(t.node.table).toMatchObject({ columns: ["id", "name"], readers: 2, writers: 1 });
     expect(t.untrusted_description).toBeNull();

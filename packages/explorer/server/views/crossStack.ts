@@ -89,11 +89,27 @@ export function traceOf(c: CrossCtx, id: string, direction: "down" | "up"): Trac
   return c.traceCache.get(key) ?? null;
 }
 
-/** How many adapter nodes of each kind the index holds (`/api/meta` decides the tabs from it). */
+const COUNT_SQL = `WITH eff_files AS (
+    SELECT id, layer, deleted FROM files WHERE layer = 'working'
+    UNION ALL
+    SELECT m.id, m.layer, m.deleted FROM files m WHERE m.layer = 'main'
+      AND NOT EXISTS (SELECT 1 FROM files w WHERE w.id = m.id AND w.layer = 'working'))
+  SELECT n.kind AS kind, COUNT(*) AS n FROM adapter_nodes n
+    JOIN eff_files f ON f.id = n.file_id AND f.layer = n.layer
+  WHERE f.deleted = 0 GROUP BY n.kind`;
+const counts = new WeakMap<Store, { generation: string; counts: Record<string, number> }>();
+
+/**
+ * How many adapter nodes of each kind the effective index holds, counted in SQL (`/api/meta` decides the tabs from
+ * it on every request, so it must not load the snapshot); cached per store generation.
+ */
 export function adapterCounts(store: Store): Record<string, number> {
-  const c = crossCtx(store);
+  const gen = store.generation();
+  const cur = counts.get(store);
+  if (cur && cur.generation === gen) return cur.counts;
   const out: Record<string, number> = {};
-  for (const [k, list] of c.byKind) out[k] = list.length;
+  for (const r of store.db.prepare(COUNT_SQL).all() as { kind: string; n: number }[]) out[r.kind] = r.n;
+  counts.set(store, { generation: gen, counts: out });
   return out;
 }
 
@@ -359,6 +375,8 @@ export interface EndpointTables {
   edges: TraceEdge[];
   /** Hops from the endpoint to each service node. */
   hops: Map<string, number>;
+  /** Nodes the endpoint reaches through high-confidence edges only (a collapsed path to anything else is low). */
+  highReach: Set<string>;
 }
 
 /**
@@ -375,6 +393,7 @@ export function endpointTables(c: CrossCtx, endpoint: string): EndpointTables {
     writes: [],
     edges: [],
     hops: new Map(),
+    highReach: new Set(),
   };
   if (!t) return empty;
   const kindOf = new Map(t.chain.map((s) => [s.id, s.kind]));
@@ -426,9 +445,19 @@ export function endpointTables(c: CrossCtx, endpoint: string): EndpointTables {
   const edges = own.filter(
     (e) => keep.has(e.src) && (keep.has(e.dst) || e.kind === "reads" || e.kind === "writes"),
   );
+  const highReach = new Set([endpoint]);
+  const hq = [endpoint];
+  for (let i = 0; i < hq.length; i++) {
+    for (const e of edges) {
+      if (e.src !== hq[i] || e.confidence === "low" || highReach.has(e.dst)) continue;
+      highReach.add(e.dst);
+      hq.push(e.dst);
+    }
+  }
   const uniq = (xs: string[]) => [...new Set(xs)].sort(cmp);
   return {
     endpoint,
+    highReach,
     services: [...onPath].sort((a, b) => (hops.get(a) ?? 0) - (hops.get(b) ?? 0) || cmp(a, b)),
     dbCallers: uniq(db.map((e) => e.src)),
     reads: uniq(db.filter((e) => e.kind === "reads").map((e) => e.dst)),

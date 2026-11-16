@@ -185,11 +185,47 @@ kbd {
   background: var(--surface-2);
 }
 
-.topbar > nav {
-  /* With the cross-stack views (#48) there are a dozen tabs: they scroll sideways before the bar overflows. */
+.tab-strip {
+  /* With the cross-stack views (#48) there are a dozen tabs: they scroll sideways, with a button on each side that
+     has hidden tabs (TabStrip in TopBar.tsx), before the bar overflows. */
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.tab-strip > nav {
   min-width: 0;
   overflow-x: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+.tab-strip > nav::-webkit-scrollbar {
+  display: none;
+}
+.tab-scroll {
+  /* Laid over the ends of the strip, so showing or hiding one never moves the tabs. */
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  box-shadow: 0 0 10px 8px var(--surface);
+  width: 26px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tab-scroll.left {
+  left: 0;
+}
+.tab-scroll.right {
+  right: 0;
+}
+.tab-scroll:hover {
+  background: var(--surface-2);
 }
 .tabs {
   display: flex;
@@ -945,7 +981,22 @@ kbd {
 .flow-focus {
   margin: 0 0 6px;
 }
-.endpoint-facts dd,
-.table-facts dd {
-  word-break: break-word;
+.kv-facts {
+  display: grid;
+  grid-template-columns: minmax(84px, max-content) minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+}
+.kv-row {
+  display: contents;
+}
+.kv-facts dt {
+  color: var(--muted);
+  font-size: 12px;
+  padding-top: 1px;
+}
+.kv-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

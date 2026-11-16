@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { api, type FocusChoice } from "../api.ts";
 import { useStore } from "../store.tsx";
 
+/** Choices listed per group before "and n more". */
+export const CHOICES_PER_GROUP = 200;
+
 const TEXT: Record<string, { title: string; body: string; search: string }> = {
   "feature-path": {
     title: "Pick a page or an endpoint",
@@ -19,7 +22,7 @@ const TEXT: Record<string, { title: string; body: string; search: string }> = {
  * Shown by the feature path and table usage views (#48) until a focus is chosen: the server answers the view without
  * a focus with its `choices`, listed here by group with a filter box.
  */
-export function FlowFocusPrompt({ viewId }: { viewId: string }) {
+export function FlowFocusPrompt({ viewId, notice }: { viewId: string; notice?: string }) {
   const { navigate, state } = useStore();
   const [choices, setChoices] = useState<FocusChoice[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +54,11 @@ export function FlowFocusPrompt({ viewId }: { viewId: string }) {
     <div className="empty-state flow-prompt" data-testid="flow-focus-prompt">
       <h2>{text.title}</h2>
       <p>{text.body}</p>
+      {notice && (
+        <p className="notice" role="alert">
+          {notice}
+        </p>
+      )}
       {error && <p role="alert">{error}</p>}
       {choices === null && !error && <p className="muted">Loading…</p>}
       {choices && (
@@ -68,7 +76,7 @@ export function FlowFocusPrompt({ viewId }: { viewId: string }) {
               <section key={group} aria-label={group}>
                 <h3>{group}</h3>
                 <ul>
-                  {list.slice(0, 200).map((c) => (
+                  {list.slice(0, CHOICES_PER_GROUP).map((c) => (
                     <li key={c.id}>
                       <button
                         type="button"
@@ -81,6 +89,11 @@ export function FlowFocusPrompt({ viewId }: { viewId: string }) {
                       {c.note && <span className="muted"> {c.note}</span>}
                     </li>
                   ))}
+                  {list.length > CHOICES_PER_GROUP && (
+                    <li className="muted">
+                      and {list.length - CHOICES_PER_GROUP} more: type to narrow the list
+                    </li>
+                  )}
                 </ul>
               </section>
             ))}

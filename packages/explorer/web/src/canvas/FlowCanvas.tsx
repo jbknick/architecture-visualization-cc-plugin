@@ -280,13 +280,18 @@ export function FlowCanvas({
     ctx.textBaseline = "middle";
     ctx.fillStyle = hexToRgba(theme.bg, 0.92);
     ctx.fillRect(0, 0, w, TOP);
-    for (const l of lanesX) {
-      const cx = sx((l.x0 + l.x1) / 2);
-      if (cx < -100 || cx > w + 100) continue;
+    // A title may use the room up to halfway to the next lane on each side, not just its boxes' width.
+    const centres = lanesX.map((l) => sx((l.x0 + l.x1) / 2));
+    lanesX.forEach((l, i) => {
+      const cx = centres[i] as number;
+      if (cx < -100 || cx > w + 100) return;
+      const prev = i > 0 ? cx - (centres[i - 1] as number) : Number.POSITIVE_INFINITY;
+      const next = i < centres.length - 1 ? (centres[i + 1] as number) - cx : Number.POSITIVE_INFINITY;
+      const room = Math.min(prev, next, 2 * Math.max(cx, w - cx));
       ctx.fillStyle = theme.muted;
-      const t = fitText(ctx, l.label, Math.max(40, (l.x1 - l.x0) * c.k));
+      const t = fitText(ctx, l.label, Math.max(40, (l.x1 - l.x0) * c.k, room - 12));
       ctx.fillText(t, cx - ctx.measureText(t).width / 2, HEADER_TOP + HEADER_H / 2);
-    }
+    });
   }, [pos, theme, edges, curves, boxes, byId, lanesX, bands, related, focus, layoutHint]);
 
   const fitView = useCallback(() => {

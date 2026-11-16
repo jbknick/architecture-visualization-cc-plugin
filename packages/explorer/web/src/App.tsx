@@ -6,7 +6,7 @@ import { StatusBar } from "./components/StatusBar.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { useViewData } from "./hooks.ts";
 import { useRefresh } from "./refresh.ts";
-import { getCanvas, getFocusPrompt } from "./slots.ts";
+import { focusPromptOnError, getCanvas, getFocusPrompt } from "./slots.ts";
 import { useStore } from "./store.tsx";
 import { drillPatch } from "./views/drill.ts";
 import "./canvases.ts";
@@ -96,6 +96,8 @@ export function App() {
 
   let center: ReactNode;
   if (needsFocus && FocusPrompt && view) center = <FocusPrompt viewId={view} />;
+  else if (error && FocusPrompt && view && route.focus && focusPromptOnError(view))
+    center = <FocusPrompt viewId={view} notice={`Cannot show ${route.focus}: ${error}`} />;
   else if (error)
     center = (
       <div className="empty-state" role="alert">

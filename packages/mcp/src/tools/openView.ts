@@ -27,7 +27,14 @@ export const openViewTool = defineTool({
     "Unknown view ids return {error: unknown_view, views}.",
   inputSchema: {
     view: z.string().min(1).max(50).describe("View id, for example project-map, ego, duplicates, map-3d"),
-    focus: z.string().min(1).max(500).optional().describe("Node id to focus (sym:..., file:..., ws:...)"),
+    focus: z
+      .string()
+      .min(1)
+      .max(500)
+      .optional()
+      .describe(
+        "Node id to focus (sym:..., file:..., ws:...; route:... or ep:... for feature-path, table:... for table-usage)",
+      ),
     filters: z
       .record(z.string().max(100), z.string().max(500))
       .optional()

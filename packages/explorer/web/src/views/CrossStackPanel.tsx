@@ -240,7 +240,7 @@ export function PageApiPanel({ data, filters, onFiltersChange }: FilterPanelProp
       <section className="filter-group" aria-label="Show">
         <h3>Show</h3>
         <Toggle
-          label={`Also unlinked (${num(t.routesWithout)} routes, ${num(t.endpointsWithout)} endpoints)`}
+          label={`Also unlinked (${n(num(t.routesWithout), "route")}, ${n(num(t.endpointsWithout), "endpoint")})`}
           keyName="all"
           filters={filters}
           onFiltersChange={onFiltersChange}

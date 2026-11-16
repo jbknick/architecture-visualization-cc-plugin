@@ -63,22 +63,24 @@ export const pageApiView: ViewModule = {
       const url = typeof r.data.urlPath === "string" ? r.data.urlPath : "/";
       return prefix === "" || url === prefix || url.startsWith(`${prefix}/`);
     });
-    const unmatchedByCaller = new Map<string, number>();
+    const unmatchedByCaller = new Map<string, string[]>();
     for (const u of c.byKind.get("client_call") ?? []) {
       const caller = typeof u.data.caller === "string" ? u.data.caller : null;
-      if (caller) unmatchedByCaller.set(caller, (unmatchedByCaller.get(caller) ?? 0) + 1);
+      if (caller) unmatchedByCaller.set(caller, [...(unmatchedByCaller.get(caller) ?? []), u.id]);
     }
+    /** Distinct unmatched calls over every shown page: a shared component's call counts once. */
+    const unmatchedAll = new Set<string>();
 
     const b = new FlowBuilder(c);
     const via = new Map<string, Set<string>>();
-    let unmatched = 0;
     for (const r of routes) {
       const t = traceOf(c, r.id, "down");
       if (!t) continue;
       const front = frontSet(t);
-      let routeUnmatched = 0;
-      for (const id of front) routeUnmatched += unmatchedByCaller.get(id) ?? 0;
-      unmatched += routeUnmatched;
+      const own = new Set<string>();
+      for (const id of front) for (const u of unmatchedByCaller.get(id) ?? []) own.add(u);
+      for (const u of own) unmatchedAll.add(u);
+      const routeUnmatched = own.size;
       const kindOf = new Map(t.chain.map((s) => [s.id, s.kind]));
       for (const e of t.edges) {
         if (e.kind !== "requests" || !front.has(e.src) || kindOf.get(e.dst) !== "endpoint") continue;
@@ -134,7 +136,7 @@ export const pageApiView: ViewModule = {
         links: edges.length,
         routesWithout: routes.filter((r) => !linkedRoutes.has(r.id)).length,
         endpointsWithout: epTotal - linkedEps.size,
-        unmatched,
+        unmatched: unmatchedAll.size,
       },
     };
   },

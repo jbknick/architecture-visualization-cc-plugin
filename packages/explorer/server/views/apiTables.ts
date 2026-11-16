@@ -85,7 +85,8 @@ export const apiTablesView: ViewModule = {
       if (!expanded) {
         for (const caller of et.dbCallers) {
           const hops = et.hops.get(caller) ?? 1;
-          const edge = b.edge(ep.id, caller, "uses", false, 0);
+          // Low when every way from the endpoint to the database call passes a low-confidence edge.
+          const edge = b.edge(ep.id, caller, "uses", !et.highReach.has(caller), 0);
           edge.weight = 1;
           edge.via = Math.max(0, hops - 1);
         }

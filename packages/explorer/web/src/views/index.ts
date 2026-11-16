@@ -29,5 +29,5 @@ registerFilterPanel("page-api", PageApiPanel);
 registerFilterPanel("api-tables", ApiTablesPanel);
 registerFilterPanel("feature-path", FeaturePathPanel);
 registerFilterPanel("table-usage", TableUsagePanel);
-registerFocusRequired("feature-path", FlowFocusPrompt);
-registerFocusRequired("table-usage", FlowFocusPrompt);
+registerFocusRequired("feature-path", FlowFocusPrompt, { onError: true });
+registerFocusRequired("table-usage", FlowFocusPrompt, { onError: true });

@@ -27,6 +27,29 @@ async function probe(page: Page): Promise<Probe> {
   ) as Probe;
 }
 
+/**
+ * Inspector facts lay out as key/value rows: every row stays inside the inspector, and no value is squeezed into a
+ * sliver (a value wrapping one character per line is a few pixels wide and many lines tall).
+ */
+async function expectFactsTidy(page: Page, label: string) {
+  const bad = await page.evaluate((name) => {
+    const out: string[] = [];
+    const panel = document.querySelector("aside.inspector")?.getBoundingClientRect();
+    const dl = document.querySelector(`dl[aria-label="${name}"]`);
+    if (!panel || !dl) return ["no facts list"];
+    for (const dd of dl.querySelectorAll("dd")) {
+      const r = dd.getBoundingClientRect();
+      const lineH = Number.parseFloat(getComputedStyle(dd).lineHeight) || 20;
+      if (r.right > panel.right + 1 || r.left < panel.left - 1)
+        out.push(`value leaves the inspector: ${dd.textContent}`);
+      if ((dd.textContent ?? "").length > 6 && r.width < 80) out.push(`value squeezed: ${dd.textContent}`);
+      if (r.height > lineH * 4) out.push(`value wraps too much: ${dd.textContent}`);
+    }
+    return out;
+  }, label);
+  expect(bad).toEqual([]);
+}
+
 async function at(page: Page, x: number, y: number) {
   const box = await canvas(page).boundingBox();
   if (!box) throw new Error("canvas has no box");
@@ -133,7 +156,10 @@ test("table usage: writers above readers, and the inspector of a table and an en
   await expect(section).toContainText("Columns (4)");
   await expect(section).toContainText("id, userId, status, total");
   await expect(section).toContainText("Writers1");
-  await section.getByRole("button", { name: "cancelOrder" }).click();
+  await expectFactsTidy(page, "Table facts");
+  // The code itself is listed once, under Connections ("Written by", "Read by").
+  await expect(inspector.getByRole("heading", { name: /^Read by/ })).toHaveCount(1);
+  await inspector.getByRole("button", { name: "cancelOrder" }).first().click();
   await expect(inspector.getByRole("heading", { name: "cancelOrder" })).toBeVisible();
 
   // The inspector took room from the canvas, which fitted again: measure anew.
@@ -145,7 +171,34 @@ test("table usage: writers above readers, and the inspector of a table and an en
   await expect(facts).toContainText("orders.cancel");
   await expect(facts).toContainText("ordersRouter");
   await expect(facts).toContainText("RPC");
+  await expect(facts).toContainText("Requested from1 place");
+  await expectFactsTidy(page, "Endpoint facts");
   await inspector.getByRole("button", { name: "Show feature path" }).click();
   await expect(page).toHaveURL(/#\/feature-path\?focus=ep/);
   await expect(page.locator("canvas.flow-canvas[data-ready=true]")).toBeVisible({ timeout: 20_000 });
+});
+
+test("a deep link to a tab off the strip scrolls it into sight, and hidden tabs have a scroll button", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await open(page, "table-usage?focus=table%3Aorders&sel=");
+  const strip = page.locator(".tab-strip > nav");
+  const nav = await strip.boundingBox();
+  const active = await page.getByRole("tab", { name: "Table usage" }).boundingBox();
+  if (!nav || !active) throw new Error("no tab strip");
+  expect(active.x).toBeGreaterThanOrEqual(nav.x - 1);
+  expect(active.x + active.width).toBeLessThanOrEqual(nav.x + nav.width + 1);
+  // The first tabs are scrolled away: a button brings them back.
+  const back = page.getByRole("button", { name: "Show earlier views" });
+  await expect(back).toBeVisible();
+  for (let i = 0; i < 8 && (await back.count()) > 0; i++) {
+    await back.click();
+    await page.waitForTimeout(100);
+  }
+  await expect(page.getByRole("button", { name: "Show earlier views" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Show more views" })).toBeVisible();
+  const first = await page.getByRole("tab", { name: "Project map" }).boundingBox();
+  const navNow = await strip.boundingBox();
+  expect(first?.x ?? 0).toBeGreaterThanOrEqual((navNow?.x ?? 0) - 1);
 });

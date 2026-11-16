@@ -5,7 +5,7 @@ import type { Route } from "../route.ts";
 const PROJECT_MAP_DRILLABLE = new Set(["workspace", "dir", "file"]);
 
 /** True for ids that `/api/node` knows. Directories, `ext:*` and `more:*` nodes exist only in view responses. */
-export const isServerNode = (id: string): boolean => /^(sym|file|ws|route|ep|table|mw|call):/.test(id);
+export const isServerNode = (id: string): boolean => /^(sym|file|ws|route|ep|table|mw|mwref|call):/.test(id);
 
 export const isSymbolId = (id: string): boolean => id.startsWith("sym:");
 
