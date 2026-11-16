@@ -44,7 +44,9 @@ async function indexFixture(name: string, edit?: { path: string; from: string; t
       const g = dumpGraph(store);
       return {
         nodes: (g.adapterNodes ?? []) as AdapterNodeRecord[],
-        edges: (g.edges as EdgeRecord[]).filter((e) => ["handles", "serves", "requests"].includes(e.kind)),
+        edges: (g.edges as EdgeRecord[]).filter((e) =>
+          ["handles", "serves", "requests", "reads", "writes"].includes(e.kind),
+        ),
       };
     } finally {
       store.close();
@@ -105,6 +107,65 @@ describe("adapters on fixtures/pnpm-turbo", () => {
     const kinds = new Set(g.nodes.filter((n) => n.ws === "ws:@acme/web").map((n) => n.kind));
     expect([...kinds]).toEqual(["route"]);
     expect(g.nodes.filter((n) => n.kind === "endpoint").every((n) => n.ws === "ws:@acme/api")).toBe(true);
+  });
+
+  it("finds the oRPC procedures posts.list and posts.create with their handlers", () => {
+    const rpc = g.nodes.filter((n) => n.data.adapter === "orpc").map((n) => n.id);
+    expect(rpc).toEqual(["ep:@acme/api:rpc posts.create", "ep:@acme/api:rpc posts.list"]);
+    expect(node(g, "ep:@acme/api:rpc posts.list")).toMatchObject({
+      kind: "endpoint",
+      ws: "ws:@acme/api",
+      fileId: "file:apps/api/src/router.ts",
+      data: { path: "posts.list", router: "apps/api/src/router.ts#router", handler: "inline" },
+    });
+    // Inline handlers in a router object: their calls belong to the router const.
+    expect(edgesOf(g, "handles", "ep:@acme/api:rpc posts.list")).toEqual([
+      "sym:apps/api/src/router.ts#router",
+    ]);
+    expect(edgesOf(g, "handles", "ep:@acme/api:rpc posts.create")).toEqual([
+      "sym:apps/api/src/router.ts#router",
+    ]);
+  });
+
+  it("finds the posts and users tables, and which queries read or write them", () => {
+    const tables = g.nodes.filter((n) => n.kind === "table");
+    expect(tables.map((n) => n.id)).toEqual(["table:posts", "table:users"]);
+    expect(node(g, "table:posts")).toMatchObject({
+      ws: "ws:@acme/db",
+      fileId: "file:packages/db/src/schema.ts",
+      data: {
+        adapter: "drizzle",
+        name: "posts",
+        exportName: "posts",
+        symbol: "sym:packages/db/src/schema.ts#posts",
+        dialect: "sqlite",
+        columns: ["id", "title", "authorId", "createdAt"],
+      },
+    });
+    const rw = g.edges.filter((e) => e.kind === "reads" || e.kind === "writes");
+    expect(rw.map((e) => [e.kind, e.src, e.dst, e.confidence, e.evidence])).toEqual([
+      [
+        "writes",
+        "sym:packages/db/src/queries.ts#createPost",
+        "table:posts",
+        "high",
+        ["packages/db/src/queries.ts:16"],
+      ],
+      [
+        "reads",
+        "sym:packages/db/src/queries.ts#getPost",
+        "table:posts",
+        "high",
+        ["packages/db/src/queries.ts:12"],
+      ],
+      [
+        "reads",
+        "sym:packages/db/src/queries.ts#listPosts",
+        "table:posts",
+        "high",
+        ["packages/db/src/queries.ts:8"],
+      ],
+    ]);
   });
 });
 
@@ -196,6 +257,81 @@ describe("adapters on fixtures/adapters", () => {
     expect(ids.some((id) => id.includes("only-in-tests"))).toBe(false);
     expect(g.nodes.some((n) => n.ws === "ws:@demo/legacy")).toBe(false);
     expect(ids.some((id) => id.includes("legacy"))).toBe(false);
+    expect(g.edges.some((e) => e.fileId.startsWith("file:packages/legacy/"))).toBe(false);
+  });
+
+  it("composes oRPC procedure paths across imported routers, builders, router(), lazy, factories and contracts", () => {
+    const rpc = g.nodes.filter((n) => n.data.adapter === "orpc");
+    expect(rpc.map((n) => n.id)).toEqual([
+      "ep:@demo/api:rpc admin.purgePost",
+      "ep:@demo/api:rpc health",
+      "ep:@demo/api:rpc posts.create",
+      "ep:@demo/api:rpc posts.list",
+      "ep:@demo/api:rpc posts.remove",
+      "ep:@demo/api:rpc stats.summary",
+      "ep:@demo/api:rpc users.count",
+      "ep:@demo/api:rpc users.rename",
+    ]);
+    expect(node(g, "ep:@demo/api:rpc posts.list")).toMatchObject({
+      fileId: "file:packages/api/src/routers/posts.ts",
+      data: {
+        router: "packages/api/src/router.ts#appRouter",
+        route: { method: "GET", path: "/posts" },
+        input: false,
+      },
+    });
+    expect(node(g, "ep:@demo/api:rpc posts.create")?.data).toMatchObject({ input: true, handler: "inline" });
+    expect(node(g, "ep:@demo/api:rpc posts.remove")?.data).toMatchObject({ handler: "removePost" });
+  });
+
+  it("links procedure handlers to the code holding them", () => {
+    expect(edgesOf(g, "handles", "ep:@demo/api:rpc posts.list")).toEqual([
+      "sym:packages/api/src/routers/posts.ts#postsRouter",
+    ]);
+    expect(edgesOf(g, "handles", "ep:@demo/api:rpc posts.remove")).toEqual([
+      "sym:packages/api/src/routers/posts.ts#removePost",
+    ]);
+    expect(edgesOf(g, "handles", "ep:@demo/api:rpc users.count")).toEqual([
+      "sym:packages/api/src/routers/users.ts#countUsersProc",
+    ]);
+    expect(edgesOf(g, "handles", "ep:@demo/api:rpc admin.purgePost")).toEqual([
+      "sym:packages/api/src/routers/admin.ts#makeAdminRouter",
+    ]);
+  });
+
+  it("records where a Hono app mounts the oRPC handler", () => {
+    const rpc = g.nodes.filter((n) => n.data.adapter === "orpc");
+    for (const n of rpc) {
+      expect(n.data).toMatchObject({ mountedAt: "/rpc", honoPath: "/rpc/*", protocol: "rpc" });
+    }
+  });
+
+  it("finds Drizzle tables with columns (object and callback forms)", () => {
+    const tables = g.nodes.filter((n) => n.kind === "table");
+    expect(tables.map((n) => [n.id, n.ws, n.data.columns])).toEqual([
+      ["table:posts", "ws:@demo/db", ["id", "title", "authorId", "views"]],
+      ["table:users", "ws:@demo/db", ["id", "name"]],
+    ]);
+  });
+
+  it("maps reads and writes, the relational query API, $count, aliases and namespace members to tables", () => {
+    const rw = g.edges
+      .filter((e) => e.kind === "reads" || e.kind === "writes")
+      .map((e) => `${e.kind} ${e.src.replace(/^sym:[^#]*#/, "")} ${e.dst} ${e.confidence}`);
+    expect(rw).toEqual([
+      "reads reportPosts table:posts low",
+      "reads countUsers table:users high",
+      "writes createPost table:posts high",
+      "writes deletePost table:posts high",
+      "reads listPosts table:posts high",
+      "reads postWithAuthor table:posts high",
+      "reads postWithAuthor table:users high",
+      "writes renameUser table:users high",
+    ]);
+    const list = g.edges.find((e) => e.kind === "reads" && e.src.endsWith("#listPosts"));
+    expect(list?.evidence).toEqual(["packages/db/src/queries.ts:8"]);
+    // Raw SQL and `Array.from` are not reads.
+    expect(g.edges.some((e) => e.src.endsWith("#rawPostCount") || e.src.endsWith("#columnsOf"))).toBe(false);
   });
 
   it("re-derives endpoints of other files when a mount changes (working layer, one file re-indexed)", async () => {
@@ -209,6 +345,23 @@ describe("adapters on fixtures/adapters", () => {
     expect(ids).not.toContain("ep:@demo/server:GET /api/posts/:id");
     // The `/api/*` middleware no longer covers the posts routes.
     expect(edgesOf(after, "serves", "mw:@demo/server:/api/* inline")).toHaveLength(2);
+  });
+
+  it("re-derives procedure paths of other files when the root router changes", async () => {
+    const after = await indexFixture("adapters", {
+      path: "packages/api/src/router.ts",
+      from: "posts: postsRouter,",
+      to: "articles: postsRouter,",
+    });
+    const ids = after.nodes
+      .filter((n) => n.fileId === "file:packages/api/src/routers/posts.ts")
+      .map((n) => n.id)
+      .sort();
+    expect(ids).toEqual([
+      "ep:@demo/api:rpc articles.create",
+      "ep:@demo/api:rpc articles.list",
+      "ep:@demo/api:rpc articles.remove",
+    ]);
   });
 
   it("is deterministic across runs", async () => {

@@ -3,5 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "dependencies": { "@demo/posts": "workspace:*", "hono": "^4.0.0" }
+  "dependencies": {
+    "@demo/api": "workspace:*",
+    "@demo/posts": "workspace:*",
+    "@orpc/server": "^1.0.0",
+    "hono": "^4.0.0"
+  }
 }

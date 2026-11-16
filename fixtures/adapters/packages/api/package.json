@@ -1,0 +1,8 @@
+{
+  "name": "@demo/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "dependencies": { "@demo/db": "workspace:*", "@orpc/contract": "^1.0.0", "@orpc/server": "^1.0.0" }
+}
