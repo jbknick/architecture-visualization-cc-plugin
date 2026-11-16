@@ -21,6 +21,13 @@ Workspace (`pnpm-workspace.yaml`: `apps/*`, `packages/*`) plus `turbo.json`.
 - `packages/utils`: `formatRelativeDate` and `parseTimestamp` (misleading-name near-duplicate, 8 statements each); internal non-exported `slugify` (`src/slug.ts`) and an exact copy in `apps/web/src/lib/slug.ts`.
 - `.claude/worktrees/feature-x/`: nested worktree folder with a copy of one file, excluded.
 
+## adapters
+Workspace (`apps/*`, `packages/*`) for the framework adapters (#45).
+- `apps/server` (`hono`): `createApp()` builds an app with `use("*", cors())`, `use("/api/*", ...)`, `get(HEALTH_PATH)` (a constant imported from `src/paths.ts`) and mounts `posts` (from `@demo/posts`) at `/api` and `users` at `/api/users`. `src/users.ts`: `new Hono().basePath("/v1").get("/", listUsers).post(createUser)`.
+- `packages/posts` (`hono`): `GET /posts/:id` (named handler imported from `src/handlers.ts`), `POST /posts`, `on(["PUT", "PATCH"], "/posts/:id")`. `src/routes.test.ts` is a test harness app (skipped).
+- `apps/web` (`@tanstack/react-start`, `@tanstack/react-router`): server functions `fetchPost` (GET, `inputValidator`, inline handler) and `savePost` (POST, `middleware([requireUser])`, named handler) in `src/server/posts.ts`; route `/posts/$postId` calls `fetchPost` in its `loader`; route `/` defines `countPosts` and calls it from its `beforeLoad` function.
+- `packages/legacy`: uses `new Hono()` and `createServerFn` without depending on either, so no adapter reads it.
+
 ## nx
 - `nx.json`, two projects with `project.json`: `apps/shop` and `libs/cart`.
 - `tsconfig.base.json` path alias `@shop/cart`.

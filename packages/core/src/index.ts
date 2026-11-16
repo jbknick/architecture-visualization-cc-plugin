@@ -1,5 +1,5 @@
 export const name = "@gantry/core";
-export * from "./adapters/tanstack-routes.js";
+export * from "./adapters/index.js";
 export * from "./advice/index.js";
 export * from "./catalog/index.js";
 export * from "./config/index.js";

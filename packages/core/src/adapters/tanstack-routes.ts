@@ -5,6 +5,7 @@ import { isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
 import type { ParsedFile } from "../parse/index.js";
 import type { Resolver } from "../resolve/index.js";
 import type { AdapterNodeRecord, EdgeRecord, WorkspaceRecord } from "../types.js";
+import type { Adapter, AdapterNode } from "./framework.js";
 
 /**
  * TanStack Router file-route detection (route detection only; server functions are M6).
@@ -237,7 +238,47 @@ export interface RouteCall {
   options: OptionRead;
 }
 
-/** First `createFileRoute(...)(...)` / `createRootRoute(...)` / `createRootRouteWithContext()(...)` call in the file. */
+export interface RouteCallNode {
+  idArg?: string;
+  root: boolean;
+  /** The options argument (`{ component, loader, ... }`) as an AST node, when there is one. */
+  options: unknown;
+}
+
+/** First `createFileRoute(...)(...)` / `createRootRoute(...)` / `createRootRouteWithContext()(...)` call among the statements. */
+export function findRouteCall(body: Node[]): RouteCallNode | null {
+  let found: RouteCallNode | null = null;
+  visit(body, (n) => {
+    if (found) return false;
+    if (n.type !== "CallExpression") return undefined;
+    const callee = unwrap(n.callee);
+    if (!isNode(callee)) return undefined;
+    const args = Array.isArray(n.arguments) ? (n.arguments as unknown[]) : [];
+    if (callee.type === "Identifier" && callee.name === "createRootRoute") {
+      found = { root: true, options: args[0] };
+      return false;
+    }
+    if (callee.type === "CallExpression") {
+      const inner = unwrap(callee.callee);
+      if (!isNode(inner) || inner.type !== "Identifier") return undefined;
+      if (inner.name === "createRootRouteWithContext") {
+        found = { root: true, options: args[0] };
+        return false;
+      }
+      if (inner.name === "createFileRoute") {
+        const a0 = Array.isArray(callee.arguments) ? unwrap((callee.arguments as unknown[])[0]) : undefined;
+        const idArg =
+          isNode(a0) && a0.type === "Literal" && typeof a0.value === "string" ? a0.value : undefined;
+        found = { ...(idArg !== undefined ? { idArg } : {}), root: false, options: args[0] };
+        return false;
+      }
+    }
+    return undefined;
+  });
+  return found;
+}
+
+/** First route call in the file (see `findRouteCall`), with its options read. */
 export function readRouteCall(fileName: string, source: string): RouteCall | null {
   let body: Node[];
   try {
@@ -247,35 +288,13 @@ export function readRouteCall(fileName: string, source: string): RouteCall | nul
   } catch {
     return null;
   }
-  let found: RouteCall | null = null;
-  visit(body, (n) => {
-    if (found) return false;
-    if (n.type !== "CallExpression") return undefined;
-    const callee = unwrap(n.callee);
-    if (!isNode(callee)) return undefined;
-    const args = Array.isArray(n.arguments) ? (n.arguments as unknown[]) : [];
-    if (callee.type === "Identifier" && callee.name === "createRootRoute") {
-      found = { root: true, options: readOptions(args[0]) };
-      return false;
-    }
-    if (callee.type === "CallExpression") {
-      const inner = unwrap(callee.callee);
-      if (!isNode(inner) || inner.type !== "Identifier") return undefined;
-      if (inner.name === "createRootRouteWithContext") {
-        found = { root: true, options: readOptions(args[0]) };
-        return false;
-      }
-      if (inner.name === "createFileRoute") {
-        const a0 = Array.isArray(callee.arguments) ? unwrap((callee.arguments as unknown[])[0]) : undefined;
-        const idArg =
-          isNode(a0) && a0.type === "Literal" && typeof a0.value === "string" ? a0.value : undefined;
-        found = { ...(idArg !== undefined ? { idArg } : {}), root: false, options: readOptions(args[0]) };
-        return false;
-      }
-    }
-    return undefined;
-  });
-  return found;
+  const c = findRouteCall(body);
+  if (!c) return null;
+  return {
+    ...(c.idArg !== undefined ? { idArg: c.idArg } : {}),
+    root: c.root,
+    options: readOptions(c.options),
+  };
 }
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -381,3 +400,25 @@ export function detectTanstackRoutes(input: DetectRoutesInput): DetectedRoutes {
   }
   return { nodes, edges };
 }
+
+/** TanStack Router file routes as a framework adapter (`link` only: parents and children come from the whole routes folder). */
+export const tanstackRoutesAdapter: Adapter = {
+  id: "tanstack-router",
+  appliesTo: isRouterWorkspace,
+  includeTests: true,
+  link(ctx) {
+    const found = detectTanstackRoutes({
+      root: ctx.root,
+      workspaces: ctx.workspaces,
+      files: ctx.files.map(({ file }) => ({
+        path: file.path,
+        id: file.fileId,
+        workspaceId: file.ws.id,
+        source: file.source,
+      })),
+      parsed: ctx.parsed,
+      resolver: ctx.resolver,
+    });
+    return { nodes: found.nodes as AdapterNode[], edges: found.edges };
+  },
+};
