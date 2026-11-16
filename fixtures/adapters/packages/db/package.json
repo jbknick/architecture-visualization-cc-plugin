@@ -1,0 +1,8 @@
+{
+  "name": "@demo/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "dependencies": { "drizzle-orm": "^0.44.0" }
+}

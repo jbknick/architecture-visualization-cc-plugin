@@ -651,6 +651,28 @@
       "fileId": "file:apps/api/src/app.ts"
     },
     {
+      "src": "ep:@acme/api:rpc posts.create",
+      "dst": "sym:apps/api/src/router.ts#router",
+      "kind": "handles",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/api/src/router.ts:7"
+      ],
+      "fileId": "file:apps/api/src/router.ts"
+    },
+    {
+      "src": "ep:@acme/api:rpc posts.list",
+      "dst": "sym:apps/api/src/router.ts#router",
+      "kind": "handles",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/api/src/router.ts:6"
+      ],
+      "fileId": "file:apps/api/src/router.ts"
+    },
+    {
       "src": "file:apps/api/src/app.ts",
       "dst": "ext:hono",
       "kind": "imports",
@@ -1698,6 +1720,39 @@
       "fileId": "file:apps/web/src/routes/settings/profile.tsx"
     },
     {
+      "src": "sym:packages/db/src/queries.ts#createPost",
+      "dst": "table:posts",
+      "kind": "writes",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "packages/db/src/queries.ts:16"
+      ],
+      "fileId": "file:packages/db/src/queries.ts"
+    },
+    {
+      "src": "sym:packages/db/src/queries.ts#getPost",
+      "dst": "table:posts",
+      "kind": "reads",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "packages/db/src/queries.ts:12"
+      ],
+      "fileId": "file:packages/db/src/queries.ts"
+    },
+    {
+      "src": "sym:packages/db/src/queries.ts#listPosts",
+      "dst": "table:posts",
+      "kind": "reads",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "packages/db/src/queries.ts:8"
+      ],
+      "fileId": "file:packages/db/src/queries.ts"
+    },
+    {
       "src": "sym:packages/utils/src/slug.ts#SLUG_VERSION",
       "dst": "sym:packages/utils/src/slug.ts#slugify",
       "kind": "calls",
@@ -1970,6 +2025,42 @@
       }
     },
     {
+      "id": "ep:@acme/api:rpc posts.create",
+      "kind": "endpoint",
+      "ws": "ws:@acme/api",
+      "label": "rpc posts.create",
+      "fileId": "file:apps/api/src/router.ts",
+      "data": {
+        "adapter": "orpc",
+        "path": "posts.create",
+        "router": "apps/api/src/router.ts#router",
+        "handler": "inline",
+        "input": false,
+        "output": false,
+        "middleware": [],
+        "file": "apps/api/src/router.ts",
+        "line": 7
+      }
+    },
+    {
+      "id": "ep:@acme/api:rpc posts.list",
+      "kind": "endpoint",
+      "ws": "ws:@acme/api",
+      "label": "rpc posts.list",
+      "fileId": "file:apps/api/src/router.ts",
+      "data": {
+        "adapter": "orpc",
+        "path": "posts.list",
+        "router": "apps/api/src/router.ts#router",
+        "handler": "inline",
+        "input": false,
+        "output": false,
+        "middleware": [],
+        "file": "apps/api/src/router.ts",
+        "line": 6
+      }
+    },
+    {
       "id": "route:@acme/web:/",
       "kind": "route",
       "ws": "ws:@acme/web",
@@ -2033,6 +2124,48 @@
         ],
         "root": true,
         "component": "RootLayout"
+      }
+    },
+    {
+      "id": "table:posts",
+      "kind": "table",
+      "ws": "ws:@acme/db",
+      "label": "posts",
+      "fileId": "file:packages/db/src/schema.ts",
+      "data": {
+        "adapter": "drizzle",
+        "name": "posts",
+        "exportName": "posts",
+        "symbol": "sym:packages/db/src/schema.ts#posts",
+        "dialect": "sqlite",
+        "columns": [
+          "id",
+          "title",
+          "authorId",
+          "createdAt"
+        ],
+        "file": "packages/db/src/schema.ts",
+        "line": 8
+      }
+    },
+    {
+      "id": "table:users",
+      "kind": "table",
+      "ws": "ws:@acme/db",
+      "label": "users",
+      "fileId": "file:packages/db/src/schema.ts",
+      "data": {
+        "adapter": "drizzle",
+        "name": "users",
+        "exportName": "users",
+        "symbol": "sym:packages/db/src/schema.ts#users",
+        "dialect": "sqlite",
+        "columns": [
+          "id",
+          "name"
+        ],
+        "file": "packages/db/src/schema.ts",
+        "line": 3
       }
     }
   ]
