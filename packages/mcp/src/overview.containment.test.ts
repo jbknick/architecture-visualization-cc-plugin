@@ -68,6 +68,11 @@ describe("overview containment (#35)", () => {
       ["gantry_node", { target: wsId }],
       ...ids.map((id): [string, Record<string, unknown>] => ["gantry_impact", { symbol: id }]),
       ...files.map((f): [string, Record<string, unknown>] => ["gantry_impact", { paths: [f] }]),
+      ...ids.map((id): [string, Record<string, unknown>] => ["gantry_trace", { target: id }]),
+      ...files.map((f): [string, Record<string, unknown>] => [
+        "gantry_trace",
+        { target: f, direction: "up" },
+      ]),
       ["gantry_open_view", { view: "nope" }],
       [
         "gantry_submit_descriptions",

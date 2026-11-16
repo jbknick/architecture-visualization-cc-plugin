@@ -240,7 +240,8 @@ describe("adapters on fixtures/adapters", () => {
   });
 
   it("links a route loader (and a beforeLoad function) to the server function it calls", () => {
-    const req = g.edges.filter((e) => e.kind === "requests");
+    // From routes; requests from code (client calls) are tested in clients.test.ts.
+    const req = g.edges.filter((e) => e.kind === "requests" && e.src.startsWith("route:"));
     expect(req.map((e) => [e.src, e.dst, e.confidence, e.fileId])).toEqual([
       ["route:@demo/web:/", "ep:@demo/web:fn countPosts", "high", "file:apps/web/src/routes/index.tsx"],
       [
@@ -265,7 +266,9 @@ describe("adapters on fixtures/adapters", () => {
     expect(rpc.map((n) => n.id)).toEqual([
       "ep:@demo/api:rpc admin.purgePost",
       "ep:@demo/api:rpc health",
+      "ep:@demo/api:rpc posts.authors",
       "ep:@demo/api:rpc posts.create",
+      "ep:@demo/api:rpc posts.get",
       "ep:@demo/api:rpc posts.list",
       "ep:@demo/api:rpc posts.remove",
       "ep:@demo/api:rpc stats.summary",
@@ -280,8 +283,15 @@ describe("adapters on fixtures/adapters", () => {
         input: false,
       },
     });
-    expect(node(g, "ep:@demo/api:rpc posts.create")?.data).toMatchObject({ input: true, handler: "inline" });
+    expect(node(g, "ep:@demo/api:rpc posts.create")?.data).toMatchObject({
+      input: true,
+      handler: "inline",
+      handlerSpan: { start: 15, end: 15 },
+    });
     expect(node(g, "ep:@demo/api:rpc posts.remove")?.data).toMatchObject({ handler: "removePost" });
+    // A named handler is its own symbol: no span. A multi-line inline handler spans its lines.
+    expect(node(g, "ep:@demo/api:rpc posts.remove")?.data.handlerSpan).toBeUndefined();
+    expect(node(g, "ep:@demo/api:rpc users.rename")?.data.handlerSpan).toEqual({ start: 8, end: 11 });
   });
 
   it("links procedure handlers to the code holding them", () => {
@@ -358,7 +368,9 @@ describe("adapters on fixtures/adapters", () => {
       .map((n) => n.id)
       .sort();
     expect(ids).toEqual([
+      "ep:@demo/api:rpc articles.authors",
       "ep:@demo/api:rpc articles.create",
+      "ep:@demo/api:rpc articles.get",
       "ep:@demo/api:rpc articles.list",
       "ep:@demo/api:rpc articles.remove",
     ]);

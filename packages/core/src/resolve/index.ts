@@ -107,7 +107,14 @@ function sortEdges(edges: EdgeRecord[]): EdgeRecord[] {
   return edges.sort((a, b) => cmp(a.src, b.src) || cmp(a.dst, b.dst) || cmp(a.kind, b.kind));
 }
 
-/** Accumulates edges by (src, dst, kind): sums counts, keeps up to 3 evidence strings, `high` wins. */
+/**
+ * Evidence strings (`path:line`) kept per edge. It was 3 until #47; `trace` follows only the edges of an inline
+ * handler whose evidence lies inside the handler's lines, and a router const often calls one helper from many
+ * handlers, so 3 lines were too few to tell which handler a call belongs to.
+ */
+export const EVIDENCE_CAP = 20;
+
+/** Accumulates edges by (src, dst, kind): sums counts, keeps up to EVIDENCE_CAP evidence strings, `high` wins. */
 class EdgeBuilder {
   private readonly map = new Map<string, EdgeRecord>();
   constructor(private readonly fileId: string) {}
@@ -128,7 +135,7 @@ class EdgeBuilder {
     }
     e.count += count;
     if (confidence === "high") e.confidence = "high";
-    if (evidence !== undefined && e.evidence.length < 3 && !e.evidence.includes(evidence)) {
+    if (evidence !== undefined && e.evidence.length < EVIDENCE_CAP && !e.evidence.includes(evidence)) {
       e.evidence.push(evidence);
     }
   }

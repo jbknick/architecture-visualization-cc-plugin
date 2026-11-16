@@ -22,7 +22,7 @@ import type { AdapterNodeRecord, EdgeRecord, WorkspaceRecord } from "../types.js
  * (src, dst, kind) edges keep the first one in that order, so runs are deterministic.
  */
 
-export type AdapterNodeKind = "route" | "endpoint" | "middleware" | "table" | "procedure";
+export type AdapterNodeKind = "route" | "endpoint" | "middleware" | "table" | "procedure" | "client_call";
 
 export interface AdapterNode extends AdapterNodeRecord {
   kind: AdapterNodeKind;
@@ -224,6 +224,14 @@ export function lineOf(source: string, offset: number): number {
   let line = 1;
   for (let i = 0; i < offset && i < source.length; i++) if (source.charCodeAt(i) === 10) line++;
   return line;
+}
+
+/** First and last line (1-based) of a node: the span of an inline handler (`data.handlerSpan` on endpoints). */
+export function spanOf(source: string, n: Node): { start: number; end: number } {
+  const start = lineOf(source, n.start);
+  let end = start;
+  for (let i = n.start; i < n.end - 1 && i < source.length; i++) if (source.charCodeAt(i) === 10) end++;
+  return { start, end };
 }
 
 const edgeKeyOf = (e: EdgeRecord): string => `${e.src}\0${e.dst}\0${e.kind}`;

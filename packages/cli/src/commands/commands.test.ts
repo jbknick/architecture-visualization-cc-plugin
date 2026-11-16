@@ -86,7 +86,7 @@ function run(cwd: string, args: string[], extraEnv: Record<string, string> = {})
   return { code: r.status, out: r.stdout, err: r.stderr };
 }
 
-async function fixture(name: "single-pkg" | "pnpm-turbo" | "nx") {
+async function fixture(name: "single-pkg" | "pnpm-turbo" | "nx" | "adapters") {
   const fx = await materializeFixture(name);
   fixtures.push(fx);
   return fx;
@@ -565,7 +565,7 @@ describe("gantry search / node", () => {
     expect(JSON.parse(r.out)[0]).toMatchObject({ name: "brandNewThing" });
   });
 
-  it.each([["search", "x"], ["node", "x"], ["usage"], ["config", "get", "precommit.mode"]])(
+  it.each([["search", "x"], ["node", "x"], ["trace", "x"], ["usage"], ["config", "get", "precommit.mode"]])(
     "%s exits 2 outside a git repository",
     (...args) => {
       const dir = mkdtempSync(join(tmpdir(), "gantry-nogit-"));
@@ -578,6 +578,37 @@ describe("gantry search / node", () => {
       }
     },
   );
+});
+
+describe("gantry trace", () => {
+  it("traces a page down to its endpoints and tables, and a table up to its pages, as text and JSON", async () => {
+    const fx = await fixture("adapters");
+    const down = run(fx.dir, ["trace", "route:@demo/web:/posts/$postId", "--json"]);
+    expect(down.code).toBe(0);
+    const d = JSON.parse(down.out);
+    expect(d).toMatchObject({
+      target: "route:@demo/web:/posts/$postId",
+      direction: "down",
+      truncated: false,
+    });
+    const ids = d.chain.map((s: { id: string }) => s.id);
+    expect(ids).toContain("ep:@demo/api:rpc posts.get");
+    expect(ids).toContain("table:posts");
+
+    const text = run(fx.dir, ["trace", "/posts/$postId"]);
+    expect(text.code).toBe(0);
+    expect(text.out.split("\n")[0]).toBe("Down from route:@demo/web:/posts/$postId");
+    expect(text.out).toContain("requests → endpoint ep:@demo/api:rpc posts.get");
+    expect(text.out).toContain("(low confidence)");
+    expect(text.out).toContain('unmatched client call "rpc posts.archive"');
+
+    const up = JSON.parse(run(fx.dir, ["trace", "table:posts", "--json"]).out);
+    expect(up.direction).toBe("up");
+    expect(
+      up.chain.filter((s: { kind: string }) => s.kind === "route").map((s: { id: string }) => s.id),
+    ).toEqual(["route:@demo/web:/posts/$postId"]);
+    expect(run(fx.dir, ["trace", "no-such-thing"]).code).toBe(1);
+  });
 });
 
 describe("gantry usage", () => {

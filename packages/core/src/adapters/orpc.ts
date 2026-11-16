@@ -11,6 +11,7 @@ import {
   hasDependency,
   IdAllocator,
   lineOf,
+  spanOf,
   stringValue,
   symbolForName,
   wsName,
@@ -53,6 +54,8 @@ interface ProcFact {
   root: Key | null;
   handler: string;
   handlerSymbol: string | null;
+  /** Lines of an inline handler (`handles` then points at the code that encloses it, siblings included). */
+  handlerSpan?: { start: number; end: number };
   input: boolean;
   output: boolean;
   middleware: string[];
@@ -220,9 +223,12 @@ class FileReader {
     const h = handlerCall.args[handlerCall.args.length - 1];
     const handler = label(h);
     let handlerSymbol: string | null = null;
+    let handlerSpan: ProcFact["handlerSpan"];
     const hn = unwrap(h);
-    if (isFn(hn)) handlerSymbol = enclosingSymbol(this.ctx.parsed, this.ctx.fileId, hn.start);
-    else if (isNode(hn) && hn.type === "Identifier") {
+    if (isFn(hn)) {
+      handlerSymbol = enclosingSymbol(this.ctx.parsed, this.ctx.fileId, hn.start);
+      handlerSpan = spanOf(this.ctx.source, hn);
+    } else if (isNode(hn) && hn.type === "Identifier") {
       handlerSymbol = symbolForName(this.ctx.parsed, this.ctx.fileId, hn.name as string, this.ctx.resolver);
     }
     const middleware: string[] = [];
@@ -247,6 +253,7 @@ class FileReader {
       root,
       handler,
       handlerSymbol,
+      ...(handlerSpan ? { handlerSpan } : {}),
       input: calls.some((c) => c.name === "input"),
       output: calls.some((c) => c.name === "output"),
       middleware,
@@ -551,6 +558,7 @@ export const orpcAdapter: Adapter<OrpcFacts> = {
             path: dotted,
             router: def.key,
             handler: p.handler,
+            ...(p.handlerSpan ? { handlerSpan: p.handlerSpan } : {}),
             input: p.input,
             output: p.output,
             middleware: p.middleware,
