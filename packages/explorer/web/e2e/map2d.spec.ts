@@ -141,10 +141,9 @@ test("large scenario, files level: 'Top files in' restricts the ranking to one w
   await expect(rows).toHaveCount(15);
   const where = await rows.locator(".largest-where").allTextContents();
   for (const w of where) expect(w.trim().startsWith("web")).toBe(true);
-  const { markers } = await probe(page);
-  expect(markers.map((m) => m.id)).toEqual(
-    await rows.evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.file ?? "")),
-  );
+  const listed = await rows.evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.file ?? ""));
+  // The canvas redraws its markers a moment after the list changes: wait for them instead of reading once.
+  await expect.poll(async () => (await probe(page)).markers.map((m) => m.id)).toEqual(listed);
 });
 
 /** Zooms the camera to a node by id (the canvas listens for `gantry:zoom-to`) and waits for the animation. */
@@ -212,6 +211,8 @@ test("large scenario: the whole diagram fits the canvas and every workspace titl
     await openLarge(page, level);
     const box = await surface(page).boundingBox();
     if (!box) throw new Error("no canvas");
+    // Wait for the layout to publish all 11 workspace boxes instead of reading the probe once.
+    await expect.poll(async () => (await probe(page)).regions.length).toBe(11);
     const p = await probe(page);
     expect(p.regions).toHaveLength(11);
     for (const r of p.regions) {

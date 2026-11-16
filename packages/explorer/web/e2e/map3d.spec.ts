@@ -382,11 +382,9 @@ test("3D map, large scenario, files level: 'Top files in' restricts the ranking 
   await expect(rows).toHaveCount(15);
   for (const w of await rows.locator(".largest-where").allTextContents())
     expect(w.trim().startsWith("core")).toBe(true);
-  await page.waitForTimeout(400);
-  const { ranks } = await rankProbe(page);
-  expect(ranks.map((m) => m.id)).toEqual(
-    await rows.evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.file ?? "")),
-  );
+  const listed = await rows.evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.file ?? ""));
+  // The overlay re-projects its markers a moment after the list changes: wait for them instead of reading once.
+  await expect.poll(async () => (await rankProbe(page)).ranks.map((m) => m.id)).toEqual(listed);
 });
 
 test("3D map, large scenario: the workspace list fits at 900px, 'How to read it' collapses and scrolling still works", async ({
