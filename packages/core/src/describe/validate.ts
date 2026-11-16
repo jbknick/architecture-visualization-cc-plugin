@@ -4,6 +4,7 @@
 // secret or an injected instruction) is never put into a detail string, and ungrounded tokens are echoed shortened.
 
 import type { Description, FactSheet } from "../types.js";
+import { gateCue } from "./clauses.js";
 import { scanInjection } from "./filters.js";
 import {
   describeUngrounded,
@@ -14,6 +15,7 @@ import {
   splitIdentifierWords,
   ungroundedTokens,
 } from "./identifiers.js";
+import { ADDRESSEES_AI, ADDRESSEES_HUMAN, isActionVerb, SPEECH_VERBS } from "./lexicon.js";
 import {
   DescriptionShapeSchema,
   HARD_MAX_BEHAVIOR_CHARS,
@@ -26,7 +28,7 @@ import {
   MIN_TERMS,
 } from "./schema.js";
 import { scanSecrets } from "./secrets.js";
-import { addressingHits, hasDisallowedCharacters, shapeProblem } from "./shape.js";
+import { addressingHits, hasDisallowedCharacters, hasImperativeClause, shapeProblem } from "./shape.js";
 import { sensitivePhrases, speechProblem, wordsOf } from "./speech.js";
 import { tokenize, wordCount } from "./text.js";
 import { isStopWord } from "./wordlist.js";
@@ -129,17 +131,15 @@ const SHELL_NOUNS = new Set(
   ),
 );
 
-function judgeTerm(term: string, g: Grounding): TermVerdict {
-  if (hasDisallowedCharacters(term)) return { ok: false, reason: "shape", detail: "disallowed characters" };
+type Rejection = { ok: false; reason: ValidationFailureReason; detail: string };
+
+/**
+ * The injection and secret rules for one search term, with no shape or grounding gate before them (`judgeTerm` runs
+ * them after its shape checks; `instructionSignal` runs them on every term whatever its shape). Null when none fires.
+ */
+function termInstruction(term: string, g: Grounding): Rejection | null {
   const tokens = tokenize(term);
-  if (tokens.length === 0) return { ok: false, reason: "shape", detail: "empty term" };
-  if (tokens.length > MAX_TERM_WORDS)
-    return {
-      ok: false,
-      weak: true,
-      reason: "shape",
-      detail: `a term must hold 1 to ${MAX_TERM_WORDS} words`,
-    };
+  if (tokens.length === 0) return null;
   const lower = tokens.map((t) => t.toLowerCase());
   if (addressingHits(term).length > 0) return { ok: false, reason: "injection", detail: "addressing words" };
   if (lower.length === 1 && (lower[0] === "disregard" || lower[0] === "forget"))
@@ -154,8 +154,6 @@ function judgeTerm(term: string, g: Grounding): TermVerdict {
   // Two words: only a destructive verb with a protective object ("delete tests"); "skip weekends", "run tests" are search terms.
   if (tokens.length === 2 && DESTRUCTIVE.has(tw[0] as string) && PROTECTIVE.has(tw[1] as string))
     return { ok: false, reason: "injection", detail: "imperative term" };
-  if (lower.every((t) => isStopWord(t)))
-    return { ok: false, reason: "shape", detail: "a term of function words only" };
   // An identifier that spells an instruction ("deleteAllTests") is judged by its words.
   const split = tokens.flatMap((t) => (/[a-z][A-Z]|_/.test(t) ? splitIdentifierWords(t) : [t]));
   if (split.length !== tokens.length) {
@@ -168,6 +166,24 @@ function judgeTerm(term: string, g: Grounding): TermVerdict {
   const f = scanInjection(term);
   if (f.reject.length > 0) return { ok: false, reason: "injection", detail: f.reject.join(", ") };
   if (secretTokens(term, g).length > 0) return { ok: false, reason: "secret", detail: "a credential value" };
+  return null;
+}
+
+function judgeTerm(term: string, g: Grounding): TermVerdict {
+  if (hasDisallowedCharacters(term)) return { ok: false, reason: "shape", detail: "disallowed characters" };
+  const tokens = tokenize(term);
+  if (tokens.length === 0) return { ok: false, reason: "shape", detail: "empty term" };
+  if (tokens.length > MAX_TERM_WORDS)
+    return {
+      ok: false,
+      weak: true,
+      reason: "shape",
+      detail: `a term must hold 1 to ${MAX_TERM_WORDS} words`,
+    };
+  const instruction = termInstruction(term, g);
+  if (instruction !== null) return instruction;
+  if (tokens.map((t) => t.toLowerCase()).every((t) => isStopWord(t)))
+    return { ok: false, reason: "shape", detail: "a term of function words only" };
   const bad = tokens.filter((t) => !isGrounded(t, g));
   if (bad.length > 0) return { ok: false, reason: "identifier", detail: describeUngrounded(bad) };
   return { ok: true };
@@ -198,12 +214,18 @@ function termsTogetherInstruct(terms: readonly string[]): boolean {
 
 function judgeName(name: string, g: Grounding): TermVerdict {
   const words = splitIdentifierWords(name);
-  const lower = words.map((w) => w.toLowerCase());
   const whole = g.names.has(name);
   if (!whole) {
     const bad = words.filter((w) => !isGrounded(w, g));
     if (bad.length > 0) return { ok: false, reason: "identifier", detail: describeUngrounded(bad) };
   }
+  return nameInstruction(name, g) ?? { ok: true };
+}
+
+/** The injection and secret rules for a `suggestedName`, with no grounding gate before them. Null when none fires. */
+function nameInstruction(name: string, g: Grounding): Rejection | null {
+  const words = splitIdentifierWords(name);
+  const lower = words.map((w) => w.toLowerCase());
   if (lower.some((w) => NAME_ADDRESSING.has(w)))
     return { ok: false, reason: "injection", detail: "addressing words" };
   if (sensitivePhrases(lower).some((p) => p.from === 0))
@@ -214,7 +236,7 @@ function judgeName(name: string, g: Grounding): TermVerdict {
   if (f.reject.length > 0) return { ok: false, reason: "injection", detail: f.reject.join(", ") };
   if (secretTokens(words.join(" "), g).length > 0)
     return { ok: false, reason: "secret", detail: "a credential value" };
-  return { ok: true };
+  return null;
 }
 
 export function validateDescription(
@@ -287,6 +309,9 @@ export function validateDescription(
   // across fields), then each search term and the suggested name on their own.
   const b = scanInjection(`${original} ${d.searchTerms.join(" ")}`);
   if (b.reject.length > 0) return fail("injection", `behavior and terms: ${b.reject.join(", ")}`);
+  // Only the host writes the fallback marker (#175): a model that imitates it is claiming a provenance it lacks.
+  if (claimsFallbackMarker([original, ...d.searchTerms, d.suggestedName ?? ""].join(" ")))
+    return fail("injection", "behavior: fallback-marker");
   // Terms joined with no separator: a run of 12+ hex characters holding a digit is a key split across terms.
   if (/(?=[0-9a-f]{0,11}\d)[0-9a-f]{12}/i.test(d.searchTerms.join("").replace(/[^A-Za-z0-9]/g, "")))
     return fail("identifier", "searchTerms together hold a long hexadecimal run");
@@ -331,4 +356,177 @@ export function validateDescription(
   };
   if (d.suggestedName !== undefined) value.suggestedName = d.suggestedName;
   return repairs.length > 0 ? { ok: true, value, repairs } : { ok: true, value };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Extra-attempt gate (#150, hardened in #175). A rejected description earns the bounded extra attempt (and, after it,
+// the fallback) only when it was rejected for wording alone. The validator stops at the first rule that fires and the
+// shape rules run before the secret-token, injection, term and name rules, so the rejection reason alone says nothing
+// about what else the text holds. `instructionSignal` therefore runs the validator's own secret and injection stages on
+// every field, with no shape or grounding gate, plus structural instruction cues of `behavior`.
+
+/** A sentence that claims the host's fallback provenance ("generated without a model" and close variants). */
+const PRODUCED = "(?:generated|written|created|produced|made|built|composed|authored|derived)";
+const PRODUCERS = "(?:models?|llms?|ai|language models?|gantry|host|names only)";
+/**
+ * Sentences about how the description itself was produced (#175 round 2): a production verb, then by, with,
+ * without, from, using, via or through, then a model, Gantry, the host or "names only"; "no model was used"; and
+ * "generated, no model". Only the host may say this, in the fallback marker.
+ */
+const FALLBACK_MARKERS: readonly RegExp[] = [
+  new RegExp(
+    `\\b${PRODUCED}(?: [a-z]+){0,3}? (?:by|with|without|from|using|via|through) (?:[a-z]+ ){0,2}?${PRODUCERS}\\b`,
+  ),
+  /\bno (?:language )?(?:models?|llms?|ai)(?: (?:was|were|is))? (?:used|involved|needed|called)\b/,
+  new RegExp(`\\b${PRODUCED} (?:with )?no (?:models?|llms?|ai)\\b`),
+];
+
+/** True when `text` imitates the fallback marker; checked on NFKC-folded words, so punctuation and case do not hide it. */
+export function claimsFallbackMarker(text: string): boolean {
+  const t = text
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ");
+  return FALLBACK_MARKERS.some((re) => re.test(t));
+}
+
+/** Shape problems that are instruction cues, never wording slips: a rejection for one of them earns no extra attempt. */
+export const NON_EXTENDABLE_SHAPE: ReadonlySet<string> = new Set([
+  "multiple-sentences",
+  "label",
+  "spaced-letters",
+  "addressing",
+  "imperative-clause",
+]);
+
+const ADDRESSEES: ReadonlySet<string> = new Set([...ADDRESSEES_AI, ...ADDRESSEES_HUMAN]);
+
+/** Structural instruction cues of a `behavior`, whatever rule rejected it first. */
+function behaviorInstructs(behavior: string): boolean {
+  const text = behavior.trim();
+  const body = text.endsWith(".") ? text.slice(0, -1) : text;
+  if (/\.(?:\s|\.|$)/.test(body) || /[!?\n\r]/.test(text)) return true;
+  if (/(?:^|[.;:,(]\s*)[A-Za-z]+(?:\s+[A-Za-z]+)?\s*:/.test(body)) return true;
+  if (/(?:^|\s)[A-Za-z](?:\s+[A-Za-z]){2}(?:\s|$)/.test(body)) return true;
+  if (hasImperativeClause(body)) return true;
+  // The broad gate cues (#175 final round): a base-form or unknown word at any clause start, modals, approval,
+  // status and provenance words, markup or non-ASCII characters, addressees and claims.
+  if (gateCue(body, { behavior: true })) return true;
+  // The first clause and each clause after a hard boundary: an addressee or a bare action verb at its start.
+  const clauses = body.split(/[;:]\s*|,\s+/);
+  for (let i = 0; i < clauses.length; i++) {
+    const first = wordsOf(clauses[i] as string)[0] ?? "";
+    if (first === "") continue;
+    if (ADDRESSEES.has(first) || SPEECH_VERBS.has(first)) return true;
+    if (isActionVerb(first)) return true;
+  }
+  return false;
+}
+
+/** Upper bounds for reading a submission of any shape: strings, total characters and nesting depth. */
+const SUBMITTED_MAX_STRINGS = 64;
+const SUBMITTED_MAX_CHARS = 4000;
+const SUBMITTED_MAX_DEPTH = 6;
+
+/**
+ * Every string of a submission, NFKC-folded and capped: those under a `behavior` key (at any depth, inside arrays or
+ * objects) and all others (search terms, names, unknown keys, array items, object keys). A bare string counts as a
+ * behavior. Bounded by count, size and depth.
+ */
+export function submittedStrings(raw: unknown): { behaviors: string[]; others: string[] } {
+  const behaviors: string[] = [];
+  const others: string[] = [];
+  let chars = 0;
+  const add = (s: string, isBehavior: boolean) => {
+    if (behaviors.length + others.length >= SUBMITTED_MAX_STRINGS || chars >= SUBMITTED_MAX_CHARS) return;
+    const t = s.slice(0, Math.min(HARD_MAX_BEHAVIOR_CHARS, SUBMITTED_MAX_CHARS - chars)).normalize("NFKC");
+    chars += t.length;
+    if (t.trim() !== "") (isBehavior ? behaviors : others).push(t);
+  };
+  const walk = (v: unknown, isBehavior: boolean, depth: number) => {
+    if (depth > SUBMITTED_MAX_DEPTH) return;
+    if (typeof v === "string") add(v, isBehavior);
+    else if (typeof v === "number" || typeof v === "boolean") return;
+    else if (Array.isArray(v))
+      for (const x of v.slice(0, SUBMITTED_MAX_STRINGS)) walk(x, isBehavior, depth + 1);
+    else if (v !== null && typeof v === "object")
+      for (const [k, x] of Object.entries(v as Record<string, unknown>).slice(0, SUBMITTED_MAX_STRINGS)) {
+        if (k !== "behavior" && k !== "searchTerms" && k !== "suggestedName" && k !== "nameFits")
+          add(k, false);
+        walk(x, isBehavior || k === "behavior", depth + 1);
+      }
+  };
+  walk(raw, typeof raw === "string", 0);
+  return { behaviors, others };
+}
+
+/**
+ * True when a description holds anything injection-like or secret-like, judged by the validator's own secret and
+ * injection rules run on every field alone and on all fields together, without the shape gate: credential formats,
+ * credential values copied from the code (whole or as a 6+ character piece), the injection filter, speech acts,
+ * addressing words, the fallback marker, imperative clauses and other instruction cues of `behavior`, the term rules
+ * (directives, commands, imperative terms and identifiers, terms that instruct together) and the name rules. Reads
+ * only strings, each capped like the validator's hard caps.
+ */
+export function instructionSignal(raw: unknown, sheet: FactSheet): boolean {
+  if (raw === null || raw === undefined) return false;
+  // Every submitted value counts, whatever its type or position (#175 round 2): a non-string behavior or a seventh
+  // search term is rejected for schema or length, but its text must still taint the rejection.
+  const { behaviors, others } = submittedStrings(raw);
+  const behavior = behaviors.join(" ");
+  const terms = others;
+  const fields = [behavior, ...terms].filter((s) => s.trim() !== "");
+  if (fields.length === 0) return false;
+  const joined = fields.join(" ");
+  if (scanSecrets(joined).length > 0) return true;
+  const g = groundingNames(sheet);
+  const secretWords = [...g.secretWords];
+  for (const f of fields) {
+    if (secretTokens(f, g).length > 0) return true;
+    for (const t of tokenize(f)) {
+      const low = t.toLowerCase();
+      if (low.length >= 6 && secretWords.some((s) => s.includes(low))) return true;
+    }
+  }
+  // All fields together (an instruction split across fields); each field on its own is covered by the behavior, term
+  // and name rules below, which include the injection filter, speech acts and addressing words.
+  if (scanInjection(joined).reject.length > 0 || speechProblem(joined) !== null) return true;
+  if (addressingHits(joined).length > 0 || claimsFallbackMarker(joined)) return true;
+  if (behavior.trim() !== "" && (speechProblem(behavior) !== null || behaviorInstructs(behavior)))
+    return true;
+  // Every behavior string on its own, then every other string by the term rules, the name rules and the gate cues.
+  for (const b of behaviors) if (behaviorInstructs(b)) return true;
+  for (const t of terms) if (termInstruction(t, g) !== null || nameInstruction(t, g) !== null) return true;
+  // Identifiers are judged by their words too ("waiveReview" -> "waive review").
+  for (const t of terms)
+    if (gateCue(t, { behavior: false }) || gateCue(splitIdentifierWords(t).join(" "), { behavior: false }))
+      return true;
+  if (terms.length > 0 && termsTogetherInstruct(terms)) return true;
+  return false;
+}
+
+/**
+ * Whether a rejection is tainted (#175): the rejected description carries an `instructionSignal`, its reason is
+ * `injection` or `secret`, or it is a shape rejection of one of `NON_EXTENDABLE_SHAPE`. A tainted rejection never earns
+ * the extra attempt, and it rules the extra attempt out for the rejection after it.
+ */
+export function rejectionTainted(
+  v: { reason: ValidationFailureReason; detail: string },
+  raw: unknown,
+  sheet: FactSheet,
+): boolean {
+  // Injection and secret always; schema and length too, since the validator then never read the rest (#175 round 2).
+  if (v.reason !== "shape" && v.reason !== "identifier") return true;
+  if (v.reason === "shape" && [...NON_EXTENDABLE_SHAPE].some((code) => v.detail.includes(code))) return true;
+  return instructionSignal(raw, sheet);
+}
+
+/** Whether a rejection may earn the bounded extra attempt (#150, #175): `shape` or `identifier`, and not tainted. */
+export function extendableRejection(
+  v: { reason: ValidationFailureReason; detail: string },
+  raw: unknown,
+  sheet: FactSheet,
+): boolean {
+  if (v.reason !== "shape" && v.reason !== "identifier") return false;
+  return !rejectionTainted(v, raw, sheet);
 }

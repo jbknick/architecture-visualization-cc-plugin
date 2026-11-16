@@ -3,7 +3,7 @@
 // runs the describe tests, and reports whether a test failed ("killed") or not ("SURVIVED"). The edited file is
 // restored after every run, also on SIGINT, SIGTERM and SIGHUP. A baseline run must be green first, and a compile error, crash or timeout is reported as ERROR, never as a kill. Part of `pnpm check` since issue #108: a surviving mutation (a rule that no
 // test notices) fails the check. Usage: pnpm exec tsx scripts/describe-mutations.ts
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   closeSync,
@@ -11,6 +11,7 @@ import {
   openSync,
   readFileSync,
   renameSync,
+  statSync,
   unlinkSync,
   writeFileSync,
   writeSync,
@@ -184,27 +185,133 @@ const MUTATIONS: Mutation[] = [
     replace: "    true &&",
   },
   {
-    name: "injection signal never seen",
-    file: "feedback.ts",
-    find: 'return hit(parts.join(" ")) || parts.some(hit);',
-    replace: "return false;",
-  },
-  {
     name: "fallback for any final rejection",
     file: "submit.ts",
     find: "now.failed && now.attempts >= MAX_DESCRIBE_ATTEMPTS_EXTENDED && extendable",
     replace: "now.failed",
   },
   {
-    name: "fallback candidate not validated",
+    name: "fallback sentence not validated",
     file: "fallback.ts",
-    find: "    if (!v.ok) continue;",
+    find: "  if (!v.ok) return null;",
+    replace: "",
+  },
+  // Extra-attempt gate and fallback hardening (#175).
+  {
+    name: "signal: copied credential pieces off",
+    file: "validate.ts",
+    find: "if (low.length >= 6 && secretWords.some((s) => s.includes(low))) return true;",
     replace: "",
   },
   {
-    name: "fallback names not checked spelled out",
-    file: "fallback.ts",
-    find: "if (!check(spelledOut(c), spelledTerms.length > 0 ? spelledTerms : [sym.kind]).ok) continue;",
+    name: "signal: term rules off",
+    file: "validate.ts",
+    find: "for (const t of terms) if (termInstruction(t, g) !== null || nameInstruction(t, g) !== null) return true;",
+    replace: "for (const t of terms) if (nameInstruction(t, g) !== null) return true;",
+  },
+  {
+    name: "non-extendable shape codes ignored",
+    file: "validate.ts",
+    find: 'if (v.reason === "shape" && [...NON_EXTENDABLE_SHAPE].some((code) => v.detail.includes(code))) return true;',
+    replace: "",
+  },
+  {
+    name: "tainted rejection leaves no mark",
+    file: "store.ts",
+    find: "const error = tainted ? `${errorText}${NO_EXTRA_MARK}` : errorText;",
+    replace: "const error = errorText;",
+  },
+  {
+    name: "fallback marker accepted from a model",
+    file: "validate.ts",
+    find: 'if (claimsFallbackMarker([original, ...d.searchTerms, d.suggestedName ?? ""].join(" ")))',
+    replace: "if (false)",
+  },
+  {
+    name: "fallback replaces an existing description",
+    file: "submit.ts",
+    find: "if (storeDescriptions(store, [f.description], { replace: false }) === 0) continue;",
+    replace: "if (storeDescriptions(store, [f.description], { replace: true }) === 0) continue;",
+  },
+  // Clause rule, full-submission gate and fallback names (#175 round 2).
+  {
+    name: "signal reads at most six array items",
+    file: "validate.ts",
+    find: "for (const x of v.slice(0, SUBMITTED_MAX_STRINGS)) walk(x, isBehavior, depth + 1);",
+    replace: "for (const x of v.slice(0, 6)) walk(x, isBehavior, depth + 1);",
+  },
+  {
+    name: "signal skips a non-string behavior",
+    file: "validate.ts",
+    find: 'walk(x, isBehavior || k === "behavior", depth + 1);',
+    replace:
+      'if (typeof x === "string" || k !== "behavior") walk(x, isBehavior || k === "behavior", depth + 1);',
+  },
+  {
+    name: "extra attempt granted by default",
+    file: "store.ts",
+    find: "const extendable = opts.extendable ?? false;",
+    replace: "const extendable = opts.extendable ?? true;",
+  },
+  {
+    name: "failures clean by default",
+    file: "store.ts",
+    find: "const tainted = opts.tainted ?? true;",
+    replace: "const tainted = opts.tainted ?? false;",
+  },
+  {
+    name: "schema, length, injection and secret rejections not tainted",
+    file: "validate.ts",
+    find: 'if (v.reason !== "shape" && v.reason !== "identifier") return true;',
+    replace: "",
+  },
+  {
+    name: "marked failure may still be extended",
+    file: "store.ts",
+    find: 'if ((previousError ?? "").endsWith(NO_EXTRA_MARK)) return MAX_DESCRIBE_ATTEMPTS;',
+    replace: "",
+  },
+  {
+    name: "describer failure counted on an unclaimed row",
+    file: "store.ts",
+    find: "opts.keepClaim ? \"status = 'claimed'\" : \"status <> 'failed'\"",
+    replace: "\"status <> 'failed'\"",
+  },
+  {
+    name: "production claims: only the without-a-model form",
+    file: "validate.ts",
+    find: "/\\bno (?:language )?(?:models?|llms?|ai)(?: (?:was|were|is))? (?:used|involved|needed|called)\\b/,",
+    replace: "",
+  },
+  // Gate cues of the untrusted-text model (#175 final round).
+  {
+    name: "gate: clause starts not read",
+    file: "clauses.ts",
+    find: 'if (first !== undefined && !descriptiveStart(first.split("-").pop() ?? first)) return true;',
+    replace: "",
+  },
+  {
+    name: "gate: status, approval and modal words not read",
+    file: "clauses.ts",
+    find: 'return STATUS_WORD.test(t) || t.split(" ").some((w) => MODALS.has(w));',
+    replace: "return false;",
+  },
+  {
+    name: "gate: markup and non-ASCII not read",
+    file: "clauses.ts",
+    find: 'return /[<>]|[^\\x20-\\x7e]/.test(text.normalize("NFKC"));',
+    replace: "return false;",
+  },
+  {
+    name: "gate: addressees not read",
+    file: "clauses.ts",
+    find: 'return wordsOf(text.normalize("NFKC")).some((w) => ADDRESSEE_SUBJECTS.has(w));',
+    replace: "return false;",
+  },
+  {
+    name: "gate: identifiers not split into words",
+    file: "validate.ts",
+    find: '|| gateCue(splitIdentifierWords(t).join(" "), { behavior: false })',
     replace: "",
   },
 ];
@@ -278,9 +385,32 @@ interface Lock {
   path: string;
   original: string;
   mutatedHash: string;
+  /** Start time and command line of the locking process (from `ps`); absent in locks written by older versions. */
+  start?: string;
+  cmd?: string;
+}
+/** Start time and command line of a process, from `ps` (macOS and Linux); null when it cannot be read. */
+function processIdentity(pid: number): { start: string; cmd: string } | null {
+  const ps = (field: string): string | null => {
+    const r = spawnSync("ps", ["-o", `${field}=`, "-p", String(pid)], {
+      encoding: "utf8",
+      env: { ...process.env, LC_ALL: "C" },
+    });
+    const out = r.status === 0 ? r.stdout.trim() : "";
+    return out === "" ? null : out;
+  };
+  const start = ps("lstart");
+  const cmd = ps("command");
+  return start === null || cmd === null ? null : { start, cmd };
 }
 const sha256 = (text: string): string => createHash("sha256").update(text).digest("hex");
-const NO_MUTATION: Lock = { pid: process.pid, path: "", original: "", mutatedHash: "" };
+const NO_MUTATION: Lock = {
+  pid: process.pid,
+  path: "",
+  original: "",
+  mutatedHash: "",
+  ...processIdentity(process.pid),
+};
 let held = false;
 let current: { path: string; original: string } | null = null;
 
@@ -328,6 +458,16 @@ const isAlive = (pid: number): boolean => {
     return (e as NodeJS.ErrnoException).code === "EPERM";
   }
 };
+/**
+ * Whether the run that wrote the lock is still going: its pid is alive and, when the lock recorded them, the process
+ * has the same start time and command line (a reused pid has neither). If `ps` cannot be read, an alive pid counts.
+ */
+function lockHolderAlive(lock: Lock): boolean {
+  if (!isAlive(lock.pid)) return false;
+  if (lock.start === undefined || lock.cmd === undefined) return true;
+  const now = processIdentity(lock.pid);
+  return now === null || (now.start === lock.start && now.cmd === lock.cmd);
+}
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** Reads a lock another run created; it may be empty for an instant between its create and its first write. */
@@ -344,14 +484,30 @@ async function readLock(file: string): Promise<Lock | null> {
   return null;
 }
 
+const takeoverFile = `${lockFile}.takeover`;
+/** Restores the file named by a dead run's lock, only if it still holds exactly the mutated text. */
+function recoverFrom(lock: Lock): void {
+  if (lock.path === "") return;
+  if (existsSync(lock.path) && sha256(readFileSync(lock.path, "utf8")) === lock.mutatedHash) {
+    writeFileSync(lock.path, lock.original);
+    console.log(`restored ${lock.path} from an interrupted run`);
+  } else {
+    console.log(
+      `warning: left ${lock.path} alone (an interrupted run's lock, but the file has changed since)`,
+    );
+  }
+}
+
 /**
- * Takes the lock before anything else, with an exclusive create, and holds it for the whole run. A lock whose process is
- * alive means another run is in progress (exit 3, nothing touched). A dead process's lock is first renamed away (only
- * one contender wins the rename), then its file is restored only if it still holds exactly the mutated text; a file
- * with newer edits is left alone with a warning. SIGKILL cannot be caught, which is why the lock carries the original.
+ * Takes the lock before anything else, with an exclusive create, and holds it for the whole run. A lock whose process
+ * is alive (same pid, start time and command line) means another run is in progress (exit 3, nothing touched). A dead
+ * run's lock is taken over under a second exclusive-create file (the takeover mutex): only its holder may judge the lock
+ * stale, rename it away and restore the file, and it re-reads the lock under the mutex, so a lock another run created
+ * in the meantime is never stolen. The file is restored only if it still holds exactly the mutated text; a file with
+ * newer edits is left alone with a warning. SIGKILL cannot be caught, which is why the lock carries the original.
  */
 async function acquireLock(): Promise<void> {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 30; attempt++) {
     try {
       const fd = openSync(lockFile, "wx", 0o600);
       writeSync(fd, JSON.stringify(NO_MUTATION));
@@ -362,31 +518,47 @@ async function acquireLock(): Promise<void> {
       if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
     }
     const lock = await readLock(lockFile);
-    if (lock !== null && isAlive(lock.pid)) {
+    if (lock !== null && lockHolderAlive(lock)) {
       console.log(
-        `another mutation run (pid ${lock.pid}) is in progress; wait for it to finish and run again`,
+        `another mutation run (pid ${lock.pid}) is in progress; wait for it to finish and run again, or delete ${lockFile} if no such run exists`,
       );
       process.exit(LOCKED_EXIT);
     }
-    const stale = `${lockFile}.stale.${process.pid}`;
+    let mutex: number;
     try {
-      renameSync(lockFile, stale);
-    } catch {
-      continue; // someone else took it over first; look again
+      mutex = openSync(takeoverFile, "wx", 0o600);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+      try {
+        // a mutex left behind by a run killed mid-takeover
+        if (Date.now() - statSync(takeoverFile).mtimeMs > 60_000) unlinkSync(takeoverFile);
+      } catch {
+        // gone already
+      }
+      await sleep(100);
+      continue;
     }
-    if (lock !== null && lock.path !== "") {
-      if (existsSync(lock.path) && sha256(readFileSync(lock.path, "utf8")) === lock.mutatedHash) {
-        writeFileSync(lock.path, lock.original);
-        console.log(`restored ${lock.path} from an interrupted run`);
-      } else {
-        console.log(
-          `warning: left ${lock.path} alone (an interrupted run's lock, but the file has changed since)`,
-        );
+    try {
+      const again = await readLock(lockFile);
+      if (again !== null && lockHolderAlive(again)) continue; // a fresh live lock appeared; look again
+      const stale = `${lockFile}.stale.${process.pid}`;
+      try {
+        renameSync(lockFile, stale);
+      } catch {
+        continue; // already gone; try the exclusive create again
+      }
+      if (again !== null) recoverFrom(again);
+      unlinkSync(stale);
+    } finally {
+      closeSync(mutex);
+      try {
+        unlinkSync(takeoverFile);
+      } catch {
+        // already gone
       }
     }
-    unlinkSync(stale);
   }
-  console.log("could not take the mutation lock; run again");
+  console.log(`could not take the mutation lock ${lockFile}; run again`);
   process.exit(LOCKED_EXIT);
 }
 
@@ -414,7 +586,7 @@ for (const m of run) {
   }
   current = { path, original };
   const mutated = original.replace(m.find, m.replace);
-  const lock: Lock = { pid: process.pid, path, original, mutatedHash: sha256(mutated) };
+  const lock: Lock = { ...NO_MUTATION, path, original, mutatedHash: sha256(mutated) };
   writeLock(lock);
   writeFileSync(path, mutated);
   let outcome: Outcome;

@@ -412,7 +412,11 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
               <h3>Description</h3>
               {current.untrusted_description ? (
                 <div className="description">
-                  <p className="description-label">Generated description — may be wrong</p>
+                  <p className="description-label">
+                    {current.described_by === "fallback"
+                      ? "Written without a model from names only — may be incomplete"
+                      : "Generated description — may be wrong"}
+                  </p>
                   {/* Plain text only. The string is untrusted and is never parsed as HTML. */}
                   <p className="description-text">{current.untrusted_description}</p>
                 </div>

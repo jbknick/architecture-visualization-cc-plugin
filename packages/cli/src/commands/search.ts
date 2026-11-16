@@ -1,4 +1,4 @@
-import { cachedEmbedder, hybridSearch, type SymbolKind } from "@gantry/core";
+import { cachedEmbedder, describedByOf, hybridSearch, type SymbolKind } from "@gantry/core";
 import type { Command } from "commander";
 import { openFresh, table } from "./lookup.js";
 import { EXIT_OK, fail, writeStdout } from "./shared.js";
@@ -40,7 +40,15 @@ export function registerSearch(program: Command): void {
             limit,
             ...(embedder ? { embedder } : {}),
           });
-          if (opts.json) writeStdout(`${JSON.stringify(hits, null, 2)}\n`);
+          // Description text is untrusted (spec section 8): it leaves only as untrusted_description, with its provenance.
+          const json = hits.map(({ description, ...h }) => ({
+            ...h,
+            untrusted_description: description,
+            ...(description !== null
+              ? { described_by: describedByOf(store, store.getSymbol(h.id)) ?? undefined }
+              : {}),
+          }));
+          if (opts.json) writeStdout(`${JSON.stringify(json, null, 2)}\n`);
           else if (hits.length === 0) writeStdout("No matches\n");
           else {
             writeStdout(

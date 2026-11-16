@@ -18,12 +18,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   ExplorerAlreadyRunning,
   ExplorerUnresponsive,
+  ensureExplorer,
   findRunningExplorer,
   startExplorerServer,
   startOrReuseExplorer,
   stateFilePath,
 } from "./index.js";
-import { lockFilePath } from "./state.js";
+import { acquireLock, LOCK_STALE_MS, lockFilePath } from "./state.js";
 
 let tmp: string;
 let paths: GantryPaths;
@@ -177,5 +178,65 @@ describe("reused pids", () => {
     if (r.server) open.push(r.server);
     expect(r.reused).toBe(false);
     expect(existsSync(lockFilePath(paths))).toBe(false);
+  });
+});
+
+describe("hard bound and lock wait (#123)", () => {
+  it("ensureExplorer returns within its timeout when the explorer accepts connections but never answers", async () => {
+    const port = await silentPort();
+    writeFileSync(
+      stateFilePath(paths),
+      JSON.stringify({ port, token: "x", pid: process.pid, startedAt: "" }),
+    );
+    const t0 = Date.now();
+    const r = await ensureExplorer({ paths, cli: undefined, env: {}, timeoutMs: 300 });
+    expect(Date.now() - t0).toBeLessThan(1500); // the probe alone would take 2 s
+    expect(r.ok).toBe(false);
+    expect(existsSync(stateFilePath(paths))).toBe(true); // nothing deleted
+  });
+
+  it("waits out a lock that is about to turn stale instead of failing early", async () => {
+    writeFileSync(lockFilePath(paths), String(process.pid));
+    const aged = new Date(Date.now() - (LOCK_STALE_MS - 600));
+    utimesSync(lockFilePath(paths), aged, aged);
+    const release = await acquireLock(paths); // default wait must exceed the staleness age
+    release();
+    expect(existsSync(lockFilePath(paths))).toBe(false);
+  });
+
+  it("names the lock's age when it gives up", async () => {
+    writeFileSync(lockFilePath(paths), String(process.pid));
+    await expect(acquireLock(paths, 50)).rejects.toThrow(/held the explorer start lock for \d+ s/);
+  });
+});
+
+describe("idle timeout (#123)", () => {
+  it("closes an idle explorer, removes explorer.json and calls onIdle", async () => {
+    let idle = 0;
+    const s = await startExplorerServer({
+      paths,
+      store,
+      idleTimeoutMs: 150,
+      onIdle: () => {
+        idle++;
+      },
+    });
+    open.push(s);
+    expect(existsSync(stateFilePath(paths))).toBe(true);
+    await new Promise((r) => setTimeout(r, 700));
+    expect(idle).toBe(1);
+    expect(existsSync(stateFilePath(paths))).toBe(false);
+  });
+
+  it("stays up while requests keep arriving", async () => {
+    let idle = 0;
+    const s = await startExplorerServer({ paths, store, idleTimeoutMs: 300, onIdle: () => void idle++ });
+    open.push(s);
+    for (let i = 0; i < 10; i++) {
+      await fetch(`http://127.0.0.1:${s.port}/api/meta`, { headers: { "x-gantry-token": s.token } });
+      await new Promise((r) => setTimeout(r, 80));
+    }
+    expect(idle).toBe(0);
+    expect(existsSync(stateFilePath(paths))).toBe(true);
   });
 });

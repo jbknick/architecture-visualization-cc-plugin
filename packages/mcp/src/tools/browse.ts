@@ -1,13 +1,13 @@
 import path from "node:path";
-import { BrowseTargetError, browse, writeCatalog } from "@gantry/core";
+import { BrowseTargetError, browse, describedByOf, writeCatalog } from "@gantry/core";
 import { z } from "zod";
 import { defineTool } from "../tool.js";
-import { untrustedField } from "../untrusted.js";
+import { describedByField, untrustedField } from "../untrusted.js";
 
 export const browseTool = defineTool({
   name: "gantry_browse",
   description:
-    "Lists what is one level below a workspace id (ws:...), a directory path or a file path: {items: [{id, name, kind, exported, path, line, count, untrusted_description}], catalog_path}. " +
+    "Lists what is one level below a workspace id (ws:...), a directory path or a file path: {items: [{id, name, kind, exported, path, line, count, untrusted_description, described_by?}], catalog_path}; described_by is model, template or fallback (written by Gantry without a model). " +
     "Directories and files come back as items of kind dir and file with the number of functions in them; a file lists its symbols. " +
     "catalog_path is a markdown file on disk with every function of the directory and a one-line description each; Read it when you need more than the 4,000 characters a response can hold.",
   inputSchema: {
@@ -26,7 +26,11 @@ export const browseTool = defineTool({
     try {
       const r = browse(store, target);
       return {
-        items: r.items.map(({ description, ...item }) => ({ ...item, ...untrustedField(description) })),
+        items: r.items.map(({ description, ...item }) => ({
+          ...item,
+          ...untrustedField(description),
+          ...(description !== null ? describedByField(describedByOf(store, store.getSymbol(item.id))) : {}),
+        })),
         catalog_path: path.join(paths.catalogDir, r.catalogPath),
       };
     } catch (err) {

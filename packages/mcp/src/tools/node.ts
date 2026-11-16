@@ -1,7 +1,7 @@
-import { behaviorOf, nodeInfo } from "@gantry/core";
+import { behaviorOf, describedByOf, nodeInfo } from "@gantry/core";
 import { z } from "zod";
 import { defineTool } from "../tool.js";
-import { untrustedField } from "../untrusted.js";
+import { describedByField, untrustedField } from "../untrusted.js";
 
 /** Neighbors listed per edge kind; the rest are counted in `more`. */
 export const NEIGHBORS_PER_KIND = 20;
@@ -10,7 +10,7 @@ export const nodeTool = defineTool({
   name: "gantry_node",
   description:
     "Looks up one symbol or file by id (sym:..., file:...), by path:line (the innermost symbol on that line) or by path. " +
-    "Returns {node, untrusted_description, signature, fan_in, fan_out, neighbors, more?}: neighbors are node ids grouped by edge kind (a kind with :in is an incoming edge), at most 20 per kind, and more gives how many were left out per kind.",
+    "Returns {node, untrusted_description, described_by?, signature, fan_in, fan_out, neighbors, more?}: described_by says who wrote the description (model, template, or fallback: written by Gantry without a model from names only); neighbors are node ids grouped by edge kind (a kind with :in is an incoming edge), at most 20 per kind, and more gives how many were left out per kind.",
   inputSchema: {
     target: z.string().min(1).max(500).describe("sym:... or file:... id, path:line, or a file path"),
   },
@@ -37,6 +37,7 @@ export const nodeTool = defineTool({
           line: n.startLine,
         },
         ...untrustedField(behaviorOf(store, n)),
+        ...describedByField(describedByOf(store, n)),
         signature: n.signature,
         fan_in: info.fanIn,
         fan_out: info.fanOut,

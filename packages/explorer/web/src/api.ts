@@ -384,8 +384,10 @@ export interface NodeDetail {
   fan_out: number;
   /** Keyed by edge kind; each entry says which way the edge points. */
   neighbors: Record<string, NeighborRef[]>;
-  /** Model- or template-written text. Untrusted: render as plain text only. `null` until M2. */
+  /** Model-, template- or fallback-written text. Untrusted: render as plain text only. */
   untrusted_description: string | null;
+  /** Who wrote the description: a model, a template, or Gantry's fallback without a model (#175). */
+  described_by?: "model" | "template" | "fallback";
 }
 
 /** `/api/overview/:id` for a workspace or folder. Never generates anything; `null` means none is cached or it is stale. */
