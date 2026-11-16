@@ -12,8 +12,11 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { contentKey } from "../describe/factsheet.js";
+import { storeDescriptions } from "../describe/store.js";
 import { indexRepo } from "../indexer.js";
 import { type GantryPaths, resolvePaths } from "../paths/index.js";
+import { ftsSearch } from "../search/fts.js";
 import { openStore } from "../store/index.js";
 import { heal, refreshWorking, staleFiles } from "./index.js";
 
@@ -134,6 +137,103 @@ describe("targeted re-index keeps fts_symbols exact (rowid deletes, more than on
     ).toEqual([]);
     expect([...back].sort()).toEqual([...before.rows.map((r) => r.symbol_id)].sort());
   }, 120_000);
+});
+
+describe("a revert restores the search rows of main-layer symbols (#165)", () => {
+  const found = (paths: GantryPaths, q: string): string[] => {
+    const s = openStore(paths.dbPath);
+    try {
+      return ftsSearch(s, q, { descriptions: true }).map((h) => h.id);
+    } finally {
+      s.close();
+    }
+  };
+  const describeEffective = (paths: GantryPaths, id: string, behavior: string, term: string): void => {
+    const s = openStore(paths.dbPath);
+    try {
+      const sym = s.effectiveSymbols().find((x) => x.id === id);
+      if (!sym) throw new Error(`no effective symbol ${id}`);
+      storeDescriptions(s, [
+        {
+          contentKey: contentKey(sym.exactHash),
+          model: null,
+          description: { behavior, searchTerms: [term], nameFits: true, suggestedName: `${term}Name` },
+        },
+      ]);
+    } finally {
+      s.close();
+    }
+  };
+  const revert = async (root: string, paths: GantryPaths): Promise<void> => {
+    execFileSync("git", ["checkout", "--", "."], { cwd: root, stdio: "ignore" });
+    await refreshWorking(paths);
+  };
+
+  it("a renamed function is found by its original name only after the revert", async () => {
+    const { root, paths, file } = await repoOf(2);
+    const id = `sym:${file(0)}#alpha0`;
+    const p = join(root, file(0));
+    writeFileSync(p, readFileSync(p, "utf8").replace("alpha0", "renamedzulu"));
+    await refreshWorking(paths);
+    expect(found(paths, "renamedzulu")).toEqual([`sym:${file(0)}#renamedzulu`]);
+    expect(found(paths, "alpha0")).not.toContain(id);
+
+    await revert(root, paths);
+    expect(found(paths, "alpha0")).toEqual([id]);
+    expect(found(paths, "renamedzulu")).toEqual([]);
+  });
+
+  it("a changed body and description leave the main description in the row after the revert", async () => {
+    const { root, paths, file } = await repoOf(2);
+    const id = `sym:${file(0)}#alpha0`;
+    describeEffective(paths, id, "adds the index to a number", "quuxmain");
+    expect(found(paths, "quuxmain")).toEqual([id]);
+
+    const p = join(root, file(0));
+    writeFileSync(p, readFileSync(p, "utf8").replace("return x + 0;", "return x * 7;"));
+    await refreshWorking(paths);
+    describeEffective(paths, id, "multiplies a number by seven", "zebrawork");
+    expect(found(paths, "zebrawork")).toEqual([id]);
+
+    await revert(root, paths);
+    expect(found(paths, "zebrawork")).toEqual([]);
+    expect(found(paths, "quuxmain")).toEqual([id]);
+    expect(found(paths, "alpha0")).toEqual([id]);
+  });
+});
+
+describe("a revert clears working description text from main symbols that have no description (#165)", () => {
+  it("search no longer finds the working description terms", async () => {
+    const { root, paths, file } = await repoOf(2);
+    const id = `sym:${file(0)}#alpha0`;
+    const p = join(root, file(0));
+    writeFileSync(p, readFileSync(p, "utf8").replace("return x + 0;", "return x * 7;"));
+    await refreshWorking(paths);
+    const s = openStore(paths.dbPath);
+    try {
+      const sym = s.effectiveSymbols().find((x) => x.id === id);
+      storeDescriptions(s, [
+        {
+          contentKey: contentKey(sym?.exactHash ?? ""),
+          model: null,
+          description: { behavior: "multiplies by seven", searchTerms: ["zebrawork"], nameFits: true },
+        },
+      ]);
+      expect(ftsSearch(s, "zebrawork", { descriptions: true }).map((h) => h.id)).toEqual([id]);
+    } finally {
+      s.close();
+    }
+    execFileSync("git", ["checkout", "--", "."], { cwd: root, stdio: "ignore" });
+    await refreshWorking(paths);
+    const t = openStore(paths.dbPath);
+    try {
+      expect(ftsSearch(t, "zebrawork", { descriptions: true })).toEqual([]);
+      expect(ftsSearch(t, "sevens multiplies", { descriptions: true })).toEqual([]);
+      expect(ftsSearch(t, "alpha0", { descriptions: true }).map((h) => h.id)).toEqual([id]);
+    } finally {
+      t.close();
+    }
+  });
 });
 
 describe("the stale check takes no optional git locks", () => {
