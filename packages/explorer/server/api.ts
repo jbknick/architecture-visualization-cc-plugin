@@ -11,7 +11,8 @@ import {
 } from "@gantry/core";
 import { HttpError } from "./errors.js";
 import { getLayout } from "./layout.js";
-import type { ApiContext, ViewLevel, ViewParams } from "./types.js";
+import type { ApiContext, ViewLevel, ViewModule, ViewParams } from "./types.js";
+import { adapterNodeBody } from "./views/adapterNode.js";
 import { getView, listViews } from "./views/index.js";
 import { parseOptions } from "./views/options.js";
 
@@ -106,14 +107,26 @@ function meta(ctx: ApiContext) {
       symbols: countOf(ctx, "symbols"),
       edges: countOf(ctx, "edges"),
     },
-    views: listViews().map((v) => ({ id: v.id, title: v.title, enabled: v.enabled })),
+    views: listViews().map((v) => {
+      const enabled = isEnabled(ctx, v);
+      return {
+        id: v.id,
+        title: v.title,
+        enabled,
+        ...(!enabled && v.disabledReason ? { reason: v.disabledReason } : {}),
+      };
+    }),
   };
+}
+
+function isEnabled(ctx: ApiContext, v: ViewModule): boolean {
+  return typeof v.enabled === "function" ? v.enabled(ctx) : v.enabled;
 }
 
 function view(ctx: ApiContext, id: string, query: URLSearchParams) {
   const mod = getView(id);
   if (!mod) throw new HttpError(404, `Unknown view: ${id}`);
-  if (!mod.enabled) throw new HttpError(404, `View disabled: ${id}`);
+  if (!isEnabled(ctx, mod)) throw new HttpError(404, `View disabled: ${id}`);
   const rawFilters = query.get("filters") ?? "";
   const filters = rawFilters
     .split(",")
@@ -145,10 +158,11 @@ interface Labeler {
 function makeLabeler({ store }: ApiContext): Labeler {
   const ws = new Map(store.listWorkspaces().map((w) => [w.id, w.name]));
   const files = new Map(store.effectiveFiles().map((f) => [f.id, f.path]));
-  const routes = new Map(store.effectiveAdapterNodes({ kind: "route" }).map((r) => [r.id, r.label]));
+  const adapters = new Map(store.effectiveAdapterNodes().map((r) => [r.id, r.label]));
   return {
     label(id) {
-      if (id.startsWith("route:")) return routes.get(id) ?? id;
+      const a = adapters.get(id);
+      if (a !== undefined) return a;
       if (id.startsWith("sym:")) return store.getSymbol(id)?.name ?? id.slice(4);
       if (id.startsWith("file:")) return files.get(id) ?? id.slice(5);
       if (id.startsWith("ws:")) return ws.get(id) ?? id.slice(3);
@@ -198,6 +212,8 @@ function node(ctx: ApiContext, id: string) {
         workspaceId: r.ws,
       };
     }
+  } else if (/^(ep|table|mw|call):/.test(id)) {
+    nodeBody = adapterNodeBody(ctx, id) ?? undefined;
   } else if (id.startsWith("ws:")) {
     const w = store.listWorkspaces().find((x) => x.id === id);
     if (w) {

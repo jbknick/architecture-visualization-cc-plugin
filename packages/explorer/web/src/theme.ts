@@ -12,6 +12,7 @@ export const KINDS = [
   "route",
   "endpoint",
   "table",
+  "middleware",
 ] as const;
 
 export type KnownKind = (typeof KINDS)[number];
@@ -27,7 +28,22 @@ const PALETTE: Record<KnownKind, [light: string, dark: string]> = {
   route: ["#c0306b", "#f27aa6"],
   endpoint: ["#a8261f", "#f08078"],
   table: ["#4f46c8", "#9d97f5"],
+  middleware: ["#7c5e10", "#d9b95c"],
 };
+
+/**
+ * Cross-stack edges (#48): database reads are blue and writes orange, in every view that draws them; the other
+ * kinds use the neutral edge ink. Each pair is [light, dark] and keeps 3:1 against the canvas background.
+ */
+export const EDGE_KIND_COLORS: Record<string, [light: string, dark: string]> = {
+  reads: ["#1d5fd6", "#64a4ff"],
+  writes: ["#c2510c", "#fb9a4b"],
+};
+
+export function edgeKindColor(kind: string, scheme: Scheme): string | null {
+  const pair = EDGE_KIND_COLORS[kind];
+  return pair ? (scheme === "dark" ? pair[1] : pair[0]) : null;
+}
 
 const FALLBACK: [string, string] = ["#6b7280", "#a3acba"];
 

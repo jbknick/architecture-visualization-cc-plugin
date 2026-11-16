@@ -346,6 +346,9 @@ export function layoutInputFor(
       size: n.size,
       functions: scene.functions[i],
       files: scene.files[i],
+      ...(n.lane !== undefined ? { lane: n.lane } : {}),
+      ...(n.rank !== undefined ? { rank: n.rank } : {}),
+      ...(n.band !== undefined ? { band: n.band } : {}),
       ...((scene.tree.nodes[i] as TreeNode).parent === -1
         ? {
             title: nodeTitle(scene, i),

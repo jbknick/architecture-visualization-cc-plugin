@@ -77,7 +77,7 @@ export function TopBar() {
               className="tab"
               aria-selected={v.id === view}
               aria-disabled={!v.enabled}
-              title={v.enabled ? undefined : `${v.title} is not available yet`}
+              title={v.enabled ? undefined : (v.reason ?? `${v.title} is not available yet`)}
               onClick={() => v.enabled && setView(v.id)}
             >
               {v.title}

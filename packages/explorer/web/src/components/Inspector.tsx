@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import type {
+  EndpointFacts,
   GraphNode,
   NeighborRef,
   NodeDetail,
   ReviewChange,
   ReviewConsumers,
   ReviewData,
+  TableFacts,
 } from "../api.ts";
 import { m2Of, m2Spec } from "../badges.ts";
 import { useNodeDetail, useOverview } from "../hooks.ts";
@@ -269,6 +271,119 @@ function ReviewChangeSection({ change }: { change: ReviewChange }) {
   );
 }
 
+/** Endpoints (#48): what it answers, what handles it, what it passes through and which tables it touches. */
+function EndpointSection({ facts }: { facts: EndpointFacts }) {
+  const { selectNode } = useStore();
+  const rows: [string, React.ReactNode][] = [
+    ["Kind", `${facts.group} (${facts.adapter})`],
+    ["Method", facts.method],
+    [facts.group === "server fn" ? "Name" : "Path", <code key="p">{facts.path}</code>],
+  ];
+  if (facts.rpcPath) rows.push(["Procedure", <code key="r">{facts.rpcPath}</code>]);
+  rows.push([
+    "Handler",
+    facts.handler ? (
+      <button
+        key="h"
+        type="button"
+        className="link-btn"
+        title={facts.handler.id}
+        onClick={() => selectNode(facts.handler?.id ?? null)}
+      >
+        {facts.handler.label}
+        {facts.handlerName === "inline" ? " (inline)" : ""}
+      </button>
+    ) : (
+      "not resolved"
+    ),
+  ]);
+  if (facts.middleware.length > 0) rows.push(["Middleware", facts.middleware.join(", ")]);
+  rows.push(["Requested from", `${facts.requestedBy} ${facts.requestedBy === 1 ? "place" : "places"}`]);
+  const tables = (list: EndpointFacts["reads"]) =>
+    list.length === 0
+      ? "none"
+      : list.map((t, i) => (
+          <span key={t.id}>
+            {i > 0 ? ", " : ""}
+            <button type="button" className="link-btn" title={t.id} onClick={() => selectNode(t.id)}>
+              {t.label}
+            </button>
+          </span>
+        ));
+  rows.push(["Reads", tables(facts.reads)], ["Writes", tables(facts.writes)]);
+  return (
+    <section aria-label="Endpoint">
+      <h3>Endpoint</h3>
+      <dl className="fan endpoint-facts">
+        {rows.map(([k, v]) => (
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+/** Tables (#48): columns, and how much code reads and writes it. */
+function TableSection({ facts }: { facts: TableFacts }) {
+  const { selectNode } = useStore();
+  const list = (refs: TableFacts["readerSample"], total: number) =>
+    refs.length === 0 ? (
+      <p className="muted">None found.</p>
+    ) : (
+      <ul>
+        {refs.map((r) => (
+          <li key={r.id}>
+            <button type="button" className="link-btn" title={r.id} onClick={() => selectNode(r.id)}>
+              {r.label}
+            </button>
+          </li>
+        ))}
+        {total > refs.length && <li className="muted">and {total - refs.length} more</li>}
+      </ul>
+    );
+  return (
+    <section aria-label="Table">
+      <h3>Table</h3>
+      <dl className="fan table-facts">
+        <div>
+          <dt>Writers</dt>
+          <dd>{facts.writers}</dd>
+        </div>
+        <div>
+          <dt>Readers</dt>
+          <dd>{facts.readers}</dd>
+        </div>
+        {facts.dialect && (
+          <div>
+            <dt>Dialect</dt>
+            <dd>{facts.dialect}</dd>
+          </div>
+        )}
+      </dl>
+      <h4>Columns ({facts.columns.length})</h4>
+      <p>
+        <code>{facts.columns.join(", ") || "none read"}</code>
+      </p>
+      <div className="neighbor-group">
+        <h4>
+          Written by <span className="count">{facts.writers}</span>
+        </h4>
+        {list(facts.writerSample, facts.writers)}
+      </div>
+      <div className="neighbor-group">
+        <h4>
+          Read by <span className="count">{facts.readers}</span>
+        </h4>
+        {list(facts.readerSample, facts.readers)}
+      </div>
+      <p className="muted">Raw SQL is not read, so tables used only through it are missing.</p>
+    </section>
+  );
+}
+
 export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review?: ReviewData | null }) {
   const { state, selectNode, openInView, view } = useStore();
   const id = state.route.sel;
@@ -301,13 +416,16 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
   const isSymbol = id.startsWith("sym:");
   const isFile = id.startsWith("file:");
   const kindOfNode = graphNode?.kind ?? kind;
-  const canMap = isSymbol || isFile || id.startsWith("ws:") || kindOfNode === "dir";
+  const isAdapter = /^(route|ep|table|mw|call):/.test(id);
+  const canMap =
+    isSymbol || isFile || id.startsWith("ws:") || kindOfNode === "dir" || (isAdapter && path !== null);
   // Only nodes the server knows as a workspace or a folder have an overview; the 3D map's own cluster ids do not.
   const hasOverview = id.startsWith("ws:") || (id.startsWith("dir:") && kindOfNode === "dir");
   const egoReady = state.meta?.views.some((v) => v.id === "ego" && v.enabled) ?? true;
   const mapReady = state.meta?.views.some((v) => v.id === "project-map" && v.enabled) ?? true;
   // A function is shown inside its file in the project map; folders, files and workspaces are shown as themselves.
-  const mapTarget = isSymbol && path ? `file:${path}` : id;
+  const mapTarget = (isSymbol || isAdapter) && path ? `file:${path}` : id;
+  const flowReady = (v: string) => state.meta?.views.some((x) => x.id === v && x.enabled) ?? true;
 
   const copy = async () => {
     if (!path) return;
@@ -383,6 +501,28 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
           >
             Show callers &amp; callees
           </button>
+          {(kindOfNode === "route" || kindOfNode === "endpoint") && (
+            <button
+              type="button"
+              className="btn"
+              disabled={!flowReady("feature-path")}
+              title="Follow this from the page to the tables"
+              onClick={() => openInView("feature-path", id, id)}
+            >
+              Show feature path
+            </button>
+          )}
+          {kindOfNode === "table" && (
+            <button
+              type="button"
+              className="btn"
+              disabled={!flowReady("table-usage")}
+              title="Who writes and reads this table"
+              onClick={() => openInView("table-usage", id, id)}
+            >
+              Show table usage
+            </button>
+          )}
         </div>
       </div>
 
@@ -401,6 +541,8 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
 
         {current && (
           <>
+            {body?.endpoint && <EndpointSection facts={body.endpoint} />}
+            {body?.table && <TableSection facts={body.table} />}
             {current.signature && (
               <section>
                 <h3>Signature</h3>
@@ -408,22 +550,24 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
               </section>
             )}
 
-            <section>
-              <h3>Description</h3>
-              {current.untrusted_description ? (
-                <div className="description">
-                  <p className="description-label">
-                    {current.described_by === "fallback"
-                      ? "Written without a model from names only — may be incomplete"
-                      : "Generated description — may be wrong"}
-                  </p>
-                  {/* Plain text only. The string is untrusted and is never parsed as HTML. */}
-                  <p className="description-text">{current.untrusted_description}</p>
-                </div>
-              ) : (
-                <p className="muted">Not yet described</p>
-              )}
-            </section>
+            {!isAdapter && (
+              <section>
+                <h3>Description</h3>
+                {current.untrusted_description ? (
+                  <div className="description">
+                    <p className="description-label">
+                      {current.described_by === "fallback"
+                        ? "Written without a model from names only — may be incomplete"
+                        : "Generated description — may be wrong"}
+                    </p>
+                    {/* Plain text only. The string is untrusted and is never parsed as HTML. */}
+                    <p className="description-text">{current.untrusted_description}</p>
+                  </div>
+                ) : (
+                  <p className="muted">Not yet described</p>
+                )}
+              </section>
+            )}
 
             {isSymbol && (
               <section>

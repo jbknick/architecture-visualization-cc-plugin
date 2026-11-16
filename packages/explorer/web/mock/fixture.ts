@@ -12,6 +12,7 @@ import type {
   ViewLevel,
 } from "../src/api.ts";
 import { generateSynthetic } from "../src/canvas/synthetic.ts";
+import { CROSS_STACK_VIEWS, crossStackNode, crossStackView } from "./crossStack.ts";
 import { duplicatesDismiss, duplicatesSource, duplicatesView, rememberScenario } from "./dups.ts";
 import { buildHierarchy } from "./hierarchy.ts";
 import { egoHub, hubCounts, hubNode } from "./hubEgo.ts";
@@ -1268,6 +1269,14 @@ export function metaFor(scenario: string | null, view: string | null): Meta {
           }
         : largeMapCounts();
   } else if (scenario === "hub" || scenario === "hub-thin") counts = hubCounts(scenario);
+  else if (scenario === "crossstack")
+    // The cross-stack views (#48) on a synthetic shop app: the five tabs are listed and enabled.
+    return {
+      ...meta,
+      repo: "acme-shop",
+      counts: { workspaces: 4, files: 18, symbols: 15, edges: 35 },
+      views: [...meta.views.filter((v) => v.id !== "debug"), ...CROSS_STACK_VIEWS],
+    };
   return counts ? { ...meta, repo: "acme-platform-monorepo", counts } : meta;
 }
 
@@ -1307,6 +1316,15 @@ export function handleMockApi(url: URL): MockResponse | null {
     const id = decodeURIComponent(path.slice("/api/view/".length));
     const q = parseQuery(url);
     if (id === "duplicates") rememberScenario(q.options);
+    const cross = crossStackView(
+      id,
+      q.focus,
+      Object.fromEntries(Object.entries(q.options).map(([k, v]) => [k, String(v)])),
+    );
+    if (cross) {
+      if ("error" in cross) return { status: cross.status, body: { error: cross.error } };
+      return { status: 200, body: cross };
+    }
     const result =
       id === "debug"
         ? debugView()
@@ -1346,7 +1364,7 @@ export function handleMockApi(url: URL): MockResponse | null {
 
   if (path.startsWith("/api/node/")) {
     const id = decodeURIComponent(path.slice("/api/node/".length));
-    const found = nodeDetail(id) ?? map3dDetail(id) ?? hubNode(id);
+    const found = nodeDetail(id) ?? map3dDetail(id) ?? hubNode(id) ?? crossStackNode(id);
     if (found) return { status: 200, body: found };
     const large = largeMapNode(id);
     if (large)

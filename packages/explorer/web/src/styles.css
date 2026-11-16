@@ -185,6 +185,12 @@ kbd {
   background: var(--surface-2);
 }
 
+.topbar > nav {
+  /* With the cross-stack views (#48) there are a dozen tabs: they scroll sideways before the bar overflows. */
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
 .tabs {
   display: flex;
   gap: 4px;
@@ -215,6 +221,9 @@ kbd {
 .tab[aria-disabled="true"]:hover {
   background: none;
   color: var(--muted);
+}
+.topbar.many-tabs .tab {
+  padding: 7px 9px;
 }
 
 /* Refresh on request (spec section 11 (c)) */
@@ -892,4 +901,51 @@ kbd {
   flex: none;
   width: 8px;
   height: 8px;
+}
+
+/* Cross-stack views (#48): focus picker and panel bits. */
+.flow-prompt {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: left;
+}
+.flow-prompt .text-input {
+  width: 100%;
+  margin: 8px 0 12px;
+}
+.flow-choices {
+  max-height: 55vh;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px 24px;
+}
+.flow-choices h3 {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 4px;
+}
+.flow-choices ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.flow-choices li {
+  padding: 2px 0;
+}
+.flow-gaps {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+}
+.flow-gaps code {
+  white-space: normal;
+  word-break: break-word;
+}
+.flow-focus {
+  margin: 0 0 6px;
+}
+.endpoint-facts dd,
+.table-facts dd {
+  word-break: break-word;
 }

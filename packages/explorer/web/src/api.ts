@@ -47,6 +47,12 @@ export interface GraphNode {
   change?: ChangeKind;
   /** Review view, rings mode: the changed symbol's signature differs between the two sides. */
   signatureChanged?: boolean;
+  /** Cross-stack views (#48): the column or swimlane (0 = leftmost). */
+  lane?: number;
+  /** Cross-stack views: order inside the lane. */
+  rank?: number;
+  /** Endpoints view: the group (`rpc`, `http`, `server fn`) the node is stacked in. */
+  band?: string;
   x?: number;
   y?: number;
 }
@@ -64,12 +70,56 @@ export interface GraphEdge {
   bindings?: number;
   /** Slices view: true when the edge crosses a slice boundary. */
   cross?: boolean;
+  /** Cross-stack views: how many places the aggregated edge stands for (page -> API: the requesting code). */
+  via?: number;
+  /** Cross-stack views: some of those places, by name. */
+  viaSample?: string[];
 }
 
 export interface ViewInfo {
   id: string;
   title: string;
   enabled: boolean;
+  /** Why a view is disabled (#48: the cross-stack views need adapter nodes). */
+  reason?: string;
+}
+
+/** Cross-stack views (#48): a column or swimlane title. */
+export interface LaneInfo {
+  lane: number;
+  label: string;
+}
+
+/** Cross-stack views: a workspace with how many routes or endpoints it has. */
+export interface WsCount {
+  id: string;
+  name: string;
+  shortLabel: string;
+  count: number;
+}
+
+/** Feature path and table usage: what can be picked as the focus. */
+export interface FocusChoice {
+  id: string;
+  label: string;
+  kind: string;
+  group: string;
+  note?: string;
+}
+
+/** The cross-stack views' own fields (packages/explorer/server/views/{endpoints,pageApi,apiTables,featurePath,tableUsage}.ts). */
+export interface CrossStackData {
+  lanes: LaneInfo[];
+  wsCounts: WsCount[];
+  groups: { id: string; label: string; count: number }[];
+  methods: string[];
+  totals: Record<string, number | boolean>;
+  choices: FocusChoice[];
+  focus: string | null;
+  gaps: string[];
+  truncated: boolean;
+  table: { name: string; columns: string[]; dialect: string | null } | null;
+  endpointTables: { endpoint: string; reads: string[]; writes: string[] }[];
 }
 
 /** Files changed since the index was last brought up to date (spec section 11 (c)). */
@@ -332,7 +382,7 @@ export interface ReviewData {
   cached: boolean;
 }
 
-export interface ViewData extends Partial<DuplicatesData> {
+export interface ViewData extends Partial<DuplicatesData>, Partial<CrossStackData> {
   /** Review view: the diff, impact and risk. Null when no range or pull request was given. */
   review?: ReviewData | null;
   /** Pages view: every app with routes, whatever the filter says. */
@@ -366,6 +416,43 @@ export interface NodeBody {
   exported?: boolean;
   loc?: number;
   complexity?: number;
+  /** Endpoints (#48): what it answers and what it touches. */
+  endpoint?: EndpointFacts;
+  /** Tables (#48): columns and who reads and writes it. */
+  table?: TableFacts;
+}
+
+export interface NodeRef {
+  id: string;
+  label: string;
+  path: string | null;
+  line: number | null;
+}
+
+export interface EndpointFacts {
+  adapter: string;
+  group: string;
+  method: string;
+  path: string;
+  rpcPath: string | null;
+  protocol: string | null;
+  handler: NodeRef | null;
+  handlerName: string | null;
+  middleware: string[];
+  requestedBy: number;
+  reads: NodeRef[];
+  writes: NodeRef[];
+}
+
+export interface TableFacts {
+  name: string;
+  exportName: string | null;
+  dialect: string | null;
+  columns: string[];
+  readers: number;
+  writers: number;
+  readerSample: NodeRef[];
+  writerSample: NodeRef[];
 }
 
 export interface NeighborRef {

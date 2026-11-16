@@ -7,6 +7,8 @@ import { useStore } from "../store.tsx";
 const GraphCanvas = lazy(() => import("./GraphCanvas.tsx").then((m) => ({ default: m.GraphCanvas })));
 // The ego view's bow-tie is a plain 2D canvas: no sigma, no WebGL.
 const BowtieCanvas = lazy(() => import("./BowtieCanvas.tsx").then((m) => ({ default: m.BowtieCanvas })));
+// The cross-stack views (#48) send lanes: boxes in columns or swimlanes on a plain 2D canvas.
+const FlowCanvas = lazy(() => import("./FlowCanvas.tsx").then((m) => ({ default: m.FlowCanvas })));
 
 type Mode = "graph" | "list";
 
@@ -21,7 +23,8 @@ const has2d = () => typeof CanvasRenderingContext2D !== "undefined";
 export function CanvasHost(props: CanvasProps) {
   const { view } = useStore();
   const bowtie = props.layoutHint === "bowtie";
-  const webgl = bowtie ? has2d() : hasWebGL();
+  const flow = Array.isArray(props.data?.lanes);
+  const webgl = bowtie || flow ? has2d() : hasWebGL();
   const [mode, setMode] = useState<Mode>(webgl ? lastMode : "list");
   const choose = (next: Mode) => {
     lastMode = next;
@@ -45,7 +48,13 @@ export function CanvasHost(props: CanvasProps) {
       </fieldset>
       {mode === "graph" ? (
         <Suspense fallback={<p className="empty">Loading graph…</p>}>
-          {bowtie ? <BowtieCanvas {...props} /> : <GraphCanvas {...props} viewId={view} />}
+          {bowtie ? (
+            <BowtieCanvas {...props} />
+          ) : flow ? (
+            <FlowCanvas {...props} />
+          ) : (
+            <GraphCanvas {...props} viewId={view} />
+          )}
         </Suspense>
       ) : (
         <ListCanvas {...props} />

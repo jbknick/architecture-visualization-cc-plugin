@@ -1,12 +1,17 @@
 import type { ViewModule } from "../types.js";
+import { apiTablesView } from "./apiTables.js";
 import { debugView } from "./debug.js";
 import { duplicatesView } from "./duplicates.js";
 import { egoView } from "./ego.js";
+import { endpointsView } from "./endpoints.js";
+import { featurePathView } from "./featurePath.js";
 import { map3dView } from "./map3d.js";
+import { pageApiView } from "./pageApi.js";
 import { pagesView } from "./pages.js";
 import { projectMapView } from "./projectMap.js";
 import { reviewView } from "./reviewView.js";
 import { slicesView } from "./slices.js";
+import { tableUsageView } from "./tableUsage.js";
 
 const registry = new Map<string, ViewModule>();
 
@@ -31,3 +36,9 @@ registerView(map3dView);
 registerView(pagesView);
 registerView(slicesView);
 registerView(reviewView);
+// The cross-stack views (#48): enabled only when an adapter found the nodes they need.
+registerView(endpointsView);
+registerView(pageApiView);
+registerView(apiTablesView);
+registerView(featurePathView);
+registerView(tableUsageView);
