@@ -1,4 +1,6 @@
+import type BetterSqlite3 from "better-sqlite3";
 import { contentKey, FUNCTION_LIKE_KINDS } from "../describe/factsheet.js";
+import { splitIdentifier } from "../store/db.js";
 import type { Store } from "../store/index.js";
 
 interface FtsCols {
@@ -10,7 +12,7 @@ interface FtsCols {
 }
 
 /** `search_terms` is stored as a JSON array; FTS wants plain words. */
-function termsText(raw: string | null): string {
+export function termsText(raw: string | null): string {
   if (!raw) return "";
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -95,4 +97,54 @@ export function refreshDescriptionFts(store: Store, opts: { keys?: ReadonlySet<s
     }
   });
   return changes.length;
+}
+
+/**
+ * Rewrites the `fts_symbols` rows of the given symbol ids from their main-layer copies: name tokens and path from
+ * the main symbol and file, description columns from the stored description of the main symbol's content key (empty
+ * when it has none). Used when a working row is dropped and main has the same id, so the row never keeps the dropped
+ * working text. Ids without a main-layer symbol are skipped. Call inside the caller's transaction.
+ */
+export function restoreMainFts(db: BetterSqlite3.Database, ids: readonly string[]): void {
+  if (ids.length === 0) return;
+  const rows = db
+    .prepare(
+      `SELECT s.id, s.name, s.kind, s.exact_hash, f.path
+       FROM symbols s JOIN files f ON f.id = s.file_id AND f.layer = s.layer
+       WHERE s.layer = 'main' AND s.id IN (SELECT value FROM json_each(?)) ORDER BY s.id`,
+    )
+    .all(JSON.stringify(ids)) as {
+    id: string;
+    name: string;
+    kind: string;
+    exact_hash: string;
+    path: string;
+  }[];
+  if (rows.length === 0) return;
+  const getDesc = db.prepare(
+    "SELECT behavior, search_terms, suggested_name FROM descriptions WHERE content_key = ?",
+  );
+  db.prepare("DELETE FROM fts_symbols WHERE symbol_id IN (SELECT value FROM json_each(?))").run(
+    JSON.stringify(rows.map((r) => r.id)),
+  );
+  const insert = db.prepare(
+    `INSERT INTO fts_symbols(symbol_id, name_tokens, suggested_name, path, behavior, search_terms)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  );
+  for (const r of rows) {
+    const d =
+      r.exact_hash !== "" && (FUNCTION_LIKE_KINDS as readonly string[]).includes(r.kind)
+        ? (getDesc.get(contentKey(r.exact_hash)) as
+            | { behavior: string | null; search_terms: string | null; suggested_name: string | null }
+            | undefined)
+        : undefined;
+    insert.run(
+      r.id,
+      splitIdentifier(r.name).join(" "),
+      d?.suggested_name ?? "",
+      r.path,
+      d?.behavior ?? "",
+      termsText(d?.search_terms ?? null),
+    );
+  }
 }
