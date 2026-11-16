@@ -29,7 +29,15 @@ export function registerMap(program: Command): void {
         "print the address without the access token (used when output goes to a log)",
       ).hideHelp(),
     )
-    .action(async (opts: { port?: string; open: boolean; url: boolean }) => {
+    .addOption(
+      new Option(
+        "--idle-timeout <minutes>",
+        "exit after this many minutes without a request (default: never)",
+      )
+        .argParser(Number)
+        .hideHelp(),
+    )
+    .action(async (opts: { port?: string; open: boolean; url: boolean; idleTimeout?: number }) => {
       let port: number | undefined;
       if (opts.port !== undefined) {
         port = Number(opts.port);
@@ -45,9 +53,20 @@ export function registerMap(program: Command): void {
       const staticDir = join(dirname(fileURLToPath(import.meta.url)), "explorer");
       // Accepted for v1: the printed/opened URL carries `?t=<token>`, so the token is visible in process
       // arguments (`open <url>`) and browser history. The server strips it on first load and sets a cookie.
+      const idleMin = opts.idleTimeout;
+      if (idleMin !== undefined && (!Number.isFinite(idleMin) || idleMin <= 0)) {
+        process.stderr.write(`Invalid --idle-timeout: ${idleMin}\n`);
+        process.exitCode = 1;
+        return;
+      }
       let running: Awaited<ReturnType<typeof startOrReuseExplorer>>;
       try {
-        running = await startOrReuseExplorer({ paths, port, staticDir });
+        running = await startOrReuseExplorer({
+          paths,
+          port,
+          staticDir,
+          ...(idleMin ? { idleTimeoutMs: idleMin * 60_000, onIdle: () => process.exit(0) } : {}),
+        });
       } catch (err) {
         process.stderr.write(`gantry map: ${err instanceof Error ? err.message : String(err)}\n`);
         process.exitCode = 1;

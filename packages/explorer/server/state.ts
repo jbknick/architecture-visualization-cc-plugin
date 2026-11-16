@@ -39,7 +39,7 @@ export class ExplorerUnresponsive extends Error {
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 /** An unreadable file younger than this may be a writer in the middle of its work, so it is left alone. */
 const YOUNG_MS = 1500;
-const LOCK_STALE_MS = 10_000;
+export const LOCK_STALE_MS = 10_000;
 
 export function processAlive(pid: number): boolean {
   try {
@@ -147,7 +147,7 @@ export async function inspectExplorer(
 }
 
 /** Takes `explorer.lock`; resolves to a function that releases it. A lock whose owner is dead is taken over. */
-export async function acquireLock(paths: GantryPaths, timeoutMs = 8000): Promise<() => void> {
+export async function acquireLock(paths: GantryPaths, timeoutMs = LOCK_STALE_MS + 1000): Promise<() => void> {
   const file = lockFilePath(paths);
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -187,7 +187,9 @@ export async function acquireLock(paths: GantryPaths, timeoutMs = 8000): Promise
       continue;
     }
     if (Date.now() > deadline) {
-      throw new Error(`Another gantry process (pid ${owner}) is starting the explorer; try again`);
+      throw new Error(
+        `Another gantry process (pid ${owner}) has held the explorer start lock for ${Math.round(age / 1000)} s; try again`,
+      );
     }
     await sleep(40);
   }

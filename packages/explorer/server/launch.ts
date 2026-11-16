@@ -7,6 +7,8 @@ import { type ExplorerState, findRunningExplorer } from "./state.js";
 /** How long to wait for a freshly spawned explorer; `gantry_open_view`'s contract is a URL within 3 s. */
 export const START_TIMEOUT_MS = 2500;
 const POLL_MS = 40;
+/** The detached explorer exits after this long without a request (it holds a ~640 MB model after a search). */
+export const IDLE_TIMEOUT_MINUTES = 30;
 
 /**
  * Starts `gantry map --no-open` detached. Its output has no access token (`--no-url`) and goes to
@@ -29,12 +31,16 @@ function spawnExplorer(
   }
   const fd = openSync(logFile, "wx", 0o600);
   try {
-    const child = spawn(process.execPath, [cli, "map", "--no-open", "--no-url"], {
-      cwd: paths.root,
-      env,
-      detached: true,
-      stdio: ["ignore", fd, fd],
-    });
+    const child = spawn(
+      process.execPath,
+      [cli, "map", "--no-open", "--no-url", "--idle-timeout", String(IDLE_TIMEOUT_MINUTES)],
+      {
+        cwd: paths.root,
+        env,
+        detached: true,
+        stdio: ["ignore", fd, fd],
+      },
+    );
     const exited = new Promise<number | null>((resolve) => {
       child.on("error", () => resolve(-1));
       child.on("exit", (code) => resolve(code));
@@ -52,7 +58,8 @@ export type EnsureResult =
 
 /**
  * The running explorer of this worktree, or a new one started in the background with the `gantry` CLI bundle at
- * `cli` (shared by `gantry_open_view` and `gantry review --open`). Waits up to `timeoutMs` for it to answer.
+ * `cli` (shared by `gantry_open_view` and `gantry review --open`). Returns within `timeoutMs` (a hard bound: an
+ * explorer that accepts connections but never answers cannot hold the caller longer).
  */
 export async function ensureExplorer(opts: {
   paths: GantryPaths;
@@ -60,8 +67,30 @@ export async function ensureExplorer(opts: {
   env: NodeJS.ProcessEnv;
   timeoutMs?: number;
 }): Promise<EnsureResult> {
-  const { paths, env } = opts;
   const timeoutMs = opts.timeoutMs ?? START_TIMEOUT_MS;
+  let timer: NodeJS.Timeout | undefined;
+  const bound = new Promise<EnsureResult>((resolve) => {
+    timer = setTimeout(
+      () =>
+        resolve({
+          ok: false,
+          message: `The explorer did not answer within ${timeoutMs} ms (it may be starting on a large repo, or running but stuck): retry in a few seconds. See ${join(opts.paths.logsDir, "explorer.log")}.`,
+        }),
+      timeoutMs,
+    );
+  });
+  try {
+    return await Promise.race([ensureExplorerUnbounded(opts, timeoutMs), bound]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function ensureExplorerUnbounded(
+  opts: { paths: GantryPaths; cli: string | undefined; env: NodeJS.ProcessEnv },
+  timeoutMs: number,
+): Promise<EnsureResult> {
+  const { paths, env } = opts;
   let state: Awaited<ReturnType<typeof findRunningExplorer>>;
   try {
     state = await findRunningExplorer(paths);
