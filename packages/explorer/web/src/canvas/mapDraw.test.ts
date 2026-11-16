@@ -8,9 +8,10 @@ import { MARK_COLOURS, paintLayer } from "../views/reviewModel.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
 import { kindTier } from "./hierarchy.ts";
 import { computeLayout } from "./layout.ts";
-import { distanceToPolyline, drawMap, edgeWidth, pickCell, rectOf } from "./mapDraw.ts";
+import { distanceToPolyline, drawMap, edgeWidth, pickCell, rectOf, segmentRectDistance } from "./mapDraw.ts";
 import { headPx, screenRectOf } from "./mapGeom.ts";
 import { FIT_INSETS } from "./mapLayout.ts";
+import { mulberry32 } from "./prng.ts";
 import { segmentHitsBox } from "./route.ts";
 import { buildScene, folderTitle, layoutInputFor, nodeTitle, subtitleParts } from "./scene.ts";
 import { contrastRatio, inkAgainst, readTheme } from "./style.ts";
@@ -490,5 +491,77 @@ describe("the review layer (#173)", () => {
     const direct = draw("direct");
     expect(direct.review?.links.some((l) => l.soft)).toBe(false);
     expect(strokes.some((s) => s.dash[0] === 5)).toBe(false);
+  });
+});
+
+/** The distance as it was written before #135 (allocating), kept as the reference for the rewrite. */
+function referenceSegmentRectDistance(
+  a: [number, number],
+  b: [number, number],
+  r: { x: number; y: number; w: number; h: number },
+): number {
+  const x0 = r.x;
+  const y0 = r.y;
+  const x1 = r.x + r.w;
+  const y1 = r.y + r.h;
+  let t0 = 0;
+  let t1 = 1;
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  for (const [p, q] of [
+    [-dx, a[0] - x0],
+    [dx, x1 - a[0]],
+    [-dy, a[1] - y0],
+    [dy, y1 - a[1]],
+  ] as const) {
+    if (p === 0) {
+      if (q < 0) {
+        t0 = 2;
+        break;
+      }
+    } else {
+      const t = q / p;
+      if (p < 0) t0 = Math.max(t0, t);
+      else t1 = Math.min(t1, t);
+    }
+  }
+  if (t0 <= t1) return 0;
+  const toRect = (p: [number, number]): number =>
+    Math.hypot(Math.max(x0 - p[0], 0, p[0] - x1), Math.max(y0 - p[1], 0, p[1] - y1));
+  let best = Math.min(toRect(a), toRect(b));
+  const len2 = dx * dx + dy * dy;
+  for (const c of [
+    [x0, y0],
+    [x1, y0],
+    [x0, y1],
+    [x1, y1],
+  ] as [number, number][]) {
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((c[0] - a[0]) * dx + (c[1] - a[1]) * dy) / len2));
+    best = Math.min(best, Math.hypot(c[0] - (a[0] + t * dx), c[1] - (a[1] + t * dy)));
+  }
+  return best;
+}
+
+describe("segment to rectangle distance (#135)", () => {
+  it("matches the reference bit for bit, on routed (axis-aligned) and slanted segments", () => {
+    const rand = mulberry32(135);
+    const r = { x: 100, y: 80, w: 60, h: 24 };
+    const v = () => Math.round(rand() * 320 - 20);
+    for (let k = 0; k < 20_000; k++) {
+      const a: [number, number] = [v(), v()];
+      const kind = k % 4;
+      // Routes are mostly horizontal or vertical runs; some are slanted or a single point.
+      const b: [number, number] =
+        kind === 0 ? [v(), a[1]] : kind === 1 ? [a[0], v()] : kind === 2 ? [v(), v()] : [a[0], a[1]];
+      expect(segmentRectDistance(a, b, r)).toBe(referenceSegmentRectDistance(a, b, r));
+    }
+  });
+
+  it("is 0 when the segment crosses or touches the rectangle", () => {
+    const r = { x: 0, y: 0, w: 10, h: 10 };
+    expect(segmentRectDistance([-5, 5], [15, 5], r)).toBe(0);
+    expect(segmentRectDistance([10, -5], [10, 15], r)).toBe(0);
+    expect(segmentRectDistance([3, 3], [4, 4], r)).toBe(0);
+    expect(segmentRectDistance([13, 14], [13, 20], r)).toBe(5);
   });
 });
