@@ -2003,6 +2003,10 @@
         "routePath": "/posts/:id",
         "app": "apps/api/src/app.ts#app",
         "handler": "inline",
+        "handlerSpan": {
+          "start": 6,
+          "end": 9
+        },
         "file": "apps/api/src/app.ts",
         "line": 6
       }
@@ -2020,6 +2024,10 @@
         "routePath": "/posts",
         "app": "apps/api/src/app.ts#app",
         "handler": "inline",
+        "handlerSpan": {
+          "start": 11,
+          "end": 15
+        },
         "file": "apps/api/src/app.ts",
         "line": 11
       }
@@ -2035,6 +2043,10 @@
         "path": "posts.create",
         "router": "apps/api/src/router.ts#router",
         "handler": "inline",
+        "handlerSpan": {
+          "start": 7,
+          "end": 7
+        },
         "input": false,
         "output": false,
         "middleware": [],
@@ -2053,6 +2065,10 @@
         "path": "posts.list",
         "router": "apps/api/src/router.ts#router",
         "handler": "inline",
+        "handlerSpan": {
+          "start": 6,
+          "end": 6
+        },
         "input": false,
         "output": false,
         "middleware": [],

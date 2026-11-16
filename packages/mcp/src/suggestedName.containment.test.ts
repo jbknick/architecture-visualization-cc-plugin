@@ -86,6 +86,11 @@ describe("suggestedName containment (#118)", () => {
       ...files.map((f): [string, Record<string, unknown>] => ["gantry_browse", { target: f }]),
       ["gantry_browse", { target: "src" }],
       ...ids.map((id): [string, Record<string, unknown>] => ["gantry_node", { target: id }]),
+      ...ids.map((id): [string, Record<string, unknown>] => ["gantry_trace", { target: id }]),
+      ...ids.map((id): [string, Record<string, unknown>] => [
+        "gantry_trace",
+        { target: id, direction: "up" },
+      ]),
       // These never start the explorer: an unknown view and a reserved filter key are refused before it would.
       ["gantry_open_view", { view: "nope" }],
       ["gantry_open_view", { view: "duplicates", filters: { view: "x" } }],

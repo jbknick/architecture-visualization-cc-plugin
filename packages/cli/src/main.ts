@@ -15,6 +15,7 @@ import { registerMap } from "./commands/map.js";
 import { registerNode } from "./commands/node.js";
 import { registerReview } from "./commands/review.js";
 import { registerSearch } from "./commands/search.js";
+import { registerTrace } from "./commands/trace.js";
 import { registerUninstall } from "./commands/uninstall.js";
 import { registerUsage } from "./commands/usage.js";
 
@@ -35,6 +36,7 @@ registerNode(program);
 registerUsage(program);
 registerBacklog(program);
 registerReview(program);
+registerTrace(program);
 registerConfig(program);
 registerEmbed(program);
 registerDescribe(program);

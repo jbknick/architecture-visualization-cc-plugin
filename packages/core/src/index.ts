@@ -31,6 +31,7 @@ export * from "./resolve/index.js";
 export * from "./review/index.js";
 export * from "./search/index.js";
 export * from "./store/index.js";
+export * from "./trace.js";
 export * from "./types.js";
 export * from "./usage/index.js";
 export * from "./workspace/globs.js";

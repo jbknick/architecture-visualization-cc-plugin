@@ -9,6 +9,7 @@ import {
   hasDependency,
   IdAllocator,
   lineOf,
+  spanOf,
   stringValue,
   symbolForName,
   wsName,
@@ -40,6 +41,8 @@ export interface ServerFnFact {
   handler: string;
   /** Symbol holding the handler's code: the resolved handler, or for an inline handler the const itself (its calls are attributed there). */
   handlerSymbol: string | null;
+  /** Lines of an inline handler. */
+  handlerSpan?: { start: number; end: number };
   /** The const's own symbol id (what an importer of the server function resolves to). */
   symbol: string | null;
   line: number;
@@ -104,6 +107,8 @@ function readServerFns(
             ? symbolForName(pf, ctx.fileId, hn.name as string, ctx.resolver)
             : null;
       }
+      const hu = unwrap(h);
+      const handlerSpan = handler === "inline" && isNode(hu) ? spanOf(ctx.source, hu) : undefined;
       const exp = pf?.exports.find((e) => e.local === name && e.fromSpecifier === undefined && !e.star);
       const exported = st.type === "ExportNamedDeclaration" || exp !== undefined;
       out.push({
@@ -115,6 +120,7 @@ function readServerFns(
         middleware,
         handler,
         handlerSymbol,
+        ...(handlerSpan ? { handlerSpan } : {}),
         symbol: own,
         line: lineOf(ctx.source, d.start),
       });
@@ -210,6 +216,7 @@ export const tanstackStartAdapter: Adapter<ServerFnFact[]> = {
             validator: fn.validator,
             middleware: fn.middleware,
             handler: fn.handler,
+            ...(fn.handlerSpan ? { handlerSpan: fn.handlerSpan } : {}),
             exported: fn.exported,
             file: file.path,
             line: fn.line,

@@ -8,6 +8,7 @@ import { openViewTool } from "./openView.js";
 import { getOverviewTool, saveOverviewTool } from "./overview.js";
 import { searchTool } from "./search.js";
 import { submitTool } from "./submit.js";
+import { traceTool } from "./trace.js";
 
 /**
  * Every tool the server offers. A later issue adds one file in this directory that exports a `defineTool(...)`
@@ -22,6 +23,7 @@ export const TOOLS: Tool[] = [
   nodeTool,
   openViewTool,
   impactTool,
+  traceTool,
   getOverviewTool,
   saveOverviewTool,
 ];

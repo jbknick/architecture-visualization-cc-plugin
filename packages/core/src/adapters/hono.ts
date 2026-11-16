@@ -11,6 +11,7 @@ import {
   hasDependency,
   IdAllocator,
   lineOf,
+  spanOf,
   stringConstants,
   stringValue,
   symbolForName,
@@ -57,6 +58,8 @@ interface Registration {
   pieces: PathExpr[];
   handler: string;
   handlerSymbol: string | null;
+  /** Lines of an inline handler (`handles` then points at the code that encloses it, siblings included). */
+  handlerSpan?: { start: number; end: number };
   middleware: string[];
   line: number;
 }
@@ -189,11 +192,19 @@ class FileReader {
     return p ? [p] : [];
   }
 
-  private handlerOf(n: unknown): { handler: string; handlerSymbol: string | null } {
+  private handlerOf(n: unknown): {
+    handler: string;
+    handlerSymbol: string | null;
+    handlerSpan?: { start: number; end: number };
+  } {
     const v = unwrap(n);
     const handler = label(v);
     if (isFn(v) && isNode(v)) {
-      return { handler, handlerSymbol: enclosingSymbol(this.ctx.parsed, this.ctx.fileId, v.start) };
+      return {
+        handler,
+        handlerSymbol: enclosingSymbol(this.ctx.parsed, this.ctx.fileId, v.start),
+        handlerSpan: spanOf(this.ctx.source, v),
+      };
     }
     if (isNode(v) && v.type === "Identifier") {
       return {
@@ -237,7 +248,7 @@ class FileReader {
         else if (last) paths = [last];
         if (paths.length === 0 || handlers.length === 0 || methods.length === 0) continue;
         last = paths[paths.length - 1] ?? null;
-        const { handler, handlerSymbol } = this.handlerOf(handlers[handlers.length - 1]);
+        const { handler, handlerSymbol, handlerSpan } = this.handlerOf(handlers[handlers.length - 1]);
         const middleware = handlers.slice(0, -1).map(label);
         for (const p of paths) {
           this.facts.routes.push({
@@ -247,6 +258,7 @@ class FileReader {
             pieces: [...cur, p],
             handler,
             handlerSymbol,
+            ...(handlerSpan ? { handlerSpan } : {}),
             middleware,
             line,
           });
@@ -504,6 +516,7 @@ export const honoAdapter: Adapter<HonoFacts> = {
               routePath: mergePaths(local),
               app: r.app,
               handler: r.handler,
+              ...(r.handlerSpan ? { handlerSpan: r.handlerSpan } : {}),
               ...(r.middleware.length > 0 ? { middleware: r.middleware } : {}),
               file: file.path,
               line: r.line,

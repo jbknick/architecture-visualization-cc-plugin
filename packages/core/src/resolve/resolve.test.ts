@@ -355,8 +355,8 @@ export const x: Shape = null as never;
     expect(r.stats().counts.unresolved).toBe(0 + 1);
   });
 
-  test("evidence is capped at 3 and count keeps counting", () => {
-    const calls = Array.from({ length: 6 }, () => "helper();").join("\n");
+  test("evidence is capped at 20 and count keeps counting", () => {
+    const calls = Array.from({ length: 25 }, () => "helper();").join("\n");
     const r = createResolver(
       repo({
         "package.json": JSON.stringify({ name: "ev" }),
@@ -365,8 +365,8 @@ export const x: Shape = null as never;
       }),
     );
     const e = r.edgesForFile("file:m.ts").find((x) => x.kind === "calls");
-    expect(e?.count).toBe(6);
-    expect(e?.evidence).toEqual(["m.ts:3", "m.ts:4", "m.ts:5"]);
+    expect(e?.count).toBe(25);
+    expect(e?.evidence).toEqual(Array.from({ length: 20 }, (_, i) => `m.ts:${i + 3}`));
   });
 
   test("imports edge counts bindings and merges side-effect and dynamic imports", () => {

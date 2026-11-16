@@ -81,6 +81,7 @@ describe("server skeleton", () => {
       "gantry_save_overview",
       "gantry_search",
       "gantry_submit_descriptions",
+      "gantry_trace",
     ]);
     for (const t of tools) {
       expect(t.description).toContain(UNTRUSTED_NOTICE);
@@ -107,6 +108,7 @@ describe("server skeleton", () => {
       "gantry_save_overview",
       "gantry_search",
       "gantry_submit_descriptions",
+      "gantry_trace",
     ]);
   });
 
@@ -123,7 +125,7 @@ describe("server skeleton", () => {
     expect(r.isError).toBe(true);
     expect(r.json).toMatchObject({ error: "not_a_git_repo" });
     expect(r.blocks).toBe(1);
-    expect((await conn.client.listTools()).tools).toHaveLength(10);
+    expect((await conn.client.listTools()).tools).toHaveLength(11);
   });
 
   it("turns a throwing handler into an error payload and survives", async () => {

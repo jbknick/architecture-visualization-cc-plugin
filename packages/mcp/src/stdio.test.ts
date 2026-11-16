@@ -102,6 +102,7 @@ describe("node mcp.js over stdio", () => {
         "gantry_save_overview",
         "gantry_search",
         "gantry_submit_descriptions",
+        "gantry_trace",
       ]);
 
       send({
