@@ -146,6 +146,27 @@ describe.skipIf(!built)("gantry map (bundled CLI)", () => {
     }
   }, 30000);
 
+  it("exits by itself after --idle-timeout without requests and removes explorer.json", async () => {
+    const repo4 = join(tmp, "idle");
+    execFileSync("git", ["init", "-q", repo4]);
+    const r = await spawnAsync("node", [cliJs, "map", "--no-open", "--no-url", "--idle-timeout", "0.005"], {
+      cwd: repo4,
+      env,
+    });
+    expect(r.code).toBe(0);
+    expect(existsSync(join(resolvePaths(repo4, env).dataDir, "explorer.json"))).toBe(false);
+  }, 15000);
+
+  it("rejects an invalid --idle-timeout", () => {
+    const r = spawnSync("node", [cliJs, "map", "--no-open", "--idle-timeout", "0"], {
+      cwd: repo,
+      env,
+      encoding: "utf8",
+    });
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain("Invalid --idle-timeout");
+  });
+
   it("rejects an invalid --port", () => {
     const r = spawnSync("node", [cliJs, "map", "--no-open", "--port", "abc"], {
       cwd: repo,

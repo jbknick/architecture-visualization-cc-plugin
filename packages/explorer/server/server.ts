@@ -61,6 +61,13 @@ export interface ExplorerServerOptions {
   getEmbedder?: () => Promise<Embedder | undefined>;
   /** Write `<dataDir>/explorer.json` (default true). */
   writeStateFile?: boolean;
+  /**
+   * Close the server after this many ms without a request (the detached explorer holds a ~640 MB embedding model
+   * once a search ran, so it must not live forever). Default: never.
+   */
+  idleTimeoutMs?: number;
+  /** Called after an idle close has finished (the CLI exits the process here). */
+  onIdle?: () => void;
 }
 
 export interface ExplorerServer {
@@ -390,13 +397,15 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
   const removeState = () => removeStateFile(paths, token);
 
   let closed: Promise<void> | undefined;
-  return {
+  let idleTimer: NodeJS.Timeout | undefined;
+  const handle: ExplorerServer = {
     port,
     token,
     url: buildExplorerUrl({ port, token }),
     server,
     close() {
       closed ??= (async () => {
+        if (idleTimer) clearInterval(idleTimer);
         if (writeState) removeState();
         await new Promise<void>((resolve) => {
           server.close(() => resolve());
@@ -407,6 +416,29 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
       return closed;
     },
   };
+  const idleMs = opts.idleTimeoutMs;
+  if (idleMs !== undefined && idleMs > 0) {
+    let lastRequest = Date.now();
+    let active = 0;
+    server.on("request", (_req, res) => {
+      active++;
+      lastRequest = Date.now();
+      res.once("close", () => {
+        active--;
+        lastRequest = Date.now();
+      });
+    });
+    idleTimer = setInterval(
+      () => {
+        if (active === 0 && Date.now() - lastRequest >= idleMs) {
+          void handle.close().finally(() => opts.onIdle?.());
+        }
+      },
+      Math.max(10, Math.min(Math.floor(idleMs / 4), 30_000)),
+    );
+    idleTimer.unref();
+  }
+  return handle;
 }
 
 export interface RunningExplorer {
