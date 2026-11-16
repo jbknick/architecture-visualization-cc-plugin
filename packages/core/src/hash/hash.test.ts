@@ -248,6 +248,64 @@ class Calc {
   });
 });
 
+describe("renamedHash", () => {
+  const rec = (name: string) => `export function ${name}(n: number): number {
+  if (n <= 1) return 1;
+  return n * ${name}(n - 1);
+}`;
+
+  test("the function's own name and its recursive calls become $0", () => {
+    expect(h(rec("fact")).renamedHash).toBe(h(rec("factorial")).renamedHash);
+    expect(h(rec("fact")).exactHash).not.toBe(h(rec("factorial")).exactHash);
+  });
+
+  test("a body that calls a different function does not collapse onto the recursive one", () => {
+    const other = rec("fact").replace("fact(n - 1)", "other(n - 1)");
+    expect(h(other).renamedHash).not.toBe(h(rec("fact")).renamedHash);
+  });
+
+  test("a local that shadows the name stays a local, not $0", () => {
+    const shadow = (name: string) => `export function ${name}(n: number): number {
+  const ${name} = n + 1;
+  return ${name} * 2;
+}`;
+    // Both are locals ($1), so the two names hash the same under either hash, and differ from the recursive form.
+    expect(h(shadow("calc")).renamedHash).toBe(h(shadow("other")).renamedHash);
+    const calls = `export function calc(n: number): number {
+  const m = n + 1;
+  return calc(m) * 2;
+}`;
+    expect(h(calls).renamedHash).not.toBe(h(shadow("calc")).renamedHash);
+  });
+
+  test("this.<name>, an object key and a shorthand { name } key keep their own text", () => {
+    const body = (name: string, use: string) => `export function ${name}(n: number): unknown {
+  ${use}
+}`;
+    const variants = [
+      (n: string) => `return this.${n};`,
+      (n: string) => `return { ${n}: n };`,
+      (n: string) => `return { ${n} };`,
+    ];
+    for (const v of variants) {
+      // A property name or key is data, so a different spelling is a different function even if it equals the name.
+      const same = h(body("calc", v("calc"))).renamedHash;
+      const diff = h(body("calc", v("other"))).renamedHash;
+      expect(same).not.toBe(diff);
+    }
+    // The shorthand key keeps its text, so renaming the function does not make two such functions equal.
+    expect(h(body("calc", "return { calc };")).renamedHash).not.toBe(
+      h(body("sum", "return { sum };")).renamedHash,
+    );
+    expect(h(body("calc", "return this.calc;")).renamedHash).not.toBe(
+      h(body("sum", "return this.sum;")).renamedHash,
+    );
+    expect(h(body("calc", "return { calc: 1 };")).renamedHash).not.toBe(
+      h(body("sum", "return { sum: 1 };")).renamedHash,
+    );
+  });
+});
+
 describe("shapeHash", () => {
   test("ignores identifiers, strings, numbers", () => {
     const a = h(`function f(a, b) { return a + 1 + "x" + b.c; }`);

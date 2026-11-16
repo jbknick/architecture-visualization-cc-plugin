@@ -186,7 +186,7 @@ describe("renamed copies of short functions (#151)", () => {
     const { store } = tmpStore();
     const original = addReal(store, "src/a.ts", "clampDouble");
     const copy = addReal(store, "src/b.ts", "limitTwice");
-    // Different names, so the plain exact hash differs, and 5 statements are below the near floor.
+    // Different names, so the plain exact hash differs, and 4 statements are below the near floor.
     expect(sym(store, original).exactHash).not.toBe(sym(store, copy).exactHash);
     expect(sym(store, original).renamedHash).toBe(sym(store, copy).renamedHash);
     expect(await findDuplicates(store, { symbol: sym(store, copy) })).toEqual([
