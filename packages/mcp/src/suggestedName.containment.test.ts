@@ -1,7 +1,8 @@
 // Containment for #118: a stored `suggestedName` is model-written and untrusted (spec section 8). With
 // `renameSuggestions` on, the marker below may leave the store only as the value of `untrusted_suggested_name`.
-import { writeFileSync } from "node:fs";
-import { contentKey, loadConfig, openStore, refreshDescriptionFts } from "@gantry/core";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { contentKey, loadConfig, openStore, refreshDescriptionFts, writeCatalog } from "@gantry/core";
 import { HttpError, handleApi, listViews } from "@gantry/explorer";
 import { afterEach, describe, expect, it } from "vitest";
 import { type Connected, call, connect, fn, indexAndSync, makeRepo, type Repo } from "./testkit.js";
@@ -34,11 +35,21 @@ function assertContained(label: string, value: unknown, text: string): number {
   return hits.length;
 }
 
-async function setup() {
-  const repo = makeRepo({
-    "src/a/clean.ts": fn("cleanText"),
-    "src/b/clean.ts": fn("cleanText"),
-  });
+/** Two exact copies in different files: the import advice (situation 1) outranks the rename advice. */
+const TWO_FILES = {
+  "src/a/clean.ts": fn("cleanText"),
+  "src/b/clean.ts": fn("cleanText"),
+};
+/**
+ * A renamed copy in the same file as the original: no import advice applies (caller and match are one file), so
+ * the rename advice is the first line the duplicates view shows for it (#129).
+ */
+const SAME_FILE = {
+  "src/a/clean.ts": `${fn("cleanText")}\n${fn("cleanTextCopy", "cleanText")}`,
+};
+
+async function setup(files: Record<string, string> = TWO_FILES) {
+  const repo = makeRepo(files);
   repos.push(repo);
   await indexAndSync(repo);
   writeFileSync(repo.paths.configPath, JSON.stringify({ renameSuggestions: true }));
@@ -75,6 +86,9 @@ describe("suggestedName containment (#118)", () => {
       ...files.map((f): [string, Record<string, unknown>] => ["gantry_browse", { target: f }]),
       ["gantry_browse", { target: "src" }],
       ...ids.map((id): [string, Record<string, unknown>] => ["gantry_node", { target: id }]),
+      // These never start the explorer: an unknown view and a reserved filter key are refused before it would.
+      ["gantry_open_view", { view: "nope" }],
+      ["gantry_open_view", { view: "duplicates", filters: { view: "x" } }],
     ];
     let surfaced = 0;
     for (const [name, args] of calls) {
@@ -83,43 +97,103 @@ describe("suggestedName containment (#118)", () => {
     }
     // not vacuous: the rename advice really carries the value somewhere
     expect(surfaced).toBeGreaterThan(0);
+
+    // A submit whose wording the validator rejects: the reply names the item, never a stored suggested name.
+    const claim = await call(client, "gantry_claim_batch", { worker_id: "w1", size: 10 });
+    assertContained("gantry_claim_batch", claim.json, claim.text);
+    const items = (claim.json.items ?? []) as { content_key: string }[];
+    expect(items.length).toBeGreaterThan(0);
+    const bad = { behavior: "The clean text of an input.", searchTerms: ["clean text"], nameFits: true };
+    const sub = await call(client, "gantry_submit_descriptions", {
+      batch_id: claim.json.batch_id,
+      results: items.map((i) => ({ content_key: i.content_key, description: bad })),
+    });
+    assertContained("gantry_submit_descriptions", sub.json, sub.text);
+    expect(sub.isError).toBe(false);
+    // The rejected submit left the stored values alone.
+    const left = repo.withStore(
+      (st) =>
+        (
+          st.db
+            .prepare("SELECT COUNT(*) AS n FROM descriptions WHERE suggested_name = ?")
+            .get(NAME_MARKER) as {
+            n: number;
+          }
+        ).n,
+    );
+    expect(left).toBeGreaterThan(0);
   });
 
-  it("keeps it in untrusted_suggested_name across explorer /api/*", async () => {
-    const { repo } = await setup();
-    const store = openStore(repo.paths.dbPath);
-    try {
-      const ctx = {
-        store,
-        paths: repo.paths,
-        config: loadConfig(repo.paths),
-        getEmbedder: async () => undefined,
-      };
-      const paths: [string, string][] = [["/api/meta", ""]];
-      for (const v of listViews().filter((x) => x.enabled)) {
-        paths.push([`/api/view/${v.id}`, ""]);
-        paths.push([`/api/view/${v.id}`, "level=symbol"]);
+  it("never writes it into the catalog files on disk", async () => {
+    const { client, repo } = await setup();
+    await call(client, "gantry_browse", { target: "src" });
+    repo.withStore((s) => writeCatalog(s, repo.paths));
+    const files: string[] = [];
+    const walk = (dir: string): void => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        if (e.isDirectory()) walk(join(dir, e.name));
+        else files.push(join(dir, e.name));
       }
-      for (const s of store.effectiveSymbols()) {
-        paths.push([`/api/node/${encodeURIComponent(s.id)}`, ""]);
-        paths.push([`/api/layout/${encodeURIComponent(s.id)}`, ""]);
-      }
-      for (const f of store.effectiveFiles()) paths.push([`/api/node/${encodeURIComponent(f.id)}`, ""]);
-      paths.push(["/api/search", "q=clean text"], ["/api/search", `q=${NAME_MARKER}`]);
-      for (const [p, q] of paths) {
-        let body: unknown;
-        try {
-          body = await handleApi(ctx, p, new URLSearchParams(q));
-        } catch (err) {
-          if (!(err instanceof HttpError)) throw err; // a 4xx for a combination a view does not support carries no store data
-          continue;
-        }
-        assertContained(`${p}?${q}`, body, JSON.stringify(body));
-      }
-      // The duplicates view reaches the rename only when no import advice outranks it (dupAdvice.test.ts asserts the
-      // field is filled then); here it may be absent, but it must never leak.
-    } finally {
-      store.close();
+    };
+    walk(repo.paths.catalogDir);
+    expect(files.length).toBeGreaterThan(1);
+    let described = 0;
+    for (const f of files) {
+      const text = readFileSync(f, "utf8");
+      expect({ f, leak: text.includes(NAME_MARKER) }).toEqual({ f, leak: false });
+      if (text.includes(BEHAVIOR)) described++;
     }
+    // not vacuous: the catalog does carry the description next to the symbols
+    expect(described).toBeGreaterThan(0);
   });
+
+  it.each([
+    ["two files (import advice wins)", TWO_FILES, false],
+    ["a renamed copy in one file (rename advice wins)", SAME_FILE, true],
+  ])(
+    "keeps it in untrusted_suggested_name across explorer /api/*: %s",
+    async (_label, files, mustSurface) => {
+      const { repo } = await setup(files);
+      const store = openStore(repo.paths.dbPath);
+      try {
+        const ctx = {
+          store,
+          paths: repo.paths,
+          config: loadConfig(repo.paths),
+          getEmbedder: async () => undefined,
+        };
+        const paths: [string, string][] = [["/api/meta", ""]];
+        for (const v of listViews().filter((x) => x.enabled)) {
+          paths.push([`/api/view/${v.id}`, ""]);
+          paths.push([`/api/view/${v.id}`, "level=symbol"]);
+        }
+        for (const s of store.effectiveSymbols()) {
+          paths.push([`/api/node/${encodeURIComponent(s.id)}`, ""]);
+          paths.push([`/api/layout/${encodeURIComponent(s.id)}`, ""]);
+        }
+        for (const f of store.effectiveFiles()) paths.push([`/api/node/${encodeURIComponent(f.id)}`, ""]);
+        paths.push(["/api/search", "q=clean text"], ["/api/search", `q=${NAME_MARKER}`]);
+        let surfaced = 0;
+        for (const [p, q] of paths) {
+          let body: unknown;
+          try {
+            body = await handleApi(ctx, p, new URLSearchParams(q));
+          } catch (err) {
+            if (!(err instanceof HttpError)) throw err; // a 4xx for a combination a view does not support carries no store data
+            continue;
+          }
+          surfaced += assertContained(`${p}?${q}`, body, JSON.stringify(body));
+        }
+        // The duplicates view reaches the rename only when no import advice outranks it: the same-file fixture
+        // makes the rename the first advice, so the sweep must see the field there.
+        if (mustSurface) {
+          const dup = await handleApi(ctx, "/api/view/duplicates", new URLSearchParams());
+          expect(assertContained("/api/view/duplicates", dup, JSON.stringify(dup))).toBeGreaterThan(0);
+          expect(surfaced).toBeGreaterThan(0);
+        }
+      } finally {
+        store.close();
+      }
+    },
+  );
 });

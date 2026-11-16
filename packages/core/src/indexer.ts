@@ -559,7 +559,7 @@ export function dumpGraph(store: Store): {
     contentHash: f.contentHash,
     ...(f.directives && f.directives.length > 0 ? { directives: f.directives } : {}),
   }));
-  // minhash, nearMinhash and renamedHash are omitted: 64 words per symbol each, fully determined by the source.
+  // minhash and nearMinhash (64 words per symbol each) and renamedHash (a 32-char hex string) are omitted: fully determined by the source.
   const symbols = store
     .effectiveSymbols()
     .map(({ minhash: _m, nearMinhash: _t, renamedHash: _r, ...s }) => s);
