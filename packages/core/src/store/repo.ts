@@ -1,4 +1,5 @@
 import type BetterSqlite3 from "better-sqlite3";
+import { restoreMainFts } from "../search/descfts.js";
 import type {
   AdapterNodeRecord,
   EdgeKind,
@@ -245,18 +246,25 @@ export function createStore(db: Database): Store {
   };
 
   /**
-   * Search rows of working-layer symbols that main does not have, for one file or all: removed with the working
-   * rows so `fts_symbols` keeps no row for a symbol that is in neither layer. Skips the FTS scan when there are none.
+   * Search rows of dropped working-layer symbols, for one file or all. A symbol main does not have loses its row, so
+   * `fts_symbols` keeps no row for a symbol that is in neither layer. A symbol main also has gets its row rewritten
+   * from the main layer, so it does not keep the working text (#165). Skips the FTS scan when there are none.
    */
   const dropWorkingOnlyFts = (fileId?: string): void => {
-    const only =
-      "SELECT w.id FROM symbols w WHERE w.layer = 'working' AND NOT EXISTS (SELECT 1 FROM symbols m WHERE m.id = w.id AND m.layer = 'main')";
-    const ids = (fileId === undefined ? stmt(only).all() : stmt(`${only} AND w.file_id = ?`).all(fileId)) as {
+    const sel =
+      "SELECT w.id, EXISTS (SELECT 1 FROM symbols m WHERE m.id = w.id AND m.layer = 'main') AS in_main FROM symbols w WHERE w.layer = 'working'";
+    const rows = (fileId === undefined ? stmt(sel).all() : stmt(`${sel} AND w.file_id = ?`).all(fileId)) as {
       id: string;
+      in_main: number;
     }[];
-    if (ids.length === 0) return;
-    stmt("DELETE FROM fts_symbols WHERE symbol_id IN (SELECT value FROM json_each(?))").run(
-      JSON.stringify(ids.map((r) => r.id)),
+    const gone = rows.filter((r) => !r.in_main).map((r) => r.id);
+    if (gone.length > 0)
+      stmt("DELETE FROM fts_symbols WHERE symbol_id IN (SELECT value FROM json_each(?))").run(
+        JSON.stringify(gone),
+      );
+    restoreMainFts(
+      db,
+      rows.filter((r) => r.in_main).map((r) => r.id),
     );
   };
 

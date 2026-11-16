@@ -3,7 +3,7 @@
 // runs the describe tests, and reports whether a test failed ("killed") or not ("SURVIVED"). The edited file is
 // restored after every run, also on SIGINT, SIGTERM and SIGHUP. A baseline run must be green first, and a compile error, crash or timeout is reported as ERROR, never as a kill. Part of `pnpm check` since issue #108: a surviving mutation (a rule that no
 // test notices) fails the check. Usage: pnpm exec tsx scripts/describe-mutations.ts
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   closeSync,
@@ -11,6 +11,7 @@ import {
   openSync,
   readFileSync,
   renameSync,
+  statSync,
   unlinkSync,
   writeFileSync,
   writeSync,
@@ -384,9 +385,32 @@ interface Lock {
   path: string;
   original: string;
   mutatedHash: string;
+  /** Start time and command line of the locking process (from `ps`); absent in locks written by older versions. */
+  start?: string;
+  cmd?: string;
+}
+/** Start time and command line of a process, from `ps` (macOS and Linux); null when it cannot be read. */
+function processIdentity(pid: number): { start: string; cmd: string } | null {
+  const ps = (field: string): string | null => {
+    const r = spawnSync("ps", ["-o", `${field}=`, "-p", String(pid)], {
+      encoding: "utf8",
+      env: { ...process.env, LC_ALL: "C" },
+    });
+    const out = r.status === 0 ? r.stdout.trim() : "";
+    return out === "" ? null : out;
+  };
+  const start = ps("lstart");
+  const cmd = ps("command");
+  return start === null || cmd === null ? null : { start, cmd };
 }
 const sha256 = (text: string): string => createHash("sha256").update(text).digest("hex");
-const NO_MUTATION: Lock = { pid: process.pid, path: "", original: "", mutatedHash: "" };
+const NO_MUTATION: Lock = {
+  pid: process.pid,
+  path: "",
+  original: "",
+  mutatedHash: "",
+  ...processIdentity(process.pid),
+};
 let held = false;
 let current: { path: string; original: string } | null = null;
 
@@ -434,6 +458,16 @@ const isAlive = (pid: number): boolean => {
     return (e as NodeJS.ErrnoException).code === "EPERM";
   }
 };
+/**
+ * Whether the run that wrote the lock is still going: its pid is alive and, when the lock recorded them, the process
+ * has the same start time and command line (a reused pid has neither). If `ps` cannot be read, an alive pid counts.
+ */
+function lockHolderAlive(lock: Lock): boolean {
+  if (!isAlive(lock.pid)) return false;
+  if (lock.start === undefined || lock.cmd === undefined) return true;
+  const now = processIdentity(lock.pid);
+  return now === null || (now.start === lock.start && now.cmd === lock.cmd);
+}
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** Reads a lock another run created; it may be empty for an instant between its create and its first write. */
@@ -450,14 +484,30 @@ async function readLock(file: string): Promise<Lock | null> {
   return null;
 }
 
+const takeoverFile = `${lockFile}.takeover`;
+/** Restores the file named by a dead run's lock, only if it still holds exactly the mutated text. */
+function recoverFrom(lock: Lock): void {
+  if (lock.path === "") return;
+  if (existsSync(lock.path) && sha256(readFileSync(lock.path, "utf8")) === lock.mutatedHash) {
+    writeFileSync(lock.path, lock.original);
+    console.log(`restored ${lock.path} from an interrupted run`);
+  } else {
+    console.log(
+      `warning: left ${lock.path} alone (an interrupted run's lock, but the file has changed since)`,
+    );
+  }
+}
+
 /**
- * Takes the lock before anything else, with an exclusive create, and holds it for the whole run. A lock whose process is
- * alive means another run is in progress (exit 3, nothing touched). A dead process's lock is first renamed away (only
- * one contender wins the rename), then its file is restored only if it still holds exactly the mutated text; a file
- * with newer edits is left alone with a warning. SIGKILL cannot be caught, which is why the lock carries the original.
+ * Takes the lock before anything else, with an exclusive create, and holds it for the whole run. A lock whose process
+ * is alive (same pid, start time and command line) means another run is in progress (exit 3, nothing touched). A dead
+ * run's lock is taken over under a second exclusive-create file (the takeover mutex): only its holder may judge the lock
+ * stale, rename it away and restore the file, and it re-reads the lock under the mutex, so a lock another run created
+ * in the meantime is never stolen. The file is restored only if it still holds exactly the mutated text; a file with
+ * newer edits is left alone with a warning. SIGKILL cannot be caught, which is why the lock carries the original.
  */
 async function acquireLock(): Promise<void> {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 30; attempt++) {
     try {
       const fd = openSync(lockFile, "wx", 0o600);
       writeSync(fd, JSON.stringify(NO_MUTATION));
@@ -468,31 +518,47 @@ async function acquireLock(): Promise<void> {
       if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
     }
     const lock = await readLock(lockFile);
-    if (lock !== null && isAlive(lock.pid)) {
+    if (lock !== null && lockHolderAlive(lock)) {
       console.log(
-        `another mutation run (pid ${lock.pid}) is in progress; wait for it to finish and run again`,
+        `another mutation run (pid ${lock.pid}) is in progress; wait for it to finish and run again, or delete ${lockFile} if no such run exists`,
       );
       process.exit(LOCKED_EXIT);
     }
-    const stale = `${lockFile}.stale.${process.pid}`;
+    let mutex: number;
     try {
-      renameSync(lockFile, stale);
-    } catch {
-      continue; // someone else took it over first; look again
+      mutex = openSync(takeoverFile, "wx", 0o600);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+      try {
+        // a mutex left behind by a run killed mid-takeover
+        if (Date.now() - statSync(takeoverFile).mtimeMs > 60_000) unlinkSync(takeoverFile);
+      } catch {
+        // gone already
+      }
+      await sleep(100);
+      continue;
     }
-    if (lock !== null && lock.path !== "") {
-      if (existsSync(lock.path) && sha256(readFileSync(lock.path, "utf8")) === lock.mutatedHash) {
-        writeFileSync(lock.path, lock.original);
-        console.log(`restored ${lock.path} from an interrupted run`);
-      } else {
-        console.log(
-          `warning: left ${lock.path} alone (an interrupted run's lock, but the file has changed since)`,
-        );
+    try {
+      const again = await readLock(lockFile);
+      if (again !== null && lockHolderAlive(again)) continue; // a fresh live lock appeared; look again
+      const stale = `${lockFile}.stale.${process.pid}`;
+      try {
+        renameSync(lockFile, stale);
+      } catch {
+        continue; // already gone; try the exclusive create again
+      }
+      if (again !== null) recoverFrom(again);
+      unlinkSync(stale);
+    } finally {
+      closeSync(mutex);
+      try {
+        unlinkSync(takeoverFile);
+      } catch {
+        // already gone
       }
     }
-    unlinkSync(stale);
   }
-  console.log("could not take the mutation lock; run again");
+  console.log(`could not take the mutation lock ${lockFile}; run again`);
   process.exit(LOCKED_EXIT);
 }
 
@@ -520,7 +586,7 @@ for (const m of run) {
   }
   current = { path, original };
   const mutated = original.replace(m.find, m.replace);
-  const lock: Lock = { pid: process.pid, path, original, mutatedHash: sha256(mutated) };
+  const lock: Lock = { ...NO_MUTATION, path, original, mutatedHash: sha256(mutated) };
   writeLock(lock);
   writeFileSync(path, mutated);
   let outcome: Outcome;

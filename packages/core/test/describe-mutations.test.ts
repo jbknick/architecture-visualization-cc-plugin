@@ -130,8 +130,83 @@ describe("mutation lock file", () => {
     }
   }, 30_000);
 
-  // Two real runs: exactly one proceeds, the other exits 3 without touching anything, and the tree ends unchanged.
   const slow = `node -e "setTimeout(()=>process.exit(0),1500)"`;
+  const psField = (pid: number, field: string) =>
+    spawnSync("ps", ["-o", `${field}=`, "-p", String(pid)], {
+      encoding: "utf8",
+      env: { ...process.env, LC_ALL: "C" },
+    }).stdout.trim();
+
+  it("names the lock path in the exit-3 message when the holder (same start time and command) is alive", async () => {
+    const dir = setup("MUTATED");
+    const path = join(dir, "validate.ts");
+    const live = spawn(process.execPath, ["-e", "setTimeout(()=>{},30000)"]);
+    try {
+      writeFileSync(
+        lockPath(dir),
+        JSON.stringify({
+          pid: live.pid,
+          path,
+          original: "ORIGINAL",
+          mutatedHash: sha("MUTATED"),
+          start: psField(live.pid as number, "lstart"),
+          cmd: psField(live.pid as number, "command"),
+        }),
+      );
+      const r = await runScript(dir);
+      expect(r.code).toBe(3);
+      expect(r.out).toContain(lockPath(dir));
+      expect(readFileSync(path, "utf8")).toBe("MUTATED");
+    } finally {
+      live.kill();
+      rmSync(lockPath(dir), { force: true });
+    }
+  }, 30_000);
+
+  it("treats a lock as stale when its pid is alive but belongs to another command (pid reuse)", async () => {
+    const dir = setup("MUTATED");
+    const path = join(dir, "validate.ts");
+    const live = spawn(process.execPath, ["-e", "setTimeout(()=>{},30000)"]);
+    try {
+      writeFileSync(
+        lockPath(dir),
+        JSON.stringify({
+          pid: live.pid,
+          path,
+          original: "ORIGINAL",
+          mutatedHash: sha("MUTATED"),
+          start: "Mon Jan  1 00:00:00 2001",
+          cmd: "some other command",
+        }),
+      );
+      const r = await runScript(dir);
+      expect(r.code).not.toBe(3);
+      expect(r.out).toContain("restored");
+      expect(readFileSync(path, "utf8")).toBe("ORIGINAL");
+      expect(existsSync(lockPath(dir))).toBe(false);
+    } finally {
+      live.kill();
+      rmSync(lockPath(dir), { force: true });
+    }
+  }, 30_000);
+
+  it("lets exactly one of two runs take over a stale lock, and the other never steals the new one", async () => {
+    const dir = setup("MUTATED");
+    const path = join(dir, "validate.ts");
+    writeFileSync(
+      lockPath(dir),
+      JSON.stringify({ pid: deadPid(), path, original: "ORIGINAL", mutatedHash: sha("MUTATED") }),
+    );
+    const results = await Promise.all([runScript(dir, slow), runScript(dir, slow)]);
+    const codes = results.map((r) => r.code);
+    expect(codes.filter((c) => c === 3)).toHaveLength(1);
+    expect(results.filter((r) => r.out.includes("restored"))).toHaveLength(1);
+    expect(readFileSync(path, "utf8")).toBe("ORIGINAL");
+    expect(existsSync(lockPath(dir))).toBe(false);
+    expect(existsSync(`${lockPath(dir)}.takeover`)).toBe(false);
+  }, 60_000);
+
+  // Two real runs: exactly one proceeds, the other exits 3 without touching anything, and the tree ends unchanged.
   const sources = () =>
     readFileSync(join(root, "packages", "core", "src", "describe", "validate.ts"), "utf8");
   for (const [label, delayMs] of [
