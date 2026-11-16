@@ -150,7 +150,8 @@ async function probe2d(page: Page): Promise<ReviewProbe> {
 async function expectTidy(page: Page) {
   const out = await page.evaluate(() => {
     const bad: string[] = [];
-    for (const el of document.querySelectorAll(".topbar .tab, .topbar .search, .topbar .repo-name")) {
+    // The tabs scroll sideways inside their nav (#48: a dozen views), so the nav is what must fit.
+    for (const el of document.querySelectorAll(".topbar > nav, .topbar .search, .topbar .repo-name")) {
       const r = el.getBoundingClientRect();
       if (r.right > window.innerWidth + 1) bad.push(`top bar item runs off the edge: ${el.className}`);
     }

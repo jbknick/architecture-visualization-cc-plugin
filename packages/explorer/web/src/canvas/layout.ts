@@ -538,13 +538,61 @@ function layoutLaneTree(tree: Tree, edges: IdxEdge[], l: LaneInfo): Positions {
 }
 
 /** ELK layered with one partition per lane (swimlanes left to right); bands, when set, are laid out apart and stacked. */
+/** Above this many boxes the swimlane layout uses `layoutLaneSweep` instead of ELK. */
+export const LANE_ELK_MAX = 250;
+
+/**
+ * The large-graph form of the swimlane layout: per band, lane 0 in rank order, then each lane ordered by the mean row
+ * of its neighbours in the lanes to its left (ties by rank), one row per box; bands stacked. Linear in the edges.
+ */
+function layoutLaneSweep(tree: Tree, edges: IdxEdge[], l: LaneInfo, input: LayoutInput): Positions {
+  const bandOrder = input.nodes.map((x) => x.band ?? "").filter((b, i, a) => a.indexOf(b) === i);
+  const adj = undirectedAdj(tree, edges);
+  const row = new Float64Array(tree.nodes.length).fill(Number.NaN);
+  const positions: Positions = {};
+  let top = 0;
+  for (const band of bandOrder) {
+    const members = tree.nodes.map((_, i) => i).filter((i) => l.band[i] === band);
+    const lanes = [...laneMembers(l, members).entries()].sort((a, b) => a[0] - b[0]);
+    let rows = 0;
+    for (const [k, list] of lanes) {
+      const key = (i: number): number => {
+        let s = 0;
+        let c = 0;
+        for (const j of adj[i] as number[]) {
+          if ((l.lane[j] as number) < k && l.band[j] === band && !Number.isNaN(row[j] as number)) {
+            s += row[j] as number;
+            c++;
+          }
+        }
+        return c > 0 ? s / c : Number.POSITIVE_INFINITY;
+      };
+      const keys = new Map(list.map((i) => [i, key(i)]));
+      const ordered = [...list].sort(
+        (a, b) =>
+          (keys.get(a) as number) - (keys.get(b) as number) ||
+          (l.rank[a] as number) - (l.rank[b] as number) ||
+          a - b,
+      );
+      ordered.forEach((i, j) => {
+        row[i] = j;
+        positions[(tree.nodes[i] as TreeNode).id] = [k * (FLOW_BOX_W + LANE_GAP_COLUMNS), top + j * LANE_ROW];
+      });
+      rows = Math.max(rows, ordered.length);
+    }
+    top += rows * LANE_ROW + BAND_GAP;
+  }
+  return positions;
+}
+
 async function layoutLaneElk(
   tree: Tree,
   edges: IdxEdge[],
   l: LaneInfo,
   input: LayoutInput,
 ): Promise<Positions> {
-  if (tree.nodes.length > 4000) return layoutLaneColumns(tree, l, FLOW_BOX_W + LANE_GAP_COLUMNS);
+  // ELK with partitions takes tens of seconds on a thousand boxes; past a few hundred a barycentre sweep is used.
+  if (tree.nodes.length > LANE_ELK_MAX) return layoutLaneSweep(tree, edges, l, input);
   const bands = [...new Set(l.band)];
   const bandOrder = input.nodes.map((x) => x.band ?? "").filter((b, i, a) => a.indexOf(b) === i);
   bands.sort((a, b) => bandOrder.indexOf(a) - bandOrder.indexOf(b));

@@ -77,6 +77,27 @@ describe("lane layouts (#48)", () => {
   });
 });
 
+describe("large swimlane graphs", () => {
+  it("skip ELK past LANE_ELK_MAX boxes and stay fast, lanes in columns, neighbours near", async () => {
+    const nodes = [];
+    const edges = [];
+    for (let i = 0; i < 200; i++) {
+      nodes.push(node(`e${String(i).padStart(3, "0")}`, 0, i, i < 100 ? "rpc" : "http"));
+      nodes.push(node(`h${String(i).padStart(3, "0")}`, 1, 199 - i, i < 100 ? "rpc" : "http"));
+      edges.push(edge(`e${String(i).padStart(3, "0")}`, `h${String(i).padStart(3, "0")}`));
+    }
+    const t0 = Date.now();
+    const r = await computeLayout({ nodes, edges, hint: "elk-layered", focus: null });
+    expect(Date.now() - t0).toBeLessThan(2000);
+    const p = r.positions;
+    expect(p.e000?.[0]).toBe(p.e150?.[0]);
+    expect(p.h000?.[0]).toBeGreaterThan(p.e000?.[0] ?? 0);
+    // The barycentre puts each handler on its endpoint's row, whatever its rank says.
+    expect(p.h007?.[1]).toBe(p.e007?.[1]);
+    expect(p.e150?.[1]).toBeGreaterThan(p.e099?.[1] ?? 0);
+  });
+});
+
 describe("flow geometry", () => {
   it("styles reads blue, writes orange, low edges dashed", () => {
     const e = (kind: string, confidence: "high" | "low") => ({ kind, confidence, weight: 1 });

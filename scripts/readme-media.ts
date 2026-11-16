@@ -1,7 +1,8 @@
 // Regenerates the README's screenshots and GIF in docs/readme/ from the running app on PUBLIC data only:
 //   - the real server (`gantry map`) on a temp copy of fixtures/pnpm-turbo (plus a `feature` branch for the review
 //     view), and
-//   - the explorer's mock API with its synthetic `scenario=large` / `scenario=hub` / `scenario=dups` data (web/mock).
+//   - the explorer's mock API with its synthetic `scenario=large` / `scenario=hub` / `scenario=dups` /
+//     `scenario=crossstack` data (web/mock).
 // Never point this at a private repo. Run: `pnpm build && pnpm readme:media` (or `pnpm tsx scripts/readme-media.ts`).
 // Options: --only <name,name>  regenerate just those PNGs (names without .png, or `gif`).
 //          --gif                also regenerate explorer-tour.gif and settlements-traffic.gif. The GIFs are NOT
@@ -428,6 +429,22 @@ async function stills(browser: Browser, mockBase: string) {
     const { hubFocus } = await import("../packages/explorer/web/mock/hubEgo.ts");
     await openEgo(page, `${mockBase}/#/ego?focus=${encodeURIComponent(hubFocus)}&scenario=hub`);
     await save(page, "caller-graph");
+  }
+  // The cross-stack views (#48) on the mock's synthetic shop app (`scenario=crossstack`), filters panel collapsed.
+  const crossStack: [string, string][] = [
+    ["endpoints", "endpoints"],
+    ["page-api", "page-api"],
+    ["api-tables", "api-tables"],
+    ["feature-path", `feature-path?focus=${encodeURIComponent("route:@shop/web:/orders/$orderId")}&sel=`],
+    ["table-usage", `table-usage?focus=${encodeURIComponent("table:orders")}&sel=`],
+  ];
+  for (const [name, hash] of crossStack) {
+    if (!want(name)) continue;
+    await page.goto(`${mockBase}/#/${hash}${hash.includes("?") ? "&" : "?"}scenario=crossstack`);
+    await page.locator("canvas.flow-canvas[data-ready=true]").waitFor({ timeout: 30_000 });
+    await page.mouse.move(2, 2);
+    await settle(page);
+    await save(page, name);
   }
   await page.context().close();
 

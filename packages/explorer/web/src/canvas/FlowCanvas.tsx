@@ -573,12 +573,12 @@ export function FlowCanvas({
         </ul>
       )}
       {nodes.length === 0 && <p className="empty flow-empty">Nothing to draw with these filters.</p>}
-      <div className="gc-status" aria-live="polite">
+      <div className="gc-status" aria-live="polite" data-ms={ready ? positions?.ms : undefined}>
         {error
           ? `Layout failed: ${error}`
           : !ready
             ? `Laying out ${nodes.length.toLocaleString("en-US")} nodes…`
-            : `lanes · ${positions?.ms ?? 0} ms`}
+            : `${lanes.length} ${lanes.length === 1 ? "lane" : "lanes"} · ${nodes.length.toLocaleString("en-US")} boxes`}
       </div>
       {tip && (
         <div className="gc-tooltip" role="tooltip" style={{ left: tip.x + 14, top: tip.y + 14 }}>

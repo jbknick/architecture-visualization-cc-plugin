@@ -23,7 +23,7 @@ export const openViewTool = defineTool({
   description:
     "Opens the architecture explorer for this worktree and returns {url}, a local http://127.0.0.1 link with an access token that the user opens in a browser. " +
     "It starts the explorer server in the background if it is not running (within 3 seconds) and reuses it otherwise. " +
-    "Give the url to the user as is; do not fetch it. view is a view id (for example project-map, ego, duplicates, review, map-3d); focus is a node id (sym:..., file:..., ws:...) to center on and open in the inspector; filters are view options as string key/value pairs (the review view needs {range: '<base>...<head>'} or {pr: '<n>'}). " +
+    "Give the url to the user as is; do not fetch it. view is a view id (for example project-map, ego, duplicates, review, map-3d, endpoints, page-api, api-tables, feature-path, table-usage); focus is a node id (sym:..., file:..., ws:...) to center on and open in the inspector; filters are view options as string key/value pairs (the review view needs {range: '<base>...<head>'} or {pr: '<n>'}). " +
     "Unknown view ids return {error: unknown_view, views}.",
   inputSchema: {
     view: z.string().min(1).max(50).describe("View id, for example project-map, ego, duplicates, map-3d"),
