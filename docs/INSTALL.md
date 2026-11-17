@@ -36,6 +36,10 @@ Once the plugin data dir has its own index for a repo, the old copy under `~/.ga
 2. If git hooks were installed while the old index was in use, run `"<plugin>/bin/gantry" hooks install` again so the hook scripts carry the plugin data dir.
 3. Delete the directory named in `legacy_data_dir` (`rm -rf ~/.gantry/data/repos/<hash>`). Do not run `gantry uninstall` for this: it deletes the data dir in use and removes the git hooks.
 
+### After an upgrade
+
+When an upgrade changes what indexing writes for unchanged files (new framework adapters, for example), the index records it (`meta.index_format`) and the first run after the upgrade re-indexes the whole repo once, so the new facts appear for every file and not only the ones you edit. The first Gantry tool call in a session, the explorer's Refresh, `gantry map`, `gantry heal` or a git hook (post-checkout, post-merge, post-rewrite, pre-push) runs it; it takes about as long as `gantry index`. The session-start hook does not wait for it, so a session starts as quickly as before. Descriptions and embeddings are kept. To do it right away, run `"<plugin>/bin/gantry" heal` in the repo.
+
 To start over with a fresh index instead, delete `~/.gantry/data/repos/<hash>/` (or run `gantry uninstall` in the repo) and re-run `/gantry:init`.
 
 ## Use

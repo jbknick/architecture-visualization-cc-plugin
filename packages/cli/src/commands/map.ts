@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ensureDataDir, resolvePaths } from "@gantry/core";
+import { ensureDataDir, resolvePaths, upgradeIndexFormat } from "@gantry/core";
 import { startOrReuseExplorer } from "@gantry/explorer";
 import { type Command, Option } from "commander";
 
@@ -49,6 +49,17 @@ export function registerMap(program: Command): void {
       }
       const paths = resolvePaths(process.cwd());
       ensureDataDir(paths);
+      // A store from an older index format (#195) is re-indexed in full first, so the views show adapter facts for
+      // every file. Fails open: the explorer then serves the index as it is.
+      try {
+        const t0 = Date.now();
+        if (await upgradeIndexFormat(paths))
+          process.stderr.write(`gantry map: index format changed; re-indexed in ${Date.now() - t0} ms\n`);
+      } catch (err) {
+        process.stderr.write(
+          `gantry map: re-index after a format change failed: ${err instanceof Error ? err.message : String(err)}\n`,
+        );
+      }
       // Bundled to plugin/dist/cli.js; the Vite build lives in plugin/dist/explorer/.
       const staticDir = join(dirname(fileURLToPath(import.meta.url)), "explorer");
       // Accepted for v1: the printed/opened URL carries `?t=<token>`, so the token is visible in process
