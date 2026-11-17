@@ -30,6 +30,15 @@ export interface GraphNode {
   change?: string;
   /** Review view, rings mode: the changed symbol's signature differs between the two sides. */
   signatureChanged?: boolean;
+  /**
+   * Cross-stack views (#48): the column or swimlane the node is drawn in (0 = leftmost). The `columns` and
+   * `tree-lr` layouts place nodes by it; `elk-layered` keeps it as an ELK partition.
+   */
+  lane?: number;
+  /** Cross-stack views: order inside the lane (smaller first; ties by id). */
+  rank?: number;
+  /** Endpoints view: the group the node is laid out in (`rpc`, `http`, `server fn`), stacked top to bottom. */
+  band?: string;
   x?: number;
   y?: number;
 }
@@ -62,6 +71,10 @@ export interface GraphEdge {
   bindings?: number;
   /** Slices view: true when the edge crosses a slice boundary. */
   cross?: boolean;
+  /** Cross-stack views (#48): how many places the aggregated edge stands for (page -> API: the requesting code). */
+  via?: number;
+  /** Cross-stack views: up to 6 of those places, by label. */
+  viaSample?: string[];
 }
 
 /** The canvas layouts defined by issue #36. */
@@ -112,7 +125,13 @@ export interface ApiContext {
 export interface ViewModule {
   id: string;
   title: string;
-  enabled: boolean;
+  /**
+   * A function when it depends on the index (#48: the cross-stack views need adapter nodes). `/api/meta` reports the
+   * value, and a disabled view answers 404.
+   */
+  enabled: boolean | ((ctx: ApiContext) => boolean);
+  /** Why the view is disabled, shown as the tab's tooltip (`/api/meta` `views[].reason`). */
+  disabledReason?: string;
   /** May return a promise (the review view reads git). */
   build(ctx: ApiContext, params: ViewParams): ViewResult | Promise<ViewResult>;
 }

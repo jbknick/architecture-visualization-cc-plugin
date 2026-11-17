@@ -20,6 +20,12 @@ export interface LayoutNode {
   /** Workspace boxes: the name and the parts of the detail line ("app", "1,700 functions", "260 files"). */
   title?: string;
   subtitle?: string[];
+  /** Cross-stack views (#48): the column or swimlane; with it the flat layouts place nodes in lanes. */
+  lane?: number;
+  /** Cross-stack views: order inside the lane. */
+  rank?: number;
+  /** Endpoints view: nodes of one band are laid out together and the bands stacked. */
+  band?: string;
 }
 
 export interface LayoutEdge {

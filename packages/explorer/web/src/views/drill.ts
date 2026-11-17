@@ -5,7 +5,7 @@ import type { Route } from "../route.ts";
 const PROJECT_MAP_DRILLABLE = new Set(["workspace", "dir", "file"]);
 
 /** True for ids that `/api/node` knows. Directories, `ext:*` and `more:*` nodes exist only in view responses. */
-export const isServerNode = (id: string): boolean => /^(sym|file|ws):/.test(id);
+export const isServerNode = (id: string): boolean => /^(sym|file|ws|route|ep|table|mw|mwref|call):/.test(id);
 
 export const isSymbolId = (id: string): boolean => id.startsWith("sym:");
 
@@ -19,6 +19,19 @@ export function drillPatch(view: string, node: GraphNode): Partial<Route> | null
   }
   if (view === "ego" && (isSymbolId(node.id) || node.id.startsWith("file:"))) {
     return { focus: node.id, sel: node.id };
+  }
+  // Cross-stack views (#48): a double-click on a route or endpoint follows its whole feature path, on a table its usage.
+  if (
+    view === "endpoints" ||
+    view === "page-api" ||
+    view === "api-tables" ||
+    view === "feature-path" ||
+    view === "table-usage"
+  ) {
+    if (node.kind === "route" || node.kind === "endpoint")
+      return { view: "feature-path", focus: node.id, sel: node.id, filters: {}, level: null, hops: null };
+    if (node.kind === "table")
+      return { view: "table-usage", focus: node.id, sel: node.id, filters: {}, level: null, hops: null };
   }
   return null;
 }

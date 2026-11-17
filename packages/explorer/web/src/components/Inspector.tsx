@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import type {
+  EndpointFacts,
   GraphNode,
   NeighborRef,
   NodeDetail,
+  NodeRef,
   ReviewChange,
   ReviewConsumers,
   ReviewData,
+  TableFacts,
 } from "../api.ts";
 import { m2Of, m2Spec } from "../badges.ts";
 import { useNodeDetail, useOverview } from "../hooks.ts";
@@ -269,6 +272,109 @@ function ReviewChangeSection({ change }: { change: ReviewChange }) {
   );
 }
 
+/**
+ * Key/value facts of an adapter node (#48): one row per fact, the key in a narrow column and the value wrapping in
+ * the rest of the width (the `.fan` stat tiles are for short numbers only).
+ */
+function Facts({ label, rows }: { label: string; rows: [string, React.ReactNode][] }) {
+  return (
+    <dl className="kv-facts" aria-label={label}>
+      {rows.map(([k, v]) => (
+        <div className="kv-row" key={k}>
+          <dt>{k}</dt>
+          <dd>{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function RefLinks({ refs }: { refs: NodeRef[] }) {
+  const { selectNode } = useStore();
+  if (refs.length === 0) return <>none</>;
+  return (
+    <>
+      {refs.map((t, i) => (
+        <span key={t.id}>
+          {i > 0 ? ", " : ""}
+          <button type="button" className="link-btn" title={t.id} onClick={() => selectNode(t.id)}>
+            {t.label}
+          </button>
+        </span>
+      ))}
+    </>
+  );
+}
+
+/** Endpoints (#48): what it answers, what handles it, what it passes through and which tables it touches. */
+function EndpointSection({ facts }: { facts: EndpointFacts }) {
+  const rows: [string, React.ReactNode][] = [
+    ["Kind", `${facts.group} (${facts.adapter})`],
+    ["Method", facts.method],
+    [facts.group === "server fn" ? "Name" : "Path", <code key="p">{facts.path}</code>],
+  ];
+  if (facts.rpcPath) rows.push(["Procedure", <code key="r">{facts.rpcPath}</code>]);
+  rows.push([
+    "Handler",
+    facts.handler ? (
+      <span key="h">
+        <RefLinks refs={[facts.handler]} />
+        {facts.handlerName === "inline" ? " (inline)" : ""}
+      </span>
+    ) : (
+      "not resolved"
+    ),
+  ]);
+  if (facts.middleware.length > 0) rows.push(["Middleware", facts.middleware.join(", ")]);
+  rows.push(["Requested from", `${facts.requestedBy} ${facts.requestedBy === 1 ? "place" : "places"}`]);
+  rows.push(
+    ["Reads", <RefLinks key="r" refs={facts.reads} />],
+    ["Writes", <RefLinks key="w" refs={facts.writes} />],
+  );
+  return (
+    <section aria-label="Endpoint">
+      <h3>Endpoint</h3>
+      <Facts label="Endpoint facts" rows={rows} />
+    </section>
+  );
+}
+
+/** Tables (#48): columns, and how much code reads and writes it (the code itself is under Connections). */
+function TableSection({ facts }: { facts: TableFacts }) {
+  const rows: [string, React.ReactNode][] = [
+    ["Writers", String(facts.writers)],
+    ["Readers", String(facts.readers)],
+  ];
+  if (facts.dialect) rows.push(["Dialect", facts.dialect]);
+  rows.push([
+    `Columns (${facts.columns.length})`,
+    <code key="c">{facts.columns.join(", ") || "none read"}</code>,
+  ]);
+  return (
+    <section aria-label="Table">
+      <h3>Table</h3>
+      <Facts label="Table facts" rows={rows} />
+      <p className="muted">Raw SQL is not read, so tables used only through it are missing.</p>
+    </section>
+  );
+}
+
+/** A middleware named by oRPC procedures or server functions (#48): the endpoints that use it. */
+function MiddlewareRefSection({ facts }: { facts: { name: string; endpoints: NodeRef[] } }) {
+  return (
+    <section aria-label="Middleware">
+      <h3>Middleware</h3>
+      <Facts
+        label="Middleware facts"
+        rows={[
+          ["Name", <code key="n">{facts.name}</code>],
+          [`Used by (${facts.endpoints.length})`, <RefLinks key="u" refs={facts.endpoints} />],
+        ]}
+      />
+    </section>
+  );
+}
+
 export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review?: ReviewData | null }) {
   const { state, selectNode, openInView, view } = useStore();
   const id = state.route.sel;
@@ -301,13 +407,16 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
   const isSymbol = id.startsWith("sym:");
   const isFile = id.startsWith("file:");
   const kindOfNode = graphNode?.kind ?? kind;
-  const canMap = isSymbol || isFile || id.startsWith("ws:") || kindOfNode === "dir";
+  const isAdapter = /^(route|ep|table|mw|mwref|call):/.test(id);
+  const canMap =
+    isSymbol || isFile || id.startsWith("ws:") || kindOfNode === "dir" || (isAdapter && path !== null);
   // Only nodes the server knows as a workspace or a folder have an overview; the 3D map's own cluster ids do not.
   const hasOverview = id.startsWith("ws:") || (id.startsWith("dir:") && kindOfNode === "dir");
   const egoReady = state.meta?.views.some((v) => v.id === "ego" && v.enabled) ?? true;
   const mapReady = state.meta?.views.some((v) => v.id === "project-map" && v.enabled) ?? true;
   // A function is shown inside its file in the project map; folders, files and workspaces are shown as themselves.
-  const mapTarget = isSymbol && path ? `file:${path}` : id;
+  const mapTarget = (isSymbol || isAdapter) && path ? `file:${path}` : id;
+  const flowReady = (v: string) => state.meta?.views.some((x) => x.id === v && x.enabled) ?? true;
 
   const copy = async () => {
     if (!path) return;
@@ -383,6 +492,28 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
           >
             Show callers &amp; callees
           </button>
+          {(kindOfNode === "route" || kindOfNode === "endpoint") && (
+            <button
+              type="button"
+              className="btn"
+              disabled={!flowReady("feature-path")}
+              title="Follow this from the page to the tables"
+              onClick={() => openInView("feature-path", id, id)}
+            >
+              Show feature path
+            </button>
+          )}
+          {kindOfNode === "table" && (
+            <button
+              type="button"
+              className="btn"
+              disabled={!flowReady("table-usage")}
+              title="Who writes and reads this table"
+              onClick={() => openInView("table-usage", id, id)}
+            >
+              Show table usage
+            </button>
+          )}
         </div>
       </div>
 
@@ -401,6 +532,9 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
 
         {current && (
           <>
+            {body?.endpoint && <EndpointSection facts={body.endpoint} />}
+            {body?.table && <TableSection facts={body.table} />}
+            {body?.middlewareRef && <MiddlewareRefSection facts={body.middlewareRef} />}
             {current.signature && (
               <section>
                 <h3>Signature</h3>
@@ -408,22 +542,24 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
               </section>
             )}
 
-            <section>
-              <h3>Description</h3>
-              {current.untrusted_description ? (
-                <div className="description">
-                  <p className="description-label">
-                    {current.described_by === "fallback"
-                      ? "Written without a model from names only — may be incomplete"
-                      : "Generated description — may be wrong"}
-                  </p>
-                  {/* Plain text only. The string is untrusted and is never parsed as HTML. */}
-                  <p className="description-text">{current.untrusted_description}</p>
-                </div>
-              ) : (
-                <p className="muted">Not yet described</p>
-              )}
-            </section>
+            {!isAdapter && (
+              <section>
+                <h3>Description</h3>
+                {current.untrusted_description ? (
+                  <div className="description">
+                    <p className="description-label">
+                      {current.described_by === "fallback"
+                        ? "Written without a model from names only — may be incomplete"
+                        : "Generated description — may be wrong"}
+                    </p>
+                    {/* Plain text only. The string is untrusted and is never parsed as HTML. */}
+                    <p className="description-text">{current.untrusted_description}</p>
+                  </div>
+                ) : (
+                  <p className="muted">Not yet described</p>
+                )}
+              </section>
+            )}
 
             {isSymbol && (
               <section>

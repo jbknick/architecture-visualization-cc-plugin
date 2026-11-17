@@ -3,6 +3,7 @@
 import ELK, { type ElkNode } from "elkjs/lib/elk.bundled.js";
 import Graph from "graphology";
 import forceAtlas2 from "graphology-layout-forceatlas2";
+import { FLOW_BOX_H, FLOW_BOX_W } from "./flowGeom.ts";
 import { buildTree, CELL_H, CELL_W, leavesOf, type Tree, type TreeNode } from "./hierarchy.ts";
 import { layoutMap } from "./mapLayout.ts";
 import { hashString, unitPair } from "./prng.ts";
@@ -51,12 +52,34 @@ function indexEdges(tree: Tree, input: LayoutInput): IdxEdge[] {
   return out;
 }
 
+const LANE_GAP_COLUMNS = 150;
+const LANE_GAP_TREE = 110;
+const LANE_ROW = 40;
+const BAND_GAP = 90;
+
 /** Entry point: lay out everything, honouring saved positions. */
 export async function computeLayout(input: LayoutInput): Promise<LayoutResult> {
   const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
   const tree = buildTree(input.nodes, { boxWorkspaces: input.hint === "nested-elk" });
   const edges = indexEdges(tree, input);
   const hint = normaliseHint(input.hint, tree.hierarchical);
+
+  if (!tree.hierarchical && input.nodes.some((n) => n.lane !== undefined)) {
+    // Lanes (#48) come from the data: the same answer gives the same picture, nothing is saved.
+    const lanes = lanesOf(tree, input);
+    const positions =
+      hint === "layered"
+        ? await layoutLaneElk(tree, edges, lanes, input)
+        : hint === "tree"
+          ? layoutLaneTree(tree, edges, lanes)
+          : layoutLaneColumns(tree, lanes, FLOW_BOX_W + LANE_GAP_COLUMNS);
+    for (const p of Object.values(positions)) {
+      p[0] = round(p[0]);
+      p[1] = round(p[1]);
+    }
+    const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
+    return { positions, changed: false, ms: Math.round(t1 - t0), strategy: `lanes/${hint}` };
+  }
 
   if (tree.hierarchical) {
     // Workspace boxes with a treemap inside. Everything is derived from the data, so saved positions do not apply.
@@ -391,6 +414,272 @@ function layoutGrid(tree: Tree): Positions {
     positions[(tree.nodes[i] as TreeNode).id] = [(k % cols) * 190, Math.floor(k / cols) * 60];
   });
   return positions;
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// Lanes (#48): columns, swimlanes and reversed trees of the cross-stack views.
+
+interface LaneInfo {
+  lane: Int32Array;
+  rank: Float64Array;
+  band: string[];
+}
+
+function lanesOf(tree: Tree, input: LayoutInput): LaneInfo {
+  const n = tree.nodes.length;
+  const byId = new Map(input.nodes.map((x) => [x.id, x]));
+  const lane = new Int32Array(n);
+  const rank = new Float64Array(n);
+  const band: string[] = [];
+  tree.nodes.forEach((t, i) => {
+    const x = byId.get(t.id);
+    lane[i] = x?.lane ?? 0;
+    rank[i] = x?.rank ?? Number.MAX_SAFE_INTEGER;
+    band[i] = x?.band ?? "";
+  });
+  return { lane, rank, band };
+}
+
+/** Members of each lane in rank order (ties: tree order, which is by id). */
+function laneMembers(l: LaneInfo, members: number[]): Map<number, number[]> {
+  const out = new Map<number, number[]>();
+  for (const i of members) {
+    const k = l.lane[i] as number;
+    let list = out.get(k);
+    if (!list) {
+      list = [];
+      out.set(k, list);
+    }
+    list.push(i);
+  }
+  for (const list of out.values())
+    list.sort((a, b) => (l.rank[a] as number) - (l.rank[b] as number) || a - b);
+  return out;
+}
+
+/** Columns: one per lane, nodes in rank order, each column centred on y = 0. */
+function layoutLaneColumns(tree: Tree, l: LaneInfo, colW: number): Positions {
+  const positions: Positions = {};
+  const all = tree.nodes.map((_, i) => i);
+  for (const [k, members] of laneMembers(l, all)) {
+    members.forEach((i, j) => {
+      positions[(tree.nodes[i] as TreeNode).id] = [k * colW, (j - (members.length - 1) / 2) * LANE_ROW];
+    });
+  }
+  return positions;
+}
+
+/**
+ * A tree over lanes. The root side is the outer lane with fewer nodes (the table of the table usage view, on the
+ * right); every other node hangs off its neighbour one lane nearer the root with the smallest rank. Leaves get
+ * rows in depth-first order and a parent sits at the middle of its children, so a subtree stays together.
+ */
+function layoutLaneTree(tree: Tree, edges: IdxEdge[], l: LaneInfo): Positions {
+  const n = tree.nodes.length;
+  const positions: Positions = {};
+  if (n === 0) return positions;
+  let lo = Number.POSITIVE_INFINITY;
+  let hi = Number.NEGATIVE_INFINITY;
+  for (let i = 0; i < n; i++) {
+    lo = Math.min(lo, l.lane[i] as number);
+    hi = Math.max(hi, l.lane[i] as number);
+  }
+  const count = (k: number) => l.lane.filter((v) => v === k).length;
+  const step = count(hi) <= count(lo) ? 1 : -1; // +1: the root is on the right
+  const adj = undirectedAdj(tree, edges);
+  const parent = new Int32Array(n).fill(-1);
+  for (let i = 0; i < n; i++) {
+    let best = -1;
+    for (const j of adj[i] as number[]) {
+      if ((l.lane[j] as number) !== (l.lane[i] as number) + step) continue;
+      if (
+        best === -1 ||
+        (l.rank[j] as number) < (l.rank[best] as number) ||
+        ((l.rank[j] as number) === (l.rank[best] as number) && j < best)
+      )
+        best = j;
+    }
+    parent[i] = best;
+  }
+  const kids: number[][] = tree.nodes.map(() => []);
+  const roots: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const p = parent[i] as number;
+    if (p === -1) roots.push(i);
+    else (kids[p] as number[]).push(i);
+  }
+  const byRank = (a: number, b: number) => (l.rank[a] as number) - (l.rank[b] as number) || a - b;
+  roots.sort(byRank);
+  for (const k of kids) k.sort(byRank);
+  const y = new Float64Array(n);
+  let row = 0;
+  const place = (i: number): number => {
+    const ks = kids[i] as number[];
+    if (ks.length === 0) {
+      y[i] = row++ * LANE_ROW;
+      return y[i] as number;
+    }
+    let sum = 0;
+    for (const k of ks) sum += place(k);
+    y[i] = sum / ks.length;
+    return y[i] as number;
+  };
+  for (const r of roots) {
+    place(r);
+    row += 0.5;
+  }
+  const mid = (row * LANE_ROW) / 2;
+  for (let i = 0; i < n; i++)
+    positions[(tree.nodes[i] as TreeNode).id] = [
+      (l.lane[i] as number) * (FLOW_BOX_W + LANE_GAP_TREE),
+      (y[i] as number) - mid,
+    ];
+  return positions;
+}
+
+/** ELK layered with one partition per lane (swimlanes left to right); bands, when set, are laid out apart and stacked. */
+/** Above this many boxes the swimlane layout uses `layoutLaneSweep` instead of ELK. */
+export const LANE_ELK_MAX = 250;
+
+/**
+ * The large-graph form of the swimlane layout: per band, lane 0 in rank order, then each lane ordered by the mean row
+ * of its neighbours in the lanes to its left (ties by rank), one row per box; bands stacked. Linear in the edges.
+ */
+function layoutLaneSweep(tree: Tree, edges: IdxEdge[], l: LaneInfo, input: LayoutInput): Positions {
+  const bandOrder = input.nodes.map((x) => x.band ?? "").filter((b, i, a) => a.indexOf(b) === i);
+  const adj = undirectedAdj(tree, edges);
+  const row = new Float64Array(tree.nodes.length).fill(Number.NaN);
+  const positions: Positions = {};
+  let top = 0;
+  for (const band of bandOrder) {
+    const members = tree.nodes.map((_, i) => i).filter((i) => l.band[i] === band);
+    const lanes = [...laneMembers(l, members).entries()].sort((a, b) => a[0] - b[0]);
+    let rows = 0;
+    for (const [k, list] of lanes) {
+      const key = (i: number): number => {
+        let s = 0;
+        let c = 0;
+        for (const j of adj[i] as number[]) {
+          if ((l.lane[j] as number) < k && l.band[j] === band && !Number.isNaN(row[j] as number)) {
+            s += row[j] as number;
+            c++;
+          }
+        }
+        return c > 0 ? s / c : Number.POSITIVE_INFINITY;
+      };
+      const keys = new Map(list.map((i) => [i, key(i)]));
+      const ordered = [...list].sort(
+        (a, b) =>
+          (keys.get(a) as number) - (keys.get(b) as number) ||
+          (l.rank[a] as number) - (l.rank[b] as number) ||
+          a - b,
+      );
+      ordered.forEach((i, j) => {
+        row[i] = j;
+        positions[(tree.nodes[i] as TreeNode).id] = [k * (FLOW_BOX_W + LANE_GAP_COLUMNS), top + j * LANE_ROW];
+      });
+      rows = Math.max(rows, ordered.length);
+    }
+    top += rows * LANE_ROW + BAND_GAP;
+  }
+  return positions;
+}
+
+async function layoutLaneElk(
+  tree: Tree,
+  edges: IdxEdge[],
+  l: LaneInfo,
+  input: LayoutInput,
+): Promise<Positions> {
+  // ELK with partitions takes tens of seconds on a thousand boxes; past a few hundred a barycentre sweep is used.
+  if (tree.nodes.length > LANE_ELK_MAX) return layoutLaneSweep(tree, edges, l, input);
+  const bands = [...new Set(l.band)];
+  const bandOrder = input.nodes.map((x) => x.band ?? "").filter((b, i, a) => a.indexOf(b) === i);
+  bands.sort((a, b) => bandOrder.indexOf(a) - bandOrder.indexOf(b));
+  const positions: Positions = {};
+  let top = 0;
+  for (const band of bands) {
+    const members = tree.nodes.map((_, i) => i).filter((i) => l.band[i] === band);
+    const inBand = new Set(members);
+    const seen = new Set<string>();
+    const elkEdges: NonNullable<ElkNode["edges"]> = [];
+    for (const e of edges) {
+      if (!inBand.has(e.src) || !inBand.has(e.dst)) continue;
+      const key = `${e.src}>${e.dst}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      elkEdges.push({ id: `e${elkEdges.length}`, sources: [elkIdOf(e.src)], targets: [elkIdOf(e.dst)] });
+    }
+    const ordered = [...laneMembers(l, members).entries()].sort((a, b) => a[0] - b[0]).flatMap(([, m]) => m);
+    const out = await new ELK().layout({
+      id: "root",
+      layoutOptions: {
+        "elk.algorithm": "layered",
+        "elk.direction": "RIGHT",
+        "elk.partitioning.activate": "true",
+        "elk.spacing.nodeNode": "12",
+        "elk.layered.spacing.nodeNodeBetweenLayers": "90",
+        "elk.layered.crossingMinimization.forceNodeModelOrder": "true",
+        "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
+      },
+      children: ordered.map((i) => ({
+        id: elkIdOf(i),
+        width: FLOW_BOX_W,
+        height: FLOW_BOX_H,
+        layoutOptions: { "elk.partitioning.partition": String(l.lane[i]) },
+      })),
+      edges: elkEdges,
+    });
+    let maxY = 0;
+    for (const c of out.children ?? []) {
+      const i = Number(c.id.slice(1));
+      const cy = top + (c.y ?? 0) + (c.height ?? 0) / 2;
+      positions[(tree.nodes[i] as TreeNode).id] = [(c.x ?? 0) + (c.width ?? 0) / 2, cy];
+      maxY = Math.max(maxY, (c.y ?? 0) + (c.height ?? 0));
+    }
+    top += maxY + BAND_GAP;
+  }
+  if (bands.length > 1) alignLanes(tree, l, positions);
+  return positions;
+}
+
+/**
+ * Bands are laid out apart, so one lane can start at a different x in each. Every lane is moved to one x for all
+ * bands: the furthest right any band put it, and right of the previous lane's widest extent.
+ */
+function alignLanes(tree: Tree, l: LaneInfo, positions: Positions): void {
+  const key = (i: number) => `${l.band[i]}|${l.lane[i]}`;
+  const startOf = new Map<string, number>();
+  const endOf = new Map<string, number>();
+  tree.nodes.forEach((t, i) => {
+    const p = positions[t.id];
+    if (!p) return;
+    const k = key(i);
+    startOf.set(k, Math.min(startOf.get(k) ?? Number.POSITIVE_INFINITY, p[0]));
+    endOf.set(k, Math.max(endOf.get(k) ?? Number.NEGATIVE_INFINITY, p[0]));
+  });
+  const laneStart = new Map<number, number>();
+  const laneWidth = new Map<number, number>();
+  tree.nodes.forEach((_, i) => {
+    const k = key(i);
+    const x0 = startOf.get(k);
+    if (x0 === undefined) return;
+    const lane = l.lane[i] as number;
+    laneStart.set(lane, Math.max(laneStart.get(lane) ?? Number.NEGATIVE_INFINITY, x0));
+    laneWidth.set(lane, Math.max(laneWidth.get(lane) ?? 0, (endOf.get(k) ?? x0) - x0));
+  });
+  let minNext = Number.NEGATIVE_INFINITY;
+  for (const lane of [...laneStart.keys()].sort((a, b) => a - b)) {
+    const x = Math.max(laneStart.get(lane) as number, minNext);
+    laneStart.set(lane, x);
+    minNext = x + (laneWidth.get(lane) ?? 0) + FLOW_BOX_W + 90;
+  }
+  tree.nodes.forEach((t, i) => {
+    const p = positions[t.id];
+    const x0 = startOf.get(key(i));
+    if (!p || x0 === undefined) return;
+    p[0] += (laneStart.get(l.lane[i] as number) as number) - x0;
+  });
 }
 
 // ---------------------------------------------------------------------------------------------------------

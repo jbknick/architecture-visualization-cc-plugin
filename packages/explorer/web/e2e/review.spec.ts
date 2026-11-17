@@ -150,9 +150,24 @@ async function probe2d(page: Page): Promise<ReviewProbe> {
 async function expectTidy(page: Page) {
   const out = await page.evaluate(() => {
     const bad: string[] = [];
-    for (const el of document.querySelectorAll(".topbar .tab, .topbar .search, .topbar .repo-name")) {
+    for (const el of document.querySelectorAll(".topbar .tab-strip, .topbar .search, .topbar .repo-name")) {
       const r = el.getBoundingClientRect();
       if (r.right > window.innerWidth + 1) bad.push(`top bar item runs off the edge: ${el.className}`);
+    }
+    // The tabs scroll sideways inside their strip (#48: a dozen views). Every tab is visible, or the strip shows a
+    // scroll button on the side it is hidden; the open view's tab is always fully visible.
+    const nav = document.querySelector(".topbar .tab-strip > nav")?.getBoundingClientRect();
+    const hasLeft = document.querySelector(".tab-scroll.left") !== null;
+    const hasRight = document.querySelector(".tab-scroll.right") !== null;
+    for (const tab of document.querySelectorAll(".topbar .tab")) {
+      const r = tab.getBoundingClientRect();
+      if (!nav) break;
+      const hiddenLeft = r.left < nav.left - 1;
+      const hiddenRight = r.right > nav.right + 1;
+      if (tab.getAttribute("aria-selected") === "true" && (hiddenLeft || hiddenRight))
+        bad.push(`the open view's tab is out of sight: ${tab.textContent}`);
+      if ((hiddenLeft && !hasLeft) || (hiddenRight && !hasRight))
+        bad.push(`a tab is hidden with no way to reach it: ${tab.textContent}`);
     }
     const canvas = document.querySelector("[data-testid=review-canvas]")?.getBoundingClientRect();
     const legend = document.querySelector(".rv-legend")?.getBoundingClientRect();

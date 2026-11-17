@@ -185,6 +185,48 @@ kbd {
   background: var(--surface-2);
 }
 
+.tab-strip {
+  /* With the cross-stack views (#48) there are a dozen tabs: they scroll sideways, with a button on each side that
+     has hidden tabs (TabStrip in TopBar.tsx), before the bar overflows. */
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.tab-strip > nav {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab-strip > nav::-webkit-scrollbar {
+  display: none;
+}
+.tab-scroll {
+  /* Laid over the ends of the strip, so showing or hiding one never moves the tabs. */
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  box-shadow: 0 0 10px 8px var(--surface);
+  width: 26px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tab-scroll.left {
+  left: 0;
+}
+.tab-scroll.right {
+  right: 0;
+}
+.tab-scroll:hover {
+  background: var(--surface-2);
+}
 .tabs {
   display: flex;
   gap: 4px;
@@ -215,6 +257,9 @@ kbd {
 .tab[aria-disabled="true"]:hover {
   background: none;
   color: var(--muted);
+}
+.topbar.many-tabs .tab {
+  padding: 7px 9px;
 }
 
 /* Refresh on request (spec section 11 (c)) */
@@ -892,4 +937,66 @@ kbd {
   flex: none;
   width: 8px;
   height: 8px;
+}
+
+/* Cross-stack views (#48): focus picker and panel bits. */
+.flow-prompt {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: left;
+}
+.flow-prompt .text-input {
+  width: 100%;
+  margin: 8px 0 12px;
+}
+.flow-choices {
+  max-height: 55vh;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px 24px;
+}
+.flow-choices h3 {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 4px;
+}
+.flow-choices ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.flow-choices li {
+  padding: 2px 0;
+}
+.flow-gaps {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+}
+.flow-gaps code {
+  white-space: normal;
+  word-break: break-word;
+}
+.flow-focus {
+  margin: 0 0 6px;
+}
+.kv-facts {
+  display: grid;
+  grid-template-columns: minmax(84px, max-content) minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+}
+.kv-row {
+  display: contents;
+}
+.kv-facts dt {
+  color: var(--muted);
+  font-size: 12px;
+  padding-top: 1px;
+}
+.kv-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

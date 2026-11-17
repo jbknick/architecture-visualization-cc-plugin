@@ -69,12 +69,26 @@ export function getFilterPanel(viewId: string): FilterPanel | null {
 }
 
 /** Shown in the centre instead of the canvas while a view that needs a `focus` has none. */
-export type FocusPrompt = ComponentType<{ viewId: string }>;
+export type FocusPrompt = ComponentType<{ viewId: string; notice?: string }>;
 const focusPrompts = new Map<string, FocusPrompt>();
+const promptOnError = new Set<string>();
 
-/** Mark a view as needing `focus`: no request is sent until it is set, and `prompt` explains what to do. */
-export function registerFocusRequired(viewId: string, prompt: FocusPrompt): void {
+/**
+ * Mark a view as needing `focus`: no request is sent until it is set, and `prompt` explains what to do. With
+ * `onError`, a focus the server refuses (unknown, wrong kind) shows the prompt again with the error as `notice`.
+ */
+export function registerFocusRequired(
+  viewId: string,
+  prompt: FocusPrompt,
+  opts: { onError?: boolean } = {},
+): void {
   focusPrompts.set(viewId, prompt);
+  if (opts.onError) promptOnError.add(viewId);
+  else promptOnError.delete(viewId);
+}
+
+export function focusPromptOnError(viewId: string): boolean {
+  return promptOnError.has(viewId);
 }
 
 export function getFocusPrompt(viewId: string): FocusPrompt | null {
