@@ -1,0 +1,25 @@
+{
+  "source": "gothinkster/node-express-realworld-example-app@30b68e1e881462b2f4164ea09ab4c4f5699c7b0b, labelled by hand from src/main.ts, src/app/routes/routes.ts and the four *.controller.ts files",
+  "endpoints": [
+    "GET /",
+    "GET /api/articles",
+    "GET /api/articles/feed",
+    "POST /api/articles",
+    "GET /api/articles/:slug",
+    "PUT /api/articles/:slug",
+    "DELETE /api/articles/:slug",
+    "GET /api/articles/:slug/comments",
+    "POST /api/articles/:slug/comments",
+    "DELETE /api/articles/:slug/comments/:id",
+    "POST /api/articles/:slug/favorite",
+    "DELETE /api/articles/:slug/favorite",
+    "POST /api/users",
+    "POST /api/users/login",
+    "GET /api/user",
+    "PUT /api/user",
+    "GET /api/profiles/:username",
+    "POST /api/profiles/:username/follow",
+    "DELETE /api/profiles/:username/follow",
+    "GET /api/tags"
+  ]
+}

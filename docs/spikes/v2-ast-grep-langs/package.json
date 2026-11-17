@@ -1,0 +1,10 @@
+{
+  "name": "spike-v2-ast-grep-langs",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ast-grep/lang-go": "0.0.6",
+    "@ast-grep/lang-java": "0.0.7",
+    "@ast-grep/napi": "0.51.3"
+  }
+}

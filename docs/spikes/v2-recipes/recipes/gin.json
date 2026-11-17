@@ -1,0 +1,71 @@
+{
+  "name": "gin",
+  "frameworks": [
+    {
+      "name": "github.com/gin-gonic/gin",
+      "evidence": "go.mod require; gin.Default() calls"
+    }
+  ],
+  "when": {
+    "imports": ["github.com/gin-gonic/gin"]
+  },
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "engine",
+      "language": "go",
+      "rule": {
+        "any": [
+          {
+            "pattern": "gin.Default()"
+          },
+          {
+            "pattern": "gin.New()"
+          }
+        ]
+      },
+      "emit": {
+        "kind": "router"
+      }
+    },
+    {
+      "id": "group",
+      "language": "go",
+      "rule": {
+        "any": [
+          {
+            "pattern": "$C := $P.Group($X)"
+          },
+          {
+            "pattern": "$C := $P.Group($X, $$$MW)"
+          }
+        ]
+      },
+      "emit": {
+        "kind": "mount",
+        "parent": "$P",
+        "prefix": "$X",
+        "child": "$C"
+      }
+    },
+    {
+      "id": "route",
+      "language": "go",
+      "rule": {
+        "pattern": "$R.$M($X, $$$H)"
+      },
+      "constraints": {
+        "M": {
+          "regex": "^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|Any)$"
+        }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$$$H"
+      }
+    }
+  ]
+}

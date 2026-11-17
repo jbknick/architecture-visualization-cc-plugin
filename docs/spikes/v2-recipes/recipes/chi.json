@@ -1,0 +1,142 @@
+{
+  "name": "chi",
+  "frameworks": [
+    {
+      "name": "github.com/go-chi/chi/v5",
+      "evidence": "go.mod require; chi.NewRouter() calls"
+    }
+  ],
+  "when": {
+    "imports": ["github.com/go-chi/chi"]
+  },
+  "passthrough": ["With"],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "router",
+      "language": "go",
+      "rule": {
+        "any": [
+          {
+            "pattern": "chi.NewRouter()"
+          },
+          {
+            "pattern": "chi.NewMux()"
+          }
+        ]
+      },
+      "emit": {
+        "kind": "router"
+      }
+    },
+    {
+      "id": "route-scope",
+      "language": "go",
+      "rule": {
+        "pattern": "$P.Route($X, $F)"
+      },
+      "emit": {
+        "kind": "mount",
+        "parent": "$P",
+        "prefix": "$X",
+        "child": "$F",
+        "childIsScope": true
+      }
+    },
+    {
+      "id": "group-scope",
+      "language": "go",
+      "rule": {
+        "pattern": {
+          "context": "func _() { $P.Group($F) }",
+          "selector": "call_expression"
+        }
+      },
+      "emit": {
+        "kind": "mount",
+        "parent": "$P",
+        "child": "$F",
+        "childIsScope": true
+      }
+    },
+    {
+      "id": "mount",
+      "language": "go",
+      "rule": {
+        "pattern": "$P.Mount($X, $C)"
+      },
+      "emit": {
+        "kind": "mount",
+        "parent": "$P",
+        "prefix": "$X",
+        "child": "$C"
+      }
+    },
+    {
+      "id": "route",
+      "language": "go",
+      "rule": {
+        "pattern": "$R.$M($X, $$$H)"
+      },
+      "constraints": {
+        "M": {
+          "regex": "^(Get|Post|Put|Patch|Delete|Head|Options|Connect|Trace)$"
+        }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$$$H"
+      }
+    },
+    {
+      "id": "route-method",
+      "language": "go",
+      "rule": {
+        "pattern": "$R.Method($MS, $X, $H)"
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "$MS",
+        "path": "$X",
+        "handler": "$H"
+      }
+    },
+    {
+      "id": "route-method-func",
+      "language": "go",
+      "rule": {
+        "pattern": "$R.MethodFunc($MS, $X, $H)"
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "$MS",
+        "path": "$X",
+        "handler": "$H"
+      }
+    },
+    {
+      "id": "handle-any",
+      "language": "go",
+      "rule": {
+        "pattern": "$R.$M($X, $H)"
+      },
+      "constraints": {
+        "M": {
+          "regex": "^(Handle|HandleFunc)$"
+        }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "=ANY",
+        "path": "$X",
+        "handler": "$H"
+      }
+    }
+  ]
+}
