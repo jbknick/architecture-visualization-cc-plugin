@@ -1,0 +1,815 @@
+{
+  "tanstack/pnpm-turbo/recipe+helpers": {
+    "routes": {
+      "expected": 4,
+      "found": 4,
+      "tp": 4,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "urlPath": {
+      "expected": 4,
+      "found": 4,
+      "tp": 4,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "serves": {
+      "expected": 4,
+      "found": 4,
+      "tp": 4,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "contains": {
+      "expected": 3,
+      "found": 3,
+      "tp": 3,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "ms": 1.9,
+    "deterministic": true,
+    "matches": {
+      "file-route": 3,
+      "root-route": 1,
+      "root-route-with-context": 0
+    }
+  },
+  "tanstack/pnpm-turbo/rules-only": {
+    "routes": {
+      "expected": 4,
+      "found": 4,
+      "tp": 4,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "urlPath": {
+      "expected": 4,
+      "found": 4,
+      "tp": 3,
+      "precision": 0.75,
+      "recall": 0.75,
+      "missing": ["route:@acme/web:__root__ = /"],
+      "extra": ["route:@acme/web:__root__ = __root__"]
+    },
+    "serves": {
+      "expected": 4,
+      "found": 0,
+      "tp": 0,
+      "precision": 0,
+      "recall": 0,
+      "missing": [
+        "route:@acme/web:/ -> sym:apps/web/src/routes/index.tsx#HomePage",
+        "route:@acme/web:/posts/$postId -> sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
+        "route:@acme/web:/settings/profile -> sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+        "route:@acme/web:__root__ -> sym:apps/web/src/routes/__root.tsx#RootLayout"
+      ],
+      "extra": []
+    },
+    "contains": {
+      "expected": 3,
+      "found": 0,
+      "tp": 0,
+      "precision": 0,
+      "recall": 0,
+      "missing": [
+        "route:@acme/web:__root__ -> route:@acme/web:/",
+        "route:@acme/web:__root__ -> route:@acme/web:/posts/$postId",
+        "route:@acme/web:__root__ -> route:@acme/web:/settings/profile"
+      ],
+      "extra": []
+    },
+    "ms": 1.1,
+    "deterministic": true,
+    "matches": {
+      "file-route": 3,
+      "root-route": 1,
+      "root-route-with-context": 0
+    }
+  },
+  "hono/pnpm-turbo/recipe+helpers": {
+    "endpoints": {
+      "expected": 2,
+      "found": 2,
+      "tp": 2,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "handles": {
+      "expected": 2,
+      "found": 2,
+      "tp": 2,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "middleware": {
+      "expected": 0,
+      "found": 0,
+      "tp": 0,
+      "precision": 0,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "ms": 1.4,
+    "deterministic": true,
+    "matches": {
+      "app": 1,
+      "base-path": 0,
+      "route": 2,
+      "route-chained-no-path": 0,
+      "route-on": 0,
+      "mount": 0,
+      "middleware": 0
+    }
+  },
+  "hono/pnpm-turbo/rules-only": {
+    "endpoints": {
+      "expected": 2,
+      "found": 2,
+      "tp": 2,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "handles": {
+      "expected": 2,
+      "found": 2,
+      "tp": 2,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "middleware": {
+      "expected": 0,
+      "found": 0,
+      "tp": 0,
+      "precision": 0,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "ms": 1.3,
+    "deterministic": true,
+    "matches": {
+      "app": 1,
+      "base-path": 0,
+      "route": 2,
+      "route-chained-no-path": 0,
+      "route-on": 0,
+      "mount": 0,
+      "middleware": 0
+    }
+  },
+  "tanstack/adapters/recipe+helpers": {
+    "routes": {
+      "expected": 4,
+      "found": 4,
+      "tp": 4,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "urlPath": {
+      "expected": 4,
+      "found": 4,
+      "tp": 4,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "serves": {
+      "expected": 4,
+      "found": 4,
+      "tp": 4,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "contains": {
+      "expected": 3,
+      "found": 3,
+      "tp": 3,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "ms": 1.6,
+    "deterministic": true,
+    "matches": {
+      "file-route": 3,
+      "root-route": 1,
+      "root-route-with-context": 0
+    }
+  },
+  "tanstack/adapters/rules-only": {
+    "routes": {
+      "expected": 4,
+      "found": 4,
+      "tp": 4,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "urlPath": {
+      "expected": 4,
+      "found": 4,
+      "tp": 3,
+      "precision": 0.75,
+      "recall": 0.75,
+      "missing": ["route:@demo/web:__root__ = /"],
+      "extra": ["route:@demo/web:__root__ = __root__"]
+    },
+    "serves": {
+      "expected": 4,
+      "found": 0,
+      "tp": 0,
+      "precision": 0,
+      "recall": 0,
+      "missing": [
+        "route:@demo/web:/ -> sym:apps/web/src/routes/index.tsx#HomePage",
+        "route:@demo/web:/posts/$postId -> sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
+        "route:@demo/web:/users -> sym:apps/web/src/routes/users.tsx#UsersPage",
+        "route:@demo/web:__root__ -> sym:apps/web/src/routes/__root.tsx#RootLayout"
+      ],
+      "extra": []
+    },
+    "contains": {
+      "expected": 3,
+      "found": 0,
+      "tp": 0,
+      "precision": 0,
+      "recall": 0,
+      "missing": [
+        "route:@demo/web:__root__ -> route:@demo/web:/",
+        "route:@demo/web:__root__ -> route:@demo/web:/posts/$postId",
+        "route:@demo/web:__root__ -> route:@demo/web:/users"
+      ],
+      "extra": []
+    },
+    "ms": 1.3,
+    "deterministic": true,
+    "matches": {
+      "file-route": 3,
+      "root-route": 1,
+      "root-route-with-context": 0
+    }
+  },
+  "hono/adapters/recipe+helpers": {
+    "endpoints": {
+      "expected": 7,
+      "found": 7,
+      "tp": 7,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "handles": {
+      "expected": 7,
+      "found": 7,
+      "tp": 7,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "middleware": {
+      "expected": 3,
+      "found": 3,
+      "tp": 3,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "ms": 5.4,
+    "deterministic": true,
+    "matches": {
+      "app": 3,
+      "base-path": 1,
+      "route": 4,
+      "route-chained-no-path": 1,
+      "route-on": 1,
+      "mount": 2,
+      "middleware": 3
+    }
+  },
+  "hono/adapters/rules-only": {
+    "endpoints": {
+      "expected": 7,
+      "found": 6,
+      "tp": 0,
+      "precision": 0,
+      "recall": 0,
+      "missing": [
+        "ep:@demo/server:GET /api/posts/:id",
+        "ep:@demo/server:GET /api/users/v1",
+        "ep:@demo/server:GET /health",
+        "ep:@demo/server:PATCH /api/posts/:id",
+        "ep:@demo/server:POST /api/posts",
+        "ep:@demo/server:POST /api/users/v1",
+        "ep:@demo/server:PUT /api/posts/:id"
+      ],
+      "extra": [
+        "ep:@demo/posts:GET /posts/:id",
+        "ep:@demo/posts:PATCH /posts/:id",
+        "ep:@demo/posts:POST /posts",
+        "ep:@demo/posts:PUT /posts/:id",
+        "ep:@demo/server:GET /",
+        "ep:@demo/server:POST /"
+      ]
+    },
+    "handles": {
+      "expected": 7,
+      "found": 3,
+      "tp": 0,
+      "precision": 0,
+      "recall": 0,
+      "missing": [
+        "ep:@demo/server:GET /api/posts/:id -> sym:packages/posts/src/handlers.ts#showPost",
+        "ep:@demo/server:GET /api/users/v1 -> sym:apps/server/src/users.ts#listUsers",
+        "ep:@demo/server:GET /health -> sym:apps/server/src/app.ts#createApp",
+        "ep:@demo/server:PATCH /api/posts/:id -> file:packages/posts/src/routes.ts",
+        "ep:@demo/server:POST /api/posts -> file:packages/posts/src/routes.ts",
+        "ep:@demo/server:POST /api/users/v1 -> sym:apps/server/src/users.ts#createUser",
+        "ep:@demo/server:PUT /api/posts/:id -> file:packages/posts/src/routes.ts"
+      ],
+      "extra": [
+        "ep:@demo/posts:PATCH /posts/:id -> file:packages/posts/src/routes.ts",
+        "ep:@demo/posts:POST /posts -> file:packages/posts/src/routes.ts",
+        "ep:@demo/posts:PUT /posts/:id -> file:packages/posts/src/routes.ts"
+      ]
+    },
+    "middleware": {
+      "expected": 3,
+      "found": 3,
+      "tp": 3,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "ms": 4.3,
+    "deterministic": true,
+    "matches": {
+      "app": 3,
+      "base-path": 1,
+      "route": 4,
+      "route-chained-no-path": 1,
+      "route-on": 1,
+      "mount": 2,
+      "middleware": 3
+    }
+  },
+  "express/realworld/recipe+helpers": {
+    "endpoints": {
+      "expected": 20,
+      "found": 20,
+      "tp": 20,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "ms": 30.7,
+    "deterministic": true,
+    "files": 31,
+    "matches": {
+      "app": 1,
+      "router": 6,
+      "mount-at": 1,
+      "mount": 10,
+      "route": 20
+    }
+  },
+  "express/realworld/rules-only": {
+    "endpoints": {
+      "expected": 20,
+      "found": 20,
+      "tp": 1,
+      "precision": 0.05,
+      "recall": 0.05,
+      "missing": [
+        "DELETE /api/articles/:slug",
+        "DELETE /api/articles/:slug/comments/:id",
+        "DELETE /api/articles/:slug/favorite",
+        "DELETE /api/profiles/:username/follow",
+        "GET /api/articles",
+        "GET /api/articles/:slug",
+        "GET /api/articles/:slug/comments",
+        "GET /api/articles/feed",
+        "GET /api/profiles/:username",
+        "GET /api/tags",
+        "GET /api/user",
+        "POST /api/articles",
+        "POST /api/articles/:slug/comments",
+        "POST /api/articles/:slug/favorite",
+        "POST /api/profiles/:username/follow",
+        "POST /api/users",
+        "POST /api/users/login",
+        "PUT /api/articles/:slug",
+        "PUT /api/user"
+      ],
+      "extra": [
+        "DELETE /articles/:slug",
+        "DELETE /articles/:slug/comments/:id",
+        "DELETE /articles/:slug/favorite",
+        "DELETE /profiles/:username/follow",
+        "GET /articles",
+        "GET /articles/:slug",
+        "GET /articles/:slug/comments",
+        "GET /articles/feed",
+        "GET /profiles/:username",
+        "GET /tags",
+        "GET /user",
+        "POST /articles",
+        "POST /articles/:slug/comments",
+        "POST /articles/:slug/favorite",
+        "POST /profiles/:username/follow",
+        "POST /users",
+        "POST /users/login",
+        "PUT /articles/:slug",
+        "PUT /user"
+      ]
+    },
+    "ms": 11.5,
+    "deterministic": true,
+    "files": 31,
+    "matches": {
+      "app": 1,
+      "router": 6,
+      "mount-at": 1,
+      "mount": 10,
+      "route": 20
+    }
+  },
+  "chi/chi/_examples/rest/recipe+helpers": {
+    "endpoints": {
+      "expected": 13,
+      "found": 13,
+      "tp": 13,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "ms": 4.8,
+    "deterministic": true,
+    "matches": {
+      "router": 2,
+      "route-scope": 2,
+      "group-scope": 0,
+      "mount": 1,
+      "route": 13,
+      "route-method": 0,
+      "route-method-func": 0,
+      "handle-any": 0
+    }
+  },
+  "chi/chi/_examples/rest/rules-only": {
+    "endpoints": {
+      "expected": 13,
+      "found": 10,
+      "tp": 3,
+      "precision": 0.3,
+      "recall": 0.23076923076923078,
+      "missing": [
+        "DELETE /articles/{articleID}",
+        "GET /admin",
+        "GET /admin/accounts",
+        "GET /admin/users/{userId}",
+        "GET /articles",
+        "GET /articles/search",
+        "GET /articles/{articleID}",
+        "GET /articles/{articleSlug:[a-z-]+}",
+        "POST /articles",
+        "PUT /articles/{articleID}"
+      ],
+      "extra": [
+        "DELETE /",
+        "GET /accounts",
+        "GET /search",
+        "GET /users/{userId}",
+        "GET /{articleSlug:[a-z-]+}",
+        "POST /",
+        "PUT /"
+      ]
+    },
+    "ms": 3.8,
+    "deterministic": true,
+    "matches": {
+      "router": 2,
+      "route-scope": 2,
+      "group-scope": 0,
+      "mount": 1,
+      "route": 13,
+      "route-method": 0,
+      "route-method-func": 0,
+      "handle-any": 0
+    }
+  },
+  "chi/chi/_examples/versions/recipe+helpers": {
+    "endpoints": {
+      "expected": 6,
+      "found": 6,
+      "tp": 6,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "ms": 5.4,
+    "deterministic": true,
+    "matches": {
+      "router": 2,
+      "route-scope": 4,
+      "group-scope": 0,
+      "mount": 3,
+      "route": 2,
+      "route-method": 0,
+      "route-method-func": 0,
+      "handle-any": 0
+    }
+  },
+  "chi/chi/_examples/versions/rules-only": {
+    "endpoints": {
+      "expected": 6,
+      "found": 1,
+      "tp": 0,
+      "precision": 0,
+      "recall": 0,
+      "missing": [
+        "GET /v1/articles",
+        "GET /v1/articles/{articleID}",
+        "GET /v2/articles",
+        "GET /v2/articles/{articleID}",
+        "GET /v3/articles",
+        "GET /v3/articles/{articleID}"
+      ],
+      "extra": ["GET /"]
+    },
+    "ms": 3,
+    "deterministic": true,
+    "matches": {
+      "router": 2,
+      "route-scope": 4,
+      "group-scope": 0,
+      "mount": 3,
+      "route": 2,
+      "route-method": 0,
+      "route-method-func": 0,
+      "handle-any": 0
+    }
+  },
+  "chi/chi/_examples/todos-resource/recipe+helpers": {
+    "endpoints": {
+      "expected": 14,
+      "found": 14,
+      "tp": 14,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "ms": 2.9,
+    "deterministic": true,
+    "matches": {
+      "router": 3,
+      "route-scope": 2,
+      "group-scope": 0,
+      "mount": 2,
+      "route": 14,
+      "route-method": 0,
+      "route-method-func": 0,
+      "handle-any": 0
+    }
+  },
+  "chi/chi/_examples/todos-resource/rules-only": {
+    "endpoints": {
+      "expected": 14,
+      "found": 5,
+      "tp": 1,
+      "precision": 0.2,
+      "recall": 0.07142857142857142,
+      "missing": [
+        "DELETE /todos/{id}",
+        "DELETE /users/{id}",
+        "GET /todos",
+        "GET /todos/{id}",
+        "GET /todos/{id}/sync",
+        "GET /users",
+        "GET /users/{id}",
+        "POST /todos",
+        "POST /users",
+        "PUT /todos",
+        "PUT /todos/{id}",
+        "PUT /users",
+        "PUT /users/{id}"
+      ],
+      "extra": ["DELETE /", "GET /sync", "POST /", "PUT /"]
+    },
+    "ms": 1.9,
+    "deterministic": true,
+    "matches": {
+      "router": 3,
+      "route-scope": 2,
+      "group-scope": 0,
+      "mount": 2,
+      "route": 14,
+      "route-method": 0,
+      "route-method-func": 0,
+      "handle-any": 0
+    }
+  },
+  "gin/examples/group-routes/recipe+helpers": {
+    "endpoints": {
+      "expected": 5,
+      "found": 5,
+      "tp": 5,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "ms": 1.5,
+    "deterministic": true,
+    "matches": {
+      "engine": 1,
+      "group": 4,
+      "route": 4
+    }
+  },
+  "gin/examples/group-routes/rules-only": {
+    "endpoints": {
+      "expected": 5,
+      "found": 3,
+      "tp": 0,
+      "precision": 0,
+      "recall": 0,
+      "missing": [
+        "GET /v1/ping",
+        "GET /v1/users",
+        "GET /v1/users/comments",
+        "GET /v1/users/pictures",
+        "GET /v2/ping"
+      ],
+      "extra": ["GET /", "GET /comments", "GET /pictures"]
+    },
+    "ms": 0.8,
+    "deterministic": true,
+    "matches": {
+      "engine": 1,
+      "group": 4,
+      "route": 4
+    }
+  },
+  "gin/examples/versioning/recipe+helpers": {
+    "endpoints": {
+      "expected": 4,
+      "found": 4,
+      "tp": 4,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "ms": 1.2,
+    "deterministic": true,
+    "matches": {
+      "engine": 1,
+      "group": 4,
+      "route": 4
+    }
+  },
+  "gin/examples/versioning/rules-only": {
+    "endpoints": {
+      "expected": 4,
+      "found": 2,
+      "tp": 0,
+      "precision": 0,
+      "recall": 0,
+      "missing": ["GET /v1/users", "GET /v2/users", "POST /v1/users/add", "POST /v2/users/add"],
+      "extra": ["GET /users", "POST /users/add"]
+    },
+    "ms": 0.6,
+    "deterministic": true,
+    "matches": {
+      "engine": 1,
+      "group": 4,
+      "route": 4
+    }
+  },
+  "goTotals": {
+    "chi/recipe+helpers": {
+      "tp": 33,
+      "e": 33,
+      "f": 33
+    },
+    "chi/rules-only": {
+      "tp": 4,
+      "e": 33,
+      "f": 16
+    },
+    "gin/recipe+helpers": {
+      "tp": 9,
+      "e": 9,
+      "f": 9
+    },
+    "gin/rules-only": {
+      "tp": 0,
+      "e": 9,
+      "f": 5
+    }
+  },
+  "whole/chi": {
+    "files": 23,
+    "endpoints": 66,
+    "ms": 33.7,
+    "parseMs": 10,
+    "deterministic": true,
+    "matches": {
+      "router": 16,
+      "route-scope": 9,
+      "group-scope": 2,
+      "mount": 6,
+      "route": 47,
+      "route-method": 1,
+      "route-method-func": 2,
+      "handle-any": 14
+    }
+  },
+  "whole/examples": {
+    "files": 44,
+    "endpoints": 72,
+    "ms": 26.3,
+    "parseMs": 6,
+    "deterministic": true,
+    "matches": {
+      "engine": 42,
+      "group": 12,
+      "route": 73
+    }
+  },
+  "heldout/chi": {
+    "endpoints": {
+      "expected": 35,
+      "found": 33,
+      "tp": 33,
+      "precision": 1,
+      "recall": 0.9428571428571428,
+      "missing": ["_examples/fileserver GET /files", "_examples/fileserver GET /files/*"],
+      "extra": []
+    },
+    "unresolved": [
+      {
+        "file": "_examples/fileserver/main.go",
+        "line": 54,
+        "rule": "route",
+        "reason": "path is not a literal or const string"
+      },
+      {
+        "file": "_examples/fileserver/main.go",
+        "line": 59,
+        "rule": "route",
+        "reason": "path is not a literal or const string"
+      }
+    ],
+    "droppedNotRouter": 0
+  },
+  "heldout/examples": {
+    "endpoints": {
+      "expected": 63,
+      "found": 63,
+      "tp": 63,
+      "precision": 1,
+      "recall": 1,
+      "missing": [],
+      "extra": []
+    },
+    "unresolved": [],
+    "droppedNotRouter": 0
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "name": "express",
+  "frameworks": [{ "name": "express", "evidence": "package.json dependency; express() and Router() calls" }],
+  "when": { "dependency": ["express"] },
+  "passthrough": ["use", "get", "post", "put", "patch", "delete", "all"],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return"],
+  "rules": [
+    {
+      "id": "app",
+      "language": "typescript",
+      "rule": { "pattern": "express()" },
+      "emit": { "kind": "router" }
+    },
+    {
+      "id": "router",
+      "language": "typescript",
+      "rule": { "any": [{ "pattern": "Router($$$A)" }, { "pattern": "express.Router($$$A)" }] },
+      "emit": { "kind": "router" }
+    },
+    {
+      "id": "mount-at",
+      "language": "typescript",
+      "rule": { "pattern": "$P.use($X, $C)" },
+      "constraints": { "X": { "kind": "string" } },
+      "emit": { "kind": "mount", "parent": "$P", "prefix": "$X", "child": "$C" }
+    },
+    {
+      "id": "mount",
+      "language": "typescript",
+      "rule": { "pattern": "$P.use($C)" },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C" }
+    },
+    {
+      "id": "route",
+      "language": "typescript",
+      "rule": { "pattern": "$R.$M($X, $$$H)" },
+      "constraints": {
+        "M": { "regex": "^(get|post|put|patch|delete|all|options|head)$" },
+        "X": { "any": [{ "kind": "string" }, { "kind": "template_string" }, { "kind": "identifier" }] }
+      },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$X", "handler": "$$$H" }
+    }
+  ]
+}

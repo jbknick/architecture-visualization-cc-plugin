@@ -1,0 +1,34 @@
+{
+  "name": "tanstack-router",
+  "frameworks": [
+    {
+      "name": "@tanstack/react-router",
+      "evidence": "package.json dependency; createFileRoute calls under src/routes"
+    }
+  ],
+  "when": { "dependency": ["@tanstack/react-router", "@tanstack/react-start"] },
+  "helpers": ["resolve-names", "tanstack-file-routes"],
+  "rules": [
+    {
+      "id": "file-route",
+      "language": "typescript",
+      "files": ["**/src/routes/**"],
+      "rule": { "pattern": "createFileRoute($ID)($OPTS)" },
+      "emit": { "kind": "route", "id": "$ID", "options": "$OPTS" }
+    },
+    {
+      "id": "root-route",
+      "language": "typescript",
+      "files": ["**/src/routes/**"],
+      "rule": { "pattern": "createRootRoute($OPTS)" },
+      "emit": { "kind": "route", "root": true, "options": "$OPTS" }
+    },
+    {
+      "id": "root-route-with-context",
+      "language": "typescript",
+      "files": ["**/src/routes/**"],
+      "rule": { "pattern": "createRootRouteWithContext<$T>()($OPTS)" },
+      "emit": { "kind": "route", "root": true, "options": "$OPTS" }
+    }
+  ]
+}

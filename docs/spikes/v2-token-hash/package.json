@@ -1,0 +1,8 @@
+{
+  "name": "spike-v2-token-hash",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ast-grep/napi": "0.51.3"
+  }
+}
