@@ -12,33 +12,33 @@ There are no users. Nothing in V2 keeps old stores, old data directories or old 
 
 ## Milestones and paths
 
-The work is split into two paths that run in parallel from the start. Each path waits on the other once, on work the other path does early.
+The work is split into two self-contained paths that run in parallel from the start. Neither path waits on the other: every dependency of a Path A issue is in Path A or M7, and the same holds for Path B. Work that needs both paths (Go web frameworks, the end-to-end trace, the release) is held back to two joining milestones at the end.
 
-| Milestone                       | Path   | What a user can do at the end                                                                                                                                                                                              |
-| ------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **M7 V2 groundwork**            | Shared | Nothing new; the legacy data dir, store migrations and index-format re-index are gone.                                                                                        |
-| **M8 Any TypeScript project**   | A      | Index any TypeScript layout: one package, any workspace tool, project references only, or no workspace tool; bundler aliases resolve; a 10,000-file repo is ready in about a minute.                                       |
-| **M9 Framework recipes**        | A      | Init discovers the framework and writes a recipe; routes and endpoints for TanStack Router, Hono, oRPC, TanStack Start, Drizzle, Express, NestJS and Next.js come from recipes. No hand-written framework adapters remain. |
-| **M10 Go web frameworks**       | A      | Discovery recognises net/http, chi and gin in a Go repo and their endpoints appear like TypeScript ones.                                                                                                                   |
-| **M11 Multirepo workspaces**    | B      | List related repos once; search, duplicates, the map and go-to-source span all of them, and each repo stays up to date on its own.                                                                                         |
-| **M12 Go backends**             | B      | Index Go modules with symbols, callers, duplicate warnings and descriptions.                                                                                                                                               |
-| **M13 Cross-repo call linking** | B      | Calls through client instances, wrappers, constants and env-var base URLs link to handlers, and a page in one repo traces to its handler in another.                                                                       |
-| **M14 V2 release**              | Shared | Trace a TypeScript page to the Go handler that serves it in another repo; linking is measured on unseen public repos; V2 is tagged.                                                                                        |
+| Milestone                        | Path         | What a user can do at the end                                                                                                                                                                                              |
+| -------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **M7 V2 groundwork**             | Shared       | Nothing new; the legacy data dir, store migrations and index-format re-index are gone.                                                                                                                                     |
+| **M8 Any TypeScript project**    | A            | Index any TypeScript layout: one package, any workspace tool, project references only, or no workspace tool; bundler aliases resolve; a 10,000-file repo is ready in about a minute.                                       |
+| **M9 Framework recipes**         | A            | Init discovers the framework and writes a recipe; routes and endpoints for TanStack Router, Hono, oRPC, TanStack Start, Drizzle, Express, NestJS and Next.js come from recipes. No hand-written framework adapters remain. |
+| **M10 Call linking in one repo** | A            | Calls through client instances, wrappers, constants and env-var base URLs link to their handlers in the same repo.                                                                                                         |
+| **M11 Multirepo workspaces**     | B            | List related repos once; search, duplicates, the map and go-to-source span all of them, and each repo stays up to date on its own.                                                                                         |
+| **M12 Go backends**              | B            | Index Go modules with symbols, callers, duplicate warnings and descriptions.                                                                                                                                               |
+| **M13 Cross-repo call linking**  | B            | A frontend call links to the handler in another repo, and a page in one repo traces to its handler and tables in another.                                                                                                  |
+| **M14 Go web frameworks**        | Shared, join | Discovery recognises net/http, chi and gin in a Go repo and their endpoints appear like TypeScript ones.                                                                                                                   |
+| **M15 V2 release**               | Shared, join | Trace a TypeScript page to the Go handler that serves it in another repo; linking is measured on unseen public repos; V2 is tagged.                                                                                        |
 
-- **Path A, frameworks:** M8 → M9 → M10. Framework knowledge moves from hand-written adapters into agent-written recipes, first for TypeScript, then for Go.
-- **Path B, repos and languages:** M11 → M12 → M13. The index grows from one repo to a workspace of repos, from one language to two, and calls link across them.
-- **Shared:** M7 is two small removals either path can pick up first; neither path waits on it. M14 joins the paths.
+- **Path A, TypeScript in one repo:** M8 → M9 → M10. Any TypeScript layout indexes, framework knowledge moves into agent-written recipes, and calls link to their handlers. All of it is built and tested on a single repo.
+- **Path B, more repos and a second language:** M11 and M12 in either order, then M13. The index grows from one repo to a workspace and from one language to two, and calls link across repos.
+- **Shared:** M7 is two small removals either path can pick up first; neither path waits on it. M14 and M15 start once both paths are done.
 
-### Cross-path dependencies
+### What the joining milestones need
 
-| #   | Waiting issue (path, position)                                            | Needs (path, position)                                                  | Why                                                                        |
-| --- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| X1  | A: all of M10 (last 3 of 15)                                              | B: "Index a Go module's packages, files and functions" (M12, 8th of 17) | Go recipes run on Go files and resolve names through the Go module.        |
-| X2  | B: "Calls on an env-var base URL link" (M13, 15th of 17)                  | A: "Init discovers the framework and writes the recipe" (M9, 6th of 15) | Discovery proposes the base-URL entries.                                   |
-| X3  | Shared: "Trace a TypeScript page to the Go handler in another repo" (M14) | A: end of M10; B: end of M13                                            | The V2 end-to-end case.                                                    |
-| X4  | Shared: "Call linking is measured on public repos it has not seen" (M14)  | A: Express and NestJS recipes (M9); B: cross-repo linking (M13)         | Typical public backends need those endpoints before linking can be scored. |
+| Joining work                                                   | From Path A                      | From Path B                     |
+| -------------------------------------------------------------- | -------------------------------- | ------------------------------- |
+| M14: Go endpoints from net/http, chi and gin; Go discovery     | Recipe engine and discovery (M9) | Index a Go module (M12)         |
+| M15: Trace a TypeScript page to the Go handler in another repo | M14                              | Trace a page across repos (M13) |
+| M15: Call linking measured on public repos it has not seen     | Express and NestJS (M9), M10     | Cross-repo linking (M13)        |
 
-Touch points, not waits: M11's first issue adds a repo part to stable IDs (section 6) and M12's first adds a `lang` field; Path A rebases its snapshots onto both. M8 and M11 both touch workspace discovery. Recipes reach languages only through the existing adapter resolver contract (`resolveSpecifier`, `resolveSymbol`), so the recipe engine and the language interface are built without waiting on each other. Path B's linking work runs on endpoints from the shipped adapters until M9 replaces them with recipes that emit the same node kinds.
+Touch points, not waits: M11's first issue adds a repo part to stable IDs (section 6) and M12's first adds a `lang` field; Path A rebases its snapshots onto both. M8 and M11 both touch workspace discovery. M10 and M13 both extend `clients.ts`: M10 widens what counts as a call, M13 widens where its handler can be. Recipes reach languages only through the existing adapter resolver contract (`resolveSpecifier`, `resolveSymbol`), so the recipe engine and the language interface are built without waiting on each other. Path B's linking work runs on endpoints from the shipped adapters until M9 replaces them with recipes that emit the same node kinds.
 
 ## M7 V2 groundwork (Shared)
 
@@ -61,7 +61,7 @@ Spec sections touched: 3 (workspace discovery), 5, 13.
 ## M9 Framework recipes (Path A)
 
 - **Recipe, not live inference.** Spec section 1 requires deterministic output. The agent writes a recipe file into the data dir; the indexer applies it with `@ast-grep/napi` on every index. Same repo and same recipe give the same graph (confirmed in `v2-recipes`).
-- **Recipes run inside the existing adapter framework.** One generic recipe adapter implements the current `Adapter` interface (`extract`/`link`) and is registered where the hand-written adapters are today. The hand-written TanStack Router, TanStack Start, Hono, oRPC and Drizzle adapters are deleted once recipes reproduce `fixtures/adapters` and `fixtures/pnpm-turbo`. `clients.ts` stays as the shared client-call matcher (it is not framework-specific) and is extended in M13.
+- **Recipes run inside the existing adapter framework.** One generic recipe adapter implements the current `Adapter` interface (`extract`/`link`) and is registered where the hand-written adapters are today. The hand-written TanStack Router, TanStack Start, Hono, oRPC and Drizzle adapters are deleted once recipes reproduce `fixtures/adapters` and `fixtures/pnpm-turbo`. `clients.ts` stays as the shared client-call matcher (it is not framework-specific) and is extended in M10 and M13.
 - **Rules alone are not enough** (spike: Hono 0 of 7 endpoints with rules only, 7 of 7 with helpers). Recipes may name five generic helpers: name resolution, constant strings, mount graph (routers mounted under prefixes, across files), call return, argument flow. Helpers use the language's resolver, not the syntax tree. File-system routing (TanStack Router files now, Next.js `app/` and `pages/`) is a framework helper. No other framework code is allowed.
 - **What a recipe holds.** Detected frameworks; rules that emit route, page, router, mount, endpoint, client-call and table nodes and the existing `serves`, `handles`, `requests`, `reads`, `writes` and `contains` edges (sections 7, 9). Each rule names its language. No framework versions.
 - **Who runs it.** A Claude Code subagent started by the init skill, as the describer is. No API key. It re-runs only on request, never on sync.
@@ -75,11 +75,18 @@ New dependency: pin `@ast-grep/napi` 0.51.3 exactly (section 2; approved but not
 
 Spec sections touched: 2, 3, 5 (recipe file), 9 (recipe storage, node kinds), 11, 16 (discovery agent and skill steps).
 
-## M10 Go web frameworks (Path A)
+## M10 Call linking in one repo (Path A)
 
-After X1. net/http 1.22 method patterns, chi and gin, written by discovery as recipes and run by the M9 engine (spike: chi 100% precision and 94% recall, gin 100% and 100% on held-out code). Each has a public fixture and a held-out public repo scored against hand labels. echo and fiber are out of V2.
+Today `clients.ts` matches literal `fetch`/`ky`/`axios` URLs by method and path. On public full-stack repos it linked 1 of 70 linkable calls; the spike prototype linked 70 of 70 with no wrong links, but only 35% on a held-out repo before one fix, so the numbers below are targets to measure on held-out repos. Everything here works and is tested inside one repo.
 
-Spec sections touched: 13, 16.
+- **Client instances.** `axios.create`, `ky.create` and `ky.extend` are followed through imports, with each library's own URL joining rules.
+- **Wrappers.** A function whose parameter supplies the start of the path or the method is inferred as a client wrapper; a recipe can list wrappers as an override.
+- **Constant URLs.** A small evaluator reads consts, enums, `as const` objects, env members, `??`, concatenation, `new URL` and both branches of a conditional.
+- **Base URLs.** The recipe maps `env:<NAME>`, `url:<origin>` and `path:<prefix>` to `{ workspace, prefix? }`, where `workspace` is a package in the repo (M13 lets it name a package in another repo). The prefix is required: in the held-out repo `VITE_API_URL` ends in `/api`, and the value is not in the repo (`.env*` is excluded as sensitive). Discovery proposes the entries from the code, dev-server proxies and `.env.example`.
+- **Matching.** A literal segment beats a parameter. Several candidates, or a parameter against a literal segment, give a low-confidence "ambiguous" node with its candidates, never a link.
+- **OpenAPI is out of V2.** Endpoints come from code only.
+
+Spec sections touched: 5, 7, 9, 15.
 
 ## M11 Multirepo workspaces (Path B)
 
@@ -113,27 +120,26 @@ The TypeScript pipeline is split into a language module and shared code before G
 - **Calls.** Syntax only, with local type inference for calls on concrete types (receivers, parameters, literals, constructor results, field chains, embedding, range and element types); without it only about 29% of in-repo calls resolve. Calls through an interface resolve to the interface method at high confidence. Interface satisfaction is computed by method-name matching as low-confidence `implements` edges. Measured against go/packages: same-package and package-qualified calls 99.9 to 100%, concrete methods 93 to 96%, interface methods 78 to 79%, overall 92 to 97% recall at 99.99 to 100% precision. No helper binary.
 - **Imports** map package names from the target's `package` clause, not the last path element.
 - **Descriptions.** Fact sheets work as they are; the prompt gains a language field.
-- **Frameworks** are M10 (Path A), not part of this milestone.
+- **Frameworks** are M14 (join), not part of this milestone.
 
 Spec sections touched: 2, 3 (`lang/`), 7 (`lang` field), 8, 9, 13, 17.
 
 ## M13 Cross-repo call linking (Path B)
 
-Today `clients.ts` matches literal `fetch`/`ky`/`axios` URLs by method and path. On public full-stack repos it linked 1 of 70 linkable calls; the spike prototype linked 70 of 70 with no wrong links, but only 35% on a held-out repo before one fix, so the numbers below are targets to measure on held-out repos.
+- **Across repos** (after M11): the existing `clients.ts` matching runs over every repo in the workspace, on endpoints from whatever produces them (the shipped adapters now, recipes after M9). The existing `trace` and views then show page → call → handler → table across repos. No new trace views.
+- M10's client forms (instances, wrappers, constants, base URLs) reach across repos once both milestones land; neither waits on the other.
 
-- **Client instances.** `axios.create`, `ky.create` and `ky.extend` are followed through imports, with each library's own URL joining rules.
-- **Wrappers.** A function whose parameter supplies the start of the path or the method is inferred as a client wrapper; a recipe can list wrappers as an override.
-- **Constant URLs.** A small evaluator reads consts, enums, `as const` objects, env members, `??`, concatenation, `new URL` and both branches of a conditional.
-- **Base URLs** (after X2). Workspace config maps `env:<NAME>`, `url:<origin>` and `path:<prefix>` to `{ workspace, prefix? }`. The prefix is required: in the held-out repo `VITE_API_URL` ends in `/api`, and the value is not in the repo (`.env*` is excluded as sensitive). Discovery proposes the entries from the code, dev-server proxies and `.env.example`.
-- **Matching.** A literal segment beats a parameter. Several candidates, or a parameter against a literal segment, give a low-confidence "ambiguous" node with its candidates, never a link.
-- **Across repos** (after M11): the same matching runs over every repo in the workspace; the existing `trace` and views then show page → call → handler → table across repos.
-- **OpenAPI is out of V2.** Endpoints come from code only.
+Spec sections touched: 9, 15.
 
-Spec sections touched: 5, 7, 9, 15.
+## M14 Go web frameworks (Shared, join)
 
-## M14 V2 release (Shared)
+After M9 and M12. net/http 1.22 method patterns, chi and gin, written by discovery as recipes and run by the M9 engine (spike: chi 100% precision and 94% recall, gin 100% and 100% on held-out code). Each has a public fixture and a held-out public repo scored against hand labels. echo and fiber are out of V2.
 
-- Call linking scored on held-out public full-stack repos (X4).
+Spec sections touched: 13, 16.
+
+## M15 V2 release (Shared, join)
+
+- Call linking scored on held-out public full-stack repos (needs the M9 Express and NestJS recipes, M10 and M13).
 - The end-to-end case on public code: a TypeScript frontend repo and a Go backend repo in one workspace; a page traces to the Go handler that serves it.
 - README, install guide and Status table describe V2. Tag the release.
 
@@ -143,7 +149,7 @@ Accepted from the simplification review:
 
 - Cut the draft's M12 contributor experience and M13 trial; V2 is tagged when the end-to-end case passes. Their open questions (Windows for the trial, trial size, feedback destination, "who to ask") are gone. Lost: contributor feedback before the tag.
 - The six shipped adapters are replaced by recipes run through the existing adapter framework, and deleted. M9's gate is reproducing `fixtures/adapters`, not only `pnpm-turbo` routes.
-- The draft's M11 (cross-repo contracts) is mostly built (`clients.ts` matching, `trace`, views 7 to 11). It shrinks to the linking gaps and joins multirepo in Path B; no new trace views.
+- The draft's M11 (cross-repo contracts) is mostly built (`clients.ts` matching, `trace`, views 7 to 11). It shrinks to the linking gaps: single-repo gaps are M10 (Path A), cross-repo linking is M13 (Path B); no new trace views.
 - Framework evals: three TypeScript (Express, NestJS, Next.js) and three Go (net/http, chi, gin) instead of ten. Lost: measured recall for Fastify, echo and fiber.
 - OpenAPI is out of V2. Lost: spec-versus-code drift reports.
 - One store per workspace instead of a store per repo with a query layer. Lost: sharing one repo's store across workspaces.
@@ -160,7 +166,7 @@ Not accepted:
 
 Changed by the spikes (none was a no-go):
 
-- Go no longer depends on framework recipes as a whole (draft: M10 needed M8): only Go frameworks need recipes, and they move to Path A (X1). Milestone numbers in the spike reports refer to the draft.
+- Go no longer depends on framework recipes as a whole (draft: M10 needed M8): only Go frameworks need recipes, and they wait for both paths in M14. Milestone numbers in the spike reports refer to the draft.
 - Recipe validation uses example snippets; zero matches is a warning (draft: drop rules that match nothing).
 - Rules need five generic helpers, not only a file-naming helper.
 - Go needs local type inference for concrete methods; interface calls are high confidence to the interface method; `implements` is computed by name at low confidence (draft: not computed).
