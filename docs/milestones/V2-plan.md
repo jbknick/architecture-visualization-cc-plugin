@@ -16,7 +16,7 @@ The work is split into two paths that run in parallel from the start. Each path 
 
 | Milestone                       | Path   | What a user can do at the end                                                                                                                                                                                              |
 | ------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **M7 V2 groundwork**            | Shared | Nothing new; the quality gate passes on a fresh clone and the legacy data dir, store migrations and index-format re-index are gone.                                                                                        |
+| **M7 V2 groundwork**            | Shared | Nothing new; the legacy data dir, store migrations and index-format re-index are gone.                                                                                        |
 | **M8 Any TypeScript project**   | A      | Index any TypeScript layout: one package, any workspace tool, project references only, or no workspace tool; bundler aliases resolve; a 10,000-file repo is ready in about a minute.                                       |
 | **M9 Framework recipes**        | A      | Init discovers the framework and writes a recipe; routes and endpoints for TanStack Router, Hono, oRPC, TanStack Start, Drizzle, Express, NestJS and Next.js come from recipes. No hand-written framework adapters remain. |
 | **M10 Go web frameworks**       | A      | Discovery recognises net/http, chi and gin in a Go repo and their endpoints appear like TypeScript ones.                                                                                                                   |
@@ -27,7 +27,7 @@ The work is split into two paths that run in parallel from the start. Each path 
 
 - **Path A, frameworks:** M8 → M9 → M10. Framework knowledge moves from hand-written adapters into agent-written recipes, first for TypeScript, then for Go.
 - **Path B, repos and languages:** M11 → M12 → M13. The index grows from one repo to a workspace of repos, from one language to two, and calls link across them.
-- **Shared:** M7 is three small removals either path can pick up first; neither path waits on it. M14 joins the paths.
+- **Shared:** M7 is two small removals either path can pick up first; neither path waits on it. M14 joins the paths.
 
 ### Cross-path dependencies
 
@@ -42,7 +42,6 @@ Touch points, not waits: M11's first issue adds a repo part to stable IDs (secti
 
 ## M7 V2 groundwork (Shared)
 
-- `pnpm check` must pass on a fresh clone. Today `tsc -b --noEmit` fails with TS6310 on the project references of explorer, cli and mcp.
 - Remove the legacy data-dir fallback (`~/.gantry/data`): the plugin data dir is the only location (section 4).
 - Remove the numbered store migrations and the `meta.index_format` re-index (#195). There is one schema. A store whose schema version is not the current one is deleted and rebuilt, and the user is told (sections 9, 11).
 
