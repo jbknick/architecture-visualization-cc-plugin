@@ -10,7 +10,7 @@ import { encodeParsed, LazyParsedMap, ParseCache } from "./parse/cache.js";
 import { type ParsedFile, parseSource } from "./parse/index.js";
 import { ensureDataDir, type GantryPaths } from "./paths/index.js";
 import { createResolver, type SpecifierClass } from "./resolve/index.js";
-import { openStore, type Store, splitIdentifier } from "./store/index.js";
+import { INDEX_FORMAT_VERSION, openStore, type Store, splitIdentifier } from "./store/index.js";
 import type {
   AdapterNodeRecord,
   EdgeRecord,
@@ -458,6 +458,8 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
           const sha = headSha(root);
           if (sha) store.setMeta("head_sha", sha);
           store.setMeta("indexed_at", new Date().toISOString());
+          // Every main-layer file was just written by this build's extractor and adapters (#195).
+          store.setMeta("index_format", String(INDEX_FORMAT_VERSION));
         }
       }
     });

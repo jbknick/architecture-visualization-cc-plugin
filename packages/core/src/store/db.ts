@@ -83,6 +83,46 @@ const MIGRATIONS: Migration[] = [
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]?.version ?? 0;
 
+/**
+ * Version of what indexing writes for a given source tree (spec section 9, `meta.index_format`, #195). Bump it whenever
+ * the extractor, an adapter or the resolver writes different rows for unchanged files, so a store built by an older
+ * build is fully re-indexed instead of keeping the old output for every file nobody touched. A full main index records
+ * it; a store without the key is format 0.
+ *   1 (#195): framework adapters (#45-#47: endpoints, procedures, tables, client calls) and the evidence cap of 20.
+ */
+export const INDEX_FORMAT_VERSION = 1;
+
+/** The `meta.index_format` a store was last fully indexed with; 0 when it was never recorded. */
+export function storedIndexFormat(db: Database.Database): number {
+  const r = db.prepare("SELECT value FROM meta WHERE key = 'index_format'").get() as
+    | { value: string }
+    | undefined;
+  const n = r ? Number(r.value) : 0;
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * True when the store holds a main index (`meta.indexed_at`) built with an older index format, so a full main re-index
+ * is due. A newer format (written by a later build) is not stale: that build's output is kept.
+ */
+export function indexFormatStale(db: Database.Database): boolean {
+  const indexed = db.prepare("SELECT 1 FROM meta WHERE key = 'indexed_at'").get();
+  return indexed !== undefined && storedIndexFormat(db) < INDEX_FORMAT_VERSION;
+}
+
+/**
+ * On open: a store whose main index has an older format forgets `meta.head_sha`, as migrations v5 and v6 do, so every
+ * entry point that heals (MCP lazy refresh, the explorer's Refresh, `gantry map`, git hooks, `gantry heal`) runs a
+ * full main re-index, which records the current format. A read only, once head_sha is gone.
+ */
+function forgetHeadOnStaleFormat(db: Database.Database): void {
+  if (!indexFormatStale(db)) return;
+  if (!db.prepare("SELECT 1 FROM meta WHERE key = 'head_sha'").get()) return;
+  db.transaction(() => {
+    if (indexFormatStale(db)) db.prepare("DELETE FROM meta WHERE key = 'head_sha'").run();
+  }).immediate();
+}
+
 function currentVersion(db: Database.Database): number {
   const hasMeta = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'meta'").get();
   if (!hasMeta) return 0;
@@ -128,6 +168,7 @@ export function openStore(dbPath: string): Store {
     const vec = loadVec(db); // fail open: without sqlite-vec everything but vector search still works
     migrate(db);
     ensurePendingReindexed(db);
+    forgetHeadOnStaleFormat(db);
     db.prepare(
       "INSERT INTO meta(key, value) VALUES ('vec_available', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
     ).run(vec ? "1" : "0");

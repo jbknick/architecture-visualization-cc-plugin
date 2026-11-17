@@ -644,6 +644,39 @@ describe("entry points", () => {
     expect(gantry(fx.dir, ["hook", "session-start"])).toEqual({ code: 0, out: "", err: "" });
   });
 
+  it("session-start defers the full re-index of an older index format; the next heal runs it (#195)", async () => {
+    const fx = await fixture();
+    expect(gantry(fx.dir, ["init"]).code).toBe(0);
+    const p = pathsOf(fx.dir);
+    const s = openStore(p.dbPath);
+    try {
+      expect(s.getMeta("index_format")).toBe("1");
+      s.db.exec("DELETE FROM meta WHERE key = 'index_format'"); // as a store from before #195 has it
+    } finally {
+      s.close();
+    }
+    const metaOf = (k: string) => {
+      const st = openStore(p.dbPath);
+      try {
+        return st.getMeta(k);
+      } finally {
+        st.close();
+      }
+    };
+    // Stdout stays clean, the hook exits 0, and it does not run the full re-index.
+    expect(gantry(fx.dir, ["hook", "session-start"])).toEqual({ code: 0, out: "", err: "" });
+    expect(metaOf("index_format")).toBeUndefined();
+    expect(metaOf("head_sha")).toBeUndefined(); // forgotten on open: the next heal is a full one
+    expect(gantry(fx.dir, ["hook", "session-start"], { GANTRY_WORKER: "1" })).toEqual({
+      code: 0,
+      out: "",
+      err: "",
+    });
+    expect(gantry(fx.dir, ["heal"]).code).toBe(0);
+    expect(metaOf("index_format")).toBe("1");
+    expect(metaOf("head_sha")).toBe(git(fx.dir, ["rev-parse", "HEAD"]).out.trim());
+  });
+
   it("session-start and the git hooks create no data dir for a repository without an index (#147)", async () => {
     const fx = await fixture();
     const p = pathsOf(fx.dir);
