@@ -9,7 +9,7 @@
   "packageManager": "pnpm@10.31.0",
   "scripts": {
     "build": "tsc -b && tsup && pnpm --filter @gantry/explorer build:web",
-    "check": "biome check . && tsx scripts/check-version.ts && tsc -b --noEmit && tsc -p evals/tsconfig.json && vitest run && tsx scripts/describe-mutations.ts",
+    "check": "biome check . && tsx scripts/check-version.ts && tsc -b && tsc -p evals/tsconfig.json && vitest run && tsx scripts/describe-mutations.ts",
     "fmt": "biome check --write .",
     "perf": "GANTRY_PERF=1 vitest run -t performance packages/core/src/dup/engine.test.ts",
     "readme:media": "tsx scripts/readme-media.ts",
