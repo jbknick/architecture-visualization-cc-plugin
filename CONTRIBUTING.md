@@ -46,7 +46,9 @@ It bumps every version file, adds a dated section to `CHANGELOG.md` from the com
 
 ## Review
 
-`main` is protected: changes land through PRs only. A maintainer reviews each PR, may ask for changes, and merges when it is ready. Pushes to a PR branch update the PR, so there is no need to open a new one.
+`main` is protected by a branch protection rule: changes land through pull requests, and force-pushes and branch deletion are blocked. There is no hosted CI, so no status checks are required. Run `pnpm check` yourself and say in the PR that it passed (the PR template has a checkbox for it).
+
+A maintainer reviews each PR, may ask for changes, and merges when it is ready. Expect review to check the points in "Rules for a PR" above: the spec, `pnpm check`, no private data, dependencies, one issue per PR and the README. Pushes to a PR branch update the PR, so there is no need to open a new one.
 
 ## Licence
 
