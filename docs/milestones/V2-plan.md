@@ -12,35 +12,35 @@ There are no users. Nothing in V2 keeps old stores, old data directories or old 
 
 ## Milestones and paths
 
-The work is split into two self-contained paths that run in parallel from the start. Neither path waits on the other: every dependency of a Path A issue is in Path A or M7, and the same holds for Path B. Work that needs both paths (Go web frameworks, the end-to-end trace, the release) is held back to two joining milestones at the end.
+The work is split into two paths and one piece of side work. Path B is self-contained: it needs nothing from Path A. Path A carries the work that needs both (Go web frameworks and the release) at its end, where it waits on Path B twice. Path B is the shorter path and runs Go first, so both waits should be met before Path A reaches them. The paths can run in parallel or as a waterfall.
 
-| Milestone                        | Path         | What a user can do at the end                                                                                                                                                                                              |
-| -------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **M7 V2 groundwork**             | Shared       | Nothing new; the legacy data dir, store migrations and index-format re-index are gone.                                                                                                                                     |
-| **M8 Any TypeScript project**    | A            | Index any TypeScript layout: one package, any workspace tool, project references only, or no workspace tool; bundler aliases resolve; a 10,000-file repo is ready in about a minute.                                       |
-| **M9 Framework recipes**         | A            | Init discovers the framework and writes a recipe; routes and endpoints for TanStack Router, Hono, oRPC, TanStack Start, Drizzle, Express, NestJS and Next.js come from recipes. No hand-written framework adapters remain. |
-| **M10 Call linking in one repo** | A            | Calls through client instances, wrappers, constants and env-var base URLs link to their handlers in the same repo.                                                                                                         |
-| **M11 Multirepo workspaces**     | B            | List related repos once; search, duplicates, the map and go-to-source span all of them, and each repo stays up to date on its own.                                                                                         |
-| **M12 Go backends**              | B            | Index Go modules with symbols, callers, duplicate warnings and descriptions.                                                                                                                                               |
-| **M13 Cross-repo call linking**  | B            | A frontend call links to the handler in another repo, and a page in one repo traces to its handler and tables in another.                                                                                                  |
-| **M14 Go web frameworks**        | Shared, join | Discovery recognises net/http, chi and gin in a Go repo and their endpoints appear like TypeScript ones.                                                                                                                   |
-| **M15 V2 release**               | Shared, join | Trace a TypeScript page to the Go handler that serves it in another repo; linking is measured on unseen public repos; V2 is tagged.                                                                                        |
+| Milestone                        | Owner     | What a user can do at the end                                                                                                                                                                                              |
+| -------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **M7 V2 groundwork**             | Side work | Nothing new; the legacy data dir, store migrations and index-format re-index are gone.                                                                                                                                     |
+| **M8 Any TypeScript project**    | Path A    | Index any TypeScript layout: one package, any workspace tool, project references only, or no workspace tool; bundler aliases resolve; a 10,000-file repo is ready in about a minute.                                       |
+| **M9 Framework recipes**         | Path A    | Init discovers the framework and writes a recipe; routes and endpoints for TanStack Router, Hono, oRPC, TanStack Start, Drizzle, Express, NestJS and Next.js come from recipes. No hand-written framework adapters remain. |
+| **M10 Call linking in one repo** | Path A    | Calls through client instances, wrappers, constants and env-var base URLs link to their handlers in the same repo.                                                                                                         |
+| **M14 Go web frameworks**        | Path A    | Discovery recognises net/http, chi and gin in a Go repo and their endpoints appear like TypeScript ones.                                                                                                                   |
+| **M15 V2 release**               | Path A    | Trace a TypeScript page to the Go handler that serves it in another repo; linking is measured on unseen public repos; V2 is tagged.                                                                                        |
+| **M12 Go backends**              | Path B    | Index Go modules with symbols, callers, duplicate warnings and descriptions.                                                                                                                                               |
+| **M11 Multirepo workspaces**     | Path B    | List related repos once; search, duplicates, the map and go-to-source span all of them, and each repo stays up to date on its own.                                                                                         |
+| **M13 Cross-repo call linking**  | Path B    | A frontend call links to the handler in another repo, and a page in one repo traces to its handler and tables in another.                                                                                                  |
 
-- **Path A, TypeScript in one repo:** M8 → M9 → M10. Any TypeScript layout indexes, framework knowledge moves into agent-written recipes, and calls link to their handlers. All of it is built and tested on a single repo.
-- **Path B, more repos and a second language:** M11 and M12 in either order, then M13. The index grows from one repo to a workspace and from one language to two, and calls link across repos.
-- **Shared:** M7 is two small removals either path can pick up first; neither path waits on it. M14 and M15 start once both paths are done.
+- **Path A, TypeScript then the joined end (22 issues):** M8 → M9 → M10 → M14 → M15.
+- **Path B, Go and multirepo (13 issues):** M12 → M11 → M13. M12 goes first so the Go module is ready early for M14; M11 and M12 do not depend on each other.
+- **Side work (2 issues):** M7, done by the maintainer outside both paths. It should land before Path B changes the store schema (M11's repo column, M12's `lang` field), so those changes need no migration.
 
-### What the joining milestones need
+### Where Path A waits on Path B
 
-| Joining work                                                   | From Path A                      | From Path B                     |
-| -------------------------------------------------------------- | -------------------------------- | ------------------------------- |
-| M14: Go endpoints from net/http, chi and gin; Go discovery     | Recipe engine and discovery (M9) | Index a Go module (M12)         |
-| M15: Trace a TypeScript page to the Go handler in another repo | M14                              | Trace a page across repos (M13) |
-| M15: Call linking measured on public repos it has not seen     | Express and NestJS (M9), M10     | Cross-repo linking (M13)        |
+| Path A work                                                    | Needs from Path B               |
+| -------------------------------------------------------------- | ------------------------------- |
+| M14: Go endpoints from net/http, chi and gin; Go discovery     | Index a Go module (M12)         |
+| M15: Trace a TypeScript page to the Go handler in another repo | Trace a page across repos (M13) |
+| M15: Call linking measured on public repos it has not seen     | Cross-repo linking (M13)        |
 
 Touch points, not waits: M11's first issue adds a repo part to stable IDs (section 6) and M12's first adds a `lang` field; Path A rebases its snapshots onto both. M8 and M11 both touch workspace discovery. M10 and M13 both extend `clients.ts`: M10 widens what counts as a call, M13 widens where its handler can be. Recipes reach languages only through the existing adapter resolver contract (`resolveSpecifier`, `resolveSymbol`), so the recipe engine and the language interface are built without waiting on each other. Path B's linking work runs on endpoints from the shipped adapters until M9 replaces them with recipes that emit the same node kinds.
 
-## M7 V2 groundwork (Shared)
+## M7 V2 groundwork (side work)
 
 - Remove the legacy data-dir fallback (`~/.gantry/data`): the plugin data dir is the only location (section 4).
 - Remove the numbered store migrations and the `meta.index_format` re-index (#195). There is one schema. A store whose schema version is not the current one is deleted and rebuilt, and the user is told (sections 9, 11).
@@ -120,7 +120,7 @@ The TypeScript pipeline is split into a language module and shared code before G
 - **Calls.** Syntax only, with local type inference for calls on concrete types (receivers, parameters, literals, constructor results, field chains, embedding, range and element types); without it only about 29% of in-repo calls resolve. Calls through an interface resolve to the interface method at high confidence. Interface satisfaction is computed by method-name matching as low-confidence `implements` edges. Measured against go/packages: same-package and package-qualified calls 99.9 to 100%, concrete methods 93 to 96%, interface methods 78 to 79%, overall 92 to 97% recall at 99.99 to 100% precision. No helper binary.
 - **Imports** map package names from the target's `package` clause, not the last path element.
 - **Descriptions.** Fact sheets work as they are; the prompt gains a language field.
-- **Frameworks** are M14 (join), not part of this milestone.
+- **Frameworks** are M14 (Path A), not part of this milestone.
 
 Spec sections touched: 2, 3 (`lang/`), 7 (`lang` field), 8, 9, 13, 17.
 
@@ -131,13 +131,13 @@ Spec sections touched: 2, 3 (`lang/`), 7 (`lang` field), 8, 9, 13, 17.
 
 Spec sections touched: 9, 15.
 
-## M14 Go web frameworks (Shared, join)
+## M14 Go web frameworks (Path A)
 
-After M9 and M12. net/http 1.22 method patterns, chi and gin, written by discovery as recipes and run by the M9 engine (spike: chi 100% precision and 94% recall, gin 100% and 100% on held-out code). Each has a public fixture and a held-out public repo scored against hand labels. echo and fiber are out of V2.
+After M10, and Path B's M12. net/http 1.22 method patterns, chi and gin, written by discovery as recipes and run by the M9 engine (spike: chi 100% precision and 94% recall, gin 100% and 100% on held-out code). Each has a public fixture and a held-out public repo scored against hand labels. echo and fiber are out of V2.
 
 Spec sections touched: 13, 16.
 
-## M15 V2 release (Shared, join)
+## M15 V2 release (Path A)
 
 - Call linking scored on held-out public full-stack repos (needs the M9 Express and NestJS recipes, M10 and M13).
 - The end-to-end case on public code: a TypeScript frontend repo and a Go backend repo in one workspace; a page traces to the Go handler that serves it.
@@ -166,7 +166,7 @@ Not accepted:
 
 Changed by the spikes (none was a no-go):
 
-- Go no longer depends on framework recipes as a whole (draft: M10 needed M8): only Go frameworks need recipes, and they wait for both paths in M14. Milestone numbers in the spike reports refer to the draft.
+- Go no longer depends on framework recipes as a whole (draft: M10 needed M8): only Go frameworks need recipes, and they are Path A's M14, after Path B's M12. Milestone numbers in the spike reports refer to the draft.
 - Recipe validation uses example snippets; zero matches is a warning (draft: drop rules that match nothing).
 - Rules need five generic helpers, not only a file-naming helper.
 - Go needs local type inference for concrete methods; interface calls are high confidence to the interface method; `implements` is computed by name at low confidence (draft: not computed).
