@@ -15,7 +15,7 @@ If you joined through a Devprentice guided program, follow the program's steps a
 
 ## Set up
 
-You need Node 22 or newer and pnpm 10. The pnpm version is pinned in `package.json`, and `corepack enable` picks it up.
+You need Node 26 (see `.nvmrc`) and pnpm 10.31.0. The pnpm version is pinned in `package.json`, and `corepack enable` picks it up.
 
 ```sh
 git clone https://github.com/<you>/architecture-visualization-cc-plugin.git

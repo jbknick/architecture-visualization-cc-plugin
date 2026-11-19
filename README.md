@@ -86,7 +86,7 @@ Five views follow a feature across the stack, from the TanStack Router page thro
 
 ## Quick start
 
-You need Node 22 or newer and pnpm. To use Gantry inside Claude Code, install it as a local plugin from a clone (the `/gantry:init`, `/gantry:sync`, `/gantry:explain`, `/gantry:overview`, `/gantry:map` and `/gantry:review` skills, the model-invoked `reuse-first` skill, the background `describer` agent and the read-only `explainer` agent): see [`docs/INSTALL.md`](docs/INSTALL.md). To use only the command line, run it from a clone:
+You need Node 26 and pnpm 10.31.0. To use Gantry inside Claude Code, install it as a local plugin from a clone (the `/gantry:init`, `/gantry:sync`, `/gantry:explain`, `/gantry:overview`, `/gantry:map` and `/gantry:review` skills, the model-invoked `reuse-first` skill, the background `describer` agent and the read-only `explainer` agent): see [`docs/INSTALL.md`](docs/INSTALL.md). To use only the command line, run it from a clone:
 
 ```sh
 git clone https://github.com/jbknick/architecture-visualization-cc-plugin.git
