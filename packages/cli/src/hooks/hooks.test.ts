@@ -666,7 +666,7 @@ describe("entry points", () => {
         st.close();
       }
     };
-    expect(versionOf()).toBe("9");
+    expect(versionOf()).toBe("10");
     setVersion("6");
     const input = JSON.stringify({
       session_id: "s",
@@ -706,15 +706,15 @@ describe("entry points", () => {
       err: "",
     });
     expect(versionOf()).toBe("6");
-    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 9)");
+    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 10)");
 
     // The next non-hook command rebuilds from scratch, with one message naming the reason.
     const init = gantry(fx.dir, ["init"]);
     expect(init.code).toBe(0);
     expect(
-      init.err.split("built by an older version of Gantry (schema 6, now 9); rebuilding it").length - 1,
+      init.err.split("built by an older version of Gantry (schema 6, now 10); rebuilding it").length - 1,
     ).toBe(1);
-    expect(versionOf()).toBe("9");
+    expect(versionOf()).toBe("10");
   });
 
   it("session-start and the git hooks create no data dir for a repository without an index (#147)", async () => {

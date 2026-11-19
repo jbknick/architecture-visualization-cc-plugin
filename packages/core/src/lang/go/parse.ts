@@ -136,6 +136,24 @@ function draftsOf(root: GoNode): Draft[] {
               signature: "",
               body: null,
             });
+          // Methods of an interface are symbols too (`#<Iface>.<Method>`), so a call through the interface has a target.
+          const iface = s.field("type");
+          if (name && s.kind() === "type_spec" && iface?.kind() === "interface_type") {
+            for (const m of iface.namedChildren()) {
+              const mn = m.kind() === "method_elem" ? m.field("name")?.text() : undefined;
+              if (!mn) continue;
+              out.push({
+                name: `${name}.${mn}`,
+                kind: "method",
+                exported: isExportedName(mn),
+                node: m,
+                signature: collapse(
+                  `${m.field("parameters")?.text() ?? "()"} ${m.field("result")?.text() ?? ""}`,
+                ),
+                body: null,
+              });
+            }
+          }
         }
         break;
       case "const_declaration":
