@@ -1,0 +1,198 @@
+{
+  "formbricks": {
+    "baseSha": "357c7a25cf98a70d16d1042633deaad8831804ce",
+    "commits": 500,
+    "deleted": 33,
+    "entries": 1000,
+    "examples": [
+      {
+        "cause": "modified_and_moved",
+        "entry": "sym:formbricks/formbricks:apps/web/modules/mcp/tools/guard-scopes.test.ts#createToolServer",
+        "firstMissAtCommit": "2110652c99bd8913f186f9b7ff241c7c06f56a8e",
+        "pointsTo": "sym:formbricks/formbricks:apps/web/modules/mcp/tools/guard-scopes.test.ts#createToolServer",
+        "truth": "sym:formbricks/formbricks:apps/web/modules/mcp/tools/guard-permissions.test.ts#createToolServer",
+        "wrongReattach": false
+      }
+    ],
+    "functionLikeAtBase": 7017,
+    "headSha": "b52ebf833e92c1205d95492dc43567760ef56706",
+    "replayStats": {
+      "fullReindexes": 87,
+      "modified": 5568,
+      "moved": 198,
+      "removed": 517,
+      "renamed": 9
+    },
+    "seed": 1,
+    "stillExist": 967,
+    "survived": {
+      "exactHash": 966,
+      "id": 960,
+      "renamedHash": 966
+    },
+    "unresolvedByCause": {
+      "exactHash": {
+        "ambiguous_hash": 0,
+        "modified_and_moved": 1,
+        "modified_and_renamed": 0,
+        "moved": 0,
+        "other": 0,
+        "renamed": 0
+      },
+      "id": {
+        "ambiguous_hash": 0,
+        "modified_and_moved": 1,
+        "modified_and_renamed": 0,
+        "moved": 6,
+        "other": 0,
+        "renamed": 0
+      },
+      "renamedHash": {
+        "ambiguous_hash": 0,
+        "modified_and_moved": 1,
+        "modified_and_renamed": 0,
+        "moved": 0,
+        "other": 0,
+        "renamed": 0
+      }
+    },
+    "wrongReattaches": {
+      "exactHash": 0,
+      "renamedHash": 0
+    }
+  },
+  "trpc": {
+    "baseSha": "2f40ba935ad7f7d29eec3f9c45d353450b43e852",
+    "commits": 500,
+    "deleted": 135,
+    "entries": 729,
+    "examples": [
+      {
+        "cause": "modified_and_moved",
+        "entry": "sym:trpc/trpc:examples/next-formdata/src/pages/react-hook-form.tsx#Page",
+        "firstMissAtCommit": "0a056c724fecaf75a8af029331dc4a9d1dbad09c",
+        "pointsTo": "sym:trpc/trpc:examples/next-formdata/src/pages/react-hook-form.tsx#Page",
+        "truth": "sym:trpc/trpc:examples/next-formdata/src/app/react-hook-form/page.tsx#Page",
+        "wrongReattach": false
+      },
+      {
+        "cause": "modified_and_moved",
+        "entry": "sym:trpc/trpc:examples/next-formdata/src/pages/vanilla.tsx#IndexPage",
+        "firstMissAtCommit": "0a056c724fecaf75a8af029331dc4a9d1dbad09c",
+        "pointsTo": "sym:trpc/trpc:examples/next-formdata/src/pages/vanilla.tsx#IndexPage",
+        "truth": "sym:trpc/trpc:examples/next-formdata/src/app/vanilla/page.tsx#IndexPage",
+        "wrongReattach": false
+      },
+      {
+        "cause": "ambiguous_hash",
+        "entry": "sym:trpc/trpc:examples/next-minimal-starter/src/utils/trpc.ts#getBaseUrl",
+        "firstMissAtCommit": "5ac31567f13520c26391d1351eec322922df0b86",
+        "pointsTo": "sym:trpc/trpc:examples/next-minimal-starter/src/utils/trpc.ts#getBaseUrl",
+        "truth": "sym:trpc/trpc:examples/next-minimal-starter/src/trpc/client.tsx#getBaseUrl",
+        "wrongReattach": false
+      },
+      {
+        "cause": "modified_and_moved",
+        "entry": "sym:trpc/trpc:examples/next-prisma-starter/src/pages/404.tsx#Custom404",
+        "firstMissAtCommit": "f434008bf8869db5b44c35530859c16b15d63db9",
+        "pointsTo": "sym:trpc/trpc:examples/next-prisma-starter/src/pages/404.tsx#Custom404",
+        "truth": "sym:trpc/trpc:examples/next-prisma-starter/src/app/not-found.tsx#Custom404",
+        "wrongReattach": false
+      },
+      {
+        "cause": "modified_and_moved",
+        "entry": "sym:trpc/trpc:examples/next-prisma-starter/src/pages/post/[id].tsx#PostItem",
+        "firstMissAtCommit": "f434008bf8869db5b44c35530859c16b15d63db9",
+        "pointsTo": "sym:trpc/trpc:examples/next-prisma-starter/src/pages/post/[id].tsx#PostItem",
+        "truth": "sym:trpc/trpc:examples/next-prisma-starter/src/app/post/[id]/post-view.tsx#PostItem",
+        "wrongReattach": false
+      },
+      {
+        "cause": "modified_and_moved",
+        "entry": "sym:trpc/trpc:examples/next-prisma-todomvc/src/pages/[filter].tsx#ListItem",
+        "firstMissAtCommit": "76a42d3e641589a78b0b3254002108738505eea9",
+        "pointsTo": "sym:trpc/trpc:examples/next-prisma-todomvc/src/pages/[filter].tsx#ListItem",
+        "truth": "sym:trpc/trpc:examples/next-prisma-todomvc/src/app/[filter]/todos.tsx#ListItem",
+        "wrongReattach": false
+      },
+      {
+        "cause": "modified_and_moved",
+        "entry": "sym:trpc/trpc:examples/next-prisma-websockets-starter/src/pages/index.tsx#AddMessageForm",
+        "firstMissAtCommit": "bd22498c87642baa146bc47c436a6585b5d0c47c",
+        "pointsTo": "sym:trpc/trpc:examples/next-prisma-websockets-starter/src/pages/index.tsx#AddMessageForm",
+        "truth": "sym:trpc/trpc:examples/next-prisma-websockets-starter/src/app/chat.tsx#AddMessageForm",
+        "wrongReattach": false
+      },
+      {
+        "cause": "modified_and_moved",
+        "entry": "sym:trpc/trpc:examples/next-sse-chat/src/app/api/trpc/[trpc]/route.ts#handler",
+        "firstMissAtCommit": "85bcf328a92612f4ce7663168ba4946aeb0435a9",
+        "pointsTo": "sym:trpc/trpc:examples/next-sse-chat/src/app/api/trpc/[trpc]/route.ts#handler",
+        "truth": "sym:trpc/trpc:examples/tanstack-start-sse-chat/src/routes/api/trpc.$.ts#handler",
+        "wrongReattach": false
+      },
+      {
+        "cause": "modified_and_moved",
+        "entry": "sym:trpc/trpc:examples/next-sse-chat/src/app/channels/[channelId]/chat.tsx#AddMessageForm",
+        "firstMissAtCommit": "85bcf328a92612f4ce7663168ba4946aeb0435a9",
+        "pointsTo": "sym:trpc/trpc:examples/next-sse-chat/src/app/channels/[channelId]/chat.tsx#AddMessageForm",
+        "truth": "sym:trpc/trpc:examples/tanstack-start-sse-chat/src/routes/channels/-components/chat.tsx#AddMessageForm",
+        "wrongReattach": false
+      },
+      {
+        "cause": "modified_and_moved",
+        "entry": "sym:trpc/trpc:examples/next-sse-chat/src/app/channels/[channelId]/chat.tsx#Chat",
+        "firstMissAtCommit": "85bcf328a92612f4ce7663168ba4946aeb0435a9",
+        "pointsTo": "sym:trpc/trpc:examples/next-sse-chat/src/app/channels/[channelId]/chat.tsx#Chat",
+        "truth": "sym:trpc/trpc:examples/tanstack-start-sse-chat/src/routes/channels/-components/chat.tsx#Chat",
+        "wrongReattach": false
+      }
+    ],
+    "functionLikeAtBase": 729,
+    "headSha": "596d03d93295f8b4876909cfce86f94a1e6afe51",
+    "replayStats": {
+      "fullReindexes": 188,
+      "modified": 1049,
+      "moved": 240,
+      "removed": 414,
+      "renamed": 0
+    },
+    "seed": 1,
+    "stillExist": 594,
+    "survived": {
+      "exactHash": 577,
+      "id": 569,
+      "renamedHash": 577
+    },
+    "unresolvedByCause": {
+      "exactHash": {
+        "ambiguous_hash": 3,
+        "modified_and_moved": 14,
+        "modified_and_renamed": 0,
+        "moved": 0,
+        "other": 0,
+        "renamed": 0
+      },
+      "id": {
+        "ambiguous_hash": 0,
+        "modified_and_moved": 15,
+        "modified_and_renamed": 0,
+        "moved": 10,
+        "other": 0,
+        "renamed": 0
+      },
+      "renamedHash": {
+        "ambiguous_hash": 3,
+        "modified_and_moved": 14,
+        "modified_and_renamed": 0,
+        "moved": 0,
+        "other": 0,
+        "renamed": 0
+      }
+    },
+    "wrongReattaches": {
+      "exactHash": 0,
+      "renamedHash": 0
+    }
+  }
+}

@@ -279,6 +279,14 @@
       "stack": ["sqlc"],
       "lang": ["go"],
       "role": "tuning"
+    },
+    {
+      "name": "trpc",
+      "url": "https://github.com/trpc/trpc.git",
+      "sha": "596d03d93295f8b4876909cfce86f94a1e6afe51",
+      "stack": ["typescript-library"],
+      "lang": ["ts"],
+      "role": "tuning"
     }
   ]
 }
