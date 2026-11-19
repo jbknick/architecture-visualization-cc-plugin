@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { heal, resolvePaths } from "@gantry/core";
+import { heal, resetStaleStore, resolvePaths } from "@gantry/core";
 import type { Command } from "commander";
 import { EXIT_OK, fail } from "./shared.js";
 
@@ -11,6 +11,7 @@ export function registerHeal(program: Command): void {
     .action(async (opts: { from?: string }) => {
       try {
         const paths = resolvePaths(process.cwd());
+        resetStaleStore(paths);
         // Heal keeps an index current; it never creates one, so a run before `gantry init` leaves no empty data dir
         // behind (#147).
         if (!fs.existsSync(paths.dbPath)) {

@@ -5,6 +5,7 @@ import {
   ensureDataDir,
   openStore,
   rebuildSimilarEdges,
+  resetStaleStore,
   resolvePaths,
   type Store,
 } from "@gantry/core";
@@ -103,6 +104,7 @@ export function registerEmbed(program: Command): void {
         const limit = parseCount(opts.limit, "--limit");
         const budgetMs = parseCount(opts.budgetMs, "--budget-ms");
         const paths = resolvePaths(process.cwd());
+        resetStaleStore(paths);
         ensureDataDir(paths);
         const store = openStore(paths.dbPath);
         try {

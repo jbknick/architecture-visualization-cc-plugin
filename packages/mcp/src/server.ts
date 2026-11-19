@@ -1,4 +1,11 @@
-import { ensureDataDir, type GantryPaths, NotAGitRepoError, openStore, resolvePaths } from "@gantry/core";
+import {
+  ensureDataDir,
+  type GantryPaths,
+  NotAGitRepoError,
+  openStore,
+  resetStaleStore,
+  resolvePaths,
+} from "@gantry/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { cachedEmbedder } from "./embedder.js";
 import { envelope, errorEnvelope, MAX_RESPONSE_CHARS, type ToolResponse } from "./envelope.js";
@@ -39,6 +46,7 @@ async function runTool(
       if (err instanceof NotAGitRepoError) return errorEnvelope("not_a_git_repo", err.message);
       throw err;
     }
+    resetStaleStore(paths);
     ensureDataDir(paths);
     await lazyRefresh(paths, o.log);
     const store = openStore(paths.dbPath);

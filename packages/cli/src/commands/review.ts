@@ -7,6 +7,7 @@ import {
   type Impact,
   openStore,
   parseRange,
+  resetStaleStore,
   resolvePaths,
   resolvePullRequest,
   reviewDiff,
@@ -65,6 +66,7 @@ export function registerReview(program: Command): void {
           return;
         }
         const paths = resolvePaths(process.cwd());
+        resetStaleStore(paths);
         if (opts.pr !== undefined && !PR_RE.test(opts.pr)) {
           process.stderr.write(`gantry: invalid pull request number: ${opts.pr}\n`);
           process.exitCode = EXIT_ERROR;

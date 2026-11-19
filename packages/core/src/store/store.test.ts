@@ -7,9 +7,9 @@ import Database from "better-sqlite3";
 import { build } from "tsup";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EdgeRecord, FileRecord, SymbolRecord } from "../types.js";
-import { openStore, SchemaTooNewError, splitIdentifier } from "./index.js";
+import { openStore, SCHEMA_VERSION, StaleStoreError, splitIdentifier } from "./index.js";
 import type { Store } from "./repo.js";
-import { SCHEMA_V1, SCHEMA_V4, SCHEMA_V5 } from "./schema.js";
+import { SCHEMA } from "./schema.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -83,28 +83,28 @@ describe("openStore", () => {
     ]) {
       expect(names).toContain(t);
     }
-    expect(names).toContain("vec_descriptions"); // migration v2 (sqlite-vec loaded by openStore)
+    expect(names).toContain("vec_descriptions"); // created by openStore when sqlite-vec loads
     expect(names).toContain("vec_code");
-    expect(store.getMeta("schema_version")).toBe("6");
+    expect(store.getMeta("schema_version")).toBe(String(SCHEMA_VERSION));
     expect(store.db.pragma("journal_mode", { simple: true })).toBe("wal");
     expect(store.db.pragma("busy_timeout", { simple: true })).toBe(5000);
     expect(store.db.pragma("foreign_keys", { simple: true })).toBe(1);
     expect(store.db.pragma("synchronous", { simple: true })).toBe(1);
   });
 
-  it("is reopenable and throws SchemaTooNewError for a newer version", () => {
+  it("is reopenable and throws StaleStoreError for a newer version", () => {
     const p = join(dir, "again.db");
     const s = openStore(p);
     s.setMeta("schema_version", "99");
     s.close();
-    expect(() => openStore(p)).toThrow(SchemaTooNewError);
+    expect(() => openStore(p)).toThrow(StaleStoreError);
     const raw = new Database(p);
-    raw.prepare("UPDATE meta SET value = '1' WHERE key = 'schema_version'").run();
+    raw.prepare("UPDATE meta SET value = ? WHERE key = 'schema_version'").run(String(SCHEMA_VERSION));
     raw.close();
     openStore(p).close();
   });
 
-  it("migration v3 adds files.directives and round-trips it", () => {
+  it("files.directives round-trips", () => {
     const cols = (store.db.prepare("PRAGMA table_info(files)").all() as { name: string }[]).map(
       (c) => c.name,
     );
@@ -119,30 +119,6 @@ describe("openStore", () => {
     expect(store.effectiveFile("file:a.tsx")?.directives).toBeUndefined();
     store.markDeleted("working", "file:a.tsx");
     expect(store.effectiveFile("file:a.tsx")).toBeUndefined();
-  });
-
-  it("opens an existing v2 database, migrates it in place and keeps old rows", () => {
-    const p = join(dir, "v2.db");
-    const raw = new Database(p);
-    raw.exec(SCHEMA_V1);
-    raw.prepare("INSERT INTO meta(key, value) VALUES ('schema_version', '2')").run();
-    raw
-      .prepare(
-        "INSERT INTO files(id, layer, path, workspace_id, content_hash, mtime_ms, deleted) VALUES ('file:old.tsx', 'main', 'old.tsx', NULL, 'h', 1, 0)",
-      )
-      .run();
-    raw.close();
-    const s = openStore(p);
-    try {
-      expect(s.getMeta("schema_version")).toBe("6");
-      const f = s.effectiveFile("file:old.tsx");
-      expect(f?.path).toBe("old.tsx");
-      expect(f?.directives).toBeUndefined();
-      s.replaceFile("main", file("old.tsx", { directives: ["use client"] }), [], []);
-      expect(s.effectiveFile("file:old.tsx")?.directives).toEqual(["use client"]);
-    } finally {
-      s.close();
-    }
   });
 
   it("meta round-trips and overwrites", () => {
@@ -333,121 +309,19 @@ describe("schema", () => {
       .join(" ")
       .replace(/\s+/g, " ");
 
-  it("SCHEMA_V1 equals schema.sql", () => {
-    expect(SCHEMA_V1).toBe(readFileSync(join(here, "schema.sql"), "utf8"));
+  it("SCHEMA equals schema.sql", () => {
+    expect(SCHEMA).toBe(readFileSync(join(here, "schema.sql"), "utf8"));
   });
 
-  it("SCHEMA_V1 equals the SQL block of spec section 9", () => {
+  it("SCHEMA equals the SQL block of spec section 9", () => {
     const spec = readFileSync(join(here, "../../../../docs/SPEC.md"), "utf8");
-    const sec = spec.split("## 9. SQLite schema v1")[1] ?? "";
-    const block = (/```sql\n([\s\S]*?)```/.exec(sec)?.[1] ?? "").split("-- migration v4")[0] ?? "";
-    expect(norm(SCHEMA_V1)).toBe(norm(block));
+    const sec = spec.split("## 9. SQLite schema")[1] ?? "";
+    const block = /```sql\n([\s\S]*?)```/.exec(sec)?.[1] ?? "";
+    expect(norm(SCHEMA)).toBe(norm(block));
   });
 });
 
-describe("schema v4 (adapter_nodes)", () => {
-  it("SCHEMA_V4 equals the migration v4 DDL of spec section 9", () => {
-    const spec = readFileSync(join(here, "../../../../docs/SPEC.md"), "utf8");
-    const sec = spec.split("## 9. SQLite schema v1")[1] ?? "";
-    const block = /```sql\n([\s\S]*?)```/.exec(sec)?.[1] ?? "";
-    const v4 = (block.split("-- migration v4")[1] ?? "").split("-- migration v5")[0] ?? "";
-    const ddl = v4
-      .split("\n")
-      .slice(1)
-      .filter((l) => !l.trim().startsWith("--"))
-      .join("\n");
-    const norm = (sql: string) => sql.replace(/\s+/g, " ").trim();
-    expect(norm(ddl)).toBe(norm(SCHEMA_V4));
-  });
-
-  it("SCHEMA_V5 equals the migration v5 DDL of spec section 9", () => {
-    const spec = readFileSync(join(here, "../../../../docs/SPEC.md"), "utf8");
-    const sec = spec.split("## 9. SQLite schema v1")[1] ?? "";
-    const block = /```sql\n([\s\S]*?)```/.exec(sec)?.[1] ?? "";
-    const ddl = (block.split("-- migration v5")[1] ?? "")
-      .split("\n")
-      .slice(1)
-      .filter((l) => !l.trim().startsWith("--"))
-      .join("\n");
-    const norm = (sql: string) => sql.replace(/\s+/g, " ").trim();
-    expect(norm(ddl)).toBe(norm(SCHEMA_V5));
-  });
-
-  it("adds pending_files.reindexed on open to a v5 table that lacks it (pre-release v5)", () => {
-    const dir = mkdtempSync(join(tmpdir(), "gantry-v5r-"));
-    const dbPath = join(dir, "g.db");
-    openStore(dbPath).close();
-    const raw = new Database(dbPath);
-    raw.exec("DROP TABLE pending_files");
-    raw.exec(
-      "CREATE TABLE pending_files(session_id TEXT, path TEXT, baseline TEXT, created_at TEXT, PRIMARY KEY(session_id, path))",
-    );
-    raw.prepare("INSERT INTO pending_files VALUES ('s', 'a.ts', '{}', 't')").run();
-    raw.close();
-    const again = openStore(dbPath);
-    try {
-      expect(again.getMeta("schema_version")).toBe("6");
-      expect(again.db.prepare("SELECT path, reindexed FROM pending_files").all()).toEqual([
-        { path: "a.ts", reindexed: 0 },
-      ]);
-    } finally {
-      again.close();
-    }
-    openStore(dbPath).close(); // idempotent
-    rmSync(dir, { recursive: true, force: true });
-  });
-
-  it("migration v6 adds symbols.renamed_hash and forgets head_sha", () => {
-    const dir = mkdtempSync(join(tmpdir(), "gantry-v6-"));
-    const dbPath = join(dir, "g.db");
-    const s = openStore(dbPath);
-    s.setMeta("head_sha", "abc");
-    s.setMeta("schema_version", "5");
-    s.close();
-    const raw = new Database(dbPath);
-    raw.exec("ALTER TABLE symbols DROP COLUMN renamed_hash");
-    raw.close();
-    const again = openStore(dbPath);
-    try {
-      expect(again.getMeta("schema_version")).toBe("6");
-      expect(again.getMeta("head_sha")).toBeUndefined();
-      const cols = (again.db.prepare("PRAGMA table_info(symbols)").all() as { name: string }[]).map(
-        (c) => c.name,
-      );
-      expect(cols).toContain("renamed_hash");
-    } finally {
-      again.close();
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it("migration v5 adds symbols.near_minhash, pending_files, and forgets head_sha", () => {
-    const dir = mkdtempSync(join(tmpdir(), "gantry-v5-"));
-    const dbPath = join(dir, "g.db");
-    const s = openStore(dbPath);
-    s.setMeta("head_sha", "abc");
-    s.setMeta("schema_version", "4");
-    s.close();
-    const raw = new Database(dbPath);
-    raw.exec("DROP TABLE pending_files");
-    raw.close();
-    const again = openStore(dbPath);
-    try {
-      expect(again.getMeta("schema_version")).toBe("6");
-      expect(again.getMeta("head_sha")).toBeUndefined();
-      const cols = (again.db.prepare("PRAGMA table_info(symbols)").all() as { name: string }[]).map(
-        (c) => c.name,
-      );
-      expect(cols).toContain("near_minhash");
-      expect(
-        again.db.prepare("SELECT name FROM sqlite_master WHERE name = 'pending_files'").get(),
-      ).toBeTruthy();
-    } finally {
-      again.close();
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
+describe("adapter nodes", () => {
   it("keeps adapter nodes per file and layer, like symbols", () => {
     const s = openStore(":memory:");
     const node = (id: string, label: string) => ({

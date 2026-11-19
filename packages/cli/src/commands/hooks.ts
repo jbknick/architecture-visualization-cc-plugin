@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { resolvePaths } from "@gantry/core";
+import { resetStaleStore, resolvePaths } from "@gantry/core";
 import type { Command } from "commander";
 import { hookDataBase, installHooks, uninstallHooks } from "../hooks/install.js";
 import { EXIT_OK, fail } from "./shared.js";
@@ -17,6 +17,7 @@ export function registerHooks(program: Command): void {
     .action(() => {
       try {
         const paths = resolvePaths(process.cwd());
+        resetStaleStore(paths);
         const r = installHooks(paths, { cliPath });
         if (hookDataBase(paths) === undefined) {
           process.stderr.write(
@@ -36,7 +37,9 @@ export function registerHooks(program: Command): void {
     .description("Remove Gantry's git hooks and restore the previous ones")
     .action(() => {
       try {
-        const r = uninstallHooks(resolvePaths(process.cwd()));
+        const paths = resolvePaths(process.cwd());
+        resetStaleStore(paths);
+        const r = uninstallHooks(paths);
         process.stdout.write(`Removed Gantry hooks (${r.restored.length} restored)\n`);
         process.exitCode = EXIT_OK;
       } catch (err) {

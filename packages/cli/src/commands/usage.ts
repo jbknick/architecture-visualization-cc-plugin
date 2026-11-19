@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { openStore, resolvePaths, usageSummary } from "@gantry/core";
+import { openStore, resetStaleStore, resolvePaths, usageSummary } from "@gantry/core";
 import type { Command } from "commander";
 import { table } from "./lookup.js";
 import { EXIT_OK, fail, writeStdout } from "./shared.js";
@@ -12,6 +12,7 @@ export function registerUsage(program: Command): void {
     .action((opts: { json?: boolean }) => {
       try {
         const paths = resolvePaths(process.cwd());
+        resetStaleStore(paths);
         // Read-only: no data dir is created for a repository that has no index (#147).
         const store = fs.existsSync(paths.dbPath) ? openStore(paths.dbPath) : undefined;
         try {

@@ -203,14 +203,14 @@ function openBundleDb(): Store {
 }
 
 describe("bundled CLI: vector tables and embeddings", () => {
-  it("opens the store with migration v2 (sqlite-vec resolves from the bundle)", async () => {
+  it("opens the store with its vec tables (sqlite-vec resolves from the bundle)", async () => {
     const fx = await fixture("single-pkg");
     const r = run(fx.dir, ["init"]);
     expect(r.err).toBe(FRESH_NOTE(fx.dir));
     expect(r.code).toBe(0);
     const db = openBundleDb();
     try {
-      expect(db.getMeta("schema_version")).toBe("6");
+      expect(db.getMeta("schema_version")).toBe("7");
       expect(db.getMeta("vec_available")).toBe("1");
       expect(db.getMeta("embed_model")).toBe("jinaai/jina-embeddings-v2-base-code");
       expect(db.getMeta("embed_dim")).toBe("768");

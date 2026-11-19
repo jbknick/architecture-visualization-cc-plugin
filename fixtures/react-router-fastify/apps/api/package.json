@@ -1,0 +1,12 @@
+{
+  "name": "@acme-rrf/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@acme-rrf/db": "workspace:*",
+    "@fastify/autoload": "^6.0.0",
+    "fastify": "^5.0.0",
+    "fastify-plugin": "^5.0.0"
+  }
+}

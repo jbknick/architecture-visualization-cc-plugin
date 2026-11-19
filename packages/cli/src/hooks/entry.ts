@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { type GantryPaths, heal, loadConfig, openStore, resolvePaths } from "@gantry/core";
+import { type GantryPaths, heal, loadConfig, openStore, resolvePaths, StaleStoreError } from "@gantry/core";
 import {
   POST_TOOL_BUDGET_MS,
   parsePostToolInput,
@@ -8,7 +8,7 @@ import {
   postToolUse,
   settleBatch,
 } from "./postToolUse.js";
-import { sessionStart } from "./sessionStart.js";
+import { INIT_REMINDER, sessionStart } from "./sessionStart.js";
 import { describeStaged, git, preCommit } from "./staged.js";
 
 export { preCommit };
@@ -27,6 +27,13 @@ export const HOOK_NAMES = [
   "post-rewrite",
 ] as const;
 export type HookName = (typeof HOOK_NAMES)[number];
+
+/** One log line for an error: a stale store is named plainly (hooks never rebuild it), anything else keeps its stack. */
+function errorLine(err: unknown): string {
+  if (err instanceof StaleStoreError)
+    return `stale store (schema ${err.found}, now ${err.expected}); left for the next non-hook command`;
+  return `error: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`;
+}
 
 export function logHook(paths: GantryPaths, name: string, message: string): void {
   try {
@@ -118,7 +125,13 @@ export async function runHook(
         return undefined;
       }
       case "session-start":
-        return await sessionStart(paths);
+        try {
+          return await sessionStart(paths);
+        } catch (err) {
+          if (!(err instanceof StaleStoreError)) throw err;
+          logHook(paths, name, errorLine(err));
+          return INIT_REMINDER;
+        }
       case "post-tool-use":
       case "stop": {
         const budget = Number(env.GANTRY_POST_TOOL_BUDGET_MS);
@@ -137,7 +150,7 @@ export async function runHook(
             ? settleBatch(paths, stopInput as NonNullable<typeof stopInput>, settleOpts)
             : postToolUse(paths, toolInput as NonNullable<typeof toolInput>, settleOpts);
         const work = job.catch((err) => {
-          logHook(paths, name, `error: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
+          logHook(paths, name, errorLine(err));
           return undefined;
         });
         const r = await Promise.race([work, late]);
@@ -151,7 +164,7 @@ export async function runHook(
         return undefined;
     }
   } catch (err) {
-    logHook(paths, name, `error: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
+    logHook(paths, name, errorLine(err));
     return undefined;
   }
 }
