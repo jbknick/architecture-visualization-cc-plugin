@@ -1,0 +1,12 @@
+{
+  "repos": [
+    {
+      "name": "tiny",
+      "url": "file:///nonexistent/tiny",
+      "sha": "0123456789abcdef0123456789abcdef01234567",
+      "stack": ["hono", "drizzle"],
+      "lang": ["ts"],
+      "role": "tuning"
+    }
+  ]
+}
