@@ -1,0 +1,47 @@
+{
+  "name": "bun-fastify-starter",
+  "frameworks": [{ "name": "fastify", "evidence": "package.json dependency" }],
+  "when": { "dependency": ["fastify"] },
+  "helpers": ["resolve-names", "const-strings"],
+  "rules": [
+    {
+      "id": "fastify-users-endpoint",
+      "language": "typescript",
+      "files": ["apps/backend/src/api/users/**/*.ts"],
+      "rule": {
+        "any": [{ "pattern": "fastify.$M($X, $A, $B)" }, { "pattern": "fastify.$M($X, $A)" }]
+      },
+      "constraints": { "M": { "regex": "^(get|post|put|delete|patch|head|options)$" } },
+      "emit": { "kind": "endpoint", "method": "$M", "path": "$X", "standalone": true, "prefix": "=/users" },
+      "examples": {
+        "match": ["fastify.post(\"/email\", { a: 1 }, handler)"],
+        "noMatch": ["fastify.listen({ port })"]
+      }
+    },
+    {
+      "id": "fastify-root-endpoint",
+      "language": "typescript",
+      "files": ["apps/backend/src/api/index.ts"],
+      "rule": {
+        "any": [{ "pattern": "fastify.$M($X, $A)" }, { "pattern": "fastify.$M($X, $A, $B)" }]
+      },
+      "constraints": { "M": { "regex": "^(get|post|put|delete|patch|head|options)$" } },
+      "emit": { "kind": "endpoint", "method": "$M", "path": "$X", "standalone": true },
+      "examples": {
+        "match": ["fastify.get(\"/\", async () => {})"],
+        "noMatch": ["fastify.listen({ port })"]
+      }
+    },
+    {
+      "id": "kysely-tables",
+      "language": "text",
+      "files": ["apps/backend/src/db/migrations/*.ts"],
+      "rule": { "regex": "createTable\\(\"(\\w+)\"\\)" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": {
+        "match": ["db.schema.createTable(\"users\")"],
+        "noMatch": ["dropTable(\"users\")"]
+      }
+    }
+  ]
+}

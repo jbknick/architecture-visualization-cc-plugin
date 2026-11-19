@@ -1,0 +1,88 @@
+{
+  "run": 1,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 8,
+  "tokens": {
+    "input": 14,
+    "cacheRead": 91833,
+    "cacheCreate": 11410,
+    "output": 4099
+  },
+  "costUsdReported": 0.09584129999999999,
+  "wallMs": 36382,
+  "recipeSha256": "979820bbe1f0af9ba0edcd1cc70ef51bcfabc1f5cc1e045c02f87c6511d13246",
+  "graphSha256": "e0193e44be670d0ee4b743e906fcb9fbed7d3c030cb2f2a60c4fa27a3f1462c8",
+  "nodes": {
+    "route": 0,
+    "endpoint": 16,
+    "table": 3
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 2,
+  "score": {
+    "case": "go-base",
+    "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 19,
+        "predicted": 15,
+        "matched": 2,
+        "precision": 0.1333,
+        "recall": 0.1053,
+        "pass": false
+      },
+      "table": {
+        "labelled": 3,
+        "predicted": 3,
+        "matched": 3,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      }
+    },
+    "missed": {
+      "endpoint": [
+        "DELETE /admin/accounts/:param",
+        "DELETE /api/account",
+        "DELETE /api/account/token/:param",
+        "GET /admin",
+        "GET /admin/accounts",
+        "GET /admin/accounts/:param",
+        "GET /api/account",
+        "GET /api/profile",
+        "POST /admin/accounts",
+        "POST /auth/login",
+        "POST /auth/logout",
+        "POST /auth/refresh",
+        "POST /auth/token",
+        "PUT /admin/accounts/:param",
+        "PUT /api/account",
+        "PUT /api/account/token/:param",
+        "PUT /api/profile"
+      ]
+    },
+    "extra": {
+      "endpoint": [
+        "DELETE /",
+        "DELETE /:param",
+        "DELETE /token/:param",
+        "GET /",
+        "GET /:param",
+        "POST /",
+        "POST /login",
+        "POST /logout",
+        "POST /refresh",
+        "POST /token",
+        "PUT /",
+        "PUT /:param",
+        "PUT /token/:param"
+      ]
+    },
+    "pass": false
+  }
+}

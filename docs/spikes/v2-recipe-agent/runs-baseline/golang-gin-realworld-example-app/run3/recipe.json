@@ -1,0 +1,186 @@
+{
+  "name": "gin-realworld",
+  "frameworks": [{ "name": "gin", "evidence": "go imports" }],
+  "when": { "imports": ["github.com/gin-gonic/gin"] },
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "gin-router",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "any": [{ "pattern": "gin.Default()" }, { "pattern": "gin.New()" }] },
+      "emit": { "kind": "router" },
+      "examples": { "match": ["gin.Default()", "gin.New()"], "noMatch": ["foo.Default()"] }
+    },
+    {
+      "id": "gin-group",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": {
+        "all": [
+          { "pattern": "$C" },
+          {
+            "any": [
+              { "pattern": "$P.Group($X, $$MW)" },
+              { "pattern": { "context": "func _() { $P.Group($X) }", "selector": "call_expression" } }
+            ]
+          }
+        ]
+      },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C", "prefix": "$X" },
+      "examples": { "match": ["v1.Group(\"/api\")"], "noMatch": ["v1.Get(\"/api\")"] }
+    },
+    {
+      "id": "gin-endpoint",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "$R.$M($X, $$H)" },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$X", "handler": "$H" },
+      "examples": { "match": ["router.GET(\"/feed\", ArticleFeed)"], "noMatch": ["m.Get(\"/x\", h)"] }
+    },
+    {
+      "id": "reg-UsersRegister",
+      "language": "go",
+      "files": ["users/routers.go"],
+      "rule": {
+        "pattern": "$R.$M($X, $$H)",
+        "inside": {
+          "kind": "function_declaration",
+          "has": { "field": "name", "regex": "^UsersRegister$" },
+          "stopBy": "end"
+        }
+      },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H",
+        "standalone": true,
+        "prefix": "=/api/users"
+      },
+      "examples": {
+        "match": ["package p\nfunc UsersRegister(router *gin.RouterGroup) {\n\trouter.GET(\"/x\", H)\n}"],
+        "noMatch": ["package p\nfunc Other(router *gin.RouterGroup) {\n\trouter.GET(\"/x\", H)\n}"]
+      }
+    },
+    {
+      "id": "reg-UserRegister",
+      "language": "go",
+      "files": ["users/routers.go"],
+      "rule": {
+        "pattern": "$R.$M($X, $$H)",
+        "inside": {
+          "kind": "function_declaration",
+          "has": { "field": "name", "regex": "^UserRegister$" },
+          "stopBy": "end"
+        }
+      },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H",
+        "standalone": true,
+        "prefix": "=/api/user"
+      },
+      "examples": {
+        "match": ["package p\nfunc UserRegister(router *gin.RouterGroup) {\n\trouter.GET(\"/x\", H)\n}"],
+        "noMatch": ["package p\nfunc Other(router *gin.RouterGroup) {\n\trouter.GET(\"/x\", H)\n}"]
+      }
+    },
+    {
+      "id": "reg-Profiles",
+      "language": "go",
+      "files": ["users/routers.go"],
+      "rule": {
+        "pattern": "$R.$M($X, $$H)",
+        "inside": {
+          "kind": "function_declaration",
+          "has": { "field": "name", "regex": "^(ProfileRetrieveRegister|ProfileRegister)$" },
+          "stopBy": "end"
+        }
+      },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H",
+        "standalone": true,
+        "prefix": "=/api/profiles"
+      },
+      "examples": {
+        "match": ["package p\nfunc ProfileRegister(router *gin.RouterGroup) {\n\trouter.GET(\"/x\", H)\n}"],
+        "noMatch": ["package p\nfunc Other(router *gin.RouterGroup) {\n\trouter.GET(\"/x\", H)\n}"]
+      }
+    },
+    {
+      "id": "reg-Articles",
+      "language": "go",
+      "files": ["articles/routers.go"],
+      "rule": {
+        "pattern": "$R.$M($X, $$H)",
+        "inside": {
+          "kind": "function_declaration",
+          "has": { "field": "name", "regex": "^(ArticlesRegister|ArticlesAnonymousRegister)$" },
+          "stopBy": "end"
+        }
+      },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H",
+        "standalone": true,
+        "prefix": "=/api/articles"
+      },
+      "examples": {
+        "match": ["package p\nfunc ArticlesRegister(router *gin.RouterGroup) {\n\trouter.GET(\"/x\", H)\n}"],
+        "noMatch": ["package p\nfunc Other(router *gin.RouterGroup) {\n\trouter.GET(\"/x\", H)\n}"]
+      }
+    },
+    {
+      "id": "reg-Tags",
+      "language": "go",
+      "files": ["articles/routers.go"],
+      "rule": {
+        "pattern": "$R.$M($X, $$H)",
+        "inside": {
+          "kind": "function_declaration",
+          "has": { "field": "name", "regex": "^TagsAnonymousRegister$" },
+          "stopBy": "end"
+        }
+      },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H",
+        "standalone": true,
+        "prefix": "=/api/tags"
+      },
+      "examples": {
+        "match": [
+          "package p\nfunc TagsAnonymousRegister(router *gin.RouterGroup) {\n\trouter.GET(\"/x\", H)\n}"
+        ],
+        "noMatch": ["package p\nfunc Other(router *gin.RouterGroup) {\n\trouter.GET(\"/x\", H)\n}"]
+      }
+    },
+    {
+      "id": "gorm-models",
+      "language": "text",
+      "files": ["articles/models.go", "users/models.go"],
+      "rule": { "regex": "type\\s+(\\w+)\\s+struct\\s*\\{\\s*\\n\\s*(?:gorm\\.Model|ID\\s)" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": {
+        "match": ["type UserModel struct {\n\tgorm.Model"],
+        "noMatch": ["type X struct {\n\tName string"]
+      }
+    }
+  ]
+}

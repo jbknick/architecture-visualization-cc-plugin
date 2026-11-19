@@ -1,0 +1,175 @@
+{
+  "name": "go-base",
+  "frameworks": [{ "name": "chi", "evidence": "go.mod" }],
+  "when": { "imports": ["github.com/go-chi/chi/v5"] },
+  "helpers": ["resolve-names", "const-strings"],
+  "rules": [
+    {
+      "id": "root-ep",
+      "language": "go",
+      "files": ["api/api.go"],
+      "rule": { "pattern": "$R.$M($X, $H)" },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete|Head|Options)$" } },
+      "emit": { "kind": "endpoint", "standalone": true, "method": "$M", "path": "$X", "handler": "$H" },
+      "examples": {
+        "match": ["package a\nfunc f() { r.Get(\"/a\", h) }"],
+        "noMatch": ["package a\nfunc f() { r.Mount(\"/a\", h) }"]
+      }
+    },
+    {
+      "id": "auth-ep",
+      "language": "go",
+      "files": ["auth/pwdless/api.go"],
+      "rule": { "pattern": "$R.$M($X, $H)" },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete|Head|Options)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "standalone": true,
+        "prefix": "=/auth",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H"
+      },
+      "examples": {
+        "match": ["package a\nfunc f() { r.Post(\"/a\", h) }"],
+        "noMatch": ["package a\nfunc f() { r.Mount(\"/a\", h) }"]
+      }
+    },
+    {
+      "id": "admin-root-ep",
+      "language": "go",
+      "files": ["api/admin/api.go"],
+      "rule": { "pattern": "$R.$M($X, $H)" },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete|Head|Options)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "standalone": true,
+        "prefix": "=/admin",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H"
+      },
+      "examples": {
+        "match": ["package a\nfunc f() { r.Get(\"/\", h) }"],
+        "noMatch": ["package a\nfunc f() { r.Mount(\"/a\", h) }"]
+      }
+    },
+    {
+      "id": "admin-acc-top",
+      "language": "go",
+      "files": ["api/admin/accounts.go"],
+      "rule": {
+        "all": [
+          { "pattern": "$R.$M($X, $H)" },
+          { "not": { "inside": { "kind": "func_literal", "stopBy": "end" } } }
+        ]
+      },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete|Head|Options)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "standalone": true,
+        "prefix": "=/admin/accounts",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H"
+      },
+      "examples": {
+        "match": ["package a\nfunc f() { r.Get(\"/a\", h) }"],
+        "noMatch": ["package a\nfunc f() { r.Route(\"/x\", func(r chi.Router) { r.Get(\"/a\", h) }) }"]
+      }
+    },
+    {
+      "id": "admin-acc-nested",
+      "language": "go",
+      "files": ["api/admin/accounts.go"],
+      "rule": {
+        "all": [{ "pattern": "$R.$M($X, $H)" }, { "inside": { "kind": "func_literal", "stopBy": "end" } }]
+      },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete|Head|Options)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "standalone": true,
+        "prefix": "=/admin/accounts/{accountID}",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H"
+      },
+      "examples": {
+        "match": ["package a\nfunc f() { r.Route(\"/x\", func(r chi.Router) { r.Get(\"/a\", h) }) }"],
+        "noMatch": ["package a\nfunc f() { r.Get(\"/a\", h) }"]
+      }
+    },
+    {
+      "id": "app-acc-top",
+      "language": "go",
+      "files": ["api/app/account.go"],
+      "rule": {
+        "all": [
+          { "pattern": "$R.$M($X, $H)" },
+          { "not": { "inside": { "kind": "func_literal", "stopBy": "end" } } }
+        ]
+      },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete|Head|Options)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "standalone": true,
+        "prefix": "=/api/account",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H"
+      },
+      "examples": {
+        "match": ["package a\nfunc f() { r.Get(\"/a\", h) }"],
+        "noMatch": ["package a\nfunc f() { r.Route(\"/x\", func(r chi.Router) { r.Get(\"/a\", h) }) }"]
+      }
+    },
+    {
+      "id": "app-acc-nested",
+      "language": "go",
+      "files": ["api/app/account.go"],
+      "rule": {
+        "all": [{ "pattern": "$R.$M($X, $H)" }, { "inside": { "kind": "func_literal", "stopBy": "end" } }]
+      },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete|Head|Options)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "standalone": true,
+        "prefix": "=/api/account/token/{tokenID}",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H"
+      },
+      "examples": {
+        "match": ["package a\nfunc f() { r.Route(\"/x\", func(r chi.Router) { r.Get(\"/a\", h) }) }"],
+        "noMatch": ["package a\nfunc f() { r.Get(\"/a\", h) }"]
+      }
+    },
+    {
+      "id": "app-profile",
+      "language": "go",
+      "files": ["api/app/profile.go"],
+      "rule": { "pattern": "$R.$M($X, $H)" },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete|Head|Options)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "standalone": true,
+        "prefix": "=/api/profile",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H"
+      },
+      "examples": {
+        "match": ["package a\nfunc f() { r.Get(\"/\", h) }"],
+        "noMatch": ["package a\nfunc f() { r.Mount(\"/a\", h) }"]
+      }
+    },
+    {
+      "id": "sql-tables",
+      "language": "text",
+      "files": ["database/migrations/*.go"],
+      "rule": { "regex": "CREATE TABLE\\s+(\\w+)" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": { "match": ["CREATE TABLE accounts ("], "noMatch": ["DROP TABLE accounts"] }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says ACCEPTED with all examples passing.
+
+- **Stack:** Go with Gin for the HTTP API, and Postgres schema defined in SQL migrations. The repo also has a Vue frontend and a gRPC gateway.
+- **Endpoints (7):** `POST /users`, `POST /users/login`, `POST /tokens/renew_access`, `POST /accounts`, `GET /accounts`, `GET /accounts/:id` and `POST /transfers`.
+- **Tables (6):** `accounts`, `entries`, `transfers`, `users`, `sessions` and `verify_emails`, all from `CREATE TABLE` in `db/migration/*.up.sql`.
+- **Routes (0):** the Vue frontend has a single route, `/`, in `frontend/src/router/index.ts`. I left it out because route emits only take a file path, not a path written inside a route config.
+
+Two things the recipe does not cover:
+- **gRPC endpoints:** the gRPC and grpc-gateway endpoints in `gapi` and `proto` are not method-plus-path registrations, so I skipped them.
+- **Group prefix:** I modelled `router.Group("/")` as a router with a base path, not as a mount. A mount rule can't name the Group call itself as the child, so a Group with a non-empty prefix wouldn't compose into full paths. The only Group in this repo uses `/`, so the output is correct.

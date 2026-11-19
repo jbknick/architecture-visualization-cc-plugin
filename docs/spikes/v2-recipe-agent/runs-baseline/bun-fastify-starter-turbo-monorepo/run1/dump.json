@@ -1,0 +1,36 @@
+{
+  "files": [],
+  "edges": [],
+  "adapterNodes": [
+    {
+      "id": "ep:@internal/backend:GET /",
+      "kind": "endpoint",
+      "data": {
+        "method": "GET",
+        "path": "/"
+      }
+    },
+    {
+      "id": "ep:@internal/backend:POST /email",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/email"
+      }
+    },
+    {
+      "id": "table:userproviders",
+      "kind": "table",
+      "data": {
+        "name": "userProviders"
+      }
+    },
+    {
+      "id": "table:users",
+      "kind": "table",
+      "data": {
+        "name": "users"
+      }
+    }
+  ]
+}

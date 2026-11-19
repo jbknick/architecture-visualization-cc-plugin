@@ -1,0 +1,54 @@
+{
+  "run": 2,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 11,
+  "tokens": {
+    "input": 16,
+    "cacheRead": 100415,
+    "cacheCreate": 10352,
+    "output": 5003
+  },
+  "costUsdReported": 0.1015115,
+  "wallMs": 46392,
+  "recipeSha256": "e1caf039b6556f86e752393de0b324603616656949ac218850f5f79f9199c3cf",
+  "graphSha256": "a7e69da9f7cc56f9d22ecf84f4940762f730e54eb7f24be5000d433e499df4b3",
+  "nodes": {
+    "route": 1,
+    "endpoint": 7,
+    "table": 6
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 4,
+  "score": {
+    "case": "simplebank",
+    "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 8,
+        "predicted": 7,
+        "matched": 7,
+        "precision": 1,
+        "recall": 0.875,
+        "pass": false
+      },
+      "table": {
+        "labelled": 6,
+        "predicted": 6,
+        "matched": 6,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      }
+    },
+    "missed": {
+      "endpoint": ["ALL /swagger"]
+    },
+    "extra": {},
+    "pass": false
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "name": "express-mongoose",
+  "frameworks": [{ "name": "express", "evidence": "package.json dependency" }],
+  "when": { "dependency": ["express"] },
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "router-ctor",
+      "language": "typescript",
+      "files": ["src/**/*.ts"],
+      "rule": { "any": [{ "pattern": "express()" }, { "pattern": "Router()" }, { "pattern": "Router($O)" }] },
+      "emit": { "kind": "router" },
+      "examples": { "match": ["const r = Router()", "const a = express()"], "noMatch": ["foo()"] }
+    },
+    {
+      "id": "mount-prefixed",
+      "language": "typescript",
+      "files": ["src/**/*.ts"],
+      "rule": { "pattern": "$P.use($X, $C)" },
+      "constraints": { "X": { "regex": "^['\"`]/" }, "C": { "kind": "identifier" } },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C", "prefix": "$X" },
+      "examples": { "match": ["router.use('/docs/', docs)"], "noMatch": ["router.use(a)"] }
+    },
+    {
+      "id": "mount-call",
+      "language": "typescript",
+      "files": ["src/**/*.ts"],
+      "rule": {
+        "any": [
+          { "pattern": "$P.use($C)" },
+          { "pattern": "$P.use($C, $$B)" },
+          { "pattern": "$P.use($$A, $C, $$B)" }
+        ]
+      },
+      "constraints": { "C": { "kind": "call_expression" } },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C" },
+      "examples": {
+        "match": [
+          "router.use(createAuthRouter(x), createUserRouter())",
+          "app.use(createDocumentationRouter())"
+        ],
+        "noMatch": ["router.use(a)"]
+      }
+    },
+    {
+      "id": "endpoint",
+      "language": "typescript",
+      "files": ["src/**/*.ts"],
+      "rule": {
+        "any": [
+          { "pattern": "$R.$M($X, $H)" },
+          { "pattern": "$R.$M($X, $A, $H)" },
+          { "pattern": "$R.$M($X, $A, $B, $H)" },
+          { "pattern": "$R.$M($X, $A, $B, $C, $H)" },
+          { "pattern": "$R.$M($X, $A, $B, $C, $D, $H)" },
+          { "pattern": "$R.$M($X, $A, $B, $C, $D, $E, $H)" }
+        ]
+      },
+      "constraints": { "M": { "regex": "^(get|post|put|patch|delete|all)$" }, "X": { "regex": "^['\"`]/" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$X", "handler": "$H" },
+      "examples": {
+        "match": ["router.get('/me', a, b)", "router.post('/a', a, b, c, d)"],
+        "noMatch": ["map.get(key)"]
+      }
+    },
+    {
+      "id": "route-chain-first",
+      "language": "typescript",
+      "files": ["src/**/*.ts"],
+      "rule": { "pattern": "$R.route($X).$M($A, $B)" },
+      "constraints": { "M": { "regex": "^(get|post|put|patch|delete|all)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$X" },
+      "examples": { "match": ["router.route('/a').post(g, h)"], "noMatch": ["router.route('/a')"] }
+    },
+    {
+      "id": "route-chain-next",
+      "language": "typescript",
+      "files": ["src/**/*.ts"],
+      "rule": { "pattern": "$R.route($X).$M1($A, $B).$M($C, $D)" },
+      "constraints": { "M": { "regex": "^(get|post|put|patch|delete|all)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$X" },
+      "examples": {
+        "match": ["router.route('/a').post(g, h).get(g, h)"],
+        "noMatch": ["router.route('/a').post(g, h)"]
+      }
+    },
+    {
+      "id": "models",
+      "language": "typescript",
+      "files": ["src/**/model.ts", "src/**/*-model.ts"],
+      "rule": { "pattern": "model($N, $S)" },
+      "emit": { "kind": "table", "name": "$N" },
+      "examples": { "match": ["export const U = model('User', schema)"], "noMatch": ["foo('a')"] }
+    }
+  ]
+}

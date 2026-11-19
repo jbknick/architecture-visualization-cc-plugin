@@ -1,0 +1,13 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED`. It lists 30 routes, 14 endpoints and 11 tables.
+
+**Stack:** React Router 7 with `react-router-auto-routes` (file-based routes in `app/routes`), Express in `server/`, and Prisma (`prisma/schema.prisma`).
+
+- **Routes (30):** Each `.tsx` file under `app/routes` with a default export becomes a page. The path comes from the file name: pathless `_group/` folders, `_layout`, `index`, trailing `_` and `[.]` are handled, and `.` becomes `/`. Dynamic segments stay as `$id`.
+- **Endpoints (14):** Files with a `loader` or `action` and no default export are resource routes, so they get method `ALL`. Examples are `/resources/healthcheck`, `/robots.txt` and `/webauthn/registration`.
+- **Tables (11):** The Prisma models, such as `User`, `Note` and `Session`.
+
+What I couldn't express:
+- **Exclusion globs:** The `files` globs don't support exclusion (`!` or extglob). To keep `*.server.*` files out of the endpoint list, I listed directories explicitly, so the globs need updating if new route folders are added.
+- **Express routes:** I left out Express's own registrations in `server/`. The ones I saw there are middleware and static or image fallbacks, not API handlers.
+- **Layout files:** `_layout.tsx` files can't be dropped by path. The layouts at `/settings/profile`, `/settings/profile/two-factor` and `/users/$username/notes` appear as routes through the layout file, and they also have `index.tsx` siblings.
+- **`index.tsx` in nested folders:** I didn't confirm that the `index.tsx` files in those folders are listed.

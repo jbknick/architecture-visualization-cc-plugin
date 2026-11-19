@@ -1,0 +1,60 @@
+{
+  "files": [],
+  "edges": [],
+  "adapterNodes": [
+    {
+      "id": "ep:fastify-typescript:GET /",
+      "kind": "endpoint",
+      "data": {
+        "method": "GET",
+        "path": "/"
+      }
+    },
+    {
+      "id": "ep:fastify-typescript:GET /health",
+      "kind": "endpoint",
+      "data": {
+        "method": "GET",
+        "path": "/health"
+      }
+    },
+    {
+      "id": "ep:fastify-typescript:POST /api/post/create",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/api/post/create"
+      }
+    },
+    {
+      "id": "ep:fastify-typescript:POST /api/user/login",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/api/user/login"
+      }
+    },
+    {
+      "id": "ep:fastify-typescript:POST /api/user/signup",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/api/user/signup"
+      }
+    },
+    {
+      "id": "table:post",
+      "kind": "table",
+      "data": {
+        "name": "Post"
+      }
+    },
+    {
+      "id": "table:users",
+      "kind": "table",
+      "data": {
+        "name": "users"
+      }
+    }
+  ]
+}
