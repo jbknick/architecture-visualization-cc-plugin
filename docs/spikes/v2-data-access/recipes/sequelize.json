@@ -1,0 +1,69 @@
+{
+  "name": "sequelize",
+  "frameworks": [
+    {
+      "name": "sequelize",
+      "evidence": "@Table classes (sequelize-typescript); @InjectModel; Model instances"
+    }
+  ],
+  "helpers": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+  "methods": {
+    "read": [
+      "findAll",
+      "findOne",
+      "findByPk",
+      "findAndCountAll",
+      "findOrCreate",
+      "count",
+      "max",
+      "min",
+      "sum"
+    ],
+    "write": [
+      "create",
+      "bulkCreate",
+      "update",
+      "destroy",
+      "upsert",
+      "save",
+      "restore",
+      "increment",
+      "decrement"
+    ]
+  },
+  "rules": [
+    {
+      "id": "table-name",
+      "language": "typescript",
+      "rule": { "kind": "decorator", "pattern": "@Table({ tableName: $N })" },
+      "emit": { "kind": "table", "name": "$N", "model": "@class" }
+    },
+    {
+      "id": "model-call",
+      "language": "typescript",
+      "rule": {
+        "any": [
+          { "pattern": "$R.$M($$$A)" },
+          { "pattern": "$R.$M<$T>($$$A)" },
+          { "pattern": "await $R.$M<$T>($$$A)" }
+        ]
+      },
+      "emit": {
+        "kind": "access",
+        "receiver": "$R",
+        "method": "$M",
+        "modelFromReceiverDecl": [
+          "\\b{prop}\\s*:\\s*typeof\\s+(\\w+)",
+          "\\b{prop}\\s*=\\s*(?:await\\s+)?new\\s+(\\w+)\\(",
+          "\\b{prop}\\s*=\\s*(?:await\\s+)?[\\w.]+<(\\w+)>\\("
+        ]
+      }
+    },
+    {
+      "id": "include",
+      "language": "typescript",
+      "rule": { "pattern": "{ include: [$$$M] }" },
+      "emit": { "kind": "access", "as": "read", "model": "$$$M" }
+    }
+  ]
+}

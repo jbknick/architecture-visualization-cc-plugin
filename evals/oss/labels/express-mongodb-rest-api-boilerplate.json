@@ -1,0 +1,125 @@
+{
+  "repo": "express-mongodb-rest-api-boilerplate",
+  "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7",
+  "labelledBy": "agent claude-sonnet-5-5, read call site by call site; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    {
+      "name": "User"
+    },
+    {
+      "name": "ResetPassword"
+    },
+    {
+      "name": "Verification"
+    },
+    {
+      "name": "EmailBudget"
+    },
+    {
+      "name": "EmailOutbox"
+    },
+    {
+      "name": "EmailWorker"
+    },
+    {
+      "name": "Media"
+    }
+  ],
+  "read": [
+    {
+      "file": "src/domains/users/repository.ts",
+      "table": "User"
+    },
+    {
+      "file": "src/domains/notifications/delivery/repository.ts",
+      "table": "EmailOutbox"
+    },
+    {
+      "file": "src/domains/notifications/delivery/operations.ts",
+      "table": "EmailWorker"
+    },
+    {
+      "file": "src/domains/notifications/delivery/operations.ts",
+      "table": "EmailOutbox"
+    },
+    {
+      "file": "src/domains/media/repository.ts",
+      "table": "Media"
+    },
+    {
+      "file": "src/app/runtime/commands/database/migrate.ts",
+      "table": "Media"
+    },
+    {
+      "file": "src/app/runtime/commands/database/migrate.ts",
+      "table": "ResetPassword"
+    },
+    {
+      "file": "src/app/runtime/commands/database/migrate.ts",
+      "table": "Verification"
+    },
+    {
+      "file": "src/app/runtime/commands/database/indexes.ts",
+      "table": "User"
+    },
+    {
+      "file": "src/app/runtime/commands/database/indexes.ts",
+      "table": "ResetPassword"
+    },
+    {
+      "file": "src/app/runtime/commands/database/indexes.ts",
+      "table": "Verification"
+    },
+    {
+      "file": "src/app/runtime/commands/database/indexes.ts",
+      "table": "Media"
+    }
+  ],
+  "write": [
+    {
+      "file": "src/domains/auth/repository.ts",
+      "table": "ResetPassword"
+    },
+    {
+      "file": "src/domains/users/repository.ts",
+      "table": "User"
+    },
+    {
+      "file": "src/domains/auth/verification/repository.ts",
+      "table": "Verification"
+    },
+    {
+      "file": "src/domains/notifications/delivery/repository.ts",
+      "table": "EmailOutbox"
+    },
+    {
+      "file": "src/domains/notifications/delivery/operations.ts",
+      "table": "EmailWorker"
+    },
+    {
+      "file": "src/domains/notifications/delivery/budget.ts",
+      "table": "EmailBudget"
+    },
+    {
+      "file": "src/domains/media/repository.ts",
+      "table": "Media"
+    },
+    {
+      "file": "src/app/runtime/commands/database/migrate.ts",
+      "table": "User"
+    },
+    {
+      "file": "src/app/runtime/commands/database/migrate.ts",
+      "table": "Media"
+    },
+    {
+      "file": "src/app/runtime/commands/database/migrate.ts",
+      "table": "ResetPassword"
+    },
+    {
+      "file": "src/app/runtime/commands/database/migrate.ts",
+      "table": "Verification"
+    }
+  ]
+}

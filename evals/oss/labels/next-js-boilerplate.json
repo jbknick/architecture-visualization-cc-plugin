@@ -1,0 +1,23 @@
+{
+  "repo": "next-js-boilerplate",
+  "sha": "b83157a8018f55b926a3c25a4b7a7e14b0dfbc35",
+  "labelledBy": "agent claude-sonnet-5-5, read call site by call site; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    {
+      "name": "counter"
+    }
+  ],
+  "read": [
+    {
+      "file": "src/components/CurrentCount.tsx",
+      "table": "counter"
+    }
+  ],
+  "write": [
+    {
+      "file": "src/app/api/counter/route.ts",
+      "table": "counter"
+    }
+  ]
+}

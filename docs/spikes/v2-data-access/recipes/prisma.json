@@ -1,0 +1,58 @@
+{
+  "name": "prisma",
+  "frameworks": [{ "name": "prisma", "evidence": "schema.prisma; PrismaClient calls" }],
+  "helpers": ["resolve-names", "const-strings", "text-rules", "model-naming", "method-classes", "sql-text"],
+  "methods": {
+    "read": [
+      "findUnique",
+      "findUniqueOrThrow",
+      "findFirst",
+      "findFirstOrThrow",
+      "findMany",
+      "count",
+      "aggregate",
+      "groupBy"
+    ],
+    "write": [
+      "create",
+      "createMany",
+      "createManyAndReturn",
+      "update",
+      "updateMany",
+      "updateManyAndReturn",
+      "upsert",
+      "delete",
+      "deleteMany"
+    ]
+  },
+  "exclude": ["prisma/migrations/**"],
+  "textRules": [
+    {
+      "id": "prisma-model",
+      "files": ["**/*.prisma"],
+      "regex": "^model\\s+(\\w+)\\s*\\{",
+      "flags": "gm",
+      "emit": { "kind": "table", "name": ["$1"], "model": "$1" }
+    },
+    {
+      "id": "prisma-map",
+      "files": ["**/*.prisma"],
+      "regex": "^model\\s+(\\w+)\\s*\\{(?:(?!^\\}).)*?^\\s*@@map\\(\"([^\"]+)\"\\)",
+      "flags": "gms",
+      "emit": { "kind": "model-table", "model": "$1", "table": "$2" }
+    }
+  ],
+  "sql": {
+    "tags": ["$queryRaw", "$executeRaw", "$queryRawUnsafe", "$executeRawUnsafe", "sql"],
+    "knownTablesOnly": true
+  },
+  "rules": [
+    {
+      "id": "client-call",
+      "language": "typescript",
+      "rule": { "pattern": "$C.$MODEL.$M($$$A)" },
+      "constraints": { "C": { "regex": "^(prisma|db|tx|client)$" } },
+      "emit": { "kind": "access", "method": "$M", "model": "$MODEL" }
+    }
+  ]
+}

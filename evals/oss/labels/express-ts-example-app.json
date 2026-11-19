@@ -1,0 +1,48 @@
+{
+  "repo": "express-ts-example-app",
+  "sha": "03b5461d4c803dff81f7caa9a25a4a0d1c175d29",
+  "labelledBy": "agent claude-sonnet-5-5, read call site by call site; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    {
+      "name": "Author"
+    },
+    {
+      "name": "Book"
+    },
+    {
+      "name": "BookTag"
+    },
+    {
+      "name": "Publisher"
+    }
+  ],
+  "read": [
+    {
+      "file": "app/controllers/author.controller.ts",
+      "table": "Author"
+    },
+    {
+      "file": "app/controllers/author.controller.ts",
+      "table": "Book"
+    },
+    {
+      "file": "app/controllers/book.controller.ts",
+      "table": "Book"
+    },
+    {
+      "file": "app/controllers/book.controller.ts",
+      "table": "Author"
+    }
+  ],
+  "write": [
+    {
+      "file": "app/controllers/author.controller.ts",
+      "table": "Author"
+    },
+    {
+      "file": "app/controllers/book.controller.ts",
+      "table": "Book"
+    }
+  ]
+}

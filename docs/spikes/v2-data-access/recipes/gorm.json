@@ -1,0 +1,13 @@
+{
+  "name": "gorm",
+  "frameworks": [
+    {
+      "name": "gorm",
+      "evidence": "gorm.DB; generated repository runs SQL through Raw; schema in goose .sql migrations"
+    }
+  ],
+  "languages": ["go"],
+  "helpers": ["sql-text"],
+  "sql": { "knownTablesOnly": true, "sqlFiles": true },
+  "rules": []
+}
