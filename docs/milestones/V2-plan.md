@@ -1,6 +1,6 @@
 # V2 plan
 
-Status: reviewed plan, not yet contracts. Each issue edits `docs/SPEC.md` in its own PR where it changes a contract; the "Spec sections touched" lines say where. The evidence behind this revision is in `docs/spikes/V2-assumptions.md` and the six `docs/spikes/v2-*.md` reports.
+Status: reviewed plan, not yet contracts. Each issue edits `docs/SPEC.md` in its own PR where it changes a contract; the "Spec sections touched" lines say where. The evidence behind this revision is in `docs/spikes/V2-assumptions.md` and the six `docs/spikes/v2-*.md` reports. Reordered on 2026-11-19 (#242) to bring React Router and Fastify forward; that change was not reviewed or spiked (see "Reordered for React Router and Fastify").
 
 ## Goals
 
@@ -14,19 +14,19 @@ There are no users. Nothing in V2 keeps old stores, old data directories or old 
 
 The work is split into two paths and one piece of side work. Path B is self-contained: it needs nothing from Path A. Path A carries the work that needs both (Go web frameworks and the release) at its end, where it waits on Path B twice. Path B is the shorter path and runs Go first, so both waits should be met before Path A reaches them. The paths can run in parallel or as a waterfall.
 
-| Milestone                        | Owner     | What a user can do at the end                                                                                                                                                                                              |
-| -------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **M7 V2 groundwork**             | Side work | Nothing new; the legacy data dir, store migrations and index-format re-index are gone.                                                                                                                                     |
-| **M8 Any TypeScript project**    | Path A    | Index any TypeScript layout: one package, any workspace tool, project references only, or no workspace tool; bundler aliases resolve; a 10,000-file repo is ready in about a minute.                                       |
-| **M9 Framework recipes**         | Path A    | Init discovers the framework and writes a recipe; routes and endpoints for TanStack Router, Hono, oRPC, TanStack Start, Drizzle, Express, NestJS and Next.js come from recipes. No hand-written framework adapters remain. |
-| **M10 Call linking in one repo** | Path A    | Calls through client instances, wrappers, constants and env-var base URLs link to their handlers in the same repo.                                                                                                         |
-| **M14 Go web frameworks**        | Path A    | Discovery recognises net/http, chi and gin in a Go repo and their endpoints appear like TypeScript ones.                                                                                                                   |
-| **M15 V2 release**               | Path A    | Trace a TypeScript page to the Go handler that serves it in another repo; linking is measured on unseen public repos; V2 is tagged.                                                                                        |
-| **M12 Go backends**              | Path B    | Index Go modules with symbols, callers, duplicate warnings and descriptions.                                                                                                                                               |
-| **M11 Multirepo workspaces**     | Path B    | List related repos once; search, duplicates, the map and go-to-source span all of them, and each repo stays up to date on its own.                                                                                         |
-| **M13 Cross-repo call linking**  | Path B    | A frontend call links to the handler in another repo, and a page in one repo traces to its handler and tables in another.                                                                                                  |
+| Milestone                        | Owner     | What a user can do at the end                                                                                                                                                                                                                     |
+| -------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **M7 V2 groundwork**             | Side work | Nothing new; the legacy data dir, store migrations and index-format re-index are gone.                                                                                                                                                            |
+| **M9 Framework recipes**         | Path A    | Init discovers the framework and writes a recipe; routes and endpoints for React Router, Fastify, TanStack Router, Hono, oRPC, TanStack Start, Drizzle, Express, NestJS and Next.js come from recipes. No hand-written framework adapters remain. |
+| **M10 Call linking in one repo** | Path A    | Calls through client instances, wrappers, constants and env-var base URLs link to their handlers in the same repo.                                                                                                                                |
+| **M8 Any TypeScript project**    | Path A    | Index any TypeScript layout: one package, any workspace tool, project references only, or no workspace tool; bundler aliases resolve; a 10,000-file repo is ready in about a minute.                                                              |
+| **M14 Go web frameworks**        | Path A    | Discovery recognises net/http, chi and gin in a Go repo and their endpoints appear like TypeScript ones.                                                                                                                                          |
+| **M15 V2 release**               | Path A    | Trace a TypeScript page to the Go handler that serves it in another repo; linking is measured on unseen public repos; V2 is tagged.                                                                                                               |
+| **M12 Go backends**              | Path B    | Index Go modules with symbols, callers, duplicate warnings and descriptions.                                                                                                                                                                      |
+| **M11 Multirepo workspaces**     | Path B    | List related repos once; search, duplicates, the map and go-to-source span all of them, and each repo stays up to date on its own.                                                                                                                |
+| **M13 Cross-repo call linking**  | Path B    | A frontend call links to the handler in another repo, and a page in one repo traces to its handler and tables in another.                                                                                                                         |
 
-- **Path A, TypeScript then the joined end (22 issues):** M8 → M9 → M10 → M14 → M15.
+- **Path A, TypeScript then the joined end (24 issues):** M9 → M10 → M8 → M14 → M15. M9 and M10 come first so that a React, React Router and Fastify monorepo maps page → API → handler → table as soon as possible. M8 follows: monorepos on pnpm, npm, yarn, bun, Nx and Turborepo already index, and M8 closes only the remaining layout gaps.
 - **Path B, Go and multirepo (13 issues):** M12 → M11 → M13. M12 goes first so the Go module is ready early for M14; M11 and M12 do not depend on each other.
 - **Side work (2 issues):** M7, done by the maintainer outside both paths. It should land before Path B changes the store schema (M11's repo column, M12's `lang` field), so those changes need no migration.
 
@@ -49,6 +49,8 @@ Spec sections touched: 4, 9, 11, 14.
 
 ## M8 Any TypeScript project (Path A)
 
+Runs after M10 (#242).
+
 Most layouts already work: pnpm, `package.json` workspaces (npm, yarn, bun), Nx `project.json`, and single packages are detected, and the resolver already follows tsconfig with `references: "auto"`. M8 closes the remaining, verified gaps:
 
 - A repo whose packages are tied together only by tsconfig project references.
@@ -62,20 +64,25 @@ Spec sections touched: 3 (workspace discovery), 5, 13.
 
 - **Recipe, not live inference.** Spec section 1 requires deterministic output. The agent writes a recipe file into the data dir; the indexer applies it with `@ast-grep/napi` on every index. Same repo and same recipe give the same graph (confirmed in `v2-recipes`).
 - **Recipes run inside the existing adapter framework.** One generic recipe adapter implements the current `Adapter` interface (`extract`/`link`) and is registered where the hand-written adapters are today. The hand-written TanStack Router, TanStack Start, Hono, oRPC and Drizzle adapters are deleted once recipes reproduce `fixtures/adapters` and `fixtures/pnpm-turbo`. `clients.ts` stays as the shared client-call matcher (it is not framework-specific) and is extended in M10 and M13.
-- **Rules alone are not enough** (spike: Hono 0 of 7 endpoints with rules only, 7 of 7 with helpers). Recipes may name five generic helpers: name resolution, constant strings, mount graph (routers mounted under prefixes, across files), call return, argument flow. Helpers use the language's resolver, not the syntax tree. File-system routing (TanStack Router files now, Next.js `app/` and `pages/`) is a framework helper. No other framework code is allowed.
+- **Rules alone are not enough** (spike: Hono 0 of 7 endpoints with rules only, 7 of 7 with helpers). Recipes may name five generic helpers: name resolution, constant strings, mount graph (routers mounted under prefixes, across files), call return, argument flow. Helpers use the language's resolver, not the syntax tree. File-system routing (TanStack Router files now, Next.js `app/` and `pages/`, React Router's `flatRoutes()`, Fastify's `@fastify/autoload` directories) is a framework helper. No other framework code is allowed.
 - **What a recipe holds.** Detected frameworks; rules that emit route, page, router, mount, endpoint, client-call and table nodes and the existing `serves`, `handles`, `requests`, `reads`, `writes` and `contains` edges (sections 7, 9). Each rule names its language. No framework versions.
 - **Who runs it.** A Claude Code subagent started by the init skill, as the describer is. No API key. It re-runs only on request, never on sync.
 - **Validation.** Each rule carries example snippets that must and must not match; a recipe is accepted only when all examples pass. A rule that matches nothing in the repo is a warning, not a rejection (the spike's correct rules matched nothing in 3 of 4 tuning sets). The agent sees match counts and samples and may revise.
 - **Discovery prompt** includes the ast-grep pattern pitfalls the spikes found, for example that a Go one-argument selector call needs the `context` plus `selector` form.
 - **Unresolved sites stay visible** as low-confidence nodes with a reason.
-- **New TypeScript frameworks:** Express, NestJS and Next.js, each with a public fixture and a held-out public repo scored for route and endpoint recall against hand labels. Fastify is out of V2.
-- **Unverified:** whether a real discovery subagent writes working recipes unaided (the spike's recipes were written by hand acting as the agent); oRPC, TanStack Start and Drizzle as recipes (not spiked); Next.js and NestJS recipes (not spiked).
+- **New TypeScript frameworks:** React Router and Fastify first, then Express, NestJS and Next.js, each with a public fixture and a held-out public repo scored for route and endpoint recall against hand labels.
+- **React Router** (#240): data routers (`createBrowserRouter` and route objects with `path`, `index`, `element` or `Component`, `children`, `lazy`), JSX `<Routes>` and `<Route>` trees, and framework mode (`app/routes.ts` with `route()`, `index()`, `layout()`, `prefix()`, and `flatRoutes()` file routes). Child paths join their parent's through the mount-graph helper; `lazy` and `Component` use name resolution. Pages link to their component with the existing `renders` edges.
+- **Fastify** (#241): shorthand routes and `route({ method, url, handler })`; plugins registered with `register(plugin, { prefix })` across files and through `fastify-plugin` wrappers (mount-graph helper); handlers imported from controller modules (name resolution).
+- **Fixture:** `fixtures/react-router-fastify`, a pnpm monorepo with one web app per React Router mode, a Fastify API and a Drizzle package, so a page traces to its Fastify handler and table on public code. Its calls are literal `fetch` URLs, which link at low confidence until M10.
+- **Unverified:** whether a real discovery subagent writes working recipes unaided (the spike's recipes were written by hand acting as the agent); oRPC, TanStack Start and Drizzle as recipes (not spiked); Next.js, NestJS, React Router and Fastify recipes (not spiked).
 
 New dependency: pin `@ast-grep/napi` 0.51.3 exactly (section 2; approved but not yet installed). Prebuilds cover macOS arm64 and x64, Linux arm64 and x64, and Windows x64; there is none for Windows arm64.
 
 Spec sections touched: 2, 3, 5 (recipe file), 9 (recipe storage, node kinds), 11, 16 (discovery agent and skill steps).
 
 ## M10 Call linking in one repo (Path A)
+
+Runs straight after M9, before M8 (#242): it is what a React app calling a Fastify API through a client instance, a wrapper or an env-var base URL needs next.
 
 Today `clients.ts` matches literal `fetch`/`ky`/`axios` URLs by method and path. On public full-stack repos it linked 1 of 70 linkable calls; the spike prototype linked 70 of 70 with no wrong links, but only 35% on a held-out repo before one fix, so the numbers below are targets to measure on held-out repos. Everything here works and is tested inside one repo.
 
@@ -139,9 +146,18 @@ Spec sections touched: 13, 16.
 
 ## M15 V2 release (Path A)
 
-- Call linking scored on held-out public full-stack repos (needs the M9 Express and NestJS recipes, M10 and M13).
+- Call linking scored on held-out public full-stack repos (needs M9's Express, NestJS and Fastify recipes, M10 and M13).
 - The end-to-end case on public code: a TypeScript frontend repo and a Go backend repo in one workspace; a page traces to the Go handler that serves it.
 - README, install guide and Status table describe V2. Tag the release.
+
+## Reordered for React Router and Fastify (#242)
+
+- Path A was M8 → M9 → M10 → M14 → M15; it is now M9 → M10 → M8 → M14 → M15. Path B and the waits between the paths are unchanged.
+- React Router and Fastify join M9 (#240, #241) as its first new frameworks, before Express, NestJS and Next.js. Fastify moves into V2's scope; #210 scores both.
+- Recipes stay the only way to add a framework: no hand-written React Router or Fastify adapter is written. Their recipes run beside the shipped adapters until M9 deletes those.
+- Data access stays Drizzle only; no new data-access frameworks are added in V2.
+- Lost: M8's layout gaps (project references only, no workspace tool, bundler aliases) and the 10,000-file benchmark land after M10. Express, NestJS and Next.js recipes land after React Router and Fastify.
+- Not spiked: neither framework was in `v2-recipes`, so the mount-graph and file-system helpers are assumed, not shown, to cover nested route objects, JSX route trees, `flatRoutes()`, Fastify plugin prefixes and `@fastify/autoload`.
 
 ## Changes from the draft
 
@@ -150,7 +166,7 @@ Accepted from the simplification review:
 - Cut the draft's M12 contributor experience and M13 trial; V2 is tagged when the end-to-end case passes. Their open questions (Windows for the trial, trial size, feedback destination, "who to ask") are gone. Lost: contributor feedback before the tag.
 - The six shipped adapters are replaced by recipes run through the existing adapter framework, and deleted. M9's gate is reproducing `fixtures/adapters`, not only `pnpm-turbo` routes.
 - The draft's M11 (cross-repo contracts) is mostly built (`clients.ts` matching, `trace`, views 7 to 11). It shrinks to the linking gaps: single-repo gaps are M10 (Path A), cross-repo linking is M13 (Path B); no new trace views.
-- Framework evals: three TypeScript (Express, NestJS, Next.js) and three Go (net/http, chi, gin) instead of ten. Lost: measured recall for Fastify, echo and fiber.
+- Framework evals: three TypeScript (Express, NestJS, Next.js) and three Go (net/http, chi, gin) instead of ten. Lost: measured recall for Fastify, echo and fiber (Fastify came back in #242).
 - OpenAPI is out of V2. Lost: spec-versus-code drift reports.
 - One store per workspace instead of a store per repo with a query layer. Lost: sharing one repo's store across workspaces.
 - M7 is reduced to the gaps that remain (references-only, no workspace tool, bundler aliases, one benchmark).
@@ -179,13 +195,13 @@ Changed by the spikes (none was a no-go):
 - Languages other than TypeScript and Go. Java is next, through the M12 language interface.
 - OpenAPI, gRPC, GraphQL and message queues as link sources.
 - Remote repos in a workspace file.
-- Fastify, echo and fiber recipes and evals.
+- echo and fiber recipes and evals.
 - Any legacy fallback, migration or upgrade path.
 
 ## Still unverified
 
 - A real discovery subagent writing recipes unaided.
-- Next.js, NestJS, oRPC, TanStack Start and Drizzle as recipes; net/http patterns.
+- Next.js, NestJS, React Router, Fastify, oRPC, TanStack Start and Drizzle as recipes; net/http patterns; Fastify autoload.
 - Everything in M11.
 - A 10,000-file cold index (extrapolated).
 - Go `vendor/` and `go.work`; Go duplicate thresholds; Go descriptions.
