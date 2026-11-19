@@ -17,7 +17,7 @@ function checkView(view: string): void {
 /** `GET /api/layout/:view` body: saved `{ nodeId: [x, y] }` positions (empty when none). */
 export function getLayout(store: Store, view: string): { positions: LayoutPositions } {
   checkView(view);
-  const rows = store.db.prepare("SELECT node_id, x, y FROM layouts WHERE view = ?").all(view) as {
+  const rows = store.db.prepare("SELECT node_id, x, y FROM overlay.layouts WHERE view = ?").all(view) as {
     node_id: string;
     x: number;
     y: number;
@@ -62,8 +62,8 @@ export function parseLayoutBody(body: unknown): [string, number, number][] {
 export function putLayout(store: Store, view: string, body: unknown): { saved: number } {
   checkView(view);
   const rows = parseLayoutBody(body);
-  const del = store.db.prepare("DELETE FROM layouts WHERE view = ?");
-  const ins = store.db.prepare("INSERT INTO layouts(view, node_id, x, y) VALUES (?, ?, ?, ?)");
+  const del = store.db.prepare("DELETE FROM overlay.layouts WHERE view = ?");
+  const ins = store.db.prepare("INSERT INTO overlay.layouts(view, node_id, x, y) VALUES (?, ?, ?, ?)");
   store.db
     .transaction(() => {
       del.run(view);

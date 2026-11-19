@@ -270,7 +270,7 @@ export function buildDuplicates(ctx: ApiContext, params: ViewParams): Duplicates
   const files = new Map(store.effectiveFiles().map((f) => [f.id, f]));
   const symbols = new Map(store.effectiveSymbols().map((s) => [s.id, s]));
   const dismissed = new Set(
-    (store.db.prepare("SELECT a, b FROM dismissals").all() as { a: string; b: string }[]).map(
+    (store.db.prepare("SELECT a, b FROM overlay.dismissals").all() as { a: string; b: string }[]).map(
       (r) => `${r.a}\n${r.b}`,
     ),
   );

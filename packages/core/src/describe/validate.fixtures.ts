@@ -18,6 +18,7 @@ export function sheet(over: Partial<FactSheet> = {}): FactSheet {
     id: "src/session.ts#clearCachedSession",
     path: "src/session.ts",
     kind: "function",
+    language: "TypeScript",
     signature: "(userId: string) => Promise<void>",
     doc: "Clears the cached session for a user.",
     callees: ["cache.remove", "logAudit"],

@@ -456,7 +456,7 @@ describe("tiers and filters (synthetic hashes)", () => {
     const b = store.getSymbol("sym:repo:src/b.ts#b") as SymbolRecord;
     expect(ids(await findDuplicates(store, { symbol: b }))).toEqual(["sym:repo:src/c.ts#c"]);
     dismiss(store, target.id, "sym:repo:src/b.ts#b", "updated reason");
-    const rows = store.db.prepare("SELECT a, b, reason FROM dismissals").all();
+    const rows = store.db.prepare("SELECT a, b, reason FROM overlay.dismissals").all();
     expect(rows).toEqual([
       { a: "sym:repo:src/a.ts#target", b: "sym:repo:src/b.ts#b", reason: "updated reason" },
     ]);

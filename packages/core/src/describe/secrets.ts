@@ -135,6 +135,27 @@ function isLabelName(name: string): boolean {
 /** Words that make a call a login: `login("admin", "pw")`, `signIn(...)`, `basicAuth(...)`. */
 const LOGIN_WORDS = new Set("login logon signin sign authenticate auth basic credentials connect".split(" "));
 
+/** The accept test of the `name = "value"` family of rules (generic and Go typed declarations). */
+function credentialValueAccepted(g: Record<string, string>, redact: boolean): boolean {
+  const v = g.v ?? "";
+  if (v === MARKER || !isCredentialName(g.name ?? "")) return false;
+  if (g.q === "`" && v.includes("${")) return false;
+  if (looksLikeMessageKey(v) || NON_SECRET_VALUES.has(v)) return false;
+  // A text for a person ("Enter your password") is not a secret, but only when the name says so or the value reads as
+  // a sentence; a capitalised phrase behind a plain credential name stays redacted (`password = "Correct Horse Battery"`).
+  // A strong credential name (password, token, secret, ...) is redacted whatever the value reads like, except a
+  // placeholder prompt; the sentence exemption holds only for other names.
+  const name = g.name ?? "";
+  if (
+    redact &&
+    ((isLabelName(name) && looksLikeLabel(v)) ||
+      (readsAsSentence(v) && (!hasStrongWord(name) || isPlaceholderPrompt(v))))
+  )
+    return false;
+  // `key: "Please enter your password"` is a label; a space in the value only counts for strong credential names.
+  return !/\s/.test(v) || hasStrongWord(g.name ?? "");
+}
+
 /** Values that are message keys, not secrets: `auth.login_title`, `errors:password`. */
 function looksLikeMessageKey(v: string): boolean {
   return /^[a-z]+(?:[._:][a-z_]+)+$/.test(v);
@@ -227,26 +248,15 @@ export const SECRET_RULES: readonly SecretRule[] = [
     // `name = "value"` / `name: "value"` / `"name": "value"` where the name is a credential name; the value is any
     // string literal of four characters or more, in any letter case. Interpolated templates are left alone.
     name: "generic-credential",
-    re: /(?<![\w$.-])(?<name>[A-Za-z_$][\w$.-]{0,60})["']?\s{0,20}[:=]\s{0,20}(?<q>["'`])(?<v>[^"'`\r\n]{4,200})/g,
-    accept: (g, redact) => {
-      const v = g.v ?? "";
-      if (v === MARKER || !isCredentialName(g.name ?? "")) return false;
-      if (g.q === "`" && v.includes("${")) return false;
-      if (looksLikeMessageKey(v) || NON_SECRET_VALUES.has(v)) return false;
-      // A text for a person ("Enter your password") is not a secret, but only when the name says so or the value reads as
-      // a sentence; a capitalised phrase behind a plain credential name stays redacted (`password = "Correct Horse Battery"`).
-      // A strong credential name (password, token, secret, ...) is redacted whatever the value reads like, except a
-      // placeholder prompt; the sentence exemption holds only for other names.
-      const name = g.name ?? "";
-      if (
-        redact &&
-        ((isLabelName(name) && looksLikeLabel(v)) ||
-          (readsAsSentence(v) && (!hasStrongWord(name) || isPlaceholderPrompt(v))))
-      )
-        return false;
-      // `key: "Please enter your password"` is a label; a space in the value only counts for strong credential names.
-      return !/\s/.test(v) || hasStrongWord(g.name ?? "");
-    },
+    // Go: the short declaration `:=` is an assignment too.
+    re: /(?<![\w$.-])(?<name>[A-Za-z_$][\w$.-]{0,60})["']?\s{0,20}(?::=|[:=])\s{0,20}(?<q>["'`])(?<v>[^"'`\r\n]{4,200})/g,
+    accept: (g, redact) => credentialValueAccepted(g, redact),
+  },
+  {
+    // Go: a declaration with a type between the name and `=` (var or const, so a word before a colon is never taken for a name).
+    name: "go-typed-credential",
+    re: /(?<![\w$.-])(?:var|const)[ \t]{1,10}(?<name>[A-Za-z_]\w{0,60})[ \t]{1,10}[*[\]A-Za-z_][\w.*[\]]{0,40}[ \t]{0,10}=[ \t]{0,10}(?<q>["'`])(?<v>[^"'`\r\n]{4,200})/g,
+    accept: (g, redact) => credentialValueAccepted(g, redact),
   },
   {
     // A credential name assigned two or more string literals joined with plus: every literal is part of the secret.

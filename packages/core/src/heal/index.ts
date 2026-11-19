@@ -146,7 +146,7 @@ function dropRedundantWorking(store: Store): void {
  * the indexer's own transactions nest inside it as savepoints. A failure rolls everything back.
  */
 async function withWriteLock<T>(paths: GantryPaths, fn: (store: Store) => Promise<T>): Promise<T> {
-  const store = openStore(paths.dbPath);
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
   try {
     store.db.exec("BEGIN IMMEDIATE");
     try {
@@ -349,7 +349,7 @@ export interface StaleFiles {
 }
 
 function hasMainIndex(paths: GantryPaths): boolean {
-  const store = openStore(paths.dbPath);
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
   try {
     return store.getMeta("indexed_at") !== undefined;
   } finally {

@@ -14,7 +14,9 @@ export function registerUsage(program: Command): void {
         const paths = resolvePaths(process.cwd());
         resetStaleStore(paths);
         // Read-only: no data dir is created for a repository that has no index (#147).
-        const store = fs.existsSync(paths.dbPath) ? openStore(paths.dbPath) : undefined;
+        const store = fs.existsSync(paths.dbPath)
+          ? openStore(paths.dbPath, { overlayPath: paths.overlayPath })
+          : undefined;
         try {
           const rows = store ? usageSummary(store) : [];
           if (opts.json) writeStdout(`${JSON.stringify(rows, null, 2)}\n`);

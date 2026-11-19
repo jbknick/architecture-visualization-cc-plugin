@@ -12,7 +12,7 @@ function headOf(root: string): string | undefined {
 }
 
 function storedHead(paths: GantryPaths): string | undefined {
-  const store = openStore(paths.dbPath);
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
   try {
     return store.getMeta("head_sha");
   } finally {
