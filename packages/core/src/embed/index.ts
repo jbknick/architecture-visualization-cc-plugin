@@ -5,7 +5,7 @@ import { contentKey, FACT_BODY_MAX, FUNCTION_LIKE_KINDS } from "../describe/fact
 import { isSensitive } from "../discover/index.js";
 import { normalizeForEmbedding } from "../hash/index.js";
 import { pathOfFileId, repoOfId } from "../ids.js";
-import { parseSource } from "../parse/index.js";
+import { parseFile } from "../lang/index.js";
 import type { Store } from "../store/index.js";
 import type { SymbolRecord } from "../types.js";
 import { EMBED_BATCH_SIZE, type Embedder, getEmbedder } from "./model.js";
@@ -169,7 +169,7 @@ export function missingCode(store: Store, have: Set<string>): { list: CodeCandid
 
 /** Normalized, truncated source of a candidate. Reads and parses one file at a time (candidates are grouped by path). */
 function makeCodeText(root: string): (c: CodeCandidate) => string | null {
-  let cached: { path: string; source: string; parsed: ReturnType<typeof parseSource> } | null = null;
+  let cached: { path: string; source: string; parsed: ReturnType<typeof parseFile> } | null = null;
   return (c) => {
     if (cached?.path !== c.path) {
       cached = null;
@@ -178,7 +178,7 @@ function makeCodeText(root: string): (c: CodeCandidate) => string | null {
         cached = {
           path: c.path,
           source,
-          parsed: parseSource(repoOfId(c.symbol.id) as string, c.path, source),
+          parsed: parseFile(repoOfId(c.symbol.id) as string, c.path, source),
         };
       } catch {
         return null;

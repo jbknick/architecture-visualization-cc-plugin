@@ -17,6 +17,14 @@
       "role": "tuning"
     },
     {
+      "name": "caddy",
+      "url": "https://github.com/caddyserver/caddy.git",
+      "sha": "7ce9f0823762109fc67911f95f6af1a697345ab7",
+      "stack": ["go"],
+      "lang": ["go"],
+      "role": "held-out"
+    },
+    {
       "name": "ecom",
       "url": "https://github.com/sikozonpc/ecom.git",
       "sha": "6cc220748ec673a15fb818fd39843347244f39c3",
@@ -95,6 +103,14 @@
       "stack": ["typescript"],
       "lang": ["ts"],
       "role": "tuning"
+    },
+    {
+      "name": "hugo",
+      "url": "https://github.com/gohugoio/hugo.git",
+      "sha": "93be9f1f5b43446231ed3255b660cd7d3dd0ba11",
+      "stack": ["go"],
+      "lang": ["go"],
+      "role": "held-out"
     },
     {
       "name": "middleware",

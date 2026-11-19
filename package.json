@@ -23,12 +23,16 @@
     "version:check": "tsx scripts/check-version.ts"
   },
   "dependencies": {
+    "@ast-grep/lang-go": "0.0.6",
+    "@ast-grep/napi": "0.51.3",
     "better-sqlite3": "^13.1.1",
     "oxc-parser": "0.158.0",
     "oxc-resolver": "11.24.2",
     "sqlite-vec": "0.1.9"
   },
   "devDependencies": {
+    "@ast-grep/lang-go": "0.0.6",
+    "@ast-grep/napi": "0.51.3",
     "@biomejs/biome": "^2.6.7",
     "@huggingface/transformers": "4.3.2",
     "@types/node": "^26.6.6",

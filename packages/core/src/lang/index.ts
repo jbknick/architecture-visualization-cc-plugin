@@ -1,7 +1,12 @@
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { pathOfFileId } from "../ids.js";
 import type { ParsedFile } from "../parse/index.js";
-import type { createResolver } from "../resolve/index.js";
-import type { Lang, SymbolKind } from "../types.js";
-import type { detectWorkspaces } from "../workspace/index.js";
+import type { createResolver, ResolveContext, Resolver } from "../resolve/index.js";
+import type { Lang, SymbolKind, WorkspaceRecord } from "../types.js";
+import type { detectWorkspaces, WorkspaceDetectionConfig } from "../workspace/index.js";
+import { go } from "./go/index.js";
 import { typescript } from "./typescript/index.js";
 
 /** The languages the index knows are defined in `types.ts`; every file and symbol record carries one. */
@@ -44,6 +49,8 @@ export interface LanguageModule {
   label: string;
   /** File rules: the extensions of source files of this language, with the dot. */
   extensions: readonly string[];
+  /** File rules: true for a path of this language that is never indexed (Go: `vendor/`, `testdata/`, dot folders). */
+  skipPath?: (repoRelPath: string) => boolean;
   /** Workspace discovery from manifests. */
   detectWorkspaces: typeof detectWorkspaces;
   /** Parsing to symbols, imports and exports. */
@@ -62,7 +69,7 @@ export interface LanguageModule {
   thresholds: DupThresholds;
 }
 
-const MODULES: readonly LanguageModule[] = [typescript];
+const MODULES: readonly LanguageModule[] = [typescript, go];
 
 /** Every language module, in a fixed order. */
 export const languages = (): readonly LanguageModule[] => MODULES;
@@ -93,3 +100,71 @@ export const langOfPath = (repoRelPath: string): Lang => languageOfPath(repoRelP
 
 /** Display name of a language; the id itself when no module exists for it yet. */
 export const langLabel = (id: Lang): string => MODULES.find((m) => m.id === id)?.label ?? id;
+
+/** Parses a source file with the module that owns its extension; TypeScript for any other path. */
+export function parseFile(repo: string, repoRelPath: string, source: string): ParsedFile {
+  return (languageOfPath(repoRelPath) ?? typescript).parseSource(repo, repoRelPath, source);
+}
+
+const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+function hasTypeScriptFiles(root: string): boolean {
+  const r = spawnSync(
+    "git",
+    [
+      "ls-files",
+      "-z",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+      "--",
+      ...typescript.extensions.map((e) => `*${e}`),
+    ],
+    {
+      cwd: root,
+      encoding: "utf8",
+      maxBuffer: 512 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "ignore"],
+    },
+  );
+  return r.error || r.status !== 0 ? true : r.stdout.length > 0;
+}
+
+/**
+ * Workspaces of every language module. A repository with Go modules and no TypeScript has no `ws:.` fallback
+ * workspace: that record exists to hold the files of a TypeScript repo that declares no packages.
+ */
+export function detectAllWorkspaces(root: string, config: WorkspaceDetectionConfig): WorkspaceRecord[] {
+  const ts = typescript.detectWorkspaces(root, config);
+  const goWs = go.detectWorkspaces(root, config);
+  if (goWs.length === 0) return ts;
+  const tsKept = ts.length > 1 || existsSync(join(root, "package.json")) || hasTypeScriptFiles(root);
+  return [...(tsKept ? ts : []), ...goWs].sort((a, b) => cmp(a.dir, b.dir) || cmp(a.id, b.id));
+}
+
+/** One resolver over the languages: each file goes to the resolver of its own language; workspace edges are concatenated. */
+export function createLangResolver(ctx: ResolveContext): Resolver {
+  const per = new Map<Lang, Resolver>();
+  const of = (id: Lang): Resolver => {
+    let r = per.get(id);
+    if (!r) {
+      r = languageModule(id).createResolver(ctx);
+      per.set(id, r);
+    }
+    return r;
+  };
+  const forFile = (fileId: string): Resolver => of(langOfPath(pathOfFileId(fileId)));
+  return {
+    resolveSpecifier: (fromFileId, specifier) => forFile(fromFileId).resolveSpecifier(fromFileId, specifier),
+    resolveSymbol: (fileId, name) => forFile(fileId).resolveSymbol(fileId, name),
+    edgesForFile: (fileId) => forFile(fileId).edgesForFile(fileId),
+    workspaceEdges: () => MODULES.flatMap((m) => of(m.id).workspaceEdges()),
+    stats() {
+      const all = MODULES.map((m) => of(m.id).stats());
+      const counts = { ...(all[0] as ReturnType<Resolver["stats"]>).counts };
+      for (const s of all.slice(1))
+        for (const k of Object.keys(counts) as (keyof typeof counts)[]) counts[k] += s.counts[k];
+      return { counts, unresolved: all.flatMap((s) => s.unresolved) };
+    },
+  };
+}

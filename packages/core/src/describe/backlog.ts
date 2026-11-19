@@ -4,7 +4,8 @@ import path from "node:path";
 import { isSensitive } from "../discover/index.js";
 import { hashSymbol } from "../hash/index.js";
 import { pathOfFileId, repoOfId } from "../ids.js";
-import { type ParsedFile, parseSource } from "../parse/index.js";
+import { parseFile } from "../lang/index.js";
+import type { ParsedFile } from "../parse/index.js";
 import { refreshDescriptionFts } from "../search/descfts.js";
 import type { Store } from "../store/index.js";
 import type { Description, FactSheet, SymbolRecord } from "../types.js";
@@ -134,7 +135,7 @@ function computeTemplates(
     if (source === undefined) continue;
     let parsed: ParsedFile;
     try {
-      parsed = parseSource(repoOfId(items[0]?.[1].sym.id ?? "") ?? store.repo(), p, source);
+      parsed = parseFile(repoOfId(items[0]?.[1].sym.id ?? "") ?? store.repo(), p, source);
     } catch {
       continue;
     }
