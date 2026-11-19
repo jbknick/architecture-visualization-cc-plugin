@@ -142,6 +142,42 @@ describe("gantry init", () => {
     expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
   });
 
+  it("reports the same file and edge counts as /api/meta, and one function-like count in --estimate", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const r = run(fx.dir, ["init", "--estimate"]);
+    expect(r.code).toBe(0);
+    const summary = (label: string): number =>
+      Number(
+        ((new RegExp(`${label}:\\s+([\\d,]+)`).exec(r.out) as RegExpExecArray)[1] as string).replace(
+          /,/g,
+          "",
+        ),
+      );
+    const files = Number((/Indexed (\d+) files/.exec(r.out) as RegExpExecArray)[1]);
+    const functionLike = [...r.out.matchAll(/function-like:\s+([\d,]+)/g)].map((m) => m[1]);
+    expect(functionLike).toHaveLength(2);
+    expect(functionLike[0]).toBe(functionLike[1]);
+
+    const explorerPath = "../../../explorer/server/index.js";
+    const { handleApi } = (await import(/* @vite-ignore */ explorerPath)) as {
+      handleApi: (
+        ctx: unknown,
+        pathname: string,
+        query: URLSearchParams,
+      ) => { counts: Record<string, number> };
+    };
+    const paths = resolvePaths(fx.dir, { HOME: join(dataDir, "home"), CLAUDE_PLUGIN_DATA: dataDir });
+    const store = openStore(paths.dbPath);
+    try {
+      const { counts } = handleApi({ store, paths, config: {} }, "/api/meta", new URLSearchParams());
+      expect(files).toBe(counts.files);
+      expect(summary("edges")).toBe(counts.edges);
+      expect(summary("symbols")).toBe(counts.symbols);
+    } finally {
+      store.close();
+    }
+  });
+
   it("--estimate prints every estimate field for pnpm-turbo and makes no model calls", async () => {
     const fx = await fixture("pnpm-turbo");
     const r = run(fx.dir, ["init", "--estimate"]);
