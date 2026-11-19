@@ -49,6 +49,10 @@
       "table": "users"
     },
     {
+      "file": "scripts/20_settings_options.sql",
+      "table": "settings_option"
+    },
+    {
       "file": "scripts/21_settings_defaults.sql",
       "table": "settings"
     },
