@@ -32,8 +32,8 @@ export {
 } from "./model.js";
 export {
   allVectors,
-  applyVecMigration,
   blobToVec,
+  createVecTables,
   EMBED_DIM,
   EMBED_MODEL_ID,
   ensureVecTables,

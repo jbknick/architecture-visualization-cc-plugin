@@ -4,6 +4,7 @@ import {
   heal,
   openStore,
   refreshWorking,
+  resetStaleStore,
   resolvePaths,
   type Store,
 } from "@gantry/core";
@@ -11,6 +12,7 @@ import {
 /** Resolves paths, brings the main graph to HEAD and the working layer to the tree, then opens the store. */
 export async function openFresh(cwd: string): Promise<{ paths: GantryPaths; store: Store }> {
   const paths = resolvePaths(cwd);
+  resetStaleStore(paths);
   ensureDataDir(paths);
   await heal(paths);
   await refreshWorking(paths);

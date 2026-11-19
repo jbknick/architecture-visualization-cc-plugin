@@ -21,6 +21,7 @@ import {
   type GantryPaths,
   loadConfig,
   openStore,
+  resetStaleStore,
   type Store,
 } from "@gantry/core";
 import { HttpError, handleApi } from "./api.js";
@@ -236,6 +237,7 @@ export async function startExplorerServer(opts: ExplorerServerOptions): Promise<
 async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer> {
   const { paths } = opts;
   const ownsStore = !opts.store;
+  if (ownsStore) resetStaleStore(paths);
   const store = opts.store ?? openStore(paths.dbPath);
   const config = opts.config ?? loadConfig(paths);
   const token = randomBytes(32).toString("base64url");

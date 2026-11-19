@@ -85,12 +85,11 @@ function ensureOnDb(db: Database, dim: number, modelId: string): boolean {
 }
 
 /**
- * Store migration v2 (called by the migration runner inside its transaction). Creates the vec tables for
- * the M0 model when sqlite-vec is loaded; otherwise does nothing, and `ensureVecTables` creates them later
- * on a machine where the extension works. The schema version is recorded either way.
+ * Creates the vec tables for the M0 model when a new store is first written (`openStore`, inside its transaction),
+ * if sqlite-vec is loaded; otherwise does nothing, and `ensureVecTables` creates them later on a machine where the
+ * extension works.
  */
-export function applyVecMigration(db: Database): void {
-  if (!vecLoaded(db)) return;
+export function createVecTables(db: Database): void {
   ensureOnDb(db, EMBED_DIM, EMBED_MODEL_ID);
 }
 

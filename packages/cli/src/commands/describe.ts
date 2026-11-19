@@ -1,4 +1,4 @@
-import { loadConfig, resolvePaths } from "@gantry/core";
+import { loadConfig, resetStaleStore, resolvePaths } from "@gantry/core";
 import type { Command } from "commander";
 import { describeStaged } from "../hooks/staged.js";
 import { EXIT_OK, fail, writeStdout } from "./shared.js";
@@ -19,6 +19,7 @@ export function registerDescribe(program: Command): void {
         }
         if (process.env.GANTRY_WORKER === "1") return;
         const paths = resolvePaths(process.cwd());
+        resetStaleStore(paths);
         if (loadConfig(paths).precommit.mode === "off") {
           process.stderr.write(
             "gantry: precommit.mode is off, nothing described (run `gantry config set precommit.mode timeboxed` to enable)\n",

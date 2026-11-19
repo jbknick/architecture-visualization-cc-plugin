@@ -32,7 +32,7 @@ Uninstalling the plugin deletes its data directory, and the indexes with it. Upd
 
 ### After an upgrade
 
-When an upgrade changes what indexing writes for unchanged files (new framework adapters, for example), the index records it (`meta.index_format`) and the first run after the upgrade re-indexes the whole repo once, so the new facts appear for every file and not only the ones you edit. The first Gantry tool call in a session, the explorer's Refresh, `gantry map`, `gantry heal` or a git hook (post-checkout, post-merge, post-rewrite, pre-push) runs it; it takes about as long as `gantry index`. The session-start hook does not wait for it, so a session starts as quickly as before. Descriptions and embeddings are kept. To do it right away, run `"<plugin>/bin/gantry" heal` in the repo.
+When an update changes the index store (its schema, or what indexing writes for unchanged files), the first non-hook command after the update deletes the old index and builds it again from scratch, and says why in one line (`gantry: the index was built by an older version of Gantry (schema 6, now 7); rebuilding it`). Non-hook means `gantry init`, `index`, `heal`, `map`, `search`, `node`, `trace`, `review`, the MCP server's first tool call and the explorer; hooks leave a stale index alone and exit quietly, and the session-start hook then reminds you to run `/gantry:init`. Descriptions and embeddings are not kept, so run `/gantry:sync` afterwards to describe the functions again.
 
 To start over with a fresh index instead, delete `~/.gantry/data/repos/<hash>/` (or run `gantry uninstall` in the repo) and re-run `/gantry:init`.
 

@@ -9,7 +9,7 @@ import { rebuildSimilarEdges } from "../dup/index.js";
 import { indexRepo } from "../indexer.js";
 import type { GantryPaths } from "../paths/index.js";
 import { refreshDescriptionFts } from "../search/descfts.js";
-import { indexFormatStale, openStore, type Store } from "../store/index.js";
+import { openStore, type Store } from "../store/index.js";
 
 /** Above this share of indexed files touched by a diff, a full main re-index is cheaper than patching. */
 const FULL_REINDEX_RATIO = 0.3;
@@ -348,27 +348,22 @@ export interface StaleFiles {
   head: boolean;
 }
 
-function formatStale(paths: GantryPaths): boolean {
-  if (!fs.existsSync(paths.dbPath)) return false;
+function hasMainIndex(paths: GantryPaths): boolean {
   const store = openStore(paths.dbPath);
   try {
-    return indexFormatStale(store.db);
+    return store.getMeta("indexed_at") !== undefined;
   } finally {
     store.close();
   }
 }
 
 /**
- * Brings a store built with an older index format (`meta.index_format`, #195) up to date with a full main re-index;
- * a no-op (one meta read) otherwise, and when there is no store. Opening such a store already forgot `head_sha`, so
- * this is a heal, which re-indexes everything; outside git (no `HEAD`) it is a plain full main index. Returns true
- * when it re-indexed.
+ * Builds the index of a store that `resetStaleStore` just deleted (spec section 11): a heal, which indexes everything
+ * because the new store has no `head_sha`; outside a commit (no `HEAD`) it is a plain full main index.
  */
-export async function upgradeIndexFormat(paths: GantryPaths): Promise<boolean> {
-  if (!formatStale(paths)) return false;
+export async function rebuildIndex(paths: GantryPaths): Promise<void> {
   await heal(paths);
-  if (formatStale(paths)) await indexRepo(paths, { layer: "main" });
-  return true;
+  if (!hasMainIndex(paths)) await indexRepo(paths, { layer: "main" });
 }
 
 /** True when `HEAD` is not the commit the main layer was built for, so a heal is due. One `git rev-parse`. */
