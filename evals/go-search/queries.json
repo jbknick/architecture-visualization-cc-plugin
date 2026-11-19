@@ -1,0 +1,12 @@
+[
+  { "q": "turn a phrase into a url friendly lowercase string", "expected": "internal/text/slug.go#Slugify" },
+  { "q": "create an empty in-memory key value holder", "expected": "internal/store/store.go#New" },
+  { "q": "look up a saved value by its key", "expected": "internal/store/store.go#Store.Get" },
+  { "q": "save a value under a key with locking", "expected": "internal/store/store.go#Store.Put" },
+  { "q": "text label for the print style of a value", "expected": "internal/text/format.go#Kind.String" },
+  { "q": "remove leading and trailing hyphens", "expected": "internal/text/slug.go#trimDashes" },
+  { "q": "report the generator version text", "expected": "internal/gen/zz_generated.go#Describe" },
+  { "q": "network transport name on unix platforms", "expected": "internal/net/listen_unix.go#listen" },
+  { "q": "demo program entry point that prints a stored greeting", "expected": "cmd/server/main.go#main" },
+  { "q": "check that a saved value can be read back", "expected": "internal/store/store_test.go#TestPutGet" }
+]

@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { loadConfig } from "../config/index.js";
 import { isIndexable, MAX_FILE_BYTES } from "../discover/index.js";
 import { hashSymbol } from "../hash/index.js";
-import { parseSource } from "../parse/index.js";
+import { parseFile } from "../lang/index.js";
 import type { GantryPaths } from "../paths/index.js";
 import type { SymbolKind } from "../types.js";
 
@@ -123,11 +123,10 @@ function readSide(root: string, repo: string, sha: string, path: string): Side |
   const r = git(root, ["show", `${sha}:${path}`]);
   if (!r.ok || r.out.length > MAX_FILE_BYTES) return undefined;
   const source = r.out.toString("utf8");
-  const parsed = parseSource(repo, path, source);
-  const lang = path.endsWith(".tsx") ? "tsx" : "ts";
+  const parsed = parseFile(repo, path, source);
   const symbols: Sym[] = parsed.symbols.map((s) => {
     const body = parsed.bodies.get(s.id);
-    const h = body ? hashSymbol(source, body, lang) : { exactHash: "", renamedHash: "" };
+    const h = body ? hashSymbol(source, body, path) : { exactHash: "", renamedHash: "" };
     return {
       id: s.id,
       path,

@@ -90,7 +90,8 @@ export function isSensitive(repoRelPath: string): boolean {
 export function isIndexable(repoRelPath: string, config: GantryConfig): boolean {
   const p = safeNormalize(repoRelPath);
   if (p === null) return false;
-  if (languageOfPath(p) === undefined) return false; // file rule of the language modules
+  const mod = languageOfPath(p); // file rules of the language modules
+  if (mod === undefined || mod.skipPath?.(p)) return false;
   if (isSensitive(p)) return false;
   if (matchesAny(BUILTIN_EXCLUDES, p)) return false;
   if (matchesAny(config.exclude, p)) return false;

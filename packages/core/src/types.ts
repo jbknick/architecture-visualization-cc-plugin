@@ -77,6 +77,8 @@ export interface FactSheet {
   id: string;
   path: string;
   kind: SymbolKind;
+  /** Display name of the symbol's language (`LanguageModule.label`: `TypeScript`, `Go`). */
+  language: string;
   signature: string;
   doc: string | null;
   callees: string[];
@@ -101,6 +103,8 @@ export interface WorkspaceRecord {
   exportsMap: ExportsEntry[] | null;
   main?: string;
   types?: string;
+  /** Language module that found the workspace; set while indexing, not stored (absent means TypeScript). */
+  lang?: Lang;
 }
 /** Flattened package.json `exports` entry ("import"/"types"/"default" conditions, first match). */
 export interface ExportsEntry {

@@ -116,7 +116,7 @@ afterAll(async () => {
   for (const f of fixtures.splice(0)) await f.cleanup();
 });
 
-async function fixture(name: "single-pkg" | "pnpm-turbo" = "single-pkg") {
+async function fixture(name: "single-pkg" | "pnpm-turbo" | "go-basic" = "single-pkg") {
   assertTempHome();
   const fx = await materializeFixture(name);
   fixtures.push(fx);
@@ -666,7 +666,7 @@ describe("entry points", () => {
         st.close();
       }
     };
-    expect(versionOf()).toBe("9");
+    expect(versionOf()).toBe("11");
     setVersion("6");
     const input = JSON.stringify({
       session_id: "s",
@@ -706,15 +706,15 @@ describe("entry points", () => {
       err: "",
     });
     expect(versionOf()).toBe("6");
-    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 9)");
+    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 11)");
 
     // The next non-hook command rebuilds from scratch, with one message naming the reason.
     const init = gantry(fx.dir, ["init"]);
     expect(init.code).toBe(0);
     expect(
-      init.err.split("built by an older version of Gantry (schema 6, now 9); rebuilding it").length - 1,
+      init.err.split("built by an older version of Gantry (schema 6, now 11); rebuilding it").length - 1,
     ).toBe(1);
-    expect(versionOf()).toBe("9");
+    expect(versionOf()).toBe("11");
   });
 
   it("session-start and the git hooks create no data dir for a repository without an index (#147)", async () => {
@@ -844,6 +844,18 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     const ctx = contextOf(r.out);
     expect(ctx.length).toBeLessThanOrEqual(600);
     expect(ctx).toBe(SLUG_LINE);
+  });
+
+  it("a renamed copy of a Go function yields the note with the Go import line (#223)", async () => {
+    const fx = await fixture("go-basic");
+    expect(gantry(fx.dir, ["init"]).code).toBe(0);
+    const copy =
+      "package main\n\nimport \"strings\"\n\nfunc MakeSlug(s string) string {\n\tvar b strings.Builder\n\tfor _, r := range strings.ToLower(s) {\n\t\tswitch {\n\t\tcase r >= 'a' && r <= 'z', r >= '0' && r <= '9':\n\t\t\tb.WriteRune(r)\n\t\tdefault:\n\t\t\tb.WriteByte('-')\n\t\t}\n\t}\n\treturn trimDashes(b.String())\n}\n";
+    const r = edit(fx, "cmd/server/slugcopy.go", copy);
+    expect(r.code).toBe(0);
+    expect(contextOf(r.out)).toBe(
+      'Gantry: MakeSlug (cmd/server/slugcopy.go:5) looks like Slugify in internal/text/slug.go:6 [exact 1.00]. Import it: import "example.com/gobasic/internal/text"',
+    );
   });
 
   const pendingPaths = (fx: MaterializedFixture, session = "s"): string[] => {

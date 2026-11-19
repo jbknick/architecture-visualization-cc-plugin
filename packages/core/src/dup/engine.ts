@@ -2,8 +2,7 @@ import { type GantryConfig, loadConfigForDb } from "../config/index.js";
 import { contentKey, FUNCTION_LIKE_KINDS } from "../describe/factsheet.js";
 import { allVectors, getVector, knn, type VecTable, vecAvailable } from "../embed/vec.js";
 import { hashSymbol, MINHASH_PERMUTATIONS, minhashJaccard } from "../hash/index.js";
-import { langOfPath, languageModule, languages } from "../lang/index.js";
-import { parseSource } from "../parse/index.js";
+import { langOfPath, languageModule, languages, parseFile } from "../lang/index.js";
 import type { Store } from "../store/index.js";
 import { decodeMinhash } from "../store/repo.js";
 import type { Lang, SymbolKind, SymbolRecord } from "../types.js";
@@ -144,6 +143,8 @@ interface DupIndex {
 
 interface SymbolRow {
   id: string;
+  name: string;
+  directives: string | null;
   file_id: string;
   path: string;
   kind: SymbolKind;
@@ -185,7 +186,7 @@ function buildIndex(store: Store, layer: "effective" | "main"): DupIndex {
   const rows = store.db
     .prepare(
       `WITH eff_files AS (${LAYER_FILES(layer)})
-       SELECT s.id, s.file_id, f.path, s.kind, s.lang, s.exported, s.signature, s.stmt_count, s.exact_hash,
+       SELECT s.id, s.name, f.directives, s.file_id, f.path, s.kind, s.lang, s.exported, s.signature, s.stmt_count, s.exact_hash,
               s.shape_hash, s.minhash, s.near_minhash, s.renamed_hash
        FROM symbols s JOIN eff_files f ON f.id = s.file_id AND f.layer = s.layer
        WHERE f.deleted = 0 AND s.kind IN (${KINDS_SQL}) AND s.stmt_count >= ${MIN_INDEXED_STMTS}
@@ -205,6 +206,8 @@ function buildIndex(store: Store, layer: "effective" | "main"): DupIndex {
   };
   for (const r of rows) {
     if (isExcludedPath(r.path)) continue;
+    if (r.lang === "go" && (r.name === "_" || r.name === "init")) continue; // many per package, never reused
+    if (r.lang === "go" && r.directives?.includes('"generated"')) continue; // header says "Code generated … DO NOT EDIT."
     const family = kindFamily(r.kind);
     if (!family) continue;
     const e: Entry = {
@@ -272,7 +275,7 @@ const FUNCTION_LIKE: ReadonlySet<SymbolKind> = new Set(FUNCTION_LIKE_KINDS);
 function featuresOfCode(q: DupQuery): Features | null {
   const code = q.code as NonNullable<DupQuery["code"]>;
   const path = code.path ?? (code.lang === "tsx" ? "scratch.tsx" : "scratch.ts");
-  const parsed = parseSource("scratch", path, code.source);
+  const parsed = parseFile("scratch", path, code.source);
   const sym = parsed.symbols.find((s) => FUNCTION_LIKE.has(s.kind));
   const range = sym && parsed.bodies.get(sym.id);
   if (!sym || !range) return null;
@@ -539,7 +542,7 @@ function runTiers(inp: RunInput): DupCandidate[] {
 function dismissedWith(store: Store, id: string | undefined): Set<string> {
   const out = new Set<string>();
   if (id === undefined) return out;
-  const rows = store.db.prepare("SELECT a, b FROM dismissals WHERE a = ? OR b = ?").all(id, id) as {
+  const rows = store.db.prepare("SELECT a, b FROM overlay.dismissals WHERE a = ? OR b = ?").all(id, id) as {
     a: string;
     b: string;
   }[];
@@ -626,7 +629,10 @@ export async function rebuildSimilarEdges(store: Store, opts: RebuildOptions = {
   const limit = opts.perSymbolLimit ?? DEFAULT_LIMIT;
 
   const dismissedPairs = new Set<string>();
-  for (const r of store.db.prepare("SELECT a, b FROM dismissals").all() as { a: string; b: string }[]) {
+  for (const r of store.db.prepare("SELECT a, b FROM overlay.dismissals").all() as {
+    a: string;
+    b: string;
+  }[]) {
     dismissedPairs.add(pairKey(r.a, r.b));
   }
   const wantVectors = tiers.has("code_vector") && vecAvailable(store);
@@ -725,7 +731,7 @@ export function dismiss(store: Store, a: string, b: string, reason: string): voi
   store.tx(() => {
     store.db
       .prepare(
-        `INSERT INTO dismissals(a, b, reason) VALUES (?, ?, ?)
+        `INSERT INTO overlay.dismissals(a, b, reason) VALUES (?, ?, ?)
          ON CONFLICT(a, b) DO UPDATE SET reason = excluded.reason`,
       )
       .run(lo, hi, reason);

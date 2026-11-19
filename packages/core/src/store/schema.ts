@@ -24,8 +24,6 @@ CREATE TABLE backlog(content_key TEXT PRIMARY KEY, symbol_id TEXT, priority INTE
   CHECK(status IN ('pending','claimed','failed')), claimed_by TEXT, claimed_at TEXT, attempts INTEGER DEFAULT 0, last_error TEXT);
 CREATE TABLE usage_log(id INTEGER PRIMARY KEY, at TEXT, task TEXT, model TEXT, effort TEXT, functions INTEGER,
   input_tokens INTEGER, output_tokens INTEGER, cost_estimate_usd REAL, source TEXT);
-CREATE TABLE dismissals(a TEXT, b TEXT, reason TEXT, PRIMARY KEY(a, b));
 CREATE TABLE overviews(node_id TEXT PRIMARY KEY, text TEXT, input_key TEXT, model TEXT, created_at TEXT);
-CREATE TABLE layouts(view TEXT, node_id TEXT, x REAL, y REAL, PRIMARY KEY(view, node_id));
 CREATE VIRTUAL TABLE fts_symbols USING fts5(symbol_id UNINDEXED, name_tokens, suggested_name, path, behavior, search_terms);
 `;

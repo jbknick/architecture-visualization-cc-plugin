@@ -25,6 +25,7 @@ export function fullSheet(row: HonestFull): FactSheet {
     id: `${path}#${name}`,
     path,
     kind: "function",
+    language: "TypeScript",
     signature,
     doc: null,
     callees: [],

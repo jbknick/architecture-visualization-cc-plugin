@@ -37,6 +37,7 @@ function sheetOf(over: Partial<FactSheet> = {}): FactSheet {
     id: "sym:src/a.ts#loadUserProfile",
     path: "src/a.ts",
     kind: "function",
+    language: "TypeScript",
     signature: "(id: string, opts?: Options): Promise<Profile>",
     doc: null,
     callees: ["fetchProfile", "normalizeProfile"],

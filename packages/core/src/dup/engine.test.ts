@@ -456,7 +456,7 @@ describe("tiers and filters (synthetic hashes)", () => {
     const b = store.getSymbol("sym:repo:src/b.ts#b") as SymbolRecord;
     expect(ids(await findDuplicates(store, { symbol: b }))).toEqual(["sym:repo:src/c.ts#c"]);
     dismiss(store, target.id, "sym:repo:src/b.ts#b", "updated reason");
-    const rows = store.db.prepare("SELECT a, b, reason FROM dismissals").all();
+    const rows = store.db.prepare("SELECT a, b, reason FROM overlay.dismissals").all();
     expect(rows).toEqual([
       { a: "sym:repo:src/a.ts#target", b: "sym:repo:src/b.ts#b", reason: "updated reason" },
     ]);
@@ -952,6 +952,24 @@ describe("duplicates never cross languages (#220)", () => {
     const r = await findDuplicatesDetailed(store, { symbol: a as SymbolRecord });
     expect(ids(r.candidates)).toEqual([(b as SymbolRecord).id]);
     expect(await rebuildSimilarEdges(store)).toBe(1);
+  });
+
+  it("Go init and _ functions are never candidates, however alike (#223)", async () => {
+    const { store } = tmpStore();
+    const hashes = { exactHash: "e9", renamedHash: "r9", shapeHash: "s9", minhash: randomMinhash(rng(9)) };
+    const [a] = addFile(store, "a/a.go", [{ ...hashes, name: "Load" }], "go");
+    addFile(
+      store,
+      "b/b.go",
+      [
+        { ...hashes, name: "init" },
+        { ...hashes, name: "_" },
+      ],
+      "go",
+    );
+    addFile(store, "c/c.go", [{ ...hashes, name: "Read" }], "go");
+    const r = await findDuplicatesDetailed(store, { symbol: a as SymbolRecord });
+    expect(ids(r.candidates)).toEqual(["sym:repo:c/c.go#Read"]);
   });
 
   it("thresholdsFor returns the configured values for both languages", () => {
