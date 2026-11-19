@@ -1,10 +1,10 @@
 # Spike #292: how far a blast radius reaches, where hubs start and whether ranking finds what mattered
 
-Status: done on macOS arm64 (one machine, heavily loaded; see "Machine").
+Status: done on macOS arm64 (one machine; the timing figures are from a quiet run, see "Machine").
 
 Verdict: NO-GO
 
-The Bar is missed as written. The walk as the prototype reads it (one store query per node) is hundreds of times over 2 s at 24,968 files (projected from 82 ms per query; the walk itself was stopped at 25 nodes). The same walk over a one-query in-memory adjacency stays under 2 s (median 966 ms, slowest seed 1,999 ms wall, 1,111 ms CPU), but that is a different implementation than the one the issue describes, and the wall number clears the line by 1 ms on a loaded machine. Per the issue, a miss stops M18 until the maintainer decides; the constants below are fitted anyway so the decision can be made with them in hand.
+The Bar is missed as written. The walk as the prototype reads it (one store query per node) takes 4,357 ms for its first 25 nodes on the slowest seed at 24,968 files and would take about 1,200 s to the end (79 ms per query, 15,431 nodes). The same walk over a one-query in-memory adjacency stays well under 2 s (median 633 ms, slowest seed 717 ms wall, 901 ms CPU, load included), but that is a different implementation than the one the issue describes. Per the issue, a miss stops M18 until the maintainer decides; the constants below are fitted anyway so the decision can be made with them in hand. If the maintainer accepts (B), the Bar is met by a wide margin.
 
 ## Tables
 
@@ -47,17 +47,17 @@ Medians and p90 are over the PRs that reach the hop. Today's walk stops at hop 3
 
 n8n at the pinned SHA, 24,968 files, 10 seeds (the 10 exported functions with the most hop-1 consumers; their radii are 688 to 15,431 nodes and up to 12 hops). Each seed is timed 3 times and the row gives the median of the 10 seed medians and the slowest seed's median. Machine: see below.
 
-| repo                 | files  | seeds | median of 3 (ms) | slowest seed (ms) | machine               |
-| -------------------- | ------ | ----- | ---------------- | ----------------- | --------------------- |
-| n8n (A, 25-node cap) | 24,968 | 10    | 5,682            | 16,997            | M3 Pro, load 30 to 48 |
-| n8n (B, wall clock)  | 24,968 | 10    | 966              | 1,999             | M3 Pro, load 30 to 48 |
-| n8n (B, CPU time)    | 24,968 | 10    | 1,029            | 1,111             | M3 Pro, load 30 to 48 |
-| n8n (B, walk only)   | 24,968 | 10    | 24               | 60                | M3 Pro, load 30 to 48 |
+| repo                 | files  | seeds | median of 3 (ms) | slowest seed (ms) | machine             |
+| -------------------- | ------ | ----- | ---------------- | ----------------- | ------------------- |
+| n8n (A, 25-node cap) | 24,968 | 10    | 4,187            | 4,357             | M3 Pro, load 2 to 3 |
+| n8n (B, wall clock)  | 24,968 | 10    | 633              | 717               | M3 Pro, load 2 to 3 |
+| n8n (B, CPU time)    | 24,968 | 10    | 772              | 901               | M3 Pro, load 2 to 3 |
+| n8n (B, walk only)   | 24,968 | 10    | 10               | 26                | M3 Pro, load 2 to 3 |
 
-- (A) is the walk as the prototype reads it: one `effectiveEdges` query per node. It is stopped at 25 nodes; the full walk is far longer (median 82 ms per query, so about 1,265 s projected for the 15,431-node seed).
+- (A) is the walk as the prototype reads it: one `effectiveEdges` query per node. It is stopped at 25 nodes; the full walk is far longer (median 79 ms per query, so about 1,220 s projected for the 15,431-node seed).
 - (B) makes one `effectiveEdges` query for all consumer edges, then walks in memory; the load is included in every run. "Walk only" times just the walk on an already loaded adjacency.
 
-(A) and (B) return the same nodes and hops on the 5 small-radius seeds checked (5 of 5). The cost is the store read: `effectiveEdges({ dst })` rebuilds the effective-files view for every call (82 to 310 ms here, depending on load), so a per-node walk costs radius times that. Loading all consumer edges once takes 0.6 to 2 s here; the walk over them takes 60 ms or less for a 15,000-node radius.
+(A) and (B) return the same nodes and hops on the 5 small-radius seeds checked (5 of 5). The cost is the store read: `effectiveEdges({ dst })` rebuilds the effective-files view for every call (79 ms here on a quiet machine, 82 to 310 ms under load), so a per-node walk costs radius times that. Loading all consumer edges once takes 0.56 to 0.72 s here; the walk over them takes 26 ms or less, up to a 15,431-node radius.
 
 ### Ranking
 
@@ -78,7 +78,7 @@ Read by GH-293 and GH-294.
 
 | key                 | value                                                                                                                                                                                                       | how chosen                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| node_cap            | 2500                                                                                                                                                                                                        | The p99 radius size of the 70 PRs is 2,369; rounded up to a multiple of 500 is 2,500. The step 5 condition (walk at 2 s or less with this cap) holds for (B), whose uncapped walk is 60 ms or less; it does not hold for (A) at any cap, because a node costs one store query. Five of the ten n8n seeds reach 10,510 to 15,431 nodes, so the cap will truncate hubs of that size.                                                                                                                                                 |
+| node_cap            | 2500                                                                                                                                                                                                        | The p99 radius size of the 70 PRs is 2,369; rounded up to a multiple of 500 is 2,500. The step 5 condition (walk at 2 s or less with this cap) holds for (B), whose uncapped walk is 26 ms or less; it does not hold for (A) at any cap, because a node costs one store query. Five of the ten n8n seeds reach 10,510 to 15,431 nodes, so the cap will truncate hubs of that size.                                                                                                                                                 |
 | hub_threshold       | 608                                                                                                                                                                                                         | A node is a hub when its fan-in is above T; a node at hop 2 or later is collapsed when every predecessor is a hub or collapsed (hop-1 nodes are always listed). Rule: the smallest T for which every follow-up-edited consumer is still listed in at least 90% of pairs (439 of 470 pairs at T = 608). At that T the collapse removes 1,482 of 21,505 listed entries (6.9%). Fan-in over all radius nodes: p50 1, p90 3, p99 21, max 659. See "Hub threshold" below: the rule only allows a threshold close to the maximum fan-in. |
 | fan_in_order        | desc                                                                                                                                                                                                        | Median rank of the first edited consumer is 177 with fan-in descending against 259.5 ascending (ordering c against c').                                                                                                                                                                                                                                                                                                                                                                                                            |
 | fan_in_definition   | The number of distinct sources of incoming consumer edges of a node (`CONSUMER_KINDS`, plus `imports` for a `file:` node), without `ext:` sources and self edges, as `ConsumerGraph.incoming` returns them. | The prototype computes it per node from that reader; the batched walk computes the same set from the loaded edges.                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -107,7 +107,7 @@ Collapsing hubs as the rule defines them is not useful on this corpus. Most node
 
 ## Machine
 
-MacBook with Apple M3 Pro (11 cores), 18 GB, macOS (Darwin 27.2.0), Node v26.13.0. The machine was shared with other builds and test runs during every measurement: the load average was 30 to 57 on 11 cores. Wall-clock timings are therefore inflated and vary run to run (an earlier (B) run on the same data gave a median of 1,747 ms and a slowest seed of 3,197 ms; the figures in the table are from the last run, load 48 falling to 30). CPU time is the steadier figure and is given beside the wall clock.
+MacBook with Apple M3 Pro (11 cores), 18 GB, macOS (Darwin 27.2.0), Node v26.13.0. The tables come from a run with the load average at 2.4 to 3.2 on 11 cores. Earlier runs on the same data, made while other builds and test runs shared the machine (load average 30 to 57), were slower and noisy: (B) wall clock gave a median of 966 ms and a slowest seed of 1,999 ms in the last of them, and 1,747 ms and 3,197 ms in the first; (B) CPU time was 1,029 ms and 1,111 ms; (A) with 25 nodes took 5,682 ms median and 16,997 ms slowest. The Bar conclusion is the same in all runs: (A) misses, (B) is under 2 s.
 
 ## Deviations from the steps
 

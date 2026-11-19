@@ -716,7 +716,8 @@ async function main(): Promise<number> {
   } else if (args.includes("--check")) {
     const radii = await radiusAll(false);
     const now = stringify(buildResults(radii, readJson<Followup[]>(followupsPath)));
-    const ok = now === readFileSync(resultsPath, "utf8");
+    // The committed file is formatted by biome, so compare it after the same key sorting.
+    const ok = now === stringify(readJson(resultsPath));
     console.log(ok ? "results.json reproduced exactly" : "results.json differs from a fresh run");
     return ok ? 0 : 1;
   } else if (args.includes("--report")) report();
