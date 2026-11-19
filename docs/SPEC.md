@@ -219,12 +219,12 @@ CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);            -- schema_versio
 CREATE TABLE workspaces(id TEXT PRIMARY KEY, name TEXT, dir TEXT, kind TEXT CHECK(kind IN ('app','package','unknown')),
   frameworks TEXT, deps TEXT, exports_map TEXT);
 CREATE TABLE files(id TEXT, layer TEXT CHECK(layer IN ('main','working')), path TEXT, workspace_id TEXT,
-  content_hash TEXT, mtime_ms INTEGER, deleted INTEGER DEFAULT 0, directives TEXT, lang TEXT, PRIMARY KEY(id, layer));
+  content_hash TEXT, mtime_ms INTEGER, deleted INTEGER DEFAULT 0, directives TEXT, lang TEXT NOT NULL, PRIMARY KEY(id, layer));
 --   files.directives (#105): JSON array of the file's leading directive strings, e.g. ["use client"]. NULL and '[]' both mean none.
 --   `FileRecord.directives` is absent when empty; `dumpGraph` adds `directives` to a file row only when non-empty.
 CREATE TABLE symbols(id TEXT, layer TEXT, file_id TEXT, name TEXT, kind TEXT, exported INTEGER, signature TEXT,
   start_line INTEGER, end_line INTEGER, loc INTEGER, complexity INTEGER, stmt_count INTEGER,
-  exact_hash TEXT, shape_hash TEXT, minhash BLOB, near_minhash BLOB, renamed_hash TEXT, lang TEXT, PRIMARY KEY(id, layer));
+  exact_hash TEXT, shape_hash TEXT, minhash BLOB, near_minhash BLOB, renamed_hash TEXT, lang TEXT NOT NULL, PRIMARY KEY(id, layer));
 --   near_minhash (#131): 64 little-endian uint32, the MinHash of the near-tier token stream (section 17).
 --   renamed_hash (#151): the SHA-256 (first 32 hex chars, as exact_hash) of the exact token stream with the symbol's own name replaced by `$0`. exact_hash does not use it on purpose: contentKey = `<exactHash>:<PROMPT_MAJOR>` keys descriptions, backlog rows and vectors.
 CREATE TABLE edges(src TEXT, dst TEXT, kind TEXT, layer TEXT, confidence TEXT, count INTEGER, evidence TEXT, file_id TEXT,

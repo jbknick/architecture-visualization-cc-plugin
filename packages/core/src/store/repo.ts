@@ -84,7 +84,7 @@ interface FileRow {
   mtime_ms: number;
   deleted: number;
   directives?: string | null;
-  lang?: string | null;
+  lang: string;
 }
 interface SymbolRow {
   id: string;
@@ -103,7 +103,7 @@ interface SymbolRow {
   minhash: Buffer;
   near_minhash?: Buffer | null;
   renamed_hash?: string | null;
-  lang?: string | null;
+  lang: string;
 }
 interface AdapterNodeRow {
   id: string;

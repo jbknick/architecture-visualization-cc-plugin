@@ -392,8 +392,8 @@ const s = openStore(workerData.db);
 const mh = new Uint32Array(64);
 for (let i = 0; i < workerData.n; i++) {
   const path = workerData.tag + i + ".ts";
-  s.replaceFile("main", { id: "file:" + path, path, workspaceId: null, contentHash: "h", mtimeMs: 1, deleted: false },
-    [{ id: "sym:" + path + "#f", fileId: "file:" + path, name: "f", kind: "function", exported: true, signature: "",
+  s.replaceFile("main", { id: "file:" + path, path, lang: "typescript", workspaceId: null, contentHash: "h", mtimeMs: 1, deleted: false },
+    [{ id: "sym:" + path + "#f", fileId: "file:" + path, name: "f", kind: "function", lang: "typescript", exported: true, signature: "",
        startLine: 1, endLine: 1, loc: 1, complexity: 1, stmtCount: 1, exactHash: "e", shapeHash: "s", minhash: mh }], []);
   s.setMeta("last_" + workerData.tag, String(i));
 }
