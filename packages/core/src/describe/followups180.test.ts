@@ -17,6 +17,7 @@ function slugSheet(): FactSheet {
     id: "sym:src/lib/slug.ts#slugify",
     path: "src/lib/slug.ts",
     kind: "function",
+    language: "TypeScript",
     signature: "(text: string): string",
     doc: null,
     callees: ["normalizeText"],
