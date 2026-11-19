@@ -1,6 +1,6 @@
 # V2 plan
 
-Status: reviewed plan, not yet contracts. Each issue edits `docs/SPEC.md` in its own PR where it changes a contract; the "Spec sections touched" lines say where. The evidence behind this revision is in `docs/spikes/V2-assumptions.md` and the six `docs/spikes/v2-*.md` reports. Reordered on 2026-11-19 (#242) to bring React Router and Fastify forward, then reworked the same day (#244) so recipes are written by an agent at init or on request, committed to the repo, and cover any ORM; neither change was reviewed or spiked (see "Reworked for agent recipes and any ORM").
+Status: reviewed plan, not yet contracts. Each issue edits `docs/SPEC.md` in its own PR where it changes a contract; the "Spec sections touched" lines say where. The evidence behind this revision is in `docs/spikes/V2-assumptions.md` and the six `docs/spikes/v2-*.md` reports. Agent-written recipes and the data-access helpers are not yet spiked (#245, #246). How every issue is verified is in "Verification"; the order issues are built in is in "Build order".
 
 ## Goals
 
@@ -15,23 +15,23 @@ UI that V2 adds or changes in the explorer (repo grouping on the project map, re
 
 ## Milestones and paths
 
-The work is split into two paths and one piece of side work. Path B is self-contained: it needs nothing from Path A. Path A carries the work that needs both (Go frameworks and data access, and the release) at its end, where it waits on Path B twice. Path B is the shorter path and runs Go first, so both waits should be met before Path A reaches them. The paths can run in parallel or as a waterfall.
+The work is groundwork (M7) and then two paths. Path B is self-contained: it needs nothing from Path A. Path A carries the work that needs both (Go frameworks and data access, and the release) at its end, where it waits on Path B twice. Path B is the shorter path and runs Go first, so both waits should be met before Path A reaches them. The paths can run in parallel or as a waterfall.
 
-| Milestone                             | Owner     | What a user can do at the end                                                                                                                                                                                                                                          |
-| ------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **M7 V2 groundwork**                  | Side work | Nothing new; the legacy data dir, store migrations and index-format re-index are gone.                                                                                                                                                                                 |
-| **M9 Recipes by agent**               | Path A    | Init writes a recipe for whatever frameworks and ORMs the repo uses, and you commit it; every index re-runs it unchanged, and the agent rewrites it only when you ask. Routes, endpoints, tables, reads and writes come from recipes. No hand-written adapters remain. |
-| **M10 Call linking in one repo**      | Path A    | Calls through client instances, wrappers, constants and env-var base URLs link to their handlers in the same repo.                                                                                                                                                     |
-| **M8 Any TypeScript project**         | Path A    | Index any TypeScript layout: one package, any workspace tool, project references only, or no workspace tool; bundler aliases resolve; a 10,000-file repo is ready in about a minute.                                                                                   |
-| **M14 Go frameworks and data access** | Path A    | Go endpoints (net/http, chi, gin, echo, fiber) and Go tables (database/sql, sqlx, sqlc, GORM, ent) come from the same agent-written recipes as TypeScript ones.                                                                                                        |
-| **M15 V2 release**                    | Path A    | Trace a TypeScript page to the Go handler and tables that serve it in another repo; linking is measured on unseen public repos; V2 is tagged.                                                                                                                          |
-| **M12 Go backends**                   | Path B    | Index Go modules with symbols, callers, duplicate warnings and descriptions.                                                                                                                                                                                           |
-| **M11 Multirepo workspaces**          | Path B    | List related repos once; search, duplicates, the map and go-to-source span all of them, and each repo stays up to date on its own.                                                                                                                                     |
-| **M13 Cross-repo call linking**       | Path B    | A frontend call links to the handler in another repo, and a page in one repo traces to its handler and tables in another.                                                                                                                                              |
+| Milestone                             | Owner  | What a user can do at the end                                                                                                                                                                                                                                          |
+| ------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **M7 V2 groundwork**                  | First  | Nothing new; the legacy data dir, store migrations and index-format re-index are gone.                                                                                                                                                                                 |
+| **M9 Recipes by agent**               | Path A | Init writes a recipe for whatever frameworks and ORMs the repo uses, and you commit it; every index re-runs it unchanged, and the agent rewrites it only when you ask. Routes, endpoints, tables, reads and writes come from recipes. No hand-written adapters remain. |
+| **M10 Call linking in one repo**      | Path A | Calls through client instances, wrappers, constants and env-var base URLs link to their handlers in the same repo.                                                                                                                                                     |
+| **M8 Any TypeScript project**         | Path A | Index any TypeScript layout: one package, any workspace tool, project references only, or no workspace tool; bundler aliases resolve; a 10,000-file repo is ready in about a minute.                                                                                   |
+| **M14 Go frameworks and data access** | Path A | Go endpoints (net/http, chi, gin, echo, fiber) and Go tables (database/sql, sqlx, sqlc, GORM, ent) come from the same agent-written recipes as TypeScript ones.                                                                                                        |
+| **M15 V2 release**                    | Path A | Trace a TypeScript page to the Go handler and tables that serve it in another repo; linking is measured on unseen public repos; V2 is tagged.                                                                                                                          |
+| **M12 Go backends**                   | Path B | Index Go modules with symbols, callers, duplicate warnings and descriptions.                                                                                                                                                                                           |
+| **M11 Multirepo workspaces**          | Path B | List related repos once; search, duplicates, the map and go-to-source span all of them, and each repo stays up to date on its own.                                                                                                                                     |
+| **M13 Cross-repo call linking**       | Path B | A frontend call links to the handler in another repo, and a page in one repo traces to its handler and tables in another.                                                                                                                                              |
 
-- **Path A, TypeScript then the joined end (30 issues):** M9 → M10 → M8 → M14 → M15. M9 opens with two spikes (#245, #246), because agent-written recipes and generic data-access helpers are the bets the rest of V2 stands on. M10 follows, because a frontend calling an API through a client instance, a wrapper or an env-var base URL needs it next. M8 closes the remaining layout gaps: monorepos on pnpm, npm, yarn, bun, Nx and Turborepo already index.
-- **Path B, Go and multirepo (13 issues):** M12 → M11 → M13. M12 goes first so the Go module is ready early for M14; M11 and M12 do not depend on each other.
-- **Side work (2 issues):** M7, done by the maintainer outside both paths. It should land before Path B changes the store schema (M11's repo column, M12's `lang` field), so those changes need no migration.
+- **Path A, TypeScript then the joined end (40 issues):** M9 → M10 → M8 → M14 → M15. M9 opens with two spikes (#245, #246), because agent-written recipes and generic data-access helpers are the bets the rest of V2 stands on. M10 follows, because a frontend calling an API through a client instance, a wrapper or an env-var base URL needs it next. M8 closes the remaining layout gaps: monorepos on pnpm, npm, yarn, bun, Nx and Turborepo already index.
+- **Path B, Go and multirepo (17 issues):** M12 → M11 → M13. M12 goes first so the Go module is ready early for M14; M11 and M12 do not depend on each other.
+- **Groundwork (9 issues):** M7, built first, before both paths. It removes the legacy paths, makes the quality gate safe to run in several checkouts at once (#258), pins the toolchain (#259), adds the evaluation corpus (#260) and puts the repo part into stable IDs (#263), so the store schema changes of Path B (M11's repo column, M12's `lang` field) need no migration and nothing built later is re-keyed.
 
 ### Where Path A waits on Path B
 
@@ -43,12 +43,17 @@ The work is split into two paths and one piece of side work. Path B is self-cont
 
 Touch points, not waits: M11's first issue adds a repo part to stable IDs (section 6) and M12's first adds a `lang` field; Path A rebases its snapshots onto both. M8 and M11 both touch workspace discovery. M10 and M13 both extend `clients.ts`: M10 widens what counts as a call, M13 widens where its handler can be. Recipes reach languages only through the existing adapter resolver contract (`resolveSpecifier`, `resolveSymbol`), so the recipe engine and the language interface are built without waiting on each other. Path B's linking work runs on endpoints from the shipped adapters until M9 replaces them with recipes that emit the same node kinds.
 
-## M7 V2 groundwork (side work)
+## M7 V2 groundwork (first)
 
 - Remove the legacy data-dir fallback (`~/.gantry/data`): the plugin data dir is the only location (section 4).
 - Remove the numbered store migrations and the `meta.index_format` re-index (#195). There is one schema. A store whose schema version is not the current one is deleted and rebuilt, and the user is told (sections 9, 11).
 
-Spec sections touched: 4, 9, 11, 14.
+- The quality gate runs beside untracked local files and never edits tracked sources (#258); Node and pnpm versions are pinned (#259).
+- The evaluation corpus, clone script and scoring script (#260; see "Verification").
+- `gantry review --json` is byte-stable (#261); search ranks the same function first with and without embeddings (#262).
+- **Stable IDs gain a repo part** (#263, section 6): file, symbol and adapter IDs carry a repo name that is the same on every machine and in CI. The name is the `repo` field of the workspace file, and by default the owner and name of the `origin` remote, or the directory name when there is no remote. Never a local path or `worktreeHash`.
+
+Spec sections touched: 1, 4, 6, 9, 11, 13, 14.
 
 ## M8 Any TypeScript project (Path A)
 
@@ -59,7 +64,8 @@ Most layouts already work: pnpm, `package.json` workspaces (npm, yarn, bun), Nx 
 - A repo whose packages are tied together only by tsconfig project references.
 - A repo with several `package.json` files and no workspace tool.
 - Bundler aliases (Vite, webpack) that are not in tsconfig `paths`.
-- A measured cold index of a public repo of about 10,000 TypeScript files in about a minute. The current figure, about 5,000 files in 11 s, is extrapolated, not run at 10,000.
+- A tsconfig that extends one provided by a workspace package loses its own `paths` when the target repo has no `node_modules` (#265). Measured on formbricks at `b52ebf8`: 12,996 unresolved imports on a fresh clone, 652 once that one package is linked.
+- A measured cold index (#202): a pinned public repo of at least 10,000 TypeScript files indexes in 60 s or less on the reference machine (Apple M3 Pro), median of 3 runs from fresh data dirs, recorded in `docs/milestones/M8.md`. Measured so far: 6,033 files in 28 s.
 
 Spec sections touched: 3 (workspace discovery), 5, 13.
 
@@ -95,9 +101,7 @@ A table named only at runtime is a low-confidence node with a reason, never a gu
 - **Gaps tell you when to ask** (#248). The index records, deterministically, code the recipe does not cover:
   - a manifest dependency (`package.json`, `go.mod`) the recipe has not classified;
   - a client call with no matching endpoint;
-  - a candidate route site (a call on an imported object whose first argument is a path-like string) or a candidate SQL site that no rule covers;
-  - a rule that matched before and matches nothing now;
-  - a tool query (`gantry_trace`, `gantry_node`) that stops at an unlinked call.
+  - a candidate route site (a call on an imported object whose first argument is a path-like string) or a candidate SQL site that no rule covers.
 
   `gantry recipe gaps` lists them, the SessionStart note has one line when any are open, and on-request discovery starts from them. Gaps never start the agent.
 - **Every change is checked and shown.** Examples must pass; a dry run over the whole repo shows routes, endpoints and tables added, removed and changed before the file is written; the user accepts or declines. Once written, the change is an ordinary diff to review and commit.
@@ -148,10 +152,11 @@ Spec sections touched: 5, 7, 9, 15.
 ## M11 Multirepo workspaces (Path B)
 
 - **One store per workspace.** A workspace file lists repos by local path (no remote URLs). Its repos share one database with a repo column, so cross-repo edges, `trace` and search need no federated query layer. A repo used alone is a workspace of one.
-- **Stable IDs gain a repo part** so file and symbol IDs stay unique across repos (section 6). This lands first.
+- **Stable IDs already carry a repo part** (M7, #263), so file and symbol IDs stay unique across repos.
 - **Heal per repo.** Each repo's HEAD, hooks and working layer update only that repo's rows.
 - **Sibling packages.** A dependency on a package that a sibling repo publishes resolves to that repo's source, not `node_modules`.
 - **Across repos:** search, the function index, duplicate warnings (within one language) and the project map, which groups by repo.
+- **Spike first** (#273): one store for two pinned public repos, measuring search, duplicates, heal per repo and sibling-package resolution, before #214 starts.
 - **Recipes per repo.** Each repo has its own committed recipe and its own gaps; discovery runs per repo.
 - **Unverified:** all of M11; nothing here was spiked.
 
@@ -205,50 +210,58 @@ Spec sections touched: 13, 16.
 - The end-to-end case on public code: a TypeScript frontend repo and a Go backend repo in one workspace; a page traces to the Go handler that serves it and the tables it reads and writes (#231).
 - README, install guide and Status table describe V2. Tag the release.
 
-## Reworked for agent recipes and any ORM (#244)
+## Verification
 
-- **Goal 3 is new:** any framework and any ORM, in TypeScript and Go, with no stack-specific code. It was "framework knowledge comes from an agent" with data access limited to Drizzle.
-- **Recipes at init and on request, committed.** The agent runs at init and on request only; every index re-runs the same recipe, like a workflow. The recipe moves from the data dir to `.gantry/recipe.json`, committed with the code, so CI and teammates build the same graph and git is its history. The index lists gaps (#248) so the user knows when to ask for a re-run; gaps never start the agent.
-- **Any ORM.** Four generic data-access helpers (#247) and evaluation cases for TypeScript ORMs (#249) and Go data access (#250). "No new data-access frameworks in V2" is dropped.
-- **Per-stack issues are evaluation cases.** #206 to #209, #240 and #241 keep their fixtures and bars; a miss is fixed in the helpers or the prompt.
-- **echo and fiber** are back in V2 (#212), as evaluation cases.
-- **M9** is renamed "Recipes by agent" and **M14** "Go frameworks and data access".
-- **Two spikes come first** (#245, #246). Until they report, everything that depends on an agent writing recipes unaided, or on the data-access helpers, is a plan, not a measured result.
-- **Multirepo stays in V2** (M11, M13), so the end-to-end case still crosses repos; it now reaches Go tables.
-- **Lost or at risk:** a stack added after init is not mapped until someone asks for a re-run (the gaps line says so); repeatability across agent runs (measured in #245); a recipe file in every repo, written by Gantry and committed by the user; framework evals that pass on prompt tuning rather than held-out repos (the bar is on held-out repos only).
+Every issue states a Verify block: the exact commands, their inputs and the expected output (section 19). These rules apply to all of them.
 
-The #242 reorder still holds: Path A is M9 → M10 → M8 → M14 → M15, React Router and Fastify are the first framework cases, and `fixtures/react-router-fastify` is the first shared fixture.
+- **Pinned corpus (#260).** `evals/oss/repos.json` lists every public repo an evaluation uses: name, URL, full commit SHA, stack and role (`tuning` or `held-out`). `pnpm eval:clone` clones each one at its SHA into `~/Dev/gantry-oss/<name>@<sha7>` (`GANTRY_OSS_DIR` overrides the directory), outside this repo. Nothing is scored on a repo that is not in the file. Already pinned: `formbricks/formbricks@b52ebf833e92c1205d95492dc43567760ef56706` (Next.js, Prisma), `gothinkster/node-express-realworld-example-app@30b68e1e881462b2f4164ea09ab4c4f5699c7b0b` (Express, Prisma) and `dotnize/react-tanstarter@7faa622c492fc3f699dc959afc69a76205bb1774` (TanStack Start, Drizzle).
+- **Labels before code.** `evals/oss/labels/<name>.json` holds the hand labels: routes, endpoints, tables, reads and writes, or call-to-handler links. They are written in their own issues (#268, #269, #271, #277), before the cases scored against them and never by whoever writes the recipe or the matcher. The maintainer checks one label in ten.
+- **Scoring.** `pnpm eval:score <case>` prints precision and recall per node kind as JSON and exits non-zero below the bar: at least 90% recall at 95% precision.
+- **Fixed recipe and agent, scored apart.** Each stack case has two results:
+  1. _Fixed recipe._ A committed reference recipe, `evals/oss/recipes/<name>.recipe.json`, applied by the index, reaches the bar on the held-out repo, and two runs from fresh data dirs give a byte-identical `index --dump`. This shows the engine and helpers can express the stack. `pnpm eval:recipes` runs every such case.
+  2. _Agent._ The recipe agent writes the recipe unaided, three times, with the model id recorded. Each run is scored, and the worst of the three is held to the bar. The report gives the three scores and what differs between the three recipes. Agent runs are never part of `pnpm check`.
+- **Pass or fail.** A case under the bar fails. The fix goes into a generic helper or the prompt; if it cannot land in the same issue, a follow-up issue is opened and named in the report. No case passes by explaining its miss.
+- **Byte-stable output.** `index --dump`, `trace --json` and `review --json` (#261) are compared by sha256 across two fresh data dirs (`CLAUDE_PLUGIN_DATA=<tmp>`).
+- **Timings** are measured on a named machine, recorded in the milestone report as the median of 3 runs, and never part of `pnpm check`.
+- **UI** is checked by a Playwright spec in `packages/explorer/web/e2e`, with reduced motion forced, against the built CLI's `map` on a fixture. The issue lists the steps the spec takes.
+- **Search and descriptions.** A check that depends on search sets the model directory and says whether vectors exist (#262); a check that depends on descriptions uses committed description fixtures, not a describer run.
+- **Milestone reports.** The last issue of each milestone runs its regression and writes `docs/milestones/M<n>.md`: #264 (M7), #266 (M8), #270 (M9), #272 (M10), #274 (M11), #275 (M12), #276 (M13), #278 (M14), #233 (M15).
 
-## Changes from the draft
+### Which stacks block the release
 
-Accepted from the simplification review:
+| Blocks V2 (both results at the bar)                                                     | Measured and reported, does not block          |
+| --------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| React Router, Fastify, Express, NestJS, Next.js; oRPC, TanStack Start (reproduce today) | none                                           |
+| Drizzle, Prisma, raw SQL                                                                | TypeORM, Kysely, Sequelize, MikroORM, Mongoose |
+| net/http, chi, gin                                                                      | echo, fiber                                    |
+| database/sql, sqlx, GORM                                                                | sqlc, ent                                      |
 
-- Cut the draft's M12 contributor experience and M13 trial; V2 is tagged when the end-to-end case passes. Their open questions (Windows for the trial, trial size, feedback destination, "who to ask") are gone. Lost: contributor feedback before the tag.
-- The six shipped adapters are replaced by recipes run through the existing adapter framework, and deleted. M9's gate is reproducing `fixtures/adapters`, not only `pnpm-turbo` routes.
-- The draft's M11 (cross-repo contracts) is mostly built (`clients.ts` matching, `trace`, views 7 to 11). It shrinks to the linking gaps: single-repo gaps are M10 (Path A), cross-repo linking is M13 (Path B); no new trace views.
-- Framework evals: three TypeScript (Express, NestJS, Next.js) and three Go (net/http, chi, gin) instead of ten. Lost: measured recall for Fastify, echo and fiber. (Superseded: Fastify came back in #242, echo and fiber in #244.)
-- OpenAPI is out of V2. Lost: spec-versus-code drift reports.
-- One store per workspace instead of a store per repo with a query layer. Lost: sharing one repo's store across workspaces.
-- M7 is reduced to the gaps that remain (references-only, no workspace tool, bundler aliases, one benchmark).
-- No Go helper binary; no formal conformance suite until Java; Go reuses the TypeScript duplicate thresholds.
-- Discovery re-runs on request only; recipes hold no framework versions. (Kept in #244; the recipe is now committed to the repo.)
-- Workspace files hold local paths only.
+## Build order
 
-Not accepted:
+Blocked-by relations between issues are kept in the tracker. These contracts and files have one writer at a time:
 
-- Using the index-format re-index as the upgrade path for refactors. There are no users: format changes rebuild the index, and the re-index mechanism itself is removed in M7.
-- Dropping base-URL config. The URL-linking spike showed a path prefix is needed and cannot be read from the repo; discovery proposes the config instead of the user writing it.
-- Cutting data access from recipes. Drizzle tables are shipped behaviour; recipes must keep them when the hand-written adapter is deleted. (Widened in #244 to any ORM.)
+- **Store schema, stable IDs and snapshots:** #258 and #259, then #189 → #198 → #263 (repo part in IDs) → #220 (`lang` field) → #203 (recipe engine). #214 follows #263 and the spike #273.
+- **`clients.ts`:** #225 → #226 → #227 → #228 → #229.
+- **Workspace discovery:** #199, #200, #265, #214 and #221, one at a time in the order they become ready.
+- **`fixtures/react-router-fastify`:** #267 creates it; #240 and #241 only read it.
 
-Changed by the spikes (none was a no-go):
+Other order that the milestone order does not show:
 
-- Go no longer depends on framework recipes as a whole (draft: M10 needed M8): only Go frameworks need recipes, and they are Path A's M14, after Path B's M12. Milestone numbers in the spike reports refer to the draft.
-- Recipe validation uses example snippets; zero matches is a warning (draft: drop rules that match nothing).
-- Rules need five generic helpers, not only a file-naming helper.
-- Go needs local type inference for concrete methods; interface calls are high confidence to the interface method; `implements` is computed by name at low confidence (draft: not computed).
-- Hashing split: the language supplies token streams for five hashes; normalising stays per language.
-- Base-URL config needs a prefix and same-origin keys.
-- Package names and versions confirmed: `@ast-grep/napi` 0.51.3, `@ast-grep/lang-go` 0.0.6, `@ast-grep/lang-java` 0.0.7 (Java parses with no Java runtime installed).
+- #260 (corpus) comes before any case, and each label issue before the cases scored against it.
+- #245 blocks every agent-scored result; #246 blocks #247, #249 and #250.
+- #248 (gaps) comes before #205, because on-request discovery starts from the open gaps.
+- #247 deletes the Drizzle adapter; #206 deletes the oRPC and TanStack Start ones.
+- #212 is the fixed-recipe result for the five Go routers; #213 is the agent result for Go, on held-out repos, covering routers and data access.
+- M10's issues follow #203; M8's follow M10.
+
+## Lost or at risk
+
+- A stack added after init is not mapped until someone asks for a re-run (the gaps line says so).
+- Repeatability across agent runs (measured in #245).
+- A recipe file in every repo, written by Gantry and committed by the user.
+- Sharing one repo's store across workspaces (one store per workspace).
+- OpenAPI as a link source, and with it spec-versus-code drift reports.
+- A formal conformance suite for languages, until Java needs it.
 
 ## Out of scope for V2
 
@@ -263,7 +276,7 @@ Changed by the spikes (none was a no-go):
 - The data-access helpers on any ORM (#246).
 - Every framework and ORM as a recipe except the five spiked (TanStack Router, Hono, Express, chi, gin); net/http patterns; Fastify autoload; echo and fiber.
 - How noisy gap detection is.
-- Everything in M11.
+- Everything in M11 (#273 measures it first).
 - A 10,000-file cold index (extrapolated).
 - Go `vendor/` and `go.work`; Go duplicate thresholds; Go descriptions.
 - Windows arm64 (no ast-grep prebuild) and Linux musl.
