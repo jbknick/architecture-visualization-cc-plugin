@@ -476,6 +476,24 @@ describe("gantry review", () => {
     after.close();
   });
 
+  it("--json prints the same bytes on every run and from fresh data dirs, with no ms field", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const env1 = { CLAUDE_PLUGIN_DATA: join(dataDir, "review-stable-1") };
+    const env2 = { CLAUDE_PLUGIN_DATA: join(dataDir, "review-stable-2") };
+    const file = join(fx.dir, "packages/utils/src/slug.ts");
+    writeFileSync(file, `${readFileSync(file, "utf8")}\nexport const extra = (s: string) => s.trim();\n`);
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-m", "change"]);
+    expect(run(fx.dir, ["init"], env1).code).toBe(0);
+    expect(run(fx.dir, ["init"], env2).code).toBe(0);
+    const first = run(fx.dir, ["review", "HEAD~1...HEAD", "--json"], env1);
+    expect(first.code).toBe(0);
+    expect(first.out).not.toContain('"ms"');
+    expect((JSON.parse(first.out) as { changes: unknown[] }).changes.length).toBeGreaterThan(0);
+    expect(run(fx.dir, ["review", "HEAD~1...HEAD", "--json"], env1).out).toBe(first.out);
+    expect(run(fx.dir, ["review", "HEAD~1...HEAD", "--json"], env2).out).toBe(first.out);
+  });
+
   it("--open starts the explorer like gantry_open_view and opens the review view of the range", async () => {
     const fx = await fixture("pnpm-turbo");
     const data = join(dataDir, "review-open");
