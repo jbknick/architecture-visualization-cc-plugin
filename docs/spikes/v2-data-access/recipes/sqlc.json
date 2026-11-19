@@ -1,0 +1,15 @@
+{
+  "name": "sqlc",
+  "frameworks": [
+    { "name": "sqlc", "evidence": "sqlc.yaml; queries in db/query/*.sql; schema in db/migration/*.sql" }
+  ],
+  "languages": ["go"],
+  "helpers": ["sql-text"],
+  "sql": {
+    "knownTablesOnly": true,
+    "sqlFiles": true,
+    "declFiles": ["db/migration/**"],
+    "accessFiles": ["db/query/**"]
+  },
+  "rules": []
+}

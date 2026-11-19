@@ -1,0 +1,10 @@
+{
+  "name": "database-sql",
+  "frameworks": [
+    { "name": "database/sql", "evidence": "db.Query, db.Exec with SQL strings; migrations in .sql files" }
+  ],
+  "languages": ["go"],
+  "helpers": ["sql-text"],
+  "sql": { "knownTablesOnly": true, "sqlFiles": true },
+  "rules": []
+}

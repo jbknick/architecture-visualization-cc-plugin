@@ -1,0 +1,68 @@
+{
+  "name": "typeorm",
+  "frameworks": [
+    { "name": "typeorm", "evidence": "@Entity classes; Repository<T> injected with @InjectRepository" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+  "methods": {
+    "read": [
+      "find",
+      "findOne",
+      "findBy",
+      "findOneBy",
+      "findOneOrFail",
+      "findOneByOrFail",
+      "findAndCount",
+      "count",
+      "countBy",
+      "exist",
+      "exists"
+    ],
+    "write": [
+      "save",
+      "insert",
+      "update",
+      "upsert",
+      "delete",
+      "softDelete",
+      "remove",
+      "softRemove",
+      "restore",
+      "increment",
+      "decrement"
+    ]
+  },
+  "rules": [
+    {
+      "id": "entity-named",
+      "language": "typescript",
+      "rule": { "kind": "decorator", "pattern": "@Entity({ name: $N })" },
+      "emit": { "kind": "table", "name": "$N", "model": "@class" }
+    },
+    {
+      "id": "entity-string",
+      "language": "typescript",
+      "rule": { "kind": "decorator", "pattern": "@Entity($N)" },
+      "constraints": { "N": { "kind": "string" } },
+      "emit": { "kind": "table", "name": "$N", "model": "@class" }
+    },
+    {
+      "id": "entity-default",
+      "language": "typescript",
+      "rule": { "kind": "decorator", "pattern": "@Entity()" },
+      "emit": { "kind": "table", "name": "@class", "model": "@class" }
+    },
+    {
+      "id": "repository-call",
+      "language": "typescript",
+      "rule": { "pattern": "$R.$M($$$A)" },
+      "constraints": { "R": { "kind": "member_expression" } },
+      "emit": {
+        "kind": "access",
+        "receiver": "$R",
+        "method": "$M",
+        "modelFromReceiverDecl": ["\\b{prop}\\s*:\\s*Repository<(\\w+)>"]
+      }
+    }
+  ]
+}

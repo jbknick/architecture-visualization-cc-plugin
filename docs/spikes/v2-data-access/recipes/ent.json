@@ -1,0 +1,43 @@
+{
+  "name": "ent",
+  "frameworks": [
+    {
+      "name": "ent",
+      "evidence": "ent/schema types; generated Table constants; client.<Entity>.<Method> calls (examples/ only)"
+    }
+  ],
+  "includeTests": true,
+  "helpers": ["model-naming", "method-classes"],
+  "naming": { "derive": ["snake", "plural"] },
+  "methods": {
+    "read": ["Query"],
+    "write": [
+      "Create",
+      "CreateBulk",
+      "Update",
+      "UpdateOne",
+      "UpdateOneID",
+      "Delete",
+      "DeleteOne",
+      "DeleteOneID"
+    ]
+  },
+  "rules": [
+    {
+      "id": "table-const",
+      "language": "go",
+      "files": ["examples/*/ent/*/*.go"],
+      "rule": { "pattern": { "context": "const $NAME = $N", "selector": "const_spec" } },
+      "constraints": { "NAME": { "regex": "Table$" }, "N": { "regex": "^\"[a-z_0-9]+\"$" } },
+      "emit": { "kind": "table", "name": "$N" }
+    },
+    {
+      "id": "client-call",
+      "language": "go",
+      "files": ["examples/*/*.go", "examples/*/rule/*.go", "examples/*/viewer/*.go"],
+      "rule": { "pattern": "$C.$E.$M($$$A)" },
+      "constraints": { "E": { "regex": "^[A-Z]" } },
+      "emit": { "kind": "access", "method": "$M", "model": "$E" }
+    }
+  ]
+}
