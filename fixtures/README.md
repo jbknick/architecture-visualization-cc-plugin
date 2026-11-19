@@ -43,8 +43,8 @@ Workspace (`apps/*`, `packages/*`) with three React Router apps, one per declara
 - `packages/db` (`@acme-rrf/db`, `drizzle-orm`): `pgTable("posts")`, `pgTable("users")`, `pgTable("comments")`; `src/queries/*.ts` do `select().from`, `insert`, `update`, `delete` and one `innerJoin` (comments with users). Controllers call them, so a page reaches a table through an endpoint (for example `PostList` to `GET /api/posts` to `posts`).
 
 ## go-basic
-Two Go modules, no TypeScript (`go.work` uses `.` and `./tools`). Used by the `go-basic` dump snapshot and the Go parser tests.
-- `go.mod` (`example.com/gobasic`) with `cmd/server` (`package main`, so the workspace is an app), `internal/store` (struct `Store` with `Get` and `Put`, constructor `New`, interface `Reader`, a `_test.go` file), `internal/text` (`Slugify`, `trimDashes`, a `const` block with two names on one line, a `var`, a type alias, a method, two `init` functions in `init.go`).
+Two Go modules, no TypeScript (`go.work` uses `.` and `./tools`). Used by the `go-basic` dump snapshot, the Go parser tests and the Go call-edge tests.
+- `go.mod` (`example.com/gobasic`) with `cmd/server` (`package main`, so the workspace is an app), `internal/store` (struct `Store` with `Get` and `Put`, constructor `New`, interface `Reader`, a `_test.go` file; also `Mirror`, a second `Reader`, `Cache`, which embeds `Store`, `Warm`, `Lookup`, a call through `Reader`, and `Dump`, a call in a `range` over `[]*Store`), `internal/app` (`App.Run` calls `a.deps.Store.Put` through a field chain and `text.Slugify` by its plain import name; `cmd/server` calls it as `str.Slugify` through an aliased import), `internal/text` (`Slugify`, `trimDashes`, a `const` block with two names on one line, a `var`, a type alias, a method, two `init` functions in `init.go`).
 - `internal/net/listen.go` and `listen_unix.go` (`//go:build unix`) both declare `listen`: two ids, one per file.
 - `internal/gen/zz_generated.go`: generated header, indexed with the `generated` directive.
 - `vendor/example.com/dep/dep.go`: skipped.
