@@ -219,7 +219,7 @@ The validator accepts the **shape of a description** instead of banning phrases 
 
 ## 9. SQLite schema (`core/src/store/schema.sql`)
 
-One schema definition (`SCHEMA` in `core/src/store/schema.ts`, equal to `schema.sql` and to the block below; `store.test.ts` asserts both) and one version number, `SCHEMA_VERSION` (`store/db.ts`), currently 10. There are no numbered migrations.
+One schema definition (`SCHEMA` in `core/src/store/schema.ts`, equal to `schema.sql` and to the block below; `store.test.ts` asserts both) and one version number, `SCHEMA_VERSION` (`store/db.ts`), currently 11. There are no numbered migrations.
 
 ```sql
 CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);            -- schema_version, head_sha, indexed_at, last_refresh_at, vec_available, embed_model, embed_dim, repo_root, repo (the repo name of every id, written by the indexer), catalog_hash:*, catalog_written_at, backlog_synced_at (#147: set by a full syncBacklog, so `isIndexed` tells an initialised store from one a lookup created)
