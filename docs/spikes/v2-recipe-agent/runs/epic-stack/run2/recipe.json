@@ -1,0 +1,105 @@
+{
+  "name": "epic-stack",
+  "frameworks": [
+    { "name": "react-router", "evidence": "app/routes.ts autoRoutes" },
+    { "name": "prisma", "evidence": "prisma/schema.prisma" }
+  ],
+  "helpers": [],
+  "rules": [
+    {
+      "id": "prisma-models",
+      "language": "text",
+      "files": ["prisma/schema.prisma"],
+      "rule": { "regex": "^model\\s+(\\w+)\\s*\\{" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": { "match": ["model User {\n  id String\n}"], "noMatch": ["enum Role {\n}"] }
+    },
+    {
+      "id": "ui-routes",
+      "language": "text",
+      "files": [
+        "app/routes/$.tsx",
+        "app/routes/me.tsx",
+        "app/routes/_marketing/*.tsx",
+        "app/routes/_auth/*.tsx",
+        "app/routes/_auth/onboarding/*.tsx",
+        "app/routes/admin/cache/index.tsx",
+        "app/routes/users/*.tsx",
+        "app/routes/users/$username/index.tsx",
+        "app/routes/users/$username/notes/index.tsx",
+        "app/routes/users/$username/notes/new.tsx",
+        "app/routes/users/$username/notes/$noteId.tsx",
+        "app/routes/users/$username/notes/$noteId_.edit.tsx",
+        "app/routes/settings/profile/index.tsx",
+        "app/routes/settings/profile/change-email.tsx",
+        "app/routes/settings/profile/connections.tsx",
+        "app/routes/settings/profile/passkeys.tsx",
+        "app/routes/settings/profile/password.tsx",
+        "app/routes/settings/profile/password_.create.tsx",
+        "app/routes/settings/profile/photo.tsx",
+        "app/routes/settings/profile/two-factor/index.tsx",
+        "app/routes/settings/profile/two-factor/disable.tsx",
+        "app/routes/settings/profile/two-factor/verify.tsx"
+      ],
+      "rule": { "regex": "export default" },
+      "emit": {
+        "kind": "route",
+        "pathFromFile": {
+          "pattern": "^app/routes/(.*)\\.tsx$",
+          "template": "/$1",
+          "rewrite": [
+            { "regex": "^/_[^/]+/", "with": "/" },
+            { "regex": "/index$", "with": "" },
+            { "regex": "/\\$$", "with": "/*" },
+            { "regex": "\\.", "with": "/" },
+            { "regex": "_/", "with": "/" },
+            { "regex": "_$", "with": "" },
+            { "regex": "\\$", "with": ":" }
+          ]
+        }
+      },
+      "examples": { "match": ["export default function A() {}"], "noMatch": ["export function loader() {}"] }
+    },
+    {
+      "id": "resource-routes",
+      "language": "text",
+      "files": [
+        "app/routes/_auth/logout.tsx",
+        "app/routes/_auth/auth.$provider/*.ts",
+        "app/routes/_auth/webauthn/authentication.ts",
+        "app/routes/_auth/webauthn/registration.ts",
+        "app/routes/_seo/*.ts",
+        "app/routes/me.tsx",
+        "app/routes/resources/*.tsx",
+        "app/routes/admin/cache/*.$cacheKey.ts"
+      ],
+      "rule": {
+        "regex": "(?<![\\s\\S])(?![\\s\\S]*export default)[\\s\\S]*export (?:async )?function (?:loader|action)"
+      },
+      "emit": {
+        "kind": "endpoint",
+        "method": "=ALL",
+        "standalone": true,
+        "pathFromFile": {
+          "pattern": "^app/routes/(.*)\\.tsx?$",
+          "template": "/$1",
+          "rewrite": [
+            { "regex": "^/_[^/]+/", "with": "/" },
+            { "regex": "\\[\\.\\]", "with": "__DOT__" },
+            { "regex": "/index$", "with": "" },
+            { "regex": "/\\$$", "with": "/*" },
+            { "regex": "\\.", "with": "/" },
+            { "regex": "__DOT__", "with": "." },
+            { "regex": "_/", "with": "/" },
+            { "regex": "_$", "with": "" },
+            { "regex": "\\$", "with": ":" }
+          ]
+        }
+      },
+      "examples": {
+        "match": ["export async function loader() {}"],
+        "noMatch": ["export default function A() {}\nexport function loader() {}"]
+      }
+    }
+  ]
+}

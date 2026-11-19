@@ -1,0 +1,405 @@
+{
+  "files": [],
+  "edges": [],
+  "adapterNodes": [
+    {
+      "id": "route:epic-stack-template:/",
+      "kind": "route",
+      "data": {
+        "urlPath": "/"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/*",
+      "kind": "route",
+      "data": {
+        "urlPath": "/*"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/about",
+      "kind": "route",
+      "data": {
+        "urlPath": "/about"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/admin/cache",
+      "kind": "route",
+      "data": {
+        "urlPath": "/admin/cache"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/forgot-password",
+      "kind": "route",
+      "data": {
+        "urlPath": "/forgot-password"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/login",
+      "kind": "route",
+      "data": {
+        "urlPath": "/login"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/onboarding",
+      "kind": "route",
+      "data": {
+        "urlPath": "/onboarding"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/onboarding/:provider",
+      "kind": "route",
+      "data": {
+        "urlPath": "/onboarding/:provider"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/privacy",
+      "kind": "route",
+      "data": {
+        "urlPath": "/privacy"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/reset-password",
+      "kind": "route",
+      "data": {
+        "urlPath": "/reset-password"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/settings/profile",
+      "kind": "route",
+      "data": {
+        "urlPath": "/settings/profile"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/settings/profile/change-email",
+      "kind": "route",
+      "data": {
+        "urlPath": "/settings/profile/change-email"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/settings/profile/connections",
+      "kind": "route",
+      "data": {
+        "urlPath": "/settings/profile/connections"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/settings/profile/passkeys",
+      "kind": "route",
+      "data": {
+        "urlPath": "/settings/profile/passkeys"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/settings/profile/password",
+      "kind": "route",
+      "data": {
+        "urlPath": "/settings/profile/password"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/settings/profile/password/create",
+      "kind": "route",
+      "data": {
+        "urlPath": "/settings/profile/password/create"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/settings/profile/photo",
+      "kind": "route",
+      "data": {
+        "urlPath": "/settings/profile/photo"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/settings/profile/two-factor",
+      "kind": "route",
+      "data": {
+        "urlPath": "/settings/profile/two-factor"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/settings/profile/two-factor/disable",
+      "kind": "route",
+      "data": {
+        "urlPath": "/settings/profile/two-factor/disable"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/settings/profile/two-factor/verify",
+      "kind": "route",
+      "data": {
+        "urlPath": "/settings/profile/two-factor/verify"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/signup",
+      "kind": "route",
+      "data": {
+        "urlPath": "/signup"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/support",
+      "kind": "route",
+      "data": {
+        "urlPath": "/support"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/tos",
+      "kind": "route",
+      "data": {
+        "urlPath": "/tos"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/users",
+      "kind": "route",
+      "data": {
+        "urlPath": "/users"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/users/:username",
+      "kind": "route",
+      "data": {
+        "urlPath": "/users/:username"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/users/:username/notes",
+      "kind": "route",
+      "data": {
+        "urlPath": "/users/:username/notes"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/users/:username/notes/:noteId",
+      "kind": "route",
+      "data": {
+        "urlPath": "/users/:username/notes/:noteId"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/users/:username/notes/:noteId/edit",
+      "kind": "route",
+      "data": {
+        "urlPath": "/users/:username/notes/:noteId/edit"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/users/:username/notes/new",
+      "kind": "route",
+      "data": {
+        "urlPath": "/users/:username/notes/new"
+      }
+    },
+    {
+      "id": "route:epic-stack-template:/verify",
+      "kind": "route",
+      "data": {
+        "urlPath": "/verify"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /admin/cache/lru/:cacheKey",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/admin/cache/lru/:cacheKey"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /admin/cache/sqlite/:cacheKey",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/admin/cache/sqlite/:cacheKey"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /auth/:provider",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/auth/:provider"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /auth/:provider/callback",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/auth/:provider/callback"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /logout",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/logout"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /me",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/me"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /resources/download-user-data",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/resources/download-user-data"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /resources/healthcheck",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/resources/healthcheck"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /resources/images",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/resources/images"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /resources/theme-switch",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/resources/theme-switch"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /robots.txt",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/robots.txt"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /sitemap.xml",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/sitemap.xml"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /webauthn/authentication",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/webauthn/authentication"
+      }
+    },
+    {
+      "id": "ep:epic-stack-template:ALL /webauthn/registration",
+      "kind": "endpoint",
+      "data": {
+        "method": "ALL",
+        "path": "/webauthn/registration"
+      }
+    },
+    {
+      "id": "table:connection",
+      "kind": "table",
+      "data": {
+        "name": "Connection"
+      }
+    },
+    {
+      "id": "table:note",
+      "kind": "table",
+      "data": {
+        "name": "Note"
+      }
+    },
+    {
+      "id": "table:noteimage",
+      "kind": "table",
+      "data": {
+        "name": "NoteImage"
+      }
+    },
+    {
+      "id": "table:passkey",
+      "kind": "table",
+      "data": {
+        "name": "Passkey"
+      }
+    },
+    {
+      "id": "table:password",
+      "kind": "table",
+      "data": {
+        "name": "Password"
+      }
+    },
+    {
+      "id": "table:permission",
+      "kind": "table",
+      "data": {
+        "name": "Permission"
+      }
+    },
+    {
+      "id": "table:role",
+      "kind": "table",
+      "data": {
+        "name": "Role"
+      }
+    },
+    {
+      "id": "table:session",
+      "kind": "table",
+      "data": {
+        "name": "Session"
+      }
+    },
+    {
+      "id": "table:user",
+      "kind": "table",
+      "data": {
+        "name": "User"
+      }
+    },
+    {
+      "id": "table:userimage",
+      "kind": "table",
+      "data": {
+        "name": "UserImage"
+      }
+    },
+    {
+      "id": "table:verification",
+      "kind": "table",
+      "data": {
+        "name": "Verification"
+      }
+    }
+  ]
+}

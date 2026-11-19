@@ -1,0 +1,158 @@
+{
+  "name": "gin-realworld",
+  "frameworks": [{ "name": "gin", "evidence": "gin.Default, RouterGroup" }],
+  "when": { "imports": ["github.com/gin-gonic/gin", "gorm.io/gorm"] },
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "gin-router",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "gin.Default()" },
+      "emit": { "kind": "router" },
+      "examples": { "match": ["gin.Default()"], "noMatch": ["gin.New()"] }
+    },
+    {
+      "id": "gin-group-var",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": {
+        "pattern": { "context": "func _() { $C := $P.Group($X) }", "selector": "short_var_declaration" }
+      },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C", "prefix": "$X" },
+      "examples": { "match": ["v1 := r.Group(\"/api\")"], "noMatch": ["v1 := r.Get(\"/api\")"] }
+    },
+    {
+      "id": "gin-endpoint",
+      "language": "go",
+      "files": ["hello.go"],
+      "rule": { "pattern": "$R.$M($X, $H)" },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$X", "handler": "$H" },
+      "examples": { "match": ["router.GET(\"/x\", H)"], "noMatch": ["router.Get(\"/x\", H)"] }
+    },
+    {
+      "id": "users-register",
+      "language": "go",
+      "files": ["users/routers.go"],
+      "rule": {
+        "pattern": "$R.$M($X, $H)",
+        "inside": {
+          "kind": "function_declaration",
+          "stopBy": "end",
+          "has": { "field": "name", "regex": "^UsersRegister$" }
+        }
+      },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH)$" } },
+      "emit": { "kind": "endpoint", "method": "$M", "path": "$X", "handler": "$H", "prefix": "=/api/users" },
+      "examples": {
+        "match": [
+          "package p\n\nfunc UsersRegister(router *gin.RouterGroup) {\n\trouter.POST(\"/login\", H)\n}"
+        ],
+        "noMatch": ["package p\n\nfunc Other(router *gin.RouterGroup) {\n\trouter.POST(\"/login\", H)\n}"]
+      }
+    },
+    {
+      "id": "user-register",
+      "language": "go",
+      "files": ["users/routers.go"],
+      "rule": {
+        "pattern": "$R.$M($X, $H)",
+        "inside": {
+          "kind": "function_declaration",
+          "stopBy": "end",
+          "has": { "field": "name", "regex": "^UserRegister$" }
+        }
+      },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH)$" } },
+      "emit": { "kind": "endpoint", "method": "$M", "path": "$X", "handler": "$H", "prefix": "=/api/user" },
+      "examples": {
+        "match": ["package p\n\nfunc UserRegister(router *gin.RouterGroup) {\n\trouter.GET(\"\", H)\n}"],
+        "noMatch": ["package p\n\nfunc Other(router *gin.RouterGroup) {\n\trouter.GET(\"\", H)\n}"]
+      }
+    },
+    {
+      "id": "profile-register",
+      "language": "go",
+      "files": ["users/routers.go"],
+      "rule": {
+        "pattern": "$R.$M($X, $H)",
+        "inside": {
+          "kind": "function_declaration",
+          "stopBy": "end",
+          "has": { "field": "name", "regex": "^Profile(Retrieve)?Register$" }
+        }
+      },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H",
+        "prefix": "=/api/profiles"
+      },
+      "examples": {
+        "match": [
+          "package p\n\nfunc ProfileRegister(router *gin.RouterGroup) {\n\trouter.POST(\"/:u/follow\", H)\n}"
+        ],
+        "noMatch": ["package p\n\nfunc Other(router *gin.RouterGroup) {\n\trouter.POST(\"/x\", H)\n}"]
+      }
+    },
+    {
+      "id": "articles-register",
+      "language": "go",
+      "files": ["articles/routers.go"],
+      "rule": {
+        "pattern": "$R.$M($X, $H)",
+        "inside": {
+          "kind": "function_declaration",
+          "stopBy": "end",
+          "has": { "field": "name", "regex": "^Articles(Anonymous)?Register$" }
+        }
+      },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "path": "$X",
+        "handler": "$H",
+        "prefix": "=/api/articles"
+      },
+      "examples": {
+        "match": [
+          "package p\n\nfunc ArticlesRegister(router *gin.RouterGroup) {\n\trouter.GET(\"/feed\", H)\n}"
+        ],
+        "noMatch": ["package p\n\nfunc Other(router *gin.RouterGroup) {\n\trouter.GET(\"/feed\", H)\n}"]
+      }
+    },
+    {
+      "id": "tags-register",
+      "language": "go",
+      "files": ["articles/routers.go"],
+      "rule": {
+        "pattern": "$R.$M($X, $H)",
+        "inside": {
+          "kind": "function_declaration",
+          "stopBy": "end",
+          "has": { "field": "name", "regex": "^TagsAnonymousRegister$" }
+        }
+      },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH)$" } },
+      "emit": { "kind": "endpoint", "method": "$M", "path": "$X", "handler": "$H", "prefix": "=/api/tags" },
+      "examples": {
+        "match": [
+          "package p\n\nfunc TagsAnonymousRegister(router *gin.RouterGroup) {\n\trouter.GET(\"\", H)\n}"
+        ],
+        "noMatch": ["package p\n\nfunc Other(router *gin.RouterGroup) {\n\trouter.GET(\"\", H)\n}"]
+      }
+    },
+    {
+      "id": "gorm-models",
+      "language": "text",
+      "files": ["**/models.go"],
+      "rule": { "regex": "type\\s+(\\w+Model)\\s+struct\\s*\\{" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": { "match": ["type UserModel struct {"], "noMatch": ["type result struct {"] }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+I wrote `.gantry/recipe.json`, and the dry-run says ACCEPTED with all examples passing.
+
+**Stack:** React Router with file-based routes from `autoRoutes` in `app/routes.ts`, an Express server, and Prisma.
+
+**Counts:**
+- **Routes:** 30.
+- **Endpoints:** 15, all with method `ALL`. They are the React Router resource routes (loader/action only, no UI): `/me`, `/logout`, `/auth/:provider` and its callback, `/webauthn/*`, `/robots.txt`, `/sitemap.xml`, `/resources/*` and `/admin/cache/*`.
+- **Tables:** 11 Prisma models.
+
+**What I could not express:**
+- **File lists:** There is no way to exclude files by glob, so the page and resource-route rules list their files explicitly. A new route file will not be picked up until it is added to those lists.
+- **`_layout.tsx` files:** I left them out on purpose, since they are layouts with no URL of their own.
+- **Express handlers:** I skipped the catch-all `app.get(/.*/)` and the `/img/*` and `/favicons/*` fallback handlers in `server/index.ts`. Their paths are regexes, not plain strings.
+- **Methods:** The endpoints are all `ALL` because I did not split them into the individual `loader` (GET) and `action` (POST) methods.
+- **Checks:** I did not run `grep -L` over the route files, so I did not independently confirm the list of files without a default export. I took it from the earlier `export default` file list instead.

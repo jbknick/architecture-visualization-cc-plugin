@@ -1,0 +1,76 @@
+{
+  "name": "bulletproof-react",
+  "frameworks": [
+    { "name": "nextjs", "evidence": "apps/nextjs-app, apps/nextjs-pages" },
+    { "name": "react-router", "evidence": "apps/react-vite" }
+  ],
+  "helpers": [],
+  "rules": [
+    {
+      "id": "next-app-pages",
+      "language": "text",
+      "files": ["apps/nextjs-app/src/app/**/page.tsx"],
+      "rule": {},
+      "emit": {
+        "kind": "route",
+        "pathFromFile": {
+          "pattern": "^apps/nextjs-app/src/app/(.*?)/?page\\.tsx$",
+          "template": "/$1",
+          "rewrite": [{ "regex": "\\([^/]*\\)/", "with": "" }]
+        }
+      },
+      "examples": { "match": ["export default function Page() {}"], "noMatch": [] }
+    },
+    {
+      "id": "next-pages",
+      "language": "text",
+      "files": [
+        "apps/nextjs-pages/src/pages/index.tsx",
+        "apps/nextjs-pages/src/pages/404.tsx",
+        "apps/nextjs-pages/src/pages/app/**/*.tsx",
+        "apps/nextjs-pages/src/pages/auth/**/*.tsx",
+        "apps/nextjs-pages/src/pages/public/**/*.tsx"
+      ],
+      "rule": {},
+      "emit": {
+        "kind": "route",
+        "pathFromFile": {
+          "pattern": "^apps/nextjs-pages/src/pages/(.*)\\.tsx$",
+          "template": "/$1",
+          "rewrite": [{ "regex": "^/index$", "with": "/" }, { "regex": "/index$", "with": "" }]
+        }
+      },
+      "examples": { "match": ["export default function Page() {}"], "noMatch": [] }
+    },
+    {
+      "id": "vite-routes",
+      "language": "text",
+      "files": [
+        "apps/react-vite/src/app/routes/landing.tsx",
+        "apps/react-vite/src/app/routes/auth/*.tsx",
+        "apps/react-vite/src/app/routes/app/users.tsx",
+        "apps/react-vite/src/app/routes/app/profile.tsx",
+        "apps/react-vite/src/app/routes/app/dashboard.tsx",
+        "apps/react-vite/src/app/routes/app/discussions/discussions.tsx",
+        "apps/react-vite/src/app/routes/app/discussions/discussion.tsx",
+        "apps/react-vite/src/app/routes/not-found.tsx"
+      ],
+      "rule": {},
+      "emit": {
+        "kind": "route",
+        "pathFromFile": {
+          "pattern": "^apps/react-vite/src/app/routes/(.*)\\.tsx$",
+          "template": "/$1",
+          "rewrite": [
+            { "regex": "^/landing$", "with": "/" },
+            { "regex": "^/not-found$", "with": "/*" },
+            { "regex": "^/app/dashboard$", "with": "/app" },
+            { "regex": "^/app/discussions/discussions$", "with": "/app/discussions" },
+            { "regex": "^/app/discussions/discussion$", "with": "/app/discussions/:discussionId" }
+          ]
+        }
+      },
+      "examples": { "match": ["export default function X() {}"], "noMatch": [] }
+    }
+  ]
+}

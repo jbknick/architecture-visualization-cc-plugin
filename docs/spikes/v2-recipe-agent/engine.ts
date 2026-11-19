@@ -508,7 +508,8 @@ export function runRecipe(root: string, recipe: Recipe, tanstack?: TanstackHelpe
   };
 
   const resolveModule = (from: string, spec: string): string | null => {
-    const tryFile = (base: string): string | null => {
+    const tryFile = (raw: string): string | null => {
+      const base = raw.replace(/\.(?:m|c)?js$/, "");
       for (const ext of ["", ".ts", ".tsx", "/index.ts", "/index.tsx"]) {
         const f = path.posix.normalize(base + ext);
         if (files.has(f)) return f;
@@ -516,6 +517,42 @@ export function runRecipe(root: string, recipe: Recipe, tanstack?: TanstackHelpe
       return null;
     };
     if (spec.startsWith(".")) return tryFile(path.posix.join(path.posix.dirname(from), spec));
+    // tsconfig `paths` and `baseUrl` of the nearest tsconfig.json (no `extends`).
+    for (let dir = path.posix.dirname(from); ; dir = path.posix.dirname(dir)) {
+      let co: { baseUrl?: string; paths?: Record<string, string[]> } | undefined;
+      try {
+        const txt = readFileSync(path.join(root, dir, "tsconfig.json"), "utf8")
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .replace(/(^|[^:"])\/\/.*$/gm, "$1")
+          .replace(/,(\s*[}\]])/g, "$1");
+        co = (JSON.parse(txt) as { compilerOptions?: typeof co }).compilerOptions;
+      } catch {}
+      if (co?.paths || co?.baseUrl) {
+        const base = path.posix.join(dir, co.baseUrl ?? ".");
+        for (const [pat, targets] of Object.entries(co.paths ?? {})) {
+          const star = pat.indexOf("*");
+          const rest =
+            star < 0
+              ? pat === spec
+                ? ""
+                : null
+              : spec.startsWith(pat.slice(0, star)) && spec.endsWith(pat.slice(star + 1))
+                ? spec.slice(star, spec.length - (pat.length - star - 1))
+                : null;
+          if (rest === null) continue;
+          for (const t of targets) {
+            const hit = tryFile(path.posix.join(base, t.replace("*", rest)));
+            if (hit) return hit;
+          }
+        }
+        if (co.baseUrl) {
+          const hit = tryFile(path.posix.join(base, spec));
+          if (hit) return hit;
+        }
+        break;
+      }
+      if (dir === "." || dir === "") break;
+    }
     // Workspace package by name (no node_modules in fixtures).
     for (const f of files.keys()) {
       const p = pkgOf(f);
@@ -893,27 +930,29 @@ export function runRecipe(root: string, recipe: Recipe, tanstack?: TanstackHelpe
       if (!prev || base) routers.set(key, { file: m.file, base });
     } else if (e.kind === "mount") {
       const parentN = cap(m, e.parent)[0];
-      const childN = cap(m, e.child)[0];
-      if (!parentN || !childN) continue;
+      if (!parentN) continue;
       const parent = resolveExpr(m.file, parentN);
-      let child: string | null;
-      if (e.childIsScope) {
-        let fnNode: SgNode = childN;
-        let fnFile = m.file;
-        if (childN.kind() === "identifier" && has("resolve-names")) {
-          const d = resolveName(m.file, childN);
-          if (d?.fn) {
-            fnNode = d.fn;
-            fnFile = d.file;
+      // `$$$C` mounts every argument it captured (`router.use(a(), b(), c())`).
+      for (const childN of cap(m, e.child)) {
+        let child: string | null;
+        if (e.childIsScope) {
+          let fnNode: SgNode = childN;
+          let fnFile = m.file;
+          if (childN.kind() === "identifier" && has("resolve-names")) {
+            const d = resolveName(m.file, childN);
+            if (d?.fn) {
+              fnNode = d.fn;
+              fnFile = d.file;
+            }
           }
-        }
-        const p = FN_KINDS[langOf(fnFile)].has(String(fnNode.kind())) ? paramsOf(fnNode)[0] : undefined;
-        child = p ? pos(fnFile, p) : null;
-      } else child = resolveExpr(m.file, childN);
-      if (!child) continue;
-      const prefix = e.prefix ? strOf(m.file, cap(m, e.prefix)[0]) : "";
-      links.push({ parent, child, prefix: prefix ?? ":dynamic" });
-      childKeys.add(child);
+          const p = FN_KINDS[langOf(fnFile)].has(String(fnNode.kind())) ? paramsOf(fnNode)[0] : undefined;
+          child = p ? pos(fnFile, p) : null;
+        } else child = resolveExpr(m.file, childN);
+        if (!child) continue;
+        const prefix = e.prefix ? strOf(m.file, cap(m, e.prefix)[0]) : "";
+        links.push({ parent, child, prefix: prefix ?? ":dynamic" });
+        childKeys.add(child);
+      }
     } else if (e.kind === "table") {
       direct.push(siteOfMatch(m));
     } else if (
@@ -1105,7 +1144,12 @@ export function runRecipe(root: string, recipe: Recipe, tanstack?: TanstackHelpe
       if (e.ancestorPrefix && site.node) {
         for (let a = site.node.parent(); a; a = a.parent()) {
           if (String(a.kind()) !== e.ancestorPrefix.kind) continue;
-          const hit = a.find({ rule: e.ancestorPrefix.rule });
+          // Decorators written before `export class` belong to the export statement, not the class.
+          const hit =
+            a.find({ rule: e.ancestorPrefix.rule }) ??
+            (a.parent()?.kind() === "export_statement"
+              ? a.parent()?.find({ rule: e.ancestorPrefix.rule })
+              : null);
           const c = e.ancestorPrefix.capture;
           const n = hit && c.startsWith("$") ? hit.getMatch(c.slice(1)) : null;
           if (n) anc = unquote(n);

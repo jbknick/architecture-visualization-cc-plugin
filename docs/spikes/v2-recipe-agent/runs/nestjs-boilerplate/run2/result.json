@@ -1,0 +1,52 @@
+{
+  "run": 2,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 16,
+  "tokens": {
+    "input": 20,
+    "cacheRead": 169139,
+    "cacheCreate": 22489,
+    "output": 9241
+  },
+  "costUsdReported": 0.19931990000000002,
+  "wallMs": 69277,
+  "recipeSha256": "2c84842561e244ea4b78f5f836df0d79fa69e4881e68eaf7568bf768ad77047a",
+  "graphSha256": "3ae1215ef85a42373f1aa6bf391c91546ff175422f94a26b669a2ce5ff6fe73f",
+  "nodes": {
+    "route": 0,
+    "endpoint": 22,
+    "table": 8
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 6,
+  "score": {
+    "case": "nestjs-boilerplate",
+    "sha": "9620f159eefe38f47747d02ab162852367c5472c",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 22,
+        "predicted": 22,
+        "matched": 22,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      },
+      "table": {
+        "labelled": 8,
+        "predicted": 8,
+        "matched": 8,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      }
+    },
+    "missed": {},
+    "extra": {},
+    "pass": true
+  }
+}

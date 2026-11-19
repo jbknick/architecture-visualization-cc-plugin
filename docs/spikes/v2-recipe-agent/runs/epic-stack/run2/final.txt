@@ -1,0 +1,13 @@
+I wrote the recipe to `.gantry/recipe.json`, and the dry-run says `ACCEPTED`. All examples pass.
+
+**Stack:** React Router with `autoRoutes` (file-based routing in `app/routes.ts`) and Prisma (`prisma/schema.prisma`).
+
+**Listed:**
+- **Routes (30):** every file in `app/routes` with a default export, except layout files, `.server`, test and `+shared` files. Pathless folders like `_auth` and `_marketing`, trailing `_`, `index`, `$param` and the `$` splat are converted to normal URL paths.
+- **Endpoints (14):** `loader`/`action`-only files, all with method `ALL`. Examples are `/resources/healthcheck`, `/auth/:provider/callback`, `/robots.txt` and `/webauthn/registration`.
+- **Tables (11):** the Prisma models `User`, `Note`, `NoteImage`, `UserImage`, `Password`, `Session`, `Permission`, `Role`, `Verification`, `Connection` and `Passkey`.
+
+**Limits:**
+- **File lists:** the dry-run ignores negative globs (`!…`), so layout and `.server` files can't be excluded by pattern. I listed the file paths explicitly in `ui-routes` and `resource-routes`. A new route file outside those paths won't be picked up until it is added.
+- **Mixed files:** a file with a default export and a `loader` or `action` counts only as a route. For example, `$.tsx` is listed as the `/*` route, not as an endpoint.
+- **Not checked:** I didn't check the `/` and `/*` paths against the ROUTES list.
