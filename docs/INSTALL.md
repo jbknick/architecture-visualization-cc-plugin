@@ -26,15 +26,9 @@ The MCP server, the hooks and the skills all use one data directory per repo: th
 
 `gantry init` prints the data dir it used (`data:`), and `gantry backlog` prints it too (`Data:`, or `data_dir` with `--json`), so you can check that the CLI and the MCP server read the same store. A describer that finds no index in its data dir reports `NOT INDEXED` with that dir instead of an empty backlog.
 
-An index written earlier to `~/.gantry/data/repos/<hash>/` (what the CLI used from a skill before #141) is still found: it is used as long as the plugin data dir has no store (`gantry.db`) for that repo yet. An empty directory there is ignored, and commands that only read (`backlog`, `usage`, `heal`), the session-start hook and the git hooks never create one for a repo without an index (before #147, `backlog`, `usage` and `heal` created an empty store whenever they ran in a repo with no index, which then made the session-start hook skip its "run /gantry:init" reminder).
+The index lives only in that directory. With a plugin data dir in effect, nothing under `~/.gantry/data` is read or written, even if an index exists there; when the plugin data dir has no index for the repo, `gantry init` builds a fresh one and prints `gantry: no index for this repository in <dir>; building a fresh one`. Only a terminal run from a clone, which has no plugin data dir, uses `~/.gantry/data`. Commands that only read (`backlog`, `usage`, `heal`), the session-start hook and the git hooks never create a data dir for a repo without an index.
 
-### Removing an orphaned legacy index
-
-Once the plugin data dir has its own index for a repo, the old copy under `~/.gantry/data/repos/<hash>/` is no longer read. `gantry backlog` then prints `Note: an older index for this repository is still in <dir> and is no longer used` (`legacy_data_dir` with `--json`). To remove it:
-
-1. In the repo, run `"<plugin>/bin/gantry" backlog --json` and check that `indexed` is true and `data_dir` is the plugin data dir, not the `legacy_data_dir`.
-2. If git hooks were installed while the old index was in use, run `"<plugin>/bin/gantry" hooks install` again so the hook scripts carry the plugin data dir.
-3. Delete the directory named in `legacy_data_dir` (`rm -rf ~/.gantry/data/repos/<hash>`). Do not run `gantry uninstall` for this: it deletes the data dir in use and removes the git hooks.
+Uninstalling the plugin deletes its data directory, and the indexes with it. Update in place instead (see README, "Updating the plugin").
 
 ### After an upgrade
 

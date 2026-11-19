@@ -1,5 +1,6 @@
 import { dumpGraph, ensureDataDir, indexRepo, type Layer, openStore, resolvePaths } from "@gantry/core";
 import type { Command } from "commander";
+import { noteFreshIndex } from "./init.js";
 import { EXIT_ERROR, EXIT_OK, fail, summaryLines, writeStdout } from "./shared.js";
 
 export function registerIndex(program: Command): void {
@@ -17,6 +18,7 @@ export function registerIndex(program: Command): void {
           return;
         }
         const paths = resolvePaths(process.cwd());
+        if (opts.layer === "main" && !opts.files) noteFreshIndex(paths);
         ensureDataDir(paths);
         const store = openStore(paths.dbPath);
         try {
