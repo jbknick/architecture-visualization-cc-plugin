@@ -72,8 +72,8 @@ export async function runRefresh(paths: GantryPaths, store: Store): Promise<Refr
   const t0 = performance.now();
   const before = snapshot(store);
   const head = healPending(paths, store);
-  if (head) await heal(paths);
-  await refreshWorking(paths);
+  if (head) await heal(paths, { reattach: true });
+  await refreshWorking(paths, { reattach: true });
   const after = snapshot(store);
   const fns = diffMaps(before.symbols, after.symbols);
   const fileDiff = diffMaps(before.files, after.files);

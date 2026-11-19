@@ -70,7 +70,7 @@ describe("reattachOverlay (run by heal)", () => {
       read(fx, "packages/utils/src/index.ts").replace('"./date"', '"./dates"'),
     );
     commit(fx, "move");
-    await heal(paths);
+    await heal(paths, { reattach: true });
 
     withStore(paths, (s) => {
       const to = sym("packages/utils/src/dates.ts", "formatRelativeDate");
@@ -100,7 +100,7 @@ describe("reattachOverlay (run by heal)", () => {
       read(fx, "packages/utils/src/index.ts").replace('"./date"', '"./dates"'),
     );
     commit(fx, "move");
-    await heal(paths);
+    await heal(paths, { reattach: true });
 
     withStore(paths, (s) => {
       const to = sym("packages/utils/src/dates.ts", "formatRelativeDate");
@@ -124,7 +124,7 @@ describe("reattachOverlay (run by heal)", () => {
       read(fx, "packages/utils/src/index.ts").replace("formatRelativeDate", "formatRelative"),
     );
     commit(fx, "rename");
-    await heal(paths);
+    await heal(paths, { reattach: true });
 
     withStore(paths, (s) => {
       expect(readOverlay(s).labels).toEqual([{ nodeId: from, text: "Relative date" }]);
@@ -151,7 +151,7 @@ describe("reattachOverlay (run by heal)", () => {
       read(fx, "packages/utils/src/index.ts").replace('"./date"', '"./dates"'),
     );
     commit(fx, "move and change");
-    await heal(paths);
+    await heal(paths, { reattach: true });
 
     withStore(paths, (s) => {
       expect(readOverlay(s).labels).toEqual([{ nodeId: from, text: "Relative date" }]);
@@ -170,7 +170,7 @@ describe("reattachOverlay (run by heal)", () => {
     write(fx, "apps/web/src/lib/slug2.ts", body);
     write(fx, utilsSlug, body); // the internal helper becomes the same exported text as the web copy
     commit(fx, "copies");
-    await heal(paths);
+    await heal(paths, { reattach: true });
     const from = sym(utilsSlug, "slugify");
     withStore(paths, (s) => {
       setLabel(s, { nodeId: from, text: "Slugs" });
@@ -180,7 +180,7 @@ describe("reattachOverlay (run by heal)", () => {
     fx.git(["rm", "-q", utilsSlug]);
     write(fx, "packages/utils/src/index.ts", read(fx, "packages/utils/src/index.ts"));
     commit(fx, "delete utils copy");
-    await heal(paths);
+    await heal(paths, { reattach: true });
 
     withStore(paths, (s) => {
       expect(readOverlay(s).labels).toEqual([{ nodeId: from, text: "Slugs" }]);
@@ -192,7 +192,7 @@ describe("reattachOverlay (run by heal)", () => {
     const { fx, paths } = await setup();
     withStore(paths, (s) => setLabel(s, { nodeId: sym(DATE, "formatRelativeDate"), text: "Relative date" }));
     const sha = () => createHash("sha256").update(readFileSync(paths.overlayPath)).digest("hex");
-    await heal(paths); // nothing to do yet; checkpoint any WAL state first
+    await heal(paths, { reattach: true }); // nothing to do yet; checkpoint any WAL state first
     withStore(paths, () => undefined);
     const before = sha();
 
@@ -202,7 +202,7 @@ describe("reattachOverlay (run by heal)", () => {
       `${read(fx, "packages/utils/src/time.ts")}\nexport const extra = 1;\n`,
     );
     commit(fx, "unrelated change");
-    await heal(paths);
+    await heal(paths, { reattach: true });
 
     expect(sha()).toBe(before);
   });
