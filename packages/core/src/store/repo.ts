@@ -1,5 +1,6 @@
 import type BetterSqlite3 from "better-sqlite3";
 import { pathOfFileId } from "../ids.js";
+import { langOfPath } from "../lang/index.js";
 import { restoreMainFts } from "../search/descfts.js";
 import type {
   AdapterNodeRecord,
@@ -7,6 +8,7 @@ import type {
   EdgeRecord,
   FileRecord,
   FtsRow,
+  Lang,
   Layer,
   SymbolKind,
   SymbolRecord,
@@ -82,6 +84,7 @@ interface FileRow {
   mtime_ms: number;
   deleted: number;
   directives?: string | null;
+  lang?: string | null;
 }
 interface SymbolRow {
   id: string;
@@ -100,6 +103,7 @@ interface SymbolRow {
   minhash: Buffer;
   near_minhash?: Buffer | null;
   renamed_hash?: string | null;
+  lang?: string | null;
 }
 interface AdapterNodeRow {
   id: string;
@@ -138,6 +142,7 @@ const toSymbol = (r: SymbolRow): SymbolRecord => ({
   fileId: r.file_id,
   name: r.name,
   kind: r.kind,
+  lang: r.lang as Lang,
   exported: r.exported === 1,
   signature: r.signature,
   startLine: r.start_line,
@@ -208,6 +213,7 @@ function parseDirectives(raw: string | null | undefined): { directives?: string[
 const toFile = (r: FileRow): FileRecord => ({
   id: r.id,
   path: r.path,
+  lang: r.lang as Lang,
   workspaceId: r.workspace_id,
   contentHash: r.content_hash,
   mtimeMs: r.mtime_ms,
@@ -231,11 +237,11 @@ export function createStore(db: Database): Store {
 
   const putFile = (layer: Layer, f: FileRecord): void => {
     stmt(
-      `INSERT INTO files(id, layer, path, workspace_id, content_hash, mtime_ms, deleted, directives)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO files(id, layer, path, workspace_id, content_hash, mtime_ms, deleted, directives, lang)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id, layer) DO UPDATE SET path = excluded.path, workspace_id = excluded.workspace_id,
          content_hash = excluded.content_hash, mtime_ms = excluded.mtime_ms, deleted = excluded.deleted,
-         directives = excluded.directives`,
+         directives = excluded.directives, lang = excluded.lang`,
     ).run(
       f.id,
       layer,
@@ -245,6 +251,7 @@ export function createStore(db: Database): Store {
       f.mtimeMs,
       f.deleted ? 1 : 0,
       JSON.stringify(f.directives ?? []),
+      f.lang,
     );
   };
 
@@ -332,14 +339,14 @@ export function createStore(db: Database): Store {
         putFile(layer, file);
         const si = stmt(
           `INSERT INTO symbols(id, layer, file_id, name, kind, exported, signature, start_line, end_line,
-             loc, complexity, stmt_count, exact_hash, shape_hash, minhash, near_minhash, renamed_hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             loc, complexity, stmt_count, exact_hash, shape_hash, minhash, near_minhash, renamed_hash, lang)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id, layer) DO UPDATE SET file_id = excluded.file_id, name = excluded.name,
              kind = excluded.kind, exported = excluded.exported, signature = excluded.signature,
              start_line = excluded.start_line, end_line = excluded.end_line, loc = excluded.loc,
              complexity = excluded.complexity, stmt_count = excluded.stmt_count,
              exact_hash = excluded.exact_hash, shape_hash = excluded.shape_hash, minhash = excluded.minhash,
-             near_minhash = excluded.near_minhash, renamed_hash = excluded.renamed_hash`,
+             near_minhash = excluded.near_minhash, renamed_hash = excluded.renamed_hash, lang = excluded.lang`,
         );
         for (const s of symbols) {
           si.run(
@@ -360,6 +367,7 @@ export function createStore(db: Database): Store {
             encodeMinhash(s.minhash),
             s.nearMinhash && s.nearMinhash.length > 0 ? encodeMinhash(s.nearMinhash) : null,
             s.renamedHash ? s.renamedHash : null,
+            s.lang,
           );
         }
         const ei = stmt(
@@ -394,6 +402,7 @@ export function createStore(db: Database): Store {
           : {
               id: fileId,
               path: pathOfFileId(fileId),
+              lang: langOfPath(pathOfFileId(fileId)),
               workspaceId: null,
               contentHash: "",
               mtimeMs: 0,

@@ -1,4 +1,4 @@
-import { nodeInfo, pathOfFileId } from "@gantry/core";
+import { langLabel, nodeInfo, pathOfFileId } from "@gantry/core";
 import type { Command } from "commander";
 import { openFresh, table } from "./lookup.js";
 import { EXIT_OK, fail, writeStdout } from "./shared.js";
@@ -26,6 +26,7 @@ export function registerNode(program: Command): void {
               const head = [
                 `${node.name} (${node.kind}${node.exported ? ", exported" : ""})`,
                 `  id:        ${node.id}`,
+                `  language:  ${langLabel(node.lang)}`,
                 `  location:  ${filePath}:${node.startLine}-${node.endLine}`,
                 `  signature: ${node.signature}`,
                 `  fan-in:    ${info.fanIn}`,
@@ -41,6 +42,7 @@ export function registerNode(program: Command): void {
             const head = [
               `${node.path} (file)`,
               `  id:        ${node.id}`,
+              `  language:  ${langLabel(node.lang)}`,
               `  fan-in:    ${info.fanIn}`,
               `  fan-out:   ${info.fanOut}`,
             ];

@@ -102,6 +102,7 @@ export function SearchBox() {
               <span className="hit-main">
                 <span className="hit-name">{hit.name}</span>
                 <KindBadge kind={hit.kind} />
+                {hit.langLabel !== undefined && <span className="hit-tag">{hit.langLabel}</span>}
                 {!hit.exported && <span className="hit-tag">internal</span>}
               </span>
               <span className="hit-path">

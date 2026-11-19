@@ -16,6 +16,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const file = (id: string, extra: Partial<FileRecord> = {}): FileRecord => ({
   id: `file:${id}`,
   path: id,
+  lang: "typescript",
   workspaceId: "ws:.",
   contentHash: `h-${id}`,
   mtimeMs: 1,
@@ -27,6 +28,7 @@ const sym = (path: string, name: string, extra: Partial<SymbolRecord> = {}): Sym
   fileId: `file:${path}`,
   name,
   kind: "function",
+  lang: "typescript",
   exported: true,
   signature: `function ${name}()`,
   startLine: 1,

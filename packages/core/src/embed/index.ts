@@ -186,7 +186,7 @@ function makeCodeText(root: string): (c: CodeCandidate) => string | null {
     }
     const range = cached.parsed.bodies.get(c.symbol.id);
     if (!range) return null;
-    const text = normalizeForEmbedding(cached.source, range, c.path.endsWith(".tsx") ? "tsx" : "ts");
+    const text = normalizeForEmbedding(cached.source, range, c.path);
     return text === "" ? null : text.slice(0, CODE_EMBED_MAX_CHARS);
   };
 }

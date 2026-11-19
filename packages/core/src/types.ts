@@ -1,4 +1,6 @@
 export type Layer = "main" | "working";
+/** The language of a file or symbol (spec section 7). TypeScript includes TSX; Go has no language module yet. */
+export type Lang = "typescript" | "go";
 export type SymbolKind =
   | "function"
   | "method"
@@ -14,6 +16,8 @@ export interface SymbolRecord {
   fileId: string;
   name: string;
   kind: SymbolKind;
+  /** Language of the file the symbol is in. */
+  lang: Lang;
   exported: boolean;
   signature: string;
   startLine: number;
@@ -106,6 +110,8 @@ export interface ExportsEntry {
 export interface FileRecord {
   id: string;
   path: string;
+  /** Language of the file. */
+  lang: Lang;
   workspaceId: string | null;
   contentHash: string;
   mtimeMs: number;
@@ -122,8 +128,8 @@ export interface FtsRow {
   searchTerms: string;
 }
 
-/** A symbol as produced by the parser: everything except the hashing fields (issue #14 fills those in). */
+/** A symbol as produced by the parser: everything except the language and the hashing fields (the indexer fills those in). */
 export type ParsedSymbol = Omit<
   SymbolRecord,
-  "exactHash" | "renamedHash" | "shapeHash" | "minhash" | "nearMinhash"
+  "lang" | "exactHash" | "renamedHash" | "shapeHash" | "minhash" | "nearMinhash"
 >;
