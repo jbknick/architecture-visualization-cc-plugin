@@ -130,7 +130,7 @@ describe("vector serialization", () => {
 
 describe("vec tables of a new store", () => {
   it("loads sqlite-vec, creates both vec tables for the M0 model and records the model", () => {
-    expect(store.getMeta("schema_version")).toBe("9");
+    expect(store.getMeta("schema_version")).toBe("10");
     expect(store.getMeta("vec_available")).toBe("1");
     expect(store.getMeta("embed_model")).toBe(EMBED_MODEL_ID);
     expect(store.getMeta("embed_dim")).toBe(String(EMBED_DIM));

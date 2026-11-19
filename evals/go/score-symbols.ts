@@ -64,14 +64,20 @@ function score(truth: number, found: number, matched: number): KindScore {
   return { truth, found, matched, precision: ratio(matched, found), recall: ratio(matched, truth) };
 }
 
-/** Compares symbols on (file, kind, receiver, name); multiplicities count. Test files are outside the truth. */
+/** Compares symbols on (file, kind, receiver, name); multiplicities count. Test files and interface methods are outside the truth. */
 export function scoreSymbols(dump: Dump, truth: Truth): Score {
   const pathOf = new Map(dump.files.map((f) => [f.id, f.path]));
   const found = new Map<string, string[]>();
+  // Methods declared in an interface body (`Iface.Method`) are symbols of the index, not of the truth program.
+  const interfaces = new Set(
+    dump.symbols.filter((s) => s.kind === "interface").map((s) => `${s.fileId}#${s.name}`),
+  );
   for (const s of dump.symbols) {
     if (s.lang !== "go") continue;
     const file = pathOf.get(s.fileId);
     if (file === undefined || file.endsWith("_test.go")) continue;
+    if (s.kind === "method" && interfaces.has(`${s.fileId}#${s.name.slice(0, s.name.indexOf("."))}`))
+      continue;
     let receiver = "";
     let name = s.name;
     if (s.kind === "method") {
