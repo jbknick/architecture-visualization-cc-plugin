@@ -1,0 +1,50 @@
+{
+  "name": "nethttp",
+  "frameworks": [{ "name": "net/http", "evidence": "http.NewServeMux" }],
+  "when": { "imports": ["net/http"] },
+  "helpers": ["resolve-names", "mount-graph", "param-flow"],
+  "rules": [
+    {
+      "id": "mux",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "http.NewServeMux()" },
+      "emit": { "kind": "router" },
+      "examples": {
+        "match": ["func f() { m := http.NewServeMux() }"],
+        "noMatch": ["func f() { m := http.NewRequest() }"]
+      }
+    },
+    {
+      "id": "handle-method",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "$R.HandleFunc($X, $H)" },
+      "constraints": { "X": { "regex": "^\"[A-Z]+ " } },
+      "emit": {
+        "kind": "endpoint",
+        "standalone": true,
+        "method": "ALL",
+        "path": "$X",
+        "handler": "$H",
+        "splitMethod": true
+      },
+      "examples": {
+        "match": ["func f() { r.HandleFunc(\"GET /x\", h) }"],
+        "noMatch": ["func f() { r.HandleFunc(\"/x\", h) }"]
+      }
+    },
+    {
+      "id": "handle-plain",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "$R.HandleFunc($X, $H)" },
+      "constraints": { "X": { "regex": "^\"[^A-Z]" } },
+      "emit": { "kind": "endpoint", "standalone": true, "method": "=ALL", "path": "$X", "handler": "$H" },
+      "examples": {
+        "match": ["func f() { r.HandleFunc(\"/x\", h) }"],
+        "noMatch": ["func f() { r.HandleFunc(\"GET /x\", h) }"]
+      }
+    }
+  ]
+}

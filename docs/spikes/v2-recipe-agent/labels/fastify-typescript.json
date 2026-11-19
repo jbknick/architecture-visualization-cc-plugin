@@ -1,0 +1,14 @@
+{
+  "repo": "fastify-typescript",
+  "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783",
+  "labelledBy": "hand-labelled by a research agent (not the recipe agent) by rg enumeration and reading each site",
+  "kinds": ["endpoint", "table"],
+  "endpoint": [
+    { "method": "POST", "path": "/api/user/login", "file": "src/routes/user.router.ts" },
+    { "method": "POST", "path": "/api/user/signup", "file": "src/routes/user.router.ts" },
+    { "method": "POST", "path": "/api/post/create", "file": "src/routes/post.router.ts" },
+    { "method": "GET", "path": "/health", "file": "src/main.ts" },
+    { "method": "GET", "path": "/", "file": "src/main.ts" }
+  ],
+  "table": [{ "name": "users" }, { "name": "Post" }]
+}

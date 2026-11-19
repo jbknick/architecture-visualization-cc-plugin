@@ -1,0 +1,15 @@
+The recipe is at `.gantry/recipe.json`, and the last dry-run said `ACCEPTED`. It lists 0 routes, 7 endpoints and 6 tables.
+
+- **Stack:** Go with Gin for the REST API in `api/server.go`. `main.go` also uses grpc-gateway and a `net/http` mux, and the schema is Postgres SQL.
+- **Routes:** 0. The repo has a `frontend` folder, but I didn't write any rules for it.
+- **Endpoints (7):**
+  - `POST /users`
+  - `POST /users/login`
+  - `POST /tokens/renew_access`
+  - `POST /accounts`
+  - `GET /accounts`
+  - `GET /accounts/:id`
+  - `POST /transfers`
+- **Tables (6):** `users`, `verify_emails`, `accounts`, `entries`, `transfers` and `sessions`. They come from the `CREATE TABLE` statements in `doc/schema.sql`, not from the migrations.
+- **What I left out:** the two `mux.Handle` calls in `main.go` (`/` and `/swagger/`), which the recipe doesn't cover. The gRPC-gateway handlers aren't covered either, because they aren't method-plus-path registrations.
+- **Group handling:** the recipe only matches the chained `router.Group("/").Use(...)` form that `api/server.go` uses. I made that chain a router with its own base path because the mount form left four endpoints dropped. A `Group` call without `.Use(...)` would not be picked up.

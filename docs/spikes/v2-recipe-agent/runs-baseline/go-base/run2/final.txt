@@ -1,0 +1,15 @@
+I wrote the recipe to `.gantry/recipe.json`. The dry-run says ACCEPTED, but the endpoint paths are incomplete because I couldn't get the router mounts to compose.
+
+**Stack:** Go with chi v5 and bun/Postgres. The tables come from SQL in the migrations.
+
+**Listed:**
+- **Routes:** 0. The frontend is a separate SPA served from `public`, so the repo defines no page routes.
+- **Endpoints:** 16, but the paths are partly wrong, as explained below. The 19 handler registrations the rule matches are not all listed.
+- **Tables:** 3 (`accounts`, `tokens`, `profiles`), read from the `CREATE TABLE` statements in `database/migrations`.
+
+**What's wrong with the endpoints:**
+- **Missing prefixes:** the sub-routers are mounted with calls like `r.Mount("/accounts", a.Accounts.router())` and `r.Mount("/auth", authResource.Router())`. The engine only resolves a returned router for a composite-literal call such as `T{}.Routes()`. It can't follow a method call on a field or variable, so the mount prefixes (`/auth`, `/admin`, `/api`, `/account`, `/profile`, `/accounts`) are never applied.
+- **Bare paths:** the admin and app handlers therefore appear as `GET /`, `PUT /token/{tokenID}` and so on. The correct paths would be, for example, `/admin/accounts/...` and `/api/account/...`.
+- **Missing endpoints:** the admin `GET /` in `api/admin/api.go` and the profile `GET /` and `PUT /` in `api/app/profile.go` don't appear at all. That is 3 of the 19 matches. The 16 listed include `/healthz`, `/*` and the four `/auth` endpoints (`/login`, `/token`, `/refresh`, `/logout`), and the `/auth` ones also lack their prefix.
+
+The missing capability is resolving a mounted router that a method call returns, for example `r.Mount("/x", obj.Router())` or `x.field.router()`.

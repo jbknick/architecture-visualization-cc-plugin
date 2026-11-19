@@ -1,0 +1,14 @@
+I extended `.gantry/recipe.json` with four new rules, and the dry-run says ACCEPTED with every example passing. All the old rules are unchanged.
+
+The new rules cover `apps/express`, which uses Express and Prisma:
+- **Express:** `express-router`, `express-endpoint` and `express-mount` pick up the `express()` and `express.Router()` constructors, the route handlers, and the `/api` mount. That gives 5 endpoints with full paths, such as `GET /api/items/:id` and `GET /api/health`.
+- **Prisma:** `prisma-model` reads `schema.prisma` and finds the tables `Item` and `Tag`.
+
+The dry-run now lists 7 endpoints, 3 routes and 4 tables. The 3 routes are `/`, `/posts/$postId` and `/settings/profile`. The 4 tables are `Item`, `Tag`, `users` and `posts`.
+
+I dismissed all six dependency gaps under the top-level `dismissed` key:
+- **`@orpc/server`:** its procedures are RPC calls, not method plus path.
+- **`react`:** it's a UI library, not a registration site.
+- **`@tanstack/react-router`, `drizzle-orm`, `express` and `@prisma/client`:** existing or new rules already cover them.
+
+Nothing was left that the recipe format couldn't express.

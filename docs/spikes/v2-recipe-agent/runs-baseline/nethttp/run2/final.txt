@@ -1,0 +1,16 @@
+I wrote the recipe to `.gantry/recipe.json`. The dry-run says `ACCEPTED`, and every example passes.
+
+- **Stack:** Go with `net/http` and `http.NewServeMux`. I found no database or schema files.
+- **Endpoints (6):**
+  - `POST /monster`
+  - `PUT /monster/{id}`
+  - `GET /monster/{id}`
+  - `DELETE /monster/{id}`
+  - `ALL /`
+  - `ALL /dreamsofcode.foo`
+- **Routes:** 0. This is a backend-only repo.
+- **Tables:** 0.
+
+The recipe uses two standalone `HandleFunc` rules, not the router-based setup. In `router.go`, `loadRoutes` only receives the mux as a parameter, and nothing in the repo calls it. I didn't find a way to link that parameter to the mux built in `main.go`.
+
+The host pattern `dreamsofcode.foo/` comes out as the path `/dreamsofcode.foo`, not a host-qualified route. I didn't find a way to express a host prefix.

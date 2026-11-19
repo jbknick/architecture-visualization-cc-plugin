@@ -1,0 +1,44 @@
+{
+  "name": "simplebank",
+  "frameworks": [{ "name": "gin", "evidence": "go.mod" }],
+  "when": { "imports": ["github.com/gin-gonic/gin", "net/http"] },
+  "passthrough": ["Use"],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "gin-router",
+      "language": "go",
+      "files": ["api/**/*.go"],
+      "rule": { "pattern": "gin.Default()" },
+      "emit": { "kind": "router" },
+      "examples": { "match": ["gin.Default()"], "noMatch": ["gin.New()"] }
+    },
+    {
+      "id": "gin-group",
+      "language": "go",
+      "files": ["api/**/*.go"],
+      "rule": {
+        "pattern": { "context": "func _() { $P.Group($X).Use($$A) }", "selector": "call_expression" }
+      },
+      "emit": { "kind": "router", "base": "$X" },
+      "examples": { "match": ["r.Group(\"/\").Use(mw)"], "noMatch": ["r.Get(\"/\")"] }
+    },
+    {
+      "id": "gin-endpoint",
+      "language": "go",
+      "files": ["api/**/*.go"],
+      "rule": { "pattern": "$R.$M($X, $H)" },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|DELETE|PATCH)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$X", "handler": "$H" },
+      "examples": { "match": ["router.POST(\"/users\", h)"], "noMatch": ["m.Get(\"a\", h)"] }
+    },
+    {
+      "id": "sql-tables",
+      "language": "text",
+      "files": ["doc/schema.sql"],
+      "rule": { "regex": "CREATE TABLE \"?(\\w+)\"?" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": { "match": ["CREATE TABLE \"users\" ("], "noMatch": ["CREATE INDEX x"] }
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "name": "simplebank",
+  "frameworks": [{ "name": "gin", "evidence": "go.mod" }],
+  "when": { "imports": ["github.com/gin-gonic/gin"] },
+  "passthrough": ["Use"],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "gin-router",
+      "language": "go",
+      "files": ["api/**/*.go"],
+      "rule": { "pattern": "gin.Default()" },
+      "emit": { "kind": "router" },
+      "examples": {
+        "match": ["package a\nfunc f(){ r := gin.Default() }"],
+        "noMatch": ["package a\nfunc f(){ r := gin.New() }"]
+      }
+    },
+    {
+      "id": "gin-group",
+      "language": "go",
+      "files": ["api/**/*.go"],
+      "rule": {
+        "pattern": {
+          "context": "func _() { $C := $P.Group($X).Use($$MW) }",
+          "selector": "short_var_declaration"
+        }
+      },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C", "prefix": "$X" },
+      "examples": {
+        "match": ["package a\nfunc f(){ a := r.Group(\"/a\").Use(mw) }"],
+        "noMatch": ["package a\nfunc f(){ a := r.Get(\"/a\") }"]
+      }
+    },
+    {
+      "id": "gin-endpoint",
+      "language": "go",
+      "files": ["api/**/*.go"],
+      "rule": { "pattern": "$R.$M($X, $H)" },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|PATCH|DELETE)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$X", "handler": "$H" },
+      "examples": {
+        "match": ["package a\nfunc f(){ r.GET(\"/a\", h) }"],
+        "noMatch": ["package a\nfunc f(){ r.Foo(\"/a\", h) }"]
+      }
+    },
+    {
+      "id": "grpc-gateway",
+      "language": "text",
+      "files": ["proto/service_simple_bank.proto"],
+      "rule": { "regex": "(?:post|get|patch|put|delete):\\s*\"(/[^\"]+)\"" },
+      "emit": { "kind": "endpoint", "method": "ALL", "path": "#1", "standalone": true },
+      "examples": { "match": ["post: \"/v1/x\""], "noMatch": ["rpc X"] }
+    },
+    {
+      "id": "tables",
+      "language": "text",
+      "files": ["db/migration/*.up.sql"],
+      "rule": { "regex": "CREATE TABLE\\s+\"?(\\w+)\"?" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": { "match": ["CREATE TABLE \"users\" ("], "noMatch": ["DROP TABLE users"] }
+    }
+  ]
+}

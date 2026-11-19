@@ -1,0 +1,88 @@
+{
+  "run": 3,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 9,
+  "tokens": {
+    "input": 14,
+    "cacheRead": 95499,
+    "cacheCreate": 11376,
+    "output": 3170
+  },
+  "costUsdReported": 0.0867819,
+  "wallMs": 33828,
+  "recipeSha256": "abf7def831d6000e70af51bed247a50f0d78aa4f5a8c4638a6db0c18447e8102",
+  "graphSha256": "e0193e44be670d0ee4b743e906fcb9fbed7d3c030cb2f2a60c4fa27a3f1462c8",
+  "nodes": {
+    "route": 0,
+    "endpoint": 16,
+    "table": 3
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 1,
+  "score": {
+    "case": "go-base",
+    "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 19,
+        "predicted": 15,
+        "matched": 2,
+        "precision": 0.1333,
+        "recall": 0.1053,
+        "pass": false
+      },
+      "table": {
+        "labelled": 3,
+        "predicted": 3,
+        "matched": 3,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      }
+    },
+    "missed": {
+      "endpoint": [
+        "DELETE /admin/accounts/:param",
+        "DELETE /api/account",
+        "DELETE /api/account/token/:param",
+        "GET /admin",
+        "GET /admin/accounts",
+        "GET /admin/accounts/:param",
+        "GET /api/account",
+        "GET /api/profile",
+        "POST /admin/accounts",
+        "POST /auth/login",
+        "POST /auth/logout",
+        "POST /auth/refresh",
+        "POST /auth/token",
+        "PUT /admin/accounts/:param",
+        "PUT /api/account",
+        "PUT /api/account/token/:param",
+        "PUT /api/profile"
+      ]
+    },
+    "extra": {
+      "endpoint": [
+        "DELETE /",
+        "DELETE /:param",
+        "DELETE /token/:param",
+        "GET /",
+        "GET /:param",
+        "POST /",
+        "POST /login",
+        "POST /logout",
+        "POST /refresh",
+        "POST /token",
+        "PUT /",
+        "PUT /:param",
+        "PUT /token/:param"
+      ]
+    },
+    "pass": false
+  }
+}

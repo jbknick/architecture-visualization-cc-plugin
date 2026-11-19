@@ -1,0 +1,8 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED`.
+
+- **Stack:** Express with TypeScript and Mongoose. The routers are built in `createXRouter()` functions and composed in `src/app/http/router.ts` and `app.ts`.
+- **Routes:** 0. This is a backend-only API with no frontend pages.
+- **Endpoints:** 26 listed. They cover the auth, user, media and notifications routers, the health checks, and the docs routes.
+- **Tables:** 7 listed: `User`, `Media`, `ResetPassword`, `Verification`, `EmailOutbox`, `EmailWorker` and `EmailBudget`. These are the Mongoose model names as written in the code.
+
+**Extra endpoints (not fixed):** The list has three extra endpoints that probably aren't real: `GET /`, `GET /config.json` and `GET /initializer.js`. The docs router registers those paths on an inner router that is later mounted at `/docs/`. The engine also lists them without the prefix. The correct `/docs/...` versions are in the list too.

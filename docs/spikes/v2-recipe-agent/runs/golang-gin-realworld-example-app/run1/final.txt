@@ -1,0 +1,12 @@
+I wrote the recipe to `.gantry/recipe.json`, and the dry-run says `ACCEPTED` with every example passing.
+
+**Stack:** Go with Gin and GORM (SQLite). Gin routers are assembled in `hello.go`, and the per-package `*Register` functions live in `users/routers.go` and `articles/routers.go`.
+
+**Counts:** 0 routes, 20 endpoints and 7 tables.
+- **Routes:** this is a backend-only repo, so there are no frontend pages.
+- **Endpoints:** these are `GET /api/ping` plus the `/api/users`, `/api/user`, `/api/profiles`, `/api/articles` and `/api/tags` handlers.
+- **Tables:** these are `ArticleModel`, `ArticleUserModel`, `FavoriteModel`, `CommentModel`, `TagModel`, `UserModel` and `FollowModel`. They are the struct names, since the code gives no explicit table names.
+
+**What I couldn't express:** the mount graph did not carry prefixes from `v1.Group("/users")` in `hello.go` into the `*Register(router)` functions in other packages. That is an inline `Group` argument passed to a function in another package. As a workaround, each `*Register` function has its own rule with a hardcoded `/api/...` prefix. If a prefix in `hello.go` changes, the matching rule has to be edited by hand.
+
+The dry-run lists only one endpoint per method and path pair. For example, `POST ""` and `POST "/"` both resolve to `POST /api/articles`, so they count once.

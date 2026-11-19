@@ -1,0 +1,9 @@
+I extended `.gantry/recipe.json` with four new rules, and the dry-run ends with `ACCEPTED`. All examples pass, and the old rules still match what they did before.
+
+- **Stack:** the earlier recipe covered Hono, TanStack Router and Drizzle. The gaps added an Express app (`apps/express`) with Prisma.
+- **New rules:** `express-router`, `express-endpoint`, `express-mount` and `prisma-model`.
+- **Express endpoints:** the dry-run lists 5, all under `/api`: `GET /api/items`, `GET /api/items/:id`, `POST /api/items`, `DELETE /api/items/:id` and `GET /api/health`.
+- **Prisma tables:** `Item` and `Tag`.
+- **Dismissed:** `@orpc/server` is RPC, not method plus path, so I added it under `dismissed` with `react`. I also listed `@tanstack/react-router`, `drizzle-orm`, `@prisma/client` and `express` there because existing or new rules already cover them.
+- **Totals:** 7 endpoints, 3 routes and 4 tables.
+- **Not expressed:** nothing.

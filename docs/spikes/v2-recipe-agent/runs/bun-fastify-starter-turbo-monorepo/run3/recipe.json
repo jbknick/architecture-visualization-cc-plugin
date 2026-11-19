@@ -1,0 +1,70 @@
+{
+  "name": "fastify-kysely",
+  "frameworks": [{ "name": "fastify", "evidence": "package.json dependency" }],
+  "when": { "dependency": ["fastify"] },
+  "passthrough": ["withTypeProvider", "setValidatorCompiler"],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "fastify-instance",
+      "language": "typescript",
+      "files": ["apps/backend/src/server.ts"],
+      "rule": { "pattern": "Fastify($$A)" },
+      "emit": { "kind": "router" },
+      "examples": { "match": ["Fastify({})"], "noMatch": ["foo({})"] }
+    },
+    {
+      "id": "fastify-register-prefix",
+      "language": "typescript",
+      "files": ["apps/backend/src/**/*.ts"],
+      "rule": { "pattern": "$P.register($C, { prefix: $X })" },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C", "prefix": "$X", "childIsScope": true },
+      "examples": {
+        "match": ["fastify.register(userRoutes, { prefix: \"/users\" })"],
+        "noMatch": ["fastify.register(userRoutes)"]
+      }
+    },
+    {
+      "id": "fastify-register-fp",
+      "language": "typescript",
+      "files": ["apps/backend/src/**/*.ts"],
+      "rule": { "pattern": "$P.register(fp($C))" },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C", "childIsScope": true },
+      "examples": { "match": ["fastify.register(fp(plugins))"], "noMatch": ["fastify.register(plugins)"] }
+    },
+    {
+      "id": "fastify-register",
+      "language": "typescript",
+      "files": ["apps/backend/src/**/*.ts"],
+      "rule": { "pattern": "$P.register($C)" },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C", "childIsScope": true },
+      "examples": {
+        "match": ["fastify.register(userRoutes)"],
+        "noMatch": ["fastify.get(\"/\", h)"]
+      }
+    },
+    {
+      "id": "fastify-route",
+      "language": "typescript",
+      "files": ["apps/backend/src/**/*.ts"],
+      "rule": { "any": [{ "pattern": "$R.$M($X, $$A)" }, { "pattern": "$R.$M($X, $O, $H)" }] },
+      "constraints": { "M": { "regex": "^(get|post|put|patch|delete|head|options)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$X" },
+      "examples": {
+        "match": ["fastify.post(\"/email\", {}, handler)", "fastify.get(\"/\", async () => {})"],
+        "noMatch": ["map.get(key)"]
+      }
+    },
+    {
+      "id": "kysely-tables",
+      "language": "text",
+      "files": ["apps/backend/src/db/types/index.ts"],
+      "rule": { "regex": "\\s(\\w+):\\s*\\w+Table;" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": {
+        "match": ["interface Database {\n  users: UsersTable;\n}"],
+        "noMatch": ["const a = 1;"]
+      }
+    }
+  ]
+}
