@@ -1,0 +1,955 @@
+[
+  {
+    "base": "dc7b9d91ae2798ad6d80b7947e00abf59d58c62b",
+    "files": ["apps/web/modules/event-types/components/tabs/advanced/FormBuilder.tsx"],
+    "merge": "b75000ea7be3ac99e0409d1b94ce20fedd305d24",
+    "number": 27858,
+    "repo": "cal.com"
+  },
+  {
+    "base": "f8abce44cbe40820fbb5ba7ad4d819a9cfa097c0",
+    "files": [
+      "apps/web/modules/settings/my-account/holidays-view.tsx",
+      "apps/web/modules/settings/outOfOffice/OutOfOfficeEntriesList.tsx"
+    ],
+    "merge": "bc9a9c0c24f98680cbed5f4bdeae93729a016de4",
+    "number": 27865,
+    "repo": "cal.com"
+  },
+  {
+    "base": "217c6e6a76637db83ea03427b4e990c589e106b0",
+    "files": [
+      "apps/api/v1/pages/api/bookings/[id]/_delete.ts",
+      "apps/api/v2/src/ee/bookings/2024-04-15/controllers/bookings.controller.ts",
+      "packages/features/bookings/lib/handleCancelBooking.ts",
+      "packages/features/bookings/lib/handleConfirmation.ts",
+      "packages/features/bookings/lib/interfaces/IBookingCancelService.ts",
+      "packages/trpc/server/routers/viewer/bookings/_router.tsx",
+      "packages/trpc/server/routers/viewer/bookings/addGuests.handler.ts",
+      "packages/trpc/server/routers/viewer/bookings/reportBooking.handler.ts",
+      "packages/trpc/server/routers/viewer/bookings/requestReschedule.handler.ts"
+    ],
+    "merge": "a6a428c8cbf2834ddf313e0c51699525c807f4c5",
+    "number": 27869,
+    "repo": "cal.com"
+  },
+  {
+    "base": "fad64a012a304cf70e7edd752b975a06ddfdba3b",
+    "files": ["apps/web/modules/feature-opt-in/components/FeedbackDialog.tsx"],
+    "merge": "be0b707296a7c52b70bd7de95966b7699877c5dc",
+    "number": 27892,
+    "repo": "cal.com"
+  },
+  {
+    "base": "e2119879aee23553434a99635d746a8121d22798",
+    "files": [
+      "apps/web/modules/bookings/components/BookingDetailsSheet.tsx",
+      "apps/web/modules/calendars/weeklyview/components/event/Event.tsx"
+    ],
+    "merge": "896dfd50fd7d0c710210d7929fd2d77fdcafe0ab",
+    "number": 27894,
+    "repo": "cal.com"
+  },
+  {
+    "base": "bdeb4b1dc919b21067bf2da5d5f8bb871e6b4d81",
+    "files": ["apps/api/v2/src/modules/slots/slots-2024-04-15/controllers/slots.controller.e2e-spec.ts"],
+    "merge": "68abc63fe4d73b30f3a56c66341584af828f67ab",
+    "number": 27902,
+    "repo": "cal.com"
+  },
+  {
+    "base": "f8a93414a5651ea470c6d7f93b61a2f12f9b5ffe",
+    "files": [
+      "packages/trpc/react/trpc.ts",
+      "packages/trpc/server/createContext.ts",
+      "packages/trpc/server/middlewares/sessionMiddleware.ts",
+      "packages/trpc/server/routers/apps/routing-forms/_router.ts",
+      "packages/trpc/server/routers/apps/routing-forms/formMutation.handler.ts",
+      "packages/trpc/server/routers/loggedInViewer/teamsAndUserProfilesQuery.handler.ts",
+      "packages/trpc/server/routers/publicViewer/checkIfUserEmailVerificationRequired.schema.ts",
+      "packages/trpc/server/routers/publicViewer/event.schema.ts",
+      "packages/trpc/server/routers/viewer/admin/watchlist/_router.ts",
+      "packages/trpc/server/routers/viewer/aiVoiceAgent/listCalls.schema.ts",
+      "packages/trpc/server/routers/viewer/aiVoiceAgent/listVoices.handler.ts",
+      "packages/trpc/server/routers/viewer/apps/listLocal.handler.ts",
+      "packages/trpc/server/routers/viewer/attribute-sync/createAttributeSync.handler.ts",
+      "packages/trpc/server/routers/viewer/attribute-sync/updateAttributeSync.handler.ts",
+      "packages/trpc/server/routers/viewer/attributes/edit.handler.ts",
+      "packages/trpc/server/routers/viewer/attributes/utils.ts",
+      "packages/trpc/server/routers/viewer/availability/schedule/getAllSchedulesByUserId.handler.ts",
+      "packages/trpc/server/routers/viewer/bookings/editLocation.handler.ts",
+      "packages/trpc/server/routers/viewer/bookings/get.handler.integration-test.ts",
+      "packages/trpc/server/routers/viewer/bookings/getBookingHistory.handler.ts",
+      "packages/trpc/server/routers/viewer/delegationCredential/list.handler.ts",
+      "packages/trpc/server/routers/viewer/eventTypes/getByViewer.schema.ts",
+      "packages/trpc/server/routers/viewer/eventTypes/getUserEventGroups.handler.ts",
+      "packages/trpc/server/routers/viewer/eventTypes/heavy/duplicate.handler.ts",
+      "packages/trpc/server/routers/viewer/eventTypes/massApplyHostLocation.handler.ts",
+      "packages/trpc/server/routers/viewer/eventTypes/util.ts",
+      "packages/trpc/server/routers/viewer/holidays/_router.ts",
+      "packages/trpc/server/routers/viewer/holidays/checkConflicts.schema.ts",
+      "packages/trpc/server/routers/viewer/holidays/getUserSettings.schema.ts",
+      "packages/trpc/server/routers/viewer/holidays/toggleHoliday.schema.ts",
+      "packages/trpc/server/routers/viewer/holidays/updateSettings.schema.ts",
+      "packages/trpc/server/routers/viewer/me/platformMe.handler.ts",
+      "packages/trpc/server/routers/viewer/me/updateProfile.schema.ts",
+      "packages/trpc/server/routers/viewer/oAuth/createClient.schema.ts",
+      "packages/trpc/server/routers/viewer/oAuth/updateClient.handler.ts",
+      "packages/trpc/server/routers/viewer/oAuth/updateClient.schema.ts",
+      "packages/trpc/server/routers/viewer/organizations/create.handler.ts",
+      "packages/trpc/server/routers/viewer/organizations/listMembers.schema.ts",
+      "packages/trpc/server/routers/viewer/organizations/update.handler.ts",
+      "packages/trpc/server/routers/viewer/organizations/update.schema.ts",
+      "packages/trpc/server/routers/viewer/payments/chargeCard.handler.ts",
+      "packages/trpc/server/routers/viewer/routing-forms/findTeamMembersMatchingAttributeLogicOfRoute.handler.ts",
+      "packages/trpc/server/routers/viewer/slots/util.ts",
+      "packages/trpc/server/routers/viewer/teams/inviteMember/inviteMember.handler.ts",
+      "packages/trpc/server/routers/viewer/teams/inviteMemberByToken.schema.ts",
+      "packages/trpc/server/routers/viewer/teams/listMembers.handler.ts",
+      "packages/trpc/server/routers/viewer/teams/listMembers.schema.ts",
+      "packages/trpc/server/routers/viewer/teams/managedEvents/getManagedEventUsersToReassign.handler.ts",
+      "packages/trpc/server/routers/viewer/teams/managedEvents/getManagedEventUsersToReassign.schema.ts",
+      "packages/trpc/server/routers/viewer/teams/managedEvents/managedEventManualReassign.handler.ts",
+      "packages/trpc/server/routers/viewer/teams/managedEvents/managedEventManualReassign.schema.ts",
+      "packages/trpc/server/routers/viewer/teams/managedEvents/managedEventReassign.handler.ts",
+      "packages/trpc/server/routers/viewer/teams/managedEvents/managedEventReassign.schema.ts",
+      "packages/trpc/server/routers/viewer/teams/publish.schema.ts",
+      "packages/trpc/server/routers/viewer/teams/removeMember.schema.ts",
+      "packages/trpc/server/routers/viewer/teams/removeMember/RemoveMemberServiceFactory.ts",
+      "packages/trpc/server/routers/viewer/teams/resendInvitation.schema.ts",
+      "packages/trpc/server/routers/viewer/teams/roundRobin/roundRobinManualReassign.schema.ts",
+      "packages/trpc/server/routers/viewer/teams/updateInternalNotesPresets.schema.ts"
+    ],
+    "merge": "21d28c9747975e609eacd171174e29c28a5fe730",
+    "number": 27928,
+    "repo": "cal.com"
+  },
+  {
+    "base": "9d4b12b8d3aa7258eb262695b45ceb6ffb860bc0",
+    "files": ["companion/wxt.config.ts"],
+    "merge": "2abefc412cda25ecaecd89c1c2b1401c14ec49d8",
+    "number": 27952,
+    "repo": "cal.com"
+  },
+  {
+    "base": "8caa062ae1377b3e0016fc653f96077fb079a5d9",
+    "files": [
+      "apps/api/v2/src/ee/event-types/event-types_2024_06_14/transformers/api-to-internal/interval-limits.ts"
+    ],
+    "merge": "4b247640a87e78bdfd438fc6a76ad4dceaa93042",
+    "number": 28035,
+    "repo": "cal.com"
+  },
+  {
+    "base": "74f3608b426f1cba5cfddd59c66e087a10b920fa",
+    "files": [
+      "apps/web/app/(use-page-wrapper)/settings/(settings-layout)/SettingsLayoutAppDirClient.tsx",
+      "apps/web/app/(use-page-wrapper)/settings/(settings-layout)/organizations/admin-api/page.tsx",
+      "apps/web/modules/ee/organizations/admin-api.tsx"
+    ],
+    "merge": "9d2905580858468e2260e6391eb9c6734e8b8fcb",
+    "number": 28046,
+    "repo": "cal.com"
+  },
+  {
+    "base": "972d70379ff5f9f8490ed1d6d1ab206c902e3dfc",
+    "files": [
+      "apps/web/components/apps/CalendarListContainer.tsx",
+      "apps/web/modules/apps/components/AdminAppsList.tsx",
+      "apps/web/modules/apps/components/AppListCard.tsx",
+      "apps/web/modules/apps/components/ConferencingAppsViewWebWrapper.tsx",
+      "apps/web/modules/apps/installed/[category]/installed-category-view.tsx",
+      "apps/web/modules/calendars/components/SelectedCalendarsSettingsWebWrapper.tsx",
+      "packages/features/apps/components/AppList.tsx",
+      "packages/features/apps/components/AppSetDefaultLinkDialog.tsx",
+      "packages/platform/atoms/connect/conferencing-apps/AppListCardPlatformWrapper.tsx",
+      "packages/platform/atoms/connect/conferencing-apps/ConferencingAppsViewPlatformWrapper.tsx"
+    ],
+    "merge": "e5fd455a30d78ea9a48037bc1373028a17ad6004",
+    "number": 28100,
+    "repo": "cal.com"
+  },
+  {
+    "base": "4dbe044eccc01ec889599d607e81a4f104cea45f",
+    "files": ["packages/lib/CalendarService.ts"],
+    "merge": "f1e8e3fa584be7fb55cfbf0c427e5a5f280c4e89",
+    "number": 28115,
+    "repo": "cal.com"
+  },
+  {
+    "base": "9855176948322723c996aed3fe30573f4bc03798",
+    "files": [
+      "apps/web/app/api/auth/forgot-password/route.ts",
+      "apps/web/app/api/ip/route.ts",
+      "packages/lib/getIP.ts"
+    ],
+    "merge": "c9abc556baf2ac8ad895e96915563ddfad73de5e",
+    "number": 28152,
+    "repo": "cal.com"
+  },
+  {
+    "base": "c7ee77ee20f8350a9311add27f8dd80994a3b9f8",
+    "files": [
+      "apps/web/pages/api/book/instant-event.ts",
+      "packages/features/booking-audit/lib/actions/CreatedAuditActionService.ts",
+      "packages/features/bookings/di/InstantBookingCreateService.module.ts",
+      "packages/features/bookings/lib/service/InstantBookingCreateService.ts",
+      "packages/trpc/server/routers/loggedInViewer/connectAndJoin.handler.ts"
+    ],
+    "merge": "25857c07e11bd9681a18f1551276884ba633f2fb",
+    "number": 28176,
+    "repo": "cal.com"
+  },
+  {
+    "base": "e2add3f2c921e61b1b08021cb336d84313f20dbb",
+    "files": [
+      "apps/api/v2/src/modules/webhooks/inputs/webhook.input.ts",
+      "apps/api/v2/src/modules/webhooks/outputs/webhook.output.ts"
+    ],
+    "merge": "658e65be4d4a858e5856817cf6800c4288871384",
+    "number": 28288,
+    "repo": "cal.com"
+  },
+  {
+    "base": "e75614164baf4010bed126aa42f47c725d79bebe",
+    "files": [
+      "apps/api/v2/src/ee/event-types-private-links/controllers/organizations-event-types-private-links.controller.ts",
+      "apps/api/v2/src/modules/event-types/controllers/event-types-webhooks.controller.ts",
+      "apps/api/v2/src/modules/oauth-clients/controllers/oauth-client-webhooks/oauth-client-webhooks.controller.ts",
+      "apps/api/v2/src/modules/organizations/conferencing/organizations-conferencing.controller.ts",
+      "apps/api/v2/src/modules/organizations/event-types/organizations-event-types.controller.ts",
+      "apps/api/v2/src/modules/organizations/organizations/organizations-organizations.controller.ts",
+      "apps/api/v2/src/modules/organizations/schedules/organizations-schedules.controller.ts",
+      "apps/api/v2/src/modules/organizations/stripe/organizations-stripe.controller.ts",
+      "apps/api/v2/src/modules/organizations/teams/bookings/organizations-teams-bookings.controller.ts",
+      "apps/api/v2/src/modules/organizations/teams/index/organizations-teams.controller.ts",
+      "apps/api/v2/src/modules/organizations/teams/routing-forms/controllers/organizations-teams-routing-forms-responses.controller.ts",
+      "apps/api/v2/src/modules/organizations/teams/verified-resources/org-teams-verified-resources.controller.ts",
+      "apps/api/v2/src/modules/organizations/teams/workflows/controllers/org-team-workflows.controller.ts",
+      "apps/api/v2/src/modules/organizations/users/index/controllers/organizations-users.controller.ts",
+      "apps/api/v2/src/modules/organizations/users/ooo/controllers/organizations-users-ooo.controller.ts",
+      "apps/api/v2/src/modules/organizations/webhooks/controllers/organizations-webhooks.controller.ts",
+      "apps/api/v2/src/modules/teams/event-types/controllers/teams-event-types-webhooks.controller.ts",
+      "apps/api/v2/src/modules/teams/event-types/controllers/teams-event-types.controller.ts",
+      "apps/api/v2/src/modules/teams/verified-resources/teams-verified-resources.controller.ts"
+    ],
+    "merge": "f3f5523f315f7f652a6bd1e1ae09794fccdd623e",
+    "number": 28305,
+    "repo": "cal.com"
+  },
+  {
+    "base": "cc01d114e6d4d1c89f2a34d516ad2673e5a8bb3a",
+    "files": [
+      "packages/features/routing-forms/lib/findTeamMembersMatchingAttributeLogic.integration-test.ts"
+    ],
+    "merge": "cfb1489e0171f5585f48786001adbe54c2194944",
+    "number": 28320,
+    "repo": "cal.com"
+  },
+  {
+    "base": "96d78a03d23f1e4c1e1b2d1869242ae91f992b6f",
+    "files": ["packages/platform/atoms/event-types/hooks/useTabsNavigations.tsx"],
+    "merge": "ae0109225872af8d21fa36d8c95b4002417c65b7",
+    "number": 28479,
+    "repo": "cal.com"
+  },
+  {
+    "base": "87fb2abf59d9a2d04d703be714c531218cb54d8d",
+    "files": ["apps/web/modules/auth/forgot-password/forgot-password-view.tsx"],
+    "merge": "15005d89bd0fb2d0e9ae3bf5dff10c83b65c02d5",
+    "number": 28490,
+    "repo": "cal.com"
+  },
+  {
+    "base": "a657723e1ce998e64f1b38c1eb6994e55adb3bd6",
+    "files": [
+      "packages/trpc/server/routers/viewer/dsync/_router.tsx",
+      "packages/trpc/server/routers/viewer/dsync/teamGroupMapping/_router.tsx"
+    ],
+    "merge": "053fb56b790c8cc84f07f4fdd9e473319768b026",
+    "number": 28877,
+    "repo": "cal.com"
+  },
+  {
+    "base": "c0d105e7b395f91745fb4301f6575e85dc1e7d52",
+    "files": [
+      "apps/docs/app/[[...mdxPath]]/page.tsx",
+      "apps/docs/app/layout.tsx",
+      "apps/docs/content/_meta.ts",
+      "apps/docs/content/apps/_meta.ts",
+      "apps/docs/content/deployments/_meta.ts",
+      "apps/docs/mdx-components.ts"
+    ],
+    "merge": "c28d647a0db7351b2a170a00025fbd55a712c39e",
+    "number": 28888,
+    "repo": "cal.com"
+  },
+  {
+    "base": "f86e255779465c3f2f4bc319b1f87f01a7c2d7c8",
+    "files": ["packages/trpc/server/routers/publicViewer/submitRating.schema.ts"],
+    "merge": "00693bb8f098fcf9f938877a78fc3f518af1f05c",
+    "number": 28898,
+    "repo": "cal.com"
+  },
+  {
+    "base": "e9c6d0ee462d974740e71f5355cd36b72594352c",
+    "files": ["packages/trpc/server/routers/viewer/bookings/requestReschedule.handler.ts"],
+    "merge": "f477f7749c9c06e31a1ce8f91f7df6e90dca33d2",
+    "number": 28951,
+    "repo": "cal.com"
+  },
+  {
+    "base": "f3eefc1ffa795eb887468315a649ca5f9fd9f209",
+    "files": ["scripts/seed.ts"],
+    "merge": "1660adeb537a3524290c6885c6b9feca63cf675b",
+    "number": 29007,
+    "repo": "cal.com"
+  },
+  {
+    "base": "ca1d86a5a92bcf2ff593f4f0e9fba1c5d08b39e3",
+    "files": ["packages/features/bookings/lib/getLuckyUser.integration-test.ts"],
+    "merge": "6a2b84ab02d8a5155744752e0445fd400da19402",
+    "number": 29020,
+    "repo": "cal.com"
+  },
+  {
+    "base": "91341cbba403460fac033f95003ce2e2911d4a4e",
+    "files": [
+      "apps/web/app/(use-page-wrapper)/auth/platform/authorize/page.tsx",
+      "apps/web/modules/auth/platform/authorize-view.tsx",
+      "apps/web/modules/shell/Shell.tsx",
+      "apps/web/modules/shell/SideBar.tsx",
+      "apps/web/modules/shell/user-dropdown/UserDropdown.tsx",
+      "apps/web/modules/signup-view.tsx",
+      "apps/web/next.config.ts"
+    ],
+    "merge": "9cd1f34f16eb4c2a8f47ee6e42a51132becc5ac7",
+    "number": 29035,
+    "repo": "cal.com"
+  },
+  {
+    "base": "287cea300101326c5f244d9d60bb2ab262df1a34",
+    "files": ["apps/api/v2/src/modules/profiles/profiles.repository.ts"],
+    "merge": "e003426580b83c1169694ba89767fbc39926c807",
+    "number": 29468,
+    "repo": "cal.com"
+  },
+  {
+    "base": "4e529cbad1e8ab3959cf1f62404bf6e9c6853701",
+    "files": [
+      "packages/trpc/server/routers/viewer/availability/schedule/getScheduleByEventTypeSlug.handler.ts",
+      "packages/trpc/server/routers/viewer/eventTypes/heavy/duplicate.handler.ts",
+      "packages/trpc/server/routers/viewer/eventTypes/heavy/update.handler.ts"
+    ],
+    "merge": "ebf696a991ceea768225a9cda457aa27fc4f0928",
+    "number": 29529,
+    "repo": "cal.com"
+  },
+  {
+    "base": "743f988d30cde81b66a69e3ad46b78441b5f18b9",
+    "files": ["apps/web/app/api/me/route.ts"],
+    "merge": "4026669e687c47207a91462d52028b660a73b352",
+    "number": 29538,
+    "repo": "cal.com"
+  },
+  {
+    "base": "b97cd6203de8889fb275a4bf5fb034b5f221eaf2",
+    "files": [
+      "apps/web/modules/apps/installed/[category]/installed-category-view.tsx",
+      "packages/app-store/_utils/getAppCategories.ts"
+    ],
+    "merge": "5d6d4d30cc2f1ae5e80cdac781fa089e53ea3e65",
+    "number": 29558,
+    "repo": "cal.com"
+  },
+  {
+    "base": "0968bcef016489e351fabb83b8cd9614104bcb9d",
+    "files": ["packages/trpc/server/routers/loggedInViewer/addNotificationsSubscription.handler.ts"],
+    "merge": "bb7c87cae1b9274f1c1260142e1c7f5c10286c0f",
+    "number": 29673,
+    "repo": "cal.com"
+  },
+  {
+    "base": "038381aeca6261635357957d66b8ba85cdb29737",
+    "files": [
+      "packages/app-store/apps.metadata.generated.ts",
+      "packages/app-store/redirect-apps.generated.ts"
+    ],
+    "merge": "8418db70c71e5364e6baf26275aafa10e6bc9bd7",
+    "number": 29819,
+    "repo": "cal.com"
+  },
+  {
+    "base": "b879a542509d908d40141a82bf0caa8cd2fc8f9a",
+    "files": ["packages/app-store/paypal/lib/Paypal.ts"],
+    "merge": "abffde336e744e15cf69626c10e436d6172bc406",
+    "number": 29984,
+    "repo": "cal.com"
+  },
+  {
+    "base": "b0a34f21c91ae7803f9b7e2c59c2fbd187cce26f",
+    "files": ["packages/embeds/embed-core/src/embed.ts"],
+    "merge": "6bc45298226f96ff79e0c070c8b2ce39727e8477",
+    "number": 30135,
+    "repo": "cal.com"
+  },
+  {
+    "base": "ba8e2a292411be9803fde693cda87e99dd3ba8f8",
+    "files": ["packages/lib/constants.ts"],
+    "merge": "56da01b4b1664894b784aca636eccab0c56cc141",
+    "number": 30385,
+    "repo": "cal.com"
+  },
+  {
+    "base": "5e1c2ec4d3e1b6d30394dee6a431cf60063f961b",
+    "files": [
+      "packages/surveys/src/components/general/survey.tsx",
+      "packages/surveys/src/components/wrappers/stacked-cards-container.tsx",
+      "packages/surveys/src/lib/end-slot.ts"
+    ],
+    "merge": "eff1dc599d47909077129005cf00fbe117bda293",
+    "number": 9739,
+    "repo": "formbricks"
+  },
+  {
+    "base": "e3be0b7fdf4f13ba3a7be405d78d4a2e8f5ffee9",
+    "files": [
+      "apps/web/app/(app)/workspaces/[workspaceId]/components/WorkspaceLayout.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/layout.tsx",
+      "apps/web/lib/authorization/context.ts"
+    ],
+    "merge": "b8b8fdad7dd0a723697d939170f7b2be2f82102d",
+    "number": 9775,
+    "repo": "formbricks"
+  },
+  {
+    "base": "f1611e781ea2473ceb9e9ad5be4e7456529bf533",
+    "files": [
+      "apps/web/app/(app)/workspaces/[workspaceId]/components/WorkspaceLayout.tsx",
+      "apps/web/modules/ee/billing/components/pricing-table.tsx",
+      "apps/web/modules/ee/billing/components/trial-ending-warning-modal.tsx",
+      "apps/web/modules/ee/billing/lib/free-trial-end.ts",
+      "apps/web/modules/ee/billing/lib/organization-billing.ts",
+      "packages/database/zod/organizations.ts",
+      "packages/types/organizations.ts"
+    ],
+    "merge": "1736c041df8bba1add50c16de95a26869201c4b9",
+    "number": 9785,
+    "repo": "formbricks"
+  },
+  {
+    "base": "f7724daef410e35a3d843c8418c92a52dc99e246",
+    "files": ["apps/web/modules/auth/lib/session-revocation.ts", "apps/web/modules/auth/lib/session.ts"],
+    "merge": "fc841501f37830e4f98ede9910bb8a094b069a24",
+    "number": 9789,
+    "repo": "formbricks"
+  },
+  {
+    "base": "6794bdd3eaad03fb5bbb51b909651df864b6c63d",
+    "files": [
+      "apps/web/app/(app)/workspaces/[workspaceId]/(contacts)/layout.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/components/ResponseToolbar.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/components/SurveyAnalysisNavigation.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/components/response-filter-context.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/hooks/use-response-table-filters.ts",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/lib/response-table-filters.ts",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/responses/components/ResponseDataView.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/responses/components/ResponsePage.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/responses/components/ResponseTable.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/responses/components/ResponseTableCell.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/responses/components/ResponseTableColumns.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/responses/lib/empty-cell.ts",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/summary/components/SummaryList.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/summary/components/SummaryPage.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/components/CustomFilter.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/components/ElementFilterComboBox.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/components/ElementsComboBox.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/components/ResponseDownloadMenu.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/components/ResponseFilter.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/components/response-filter-options.ts",
+      "apps/web/app/api/v3/contact-attribute-keys/lib/list.ts",
+      "apps/web/app/api/v3/contact-attribute-keys/lib/operations.ts",
+      "apps/web/app/api/v3/contact-attribute-keys/lib/parse-v3-contact-attribute-keys-list-query.ts",
+      "apps/web/app/api/v3/contact-attribute-keys/route.ts",
+      "apps/web/app/api/v3/contact-attribute-keys/serializers.ts",
+      "apps/web/app/api/v3/contacts/attribute-values/lib/operations.ts",
+      "apps/web/app/api/v3/contacts/attribute-values/lib/schemas.ts",
+      "apps/web/app/api/v3/contacts/attribute-values/route.ts",
+      "apps/web/app/api/v3/contacts/lib/contacts-where.ts",
+      "apps/web/app/api/v3/contacts/lib/operations.ts",
+      "apps/web/app/api/v3/contacts/lib/parse-v3-contacts-list-query.ts",
+      "apps/web/app/api/v3/contacts/route.ts",
+      "apps/web/app/api/v3/contacts/serializers.ts",
+      "apps/web/app/api/v3/lib/contacts-entitlement.ts",
+      "apps/web/app/api/v3/lib/response.ts",
+      "apps/web/app/api/v3/lib/sort-cursor.ts",
+      "apps/web/app/api/v3/segments/lib/operations.ts",
+      "apps/web/app/api/v3/segments/lib/parse-v3-segments-list-query.ts",
+      "apps/web/app/api/v3/segments/lib/segments-where.ts",
+      "apps/web/app/api/v3/segments/route.ts",
+      "apps/web/app/api/v3/segments/serializers.ts",
+      "apps/web/app/lib/surveys/surveys.ts",
+      "apps/web/lib/feedback-source/actions.ts",
+      "apps/web/lib/localStorage.ts",
+      "apps/web/lib/response/where-clause.ts",
+      "apps/web/lib/stale-filter-storage.ts",
+      "apps/web/modules/ee/contacts/actions.ts",
+      "apps/web/modules/ee/contacts/attributes/components/attribute-table-column.tsx",
+      "apps/web/modules/ee/contacts/attributes/components/attributes-table.tsx",
+      "apps/web/modules/ee/contacts/attributes/components/create-attribute-modal.tsx",
+      "apps/web/modules/ee/contacts/attributes/components/edit-attribute-modal.tsx",
+      "apps/web/modules/ee/contacts/attributes/lib/table-filters.ts",
+      "apps/web/modules/ee/contacts/attributes/lib/v3-attribute-keys-client.ts",
+      "apps/web/modules/ee/contacts/attributes/page.tsx",
+      "apps/web/modules/ee/contacts/components/contact-data-view.tsx",
+      "apps/web/modules/ee/contacts/components/contact-table-column.tsx",
+      "apps/web/modules/ee/contacts/components/contacts-query-client-provider.tsx",
+      "apps/web/modules/ee/contacts/components/contacts-table.tsx",
+      "apps/web/modules/ee/contacts/components/upload-contacts-button.tsx",
+      "apps/web/modules/ee/contacts/lib/contacts.ts",
+      "apps/web/modules/ee/contacts/lib/query-keys.ts",
+      "apps/web/modules/ee/contacts/lib/table-filters.ts"
+    ],
+    "merge": "b08b3513439a9d7bd45f99d064c131c15e5fc36c",
+    "number": 9811,
+    "repo": "formbricks"
+  },
+  {
+    "base": "ed6008449070362119d77aaf7746107dd91eb1fb",
+    "files": [
+      "apps/web/lib/organization/service.ts",
+      "apps/web/modules/core/rate-limit/rate-limit.ts",
+      "apps/web/modules/ee/audit-logs/lib/service.ts"
+    ],
+    "merge": "db3a05380df93c13c07b48458f92395e690857b6",
+    "number": 9814,
+    "repo": "formbricks"
+  },
+  {
+    "base": "38385d688530bbacfaed684e28836d0274cc9c4a",
+    "files": ["packages/surveys/src/components/buttons/submit-button.tsx"],
+    "merge": "9a18b717674d40b5ccccadd1ad73d69e48b6753a",
+    "number": 9827,
+    "repo": "formbricks"
+  },
+  {
+    "base": "6a8e76651f73a12671275e1af91d07ec77809131",
+    "files": ["apps/web/lib/authzed/backfill.ts", "apps/web/lib/authzed/constants.ts"],
+    "merge": "19bafe29dab5babdff476d5140badfd556833940",
+    "number": 9828,
+    "repo": "formbricks"
+  },
+  {
+    "base": "2df2737385d41bc228541204c6f667cd03311b4f",
+    "files": ["apps/web/app/api/v1/client/[workspaceId]/storage/route.ts"],
+    "merge": "5bd46f8995050e04d94a8da3d198c9f6a61ff04a",
+    "number": 9843,
+    "repo": "formbricks"
+  },
+  {
+    "base": "b569c36aed00b9c5288360039f8494eb88095c7c",
+    "files": [
+      "apps/web/modules/auth/forgot-password/lib/password-reset-request.ts",
+      "apps/web/modules/core/rate-limit/rate-limit-configs.ts",
+      "apps/web/modules/core/rate-limit/rate-limit-metrics.ts",
+      "apps/web/modules/core/rate-limit/rate-limit.ts",
+      "apps/web/modules/core/rate-limit/types/rate-limit.ts",
+      "apps/web/modules/email/lib/email-rate-limits.ts"
+    ],
+    "merge": "b5b1a4fe8e672d905fac9e5c507d9bf8bdcec4ac",
+    "number": 9845,
+    "repo": "formbricks"
+  },
+  {
+    "base": "f945c79c82b493e5cf05962d7e9fe304801d3485",
+    "files": [
+      "packages/api-v3-schemas/src/testing/fidelity.ts",
+      "packages/types/surveys/elements.ts",
+      "packages/types/surveys/types.ts"
+    ],
+    "merge": "2b43c5f5d5b159ec51ac47c295d5d29fe30fa75b",
+    "number": 9848,
+    "repo": "formbricks"
+  },
+  {
+    "base": "03648cdd939018468981a612bdc25fdeea900f96",
+    "files": ["packages/email/emails/survey/response-finished-email.tsx"],
+    "merge": "0d4983ec01be642819d903f9b71e088dce442e67",
+    "number": 9861,
+    "repo": "formbricks"
+  },
+  {
+    "base": "7593437a3af49b6661b8ccb2012a86c5b18014b1",
+    "files": [
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/summary/components/SurveyAnalysisCTA.tsx",
+      "apps/web/app/api/internal/surveys/[surveyId]/content/lib/operations.ts",
+      "apps/web/app/api/internal/surveys/[surveyId]/content/lib/schemas.ts",
+      "apps/web/app/api/internal/surveys/[surveyId]/content/route.ts",
+      "apps/web/app/api/internal/surveys/[surveyId]/export/lib/operations.ts",
+      "apps/web/app/api/internal/surveys/[surveyId]/export/route.ts",
+      "apps/web/app/api/internal/surveys/import/lib/constants.ts",
+      "apps/web/app/api/internal/surveys/import/lib/error-events.ts",
+      "apps/web/app/api/internal/surveys/import/lib/events.ts",
+      "apps/web/app/api/internal/surveys/import/lib/operations.ts",
+      "apps/web/app/api/internal/surveys/import/lib/schemas.ts",
+      "apps/web/app/api/internal/surveys/import/stream/route.ts",
+      "apps/web/app/api/internal/surveys/imports/lib/idempotency.ts",
+      "apps/web/app/api/internal/surveys/imports/lib/operations.ts",
+      "apps/web/app/api/internal/surveys/imports/lib/schemas.ts",
+      "apps/web/app/api/internal/surveys/imports/route.ts",
+      "apps/web/app/api/v1/management/surveys/route.ts",
+      "apps/web/app/api/v3/lib/api-wrapper.ts",
+      "apps/web/app/api/v3/lib/response.ts",
+      "apps/web/app/api/v3/surveys/create.ts",
+      "apps/web/app/api/v3/surveys/lib/operations.ts",
+      "apps/web/app/api/v3/surveys/patch.ts",
+      "apps/web/app/api/v3/surveys/schemas.ts",
+      "apps/web/app/api/v3/surveys/targeting-references.ts",
+      "apps/web/app/api/v3/surveys/targeting.ts",
+      "apps/web/lib/actionClass/service.ts",
+      "apps/web/lib/posthog/ai-tracing-feature.ts",
+      "apps/web/lib/survey/service.ts",
+      "apps/web/lib/survey/write-transaction.ts",
+      "apps/web/lib/user/locale.ts",
+      "apps/web/lib/utils/content-disposition.ts",
+      "apps/web/lib/utils/cut-text.ts",
+      "apps/web/lib/utils/display-file-name.ts",
+      "apps/web/lib/utils/file-download.ts",
+      "apps/web/modules/analysis/components/ShareSurveyLink/index.tsx",
+      "apps/web/modules/ee/data-retention/hooks/use-retention-runs.ts",
+      "apps/web/modules/ee/data-retention/lib/api-client.ts",
+      "apps/web/modules/storage/attachment-export/export-attachments.ts",
+      "apps/web/modules/survey/components/template-list/components/ai-draft-preview.tsx",
+      "apps/web/modules/survey/components/template-list/components/create-with-ai-dialog.tsx",
+      "apps/web/modules/survey/components/template-list/components/create-with-ai-form.tsx",
+      "apps/web/modules/survey/components/template-list/components/draft-review-panel.tsx",
+      "apps/web/modules/survey/components/template-list/components/source-chip.tsx",
+      "apps/web/modules/survey/components/template-list/index.tsx",
+      "apps/web/modules/survey/components/template-list/lib/ai-create-utils.ts",
+      "apps/web/modules/survey/editor/components/how-to-send-card.tsx",
+      "apps/web/modules/survey/excel-export/__fixtures__/translate.ts",
+      "apps/web/modules/survey/excel-export/cell-text.ts",
+      "apps/web/modules/survey/excel-export/limits.ts"
+    ],
+    "merge": "3a63fef274c87b68762adcbca147436e352c7d74",
+    "number": 9878,
+    "repo": "formbricks"
+  },
+  {
+    "base": "a3ad062b33f2ed4ccef28443ae893c1b06e415c4",
+    "files": [
+      "apps/storybook/.storybook/main.ts",
+      "apps/web/app/(app)/workspaces/[workspaceId]/settings/workspace/integrations/notion/constants.ts",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/responses/components/ResponseTableColumns.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/summary/components/SignatureSummary.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/summary/components/SummaryList.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/summary/lib/signature-summary.ts",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/summary/lib/surveySummary.ts",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/components/ResponseDownloadMenu.tsx",
+      "apps/web/app/api/v1/client/[workspaceId]/storage/route.ts",
+      "apps/web/app/api/v3/responses/lib/answers.ts",
+      "apps/web/app/api/v3/responses/lib/operations.ts",
+      "apps/web/app/api/v3/responses/lib/service.ts",
+      "apps/web/app/api/v3/responses/lib/write-service.ts",
+      "apps/web/app/api/v3/surveys/schemas.ts",
+      "apps/web/lib/analysis-export/index.ts",
+      "apps/web/lib/analysis-export/row-builder.ts",
+      "apps/web/lib/feedback-source/mapping-reconciliation.ts",
+      "apps/web/lib/feedback-source/survey-elements.ts",
+      "apps/web/lib/response/delete-responses.ts",
+      "apps/web/lib/response/service.ts",
+      "apps/web/modules/analysis/components/SingleResponseCard/components/RenderResponse.tsx",
+      "apps/web/modules/analysis/components/SingleResponseCard/components/SingleResponseCardBody.tsx",
+      "apps/web/modules/api/v2/management/responses/[responseId]/lib/response.ts",
+      "apps/web/modules/api/v2/management/responses/[responseId]/lib/utils.ts",
+      "apps/web/modules/deletion-cleanup/lib/enqueue.ts",
+      "apps/web/modules/email/components/preview-email-template.tsx",
+      "apps/web/modules/email/fixtures/embed-survey-preview-email-fixture.ts",
+      "apps/web/modules/response-pipeline/lib/handle-integrations.ts",
+      "apps/web/modules/storage/lib/collect-response-attachments.ts",
+      "apps/web/modules/storage/lib/replaced-signature-files.ts",
+      "apps/web/modules/storage/lib/survey-response-files.ts",
+      "apps/web/modules/storage/signature-image.ts",
+      "apps/web/modules/storage/survey-file-upload-elements.ts",
+      "apps/web/modules/storage/survey-upload-elements.ts",
+      "apps/web/modules/storage/utils.ts",
+      "apps/web/modules/survey/components/element-form-input/components/recall-item-select.tsx",
+      "apps/web/modules/survey/components/element-form-input/utils.ts",
+      "apps/web/modules/survey/editor/components/block-card.tsx",
+      "apps/web/modules/survey/editor/components/signature-element-form.tsx",
+      "apps/web/modules/survey/editor/lib/logic-rule-engine.ts",
+      "apps/web/modules/survey/editor/lib/signature-element.ts",
+      "apps/web/modules/survey/import/lib/import-report.ts",
+      "apps/web/modules/survey/import/qsf/__fixtures__/load-fixture.ts",
+      "apps/web/modules/survey/import/qsf/assemble.ts",
+      "apps/web/modules/survey/import/qsf/draft.ts"
+    ],
+    "merge": "0be032bd0093fc2770a6b5bef2703111ff4859d2",
+    "number": 9880,
+    "repo": "formbricks"
+  },
+  {
+    "base": "17b7e088872e840cbd30375502f7e63e8b9db092",
+    "files": [
+      "apps/web/lib/user/password.ts",
+      "apps/web/modules/auth/lib/auth.ts",
+      "apps/web/modules/auth/lib/credential-issuer-heal.ts",
+      "apps/web/modules/ee/sso/lib/account-linking.ts",
+      "apps/web/modules/ee/sso/lib/better-auth-hooks.ts",
+      "apps/web/modules/ee/sso/lib/better-auth-providers.ts",
+      "apps/web/modules/ee/sso/lib/constants.ts",
+      "packages/database/src/seed.ts"
+    ],
+    "merge": "ae8a5d9cea2242da168541f3e012302241618863",
+    "number": 9889,
+    "repo": "formbricks"
+  },
+  {
+    "base": "2e27fbe0519d5872b24fe70c45daa5c2fe389505",
+    "files": [
+      "packages/surveys/src/components/general/block-conditional.tsx",
+      "packages/surveys/src/components/wrappers/scrollable-container.tsx"
+    ],
+    "merge": "8486480163e76e08fcf44abe413023547d622d17",
+    "number": 9907,
+    "repo": "formbricks"
+  },
+  {
+    "base": "24de07c05fcb5eba0322c91a36be567cd99905f5",
+    "files": [
+      "apps/web/lib/response/filtering-values.ts",
+      "apps/web/lib/response/service.ts",
+      "apps/web/lib/response/utils.ts"
+    ],
+    "merge": "7088212683cfdff7fcfaf4379ea9fa6e3344097d",
+    "number": 9910,
+    "repo": "formbricks"
+  },
+  {
+    "base": "ac645978418591c28cd50a57d4e9ad8ad6112009",
+    "files": [
+      "apps/web/app/api/v1/client/[workspaceId]/environment/lib/environmentState.ts",
+      "apps/web/lib/cache/index.ts",
+      "apps/web/lib/oauth/integration-state.ts",
+      "apps/web/modules/auth/lib/utils.ts",
+      "apps/web/modules/core/rate-limit/in-flight.ts",
+      "apps/web/modules/core/rate-limit/rate-limit.ts",
+      "apps/web/modules/core/rate-limit/redis-script.ts",
+      "apps/web/modules/ee/creatives/lib/counters.ts",
+      "apps/web/modules/ee/sso/lib/recovery-intent.ts",
+      "packages/cache/src/circuit.ts",
+      "packages/cache/src/client.ts",
+      "packages/cache/src/deadline.ts",
+      "packages/cache/src/service.ts"
+    ],
+    "merge": "31f391b3797f9f45f7ebaceb27e801b29fd69203",
+    "number": 9912,
+    "repo": "formbricks"
+  },
+  {
+    "base": "2589547605e72fa415aa782de62365aed21b05b8",
+    "files": [
+      "apps/web/app/api/v3/lib/bounded-parse.ts",
+      "apps/web/app/api/v3/lib/invalid-params.ts",
+      "apps/web/app/api/v3/lib/response.ts",
+      "apps/web/app/api/v3/surveys/language.ts",
+      "apps/web/app/api/v3/surveys/schemas.ts"
+    ],
+    "merge": "a4f6ee0fee40dac5e9404c1e3304ae244a3cfa57",
+    "number": 9926,
+    "repo": "formbricks"
+  },
+  {
+    "base": "2d2aae048561ab9363aaacdbfdd21840a1e9eea3",
+    "files": ["packages/surveys/src/index.ts"],
+    "merge": "f61a6d476450d12b4d2c506d20ef352c2b2a4b93",
+    "number": 9932,
+    "repo": "formbricks"
+  },
+  {
+    "base": "19e87ea16c4445bc3108f845c88062211ffa43fc",
+    "files": [
+      "apps/web/app/api/v1/client/[workspaceId]/responses/[responseId]/lib/put-response-handler.ts",
+      "apps/web/app/api/v1/client/[workspaceId]/responses/[responseId]/lib/response.ts",
+      "apps/web/lib/response/service.ts",
+      "packages/types/errors.ts"
+    ],
+    "merge": "bcb8c047f8e17282c9a74d431e2cc34340a989a2",
+    "number": 9934,
+    "repo": "formbricks"
+  },
+  {
+    "base": "690426e31685c1b1456b6cf8681392b61f54e2ee",
+    "files": [
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/summary/actions.ts",
+      "apps/web/app/api/v1/management/surveys/[surveyId]/route.ts",
+      "apps/web/app/api/v1/management/surveys/route.ts",
+      "apps/web/app/api/v3/surveys/create.ts",
+      "apps/web/app/api/v3/surveys/targeting.ts",
+      "apps/web/app/api/v3/surveys/visibility-context.ts",
+      "apps/web/lib/survey/service.ts",
+      "apps/web/modules/api/v2/management/surveys/[surveyId]/contact-links/segments/[segmentId]/lib/contact.ts",
+      "apps/web/modules/api/v2/management/surveys/[surveyId]/contact-links/segments/[segmentId]/route.ts",
+      "apps/web/modules/ee/contacts/api/v1/client/[workspaceId]/user/lib/segments.ts",
+      "apps/web/modules/ee/contacts/lib/contacts.ts",
+      "apps/web/modules/ee/contacts/lib/personal-link-errors.ts",
+      "apps/web/modules/ee/contacts/segments/actions.ts",
+      "apps/web/modules/ee/contacts/segments/lib/filter/prisma-query.ts",
+      "apps/web/modules/ee/contacts/segments/lib/filter/survey-interaction.ts",
+      "apps/web/modules/ee/contacts/segments/lib/helper.ts",
+      "apps/web/modules/survey/editor/actions.ts",
+      "apps/web/modules/survey/list/lib/survey.ts",
+      "packages/types/segment.ts"
+    ],
+    "merge": "4b962c3774bd5d8c414ff015d0bcb3cddd3f0126",
+    "number": 9935,
+    "repo": "formbricks"
+  },
+  {
+    "base": "1042fcfcd8c120da8d3b882a8a9d0951fabf6527",
+    "files": [
+      "apps/web/modules/survey/components/template-list/components/ai-draft-preview.tsx",
+      "apps/web/modules/survey/components/template-list/lib/ai-draft-scroll.ts",
+      "apps/web/modules/survey/import/components/import-survey-dialog.tsx",
+      "apps/web/modules/survey/import/components/import-survey-form.tsx"
+    ],
+    "merge": "05ac3e2239d4b5036176282886d3dcc785042330",
+    "number": 9965,
+    "repo": "formbricks"
+  },
+  {
+    "base": "02f7eb2dbfac81617ee53080e0ae6276372d65e9",
+    "files": [
+      "apps/web/modules/ee/auth/saml/api/callback/route.ts",
+      "apps/web/modules/ee/auth/saml/lib/saml-parse-budget.ts",
+      "apps/web/modules/ee/auth/saml/lib/saml-parse-worker.ts"
+    ],
+    "merge": "da6028f058e3cb09f01e53e7803d82335a1f00c8",
+    "number": 9988,
+    "repo": "formbricks"
+  },
+  {
+    "base": "7d10969e51dafe88452a4137af0c7789c32a45d5",
+    "files": ["apps/web/modules/auth/lib/personal-email-domains.ts"],
+    "merge": "74d1c9a364b0dd1459b751ced39797a2fbe0117b",
+    "number": 10024,
+    "repo": "formbricks"
+  },
+  {
+    "base": "985355fa90697a7868edfc28c7dd8593bf9dd25a",
+    "files": [
+      "apps/web/modules/auth/lib/oauth-error.ts",
+      "apps/web/modules/auth/login/components/login-form.tsx",
+      "apps/web/modules/ee/sso/lib/better-auth-recovery-signin.ts",
+      "apps/web/modules/ee/sso/lib/sso-recovery.ts",
+      "packages/types/errors.ts"
+    ],
+    "merge": "e96600a363d0ab1dd5effc92c7e9da69d09214e4",
+    "number": 10032,
+    "repo": "formbricks"
+  },
+  {
+    "base": "c4124e0b5406e9e189a14a9c21e5c537259e255c",
+    "files": [
+      "apps/web/modules/ee/whitelabel/email-customization/actions.ts",
+      "apps/web/modules/ee/whitelabel/email-customization/lib/organization.ts"
+    ],
+    "merge": "1003e762bb2689ac9744bff4980b25c3aec5253e",
+    "number": 10033,
+    "repo": "formbricks"
+  },
+  {
+    "base": "b7575bc5a9368bf09c24a61e2431c422c9fa1f4e",
+    "files": [
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/layout.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/page.tsx",
+      "apps/web/app/not-found.tsx",
+      "apps/web/modules/survey/list/page.tsx"
+    ],
+    "merge": "c6e58fef7e80ddc18024d6db10cec1759e9a90b9",
+    "number": 10058,
+    "repo": "formbricks"
+  },
+  {
+    "base": "1fa2d0a2ce0e5b479f56b1d4a646b7de55007dfb",
+    "files": [
+      "apps/web/modules/survey/editor/components/reference-chip.tsx",
+      "apps/web/modules/survey/editor/components/show-if-popover.tsx",
+      "apps/web/modules/ui/components/info-tooltip/index.tsx"
+    ],
+    "merge": "d5dfe9f9c95d9cf35028041fc2e5b3965d1ea1f1",
+    "number": 10059,
+    "repo": "formbricks"
+  },
+  {
+    "base": "9482c63e798feaffd5fb0e71d17ef20f3ebf56d2",
+    "files": [
+      "apps/storybook/oxlint.config.ts",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/responses/components/ResponsePage.tsx",
+      "apps/web/app/(app)/workspaces/[workspaceId]/surveys/[surveyId]/(analysis)/summary/components/SummaryPage.tsx",
+      "apps/web/modules/survey/link/components/survey-client-wrapper.tsx",
+      "apps/web/oxlint.config.ts",
+      "oxlint.config.ts",
+      "packages/database/migration/20241209104738_xm_user_identification/migration.ts",
+      "packages/surveys/src/components/general/survey.tsx",
+      "packages/surveys/src/lib/i18n.config.ts"
+    ],
+    "merge": "b3bd13c44a1667cbb32e089621873357ddbe68c2",
+    "number": 10063,
+    "repo": "formbricks"
+  },
+  {
+    "base": "2d9e053a04c9aca37caca7a616a7b9c219e52173",
+    "files": [
+      "apps/web/app/api/v3/lib/api-wrapper.ts",
+      "apps/web/lib/utils/unexpected-server-action-response.ts",
+      "apps/web/modules/auth/lib/auth-request-body-limit.ts",
+      "apps/web/modules/survey/import/limits.ts",
+      "apps/web/proxy.ts"
+    ],
+    "merge": "0b61757782116fc8df90dcd9cb9f62557dd11c87",
+    "number": 10081,
+    "repo": "formbricks"
+  },
+  {
+    "base": "5b7055433300196273e7b98b898de4851a58cad2",
+    "files": [
+      "apps/web/modules/ee/contacts/api/v1/client/[workspaceId]/user/lib/update-user.ts",
+      "apps/web/modules/ee/contacts/lib/attribute-messages.ts",
+      "apps/web/modules/ee/contacts/lib/attributes.ts",
+      "apps/web/modules/ee/contacts/lib/update-contact-attributes.ts"
+    ],
+    "merge": "85e3974e9db865d54cfb48873b8d0d3eb50bfdbb",
+    "number": 10086,
+    "repo": "formbricks"
+  },
+  {
+    "base": "1a2b7a95c84ff1ea072d80231204a1a8634333dc",
+    "files": [
+      "apps/web/modules/ee/analysis/charts/components/advanced-chart-builder.tsx",
+      "apps/web/modules/ee/analysis/charts/components/create-chart-view.tsx",
+      "apps/web/modules/ee/analysis/charts/hooks/use-chart-dirty-state.ts",
+      "apps/web/modules/ee/analysis/charts/lib/builder-query.ts"
+    ],
+    "merge": "047876943777b80b30fa1dfd644462c60cd49e8e",
+    "number": 10090,
+    "repo": "formbricks"
+  },
+  {
+    "base": "61785f0becb9d5a1f691202d67e7959b2a2c37ec",
+    "files": ["apps/web/modules/ui/components/multi-select/index.tsx"],
+    "merge": "3ba77d6126d88b9179d97d91e5f0c4b97b7c2821",
+    "number": 10097,
+    "repo": "formbricks"
+  },
+  {
+    "base": "731e1b3eefc5ae4e25dc7c9a78d352d4005ec58c",
+    "files": [
+      "apps/web/modules/auth/signup/components/signup-form.tsx",
+      "apps/web/modules/auth/signup/lib/signup-error.ts"
+    ],
+    "merge": "7494eaad1c9a41c44208bd9ff6fed7ad90f9acc5",
+    "number": 10100,
+    "repo": "formbricks"
+  }
+]

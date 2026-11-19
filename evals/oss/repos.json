@@ -33,6 +33,14 @@
       "role": "held-out"
     },
     {
+      "name": "cal.com",
+      "url": "https://github.com/calcom/cal.com.git",
+      "sha": "ae027bb70e694e2d2c44569f398d6cbcee0389b1",
+      "stack": ["nextjs", "prisma", "trpc"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
       "name": "conduit-express-prisma",
       "url": "https://github.com/gothinkster/node-express-prisma-v1-official-app.git",
       "sha": "6ac99ea5aeadc4e001dd4d6933c2e269f878a969",
@@ -182,6 +190,14 @@
       "sha": "fc188d3e95bcbd8501a4bd671750c982cc3e409d",
       "stack": ["gorm"],
       "lang": ["go"],
+      "role": "tuning"
+    },
+    {
+      "name": "n8n",
+      "url": "https://github.com/n8n-io/n8n.git",
+      "sha": "bac26db0ff582aa01916e4d1467cf4632b2440e4",
+      "stack": ["typeorm", "vue"],
+      "lang": ["ts"],
       "role": "tuning"
     },
     {
