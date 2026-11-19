@@ -1,7 +1,7 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": ".",
+    "rootDir": "../..",
     "outDir": "dist/types",
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -11,6 +11,6 @@
     "allowImportingTsExtensions": true,
     "emitDeclarationOnly": true
   },
-  "include": ["src", "mock", "e2e", "*.ts"],
+  "include": ["src", "mock", "e2e", "*.ts", "../../core/src/ids.ts"],
   "references": []
 }

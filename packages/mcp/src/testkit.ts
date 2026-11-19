@@ -56,7 +56,9 @@ export const CLAMP_SOURCE = `export function clamp(value: number, min: number, m
 `;
 
 export function makeRepo(files: Record<string, string> = {}): Repo {
-  const dir = mkdtempSync(join(tmpdir(), "gantry-mcp-repo-"));
+  const parent = mkdtempSync(join(tmpdir(), "gantry-mcp-repo-"));
+  const dir = join(parent, "repo"); // the repo name (no remote) is this basename
+  mkdirSync(dir);
   const data = mkdtempSync(join(tmpdir(), "gantry-mcp-data-"));
   const env = { ...process.env, HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data };
   const git = (...args: string[]): string =>
@@ -98,7 +100,7 @@ export function makeRepo(files: Record<string, string> = {}): Repo {
       }
     },
     cleanup() {
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(parent, { recursive: true, force: true });
       rmSync(data, { recursive: true, force: true });
     },
   };

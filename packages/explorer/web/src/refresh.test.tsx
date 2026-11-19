@@ -8,7 +8,7 @@ import { installMockFetch, renderApp } from "./testUtils.tsx";
 
 afterEach(() => refreshStore.reset());
 
-const ADDED = "sym:packages/ui/src/button.tsx#refreshedHelper";
+const ADDED = "sym:pnpm-turbo:packages/ui/src/button.tsx#refreshedHelper";
 
 /** The mock API with an editable working tree: `edit()` makes one file stale; a refresh adds a function to it. */
 function editableMock() {
@@ -116,9 +116,18 @@ describe("freshIds", () => {
       changed: { files: 2, functions: 3 },
       ms: 0,
       healed: false,
-      files: ["file:a.ts", "file:b.ts"],
-      functions: { added: ["sym:a.ts#x"], changed: ["sym:b.ts#y"], removed: ["sym:b.ts#z"] },
+      files: ["file:pnpm-turbo:a.ts", "file:pnpm-turbo:b.ts"],
+      functions: {
+        added: ["sym:pnpm-turbo:a.ts#x"],
+        changed: ["sym:pnpm-turbo:b.ts#y"],
+        removed: ["sym:pnpm-turbo:b.ts#z"],
+      },
     });
-    expect([...set].sort()).toEqual(["file:a.ts", "file:b.ts", "sym:a.ts#x", "sym:b.ts#y"]);
+    expect([...set].sort()).toEqual([
+      "file:pnpm-turbo:a.ts",
+      "file:pnpm-turbo:b.ts",
+      "sym:pnpm-turbo:a.ts#x",
+      "sym:pnpm-turbo:b.ts#y",
+    ]);
   });
 });

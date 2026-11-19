@@ -3,6 +3,7 @@
 // scoped names, nested folders, weighted imports (1 to 640 file links per workspace pair) and many declared-only
 // package.json dependencies. Selected with the hash flag `scenario=large`; entirely synthetic and deterministic.
 import type { GraphEdge, GraphNode, ViewData, ViewLevel } from "../src/api.ts";
+import { displayOfId } from "../src/ids.ts";
 
 /** What `/api/meta` reports as `counts`. */
 export type Counts = {
@@ -329,7 +330,7 @@ function build(): Data {
     const ids: string[] = [];
     paths.forEach((p, i) => {
       const path = `${prefix}${p.rel}`;
-      const fileId = `file:${path}`;
+      const fileId = `file:pnpm-turbo:${path}`;
       ids.push(fileId);
       const n = fns[i] as number;
       add({
@@ -357,7 +358,7 @@ function build(): Data {
                 ? "method"
                 : "function";
         add({
-          id: `sym:${path}#${name}`,
+          id: `sym:pnpm-turbo:${path}#${name}`,
           kind,
           label: name,
           size: 1,
@@ -413,7 +414,8 @@ function build(): Data {
   for (const ids of filesOfWs.values()) {
     if (ids.length < 2) continue;
     for (const id of ids)
-      for (let k = 0; k < 2; k++) link(id, ids[hash(`${id}:local${k}`) % ids.length] as string);
+      for (let k = 0; k < 2; k++)
+        link(id, ids[hash(`file:${displayOfId(id)}:local${k}`) % ids.length] as string);
   }
 
   // A few hundred function-to-function calls across files, so a selected function has arrows.

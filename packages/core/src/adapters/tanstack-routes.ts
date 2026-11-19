@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseSync } from "oxc-parser";
+import { routeId as makeRouteId } from "../ids.js";
 import { isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
 import type { ParsedFile } from "../parse/index.js";
 import type { Resolver } from "../resolve/index.js";
@@ -179,6 +180,7 @@ export interface RouteSourceFile {
 
 export interface DetectRoutesInput {
   root: string;
+  repo: string;
   workspaces: WorkspaceRecord[];
   files: RouteSourceFile[];
   parsed: { get(fileId: string): ParsedFile | undefined };
@@ -347,7 +349,7 @@ export function detectTanstackRoutes(input: DetectRoutesInput): DetectedRoutes {
       if (!byId.has(routeId)) byId.set(routeId, { file, map, routeId, call });
     }
     const ids = new Set(byId.keys());
-    const nodeId = (routeId: string): string => `route:${wsName}:${routeId}`;
+    const nodeId = (routeId: string): string => makeRouteId(input.repo, wsName, routeId);
     for (const f of [...byId.values()].sort((a, b) => cmp(a.routeId, b.routeId))) {
       const urlPath = f.call.idArg !== undefined ? urlPathOfRouteId(f.routeId) : f.map.urlPath;
       const pathless = f.map.pathless;
@@ -409,6 +411,7 @@ export const tanstackRoutesAdapter: Adapter = {
   link(ctx) {
     const found = detectTanstackRoutes({
       root: ctx.root,
+      repo: ctx.repo,
       workspaces: ctx.workspaces,
       files: ctx.files.map(({ file }) => ({
         path: file.path,

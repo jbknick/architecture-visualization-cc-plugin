@@ -12,12 +12,12 @@ describe("collapseChains", () => {
     n("dir:a/src/lib", "dir", "dir:a/src"),
     n("dir:a/src/lib/x", "dir", "dir:a/src/lib"),
     n("dir:a/src/lib/x/deep", "dir", "dir:a/src/lib/x"),
-    n("file:a/src/lib/x/f.ts", "file", "dir:a/src/lib/x"),
-    n("file:a/src/lib/x/deep/g.ts", "file", "dir:a/src/lib/x/deep"),
+    n("file:pnpm-turbo:a/src/lib/x/f.ts", "file", "dir:a/src/lib/x"),
+    n("file:pnpm-turbo:a/src/lib/x/deep/g.ts", "file", "dir:a/src/lib/x/deep"),
     n("ws:b", "workspace"),
     n("dir:b/src", "dir", "ws:b"),
-    n("file:b/src/h.ts", "file", "dir:b/src"),
-    n("file:b/readme.ts", "file", "ws:b"),
+    n("file:pnpm-turbo:b/src/h.ts", "file", "dir:b/src"),
+    n("file:pnpm-turbo:b/readme.ts", "file", "ws:b"),
     n("ws:c", "workspace"),
     n("dir:c/src", "dir", "ws:c"),
     n("dir:c/src/a", "dir", "dir:c/src"),
@@ -84,8 +84,8 @@ describe("lone folder with loose files next to it", () => {
     node("dir:w/src", "dir", "ws:w", 100, 3),
     node("dir:w/src/a", "dir", "dir:w/src", 60, 2),
     node("dir:w/src/b", "dir", "dir:w/src", 40, 1),
-    node("file:w/vite.config.ts", "file", "ws:w", looseFns, 1),
-    node("file:w/package.ts", "file", "ws:w", looseFns, 1),
+    node("file:pnpm-turbo:w/vite.config.ts", "file", "ws:w", looseFns, 1),
+    node("file:pnpm-turbo:w/package.ts", "file", "ws:w", looseFns, 1),
   ];
 
   it("lifts the folder and gathers the loose files in one (root files) group (under 10% of the functions)", () => {
@@ -97,7 +97,7 @@ describe("lone folder with loose files next to it", () => {
     expect(scene.nodes[group]?.label).toBe("(root files)");
     expect(scene.tree.nodes[group]?.parent).toBe(at("ws:w"));
     // Server ids are unchanged: the files keep their ids and sit in the group.
-    expect(scene.tree.nodes[at("file:w/vite.config.ts")]?.parent).toBe(group);
+    expect(scene.tree.nodes[at("file:pnpm-turbo:w/vite.config.ts")]?.parent).toBe(group);
     expect(scene.functions[group]).toBe(6);
     expect(scene.chain.get(at("ws:w"))).toEqual([at("dir:w/src")]);
   });
@@ -107,7 +107,7 @@ describe("lone folder with loose files next to it", () => {
     const at = (id: string) => scene.tree.index.get(id) as number;
     expect(scene.skipped[at("dir:w/src")]).toBe(0);
     expect(scene.tree.index.has("rootfiles:ws:w")).toBe(false);
-    expect(scene.tree.nodes[at("file:w/vite.config.ts")]?.parent).toBe(at("ws:w"));
+    expect(scene.tree.nodes[at("file:pnpm-turbo:w/vite.config.ts")]?.parent).toBe(at("ws:w"));
   });
 
   it("collapses on counts alone when no file cells are loaded (Folders level)", () => {
@@ -143,7 +143,7 @@ describe("dominant folder with other folders and files beside it", () => {
     node("dir:w/src/a", "dir", "dir:w/src", Math.ceil(main / 2)),
     node("dir:w/src/b", "dir", "dir:w/src", Math.floor(main / 2)),
     node("dir:w/.storybook", "dir", "ws:w", rest),
-    node("file:w/vite.config.ts", "file", "ws:w", 0),
+    node("file:pnpm-turbo:w/vite.config.ts", "file", "ws:w", 0),
   ];
 
   it("lifts a folder holding 100% of the functions and gathers the 0% siblings in one (other) group", () => {
@@ -154,7 +154,7 @@ describe("dominant folder with other folders and files beside it", () => {
     expect(scene.tree.nodes[group]?.kind).toBe(GROUP_KIND);
     expect(scene.nodes[group]?.label).toBe("(other)");
     expect(scene.tree.nodes[at("dir:w/.storybook")]?.parent).toBe(group);
-    expect(scene.tree.nodes[at("file:w/vite.config.ts")]?.parent).toBe(group);
+    expect(scene.tree.nodes[at("file:pnpm-turbo:w/vite.config.ts")]?.parent).toBe(group);
     expect(scene.tree.nodes[at("dir:w/src/a")]?.parent).toBe(at("dir:w/src"));
   });
 
@@ -175,10 +175,10 @@ describe("dominant folder with other folders and files beside it", () => {
 
   it("puts files that arrive later (the Folders-level mosaic) into the group that is already there", () => {
     const base = buildScene(workspace(961, 0).slice(0, 5), [], "nested-elk");
-    const files = [node("file:w/vite.config.ts", "file", "ws:w", 0)];
+    const files = [node("file:pnpm-turbo:w/vite.config.ts", "file", "ws:w", 0)];
     const scene = buildScene([...base.nodes, ...files], [], "nested-elk", { mosaic: true });
     const at = (id: string) => scene.tree.index.get(id) as number;
-    expect(scene.tree.nodes[at("file:w/vite.config.ts")]?.parent).toBe(at("rootfiles:ws:w"));
+    expect(scene.tree.nodes[at("file:pnpm-turbo:w/vite.config.ts")]?.parent).toBe(at("rootfiles:ws:w"));
     expect(scene.skipped[at("dir:w/src")]).toBe(1);
   });
 });

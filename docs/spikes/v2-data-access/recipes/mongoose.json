@@ -1,0 +1,65 @@
+{
+  "name": "mongoose",
+  "frameworks": [
+    { "name": "mongoose", "evidence": "model(name, schema) calls; Model static and instance methods" }
+  ],
+  "when": { "dependency": ["mongoose"] },
+  "helpers": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+  "methods": {
+    "read": [
+      "find",
+      "findOne",
+      "findById",
+      "countDocuments",
+      "estimatedDocumentCount",
+      "exists",
+      "aggregate",
+      "distinct"
+    ],
+    "write": [
+      "create",
+      "insertMany",
+      "updateOne",
+      "updateMany",
+      "replaceOne",
+      "findOneAndUpdate",
+      "findByIdAndUpdate",
+      "findOneAndDelete",
+      "findByIdAndDelete",
+      "findOneAndReplace",
+      "deleteOne",
+      "deleteMany",
+      "bulkWrite",
+      "save"
+    ]
+  },
+  "rules": [
+    {
+      "id": "model",
+      "language": "typescript",
+      "rule": { "pattern": "model($N, $$$A)" },
+      "constraints": { "N": { "kind": "string" } },
+      "emit": { "kind": "table", "name": "$N", "binding": true }
+    },
+    {
+      "id": "static-call",
+      "language": "typescript",
+      "rule": { "pattern": "$M.$METHOD($$$A)" },
+      "constraints": { "M": { "kind": "identifier" } },
+      "emit": { "kind": "access", "method": "$METHOD", "target": "$M" }
+    },
+    {
+      "id": "collection-call",
+      "language": "typescript",
+      "rule": { "pattern": "$M.collection.$METHOD($$$A)" },
+      "constraints": { "M": { "kind": "identifier" } },
+      "emit": { "kind": "access", "method": "$METHOD", "target": "$M" }
+    },
+    {
+      "id": "new-save",
+      "language": "typescript",
+      "rule": { "pattern": "new $M($$$A).save($$$B)" },
+      "emit": { "kind": "access", "as": "write", "target": "$M" }
+    }
+  ]
+}

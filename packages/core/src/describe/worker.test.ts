@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type GantryConfig, loadConfig } from "../config/index.js";
+import { pathOfFileId } from "../ids.js";
 import type { Store } from "../store/index.js";
 import type { FactSheet } from "../types.js";
 import { claimBatch, syncBacklog } from "./backlog.js";
@@ -90,9 +91,7 @@ function sheetsOf(store: Store, root: string): FactSheet[] {
   for (const { symbol_id } of rows) {
     const sym = store.getSymbol(symbol_id);
     if (!sym || !FUNCTION_LIKE_KINDS.includes(sym.kind)) continue;
-    out.push(
-      buildFactSheet(store, sym.id, readFileSync(join(root, sym.fileId.replace(/^file:/, "")), "utf8")),
-    );
+    out.push(buildFactSheet(store, sym.id, readFileSync(join(root, pathOfFileId(sym.fileId)), "utf8")));
   }
   return out;
 }
@@ -312,7 +311,7 @@ describe("describeWithWorker", () => {
     const secret: FactSheet = {
       ...(sheets[0] as FactSheet),
       contentKey: "sens:p1",
-      id: "sym:config/.env.local#x",
+      id: "sym:single-pkg:config/.env.local#x",
       path: "config/.env.local",
     };
     const r = await run([secret, ...sheets.slice(0, 2)]);

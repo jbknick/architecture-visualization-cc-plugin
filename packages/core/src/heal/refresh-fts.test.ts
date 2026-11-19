@@ -119,9 +119,9 @@ describe("targeted re-index keeps fts_symbols exact (rowid deletes, more than on
       after.effective.filter((id) => !ids.includes(id)),
       "effective symbols without a row",
     ).toEqual([]);
-    expect(ids).toContain(`sym:${file(1)}#delta1`);
-    expect(ids).toContain(`sym:${file(4)}#omega4`);
-    expect(ids).toContain(`sym:${file(3)}#extra3`);
+    expect(ids).toContain(`sym:repo:${file(1)}#delta1`);
+    expect(ids).toContain(`sym:repo:${file(4)}#omega4`);
+    expect(ids).toContain(`sym:repo:${file(3)}#extra3`);
     // Files nobody touched keep their exact rows (same rowid, same content).
     expect(after.rows.filter(untouched)).toEqual(untouchedBefore);
 
@@ -171,11 +171,11 @@ describe("a revert restores the search rows of main-layer symbols (#165)", () =>
 
   it("a renamed function is found by its original name only after the revert", async () => {
     const { root, paths, file } = await repoOf(2);
-    const id = `sym:${file(0)}#alpha0`;
+    const id = `sym:repo:${file(0)}#alpha0`;
     const p = join(root, file(0));
     writeFileSync(p, readFileSync(p, "utf8").replace("alpha0", "renamedzulu"));
     await refreshWorking(paths);
-    expect(found(paths, "renamedzulu")).toEqual([`sym:${file(0)}#renamedzulu`]);
+    expect(found(paths, "renamedzulu")).toEqual([`sym:repo:${file(0)}#renamedzulu`]);
     expect(found(paths, "alpha0")).not.toContain(id);
 
     await revert(root, paths);
@@ -185,7 +185,7 @@ describe("a revert restores the search rows of main-layer symbols (#165)", () =>
 
   it("a changed body and description leave the main description in the row after the revert", async () => {
     const { root, paths, file } = await repoOf(2);
-    const id = `sym:${file(0)}#alpha0`;
+    const id = `sym:repo:${file(0)}#alpha0`;
     describeEffective(paths, id, "adds the index to a number", "quuxmain");
     expect(found(paths, "quuxmain")).toEqual([id]);
 
@@ -205,7 +205,7 @@ describe("a revert restores the search rows of main-layer symbols (#165)", () =>
 describe("a revert clears working description text from main symbols that have no description (#165)", () => {
   it("search no longer finds the working description terms", async () => {
     const { root, paths, file } = await repoOf(2);
-    const id = `sym:${file(0)}#alpha0`;
+    const id = `sym:repo:${file(0)}#alpha0`;
     const p = join(root, file(0));
     writeFileSync(p, readFileSync(p, "utf8").replace("return x + 0;", "return x * 7;"));
     await refreshWorking(paths);

@@ -1,3 +1,4 @@
+import { endpointId, isSymId, pathOfFileId, symKey, symKeyOfId } from "../ids.js";
 import { chainName, isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
 import type { EdgeRecord } from "../types.js";
 import {
@@ -169,7 +170,7 @@ class FileReader {
   }
 
   private key(name: string): Key {
-    return `${this.ctx.path}#${name}`;
+    return symKey(this.ctx.path, name);
   }
 
   /** Key of an identifier: a top-level binding of this file, or an import followed through the resolver. */
@@ -179,9 +180,9 @@ class FileReader {
     const imp = this.ctx.parsed?.imports.find((i) => i.local === name);
     if (!imp || imp.imported === "*") return null;
     const sym = symbolForName(this.ctx.parsed, this.ctx.fileId, name, this.ctx.resolver);
-    if (sym?.startsWith("sym:")) return sym.slice(4);
+    if (sym && isSymId(sym)) return symKeyOfId(sym) ?? null;
     const t = this.ctx.resolver.resolveSpecifier(this.ctx.fileId, imp.specifier);
-    return t.kind === "file" ? `${t.fileId.slice(5)}#${imp.imported}` : null;
+    return t.kind === "file" ? symKey(pathOfFileId(t.fileId), imp.imported) : null;
   }
 
   /** The builder a chain starts on, and its calls (null when the chain does not start on a known binding). */
@@ -216,7 +217,7 @@ class FileReader {
     });
     if (spec === null) return null;
     const t = this.ctx.resolver.resolveSpecifier(this.ctx.fileId, spec);
-    return t.kind === "file" ? `${t.fileId.slice(5)}#default` : null;
+    return t.kind === "file" ? symKey(pathOfFileId(t.fileId), "default") : null;
   }
 
   private proc(root: Key | null, calls: ChainCall[], handlerCall: ChainCall): ProcFact {
@@ -546,7 +547,7 @@ export const orpcAdapter: Adapter<OrpcFacts> = {
         const p = leaf.proc;
         if (!isBuilder(p.root) || path.length === 0) return;
         const dotted = path.join(".");
-        const id = alloc(ws).take(`ep:${wsName(ws)}:rpc ${dotted}`);
+        const id = alloc(ws).take(endpointId(ctx.repo, wsName(ws), `rpc ${dotted}`));
         nodes.push({
           id,
           kind: "endpoint",

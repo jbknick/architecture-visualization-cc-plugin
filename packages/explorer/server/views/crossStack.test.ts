@@ -83,8 +83,8 @@ const lines = (r: ViewResult) => r.edges.map((e) => `${e.src} ${e.kind} ${e.dst}
 const ids = (r: ViewResult, kind?: string) =>
   r.nodes.filter((n) => !kind || n.kind === kind).map((n) => n.id);
 
-const ROUTE = "route:@demo/web:/posts/$postId";
-const GET = "ep:@demo/api:rpc posts.get";
+const ROUTE = "route:adapters:@demo/web:/posts/$postId";
+const GET = "ep:adapters:@demo/api:rpc posts.get";
 
 describe("snapshot store", () => {
   it("answers every trace exactly as the store does", () => {
@@ -128,30 +128,32 @@ describe("endpoints view", () => {
     expect(r.groups.map((g) => g.id)).toEqual(["rpc", "http", "fn"]);
     expect(ids(r, "endpoint")).toHaveLength(20);
     const l = lines(r);
-    expect(l).toContain("ep:@demo/server:GET /api/posts/:id middleware mw:@demo/server:/* cors");
-    expect(l).toContain("ep:@demo/web:fn savePost middleware mwref:@demo/web:requireUser");
-    expect(l).toContain(`${GET} handles sym:packages/api/src/routers/posts.ts#postsRouter`);
+    expect(l).toContain(
+      "ep:adapters:@demo/server:GET /api/posts/:id middleware mw:adapters:@demo/server:/* cors",
+    );
+    expect(l).toContain("ep:adapters:@demo/web:fn savePost middleware mwref:@demo/web:requireUser");
+    expect(l).toContain(`${GET} handles sym:adapters:packages/api/src/routers/posts.ts#postsRouter`);
     const get = r.nodes.find((n) => n.id === GET);
     expect(get).toMatchObject({ lane: 0, band: "rpc" });
-    expect(r.nodes.find((n) => n.id === "mw:@demo/server:/* cors")?.lane).toBe(1);
+    expect(r.nodes.find((n) => n.id === "mw:adapters:@demo/server:/* cors")?.lane).toBe(1);
   });
 
   it("filters by kind, method, prefix and workspace", () => {
     expect(ids(run("endpoints", "filters=kind=fn"), "endpoint")).toEqual([
-      "ep:@demo/web:fn countPosts",
-      "ep:@demo/web:fn fetchPost",
-      "ep:@demo/web:fn savePost",
+      "ep:adapters:@demo/web:fn countPosts",
+      "ep:adapters:@demo/web:fn fetchPost",
+      "ep:adapters:@demo/web:fn savePost",
     ]);
     expect(ids(run("endpoints", "filters=method=PATCH"), "endpoint")).toEqual([
-      "ep:@demo/server:PATCH /api/posts/:id",
+      "ep:adapters:@demo/server:PATCH /api/posts/:id",
     ]);
     expect(ids(run("endpoints", "filters=prefix=/api/users"), "endpoint")).toEqual([
-      "ep:@demo/server:GET /api/users/v1",
-      "ep:@demo/server:POST /api/users/v1",
+      "ep:adapters:@demo/server:GET /api/users/v1",
+      "ep:adapters:@demo/server:POST /api/users/v1",
     ]);
     expect(ids(run("endpoints", "filters=prefix=users."), "endpoint")).toEqual([
-      "ep:@demo/api:rpc users.count",
-      "ep:@demo/api:rpc users.rename",
+      "ep:adapters:@demo/api:rpc users.count",
+      "ep:adapters:@demo/api:rpc users.rename",
     ]);
     expect(ids(run("endpoints", "filters=ws=@demo/web"), "endpoint")).toHaveLength(3);
     expect(() => run("endpoints", "depth=9")).toThrow(HttpError);
@@ -160,9 +162,11 @@ describe("endpoints view", () => {
   it("follows an inline handler's calls from inside its own span only", () => {
     const r = run("endpoints", "filters=prefix=posts.get");
     // posts.get and posts.authors share postsRouter; posts.get calls only what its own line calls.
-    const fromRouter = r.edges.filter((e) => e.src === "sym:packages/api/src/routers/posts.ts#postsRouter");
-    expect(fromRouter.map((e) => e.dst)).toContain("sym:packages/db/src/queries.ts#postWithAuthor");
-    expect(fromRouter.map((e) => e.dst)).not.toContain("sym:packages/db/src/queries.ts#countUsers");
+    const fromRouter = r.edges.filter(
+      (e) => e.src === "sym:adapters:packages/api/src/routers/posts.ts#postsRouter",
+    );
+    expect(fromRouter.map((e) => e.dst)).toContain("sym:adapters:packages/db/src/queries.ts#postWithAuthor");
+    expect(fromRouter.map((e) => e.dst)).not.toContain("sym:adapters:packages/db/src/queries.ts#countUsers");
   });
 });
 
@@ -172,8 +176,10 @@ describe("page -> API view", () => {
     expect(r.layoutHint).toBe("columns");
     const l = lines(r);
     expect(l).toContain(`${ROUTE} requests ${GET}`);
-    expect(l).toContain(`${ROUTE} requests ep:@demo/web:fn fetchPost`);
-    const patch = r.edges.find((e) => e.src === ROUTE && e.dst === "ep:@demo/server:PATCH /api/posts/:id");
+    expect(l).toContain(`${ROUTE} requests ep:adapters:@demo/web:fn fetchPost`);
+    const patch = r.edges.find(
+      (e) => e.src === ROUTE && e.dst === "ep:adapters:@demo/server:PATCH /api/posts/:id",
+    );
     expect(patch?.confidence).toBe("low");
     expect(patch?.via).toBe(1);
     expect(patch?.viaSample).toEqual(["usePostActions"]);
@@ -183,14 +189,16 @@ describe("page -> API view", () => {
     const callers = new Set(
       fx.store
         .effectiveAdapterNodes({ kind: "client_call" })
-        .filter((u) => u.data.caller === "sym:apps/web/src/hooks/usePostActions.ts#usePostActions")
+        .filter((u) => u.data.caller === "sym:adapters:apps/web/src/hooks/usePostActions.ts#usePostActions")
         .map((u) => u.id),
     );
     expect(r.totals.unmatched).toBe(callers.size);
   });
 
   it("filters by prefix and shows unlinked nodes with all=true", () => {
-    expect(ids(run("page-api", "filters=prefix=/users"), "route")).toEqual(["route:@demo/web:/users"]);
+    expect(ids(run("page-api", "filters=prefix=/users"), "route")).toEqual([
+      "route:adapters:@demo/web:/users",
+    ]);
     const all = run<PageApiResult>("page-api", "filters=all=true");
     expect(ids(all, "endpoint")).toHaveLength(20);
   });
@@ -201,9 +209,13 @@ describe("API -> tables view", () => {
     const r = run<ApiTablesResult>("api-tables");
     expect(r.lanes.map((l) => l.lane)).toEqual([0, 1, 2]);
     const row = (ep: string) => r.endpointTables.find((x) => x.endpoint === ep);
-    expect(row(GET)).toEqual({ endpoint: GET, reads: ["table:posts", "table:users"], writes: [] });
-    expect(row("ep:@demo/api:rpc posts.authors")?.reads).not.toContain("table:posts");
-    expect(row("ep:@demo/api:rpc users.rename")?.writes).toEqual(["table:users"]);
+    expect(row(GET)).toEqual({
+      endpoint: GET,
+      reads: ["table:adapters:posts", "table:adapters:users"],
+      writes: [],
+    });
+    expect(row("ep:adapters:@demo/api:rpc posts.authors")?.reads).not.toContain("table:adapters:posts");
+    expect(row("ep:adapters:@demo/api:rpc users.rename")?.writes).toEqual(["table:adapters:users"]);
     const kinds = new Set(r.edges.map((e) => e.kind));
     expect([...kinds].sort()).toEqual(["reads", "uses", "writes"]);
     expect(r.nodes.filter((n) => n.lane === 2).every((n) => n.kind === "table")).toBe(true);
@@ -212,7 +224,7 @@ describe("API -> tables view", () => {
   it("expands services with services=all", () => {
     const r = run<ApiTablesResult>("api-tables", "filters=services=all");
     expect(r.totals.expanded).toBe(true);
-    expect(lines(r)).toContain(`${GET} handles sym:packages/api/src/routers/posts.ts#postsRouter`);
+    expect(lines(r)).toContain(`${GET} handles sym:adapters:packages/api/src/routers/posts.ts#postsRouter`);
     expect(r.edges.some((e) => e.kind === "uses")).toBe(false);
   });
 });
@@ -231,36 +243,36 @@ describe("feature path view", () => {
     expect(r.focus).toBe(ROUTE);
     const lane = (id: string) => r.nodes.find((n) => n.id === id)?.lane;
     expect(lane(ROUTE)).toBe(0);
-    expect(lane("sym:apps/web/src/routes/posts.$postId.tsx#PostPage")).toBe(1);
+    expect(lane("sym:adapters:apps/web/src/routes/posts.$postId.tsx#PostPage")).toBe(1);
     expect(lane(GET)).toBe(2);
-    expect(lane("sym:packages/api/src/routers/posts.ts#postsRouter")).toBe(3);
-    expect(lane("table:posts")).toBe(4);
+    expect(lane("sym:adapters:packages/api/src/routers/posts.ts#postsRouter")).toBe(3);
+    expect(lane("table:adapters:posts")).toBe(4);
   });
 
   it("adds the pages that request an endpoint when the focus is one", () => {
     const r = run<FeaturePathResult>("feature-path", `focus=${encodeURIComponent(GET)}`);
     expect(ids(r, "route")).toEqual([ROUTE]);
-    expect(ids(r, "table")).toEqual(["table:posts", "table:users"]);
+    expect(ids(r, "table")).toEqual(["table:adapters:posts", "table:adapters:users"]);
   });
 });
 
 describe("table usage view", () => {
   it("puts writers above readers and reaches the pages", () => {
     const none = run<TableUsageResult>("table-usage");
-    expect(none.choices?.map((c) => c.id)).toEqual(["table:posts", "table:users"]);
+    expect(none.choices?.map((c) => c.id)).toEqual(["table:adapters:posts", "table:adapters:users"]);
     const r = run<TableUsageResult>("table-usage", "focus=posts");
     expect(r.layoutHint).toBe("tree-lr");
     expect(r.table?.columns).toEqual(["id", "title", "authorId", "views"]);
-    const table = r.nodes.find((n) => n.id === "table:posts");
+    const table = r.nodes.find((n) => n.id === "table:adapters:posts");
     expect(table?.lane).toBe(Math.max(...r.nodes.map((n) => n.lane ?? 0)));
     expect(ids(r, "route")).toContain(ROUTE);
     const first = r.nodes
       .filter((n) => n.lane === (table?.lane ?? 0) - 1)
       .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
     expect(first[0]?.badges?.some((b) => b.startsWith("writes"))).toBe(true);
-    expect(r.edges.find((e) => e.src === "sym:packages/api/src/report.ts#reportPosts")?.confidence).toBe(
-      "low",
-    );
+    expect(
+      r.edges.find((e) => e.src === "sym:adapters:packages/api/src/report.ts#reportPosts")?.confidence,
+    ).toBe("low");
     expect(() => run("table-usage", `focus=${encodeURIComponent(GET)}`)).toThrow(HttpError);
   });
 });
@@ -294,12 +306,12 @@ describe("inspector facts", () => {
         };
         untrusted_description: unknown;
       };
-    const ep = node("ep:@demo/server:GET /api/posts/:id");
+    const ep = node("ep:adapters:@demo/server:GET /api/posts/:id");
     expect(ep.node.endpoint).toMatchObject({
       method: "GET",
       path: "/api/posts/:id",
       group: "http",
-      handler: { id: "sym:packages/posts/src/handlers.ts#showPost", label: "showPost" },
+      handler: { id: "sym:adapters:packages/posts/src/handlers.ts#showPost", label: "showPost" },
       middleware: ["cors /*", "inline /api/*"],
     });
     const rpc = node(GET);
@@ -308,8 +320,8 @@ describe("inspector facts", () => {
       node: { kind: string; middlewareRef: { name: string; endpoints: { id: string }[] } };
     };
     expect(mw.node.kind).toBe("middleware");
-    expect(mw.node.middlewareRef.endpoints.map((e) => e.id)).toEqual(["ep:@demo/web:fn savePost"]);
-    const t = node("table:users");
+    expect(mw.node.middlewareRef.endpoints.map((e) => e.id)).toEqual(["ep:adapters:@demo/web:fn savePost"]);
+    const t = node("table:adapters:users");
     expect(t.node.table).toMatchObject({ columns: ["id", "name"], readers: 2, writers: 1 });
     expect(t.untrusted_description).toBeNull();
   });
@@ -334,7 +346,7 @@ describe("determinism and containment", () => {
   });
   it("never carries description text", () => {
     for (const [id, qs] of queries) expect(JSON.stringify(run(id, qs))).not.toContain(MARKER);
-    for (const id of ["ep:@demo/server:GET /api/posts/:id", "table:posts", GET]) {
+    for (const id of ["ep:adapters:@demo/server:GET /api/posts/:id", "table:adapters:posts", GET]) {
       const body = JSON.stringify(
         handleApi(fx.ctx, `/api/node/${encodeURIComponent(id)}`, new URLSearchParams()),
       );

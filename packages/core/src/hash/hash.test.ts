@@ -12,7 +12,7 @@ const h = (s: string, lang: "ts" | "tsx" = "ts") => hashSymbol(s, whole(s), lang
 
 function fixtureSymbol(rel: string, name: string) {
   const source = readFileSync(join(fixturesRoot, rel), "utf8");
-  const parsed = parseSource(rel, source);
+  const parsed = parseSource("repo", rel, source);
   const sym = parsed.symbols.find((s) => s.name === name);
   if (!sym) throw new Error(`no symbol ${name}`);
   const range = parsed.bodies.get(sym.id);
@@ -173,7 +173,7 @@ export   function total( items: Item[],tax: number ): number
 class Calc {
   mul(x: number, y: number) { return x * y; }
 }`;
-    const parsed = parseSource("src/calc.ts", src);
+    const parsed = parseSource("repo", "src/calc.ts", src);
     const add = parsed.symbols.find((s) => s.name === "add");
     const mul = parsed.symbols.find((s) => s.name === "Calc.mul");
     if (!add || !mul) throw new Error("symbols missing");
@@ -183,7 +183,7 @@ class Calc {
     expect(h(alt).exactHash).toBe(ha.exactHash);
     expect(hm.exactHash).not.toBe(ha.exactHash);
     const altMethod = `class Calc {\n  mul(i: number, j: number) {\n return i * j; }\n}`;
-    const p2 = parseSource("src/calc.ts", altMethod);
+    const p2 = parseSource("repo", "src/calc.ts", altMethod);
     const m2 = p2.symbols.find((s) => s.name === "Calc.mul");
     if (!m2) throw new Error("mul missing");
     expect(

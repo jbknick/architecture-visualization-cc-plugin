@@ -1,6 +1,8 @@
 // "Largest files": the ranking shared by the 2D project map and the 3D map (list in the left panel, numbered markers
 // on the canvas). Pure and deterministic: it only reads the file nodes of the view response.
+
 import type { GraphNode } from "../api.ts";
+import { pathOfFileId } from "../ids.ts";
 
 /** How many files are ranked. */
 export const RANK_COUNT = 15;
@@ -80,7 +82,7 @@ export function rankFiles(nodes: readonly GraphNode[], opts: RankOptions = {}): 
   const files: RankedFile[] = [];
   for (const n of nodes) {
     if (n.kind !== "file") continue;
-    const path = n.path ?? n.id.replace(/^file:/, "");
+    const path = n.path ?? pathOfFileId(n.id);
     if (hideTests && isTestPath(path)) continue;
     const ws = workspaceOf(n, byId);
     if (opts.workspace && ws?.id !== opts.workspace) continue;

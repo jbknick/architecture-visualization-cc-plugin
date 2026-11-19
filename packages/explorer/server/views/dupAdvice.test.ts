@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { fixtureStore } from "../testkit.js";
 import { adviceFor } from "./dupAdvice.js";
 
-const KEEP = "sym:packages/utils/src/slug.ts#slugify";
+const KEEP = "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify";
 const MARKER = "ZetaNineSuggestedMarker";
 
 let store: Store;

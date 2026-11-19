@@ -11,7 +11,7 @@ import { SCHEMA } from "./schema.js";
  * that makes a full re-index necessary bumps it: a schema change, or a change to what indexing writes for unchanged
  * files (the extractor, an adapter or the resolver), because incremental indexing only rewrites changed files.
  */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 /** The store was built by a different version of Gantry (older, or newer) than this one. */
 export class StaleStoreError extends Error {
@@ -44,6 +44,21 @@ export function readSchemaVersion(dbPath: string): number | undefined {
   const db = new Database(dbPath, { readonly: true, fileMustExist: true, timeout: 5000 });
   try {
     return storedVersion(db);
+  } finally {
+    db.close();
+  }
+}
+
+/** A `meta` value of the store in `dbPath`; undefined when the file, the `meta` table or the key is missing. */
+export function readMeta(dbPath: string, key: string): string | undefined {
+  if (!existsSync(dbPath)) return undefined;
+  const db = new Database(dbPath, { readonly: true, fileMustExist: true, timeout: 5000 });
+  try {
+    const row =
+      storedVersion(db) === undefined
+        ? undefined
+        : db.prepare("SELECT value FROM meta WHERE key = ?").get(key);
+    return (row as { value: string } | undefined)?.value;
   } finally {
     db.close();
   }

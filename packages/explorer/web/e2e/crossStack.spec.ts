@@ -67,8 +67,12 @@ test("the five tabs are enabled when adapters found nodes; endpoints are grouped
   expect(p.lanes).toEqual(["Endpoint", "Middleware", "Handler", "Services, call 1"]);
   // Bands are stacked: rpc above http above server fn, and every endpoint sits in the first lane.
   const y = (id: string) => p.nodes.find((n) => n.id === id)?.y ?? 0;
-  expect(y("ep:@shop/api:rpc orders.list")).toBeLessThan(y("ep:@shop/server:GET /api/users"));
-  expect(y("ep:@shop/server:GET /api/users")).toBeLessThan(y("ep:@shop/web:fn getStats"));
+  expect(y("ep:pnpm-turbo:@shop/api:rpc orders.list")).toBeLessThan(
+    y("ep:pnpm-turbo:@shop/server:GET /api/users"),
+  );
+  expect(y("ep:pnpm-turbo:@shop/server:GET /api/users")).toBeLessThan(
+    y("ep:pnpm-turbo:@shop/web:fn getStats"),
+  );
   for (const n of p.nodes.filter((x) => x.id.startsWith("ep:"))) expect(n.lane).toBe(0);
   // Filters: only the server function.
   const panel = page.getByRole("complementary", { name: /filters/i }).or(page.locator(".filter-panel"));
@@ -85,11 +89,11 @@ test("page -> API: a dashed low-confidence line, and the via count on hover", as
   const p = await probe(page);
   expect(p.lanes).toEqual(["Pages (routes)", "Endpoints"]);
   const cart = p.edges.find(
-    (e) => e.id === "route:@shop/web:/orders/$orderId|requests|ep:@shop/server:POST /api/cart",
+    (e) => e.id === "route:pnpm-turbo:@shop/web:/orders/$orderId|requests|ep:@shop/server:POST /api/cart",
   );
   expect(cart?.dashed).toBe(true);
   const get = p.edges.find(
-    (e) => e.id === "route:@shop/web:/orders/$orderId|requests|ep:@shop/api:rpc orders.get",
+    (e) => e.id === "route:pnpm-turbo:@shop/web:/orders/$orderId|requests|ep:@shop/api:rpc orders.get",
   );
   expect(get?.dashed).toBe(false);
   const pt = await at(page, get?.x ?? 0, get?.y ?? 0);
@@ -110,9 +114,9 @@ test("API -> tables: reads are blue, writes orange; services expand on request",
   expect(writes.length).toBeGreaterThan(0);
   for (const e of reads) expect(e.color).toBe("#1d5fd6");
   for (const e of writes) expect(e.color).toBe("#c2510c");
-  expect(p.edges.find((e) => e.id === "sym:packages/db/src/cart.ts#addItem|reads|table:orders")?.dashed).toBe(
-    true,
-  );
+  expect(
+    p.edges.find((e) => e.id === "sym:pnpm-turbo:packages/db/src/cart.ts#addItem|reads|table:orders")?.dashed,
+  ).toBe(true);
   await expect(page.locator(".flow-key")).toContainText("writes");
   expect(p.edges.some((e) => e.kind === "handles")).toBe(false);
   await page.getByRole("checkbox", { name: "Every service function on the way" }).click();
@@ -131,23 +135,23 @@ test("feature path: asks for a focus, then lays the feature out in five swimlane
   const p = await probe(page);
   expect(p.lanes).toEqual(["Page", "Client", "Endpoint", "Service", "Table"]);
   const lane = (id: string) => p.nodes.find((n) => n.id === id)?.lane;
-  expect(lane("route:@shop/web:/orders/$orderId")).toBe(0);
-  expect(lane("sym:apps/web/src/hooks/useCart.ts#useCart")).toBe(1);
-  expect(lane("ep:@shop/api:rpc orders.cancel")).toBe(2);
-  expect(lane("table:orders")).toBe(4);
+  expect(lane("route:pnpm-turbo:@shop/web:/orders/$orderId")).toBe(0);
+  expect(lane("sym:pnpm-turbo:apps/web/src/hooks/useCart.ts#useCart")).toBe(1);
+  expect(lane("ep:pnpm-turbo:@shop/api:rpc orders.cancel")).toBe(2);
+  expect(lane("table:pnpm-turbo:orders")).toBe(4);
   await expect(page.locator(".filter-panel")).toContainText("unmatched client call");
 });
 
 test("table usage: writers above readers, and the inspector of a table and an endpoint", async ({ page }) => {
   await open(page, "table-usage?focus=table%3Aorders&sel=");
   const p = await probe(page);
-  const table = p.nodes.find((n) => n.id === "table:orders");
+  const table = p.nodes.find((n) => n.id === "table:pnpm-turbo:orders");
   expect(table?.lane).toBe(Math.max(...p.nodes.map((n) => n.lane ?? 0)));
   const y = (id: string) => p.nodes.find((n) => n.id === id)?.y ?? 0;
-  expect(y("sym:packages/db/src/orders.ts#cancelOrder")).toBeLessThan(
-    y("sym:packages/db/src/orders.ts#loadOrders"),
+  expect(y("sym:pnpm-turbo:packages/db/src/orders.ts#cancelOrder")).toBeLessThan(
+    y("sym:pnpm-turbo:packages/db/src/orders.ts#loadOrders"),
   );
-  expect(p.nodes.some((n) => n.id === "route:@shop/web:/orders")).toBe(true);
+  expect(p.nodes.some((n) => n.id === "route:pnpm-turbo:@shop/web:/orders")).toBe(true);
 
   const pt = await at(page, table?.x ?? 0, table?.y ?? 0);
   await page.mouse.click(pt.x, pt.y);
@@ -164,7 +168,7 @@ test("table usage: writers above readers, and the inspector of a table and an en
 
   // The inspector took room from the canvas, which fitted again: measure anew.
   await page.waitForTimeout(300);
-  const ep = (await probe(page)).nodes.find((n) => n.id === "ep:@shop/api:rpc orders.cancel");
+  const ep = (await probe(page)).nodes.find((n) => n.id === "ep:pnpm-turbo:@shop/api:rpc orders.cancel");
   const pe = await at(page, ep?.x ?? 0, ep?.y ?? 0);
   await page.mouse.click(pe.x, pe.y);
   const facts = inspector.getByRole("region", { name: "Endpoint" });

@@ -26,7 +26,7 @@ const SRV = "ws:@shop/server";
 const DB = "ws:@shop/db";
 
 const sym = (path: string, name: string, kind: string, ws: string, line: number): MNode => ({
-  id: `sym:${path}#${name}`,
+  id: `sym:pnpm-turbo:${path}#${name}`,
   kind,
   label: name,
   path,
@@ -34,7 +34,7 @@ const sym = (path: string, name: string, kind: string, ws: string, line: number)
   line,
 });
 const route = (url: string, file: string, line = 1): MNode => ({
-  id: `route:@shop/web:${url}`,
+  id: `route:pnpm-turbo:@shop/web:${url}`,
   kind: "route",
   label: url,
   path: `apps/web/src/routes/${file}`,
@@ -66,7 +66,7 @@ const USE_ORDERS = sym("apps/web/src/hooks/useOrders.ts", "useOrders", "hook", W
 const USE_CART = sym("apps/web/src/hooks/useCart.ts", "useCart", "hook", WEB, 4);
 const ORDERS_ROUTER = sym("packages/api/src/orders.ts", "ordersRouter", "const", API, 8);
 const CART_FILE: MNode = {
-  id: "file:apps/server/src/cart.ts",
+  id: "file:pnpm-turbo:apps/server/src/cart.ts",
   kind: "file",
   label: "cart.ts",
   path: "apps/server/src/cart.ts",
@@ -81,7 +81,7 @@ const ADD_ITEM = sym("packages/db/src/cart.ts", "addItem", "function", DB, 5);
 const QUERY_USERS = sym("packages/db/src/users.ts", "queryUsers", "function", DB, 6);
 const COUNT_ORDERS = sym("packages/db/src/orders.ts", "countOrders", "function", DB, 30);
 const T_ORDERS: MNode = {
-  id: "table:orders",
+  id: "table:pnpm-turbo:orders",
   kind: "table",
   label: "orders",
   path: "packages/db/src/schema.ts",
@@ -90,7 +90,7 @@ const T_ORDERS: MNode = {
   data: { columns: ["id", "userId", "status", "total"], dialect: "sqlite", exportName: "orders" },
 };
 const T_ITEMS: MNode = {
-  id: "table:order_items",
+  id: "table:pnpm-turbo:order_items",
   kind: "table",
   label: "order_items",
   path: "packages/db/src/schema.ts",
@@ -99,7 +99,7 @@ const T_ITEMS: MNode = {
   data: { columns: ["id", "orderId", "sku", "qty"], dialect: "sqlite", exportName: "orderItems" },
 };
 const T_USERS: MNode = {
-  id: "table:users",
+  id: "table:pnpm-turbo:users",
   kind: "table",
   label: "users",
   path: "packages/db/src/schema.ts",
@@ -108,7 +108,7 @@ const T_USERS: MNode = {
   data: { columns: ["id", "name", "email"], dialect: "sqlite", exportName: "users" },
 };
 const MW_AUTH: MNode = {
-  id: "mw:@shop/server:/api/* auth",
+  id: "mw:pnpm-turbo:@shop/server:/api/* auth",
   kind: "middleware",
   label: "auth /api/*",
   path: "apps/server/src/app.ts",
@@ -123,35 +123,63 @@ const R_USERS = route("/admin/users", "admin/users.tsx");
 const R_SETTINGS = route("/settings", "settings.tsx");
 
 const orpc = (path: string, line: number) =>
-  ep(`ep:@shop/api:rpc orders.${path}`, `rpc orders.${path}`, API, "packages/api/src/orders.ts", line, {
-    adapter: "orpc",
-    path: `orders.${path}`,
-    protocol: "rpc",
-    handler: "inline",
-  });
+  ep(
+    `ep:pnpm-turbo:@shop/api:rpc orders.${path}`,
+    `rpc orders.${path}`,
+    API,
+    "packages/api/src/orders.ts",
+    line,
+    {
+      adapter: "orpc",
+      path: `orders.${path}`,
+      protocol: "rpc",
+      handler: "inline",
+    },
+  );
 const E_LIST = orpc("list", 9);
 const E_GET = orpc("get", 10);
 const E_CANCEL = orpc("cancel", 11);
-const E_CART = ep("ep:@shop/server:POST /api/cart", "POST /api/cart", SRV, "apps/server/src/cart.ts", 6, {
-  adapter: "hono",
-  method: "POST",
-  path: "/api/cart",
-  handler: "inline",
-});
-const E_USERS = ep("ep:@shop/server:GET /api/users", "GET /api/users", SRV, "apps/server/src/users.ts", 14, {
-  adapter: "hono",
-  method: "GET",
-  path: "/api/users",
-  handler: "listUsers",
-});
-const E_STATS = ep("ep:@shop/web:fn getStats", "fn getStats", WEB, "apps/web/src/server/stats.ts", 8, {
-  adapter: "tanstack-start",
-  method: "GET",
-  name: "getStats",
-  handler: "statsHandler",
-});
+const E_CART = ep(
+  "ep:pnpm-turbo:@shop/server:POST /api/cart",
+  "POST /api/cart",
+  SRV,
+  "apps/server/src/cart.ts",
+  6,
+  {
+    adapter: "hono",
+    method: "POST",
+    path: "/api/cart",
+    handler: "inline",
+  },
+);
+const E_USERS = ep(
+  "ep:pnpm-turbo:@shop/server:GET /api/users",
+  "GET /api/users",
+  SRV,
+  "apps/server/src/users.ts",
+  14,
+  {
+    adapter: "hono",
+    method: "GET",
+    path: "/api/users",
+    handler: "listUsers",
+  },
+);
+const E_STATS = ep(
+  "ep:pnpm-turbo:@shop/web:fn getStats",
+  "fn getStats",
+  WEB,
+  "apps/web/src/server/stats.ts",
+  8,
+  {
+    adapter: "tanstack-start",
+    method: "GET",
+    name: "getStats",
+    handler: "statsHandler",
+  },
+);
 const E_EXPORT = ep(
-  "ep:@shop/server:GET /api/export",
+  "ep:pnpm-turbo:@shop/server:GET /api/export",
   "GET /api/export",
   SRV,
   "apps/server/src/export.ts",
@@ -608,7 +636,7 @@ function tableUsageView(focus: string | null): ViewData | { status: number; erro
       choices: choicesFor("table-usage"),
       totals: {},
     };
-  const t = BY_ID.get(focus) ?? BY_ID.get(`table:${focus}`);
+  const t = BY_ID.get(focus) ?? BY_ID.get(`table:pnpm-turbo:${focus}`);
   if (t?.kind !== "table") return { status: 400, error: "focus must be a table" };
   // Depth from the table: 1 writers/readers, 2 handlers, 3 endpoints, 4 client code, 5 routes.
   const depth = new Map<string, number>([[t.id, 0]]);

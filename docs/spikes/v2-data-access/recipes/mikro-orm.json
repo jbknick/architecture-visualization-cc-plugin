@@ -1,0 +1,56 @@
+{
+  "name": "mikro-orm",
+  "frameworks": [
+    { "name": "mikro-orm", "evidence": "@Entity classes; EntityRepository<T> and EntityManager calls" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+  "methods": {
+    "read": ["find", "findOne", "findOneOrFail", "findAll", "findAndCount", "count", "findByCursor"],
+    "write": [
+      "create",
+      "persist",
+      "persistAndFlush",
+      "remove",
+      "removeAndFlush",
+      "nativeInsert",
+      "nativeUpdate",
+      "nativeDelete",
+      "upsert",
+      "insert",
+      "insertMany"
+    ]
+  },
+  "rules": [
+    {
+      "id": "entity-default",
+      "language": "typescript",
+      "rule": { "kind": "decorator", "pattern": "@Entity()" },
+      "emit": { "kind": "table", "name": "@class", "model": "@class" }
+    },
+    {
+      "id": "entity-named",
+      "language": "typescript",
+      "rule": { "kind": "decorator", "pattern": "@Entity({ tableName: $N })" },
+      "emit": { "kind": "table", "name": "$N", "model": "@class" }
+    },
+    {
+      "id": "em-call",
+      "language": "typescript",
+      "rule": { "pattern": "$E.$M($MODEL, $$$A)" },
+      "constraints": { "MODEL": { "kind": "identifier" } },
+      "emit": { "kind": "access", "method": "$M", "model": "$MODEL" }
+    },
+    {
+      "id": "repository-call",
+      "language": "typescript",
+      "rule": { "pattern": "$R.$M($$$A)" },
+      "constraints": { "R": { "kind": "member_expression" } },
+      "emit": {
+        "kind": "access",
+        "receiver": "$R",
+        "method": "$M",
+        "modelFromReceiverDecl": ["\\b{prop}\\s*:\\s*EntityRepository<(\\w+)>"]
+      }
+    }
+  ]
+}

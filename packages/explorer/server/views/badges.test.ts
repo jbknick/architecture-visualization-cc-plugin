@@ -12,11 +12,11 @@ import { handleApi } from "../api.js";
 import { fixtureStore } from "../testkit.js";
 import type { ApiContext, ViewResult } from "../types.js";
 
-const SLUG_WEB = "sym:apps/web/src/lib/slug.ts#slugify";
-const SLUG_UTILS = "sym:packages/utils/src/slug.ts#slugify";
-const DATE = "sym:packages/utils/src/date.ts#formatRelativeDate";
-const TIME = "sym:packages/utils/src/time.ts#parseTimestamp";
-const BUTTON = "sym:packages/ui/src/button.tsx#Button";
+const SLUG_WEB = "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify";
+const SLUG_UTILS = "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify";
+const DATE = "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate";
+const TIME = "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp";
+const BUTTON = "sym:pnpm-turbo:packages/ui/src/button.tsx#Button";
 
 let store: Store;
 let dir: string;

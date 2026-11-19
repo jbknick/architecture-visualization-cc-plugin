@@ -1,12 +1,92 @@
 {
   "repos": [
     {
+      "name": "bun-fastify-starter-turbo-monorepo",
+      "url": "https://github.com/theogravity/bun-fastify-starter-turbo-monorepo.git",
+      "sha": "774fcfe4c51f6e4d0190a321f42deff399852ca9",
+      "stack": ["fastify", "kysely"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
+      "name": "ecom",
+      "url": "https://github.com/sikozonpc/ecom.git",
+      "sha": "6cc220748ec673a15fb818fd39843347244f39c3",
+      "stack": ["database-sql"],
+      "lang": ["go"],
+      "role": "tuning"
+    },
+    {
+      "name": "ent",
+      "url": "https://github.com/ent/ent.git",
+      "sha": "8037bc89bcab9a264099afa2672581237a3e079b",
+      "stack": ["ent"],
+      "lang": ["go"],
+      "role": "tuning"
+    },
+    {
+      "name": "express-mongodb-rest-api-boilerplate",
+      "url": "https://github.com/watscho/express-mongodb-rest-api-boilerplate.git",
+      "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7",
+      "stack": ["express", "mongoose"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
+      "name": "express-ts-example-app",
+      "url": "https://github.com/mikro-orm/express-ts-example-app.git",
+      "sha": "03b5461d4c803dff81f7caa9a25a4a0d1c175d29",
+      "stack": ["express", "mikro-orm"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
+      "name": "fastify-typescript",
+      "url": "https://github.com/hmake98/fastify-typescript.git",
+      "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783",
+      "stack": ["fastify", "prisma"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
       "name": "formbricks",
       "url": "https://github.com/formbricks/formbricks.git",
       "sha": "b52ebf833e92c1205d95492dc43567760ef56706",
       "stack": ["nextjs", "prisma"],
       "lang": ["ts"],
       "role": "held-out"
+    },
+    {
+      "name": "myapp",
+      "url": "https://github.com/learning-cloud-native-go/myapp.git",
+      "sha": "fc188d3e95bcbd8501a4bd671750c982cc3e409d",
+      "stack": ["gorm"],
+      "lang": ["go"],
+      "role": "tuning"
+    },
+    {
+      "name": "nestjs-boilerplate",
+      "url": "https://github.com/brocoders/nestjs-boilerplate.git",
+      "sha": "9620f159eefe38f47747d02ab162852367c5472c",
+      "stack": ["nestjs", "typeorm"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
+      "name": "nestjs-sequelize-typescript",
+      "url": "https://github.com/kentloog/nestjs-sequelize-typescript.git",
+      "sha": "6ec21637a0ad70c8a4e7d9e2498cc8b284e3eb74",
+      "stack": ["nestjs", "sequelize"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
+      "name": "next-js-boilerplate",
+      "url": "https://github.com/ixartz/Next-js-Boilerplate.git",
+      "sha": "b83157a8018f55b926a3c25a4b7a7e14b0dfbc35",
+      "stack": ["nextjs", "drizzle"],
+      "lang": ["ts"],
+      "role": "tuning"
     },
     {
       "name": "node-express-realworld-example-app",
@@ -17,12 +97,36 @@
       "role": "held-out"
     },
     {
+      "name": "openencoder",
+      "url": "https://github.com/alfg/openencoder.git",
+      "sha": "7bf61495953b5e19dd64b6dfff05bce2b9b49cb1",
+      "stack": ["sqlx"],
+      "lang": ["go"],
+      "role": "tuning"
+    },
+    {
+      "name": "pg-boss",
+      "url": "https://github.com/timgit/pg-boss.git",
+      "sha": "a2956ff23b6b14b3f855f16e945942ce932321e4",
+      "stack": ["raw-sql", "pg"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
       "name": "react-tanstarter",
       "url": "https://github.com/dotnize/react-tanstarter.git",
       "sha": "7faa622c492fc3f699dc959afc69a76205bb1774",
       "stack": ["tanstack-start", "drizzle"],
       "lang": ["ts"],
       "role": "held-out"
+    },
+    {
+      "name": "simplebank",
+      "url": "https://github.com/techschool/simplebank.git",
+      "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263",
+      "stack": ["sqlc"],
+      "lang": ["go"],
+      "role": "tuning"
     },
     {
       "name": "trpc",

@@ -435,8 +435,11 @@ async function stills(browser: Browser, mockBase: string) {
     ["endpoints", "endpoints"],
     ["page-api", "page-api"],
     ["api-tables", "api-tables"],
-    ["feature-path", `feature-path?focus=${encodeURIComponent("route:@shop/web:/orders/$orderId")}&sel=`],
-    ["table-usage", `table-usage?focus=${encodeURIComponent("table:orders")}&sel=`],
+    [
+      "feature-path",
+      `feature-path?focus=${encodeURIComponent("route:pnpm-turbo:@shop/web:/orders/$orderId")}&sel=`,
+    ],
+    ["table-usage", `table-usage?focus=${encodeURIComponent("table:pnpm-turbo:orders")}&sel=`],
   ];
   for (const [name, hash] of crossStack) {
     if (!want(name)) continue;
@@ -533,7 +536,7 @@ async function fixtureStills(browser: Browser) {
     }
     if (want("fixture-review-rings")) {
       // Button in focus: its direct callers strong, its potential ones soft, the rest faded (#169).
-      const focusButton = encodeURIComponent("sym:packages/ui/src/button.tsx#Button");
+      const focusButton = encodeURIComponent("sym:pnpm-turbo:packages/ui/src/button.tsx#Button");
       await page.goto(`${base}#/review?range=main...feature&mode=rings&sel=${focusButton}`);
       await page.locator("[data-testid=review-canvas][data-mode=rings]").waitFor({ timeout: 30_000 });
       await settle(page);

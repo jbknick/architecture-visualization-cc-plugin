@@ -1,0 +1,13 @@
+{
+  "name": "sqlx",
+  "frameworks": [
+    {
+      "name": "sqlx",
+      "evidence": "sqlx.DB Get, Select, NamedExec with SQL constants; schema in scripts/*.sql"
+    }
+  ],
+  "languages": ["go"],
+  "helpers": ["sql-text"],
+  "sql": { "knownTablesOnly": true, "sqlFiles": true },
+  "rules": []
+}

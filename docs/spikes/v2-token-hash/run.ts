@@ -49,7 +49,7 @@ function symbolsOf(files: string[], base: string): Sym[] {
   for (const f of files) {
     const rel = relative(base, f).split("\\").join("/");
     const source = readFileSync(f, "utf8");
-    const pf = parseSource(rel, source);
+    const pf = parseSource("repo", rel, source);
     for (const s of pf.symbols) {
       const range = pf.bodies.get(s.id);
       if (range) out.push({ key: s.id, source, range, lang: langOf(rel), stmts: s.stmtCount ?? 0 });
@@ -111,7 +111,7 @@ async function storeCheck(fixture: string): Promise<void> {
       let pf = parsed.get(r.path);
       if (!pf) {
         const source = readFileSync(join(dir, r.path), "utf8");
-        pf = { ...parseSource(r.path, source), source };
+        pf = { ...parseSource("repo", r.path, source), source };
         parsed.set(r.path, pf);
       }
       const range = pf.bodies.get(r.id);

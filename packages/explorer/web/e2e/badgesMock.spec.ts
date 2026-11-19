@@ -23,8 +23,11 @@ test("map tiles show dup, misleading and undescribed marks; the legend names all
     }),
   ) as { badged: { id: string; badges: string[] }[] };
   const by = new Map(probe.badged.map((b) => [b.id, b.badges]));
-  expect(by.get("sym:packages/utils/src/date.ts#formatRelativeDate")).toEqual(["dup", "misleading"]);
-  expect(by.get("sym:packages/utils/src/slug.ts#slugify")).toEqual(["dup", "undescribed"]);
+  expect(by.get("sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate")).toEqual([
+    "dup",
+    "misleading",
+  ]);
+  expect(by.get("sym:pnpm-turbo:packages/utils/src/slug.ts#slugify")).toEqual(["dup", "undescribed"]);
   expect([...by.values()].some((b) => b.includes("undescribed"))).toBe(true);
   const key = page.getByTestId("badge-key");
   for (const word of ["duplicate", "undescribed", "misleading name"]) {

@@ -96,13 +96,13 @@ describe("shell", () => {
   it("shows a readable error with a reset button when a view fails", async () => {
     installMockFetch((url) =>
       url.pathname.startsWith("/api/view/project-map")
-        ? { status: 404, body: { error: "Unknown focus: file:gone.ts" } }
+        ? { status: 404, body: { error: "Unknown focus: file:pnpm-turbo:gone.ts" } }
         : undefined,
     );
     renderApp("#/project-map?focus=file%3Agone.ts");
     const alert = await screen.findByRole("alert");
     expect(within(alert).getByText("This view could not be loaded")).toBeTruthy();
-    expect(within(alert).getByText("Unknown focus: file:gone.ts")).toBeTruthy();
+    expect(within(alert).getByText("Unknown focus: file:pnpm-turbo:gone.ts")).toBeTruthy();
     expect(within(alert).getByRole("button", { name: "Reset this view" })).toBeTruthy();
   });
 });
@@ -195,7 +195,7 @@ describe("inspector for nodes the server does not know", () => {
     installMockFetch((url) =>
       url.pathname.startsWith("/api/node/") ? { status: 500, body: { error: "boom" } } : undefined,
     );
-    renderApp(deepLink("file:packages/ui/src/card.tsx"));
+    renderApp(deepLink("file:pnpm-turbo:packages/ui/src/card.tsx"));
     const inspector = await inspectorOf();
     expect(await within(inspector).findByText(/Could not load the full details/)).toBeTruthy();
     expect(within(inspector).getByRole("heading", { name: "card.tsx" })).toBeTruthy();
@@ -209,7 +209,7 @@ describe("inspector actions", () => {
     const inspector = await inspectorOf();
     fireEvent.click(await within(inspector).findByRole("button", { name: "Open in project map" }));
     expect(decodeURIComponent(window.location.hash)).toContain(
-      "#/project-map?focus=file:packages/ui/src/button.tsx",
+      "#/project-map?focus=file:pnpm-turbo:packages/ui/src/button.tsx",
     );
   });
 

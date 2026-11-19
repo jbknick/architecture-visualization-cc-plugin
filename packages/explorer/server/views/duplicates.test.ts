@@ -6,10 +6,10 @@ import { fixtureStore } from "../testkit.js";
 import type { ApiContext } from "../types.js";
 import type { DuplicatesResult } from "./duplicates.js";
 
-const SLUG_WEB = "sym:apps/web/src/lib/slug.ts#slugify";
-const SLUG_UTILS = "sym:packages/utils/src/slug.ts#slugify";
-const DATE = "sym:packages/utils/src/date.ts#formatRelativeDate";
-const TIME = "sym:packages/utils/src/time.ts#parseTimestamp";
+const SLUG_WEB = "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify";
+const SLUG_UTILS = "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify";
+const DATE = "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate";
+const TIME = "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp";
 
 let store: Store;
 let dir: string;

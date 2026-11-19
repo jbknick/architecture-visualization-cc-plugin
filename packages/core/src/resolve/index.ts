@@ -3,14 +3,17 @@ import path from "node:path";
 import { ResolverFactory } from "oxc-resolver";
 import picomatch from "picomatch";
 import { BUILTIN_EXCLUDES } from "../config/index.js";
+import { fileId as makeFileId, pathOfFileId } from "../ids.js";
 import type { ParsedFile, ParsedImport, ParsedSite } from "../parse/index.js";
 import type { EdgeKind, EdgeRecord, WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
 
 export interface ResolveContext {
   root: string;
+  /** The repo name in every id (`GantryPaths.repo`). */
+  repo: string;
   workspaces: WorkspaceRecord[];
-  /** Parsed files keyed by file id (`file:<repo-relative posix path>`). */
+  /** Parsed files keyed by file id (`file:<repo>:<repo-relative posix path>`). */
   parsed: Map<string, ParsedFile>;
 }
 
@@ -177,8 +180,8 @@ export function createResolver(ctx: ResolveContext): Resolver {
     unresolved: 0,
   };
 
-  const fileIdOf = (rel: string): string => `file:${rel}`;
-  const relOf = (fileId: string): string => fileId.slice("file:".length);
+  const fileIdOf = (rel: string): string => makeFileId(ctx.repo, rel);
+  const relOf = (id: string): string => pathOfFileId(id);
 
   function nearestTsconfig(wsDir: string): string | null {
     let dir = path.join(realRoot, wsDir === "." ? "" : wsDir);
@@ -555,7 +558,7 @@ export function createResolver(ctx: ResolveContext): Resolver {
   }
 
   function workspaceEdges(): EdgeRecord[] {
-    return dependsOnEdges(ctx.workspaces);
+    return dependsOnEdges(ctx.repo, ctx.workspaces);
   }
 
   function stats(): ResolveStats {
@@ -568,12 +571,12 @@ export function createResolver(ctx: ResolveContext): Resolver {
 }
 
 /** `depends_on` edges: workspace -> workspace for each package.json dependency that names a workspace. */
-export function dependsOnEdges(workspaces: WorkspaceRecord[]): EdgeRecord[] {
+export function dependsOnEdges(repo: string, workspaces: WorkspaceRecord[]): EdgeRecord[] {
   const byName = new Map<string, WorkspaceRecord>();
   for (const w of workspaces) if (w.dir !== ".") byName.set(w.name, w);
   const edges: EdgeRecord[] = [];
   for (const w of workspaces) {
-    const pkgFile = `file:${w.dir === "." ? "" : `${w.dir}/`}package.json`;
+    const pkgFile = makeFileId(repo, `${w.dir === "." ? "" : `${w.dir}/`}package.json`);
     for (const dep of w.deps) {
       const target = byName.get(dep);
       if (!target || target.id === w.id) continue;

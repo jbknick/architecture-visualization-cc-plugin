@@ -237,7 +237,7 @@ describe("gantry_claim_batch and gantry_submit_descriptions", () => {
       });
       const fts = store.db
         .prepare(
-          "SELECT behavior, search_terms FROM fts_symbols WHERE symbol_id = 'sym:src/lib/slug.ts#slugify'",
+          "SELECT behavior, search_terms FROM fts_symbols WHERE symbol_id = 'sym:repo:src/lib/slug.ts#slugify'",
         )
         .get();
       expect(fts).toEqual({ behavior: GOOD_SLUG.behavior, search_terms: "slug url slug" });

@@ -1,0 +1,71 @@
+{
+  "name": "drizzle",
+  "frameworks": [
+    {
+      "name": "drizzle-orm",
+      "evidence": "package.json dependency; pgTable, sqliteTable and mysqlTable calls"
+    }
+  ],
+  "when": { "dependency": ["drizzle-orm"], "viaWorkspaces": true },
+  "helpers": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+  "tablePassthrough": ["alias"],
+  "methods": {
+    "read": ["findMany", "findFirst"],
+    "write": ["insert", "update", "delete"]
+  },
+  "rules": [
+    {
+      "id": "table",
+      "language": "typescript",
+      "rule": { "pattern": "$FN($N, $$$A)" },
+      "constraints": {
+        "FN": { "regex": "^(pgTable|sqliteTable|mysqlTable)$" },
+        "N": { "kind": "string" }
+      },
+      "emit": { "kind": "table", "name": "$N", "binding": true }
+    },
+    {
+      "id": "select-from",
+      "language": "typescript",
+      "rule": { "pattern": "$S.from($T)" },
+      "constraints": { "S": { "kind": "call_expression" } },
+      "emit": { "kind": "access", "as": "read", "target": "$T" }
+    },
+    {
+      "id": "join",
+      "language": "typescript",
+      "rule": { "pattern": "$S.$J($T, $$$A)" },
+      "constraints": {
+        "J": { "regex": "^(leftJoin|rightJoin|innerJoin|fullJoin)$" },
+        "S": { "kind": "call_expression" }
+      },
+      "emit": { "kind": "access", "as": "read", "target": "$T" }
+    },
+    {
+      "id": "count",
+      "language": "typescript",
+      "rule": { "pattern": "$D.$count($T, $$$A)" },
+      "emit": { "kind": "access", "as": "read", "target": "$T" }
+    },
+    {
+      "id": "count-all",
+      "language": "typescript",
+      "rule": { "pattern": "$D.$count($T)" },
+      "emit": { "kind": "access", "as": "read", "target": "$T" }
+    },
+    {
+      "id": "relational-query",
+      "language": "typescript",
+      "rule": { "pattern": "$D.$Q.$K.$M($$$A)" },
+      "constraints": { "Q": { "regex": "^(query|_query)$" } },
+      "emit": { "kind": "access", "method": "$M", "model": "$K" }
+    },
+    {
+      "id": "mutation",
+      "language": "typescript",
+      "rule": { "pattern": "$D.$M($T)" },
+      "constraints": { "M": { "regex": "^(insert|update|delete)$" } },
+      "emit": { "kind": "access", "method": "$M", "target": "$T" }
+    }
+  ]
+}

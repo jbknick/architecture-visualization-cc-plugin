@@ -1,4 +1,4 @@
-import type { EdgeRecord, Store, SymbolKind, SymbolRecord } from "@gantry/core";
+import { type EdgeRecord, isFileId, type Store, type SymbolKind, type SymbolRecord } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { GraphEdge, GraphNode, ViewLevel, ViewModule, ViewParams, ViewResult } from "../types.js";
 import { addImportEdge, type ImportTally, importGraphEdge, newImportTally } from "./aggregate.js";
@@ -154,7 +154,7 @@ export function buildProjectMap(
   };
   const repSym = (id: string): string | undefined => {
     if (repable.has(id) && byId.has(id)) return id;
-    if (id.startsWith("file:")) return repFile(id);
+    if (isFileId(id)) return repFile(id);
     const fid = fileOfSym.get(id);
     return fid ? repFile(fid) : undefined;
   };
@@ -199,8 +199,8 @@ export function buildProjectMap(
       add(repFile(e.src), dst, e, "imports");
       if (wsLevel && fileIds.has(e.dst)) add(wsOf(e.src), wsOf(e.dst), e, "imports");
     } else if (USE_KINDS.has(e.kind)) {
-      const sf = fileOfSym.get(e.src) ?? (e.src.startsWith("file:") ? e.src : undefined);
-      const df = fileOfSym.get(e.dst) ?? (e.dst.startsWith("file:") ? e.dst : undefined);
+      const sf = fileOfSym.get(e.src) ?? (isFileId(e.src) ? e.src : undefined);
+      const df = fileOfSym.get(e.dst) ?? (isFileId(e.dst) ? e.dst : undefined);
       if (!sf || !df || !fileIds.has(sf) || !fileIds.has(df)) continue;
       add(repSym(e.src), repSym(e.dst), e, "uses");
       if (wsLevel) add(wsOf(sf), wsOf(df), e, "uses");

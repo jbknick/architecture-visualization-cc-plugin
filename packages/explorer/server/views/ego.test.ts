@@ -22,7 +22,7 @@ const WS = [
   { id: "ws:@acme/docs", name: "@acme/docs", dir: "apps/docs" },
 ];
 const FOCUS_PATH = "packages/ui/src/card.tsx";
-const FOCUS = `sym:${FOCUS_PATH}#Card`;
+const FOCUS = `sym:repo:${FOCUS_PATH}#Card`;
 
 const cleanup: (() => void)[] = [];
 afterEach(() => {
@@ -30,7 +30,7 @@ afterEach(() => {
 });
 
 const sym = (path: string, name: string, fileId: string): SymbolRecord => ({
-  id: `sym:${path}#${name}`,
+  id: `sym:repo:${path}#${name}`,
   fileId,
   name,
   kind: "function",
@@ -50,6 +50,7 @@ const sym = (path: string, name: string, fileId: string): SymbolRecord => ({
 function hub(callers: Caller[], callees: Caller[] = []): { ctx: ApiContext; store: Store } {
   const dir = mkdtempSync(join(tmpdir(), "gantry-ego-"));
   const store = openStore(join(dir, "gantry.db"));
+  store.setMeta("repo", "repo");
   cleanup.push(() => {
     store.close();
     rmSync(dir, { recursive: true, force: true });
@@ -58,7 +59,7 @@ function hub(callers: Caller[], callees: Caller[] = []): { ctx: ApiContext; stor
     WS.map((w) => ({ ...w, kind: "package" as const, frameworks: [], deps: [], exportsMap: null })),
   );
   const file = (path: string, ws: string): FileRecord => ({
-    id: `file:${path}`,
+    id: `file:repo:${path}`,
     path,
     workspaceId: ws,
     contentHash: path,
@@ -84,18 +85,18 @@ function hub(callers: Caller[], callees: Caller[] = []): { ctx: ApiContext; stor
     return s;
   };
   const focusSlot = slot(FOCUS_PATH, "ws:@acme/ui");
-  focusSlot.syms.push(sym(FOCUS_PATH, "Card", `file:${FOCUS_PATH}`));
+  focusSlot.syms.push(sym(FOCUS_PATH, "Card", `file:repo:${FOCUS_PATH}`));
   for (const c of callers) {
     const s = slot(c.path, c.ws);
-    const sy = sym(c.path, c.name, `file:${c.path}`);
+    const sy = sym(c.path, c.name, `file:repo:${c.path}`);
     s.syms.push(sy);
-    s.edges.push(edge(sy.id, FOCUS, `file:${c.path}`, c));
+    s.edges.push(edge(sy.id, FOCUS, `file:repo:${c.path}`, c));
   }
   for (const c of callees) {
     const s = slot(c.path, c.ws);
-    const sy = sym(c.path, c.name, `file:${c.path}`);
+    const sy = sym(c.path, c.name, `file:repo:${c.path}`);
     s.syms.push(sy);
-    focusSlot.edges.push(edge(FOCUS, sy.id, `file:${FOCUS_PATH}`, c));
+    focusSlot.edges.push(edge(FOCUS, sy.id, `file:repo:${FOCUS_PATH}`, c));
   }
   for (const [path, s] of [...byFile].sort((a, b) => (a[0] < b[0] ? -1 : 1)))
     store.replaceFile("main", file(path, s.ws), s.syms, s.edges);

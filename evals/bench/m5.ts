@@ -28,7 +28,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isIndexable, loadConfig, openStore, resolvePaths } from "../../packages/core/src/index.js";
+import { isIndexable, loadConfig, openStore, pathOfId, resolvePaths } from "../../packages/core/src/index.js";
 import { openViewTool } from "../../packages/mcp/src/tools/openView.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -306,7 +306,7 @@ async function main() {
       const hop1 = impact.callersByHop[0]?.ids ?? [];
       let mention = 0;
       for (const id of hop1) {
-        const p = id.startsWith("sym:") ? id.slice(4, id.lastIndexOf("#")) : id.slice(5);
+        const p = pathOfId(id) ?? id;
         let text = "";
         try {
           text = readFileSync(join(repo, p), "utf8");

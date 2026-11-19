@@ -18,7 +18,7 @@ import {
 } from "./dupModel.ts";
 
 const member = (over: Partial<DupMember>): DupMember => ({
-  id: "sym:a.ts#f",
+  id: "sym:pnpm-turbo:a.ts#f",
   name: "f",
   kind: "function",
   path: "a.ts",

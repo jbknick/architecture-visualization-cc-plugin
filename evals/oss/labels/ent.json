@@ -1,0 +1,423 @@
+{
+  "repo": "ent",
+  "sha": "8037bc89bcab9a264099afa2672581237a3e079b",
+  "labelledBy": "agent claude-sonnet-5-5, read call site by call site; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    {
+      "name": "cards"
+    },
+    {
+      "name": "cars"
+    },
+    {
+      "name": "cities"
+    },
+    {
+      "name": "clean_users"
+    },
+    {
+      "name": "files"
+    },
+    {
+      "name": "group_users"
+    },
+    {
+      "name": "groups"
+    },
+    {
+      "name": "nodes"
+    },
+    {
+      "name": "payments"
+    },
+    {
+      "name": "pet_friends"
+    },
+    {
+      "name": "pet_user_names"
+    },
+    {
+      "name": "pets"
+    },
+    {
+      "name": "session_devices"
+    },
+    {
+      "name": "sessions"
+    },
+    {
+      "name": "streets"
+    },
+    {
+      "name": "tenants"
+    },
+    {
+      "name": "user_audit_logs"
+    },
+    {
+      "name": "user_following"
+    },
+    {
+      "name": "user_friends"
+    },
+    {
+      "name": "user_groups"
+    },
+    {
+      "name": "users"
+    }
+  ],
+  "read": [
+    {
+      "file": "examples/compositetypes/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/encryptfield/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/fs/example_test.go",
+      "table": "files"
+    },
+    {
+      "file": "examples/jsonencode/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/jsonencode/example_test.go",
+      "table": "pets"
+    },
+    {
+      "file": "examples/m2m2types/example_test.go",
+      "table": "groups"
+    },
+    {
+      "file": "examples/m2m2types/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/m2m2types/example_test.go",
+      "table": "group_users"
+    },
+    {
+      "file": "examples/m2mbidi/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/m2mbidi/example_test.go",
+      "table": "user_friends"
+    },
+    {
+      "file": "examples/m2mrecur/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/m2mrecur/example_test.go",
+      "table": "user_following"
+    },
+    {
+      "file": "examples/o2m2types/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/o2m2types/example_test.go",
+      "table": "pets"
+    },
+    {
+      "file": "examples/o2mrecur/example_test.go",
+      "table": "nodes"
+    },
+    {
+      "file": "examples/o2o2types/example_test.go",
+      "table": "cards"
+    },
+    {
+      "file": "examples/o2o2types/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/o2obidi/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/o2orecur/example_test.go",
+      "table": "nodes"
+    },
+    {
+      "file": "examples/privacyadmin/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/privacytenant/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/privacytenant/rule/rule.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/rls/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/start/start.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/start/start.go",
+      "table": "groups"
+    },
+    {
+      "file": "examples/start/start.go",
+      "table": "cars"
+    },
+    {
+      "file": "examples/start/start.go",
+      "table": "group_users"
+    },
+    {
+      "file": "examples/traversal/example_test.go",
+      "table": "groups"
+    },
+    {
+      "file": "examples/traversal/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/traversal/example_test.go",
+      "table": "pets"
+    },
+    {
+      "file": "examples/traversal/example_test.go",
+      "table": "user_friends"
+    },
+    {
+      "file": "examples/traversal/example_test.go",
+      "table": "pet_friends"
+    },
+    {
+      "file": "examples/triggers/example_test.go",
+      "table": "user_audit_logs"
+    },
+    {
+      "file": "examples/version/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/viewcomposite/example_test.go",
+      "table": "clean_users"
+    },
+    {
+      "file": "examples/viewcomposite/example_test.go",
+      "table": "pet_user_names"
+    },
+    {
+      "file": "examples/viewschema/example_test.go",
+      "table": "clean_users"
+    },
+    {
+      "file": "examples/viewschema/example_test.go",
+      "table": "pet_user_names"
+    }
+  ],
+  "write": [
+    {
+      "file": "examples/compositetypes/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/domaintypes/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/edgeindex/example_test.go",
+      "table": "cities"
+    },
+    {
+      "file": "examples/edgeindex/example_test.go",
+      "table": "streets"
+    },
+    {
+      "file": "examples/encryptfield/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/entcpkg/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/enumtypes/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/fs/example_test.go",
+      "table": "files"
+    },
+    {
+      "file": "examples/functionalidx/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/jsonencode/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/jsonencode/example_test.go",
+      "table": "pets"
+    },
+    {
+      "file": "examples/m2m2types/example_test.go",
+      "table": "groups"
+    },
+    {
+      "file": "examples/m2m2types/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/m2m2types/example_test.go",
+      "table": "group_users"
+    },
+    {
+      "file": "examples/m2mbidi/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/m2mbidi/example_test.go",
+      "table": "user_friends"
+    },
+    {
+      "file": "examples/m2mrecur/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/m2mrecur/example_test.go",
+      "table": "user_following"
+    },
+    {
+      "file": "examples/o2m2types/example_test.go",
+      "table": "pets"
+    },
+    {
+      "file": "examples/o2m2types/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/o2mrecur/example_test.go",
+      "table": "nodes"
+    },
+    {
+      "file": "examples/o2o2types/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/o2o2types/example_test.go",
+      "table": "cards"
+    },
+    {
+      "file": "examples/o2obidi/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/o2orecur/example_test.go",
+      "table": "nodes"
+    },
+    {
+      "file": "examples/privacyadmin/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/privacytenant/example_test.go",
+      "table": "tenants"
+    },
+    {
+      "file": "examples/privacytenant/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/privacytenant/example_test.go",
+      "table": "groups"
+    },
+    {
+      "file": "examples/privacytenant/example_test.go",
+      "table": "user_groups"
+    },
+    {
+      "file": "examples/rls/example_test.go",
+      "table": "tenants"
+    },
+    {
+      "file": "examples/rls/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/start/start.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/start/start.go",
+      "table": "cars"
+    },
+    {
+      "file": "examples/start/start.go",
+      "table": "groups"
+    },
+    {
+      "file": "examples/start/start.go",
+      "table": "group_users"
+    },
+    {
+      "file": "examples/traversal/example_test.go",
+      "table": "groups"
+    },
+    {
+      "file": "examples/traversal/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/traversal/example_test.go",
+      "table": "pets"
+    },
+    {
+      "file": "examples/traversal/example_test.go",
+      "table": "group_users"
+    },
+    {
+      "file": "examples/traversal/example_test.go",
+      "table": "user_friends"
+    },
+    {
+      "file": "examples/traversal/example_test.go",
+      "table": "pet_friends"
+    },
+    {
+      "file": "examples/triggers/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/triggers/example_test.go",
+      "table": "user_audit_logs"
+    },
+    {
+      "file": "examples/version/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/viewcomposite/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/viewcomposite/example_test.go",
+      "table": "pets"
+    },
+    {
+      "file": "examples/viewschema/example_test.go",
+      "table": "users"
+    },
+    {
+      "file": "examples/viewschema/example_test.go",
+      "table": "pets"
+    }
+  ]
+}

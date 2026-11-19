@@ -20,7 +20,7 @@ const dir = (path: string, parent: string): GraphNode => ({
   parent,
 });
 const file = (path: string, parent: string, functions: number): GraphNode => ({
-  id: `file:${path}`,
+  id: `file:pnpm-turbo:${path}`,
   kind: "file",
   label: path.slice(path.lastIndexOf("/") + 1),
   size: 1,

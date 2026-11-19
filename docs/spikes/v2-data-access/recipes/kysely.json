@@ -1,0 +1,53 @@
+{
+  "name": "kysely",
+  "frameworks": [
+    {
+      "name": "kysely",
+      "evidence": "Kysely<Database> clients; selectFrom, insertInto, updateTable, deleteFrom"
+    }
+  ],
+  "helpers": ["resolve-names", "const-strings", "model-naming"],
+  "naming": { "derive": ["snake"] },
+  "rules": [
+    {
+      "id": "create-table",
+      "language": "typescript",
+      "rule": { "pattern": "$S.createTable($N)" },
+      "constraints": { "N": { "kind": "string" } },
+      "emit": { "kind": "table", "name": "$N" }
+    },
+    {
+      "id": "select-from",
+      "language": "typescript",
+      "rule": { "pattern": "$D.selectFrom($T)" },
+      "emit": { "kind": "access", "as": "read", "target": "$T" }
+    },
+    {
+      "id": "join",
+      "language": "typescript",
+      "rule": { "pattern": "$D.$J($T, $$$A)" },
+      "constraints": {
+        "J": { "regex": "^(innerJoin|leftJoin|rightJoin|fullJoin|innerJoinLateral|leftJoinLateral)$" }
+      },
+      "emit": { "kind": "access", "as": "read", "target": "$T" }
+    },
+    {
+      "id": "insert-into",
+      "language": "typescript",
+      "rule": { "pattern": "$D.insertInto($T)" },
+      "emit": { "kind": "access", "as": "write", "target": "$T" }
+    },
+    {
+      "id": "update-table",
+      "language": "typescript",
+      "rule": { "pattern": "$D.updateTable($T)" },
+      "emit": { "kind": "access", "as": "write", "target": "$T" }
+    },
+    {
+      "id": "delete-from",
+      "language": "typescript",
+      "rule": { "pattern": "$D.deleteFrom($T)" },
+      "emit": { "kind": "access", "as": "write", "target": "$T" }
+    }
+  ]
+}

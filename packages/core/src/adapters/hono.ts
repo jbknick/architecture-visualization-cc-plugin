@@ -1,3 +1,13 @@
+import {
+  endpointId,
+  fileIdOfSymId,
+  isSymId,
+  middlewareId,
+  nameOfSymId,
+  pathOfFileId,
+  symKey,
+  symKeyOfId,
+} from "../ids.js";
 import { chainName, isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
 import type { EdgeRecord } from "../types.js";
 import {
@@ -124,7 +134,7 @@ class FileReader {
   }
 
   private key(name: string): string {
-    return `${this.ctx.path}#${name}`;
+    return symKey(this.ctx.path, name);
   }
 
   /** App key of an identifier: an app declared in this file, or an import resolving to a top-level symbol. */
@@ -133,9 +143,9 @@ class FileReader {
     const imp = this.ctx.parsed?.imports.find((i) => i.local === name);
     if (!imp || imp.imported === "*") return null;
     const sym = symbolForName(this.ctx.parsed, this.ctx.fileId, name, this.ctx.resolver);
-    if (sym?.startsWith("sym:")) return sym.slice(4);
+    if (sym && isSymId(sym)) return symKeyOfId(sym) ?? null;
     const t = this.ctx.resolver.resolveSpecifier(this.ctx.fileId, imp.specifier);
-    return t.kind === "file" ? `${t.fileId.slice(5)}#${imp.imported}` : null;
+    return t.kind === "file" ? symKey(pathOfFileId(t.fileId), imp.imported) : null;
   }
 
   /** Reference to a string constant named `name`, or null when it is not one. */
@@ -429,14 +439,13 @@ export const honoAdapter: Adapter<HonoFacts> = {
     const readPart = (p: PathPart): string => {
       if (typeof p === "string") return p;
       if (p.sym) {
-        const hash = p.sym.indexOf("#");
-        const fileId = `file:${p.sym.slice(4, hash)}`;
+        const fileId = fileIdOfSymId(p.sym) ?? p.sym;
         let consts = constCache.get(fileId);
         if (!consts) {
           consts = stringConstants(ctx.file(fileId)?.program() ?? null);
           constCache.set(fileId, consts);
         }
-        const v = consts.get(p.sym.slice(hash + 1));
+        const v = consts.get(nameOfSymId(p.sym) ?? "");
         if (v !== undefined) return v;
       }
       return `{${p.name}}`;
@@ -502,7 +511,7 @@ export const honoAdapter: Adapter<HonoFacts> = {
         const local = own(r);
         const full = mergePaths([...rc.prefix, ...local]);
         for (const method of r.methods) {
-          const id = alloc(ws).take(`ep:${wsName(ws)}:${method} ${full}`);
+          const id = alloc(ws).take(endpointId(ctx.repo, wsName(ws), `${method} ${full}`));
           nodes.push({
             id,
             kind: "endpoint",
@@ -543,7 +552,7 @@ export const honoAdapter: Adapter<HonoFacts> = {
       for (const rc of reach(m.app, [])) {
         const ws = wsOfRoot(rc.root, file);
         const pattern = mergePaths([...rc.prefix, ...own(m)]);
-        const id = alloc(ws).take(`mw:${wsName(ws)}:${pattern} ${m.label}`);
+        const id = alloc(ws).take(middlewareId(ctx.repo, wsName(ws), `${pattern} ${m.label}`));
         nodes.push({
           id,
           kind: "middleware",
