@@ -238,7 +238,7 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
   const { paths } = opts;
   const ownsStore = !opts.store;
   if (ownsStore) resetStaleStore(paths);
-  const store = opts.store ?? openStore(paths.dbPath);
+  const store = opts.store ?? openStore(paths.dbPath, { overlayPath: paths.overlayPath });
   const config = opts.config ?? loadConfig(paths);
   const token = randomBytes(32).toString("base64url");
   const ctx = { store, paths, config, getEmbedder: opts.getEmbedder ?? cachedEmbedder() };

@@ -334,6 +334,9 @@ describe("review view", () => {
     expect(change.querySelector('[data-side="after"]')?.textContent).toContain("size?: number");
     // The description is plain text, inside the change block only.
     expect(within(change).getByText("Renders a labelled button.")).toBeTruthy();
+    // Who wrote it (#180): the label in the inspector and a word in the panel's row, both from described_by.
+    expect(within(change).getByText("Generated description — may be wrong")).toBeTruthy();
+    expect(within(list).getByRole("button", { name: /Button/ }).textContent).toContain("model description");
     expect(window.location.hash).toContain(`sel=${encodeURIComponent(BUTTON)}`);
   });
 

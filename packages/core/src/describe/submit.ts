@@ -267,7 +267,13 @@ export function submitDescriptions(
         keepClaim: true,
         extendable,
         tainted,
+        batchId,
       });
+      // The row left this batch between the membership check above and the write: nothing was counted.
+      if (now.attempts === 0) {
+        reject(key, "not_in_batch");
+        continue;
+      }
       const fb = rejectionFeedback(v.reason, v.detail);
       // The extended budget is used up on a wording rule: describe it from trusted data, if the validator agrees.
       const fallback =

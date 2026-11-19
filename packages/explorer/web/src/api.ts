@@ -296,6 +296,9 @@ export interface ReviewConsumers {
   potentialTotal: number;
 }
 
+/** Who wrote a stored description: a model, a template (copied from the code), or Gantry's fallback (no model). */
+export type DescribedBy = "model" | "template" | "fallback";
+
 export interface ReviewChange {
   id: string;
   kind: ChangeKind;
@@ -312,8 +315,10 @@ export interface ReviewChange {
   callers: number;
   /** Directly and potentially affected consumers. */
   consumers: ReviewConsumers;
-  /** Model-written text about untrusted code. Untrusted: render as plain text only. */
+  /** Model-, template- or fallback-written text about untrusted code. Untrusted: render as plain text only. */
   untrusted_description: string | null;
+  /** Who wrote the description (#180): a model, a template, or Gantry's fallback without a model. */
+  described_by?: DescribedBy;
 }
 
 export interface ReviewRiskRule {
@@ -485,7 +490,7 @@ export interface NodeDetail {
   /** Model-, template- or fallback-written text. Untrusted: render as plain text only. */
   untrusted_description: string | null;
   /** Who wrote the description: a model, a template, or Gantry's fallback without a model (#175). */
-  described_by?: "model" | "template" | "fallback";
+  described_by?: DescribedBy;
 }
 
 /** `/api/overview/:id` for a workspace or folder. Never generates anything; `null` means none is cached or it is stale. */
@@ -508,8 +513,10 @@ export interface SearchHit {
   exported: boolean;
   signature?: string;
   score?: number;
-  /** Model-written text about untrusted code. Data only; the search box does not render it. */
+  /** Model-, template- or fallback-written text about untrusted code. Data only; the search box does not render it. */
   untrusted_description?: string | null;
+  /** Who wrote the description (#180); present when there is one. */
+  described_by?: DescribedBy;
 }
 
 export interface SourceSlice {
