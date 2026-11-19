@@ -1,28 +1,38 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: the patterns are source text with template literals
 // Mutation check for the description validators (issue #22): disables one rule at a time by editing its source line,
-// runs the describe tests, and reports whether a test failed ("killed") or not ("SURVIVED"). The edited file is
-// restored after every run, also on SIGINT, SIGTERM and SIGHUP. A baseline run must be green first, and a compile error, crash or timeout is reported as ERROR, never as a kill. Part of `pnpm check` since issue #108: a surviving mutation (a rule that no
-// test notices) fails the check. Usage: pnpm exec tsx scripts/describe-mutations.ts
-import { spawn, spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import {
-  closeSync,
-  existsSync,
-  openSync,
-  readFileSync,
-  renameSync,
-  statSync,
-  unlinkSync,
-  writeFileSync,
-  writeSync,
-} from "node:fs";
+// runs the describe tests, and reports whether a test failed ("killed") or not ("SURVIVED"). A baseline run must be
+// green first, and a compile error, crash or timeout is reported as ERROR, never as a kill. Part of `pnpm check` since
+// issue #108: a surviving mutation (a rule that no test notices) fails the check.
+// The mutations are applied to a temporary copy of the files the describe tests need, never to the checkout, so
+// nothing tracked is edited and several checkouts or worktrees can run the check at the same time. The copy is
+// removed on every exit path, also on SIGINT, SIGTERM and SIGHUP. Usage: pnpm exec tsx scripts/describe-mutations.ts
+import { spawn } from "node:child_process";
+import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 
-// The three overrides exist for the interrupt test (packages/core/test/describe-mutations.test.ts): a scratch directory,
-// a stub test command and a cap on the number of mutations. Normal runs use none of them.
-const dir =
-  process.env.GANTRY_MUTATION_DIR ?? join(import.meta.dirname, "..", "packages", "core", "src", "describe");
+const repoRoot = resolve(import.meta.dirname, "..");
+
+/** What the describe tests read from the repository; copied as is (symlinks stay symlinks). */
+const COPY_PATHS = [
+  "package.json",
+  "tsconfig.base.json",
+  "vitest.config.ts",
+  "fixtures",
+  "scripts/build-wordlist.ts",
+  "packages/core",
+  // the redactor-precision test scans every package's src
+  "packages/cli/src",
+  "packages/explorer/src",
+  "packages/mcp/src",
+];
+/** Build output stays out of the copy. */
+const SKIP_DIRS = new Set([join(repoRoot, "packages", "core", "dist")]);
+
+// The three overrides exist for the interrupt test (packages/core/test/describe-mutations.test.ts): a source
+// directory, a stub test command and a cap on the number of mutations. Normal runs use none of them.
+// GANTRY_MUTATION_DIR names the directory of the files to mutate; the files changed are their copies under copyRoot.
+const dir = resolve(process.env.GANTRY_MUTATION_DIR ?? join(repoRoot, "packages", "core", "src", "describe"));
 
 interface Mutation {
   name: string;
@@ -322,18 +332,42 @@ type Outcome = "green" | "killed" | "error";
 let lastOutput = "";
 let child: ReturnType<typeof spawn> | null = null;
 
+const copyRoot = mkdtempSync(join(tmpdir(), "gantry-mut-"));
+/** The directory of the files to mutate, inside the copy. */
+let mutDir = dir;
+
+function makeCopy(): void {
+  for (const p of COPY_PATHS) {
+    cpSync(join(repoRoot, p), join(copyRoot, p), {
+      recursive: true,
+      verbatimSymlinks: true,
+      filter: (src) => !SKIP_DIRS.has(src),
+    });
+  }
+  symlinkSync(join(repoRoot, "node_modules"), join(copyRoot, "node_modules"), "dir");
+  const rel = relative(repoRoot, dir);
+  if (rel.startsWith("..") || isAbsolute(rel)) {
+    // a source directory outside the checkout (the interrupt test): copy it in as well
+    mutDir = join(copyRoot, "mutation-src");
+    cpSync(dir, mutDir, { recursive: true, verbatimSymlinks: true });
+  } else {
+    mutDir = join(copyRoot, rel);
+  }
+}
+
 /**
  * Runs the describe tests asynchronously, so the signal handlers below can run while a test is going. "killed" means a
  * test failed; a compile error, crash or timeout is "error", not a kill. GANTRY_MUTATION_RUN tells tests to skip their
  * timing assertions, which a slow machine could turn into a false kill.
  */
 function runTests(): Promise<Outcome> {
-  return new Promise((resolve) => {
+  return new Promise((done) => {
     let out = "";
     // detached: the child leads its own process group, so one kill reaches vitest and its workers
     const c = spawn(TEST_CMD, {
       shell: true,
       detached: true,
+      cwd: copyRoot,
       stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env, GANTRY_MUTATION_RUN: "1" },
     });
@@ -348,21 +382,21 @@ function runTests(): Promise<Outcome> {
     c.on("error", () => {
       clearTimeout(timer);
       child = null;
-      resolve("error");
+      done("error");
     });
     c.on("close", (status, signal) => {
       clearTimeout(timer);
       child = null;
-      if (status === 0) return resolve("green");
+      if (status === 0) return done("green");
       lastOutput = `status=${status} signal=${signal} ${out}`;
-      if (signal != null || status == null) return resolve("error"); // timeout or killed
+      if (signal != null || status == null) return done("error"); // timeout or killed
       // With --bail the run stops at the first failure, so there may be no summary. A file that did not load or
       // compile is not a kill; anything else that exits non-zero is a failed test.
       if (
         /Transform failed|SyntaxError|ReferenceError|Failed to (?:load|resolve|parse)|error TS\d+/.test(out)
       )
-        return resolve("error");
-      resolve("killed");
+        return done("error");
+      done("killed");
     });
   });
 }
@@ -376,70 +410,10 @@ function killChild(): void {
   }
 }
 
-const lockFile = join(
-  tmpdir(),
-  `gantry-describe-mutation-${createHash("sha1").update(dir).digest("hex").slice(0, 12)}.json`,
-);
-interface Lock {
-  pid: number;
-  path: string;
-  original: string;
-  mutatedHash: string;
-  /** Start time and command line of the locking process (from `ps`); absent in locks written by older versions. */
-  start?: string;
-  cmd?: string;
-}
-/** Start time and command line of a process, from `ps` (macOS and Linux); null when it cannot be read. */
-function processIdentity(pid: number): { start: string; cmd: string } | null {
-  const ps = (field: string): string | null => {
-    const r = spawnSync("ps", ["-o", `${field}=`, "-p", String(pid)], {
-      encoding: "utf8",
-      env: { ...process.env, LC_ALL: "C" },
-    });
-    const out = r.status === 0 ? r.stdout.trim() : "";
-    return out === "" ? null : out;
-  };
-  const start = ps("lstart");
-  const cmd = ps("command");
-  return start === null || cmd === null ? null : { start, cmd };
-}
-const sha256 = (text: string): string => createHash("sha256").update(text).digest("hex");
-const NO_MUTATION: Lock = {
-  pid: process.pid,
-  path: "",
-  original: "",
-  mutatedHash: "",
-  ...processIdentity(process.pid),
-};
-let held = false;
-let current: { path: string; original: string } | null = null;
-
-/** Replaces the lock's contents atomically (temp file, then rename over it); the lock is never deleted and re-created. */
-function writeLock(lock: Lock): void {
-  const tmp = `${lockFile}.${process.pid}.tmp`;
-  writeFileSync(tmp, JSON.stringify(lock), { mode: 0o600 });
-  renameSync(tmp, lockFile);
-}
-
-/** Puts the mutated file back; the lock stays held. */
-const restore = (): void => {
-  if (current === null) return;
-  writeFileSync(current.path, current.original);
-  current = null;
-  if (held) writeLock(NO_MUTATION);
-};
-/** Final step of every exit path: restore, then release the lock (only if this run holds it). */
+/** Final step of every exit path: stop the test process group, then remove the temporary copy. */
 const cleanup = (): void => {
   killChild();
-  restore();
-  if (held) {
-    held = false;
-    try {
-      unlinkSync(lockFile);
-    } catch {
-      // already gone
-    }
-  }
+  rmSync(copyRoot, { recursive: true, force: true });
 };
 for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
   process.on(sig, () => {
@@ -449,120 +423,7 @@ for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
 }
 process.on("exit", cleanup);
 
-const LOCKED_EXIT = 3;
-const isAlive = (pid: number): boolean => {
-  try {
-    process.kill(pid, 0);
-    return pid !== process.pid;
-  } catch (e) {
-    return (e as NodeJS.ErrnoException).code === "EPERM";
-  }
-};
-/**
- * Whether the run that wrote the lock is still going: its pid is alive and, when the lock recorded them, the process
- * has the same start time and command line (a reused pid has neither). If `ps` cannot be read, an alive pid counts.
- */
-function lockHolderAlive(lock: Lock): boolean {
-  if (!isAlive(lock.pid)) return false;
-  if (lock.start === undefined || lock.cmd === undefined) return true;
-  const now = processIdentity(lock.pid);
-  return now === null || (now.start === lock.start && now.cmd === lock.cmd);
-}
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
-
-/** Reads a lock another run created; it may be empty for an instant between its create and its first write. */
-async function readLock(file: string): Promise<Lock | null> {
-  for (let i = 0; i < 10; i++) {
-    try {
-      const l = JSON.parse(readFileSync(file, "utf8")) as Lock;
-      if (typeof l.pid === "number") return l;
-    } catch {
-      // not written yet, or gone
-    }
-    await sleep(100);
-  }
-  return null;
-}
-
-const takeoverFile = `${lockFile}.takeover`;
-/** Restores the file named by a dead run's lock, only if it still holds exactly the mutated text. */
-function recoverFrom(lock: Lock): void {
-  if (lock.path === "") return;
-  if (existsSync(lock.path) && sha256(readFileSync(lock.path, "utf8")) === lock.mutatedHash) {
-    writeFileSync(lock.path, lock.original);
-    console.log(`restored ${lock.path} from an interrupted run`);
-  } else {
-    console.log(
-      `warning: left ${lock.path} alone (an interrupted run's lock, but the file has changed since)`,
-    );
-  }
-}
-
-/**
- * Takes the lock before anything else, with an exclusive create, and holds it for the whole run. A lock whose process
- * is alive (same pid, start time and command line) means another run is in progress (exit 3, nothing touched). A dead
- * run's lock is taken over under a second exclusive-create file (the takeover mutex): only its holder may judge the lock
- * stale, rename it away and restore the file, and it re-reads the lock under the mutex, so a lock another run created
- * in the meantime is never stolen. The file is restored only if it still holds exactly the mutated text; a file with
- * newer edits is left alone with a warning. SIGKILL cannot be caught, which is why the lock carries the original.
- */
-async function acquireLock(): Promise<void> {
-  for (let attempt = 0; attempt < 30; attempt++) {
-    try {
-      const fd = openSync(lockFile, "wx", 0o600);
-      writeSync(fd, JSON.stringify(NO_MUTATION));
-      closeSync(fd);
-      held = true;
-      return;
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
-    }
-    const lock = await readLock(lockFile);
-    if (lock !== null && lockHolderAlive(lock)) {
-      console.log(
-        `another mutation run (pid ${lock.pid}) is in progress; wait for it to finish and run again, or delete ${lockFile} if no such run exists`,
-      );
-      process.exit(LOCKED_EXIT);
-    }
-    let mutex: number;
-    try {
-      mutex = openSync(takeoverFile, "wx", 0o600);
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
-      try {
-        // a mutex left behind by a run killed mid-takeover
-        if (Date.now() - statSync(takeoverFile).mtimeMs > 60_000) unlinkSync(takeoverFile);
-      } catch {
-        // gone already
-      }
-      await sleep(100);
-      continue;
-    }
-    try {
-      const again = await readLock(lockFile);
-      if (again !== null && lockHolderAlive(again)) continue; // a fresh live lock appeared; look again
-      const stale = `${lockFile}.stale.${process.pid}`;
-      try {
-        renameSync(lockFile, stale);
-      } catch {
-        continue; // already gone; try the exclusive create again
-      }
-      if (again !== null) recoverFrom(again);
-      unlinkSync(stale);
-    } finally {
-      closeSync(mutex);
-      try {
-        unlinkSync(takeoverFile);
-      } catch {
-        // already gone
-      }
-    }
-  }
-  console.log(`could not take the mutation lock ${lockFile}; run again`);
-  process.exit(LOCKED_EXIT);
-}
-
-await acquireLock();
+makeCopy();
 
 // One retry: a busy machine can stall a test that is green on its own. A real failure fails twice.
 if ((await runTests()) !== "green") {
@@ -577,23 +438,19 @@ const limit = Number(process.env.GANTRY_MUTATION_LIMIT ?? MUTATIONS.length);
 const run = MUTATIONS.slice(0, limit);
 let bad = 0;
 for (const m of run) {
-  const path = join(dir, m.file);
+  const path = join(mutDir, m.file);
   const original = readFileSync(path, "utf8");
   if (!original.includes(m.find)) {
     console.log(`${m.name}: PATTERN NOT FOUND in ${m.file}`);
     bad++;
     continue;
   }
-  current = { path, original };
-  const mutated = original.replace(m.find, m.replace);
-  const lock: Lock = { ...NO_MUTATION, path, original, mutatedHash: sha256(mutated) };
-  writeLock(lock);
-  writeFileSync(path, mutated);
+  writeFileSync(path, original.replace(m.find, m.replace));
   let outcome: Outcome;
   try {
     outcome = await runTests();
   } finally {
-    restore();
+    writeFileSync(path, original); // the next mutation starts from the unmutated copy
   }
   if (outcome === "error") console.log(lastOutput.slice(-800));
   if (outcome !== "killed") bad++;
