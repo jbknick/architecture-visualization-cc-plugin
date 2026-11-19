@@ -1,0 +1,135 @@
+{
+  "summary": {
+    "clusters": 2,
+    "functions": 4,
+    "duplicateLines": 19,
+    "crossWorkspace": 1
+  },
+  "clusters": [
+    {
+      "id": "cluster:sym:packages/utils/src/date.ts#formatRelativeDate",
+      "tier": "exact",
+      "tiers": {
+        "exact": 1,
+        "near": 0,
+        "code_vector": 0,
+        "semantic": 0
+      },
+      "size": 2,
+      "loc": 22,
+      "rank": 44,
+      "keep": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "keepReason": "In the shared package @acme/utils, exported, called by 1 function; the other copy can use it.",
+      "workspaces": [
+        "ws:@acme/utils"
+      ],
+      "members": [
+        {
+          "id": "sym:packages/utils/src/date.ts#formatRelativeDate",
+          "name": "formatRelativeDate",
+          "kind": "function",
+          "path": "packages/utils/src/date.ts",
+          "line": 1,
+          "endLine": 11,
+          "loc": 11,
+          "workspaceId": "ws:@acme/utils",
+          "exported": true,
+          "fanIn": 1,
+          "tier": null,
+          "score": 1,
+          "keep": true
+        },
+        {
+          "id": "sym:packages/utils/src/time.ts#parseTimestamp",
+          "name": "parseTimestamp",
+          "kind": "function",
+          "path": "packages/utils/src/time.ts",
+          "line": 2,
+          "endLine": 12,
+          "loc": 11,
+          "workspaceId": "ws:@acme/utils",
+          "exported": true,
+          "fanIn": 0,
+          "tier": "exact",
+          "score": 1,
+          "keep": false,
+          "advice": {
+            "situation": 1,
+            "action": "Import it: import { formatRelativeDate } from './date'",
+            "inline": true
+          }
+        }
+      ],
+      "links": [
+        {
+          "a": "sym:packages/utils/src/date.ts#formatRelativeDate",
+          "b": "sym:packages/utils/src/time.ts#parseTimestamp",
+          "tier": "exact"
+        }
+      ]
+    },
+    {
+      "id": "cluster:sym:apps/web/src/lib/slug.ts#slugify",
+      "tier": "exact",
+      "tiers": {
+        "exact": 1,
+        "near": 0,
+        "code_vector": 0,
+        "semantic": 0
+      },
+      "size": 2,
+      "loc": 16,
+      "rank": 32,
+      "keep": "sym:packages/utils/src/slug.ts#slugify",
+      "keepReason": "In the shared package @acme/utils, not exported yet, called by 1 function; the other copy can use it.",
+      "workspaces": [
+        "ws:@acme/utils",
+        "ws:@acme/web"
+      ],
+      "members": [
+        {
+          "id": "sym:packages/utils/src/slug.ts#slugify",
+          "name": "slugify",
+          "kind": "function",
+          "path": "packages/utils/src/slug.ts",
+          "line": 2,
+          "endLine": 9,
+          "loc": 8,
+          "workspaceId": "ws:@acme/utils",
+          "exported": false,
+          "fanIn": 1,
+          "tier": null,
+          "score": 1,
+          "keep": true
+        },
+        {
+          "id": "sym:apps/web/src/lib/slug.ts#slugify",
+          "name": "slugify",
+          "kind": "function",
+          "path": "apps/web/src/lib/slug.ts",
+          "line": 1,
+          "endLine": 8,
+          "loc": 8,
+          "workspaceId": "ws:@acme/web",
+          "exported": true,
+          "fanIn": 1,
+          "tier": "exact",
+          "score": 1,
+          "keep": false,
+          "advice": {
+            "situation": 3,
+            "action": "Export it from @acme/utils (add to exports map) or move it to a shared package",
+            "inline": false
+          }
+        }
+      ],
+      "links": [
+        {
+          "a": "sym:apps/web/src/lib/slug.ts#slugify",
+          "b": "sym:packages/utils/src/slug.ts#slugify",
+          "tier": "exact"
+        }
+      ]
+    }
+  ]
+}
