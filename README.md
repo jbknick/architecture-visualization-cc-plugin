@@ -119,6 +119,16 @@ claude plugin update gantry@gantry-dev
 
 Restart Claude Code afterwards. Uninstalling the plugin deletes its data directory, and every index in it, so update in place (`/plugin` update, or reinstall over the same marketplace). If no index is found for a repo, a fresh one is built and `gantry init` says so in one line. Run `gantry --version` (or `node <path>/plugin/dist/cli.js --version`) to see the version of a build. A reinstall (`/plugin install gantry@gantry-dev` again over the same marketplace; an uninstall first would delete the indexes) is only needed when an update still says "already up to date" because the clone is at a commit with no version bump (a build from a branch between releases), or after you moved the clone. Run `pnpm build` in the clone first: the plugin ships `plugin/dist/`, which is not committed.
 
+## Install in CI
+
+Each tagged release carries one tarball, `gantry-<version>.tgz`, and its checksum, `gantry-<version>.tgz.sha256`. The tarball holds the bundled CLI and MCP server and a lockfile for the native dependencies (SQLite, the parser, the embedding runtime). It is the same file for every platform: `npm ci` fetches the native binaries for the machine it runs on. Gantry is not published to a package registry. On a runner with Node 26, set `V` to the version of a release that has the tarball and run:
+
+```sh
+V=<version>; B=https://github.com/jbknick/architecture-visualization-cc-plugin/releases/download/v$V; curl -fsSLO $B/gantry-$V.tgz && curl -fsSLO $B/gantry-$V.tgz.sha256 && sha256sum -c gantry-$V.tgz.sha256 && tar -xzf gantry-$V.tgz && (cd gantry && npm ci --omit=dev --no-audit --no-fund) && ./gantry/bin/gantry --version
+```
+
+The last command prints the version. `npm ci` installs only the third-party native dependencies from the lockfile in the tarball; nothing else is downloaded. On macOS use `shasum -a 256 -c` in place of `sha256sum -c`. To build the tarball yourself, run `pnpm build && pnpm release:pack`: it writes `dist/gantry-<version>.tgz` and its `.sha256`, and two runs on the same commit give the same bytes.
+
 ## Commands
 
 Run as `node <path>/plugin/dist/cli.js <command>`. Every command below exists today (`--help` on each shows its options).
@@ -206,7 +216,8 @@ pnpm install
 pnpm build    # tsc -b && tsup && the explorer web build; writes plugin/dist/
 pnpm check    # biome + tsc + vitest, the local quality gate
 pnpm fmt      # apply Biome fixes
-pnpm release patch   # bump every version file, write CHANGELOG.md, commit and tag v<version> (never pushes)
+pnpm release patch   # bump every version file, write CHANGELOG.md, commit and tag v<version>, build and pack dist/gantry-<version>.tgz (never pushes or uploads)
+pnpm release:pack    # only the pack step, for the current version (run pnpm build first)
 pnpm perf     # absolute-speed checks (duplicate engine on a 6,000-function index); not part of check, run before releases
 pnpm eval:clone     # clone the pinned public repos in evals/oss/repos.json at their commits into ~/Dev/gantry-oss (GANTRY_OSS_DIR overrides)
 pnpm eval:score <case>   # score a clone's index against its committed labels; exits 1 below 90% recall at 95% precision

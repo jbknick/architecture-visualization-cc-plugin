@@ -4,6 +4,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { type PackResult, packRelease } from "./pack.js";
 
 /** Root first (the source of truth), then every file that must carry the same version. */
 export const VERSION_FILES = [
@@ -54,6 +55,31 @@ export function checkSync(root: string): string[] {
       continue; // the marketplace entry may omit it
     }
     if (got !== want) problems.push(`${file}: version ${got} differs from ${rootFile} (${want})`);
+  }
+  return problems;
+}
+
+const RELEASE_DEPS = "scripts/release-deps/package.json";
+
+/**
+ * Messages naming each package whose version in scripts/release-deps/package.json differs from the root package.json
+ * (the exact version, or the range with its ^ or ~ dropped). Packages the root does not declare are left alone.
+ */
+export function checkReleaseDeps(root: string): string[] {
+  const read = (file: string) =>
+    JSON.parse(readFileSync(join(root, file), "utf8")) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+  const rootPkg = read("package.json");
+  const want = { ...rootPkg.devDependencies, ...rootPkg.dependencies };
+  const problems: string[] = [];
+  for (const [name, got] of Object.entries(read(RELEASE_DEPS).dependencies ?? {})) {
+    const expected = want[name]?.replace(/^[\^~]/, "");
+    if (expected !== undefined && expected !== got)
+      problems.push(
+        `${RELEASE_DEPS}: ${name} is ${got} but package.json has ${expected}; regenerate package-lock.json`,
+      );
   }
   return problems;
 }
@@ -141,8 +167,13 @@ export function prependChangelog(root: string, section: string): void {
   writeFileSync(path, next);
 }
 
-/** Bump every version file, write the CHANGELOG, commit and tag. Never pushes. Returns the new version. */
-export function release(root: string, bump: string, date = new Date().toISOString().slice(0, 10)): string {
+/** Bump every version file, write the CHANGELOG, commit and tag, then build and pack. Never pushes or uploads. */
+export function release(
+  root: string,
+  bump: string,
+  date = new Date().toISOString().slice(0, 10),
+  build: (root: string) => void = runBuild,
+): { version: string; pack: PackResult } {
   const current = readVersion(root, VERSION_FILES[0] as string) as string;
   const problems = checkSync(root);
   if (problems.length) throw new Error(`versions are out of sync:\n${problems.join("\n")}`);
@@ -161,5 +192,10 @@ export function release(root: string, bump: string, date = new Date().toISOStrin
   git(root, ["add", "CHANGELOG.md", ...touched]);
   git(root, ["commit", "-m", `Release ${tag}`]);
   git(root, ["tag", "-a", tag, "-m", `Release ${tag}`]);
-  return version;
+  build(root);
+  return { version, pack: packRelease(root, version) };
+}
+
+function runBuild(root: string): void {
+  execFileSync("pnpm", ["build"], { cwd: root, stdio: "inherit" });
 }

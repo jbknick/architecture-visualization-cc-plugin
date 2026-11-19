@@ -18,6 +18,7 @@
     "perf": "GANTRY_PERF=1 vitest run -t performance packages/core/src/dup/engine.test.ts",
     "readme:media": "tsx scripts/readme-media.ts",
     "release": "tsx scripts/release.ts",
+    "release:pack": "tsx scripts/pack.ts",
     "test": "vitest run",
     "version:check": "tsx scripts/check-version.ts"
   },

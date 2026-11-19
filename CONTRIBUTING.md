@@ -46,7 +46,16 @@ The root `package.json` holds the version. `plugin/.claude-plugin/plugin.json` a
 pnpm release <patch|minor|major|x.y.z>   # clean tree required
 ```
 
-It bumps every version file, adds a dated section to `CHANGELOG.md` from the commit subjects since the last `v*` tag, commits `Release v<version>` and tags `v<version>`. It never pushes, so review the commit and then push the branch and the tag yourself. Do not bump versions in ordinary PRs.
+It bumps every version file, adds a dated section to `CHANGELOG.md` from the commit subjects since the last `v*` tag, commits `Release v<version>` and tags `v<version>`. It then runs `pnpm build` and packs `dist/gantry-<version>.tgz` and `dist/gantry-<version>.tgz.sha256` (`pnpm release:pack` runs only that step for the current version). It never pushes or uploads, so review the commit, then push the branch and the tag and create the GitHub release yourself:
+
+```sh
+git push && git push origin v<version>
+gh release create v<version> dist/gantry-<version>.tgz dist/gantry-<version>.tgz.sha256 --notes-from-tag
+```
+
+Do not bump versions in ordinary PRs.
+
+The tarball is one file for every platform. It holds `plugin/` (`bin/`, `dist/`, `agents/`, `skills/`, `hooks/`, `.claude-plugin/`, `.mcp.json`), `LICENSE`, and the `package.json` and `package-lock.json` from `scripts/release-deps/`, which pin the native dependencies the bundle leaves external (the `external` list in `tsup.config.ts`). A runner installs it with the one line in the README's "Install in CI" section, and `npm ci` reads that lockfile. Whenever you change the version of one of those packages in the root `package.json`, make the same change in `scripts/release-deps/package.json` and regenerate the lockfile there (`npm install --package-lock-only --ignore-scripts` inside `scripts/release-deps/`); `pnpm check` fails and names the package when the versions differ. A package that is not in the root `package.json` (`onnxruntime-node`, which `@huggingface/transformers` depends on) is checked against nothing, so check its version against `pnpm-lock.yaml` yourself.
 
 `pnpm check` only warns when `plugin/` or the packages bundled into `plugin/dist` changed since the last tag without a version bump, because a hard failure would break every feature branch. Run `pnpm version:check --strict` before tagging to turn that warning into an error.
 
