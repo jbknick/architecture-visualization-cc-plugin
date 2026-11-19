@@ -97,12 +97,28 @@
       "role": "tuning"
     },
     {
+      "name": "hono",
+      "url": "https://github.com/honojs/hono.git",
+      "sha": "75ff8e3ea18485589816881c6278bc9783e56602",
+      "stack": ["typescript"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
       "name": "hugo",
       "url": "https://github.com/gohugoio/hugo.git",
       "sha": "93be9f1f5b43446231ed3255b660cd7d3dd0ba11",
       "stack": ["go"],
       "lang": ["go"],
       "role": "held-out"
+    },
+    {
+      "name": "middleware",
+      "url": "https://github.com/honojs/middleware.git",
+      "sha": "6f11fdd162fd3ef5581fb2a8dbd1403631dcc93f",
+      "stack": ["typescript"],
+      "lang": ["ts"],
+      "role": "tuning"
     },
     {
       "name": "myapp",
