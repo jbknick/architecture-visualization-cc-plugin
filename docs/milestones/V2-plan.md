@@ -11,6 +11,8 @@ Status: reviewed plan, not yet contracts. Each issue edits `docs/SPEC.md` in its
 
 There are no users. Nothing in V2 keeps old stores, old data directories or old formats working: when the store format changes, the index is rebuilt from scratch.
 
+UI that V2 adds or changes in the explorer (repo grouping on the project map, recipe gaps, Go labels) uses the explorer's UI kit: SmoothUI components (https://smoothui.dev/) and Hugeicons icons (https://hugeicons.com/react-icons, free set), adopted as side work in #252 (see `docs/milestones/Review-plan.md`, "UI kit").
+
 ## Milestones and paths
 
 The work is split into two paths and one piece of side work. Path B is self-contained: it needs nothing from Path A. Path A carries the work that needs both (Go frameworks and data access, and the release) at its end, where it waits on Path B twice. Path B is the shorter path and runs Go first, so both waits should be met before Path A reaches them. The paths can run in parallel or as a waterfall.
