@@ -9,7 +9,7 @@ import {
   isIndexable,
   loadConfig,
   openStore,
-  parseSource,
+  parseFile,
   type Store,
 } from "@gantry/core";
 import {
@@ -116,7 +116,7 @@ export async function postToolUse(
   const source = isIndexable(rel, config);
   if (!source && !MANIFEST_RE.test(rel)) return undefined;
 
-  const store = openStore(paths.dbPath);
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
   try {
     const session = input.sessionId ?? `once:${randomUUID()}`;
     const recorded = recordEdit(store, session, rel, source);
@@ -153,7 +153,7 @@ export async function settleBatch(
   opts: SettleOptions = {},
 ): Promise<string | undefined> {
   if (!fs.existsSync(paths.dbPath)) return undefined;
-  const store = openStore(paths.dbPath);
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
   try {
     const r = await settle(paths, store, input.sessionId, loadConfig(paths), opts);
     const text = formatCapped(r.findings, 600);
@@ -322,9 +322,9 @@ export async function settle(
       }
       if (text !== undefined) {
         const head = git(paths.root, ["show", `HEAD:${r.path}`]);
-        const before = head.ok ? parseSource(store.repo(), r.path, head.out.toString("utf8")) : undefined;
+        const before = head.ok ? parseFile(store.repo(), r.path, head.out.toString("utf8")) : undefined;
         found.push(
-          ...importFindings(store, r.path, parseSource(store.repo(), r.path, text), before).filter(check),
+          ...importFindings(store, r.path, parseFile(store.repo(), r.path, text), before).filter(check),
         );
       }
       del.run(session, r.path, r.created_at);

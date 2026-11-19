@@ -29,7 +29,7 @@ export function registerIndex(program: Command): void {
         resetStaleStore(paths);
         if (opts.layer === "main" && !opts.files) noteFreshIndex(paths);
         ensureDataDir(paths);
-        const store = openStore(paths.dbPath);
+        const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
         try {
           const r = await indexRepo(paths, { layer: opts.layer as Layer, files: opts.files, store });
           if (opts.dump) {

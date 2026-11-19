@@ -1,0 +1,144 @@
+{
+  "repo": "nestjs-boilerplate",
+  "sha": "9620f159eefe38f47747d02ab162852367c5472c",
+  "labelledBy": "hand-labelled by a research agent (not the recipe agent) by rg enumeration and reading each site",
+  "kinds": ["endpoint", "table"],
+  "endpoint": [
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/email/login",
+      "file": "src/auth/auth.controller.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/email/register",
+      "file": "src/auth/auth.controller.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/email/confirm",
+      "file": "src/auth/auth.controller.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/email/confirm/new",
+      "file": "src/auth/auth.controller.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/forgot/password",
+      "file": "src/auth/auth.controller.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/reset/password",
+      "file": "src/auth/auth.controller.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "file": "src/auth/auth.controller.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/refresh",
+      "file": "src/auth/auth.controller.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout",
+      "file": "src/auth/auth.controller.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/auth/me",
+      "file": "src/auth/auth.controller.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/auth/me",
+      "file": "src/auth/auth.controller.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/facebook/login",
+      "file": "src/auth-facebook/auth-facebook.controller.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/google/login",
+      "file": "src/auth-google/auth-google.controller.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/apple/login",
+      "file": "src/auth-apple/auth-apple.controller.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/users",
+      "file": "src/users/users.controller.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users",
+      "file": "src/users/users.controller.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/:id",
+      "file": "src/users/users.controller.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/users/:id",
+      "file": "src/users/users.controller.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/users/:id",
+      "file": "src/users/users.controller.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/files/upload",
+      "file": "src/files/infrastructure/uploader/local/files.controller.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/files/:path",
+      "file": "src/files/infrastructure/uploader/local/files.controller.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "file": "src/home/home.controller.ts"
+    }
+  ],
+  "table": [
+    {
+      "name": "session"
+    },
+    {
+      "name": "status"
+    },
+    {
+      "name": "role"
+    },
+    {
+      "name": "file"
+    },
+    {
+      "name": "user"
+    },
+    {
+      "name": "SessionSchemaClass"
+    },
+    {
+      "name": "FileSchemaClass"
+    },
+    {
+      "name": "UserSchemaClass"
+    }
+  ]
+}

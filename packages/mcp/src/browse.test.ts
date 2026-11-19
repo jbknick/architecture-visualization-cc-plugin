@@ -116,7 +116,18 @@ describe("gantry_search", () => {
     expect(hits[0]).toMatchObject({ name: "slugify", kind: "function", path: "src/lib/slug.ts", line: 1 });
     expect(hits[0]?.[UNTRUSTED_FIELD]).toBe(SLUG_BEHAVIOR);
     expect(Object.keys(hits[0] ?? {}).sort()).toEqual(
-      ["described_by", "id", "kind", "line", "name", "path", "score", "signature", UNTRUSTED_FIELD].sort(),
+      [
+        "described_by",
+        "id",
+        "kind",
+        "lang",
+        "line",
+        "name",
+        "path",
+        "score",
+        "signature",
+        UNTRUSTED_FIELD,
+      ].sort(),
     );
     expectMarkerOnlyInUntrusted(r.json, r.text);
     const nulls = hits.filter((h) => h[UNTRUSTED_FIELD] === null);

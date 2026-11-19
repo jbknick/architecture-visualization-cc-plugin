@@ -10,7 +10,7 @@ import { indexRepo } from "../indexer.js";
 import { parseSource } from "../parse/index.js";
 import { type GantryPaths, resolvePaths } from "../paths/index.js";
 import { openStore, type Store } from "../store/index.js";
-import type { FileRecord, SymbolRecord } from "../types.js";
+import type { FileRecord, Lang, SymbolRecord } from "../types.js";
 import {
   type DupCandidate,
   dismiss,
@@ -18,6 +18,7 @@ import {
   findDuplicatesDetailed,
   nearScore,
   rebuildSimilarEdges,
+  thresholdsFor,
   tokensShared,
 } from "./index.js";
 
@@ -73,6 +74,7 @@ function randomMinhash(r: () => number): Uint32Array {
 
 interface SymSpec {
   name: string;
+  lang?: Lang;
   kind?: SymbolRecord["kind"];
   exported?: boolean;
   signature?: string;
@@ -84,11 +86,12 @@ interface SymSpec {
   nearMinhash?: Uint32Array;
 }
 
-function addFile(store: Store, path: string, syms: SymSpec[]): SymbolRecord[] {
+function addFile(store: Store, path: string, syms: SymSpec[], lang: Lang = "typescript"): SymbolRecord[] {
   const fileId = `file:repo:${path}`;
   const file: FileRecord = {
     id: fileId,
     path,
+    lang,
     workspaceId: null,
     contentHash: path,
     mtimeMs: 0,
@@ -100,6 +103,7 @@ function addFile(store: Store, path: string, syms: SymSpec[]): SymbolRecord[] {
       fileId,
       name: s.name,
       kind: s.kind ?? "function",
+      lang: s.lang ?? lang,
       exported: s.exported ?? true,
       signature: s.signature ?? "(a: string, b: number): string",
       startLine: 1,
@@ -165,7 +169,7 @@ describe("renamed copies of short functions (#151)", () => {
     const sym = parsed.symbols.find((x) => x.name === name);
     const range = sym && parsed.bodies.get(sym.id);
     if (!sym || !range) throw new Error("no symbol");
-    const h = hashSymbol(source, range, "ts");
+    const h = hashSymbol(source, range, "x.ts");
     expect(sym.stmtCount).toBe(4);
     const [rec] = addFile(store, path, [
       {
@@ -452,7 +456,7 @@ describe("tiers and filters (synthetic hashes)", () => {
     const b = store.getSymbol("sym:repo:src/b.ts#b") as SymbolRecord;
     expect(ids(await findDuplicates(store, { symbol: b }))).toEqual(["sym:repo:src/c.ts#c"]);
     dismiss(store, target.id, "sym:repo:src/b.ts#b", "updated reason");
-    const rows = store.db.prepare("SELECT a, b, reason FROM dismissals").all();
+    const rows = store.db.prepare("SELECT a, b, reason FROM overlay.dismissals").all();
     expect(rows).toEqual([
       { a: "sym:repo:src/a.ts#target", b: "sym:repo:src/b.ts#b", reason: "updated reason" },
     ]);
@@ -513,6 +517,7 @@ describe("tiers and filters (synthetic hashes)", () => {
     const file: FileRecord = {
       id: "file:repo:src/b.ts",
       path: "src/b.ts",
+      lang: "typescript",
       workspaceId: null,
       contentHash: "w",
       mtimeMs: 1,
@@ -869,7 +874,7 @@ describe("near tier keeps literals (#131)", () => {
     const parsed = parseSource("repo", "x.ts", code);
     const s = parsed.symbols[0] as (typeof parsed.symbols)[number];
     const range = parsed.bodies.get(s.id) as { start: number; end: number };
-    return { stmt: s.stmtCount, ...hashSymbol(code, range, "ts") };
+    return { stmt: s.stmtCount, ...hashSymbol(code, range, "x.ts") };
   };
   const t = { nearJaccard: 0.85, nearTokenJaccard: 0.75 };
 
@@ -918,5 +923,41 @@ describe("near tier keeps literals (#131)", () => {
     });
     // A copy under a new name is the same code: exact since #151 (it was near, score 1, before).
     expect(copy.find((c) => c.symbolId === target)).toMatchObject({ tier: "exact", score: 1 });
+  });
+});
+
+describe("duplicates never cross languages (#220)", () => {
+  const same = (name: string): SymSpec => ({
+    name,
+    exactHash: "e1",
+    renamedHash: "r1",
+    shapeHash: "s1",
+    minhash: randomMinhash(rng(7)),
+  });
+
+  it("two symbols of different lang with identical hashes give no candidate and no similar_to edge", async () => {
+    const { store } = tmpStore();
+    const [ts] = addFile(store, "src/a.ts", [same("a")]);
+    addFile(store, "src/a.go", [same("a")], "go");
+    const r = await findDuplicatesDetailed(store, { symbol: ts as SymbolRecord });
+    expect(r.candidates).toEqual([]);
+    expect(await rebuildSimilarEdges(store)).toBe(0);
+    expect(store.effectiveEdges({ kind: ["similar_to"] })).toEqual([]);
+  });
+
+  it("the same two symbols in one language are a duplicate", async () => {
+    const { store } = tmpStore();
+    const [a] = addFile(store, "src/a.ts", [same("a")]);
+    const [b] = addFile(store, "src/b.ts", [same("b")]);
+    const r = await findDuplicatesDetailed(store, { symbol: a as SymbolRecord });
+    expect(ids(r.candidates)).toEqual([(b as SymbolRecord).id]);
+    expect(await rebuildSimilarEdges(store)).toBe(1);
+  });
+
+  it("thresholdsFor returns the configured values for both languages", () => {
+    const { store } = tmpStore();
+    const config = loadConfigForDb(store.db.name, { HOME: "/nonexistent" });
+    expect(thresholdsFor(config, "typescript")).toEqual(config.duplicates.thresholds);
+    expect(thresholdsFor(config, "go")).toEqual(config.duplicates.thresholds);
   });
 });

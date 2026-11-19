@@ -1,0 +1,17 @@
+I wrote the recipe to `.gantry/recipe.json`, and the dry-run printed `ACCEPTED`. Every rule's examples pass.
+
+- **Stack:** Next.js 16 App Router with Drizzle ORM on Postgres.
+- **Routes (9):**
+  - `/[locale]`
+  - `/[locale]/about`
+  - `/[locale]/counter`
+  - `/[locale]/dashboard`
+  - `/[locale]/dashboard/user-profile/*`
+  - `/[locale]/portfolio`
+  - `/[locale]/portfolio/[slug]`
+  - `/[locale]/sign-in/*`
+  - `/[locale]/sign-up/*`
+- **Endpoints (1):** `PUT /api/counter`.
+- **Tables (1):** `counter`, from `pgTable('counter')` in `src/models/Schema.ts`.
+
+The counts match the registration sites I found with a file search. Nothing was left unexpressed. The routes keep `[locale]` as a literal segment, because the code gives no fixed locale prefix.

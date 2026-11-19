@@ -15,7 +15,7 @@ import {
   isSensitive,
   loadConfig,
   openStore,
-  parseSource,
+  parseFile,
   pathOfFileId,
   type Store,
   type SymbolRecord,
@@ -73,11 +73,11 @@ async function withStaged<T>(
   if (sources.size === 0) return undefined;
 
   const scratchPath = path.join(paths.dataDir, `precommit-${process.pid}.db`);
-  const real = openStore(paths.dbPath);
+  const real = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
   let scratch: Store | undefined;
   try {
     real.db.exec(`VACUUM INTO '${scratchPath.replace(/'/g, "''")}'`);
-    scratch = openStore(scratchPath);
+    scratch = openStore(scratchPath, { overlayPath: paths.overlayPath });
     await indexRepo(paths, { layer: "working", files: [...sources.keys()], sources, store: scratch });
     const s = scratch;
     const staged = [...sources.keys()].flatMap((p) => s.effectiveSymbols({ fileId: fileId(s.repo(), p) }));
@@ -113,8 +113,8 @@ async function stagedFindings(paths: GantryPaths, c: StagedContext): Promise<str
   const findings: Finding[] = await duplicateFindings(c.scratch, changedSymbols(c.staged, previous), config);
   for (const [p, text] of [...c.sources].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const head = git(paths.root, ["show", `HEAD:${p}`]);
-    const before = head.ok ? parseSource(c.scratch.repo(), p, head.out.toString("utf8")) : undefined;
-    for (const f of importFindings(c.scratch, p, parseSource(c.scratch.repo(), p, text), before)) {
+    const before = head.ok ? parseFile(c.scratch.repo(), p, head.out.toString("utf8")) : undefined;
+    for (const f of importFindings(c.scratch, p, parseFile(c.scratch.repo(), p, text), before)) {
       findings.push({ ...f, action: `${p}: ${f.action}` });
     }
   }

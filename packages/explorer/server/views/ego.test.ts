@@ -34,6 +34,7 @@ const sym = (path: string, name: string, fileId: string): SymbolRecord => ({
   fileId,
   name,
   kind: "function",
+  lang: "typescript",
   exported: true,
   signature: "",
   startLine: 3,
@@ -61,6 +62,7 @@ function hub(callers: Caller[], callees: Caller[] = []): { ctx: ApiContext; stor
   const file = (path: string, ws: string): FileRecord => ({
     id: `file:repo:${path}`,
     path,
+    lang: "typescript",
     workspaceId: ws,
     contentHash: path,
     mtimeMs: 1,

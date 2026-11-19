@@ -1,0 +1,16 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED`.
+
+- **Stack:** Go 1.22 with plain `net/http` (`http.NewServeMux`) and `HandleFunc`. I found no frontend and no database schema.
+- **Routes:** 0.
+- **Tables:** 0.
+- **Endpoints:** 6.
+  - `ALL /`
+  - `ALL /dreamsofcode.foo`
+  - `POST /monster`
+  - `PUT /monster/{id}`
+  - `GET /monster/{id}`
+  - `DELETE /monster/{id}`
+
+The recipe has three rules. One matches the `http.NewServeMux()` constructor. One treats the `*http.ServeMux` parameter of `loadRoutes` as a router, because nothing in the repo calls that function. The third reads each `HandleFunc` call, splitting the method off the path string, with `ALL` when there is no method.
+
+One path may be wrong. `router.HandleFunc("dreamsofcode.foo/", handle)` is a host-based pattern, and the engine lists it as `/dreamsofcode.foo`. The real pattern is host `dreamsofcode.foo` with path `/`. I couldn't express that with the available emits, so the listed path may not match what the scorer expects.

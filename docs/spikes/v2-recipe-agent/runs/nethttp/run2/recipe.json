@@ -1,0 +1,48 @@
+{
+  "name": "nethttp",
+  "frameworks": [{ "name": "net/http", "evidence": "http.NewServeMux" }],
+  "when": { "imports": ["net/http"] },
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "mux",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "http.NewServeMux()" },
+      "emit": { "kind": "router" },
+      "examples": {
+        "match": ["package main\nfunc f() { m := http.NewServeMux() }"],
+        "noMatch": ["package main\nfunc f() { m := other() }"]
+      }
+    },
+    {
+      "id": "mux-param",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "kind": "parameter_declaration", "regex": "\\*http\\.ServeMux" },
+      "emit": { "kind": "router" },
+      "examples": {
+        "match": ["package main\nfunc f(router *http.ServeMux) {}"],
+        "noMatch": ["package main\nfunc f(x int) {}"]
+      }
+    },
+    {
+      "id": "handle",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "$R.HandleFunc($P, $H)" },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "=ALL",
+        "path": "$P",
+        "handler": "$H",
+        "splitMethod": true
+      },
+      "examples": {
+        "match": ["package main\nfunc f() { r.HandleFunc(\"GET /x\", h) }"],
+        "noMatch": ["package main\nfunc f() { r.Other(\"GET /x\") }"]
+      }
+    }
+  ]
+}

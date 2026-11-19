@@ -1,0 +1,9 @@
+{
+  "name": "spike-v2-recipe-agent",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ast-grep/lang-go": "0.0.6",
+    "@ast-grep/napi": "0.51.3"
+  }
+}

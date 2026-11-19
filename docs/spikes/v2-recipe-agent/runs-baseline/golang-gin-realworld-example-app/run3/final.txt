@@ -1,0 +1,10 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED`. All examples pass.
+
+- **Stack:** Go with Gin and GORM. There is no frontend.
+- **Routes:** 0, since there are no pages.
+- **Endpoints:** 20, all under `/api`. They cover articles, tags, users, user, profiles, and `GET /api/ping`.
+- **Tables:** 7 models from `gorm.Model` structs: `ArticleModel`, `ArticleUserModel`, `FavoriteModel`, `CommentModel`, `TagModel`, `UserModel` and `FollowModel`.
+
+**Not expressed:** the engine's `param-flow` only follows calls within the same Go directory. `main` calls `users.UsersRegister(v1.Group("/users"))` across packages, so it can't carry the group prefix into the callee. I hardcoded the prefix in one rule per register function, such as `reg-UsersRegister` with `=/api/users`. If the mount prefixes in `hello.go` change, those rules need updating by hand. The generic `gin-endpoint` rule only resolves the `/api/ping` handler.
+
+The 20 endpoints are distinct method-and-path pairs. The code registers both `""` and `"/"` variants for several routes, and the scorer normalises those to one path, so they appear once.

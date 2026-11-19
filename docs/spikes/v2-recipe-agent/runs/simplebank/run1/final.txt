@@ -1,0 +1,16 @@
+I hit the usage limit, so I stopped. The recipe is written and the dry-run says `ACCEPTED`, but it is incomplete.
+
+The recipe is at `.gantry/recipe.json`. The stack is Go with Gin (`api/server.go`), SQL schema files, a gRPC gateway, and a Vue frontend.
+
+**What it lists**
+- **Endpoints (3 of 7 Gin routes):**
+  - `POST /users`
+  - `POST /users/login`
+  - `POST /tokens/renew_access`
+- **Tables (6):** `users`, `verify_emails`, `accounts`, `entries`, `transfers` and `sessions`, taken from `doc/schema.sql`.
+- **Routes:** 0.
+
+**What is missing**
+- **Gin routes on the auth group:** four routes are dropped because they are registered on `authRoutes := router.Group("/").Use(authMiddleware(...))`, whose receiver the dry-run doesn't resolve to a router. They are `POST /accounts`, `GET /accounts/:id`, `GET /accounts` and `POST /transfers`. To fix it, add a `mount` rule for `Group` that uses `passthrough` or `childIsScope`, covering the chained `.Use(...)`.
+- **gRPC-gateway endpoints:** I haven't written a rule for these. In `proto/service_simple_bank.proto` I saw `post: "/v1/create_user"`, `post: "/v1/login_user"` and `get: "/v1/verify_email"`. I didn't check the proto for others, such as an update-user route. A `text` rule over the proto file could cover them.
+- **Frontend routes:** I never read `frontend/src/router/index.ts`. It is the Vue Router config and needs a rule.

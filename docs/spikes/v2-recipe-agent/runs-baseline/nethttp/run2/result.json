@@ -1,0 +1,46 @@
+{
+  "run": 2,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 7,
+  "tokens": {
+    "input": 10,
+    "cacheRead": 50477,
+    "cacheCreate": 4395,
+    "output": 2054
+  },
+  "costUsdReported": 0.0431877,
+  "wallMs": 21864,
+  "recipeSha256": "8b4b88992de0333dc125e49dccb18fa20e578402e6a6f27f1bd2560afe7d608a",
+  "graphSha256": "3c761290651f8c6252d79204a206d584b8aafbd452000fb70dd14f5c1e0eb81e",
+  "nodes": {
+    "route": 0,
+    "endpoint": 6,
+    "table": 0
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 1,
+  "score": {
+    "case": "nethttp",
+    "sha": "63ead0d466e6ece610c2bcb1b304fab435981f35",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 5,
+        "predicted": 6,
+        "matched": 5,
+        "precision": 0.8333,
+        "recall": 1,
+        "pass": false
+      }
+    },
+    "missed": {},
+    "extra": {
+      "endpoint": ["ALL /dreamsofcode.foo"]
+    },
+    "pass": false
+  }
+}

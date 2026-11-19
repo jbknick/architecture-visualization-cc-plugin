@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import Database from "better-sqlite3";
 import { createVecTables, loadVec } from "../embed/vec.js";
+import { attachOverlay } from "./overlay.js";
 import { createStore, type Store } from "./repo.js";
 import { SCHEMA } from "./schema.js";
 
@@ -11,7 +12,7 @@ import { SCHEMA } from "./schema.js";
  * that makes a full re-index necessary bumps it: a schema change, or a change to what indexing writes for unchanged
  * files (the extractor, an adapter or the resolver), because incremental indexing only rewrites changed files.
  */
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 11;
 
 /** The store was built by a different version of Gantry (older, or newer) than this one. */
 export class StaleStoreError extends Error {
@@ -78,7 +79,11 @@ function initOrCheck(db: Database.Database, dbPath: string, vec: boolean): void 
   }).immediate();
 }
 
-export function openStore(dbPath: string): Store {
+/**
+ * Opens (creating) the store at `dbPath` and attaches the overlay (`overlay.db`, see `overlay.ts`) as `overlay`.
+ * The overlay defaults to `overlay.db` beside `dbPath`; callers that have `GantryPaths` pass `paths.overlayPath`.
+ */
+export function openStore(dbPath: string, opts: { overlayPath?: string } = {}): Store {
   if (dbPath !== ":memory:") mkdirSync(dirname(dbPath), { recursive: true });
   const db = new Database(dbPath, { timeout: 5000 });
   try {
@@ -91,6 +96,9 @@ export function openStore(dbPath: string): Store {
     db.prepare(
       "INSERT INTO meta(key, value) VALUES ('vec_available', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
     ).run(vec ? "1" : "0");
+    const overlay =
+      opts.overlayPath ?? (dbPath === ":memory:" ? ":memory:" : join(dirname(dbPath), "overlay.db"));
+    attachOverlay(db, overlay);
   } catch (err) {
     db.close();
     throw err;

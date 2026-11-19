@@ -63,7 +63,7 @@ export function registerInit(program: Command): void {
         noteFreshIndex(paths);
         const r = await indexRepo(paths, { layer: "main" });
         await heal(paths);
-        const store = openStore(paths.dbPath);
+        const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
         try {
           syncBacklog(store, { root: paths.root });
           writeCatalog(store, paths);

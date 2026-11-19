@@ -1,0 +1,64 @@
+{
+  "name": "next-boilerplate",
+  "frameworks": [
+    { "name": "nextjs", "evidence": "app router" },
+    { "name": "drizzle", "evidence": "pgTable" }
+  ],
+  "helpers": [],
+  "rules": [
+    {
+      "id": "pages",
+      "language": "text",
+      "files": ["src/app/**/page.tsx"],
+      "rule": { "regex": "export default" },
+      "emit": {
+        "kind": "route",
+        "pathFromFile": {
+          "pattern": "^src/app/(.*)page\\.tsx$",
+          "template": "/$1",
+          "rewrite": [{ "regex": "\\([^/]*\\)/", "with": "" }]
+        }
+      },
+      "examples": { "match": ["export default function P() {}"], "noMatch": ["const x = 1"] }
+    },
+    {
+      "id": "api-routes",
+      "language": "typescript",
+      "files": ["src/app/api/**/route.ts"],
+      "rule": { "pattern": "export const $M = $F" },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "standalone": true,
+        "pathFromFile": { "pattern": "^src/app/(.*)/route\\.ts$", "template": "/$1", "rewrite": [] }
+      },
+      "examples": { "match": ["export const PUT = async (r: Request) => {}"], "noMatch": ["const x = 1"] }
+    },
+    {
+      "id": "api-routes-fn",
+      "language": "typescript",
+      "files": ["src/app/api/**/route.ts"],
+      "rule": { "pattern": "export async function $M($$A) { $$B }" },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "standalone": true,
+        "pathFromFile": { "pattern": "^src/app/(.*)/route\\.ts$", "template": "/$1", "rewrite": [] }
+      },
+      "examples": {
+        "match": ["export async function GET(r: Request) { return 1; }"],
+        "noMatch": ["async function foo() {}"]
+      }
+    },
+    {
+      "id": "drizzle-tables",
+      "language": "typescript",
+      "files": ["src/models/**/*.ts"],
+      "rule": { "pattern": "pgTable($N, $$A)" },
+      "emit": { "kind": "table", "name": "$N" },
+      "examples": { "match": ["const a = pgTable('counter', {})"], "noMatch": ["const a = foo('x', {})"] }
+    }
+  ]
+}

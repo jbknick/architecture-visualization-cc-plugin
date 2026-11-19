@@ -16,7 +16,7 @@ export async function openFresh(cwd: string): Promise<{ paths: GantryPaths; stor
   ensureDataDir(paths);
   await heal(paths);
   await refreshWorking(paths);
-  return { paths, store: openStore(paths.dbPath) };
+  return { paths, store: openStore(paths.dbPath, { overlayPath: paths.overlayPath }) };
 }
 
 /** Fixed-width, left-aligned table without colors (identical on a TTY and in a pipe). */

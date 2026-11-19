@@ -31,7 +31,7 @@ export function cleanupData(): void {
 
 /** Materialises a fixture (optionally overriding/adding files), indexes it into a fresh store. */
 export async function indexedFixture(
-  name: "pnpm-turbo" | "single-pkg" | "nx" = "pnpm-turbo",
+  name: "pnpm-turbo" | "single-pkg" | "nx" | "go-basic" = "pnpm-turbo",
   files: Record<string, string> = {},
 ): Promise<Indexed> {
   const fx = await materializeFixture(name);
@@ -43,7 +43,7 @@ export async function indexedFixture(
   dataDirs.push(data);
   const paths = resolvePaths(fx.dir, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
   await indexRepo(paths, { layer: "main" });
-  const store = openStore(paths.dbPath);
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
   return {
     fx,
     paths,
@@ -65,6 +65,7 @@ export function fakeSymbol(path: string, name: string, over: Partial<SymbolRecor
     fileId: fileId(TEST_REPO, path),
     name,
     kind: "function",
+    lang: "typescript",
     exported: true,
     signature: "()",
     startLine: 1,
@@ -83,6 +84,7 @@ export function putFile(store: Store, path: string, symbols: SymbolRecord[], edg
   const file: FileRecord = {
     id: fileId(TEST_REPO, path),
     path,
+    lang: "typescript",
     workspaceId: null,
     contentHash: "c",
     mtimeMs: 1,

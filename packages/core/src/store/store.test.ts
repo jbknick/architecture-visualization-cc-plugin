@@ -16,6 +16,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const file = (id: string, extra: Partial<FileRecord> = {}): FileRecord => ({
   id: `file:${id}`,
   path: id,
+  lang: "typescript",
   workspaceId: "ws:.",
   contentHash: `h-${id}`,
   mtimeMs: 1,
@@ -27,6 +28,7 @@ const sym = (path: string, name: string, extra: Partial<SymbolRecord> = {}): Sym
   fileId: `file:${path}`,
   name,
   kind: "function",
+  lang: "typescript",
   exported: true,
   signature: `function ${name}()`,
   startLine: 1,
@@ -76,9 +78,7 @@ describe("openStore", () => {
       "descriptions",
       "backlog",
       "usage_log",
-      "dismissals",
       "overviews",
-      "layouts",
       "fts_symbols",
     ]) {
       expect(names).toContain(t);
@@ -390,8 +390,8 @@ const s = openStore(workerData.db);
 const mh = new Uint32Array(64);
 for (let i = 0; i < workerData.n; i++) {
   const path = workerData.tag + i + ".ts";
-  s.replaceFile("main", { id: "file:" + path, path, workspaceId: null, contentHash: "h", mtimeMs: 1, deleted: false },
-    [{ id: "sym:" + path + "#f", fileId: "file:" + path, name: "f", kind: "function", exported: true, signature: "",
+  s.replaceFile("main", { id: "file:" + path, path, lang: "typescript", workspaceId: null, contentHash: "h", mtimeMs: 1, deleted: false },
+    [{ id: "sym:" + path + "#f", fileId: "file:" + path, name: "f", kind: "function", lang: "typescript", exported: true, signature: "",
        startLine: 1, endLine: 1, loc: 1, complexity: 1, stmtCount: 1, exactHash: "e", shapeHash: "s", minhash: mh }], []);
   s.setMeta("last_" + workerData.tag, String(i));
 }

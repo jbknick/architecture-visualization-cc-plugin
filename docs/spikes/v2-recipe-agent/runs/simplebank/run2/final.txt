@@ -1,0 +1,14 @@
+I wrote the recipe to `.gantry/recipe.json`. The dry-run says `ACCEPTED`, and every example passes.
+
+- **Stack:** Go with Gin for the HTTP API, and SQL migrations (sqlc) for the schema. There is also a Vue frontend in `frontend/`.
+- **Endpoints (7):** these match the registrations in `api/server.go` (`router.POST` and `authRoutes.*`).
+  - `POST /users`
+  - `POST /users/login`
+  - `POST /tokens/renew_access`
+  - `POST /accounts`
+  - `GET /accounts`
+  - `GET /accounts/:id`
+  - `POST /transfers`
+- **Tables (6):** `accounts`, `entries`, `transfers`, `users`, `sessions` and `verify_emails`. These come from the `CREATE TABLE` statements in `db/migration/*.up.sql`.
+- **Routes (0):** the Vue frontend has a router at `frontend/src/router/index.ts` that defines a single `/` path. I did not write a rule for it.
+- **Not expressed:** the project also has a gRPC server and a grpc-gateway (`gapi`, `proto`). Those are not method-and-path registrations, so the recipe skips them.

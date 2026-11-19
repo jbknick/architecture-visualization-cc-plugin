@@ -1,0 +1,84 @@
+{
+  "files": [],
+  "edges": [],
+  "adapterNodes": [
+    {
+      "id": "route:next-js-boilerplate:/[locale]",
+      "kind": "route",
+      "data": {
+        "urlPath": "/[locale]"
+      }
+    },
+    {
+      "id": "route:next-js-boilerplate:/[locale]/about",
+      "kind": "route",
+      "data": {
+        "urlPath": "/[locale]/about"
+      }
+    },
+    {
+      "id": "route:next-js-boilerplate:/[locale]/counter",
+      "kind": "route",
+      "data": {
+        "urlPath": "/[locale]/counter"
+      }
+    },
+    {
+      "id": "route:next-js-boilerplate:/[locale]/dashboard",
+      "kind": "route",
+      "data": {
+        "urlPath": "/[locale]/dashboard"
+      }
+    },
+    {
+      "id": "route:next-js-boilerplate:/[locale]/dashboard/user-profile/[[...user-profile]]",
+      "kind": "route",
+      "data": {
+        "urlPath": "/[locale]/dashboard/user-profile/[[...user-profile]]"
+      }
+    },
+    {
+      "id": "route:next-js-boilerplate:/[locale]/portfolio",
+      "kind": "route",
+      "data": {
+        "urlPath": "/[locale]/portfolio"
+      }
+    },
+    {
+      "id": "route:next-js-boilerplate:/[locale]/portfolio/[slug]",
+      "kind": "route",
+      "data": {
+        "urlPath": "/[locale]/portfolio/[slug]"
+      }
+    },
+    {
+      "id": "route:next-js-boilerplate:/[locale]/sign-in/[[...sign-in]]",
+      "kind": "route",
+      "data": {
+        "urlPath": "/[locale]/sign-in/[[...sign-in]]"
+      }
+    },
+    {
+      "id": "route:next-js-boilerplate:/[locale]/sign-up/[[...sign-up]]",
+      "kind": "route",
+      "data": {
+        "urlPath": "/[locale]/sign-up/[[...sign-up]]"
+      }
+    },
+    {
+      "id": "ep:next-js-boilerplate:PUT /api/counter",
+      "kind": "endpoint",
+      "data": {
+        "method": "PUT",
+        "path": "/api/counter"
+      }
+    },
+    {
+      "id": "table:counter",
+      "kind": "table",
+      "data": {
+        "name": "counter"
+      }
+    }
+  ]
+}

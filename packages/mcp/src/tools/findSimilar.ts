@@ -9,6 +9,8 @@ import {
   findDuplicatesDetailed,
   hybridSearch,
   knn,
+  LANG_IDS,
+  type Lang,
   loadConfigForDb,
   pathOfFileId,
   type Store,
@@ -59,6 +61,7 @@ function callerPathOf(root: string, given: string | undefined): string {
 function scopeFilter(
   store: Store,
   kind: string | undefined,
+  lang: Lang | undefined,
   workspace: string | undefined,
 ): ((s: SymbolRecord) => boolean) | null {
   let workspaceId: string | undefined;
@@ -69,6 +72,7 @@ function scopeFilter(
   const files = new Map(store.effectiveFiles().map((f) => [f.id, f]));
   return (s) => {
     if (kind !== undefined && s.kind !== kind) return false;
+    if (lang !== undefined && s.lang !== lang) return false;
     const file = files.get(s.fileId);
     if (!file || file.deleted) return false;
     return workspaceId === undefined || file.workspaceId === workspaceId;
@@ -80,7 +84,7 @@ export const findSimilarTool = defineTool({
   description:
     "Call this before writing a new helper, hook or component: it looks for code that already does the same thing. " +
     "Give query (one sentence on what you are about to write), code (a draft), or both. " +
-    "Returns {matches: [{id, name, kind, path, line, signature, import_path, tier, score, untrusted_description, advice: {situation, action, inline, untrusted_suggested_name?} | null}]}, best first: tier exact, near, code_vector (a draft matches in code), semantic (a query matches in meaning or words). " +
+    "Returns {matches: [{id, name, kind, lang, path, line, signature, import_path, tier, score, untrusted_description, advice: {situation, action, inline, untrusted_suggested_name?} | null}]}, best first: tier exact, near, code_vector (a draft matches in code), semantic (a query matches in meaning or words). " +
     "advice.inline true means the match can be imported as is (advice.action has the import line); otherwise advice.action is a suggestion for the user. " +
     "Without description vectors meaning search is skipped and the payload says so in notes. Read the file before relying on a match. Responses are capped at 4,000 characters (truncated: true).",
   inputSchema: {
@@ -92,6 +96,10 @@ export const findSimilarTool = defineTool({
       .describe("One sentence on what the code you are about to write does"),
     code: z.string().min(1).max(MAX_CODE_CHARS).optional().describe("A draft of the code, TypeScript or TSX"),
     kind: z.enum(KINDS).optional().describe("Restrict matches to this symbol kind"),
+    lang: z
+      .enum(LANG_IDS as [Lang, ...Lang[]])
+      .optional()
+      .describe("Restrict matches to one language"),
     workspace: z.string().max(200).optional().describe("Workspace id (ws:...) or name"),
     caller_path: z
       .string()
@@ -103,13 +111,13 @@ export const findSimilarTool = defineTool({
     limit: z.number().int().min(1).max(10).default(5).describe("Maximum matches, at most 10"),
   },
   async run(
-    { query, code, kind, workspace, caller_path, limit },
+    { query, code, kind, lang, workspace, caller_path, limit },
     { store, paths, getEmbedder, env: ctxEnv },
   ) {
     if (query === undefined && code === undefined) {
       return { error: "invalid_input", message: "Give query, code, or both.", matches: [] };
     }
-    const inScope = scopeFilter(store, kind, workspace);
+    const inScope = scopeFilter(store, kind, lang, workspace);
     if (!inScope) return { matches: [], notes: ["unknown workspace"] };
     const notes: string[] = [];
     const found = new Map<string, Found>();
@@ -119,8 +127,12 @@ export const findSimilarTool = defineTool({
     };
 
     if (code !== undefined) {
-      const lang = /<\/?[A-Za-z][^>]*>/.test(code) ? "tsx" : "ts";
-      const r = await findDuplicatesDetailed(store, { code: { source: code, lang } }, { limit: POOL });
+      const dialect = /<\/?[A-Za-z][^>]*>/.test(code) ? "tsx" : "ts";
+      const r = await findDuplicatesDetailed(
+        store,
+        { code: { source: code, lang: dialect } },
+        { limit: POOL },
+      );
       for (const c of r.candidates) add(c.symbolId, { tier: c.tier, score: c.score, measured: true });
       for (const s of r.skipped) if (!notes.includes(s.message)) notes.push(s.message);
     }
@@ -147,6 +159,7 @@ export const findSimilarTool = defineTool({
       if (!vectors) notes.push(NO_VECTORS);
       const hits = await hybridSearch(store, query, {
         ...(kind ? { kind: [kind] } : {}),
+        ...(lang !== undefined ? { lang } : {}),
         ...(workspace !== undefined ? { workspace } : {}),
         limit: POOL,
         ...(embedder ? { embedder } : {}),
@@ -177,6 +190,7 @@ export const findSimilarTool = defineTool({
         id: sym.id,
         name: sym.name,
         kind: sym.kind,
+        lang: sym.lang,
         path: pathOfFileId(sym.fileId),
         line: sym.startLine,
         signature: sym.signature.slice(0, SIGNATURE_MAX),

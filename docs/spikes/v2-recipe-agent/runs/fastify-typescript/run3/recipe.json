@@ -1,0 +1,54 @@
+{
+  "name": "fastify-prisma",
+  "frameworks": [{ "name": "fastify", "evidence": "package.json" }],
+  "when": { "dependency": ["fastify"] },
+  "passthrough": [],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "router",
+      "language": "typescript",
+      "files": ["src/**/*.ts"],
+      "rule": { "pattern": "fastify($$A)" },
+      "emit": { "kind": "router" },
+      "examples": { "match": ["const s = fastify({ logger: true })"], "noMatch": ["const s = other()"] }
+    },
+    {
+      "id": "register",
+      "language": "typescript",
+      "files": ["src/**/*.ts"],
+      "rule": { "pattern": "$P.register($C, { prefix: $X })" },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C", "prefix": "$X", "childIsScope": true },
+      "examples": {
+        "match": ["server.register(userRouter, { prefix: '/api/user' })"],
+        "noMatch": ["server.register(cors)"]
+      }
+    },
+    {
+      "id": "endpoint",
+      "language": "typescript",
+      "files": ["src/**/*.ts"],
+      "rule": {
+        "any": [
+          { "pattern": "$R.$M($X, $A1)" },
+          { "pattern": "$R.$M($X, $A1, $A2)" },
+          { "pattern": "$R.$M($X, $A1, $A2, $A3)" }
+        ]
+      },
+      "constraints": { "M": { "regex": "^(get|post|put|delete|patch|head|options)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$X" },
+      "examples": {
+        "match": ["fastify.post('/login', {}, h)", "server.get('/', h)"],
+        "noMatch": ["map.foo('/x', h)"]
+      }
+    },
+    {
+      "id": "prisma",
+      "language": "text",
+      "files": ["prisma/schema.prisma"],
+      "rule": { "regex": "model\\s+(\\w+)\\s*\\{" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": { "match": ["model Post {"], "noMatch": ["enum Role {"] }
+    }
+  ]
+}

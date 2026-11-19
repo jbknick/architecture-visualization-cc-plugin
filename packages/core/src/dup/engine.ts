@@ -2,10 +2,10 @@ import { type GantryConfig, loadConfigForDb } from "../config/index.js";
 import { contentKey, FUNCTION_LIKE_KINDS } from "../describe/factsheet.js";
 import { allVectors, getVector, knn, type VecTable, vecAvailable } from "../embed/vec.js";
 import { hashSymbol, MINHASH_PERMUTATIONS, minhashJaccard } from "../hash/index.js";
-import { parseSource } from "../parse/index.js";
+import { langOfPath, languageModule, languages, parseFile } from "../lang/index.js";
 import type { Store } from "../store/index.js";
 import { decodeMinhash } from "../store/repo.js";
-import type { SymbolKind, SymbolRecord } from "../types.js";
+import type { Lang, SymbolKind, SymbolRecord } from "../types.js";
 import {
   isExcludedPath,
   type KindFamily,
@@ -46,7 +46,11 @@ export interface DupQuery {
   /** An indexed symbol: its stored hashes are used and it is never returned as its own duplicate. */
   symbol?: SymbolRecord;
   /** Code not (yet) on disk. Hashed in memory; wins over `symbol` for the hashes. */
-  code?: { source: string; lang: "ts" | "tsx"; path?: string };
+  code?: {
+    source: string /** File dialect when `path` is absent (`ts` or `tsx`). */;
+    lang: "ts" | "tsx";
+    path?: string;
+  };
   /**
    * Description of the query. Used by the semantic tier, which can only compare vectors: without
    * `vectors.description` it is reported as skipped (a stored description of the same code is used otherwise).
@@ -84,8 +88,22 @@ export interface DupResult {
 
 export const TIER_RANK: Record<Tier, number> = { exact: 0, near: 1, code_vector: 2, semantic: 3 };
 export const ALL_TIERS: readonly Tier[] = ["exact", "near", "code_vector", "semantic"];
-export const EXACT_MIN_STMTS = 3;
-export const NEAR_MIN_STMTS = 6;
+/** The statement floors of TypeScript; each language module carries its own (`lang/`). */
+export const EXACT_MIN_STMTS = languageModule("typescript").thresholds.exactMinStmts;
+export const NEAR_MIN_STMTS = languageModule("typescript").thresholds.nearMinStmts;
+/** A language named before its module exists (Go) uses the TypeScript floors until it gets its own. */
+const floorsOf = (lang: Lang) =>
+  (languages().find((m) => m.id === lang) ?? languageModule("typescript")).thresholds;
+/** Smallest exact-tier floor of any language: the index holds every function above it. */
+const MIN_INDEXED_STMTS = Math.min(...languages().map((m) => m.thresholds.exactMinStmts));
+
+/**
+ * The similarity thresholds for a language (spec section 17). Every language starts with the configured values, which
+ * are the TypeScript ones; a language gets its own only when seeded duplicates in it fail.
+ */
+export function thresholdsFor(config: GantryConfig, _lang: Lang): GantryConfig["duplicates"]["thresholds"] {
+  return config.duplicates.thresholds;
+}
 export const KNN_K = 10;
 export const DEFAULT_LIMIT = 10;
 const LSH_BANDS = 16;
@@ -99,6 +117,7 @@ interface Entry {
   fileId: string;
   path: string;
   kind: SymbolKind;
+  lang: Lang;
   family: KindFamily;
   exported: boolean;
   stmt: number;
@@ -124,9 +143,12 @@ interface DupIndex {
 
 interface SymbolRow {
   id: string;
+  name: string;
+  directives: string | null;
   file_id: string;
   path: string;
   kind: SymbolKind;
+  lang: Lang;
   exported: number;
   signature: string;
   stmt_count: number;
@@ -164,10 +186,10 @@ function buildIndex(store: Store, layer: "effective" | "main"): DupIndex {
   const rows = store.db
     .prepare(
       `WITH eff_files AS (${LAYER_FILES(layer)})
-       SELECT s.id, s.file_id, f.path, s.kind, s.exported, s.signature, s.stmt_count, s.exact_hash,
+       SELECT s.id, s.name, f.directives, s.file_id, f.path, s.kind, s.lang, s.exported, s.signature, s.stmt_count, s.exact_hash,
               s.shape_hash, s.minhash, s.near_minhash, s.renamed_hash
        FROM symbols s JOIN eff_files f ON f.id = s.file_id AND f.layer = s.layer
-       WHERE f.deleted = 0 AND s.kind IN (${KINDS_SQL}) AND s.stmt_count >= ${EXACT_MIN_STMTS}
+       WHERE f.deleted = 0 AND s.kind IN (${KINDS_SQL}) AND s.stmt_count >= ${MIN_INDEXED_STMTS}
          AND s.exact_hash != ''
        ORDER BY s.id`,
     )
@@ -184,6 +206,8 @@ function buildIndex(store: Store, layer: "effective" | "main"): DupIndex {
   };
   for (const r of rows) {
     if (isExcludedPath(r.path)) continue;
+    if (r.lang === "go" && (r.name === "_" || r.name === "init")) continue; // many per package, never reused
+    if (r.lang === "go" && r.directives?.includes('"generated"')) continue; // header says "Code generated … DO NOT EDIT."
     const family = kindFamily(r.kind);
     if (!family) continue;
     const e: Entry = {
@@ -191,6 +215,7 @@ function buildIndex(store: Store, layer: "effective" | "main"): DupIndex {
       fileId: r.file_id,
       path: r.path,
       kind: r.kind,
+      lang: r.lang,
       family,
       exported: r.exported === 1,
       stmt: r.stmt_count,
@@ -207,7 +232,7 @@ function buildIndex(store: Store, layer: "effective" | "main"): DupIndex {
     push(index.byExact, e.exactHash, e);
     if (e.renamedHash !== "") push(index.byRenamed, e.renamedHash, e);
     push(index.byCkey, e.ckey, e);
-    if (e.stmt >= NEAR_MIN_STMTS) {
+    if (e.stmt >= floorsOf(e.lang).nearMinStmts) {
       if (e.shapeHash !== "") push(index.byShape, e.shapeHash, e);
       if (e.minhash.length === MINHASH_PERMUTATIONS) {
         for (let b = 0; b < LSH_BANDS; b++)
@@ -233,6 +258,7 @@ function effectiveIndex(store: Store): DupIndex {
 
 interface Features {
   symbolId?: string;
+  lang: Lang;
   family: KindFamily;
   stmt: number;
   exactHash: string;
@@ -249,15 +275,16 @@ const FUNCTION_LIKE: ReadonlySet<SymbolKind> = new Set(FUNCTION_LIKE_KINDS);
 function featuresOfCode(q: DupQuery): Features | null {
   const code = q.code as NonNullable<DupQuery["code"]>;
   const path = code.path ?? (code.lang === "tsx" ? "scratch.tsx" : "scratch.ts");
-  const parsed = parseSource("scratch", path, code.source);
+  const parsed = parseFile("scratch", path, code.source);
   const sym = parsed.symbols.find((s) => FUNCTION_LIKE.has(s.kind));
   const range = sym && parsed.bodies.get(sym.id);
   if (!sym || !range) return null;
-  const h = hashSymbol(code.source, range, code.lang);
+  const h = hashSymbol(code.source, range, path);
   const family = kindFamily(q.kind ?? sym.kind);
   if (!family) return null;
   return {
     symbolId: q.symbol?.id,
+    lang: langOfPath(path),
     family,
     stmt: sym.stmtCount,
     exactHash: h.exactHash,
@@ -275,6 +302,7 @@ function featuresOfSymbol(s: SymbolRecord, kind?: SymbolKind): Features | null {
   if (!family) return null;
   return {
     symbolId: s.id,
+    lang: s.lang,
     family,
     stmt: s.stmtCount,
     exactHash: s.exactHash,
@@ -290,6 +318,7 @@ function featuresOfSymbol(s: SymbolRecord, kind?: SymbolKind): Features | null {
 function featuresOfEntry(e: Entry): Features {
   return {
     symbolId: e.id,
+    lang: e.lang,
     family: e.family,
     stmt: e.stmt,
     exactHash: e.exactHash,
@@ -393,6 +422,7 @@ function runTiers(inp: RunInput): DupCandidate[] {
   };
   const eligible = (e: Entry): boolean =>
     e.id !== f.symbolId &&
+    e.lang === f.lang && // never across languages
     e.family === f.family &&
     !inp.excluded.has(e.id) &&
     !inp.dismissed.has(e.id) &&
@@ -411,11 +441,12 @@ function runTiers(inp: RunInput): DupCandidate[] {
     }
   };
   const full = (): boolean => out.length >= limit;
+  const { exactMinStmts, nearMinStmts } = floorsOf(f.lang);
 
   // exact
   if (tiers.has("exact")) {
-    if (f.stmt < EXACT_MIN_STMTS || f.exactHash === "") {
-      skip("exact", "below_statement_floor", `fewer than ${EXACT_MIN_STMTS} statements`);
+    if (f.stmt < exactMinStmts || f.exactHash === "") {
+      skip("exact", "below_statement_floor", `fewer than ${exactMinStmts} statements`);
     } else {
       // The same code, or the same code under another name (renamedHash; rows from before schema v6 have none).
       const same = new Set<Entry>(index.byExact.get(f.exactHash) ?? []);
@@ -429,8 +460,8 @@ function runTiers(inp: RunInput): DupCandidate[] {
 
   // near
   if (tiers.has("near") && !full()) {
-    if (f.stmt < NEAR_MIN_STMTS) {
-      skip("near", "below_statement_floor", `fewer than ${NEAR_MIN_STMTS} statements`);
+    if (f.stmt < nearMinStmts) {
+      skip("near", "below_statement_floor", `fewer than ${nearMinStmts} statements`);
     } else {
       const cand = new Set<Entry>();
       if (f.shapeHash !== "") for (const e of index.byShape.get(f.shapeHash) ?? []) cand.add(e);
@@ -453,8 +484,8 @@ function runTiers(inp: RunInput): DupCandidate[] {
   if (tiers.has("code_vector") && !full()) {
     if (!inp.deps.vecAvailable) {
       skip("code_vector", "vectors_unavailable", "vector tiers unavailable: sqlite-vec could not be loaded");
-    } else if (f.stmt < EXACT_MIN_STMTS) {
-      skip("code_vector", "below_statement_floor", `fewer than ${EXACT_MIN_STMTS} statements`);
+    } else if (f.stmt < exactMinStmts) {
+      skip("code_vector", "below_statement_floor", `fewer than ${exactMinStmts} statements`);
     } else {
       const qv = inp.queryVectors?.code ?? inp.deps.vec("vec_code", f.ckey);
       if (!qv) {
@@ -476,8 +507,8 @@ function runTiers(inp: RunInput): DupCandidate[] {
   if (tiers.has("semantic") && !full()) {
     if (!inp.deps.vecAvailable) {
       skip("semantic", "vectors_unavailable", "vector tiers unavailable: sqlite-vec could not be loaded");
-    } else if (f.stmt < EXACT_MIN_STMTS) {
-      skip("semantic", "below_statement_floor", `fewer than ${EXACT_MIN_STMTS} statements`);
+    } else if (f.stmt < exactMinStmts) {
+      skip("semantic", "below_statement_floor", `fewer than ${exactMinStmts} statements`);
     } else {
       // Stored vector only when the description is the stored one: text from the caller has its own vector.
       const qv =
@@ -511,7 +542,7 @@ function runTiers(inp: RunInput): DupCandidate[] {
 function dismissedWith(store: Store, id: string | undefined): Set<string> {
   const out = new Set<string>();
   if (id === undefined) return out;
-  const rows = store.db.prepare("SELECT a, b FROM dismissals WHERE a = ? OR b = ?").all(id, id) as {
+  const rows = store.db.prepare("SELECT a, b FROM overlay.dismissals WHERE a = ? OR b = ?").all(id, id) as {
     a: string;
     b: string;
   }[];
@@ -552,7 +583,7 @@ export async function findDuplicatesDetailed(
   const candidates = runTiers({
     index: effectiveIndex(store),
     f,
-    thresholds: config.duplicates.thresholds,
+    thresholds: thresholdsFor(config, f.lang),
     ignore: config.duplicates.ignore,
     tiers,
     limit: Math.max(0, opts.limit ?? DEFAULT_LIMIT),
@@ -598,7 +629,10 @@ export async function rebuildSimilarEdges(store: Store, opts: RebuildOptions = {
   const limit = opts.perSymbolLimit ?? DEFAULT_LIMIT;
 
   const dismissedPairs = new Set<string>();
-  for (const r of store.db.prepare("SELECT a, b FROM dismissals").all() as { a: string; b: string }[]) {
+  for (const r of store.db.prepare("SELECT a, b FROM overlay.dismissals").all() as {
+    a: string;
+    b: string;
+  }[]) {
     dismissedPairs.add(pairKey(r.a, r.b));
   }
   const wantVectors = tiers.has("code_vector") && vecAvailable(store);
@@ -619,12 +653,12 @@ export async function rebuildSimilarEdges(store: Store, opts: RebuildOptions = {
 
   const best = new Map<string, { src: Entry; dst: string; tier: Tier; score: number }>();
   for (const e of index.entries) {
-    if (!(e.exported || e.stmt >= NEAR_MIN_STMTS)) continue;
+    if (!(e.exported || e.stmt >= floorsOf(e.lang).nearMinStmts)) continue;
     const dismissed = new Set<string>();
     const found = runTiers({
       index,
       f: featuresOfEntry(e),
-      thresholds: config.duplicates.thresholds,
+      thresholds: thresholdsFor(config, e.lang),
       ignore: config.duplicates.ignore,
       tiers: runTiersSet,
       limit,
@@ -697,7 +731,7 @@ export function dismiss(store: Store, a: string, b: string, reason: string): voi
   store.tx(() => {
     store.db
       .prepare(
-        `INSERT INTO dismissals(a, b, reason) VALUES (?, ?, ?)
+        `INSERT INTO overlay.dismissals(a, b, reason) VALUES (?, ?, ?)
          ON CONFLICT(a, b) DO UPDATE SET reason = excluded.reason`,
       )
       .run(lo, hi, reason);

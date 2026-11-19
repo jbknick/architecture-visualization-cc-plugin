@@ -65,6 +65,7 @@ function indexFixture(root: string, extra: Record<string, string> = {}): void {
       fileId: pf.fileId,
       name: s.name,
       kind: s.kind,
+      lang: "typescript",
       exported: s.exported,
       signature: s.signature,
       startLine: s.startLine,
@@ -88,6 +89,7 @@ function indexFixture(root: string, extra: Record<string, string> = {}): void {
       {
         id: pf.fileId,
         path: rel,
+        lang: "typescript",
         workspaceId: ws?.id ?? null,
         contentHash: `h-${rel}`,
         mtimeMs: 1,

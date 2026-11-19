@@ -51,7 +51,7 @@ export function parseDismissBody(ctx: ApiContext, body: unknown): DismissBody {
 /**
  * `PUT /api/dismiss`: records that two functions are not duplicates (core `dismiss`, which also removes
  * their `similar_to` edge) and returns the recomputed summary. The pair stays hidden after a restart
- * and in the duplicate guard too, since both read the same `dismissals` table.
+ * and in the duplicate guard too, since both read the same `overlay.dismissals` table.
  */
 export function putDismiss(ctx: ApiContext, body: unknown): DismissResult {
   const parsed = parseDismissBody(ctx, body);
