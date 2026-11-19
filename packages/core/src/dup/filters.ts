@@ -24,7 +24,7 @@ export function kindFamily(kind: SymbolKind): KindFamily | null {
   }
 }
 
-const TEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/;
+const TEST_FILE = /(\.(test|spec)\.[cm]?[jt]sx?$)|(_test\.go$)/;
 const TEST_DIR = /(^|\/)__tests__\//;
 const FIXTURE_DIR = /(^|\/)(__fixtures__|__mocks__|fixtures?|testdata|test-data)\//;
 const GENERATED = /(\.(gen|generated)\.[cm]?[jt]sx?$)|((^|\/)(__generated__|generated)\/)/;

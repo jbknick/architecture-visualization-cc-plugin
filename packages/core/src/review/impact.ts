@@ -1,7 +1,7 @@
 import { checkImports } from "../advice/imports.js";
 import { findDuplicates } from "../dup/engine.js";
 import { isSymId, fileId as makeFileId, pathOfFileId } from "../ids.js";
-import { parseSource } from "../parse/index.js";
+import { parseFile } from "../lang/index.js";
 import type { GantryPaths } from "../paths/index.js";
 import type { Store } from "../store/index.js";
 import {
@@ -201,14 +201,14 @@ export async function reviewImpact(
     if (!specs || specs.size === 0) continue;
     const source = readBlobText(paths.root, diff.head, f.path);
     if (source === undefined) continue;
-    for (const finding of checkImports(store, f.path, parseSource(paths.repo, f.path, source))) {
+    for (const finding of checkImports(store, f.path, parseFile(paths.repo, f.path, source))) {
       if (finding.kind === "undeclared" && specs.has(finding.specifier)) {
         extra.push(`New undeclared import "${finding.specifier}" in ${f.path}:${finding.line}.`);
       }
     }
   }
 
-  const parsedCache = new Map<string, { source: string; parsed: ReturnType<typeof parseSource> } | null>();
+  const parsedCache = new Map<string, { source: string; parsed: ReturnType<typeof parseFile> } | null>();
   for (const c of diff.changes) {
     if (c.kind !== "added" || !c.after || !FUNCTION_LIKE.has(c.after.kind)) continue;
     const path = c.after.path;
@@ -216,7 +216,7 @@ export async function reviewImpact(
       const source = readBlobText(paths.root, diff.head, path);
       parsedCache.set(
         path,
-        source === undefined ? null : { source, parsed: parseSource(paths.repo, path, source) },
+        source === undefined ? null : { source, parsed: parseFile(paths.repo, path, source) },
       );
     }
     const entry = parsedCache.get(path);
