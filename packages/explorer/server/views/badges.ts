@@ -13,13 +13,13 @@ export interface BadgeIndex {
 
 /**
  * Computes M2 badges from the effective view, so working-layer changes show up. `dup`: the symbol is an end of a
- * `similar_to` edge whose pair is not in `dismissals`. `undescribed`: a function-like symbol (the only kind the
+ * `similar_to` edge whose pair is not in `overlay.dismissals`. `undescribed`: a function-like symbol (the only kind the
  * describer handles) whose content key has no stored description. `misleading`: its stored description has
  * `name_fits = 0`. Pure function of the store, so the output is deterministic.
  */
 export function buildBadgeIndex(store: Store): BadgeIndex {
   const dismissed = new Set(
-    (store.db.prepare("SELECT a, b FROM dismissals").all() as { a: string; b: string }[]).map(
+    (store.db.prepare("SELECT a, b FROM overlay.dismissals").all() as { a: string; b: string }[]).map(
       (r) => `${r.a}\n${r.b}`,
     ),
   );

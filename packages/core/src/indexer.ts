@@ -153,7 +153,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
   const repo = paths.repo;
   const ownStore = !opts.store;
   if (ownStore) ensureDataDir(paths);
-  const store = opts.store ?? openStore(paths.dbPath);
+  const store = opts.store ?? openStore(paths.dbPath, { overlayPath: paths.overlayPath });
   try {
     // Describe-side code (fact sheets, templates) reads file text and only has the store.
     if (store.getMeta("repo_root") !== root) store.setMeta("repo_root", root);

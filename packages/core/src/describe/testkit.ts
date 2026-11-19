@@ -43,7 +43,7 @@ export async function indexedFixture(
   dataDirs.push(data);
   const paths = resolvePaths(fx.dir, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
   await indexRepo(paths, { layer: "main" });
-  const store = openStore(paths.dbPath);
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
   return {
     fx,
     paths,

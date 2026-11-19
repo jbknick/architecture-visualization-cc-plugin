@@ -78,9 +78,7 @@ describe("openStore", () => {
       "descriptions",
       "backlog",
       "usage_log",
-      "dismissals",
       "overviews",
-      "layouts",
       "fts_symbols",
     ]) {
       expect(names).toContain(t);
