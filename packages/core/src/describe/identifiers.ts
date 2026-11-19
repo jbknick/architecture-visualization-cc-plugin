@@ -236,7 +236,7 @@ export function groundingNames(sheet: FactSheet): Grounding {
     addName(m[1] as string);
   // Values assigned to credential names: any word copied from one is a leak, even when it is an ordinary word.
   for (const m of body.matchAll(
-    /(?<n>[A-Za-z_$][\w$-]{0,60})["']?\s{0,5}[:=]\s{0,5}(["'`])(?<v>[^"'`\r\n]{4,100})\2/g,
+    /(?<![\w$-])(?!(?:var|const)\s)(?<n>[A-Za-z_$][\w$-]{0,60})["']?(?:\s{0,5}(?::=|[:=])|[ \t]{1,5}[*[\]A-Za-z_][\w.*[\]]{0,40}[ \t]{0,5}=)\s{0,5}(["'`])(?<v>[^"'`\r\n]{4,100})\2/g,
   )) {
     const g = m.groups as { n: string; v: string };
     if (g.v === "<redacted>" || !isCredentialName(g.n)) continue;

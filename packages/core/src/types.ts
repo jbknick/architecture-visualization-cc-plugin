@@ -77,6 +77,8 @@ export interface FactSheet {
   id: string;
   path: string;
   kind: SymbolKind;
+  /** Display name of the symbol's language (`LanguageModule.label`: `TypeScript`, `Go`). */
+  language: string;
   signature: string;
   doc: string | null;
   callees: string[];

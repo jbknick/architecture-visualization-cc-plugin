@@ -100,6 +100,9 @@ export function singleReturnExpression(declSource: string, isMember: boolean, ts
  */
 export function templateFor(sym: SymbolRecord, parsed: ParsedFile, source: string): Description | null {
   if (!FUNCTION_LIKE_KINDS.includes(sym.kind)) return null;
+  // Go has no template: its one-statement bodies (`return strings.Trim(s, "-")`, a constructor's composite literal)
+  // read worse as "Returns <expr>." than as a model sentence, and the TypeScript parser cannot read them anyway.
+  if (sym.lang !== "typescript") return null;
   if (sym.stmtCount !== 1) return null;
   const range = parsed.bodies.get(sym.id);
   if (!range) return null;

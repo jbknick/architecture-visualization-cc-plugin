@@ -227,7 +227,9 @@ export const SECRET_RULES: readonly SecretRule[] = [
     // `name = "value"` / `name: "value"` / `"name": "value"` where the name is a credential name; the value is any
     // string literal of four characters or more, in any letter case. Interpolated templates are left alone.
     name: "generic-credential",
-    re: /(?<![\w$.-])(?<name>[A-Za-z_$][\w$.-]{0,60})["']?\s{0,20}[:=]\s{0,20}(?<q>["'`])(?<v>[^"'`\r\n]{4,200})/g,
+    // Go: the short declaration `:=` and a declaration with a type between the name and `=` are assignments too;
+    // `var` and `const` are never the name, so the match starts at the variable.
+    re: /(?<![\w$.-])(?!(?:var|const)\s)(?<name>[A-Za-z_$][\w$.-]{0,60})["']?(?:\s{0,20}(?::=|[:=])|[ \t]{1,20}[*[\]A-Za-z_][\w.*[\]]{0,40}[ \t]{0,20}=)\s{0,20}(?<q>["'`])(?<v>[^"'`\r\n]{4,200})/g,
     accept: (g, redact) => {
       const v = g.v ?? "";
       if (v === MARKER || !isCredentialName(g.name ?? "")) return false;
