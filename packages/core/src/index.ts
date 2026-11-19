@@ -3,6 +3,7 @@ export * from "./adapters/index.js";
 export * from "./advice/index.js";
 export * from "./catalog/index.js";
 export * from "./config/index.js";
+export * from "./counts.js";
 export * from "./describe/backlog.js";
 export * from "./describe/factsheet.js";
 export * from "./describe/fallback.js";

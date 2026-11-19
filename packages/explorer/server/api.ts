@@ -2,6 +2,7 @@ import { closeSync, fstatSync, openSync, readSync, realpathSync } from "node:fs"
 import path from "node:path";
 import {
   behaviorOf,
+  countEffective,
   describedByOf,
   getOverview,
   hybridSearch,
@@ -89,22 +90,6 @@ function decodeSegment(s: string | undefined): string {
   }
 }
 
-/** Effective rows (working wins per file) counted in SQL: the same numbers as `effective*().length`, without loading them. */
-const EFF_COUNT = `WITH eff_files AS (
-    SELECT id, layer, deleted FROM files WHERE layer = 'working'
-    UNION ALL
-    SELECT m.id, m.layer, m.deleted FROM files m WHERE m.layer = 'main'
-      AND NOT EXISTS (SELECT 1 FROM files w WHERE w.id = m.id AND w.layer = 'working'))`;
-
-function countOf(ctx: ApiContext, table: "files" | "symbols" | "edges"): number {
-  const sql =
-    table === "files"
-      ? `${EFF_COUNT} SELECT COUNT(*) AS n FROM eff_files WHERE deleted = 0`
-      : `${EFF_COUNT} SELECT COUNT(*) AS n FROM ${table} t JOIN eff_files f ON f.id = t.file_id AND f.layer = t.layer
-         WHERE f.deleted = 0`;
-  return (ctx.store.db.prepare(sql).get() as { n: number }).n;
-}
-
 function meta(ctx: ApiContext) {
   const { store, paths } = ctx;
   return {
@@ -113,9 +98,9 @@ function meta(ctx: ApiContext) {
     // Counted in SQL: meta is fetched again after every refresh and whenever the tab gets focus back.
     counts: {
       workspaces: store.listWorkspaces().length,
-      files: countOf(ctx, "files"),
-      symbols: countOf(ctx, "symbols"),
-      edges: countOf(ctx, "edges"),
+      files: countEffective(store, "files"),
+      symbols: countEffective(store, "symbols"),
+      edges: countEffective(store, "edges"),
     },
     views: listViews().map((v) => {
       const enabled = isEnabled(ctx, v);
