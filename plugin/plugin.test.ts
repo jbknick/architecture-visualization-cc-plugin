@@ -248,6 +248,16 @@ describe("explain, overview and map skills (#35)", () => {
     expect(frontmatter(read("skills/explain/SKILL.md")).body).toContain("at most 200 words");
   });
 
+  it("skill and agent text name all three provenances and warn that template text can be attacker-written (#180)", () => {
+    for (const f of ["skills/reuse-first/SKILL.md", "agents/explainer.md"]) {
+      const body = frontmatter(read(f)).body;
+      expect(body, f).toMatch(/a model wrote/);
+      expect(body, f).toMatch(/template copied from the code \(an attacker can write that\)/);
+      expect(body, f).toMatch(/fallback/);
+      expect(body, f).toContain("`described_by`");
+    }
+  });
+
   it("overview grounds the text in code and shows the saved text unchanged (#146)", () => {
     const agent = frontmatter(read("agents/explainer.md")).body;
     for (const s of ["gantry_browse", "gantry_node", "`Read`", "never write an overview from names only"]) {

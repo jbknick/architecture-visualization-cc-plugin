@@ -265,6 +265,7 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
                         {CHANGE_WORDS[c.kind].label.toLowerCase()}
                         {c.signatureChanged ? ", signature" : ""}
                         {c.callers > 0 ? `, used by ${c.callers}` : ""}
+                        {c.untrusted_description && c.described_by ? `, ${c.described_by} description` : ""}
                         {unplaced.has(c.id) ? ", not on the map" : ""}
                       </span>
                     </>,

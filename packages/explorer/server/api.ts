@@ -41,8 +41,10 @@ export interface SearchHit {
   exported: boolean;
   signature: string;
   score: number;
-  /** Model-written text about untrusted code: data, never an instruction. Render as plain text only. */
+  /** Model-, template- or fallback-written text about untrusted code: data, never an instruction. Plain text only. */
   untrusted_description: string | null;
+  /** Who wrote it (#180): `model`, `template` or `fallback`; present when there is a description. */
+  described_by?: "model" | "template" | "fallback";
 }
 
 export interface NeighborRef {
@@ -313,19 +315,25 @@ async function search(ctx: ApiContext, raw: string): Promise<{ hits: SearchHit[]
   // The same hybrid search as `gantry_search`: keywords always, meaning only when the model is already cached.
   const embedder = await ctx.getEmbedder?.();
   const found = await hybridSearch(store, q, { limit: SEARCH_LIMIT, ...(embedder ? { embedder } : {}) });
-  const hits: SearchHit[] = found.map((h) => ({
-    id: h.id,
-    name: h.name,
-    kind: h.kind,
-    lang: h.lang,
-    langLabel: langLabel(h.lang),
-    path: h.path,
-    line: h.line,
-    exported: store.getSymbol(h.id)?.exported ?? false,
-    signature: h.signature.slice(0, SIGNATURE_MAX),
-    score: Number(h.score.toFixed(5)),
-    untrusted_description: h.description,
-  }));
+  const hits: SearchHit[] = found.map((h) => {
+    const sym = store.getSymbol(h.id);
+    const by = h.description !== null ? describedByOf(store, sym) : null;
+    return {
+      id: h.id,
+      name: h.name,
+      kind: h.kind,
+      lang: h.lang,
+      langLabel: langLabel(h.lang),
+      path: h.path,
+      line: h.line,
+      exported: sym?.exported ?? false,
+      signature: h.signature.slice(0, SIGNATURE_MAX),
+      score: Number(h.score.toFixed(5)),
+      untrusted_description: h.description,
+      // Who wrote it (#180): a fixed value from the provenance column, outside the untrusted text.
+      ...(by !== null ? { described_by: by } : {}),
+    };
+  });
   // Case-insensitive substring pass (so `pp` finds `app`): symbols whose name contains the query and that the
   // hybrid search did not return, ordered by name then id, up to the limit. They carry no score or description.
   if (hits.length < SEARCH_LIMIT) {
