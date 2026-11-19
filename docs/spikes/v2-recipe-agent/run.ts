@@ -232,14 +232,7 @@ export function scoreDump(name: string, dumpFile: string): ScoreJson | null {
   try {
     const out = execFileSync(
       tsx,
-      [
-        path.join(repoRoot, "scripts/eval-score.ts"),
-        name,
-        "--dump",
-        dumpFile,
-        "--labels",
-        path.join(repoRoot, "evals/oss/labels", `${name}.json`),
-      ],
+      [path.join(repoRoot, "scripts/eval-score.ts"), name, "--dump", dumpFile, "--labels", labelsFile(name)],
       { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
     return JSON.parse(out) as ScoreJson;
@@ -249,6 +242,12 @@ export function scoreDump(name: string, dumpFile: string): ScoreJson | null {
     throw e;
   }
 }
+
+/** Hand labels of a repo. Six repos were also labelled by another spike; the labels this spike scored against stay in ./labels. */
+export const labelsFile = (name: string): string => {
+  const own = path.join(here, "labels", `${name}.json`);
+  return existsSync(own) ? own : path.join(repoRoot, "evals/oss/labels", `${name}.json`);
+};
 
 export const graphSha = (dump: { adapterNodes: { kind: string; data: Record<string, unknown> }[] }): string =>
   sha256(
@@ -382,9 +381,7 @@ async function main() {
   for (const repo of all.repos.filter(
     (r) => r.role === "tuning" && existsSync(path.join(here, RUNS_DIR, r.name)),
   )) {
-    const labels = JSON.parse(
-      readFileSync(path.join(repoRoot, "evals/oss/labels", `${repo.name}.json`), "utf8"),
-    ) as Labels;
+    const labels = JSON.parse(readFileSync(labelsFile(repo.name), "utf8")) as Labels;
     const clone = path.join(ossDir, `${repo.name}@${repo.sha.slice(0, 7)}`);
     const runs: RunResult[] = [];
     for (let k = 1; k <= RUNS; k++) {
