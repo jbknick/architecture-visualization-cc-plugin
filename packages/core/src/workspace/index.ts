@@ -246,7 +246,10 @@ export function workspaceForPath(ws: WorkspaceRecord[], repoRelPath: string): Wo
     if (w.dir === ".") continue;
     if ((p === w.dir || p.startsWith(`${w.dir}/`)) && (!best || w.dir.length > best.dir.length)) best = w;
   }
-  const fallback = best ?? ws.find((w) => w.dir === ".") ?? ws[0];
+  // A repo can hold a TypeScript and a Go workspace at the root; a `.go` path belongs to the Go one.
+  const roots = ws.filter((w) => w.dir === ".");
+  const goFile = p.endsWith(".go");
+  const fallback = best ?? roots.find((w) => (w.lang === "go") === goFile) ?? roots[0] ?? ws[0];
   if (!fallback) throw new Error("workspaceForPath: no workspaces");
   return fallback;
 }

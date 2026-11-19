@@ -1,0 +1,11 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED`. It lists 19 routes, 0 endpoints and 0 tables.
+
+- **Stack:** this is a monorepo with three front ends. They are Next.js App Router (`apps/nextjs-app`), Next.js Pages Router (`apps/nextjs-pages`) and React Router in Vite (`apps/react-vite`).
+- **Routes:**
+  - **Next.js App Router:** one route for each `page.tsx`, with route groups removed from the path.
+  - **Next.js Pages Router:** one route for each file under `src/pages`, with `index` removed from the path and `_app` skipped.
+  - **React Vite:** the router builds its paths from a `paths` config. I wrote one rule per route file with the path typed in by hand, so these rules won't pick up new routes automatically.
+- **Duplicate URLs:** the list shows only 19 URLs because the same URL in different apps appears once. The Pages Router app reports 10 file matches, but only `/404` shows up as a separate entry.
+- **Endpoints and tables:** there are none. The only HTTP handlers and the `@mswjs/data` database are MSW mocks under `testing/mocks`, which the task says to leave out.
+
+I couldn't express the React Vite paths as a single general rule. The recipe format has no way to read the paths from `router.tsx` and `config/paths.ts`.

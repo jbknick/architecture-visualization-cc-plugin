@@ -1,0 +1,71 @@
+{
+  "name": "nestjs-boilerplate",
+  "frameworks": [{ "name": "nestjs", "evidence": "package.json dependency" }],
+  "when": { "dependency": ["@nestjs/common"] },
+  "helpers": [],
+  "rules": [
+    {
+      "id": "controller-endpoints-path",
+      "language": "typescript",
+      "files": ["src/**/*.controller.ts"],
+      "rule": { "pattern": "@$M($X)" },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "path": "$X",
+        "ancestorPrefix": {
+          "kind": "class_declaration",
+          "rule": { "pattern": { "context": "({ path: $P })", "selector": "pair" } },
+          "capture": "$P"
+        }
+      },
+      "examples": {
+        "match": ["class A { @Get('x') f() {} }"],
+        "noMatch": ["const a = 1;"]
+      }
+    },
+    {
+      "id": "controller-endpoints-nopath",
+      "language": "typescript",
+      "files": ["src/**/*.controller.ts"],
+      "rule": { "pattern": "@$M()" },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "ancestorPrefix": {
+          "kind": "class_declaration",
+          "rule": { "pattern": { "context": "({ path: $P })", "selector": "pair" } },
+          "capture": "$P"
+        }
+      },
+      "examples": {
+        "match": ["class A { @Get() f() {} }"],
+        "noMatch": ["const a = 1;"]
+      }
+    },
+    {
+      "id": "entities",
+      "language": "text",
+      "files": ["src/**/*.entity.ts"],
+      "rule": { "regex": "@Entity\\(\\{\\s*name:\\s*'([^']+)'" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": {
+        "match": ["@Entity({ name: 'role' })\nclass A {}"],
+        "noMatch": ["const a = 1;"]
+      }
+    },
+    {
+      "id": "mongoose-schemas",
+      "language": "text",
+      "files": ["src/**/*.schema.ts"],
+      "rule": { "regex": "@Schema\\([\\s\\S]*?\\n\\}\\)\\s*export class (\\w+)" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": {
+        "match": ["@Schema({\n  timestamps: true,\n})\nexport class UserSchemaClass {}"],
+        "noMatch": ["export class RoleSchema {}"]
+      }
+    }
+  ]
+}

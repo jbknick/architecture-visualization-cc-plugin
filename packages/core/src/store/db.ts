@@ -11,7 +11,7 @@ import { SCHEMA } from "./schema.js";
  * that makes a full re-index necessary bumps it: a schema change, or a change to what indexing writes for unchanged
  * files (the extractor, an adapter or the resolver), because incremental indexing only rewrites changed files.
  */
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 10;
 
 /** The store was built by a different version of Gantry (older, or newer) than this one. */
 export class StaleStoreError extends Error {

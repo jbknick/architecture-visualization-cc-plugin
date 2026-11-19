@@ -1,0 +1,60 @@
+{
+  "run": 3,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 7,
+  "tokens": {
+    "input": 10,
+    "cacheRead": 52465,
+    "cacheCreate": 6015,
+    "output": 3060
+  },
+  "costUsdReported": 0.05992650000000001,
+  "wallMs": 25467,
+  "recipeSha256": "894a0cb759fd0530537fb7530549b1d2b4766eb2f16c3021932d983d5439429a",
+  "graphSha256": "711057d2c4b065d6b1184b15a1306a01c8f8f736c91ec6f7d776f0f02f99ae6b",
+  "nodes": {
+    "route": 9,
+    "endpoint": 1,
+    "table": 1
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 2,
+  "score": {
+    "case": "next-js-boilerplate",
+    "sha": "b83157a8018f55b926a3c25a4b7a7e14b0dfbc35",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 1,
+        "predicted": 1,
+        "matched": 1,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      },
+      "route": {
+        "labelled": 9,
+        "predicted": 9,
+        "matched": 9,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      },
+      "table": {
+        "labelled": 1,
+        "predicted": 1,
+        "matched": 1,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      }
+    },
+    "missed": {},
+    "extra": {},
+    "pass": true
+  }
+}

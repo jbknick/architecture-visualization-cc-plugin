@@ -211,7 +211,7 @@ describe("bundled CLI: vector tables and embeddings", () => {
     expect(r.code).toBe(0);
     const db = openBundleDb();
     try {
-      expect(db.getMeta("schema_version")).toBe("8");
+      expect(db.getMeta("schema_version")).toBe("10");
       expect(db.getMeta("vec_available")).toBe("1");
       expect(db.getMeta("embed_model")).toBe("jinaai/jina-embeddings-v2-base-code");
       expect(db.getMeta("embed_dim")).toBe("768");
@@ -616,12 +616,21 @@ describe("gantry search / node", () => {
     expect(t.err).toBe("");
     expect(t.code).toBe(0);
     const lines = t.out.trimEnd().split("\n");
-    expect(lines[0]).toMatch(/^NAME\s+KIND\s+LOCATION\s+SCORE$/);
-    expect(lines[1]).toMatch(/^formatRelativeDate\s+function\s+packages\/utils\/src\/date\.ts:1\s+\d/);
+    expect(lines[0]).toMatch(/^NAME\s+KIND\s+LANG\s+LOCATION\s+SCORE$/);
+    expect(lines[1]).toMatch(
+      /^formatRelativeDate\s+function\s+TypeScript\s+packages\/utils\/src\/date\.ts:1\s+\d/,
+    );
     expect(t.out).not.toContain("\u001b[");
 
     const j = JSON.parse(run(fx.dir, ["search", "relative date", "--json"]).out);
-    expect(j[0]).toMatchObject({ name: "formatRelativeDate", kind: "function" });
+    expect(j[0]).toMatchObject({ name: "formatRelativeDate", kind: "function", lang: "typescript" });
+    // #220: --lang filters by language and rejects an unknown one.
+    const ts = JSON.parse(run(fx.dir, ["search", "relative date", "--lang", "typescript", "--json"]).out);
+    expect(ts.map((h: { id: string }) => h.id)).toEqual(j.map((h: { id: string }) => h.id));
+    expect(JSON.parse(run(fx.dir, ["search", "relative date", "--lang", "go", "--json"]).out)).toEqual([]);
+    const bad = run(fx.dir, ["search", "relative date", "--lang", "cobol"]);
+    expect(bad.code).not.toBe(0);
+    expect(bad.err).toContain("Unknown --lang 'cobol'");
     // #175: description text leaves only as untrusted_description, never under a plain key.
     for (const h of j) {
       expect(Object.keys(h)).toContain("untrusted_description");

@@ -20,6 +20,8 @@ export default defineConfig({
     "sqlite-vec",
     "oxc-parser",
     "oxc-resolver",
+    "@ast-grep/napi",
+    "@ast-grep/lang-go",
     "@huggingface/transformers",
     "onnxruntime-node",
   ],

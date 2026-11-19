@@ -1,0 +1,16 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED`. It lists 6 endpoints, 0 routes and 0 tables.
+
+**Stack:** a Go service using standard `net/http` with a `http.NewServeMux()`. It has no frontend and no database schema, so there are no routes or tables to find.
+
+**Endpoints:**
+- `POST /monster`
+- `PUT /monster/{id}`
+- `GET /monster/{id}`
+- `DELETE /monster/{id}`
+- `ALL /`
+- `ALL /dreamsofcode.foo`
+
+**Limitations:**
+- **Host pattern:** `router.HandleFunc("dreamsofcode.foo/", handle)` is a host-qualified pattern, which Go would serve as host `dreamsofcode.foo` with path `/`. The engine lists it as `ALL /dreamsofcode.foo`, and I couldn't make it come out differently.
+- **Router resolution:** I wrote the rules as standalone endpoint matches (`HandleFunc` calls) instead of using the mount graph. `loadRoutes` is never called from `main.go`, so the graph couldn't connect that router to the one in `main`.
+- **Method matching:** the `HandleFunc` patterns are matched by whether the path starts with an HTTP method. The engine's regex doesn't support lookahead, so the plain-path rule matches any path without a space.

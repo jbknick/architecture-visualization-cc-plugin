@@ -15,6 +15,7 @@ afterEach(() => store.close());
 const file = (path: string, workspaceId = "ws:a", extra: Partial<FileRecord> = {}): FileRecord => ({
   id: `file:repo:${path}`,
   path,
+  lang: "typescript",
   workspaceId,
   contentHash: `h-${path}`,
   mtimeMs: 1,
@@ -28,6 +29,7 @@ function sym(path: string, name: string, extra: Partial<SymbolRecord> = {}): Sym
     fileId: `file:repo:${path}`,
     name,
     kind: "function",
+    lang: "typescript",
     exported: true,
     signature: `function ${name}()`,
     startLine: 1,
@@ -115,6 +117,15 @@ describe("ftsSearch", () => {
     expect(ftsSearch(store, "date")[0]?.name).toBe("Date");
     const h = ftsSearch(store, "relative").map((x) => x.name);
     expect(h.indexOf("formatRelativeDate")).toBeLessThan(h.indexOf("relativeHelper"));
+  });
+
+  it("filters by lang and reports it on every hit", () => {
+    put(file("lang/x.ts"), [sym("lang/x.ts", "zzwidget")]);
+    put(file("lang/y.go", "ws:a", { lang: "go" }), [sym("lang/y.go", "zzwidget", { lang: "go" })]);
+    const all = ftsSearch(store, "zzwidget");
+    expect(all.map((h) => h.lang).sort()).toEqual(["go", "typescript"]);
+    expect(ftsSearch(store, "zzwidget", { lang: "typescript" }).map((h) => h.path)).toEqual(["lang/x.ts"]);
+    expect(ftsSearch(store, "zzwidget", { lang: "go" }).map((h) => h.path)).toEqual(["lang/y.go"]);
   });
 
   it("filters by kind, workspace (id or name), exported and limit", () => {

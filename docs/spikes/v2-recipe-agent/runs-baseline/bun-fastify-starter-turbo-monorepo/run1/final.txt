@@ -1,0 +1,15 @@
+The recipe is at `.gantry/recipe.json` and the dry-run says ACCEPTED, but it lists one endpoint path wrong.
+
+**Stack:** Fastify with plugin-style route registration (`register(fn, { prefix })`) in a Turbo monorepo under `apps/backend`. The database layer is Kysely.
+
+**Listed:**
+- **Routes:** 0. The repo is backend-only.
+- **Endpoints:** 2, but one has the wrong path.
+  - `GET /` is correct.
+  - `POST /email` should be `POST /users/email`. The `/users` prefix is applied by `registerUserRoutes`, and the mount graph did not compose it.
+- **Tables:** 2, `users` and `userProviders`. They come from the keys of the `Database` interface in `db/types/index.ts`.
+
+**Not expressed:**
+- I could not get the engine to compose the `/users` prefix. Two likely causes are the `@/…` import-alias resolution and the `fp(...)` wrapper around registered plugins.
+- I tried one fix, adding a `register(fp($C))` alternative to the plain `register` rule. I did not apply it because the shell command that would edit the file needed approval. So that fix is untested.
+- Mounts that name a function declared in another file (`registerUserRoutes`, `createEMailUserRoute`) may not resolve across files. I could not confirm this.

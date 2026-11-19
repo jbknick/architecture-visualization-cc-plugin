@@ -1,0 +1,55 @@
+{
+  "name": "hono-tanstack-drizzle",
+  "frameworks": [
+    { "name": "hono", "evidence": "package.json" },
+    { "name": "tanstack-router", "evidence": "createFileRoute" },
+    { "name": "drizzle", "evidence": "package.json" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "mount-graph"],
+  "rules": [
+    {
+      "id": "hono-router",
+      "language": "typescript",
+      "files": ["apps/api/src/**/*.ts"],
+      "rule": { "pattern": "new Hono()" },
+      "emit": { "kind": "router" },
+      "examples": { "match": ["new Hono()"], "noMatch": ["new Map()"] }
+    },
+    {
+      "id": "hono-endpoint",
+      "language": "typescript",
+      "files": ["apps/api/src/**/*.ts"],
+      "rule": { "pattern": "$R.$M($P, $$H)" },
+      "constraints": { "M": { "regex": "^(get|post|put|delete|patch)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$P", "handler": "$$H" },
+      "examples": { "match": ["app.get(\"/x\", (c) => c.json(1))"], "noMatch": ["map.set(1)"] }
+    },
+    {
+      "id": "tanstack-route",
+      "language": "typescript",
+      "files": ["apps/web/src/routes/**/*.tsx"],
+      "rule": { "pattern": "createFileRoute($P)" },
+      "emit": {
+        "kind": "route",
+        "pathFromFile": {
+          "pattern": "^apps/web/src/routes/(.*)\\.tsx$",
+          "template": "/$1",
+          "rewrite": [
+            { "regex": "\\.", "with": "/" },
+            { "regex": "/index$", "with": "" },
+            { "regex": "^/__root$", "with": "" }
+          ]
+        }
+      },
+      "examples": { "match": ["createFileRoute(\"/x\")({})"], "noMatch": ["createRoute({})"] }
+    },
+    {
+      "id": "drizzle-table",
+      "language": "typescript",
+      "files": ["packages/db/src/**/*.ts"],
+      "rule": { "pattern": "sqliteTable($N, $$A)" },
+      "emit": { "kind": "table", "name": "$N" },
+      "examples": { "match": ["sqliteTable(\"users\", {})"], "noMatch": ["text(\"id\")"] }
+    }
+  ]
+}

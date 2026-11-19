@@ -1,0 +1,99 @@
+{
+  "run": 1,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 20,
+  "tokens": {
+    "input": 28,
+    "cacheRead": 263911,
+    "cacheCreate": 22394,
+    "output": 11707
+  },
+  "costUsdReported": 0.23309310000000003,
+  "wallMs": 92985,
+  "recipeSha256": "acc846f5174ef1d2dfe0ebeebd201f6cbedc7c366b926b3197562c6f5c063aa5",
+  "graphSha256": "58587f7b438351b01032b7032e1dac9ef9096ad05d6806718fae17b6ad1bba79",
+  "nodes": {
+    "route": 0,
+    "endpoint": 19,
+    "table": 8
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 9,
+  "score": {
+    "case": "nestjs-boilerplate",
+    "sha": "9620f159eefe38f47747d02ab162852367c5472c",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 22,
+        "predicted": 19,
+        "matched": 0,
+        "precision": 0,
+        "recall": 0,
+        "pass": false
+      },
+      "table": {
+        "labelled": 8,
+        "predicted": 8,
+        "matched": 8,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      }
+    },
+    "missed": {
+      "endpoint": [
+        "DELETE /api/v1/auth/me",
+        "DELETE /api/v1/users/:param",
+        "GET /",
+        "GET /api/v1/auth/me",
+        "GET /api/v1/files/:param",
+        "GET /api/v1/users",
+        "GET /api/v1/users/:param",
+        "PATCH /api/v1/auth/me",
+        "PATCH /api/v1/users/:param",
+        "POST /api/v1/auth/apple/login",
+        "POST /api/v1/auth/email/confirm",
+        "POST /api/v1/auth/email/confirm/new",
+        "POST /api/v1/auth/email/login",
+        "POST /api/v1/auth/email/register",
+        "POST /api/v1/auth/facebook/login",
+        "POST /api/v1/auth/forgot/password",
+        "POST /api/v1/auth/google/login",
+        "POST /api/v1/auth/logout",
+        "POST /api/v1/auth/refresh",
+        "POST /api/v1/auth/reset/password",
+        "POST /api/v1/files/upload",
+        "POST /api/v1/users"
+      ]
+    },
+    "extra": {
+      "endpoint": [
+        "DELETE /auth/me",
+        "DELETE /users/:param",
+        "GET /auth/me",
+        "GET /files/:param",
+        "GET /users/:param",
+        "PATCH /auth/me",
+        "PATCH /users/:param",
+        "POST /auth/apple/login",
+        "POST /auth/email/confirm",
+        "POST /auth/email/confirm/new",
+        "POST /auth/email/login",
+        "POST /auth/email/register",
+        "POST /auth/facebook/login",
+        "POST /auth/forgot/password",
+        "POST /auth/google/login",
+        "POST /auth/logout",
+        "POST /auth/refresh",
+        "POST /auth/reset/password",
+        "POST /files/upload"
+      ]
+    },
+    "pass": false
+  }
+}

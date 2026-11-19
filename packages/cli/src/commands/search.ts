@@ -1,4 +1,13 @@
-import { cachedEmbedder, describedByOf, hybridSearch, type SymbolKind } from "@gantry/core";
+import {
+  cachedEmbedder,
+  describedByOf,
+  hybridSearch,
+  isLang,
+  LANG_IDS,
+  type Lang,
+  langLabel,
+  type SymbolKind,
+} from "@gantry/core";
 import type { Command } from "commander";
 import { openFresh, table } from "./lookup.js";
 import { EXIT_OK, fail, writeStdout } from "./shared.js";
@@ -23,13 +32,18 @@ export function registerSearch(program: Command): void {
     )
     .argument("<q>", "search text, e.g. a name or words from one")
     .option("--kind <kind...>", `restrict to kinds (${KINDS.join(", ")})`)
+    .option("--lang <lang>", `restrict to a language (${LANG_IDS.join(", ")})`)
     .option("--limit <n>", "maximum results", "20")
     .option("--json", "print JSON")
-    .action(async (q: string, opts: { kind?: string[]; limit: string; json?: boolean }) => {
+    .action(async (q: string, opts: { kind?: string[]; lang?: string; limit: string; json?: boolean }) => {
       try {
         const kinds = opts.kind?.flatMap((k) => k.split(",")).filter(Boolean) ?? [];
         const bad = kinds.find((k) => !KINDS.includes(k as SymbolKind));
         if (bad) throw new Error(`Unknown --kind '${bad}' (expected one of ${KINDS.join(", ")})`);
+        if (opts.lang !== undefined && !isLang(opts.lang)) {
+          throw new Error(`Unknown --lang '${opts.lang}' (expected one of ${LANG_IDS.join(", ")})`);
+        }
+        const lang = opts.lang as Lang | undefined;
         const limit = Number(opts.limit);
         if (!Number.isInteger(limit) || limit < 1) throw new Error(`Invalid --limit: ${opts.limit}`);
         const { store } = await openFresh(process.cwd());
@@ -37,6 +51,7 @@ export function registerSearch(program: Command): void {
           const embedder = await cachedEmbedder()();
           const hits = await hybridSearch(store, q, {
             kind: kinds as SymbolKind[],
+            ...(lang !== undefined ? { lang } : {}),
             limit,
             ...(embedder ? { embedder } : {}),
           });
@@ -53,8 +68,14 @@ export function registerSearch(program: Command): void {
           else {
             writeStdout(
               table(
-                ["NAME", "KIND", "LOCATION", "SCORE"],
-                hits.map((h) => [h.name, h.kind, `${h.path}:${h.line}`, h.score.toFixed(4)]),
+                ["NAME", "KIND", "LANG", "LOCATION", "SCORE"],
+                hits.map((h) => [
+                  h.name,
+                  h.kind,
+                  langLabel(h.lang),
+                  `${h.path}:${h.line}`,
+                  h.score.toFixed(4),
+                ]),
               ),
             );
           }

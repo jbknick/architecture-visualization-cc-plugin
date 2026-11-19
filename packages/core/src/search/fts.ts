@@ -1,11 +1,13 @@
 import { type Store, splitIdentifier } from "../store/index.js";
-import type { SymbolKind } from "../types.js";
+import type { Lang, SymbolKind } from "../types.js";
 
 export interface SearchOptions {
   kind?: SymbolKind[];
   /** Workspace id (`ws:...`) or workspace name. */
   workspace?: string;
   exported?: boolean;
+  /** Only symbols of this language. */
+  lang?: Lang;
   limit?: number;
   /** Also match the suggested name, behavior and search terms of stored descriptions (hybrid search). Default false. */
   descriptions?: boolean;
@@ -15,6 +17,7 @@ export interface SearchHit {
   id: string;
   name: string;
   kind: SymbolKind;
+  lang: Lang;
   path: string;
   line: number;
   score: number;
@@ -86,12 +89,21 @@ export function ftsSearch(store: Store, q: string, opts: SearchOptions = {}): Se
     const file = files.get(s.fileId);
     if (!file || file.deleted) continue;
     if (kinds && !kinds.has(s.kind)) continue;
+    if (opts.lang !== undefined && s.lang !== opts.lang) continue;
     if (opts.exported !== undefined && s.exported !== opts.exported) continue;
     if (workspaceId !== undefined && file.workspaceId !== workspaceId) continue;
     let score = -r.rank; // bm25 is lower-is-better and negative
     if (s.exported) score *= EXPORTED_BOOST;
     if (s.name.toLowerCase() === lower) score *= EXACT_NAME_BOOST;
-    hits.push({ id: s.id, name: s.name, kind: s.kind, path: file.path, line: s.startLine, score });
+    hits.push({
+      id: s.id,
+      name: s.name,
+      kind: s.kind,
+      lang: s.lang,
+      path: file.path,
+      line: s.startLine,
+      score,
+    });
   }
   hits.sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return hits.slice(0, opts.limit ?? DEFAULT_SEARCH_LIMIT);

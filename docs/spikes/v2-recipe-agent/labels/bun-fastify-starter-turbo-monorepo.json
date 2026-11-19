@@ -1,0 +1,26 @@
+{
+  "repo": "bun-fastify-starter-turbo-monorepo",
+  "sha": "774fcfe4c51f6e4d0190a321f42deff399852ca9",
+  "labelledBy": "hand-labelled by a research agent (not the recipe agent) by rg enumeration and reading each site",
+  "kinds": ["endpoint", "table"],
+  "endpoint": [
+    {
+      "method": "GET",
+      "path": "/",
+      "file": "apps/backend/src/api/index.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/users/email",
+      "file": "apps/backend/src/api/users/create-email-user.route.ts"
+    }
+  ],
+  "table": [
+    {
+      "name": "users"
+    },
+    {
+      "name": "userProviders"
+    }
+  ]
+}

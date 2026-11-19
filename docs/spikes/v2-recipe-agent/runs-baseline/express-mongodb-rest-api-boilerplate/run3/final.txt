@@ -1,0 +1,10 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED` with all examples passing.
+
+- **Stack:** Express 5 with TypeScript, and Mongoose models. The routers come from factory functions such as `createAuthRouter()` and `createUserRouter()`, which `src/app/http/router.ts` and `app.ts` mount at the root.
+- **Endpoints (23):** These cover auth, user, media, notifications, verification, the health checks and the docs routes. `/auth/sign-out` is registered through `router.route('/auth/sign-out').post(...).get(...)`. It's listed as both `POST` and `GET`.
+- **Routes (0):** The repository is a backend API with no frontend pages.
+- **Tables (7):** `User`, `Media`, `ResetPassword`, `Verification`, `EmailOutbox`, `EmailWorker` and `EmailBudget`. Their names come from the `model('Name', schema)` calls.
+
+I did not check the 23 against the code with a final count. The dry-run printed one unresolved registration, `src/app/http/documentation/routes.ts:101`. It is `docs.get(`/${filename}`, ...)` inside a loop over `swagger-ui.css` and `swagger-ui-bundle.js`. The path is a template string built at runtime, so no rule can read it. Those two static asset routes under `/docs` are missing from the list.
+
+The endpoint rule takes up to six arguments per call. A handler registered with more than six arguments would be missed.

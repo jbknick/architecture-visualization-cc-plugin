@@ -1,0 +1,57 @@
+{
+  "name": "nethttp",
+  "frameworks": [{ "name": "net/http", "evidence": "go.mod, http.NewServeMux" }],
+  "when": { "imports": ["net/http"] },
+  "helpers": ["resolve-names"],
+  "rules": [
+    {
+      "id": "handlefunc-method",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": {
+        "pattern": "$R.HandleFunc($X, $H)",
+        "has": {
+          "kind": "argument_list",
+          "has": {
+            "kind": "interpreted_string_literal",
+            "regex": "^\"(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) "
+          }
+        }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "method": "=GET",
+        "path": "$X",
+        "handler": "$H",
+        "standalone": true,
+        "splitMethod": true
+      },
+      "examples": {
+        "match": ["func f() { router.HandleFunc(\"POST /a\", h) }"],
+        "noMatch": ["func f() { router.HandleFunc(\"/a\", h) }"]
+      }
+    },
+    {
+      "id": "handlefunc-all",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": {
+        "pattern": "$R.HandleFunc($X, $H)",
+        "not": {
+          "has": {
+            "kind": "argument_list",
+            "has": {
+              "kind": "interpreted_string_literal",
+              "regex": "^\"(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) "
+            }
+          }
+        }
+      },
+      "emit": { "kind": "endpoint", "method": "=ALL", "path": "$X", "handler": "$H", "standalone": true },
+      "examples": {
+        "match": ["func f() { router.HandleFunc(\"/a\", h) }"],
+        "noMatch": ["func f() { router.HandleFunc(\"POST /a\", h) }"]
+      }
+    }
+  ]
+}

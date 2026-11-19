@@ -1,0 +1,214 @@
+{
+  "files": [],
+  "edges": [],
+  "adapterNodes": [
+    {
+      "id": "ep:nestjs-boilerplate:DELETE /auth/me",
+      "kind": "endpoint",
+      "data": {
+        "method": "DELETE",
+        "path": "/auth/me"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:DELETE /users/:id",
+      "kind": "endpoint",
+      "data": {
+        "method": "DELETE",
+        "path": "/users/:id"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:GET /auth/me",
+      "kind": "endpoint",
+      "data": {
+        "method": "GET",
+        "path": "/auth/me"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:GET /files/:path",
+      "kind": "endpoint",
+      "data": {
+        "method": "GET",
+        "path": "/files/:path"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:GET /users/:id",
+      "kind": "endpoint",
+      "data": {
+        "method": "GET",
+        "path": "/users/:id"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:PATCH /auth/me",
+      "kind": "endpoint",
+      "data": {
+        "method": "PATCH",
+        "path": "/auth/me"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:PATCH /users/:id",
+      "kind": "endpoint",
+      "data": {
+        "method": "PATCH",
+        "path": "/users/:id"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:POST /auth/apple/login",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/auth/apple/login"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:POST /auth/email/confirm",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/auth/email/confirm"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:POST /auth/email/confirm/new",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/auth/email/confirm/new"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:POST /auth/email/login",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/auth/email/login"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:POST /auth/email/register",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/auth/email/register"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:POST /auth/facebook/login",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/auth/facebook/login"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:POST /auth/forgot/password",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/auth/forgot/password"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:POST /auth/google/login",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/auth/google/login"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:POST /auth/logout",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/auth/logout"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:POST /auth/refresh",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/auth/refresh"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:POST /auth/reset/password",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/auth/reset/password"
+      }
+    },
+    {
+      "id": "ep:nestjs-boilerplate:POST /files/upload",
+      "kind": "endpoint",
+      "data": {
+        "method": "POST",
+        "path": "/files/upload"
+      }
+    },
+    {
+      "id": "table:file",
+      "kind": "table",
+      "data": {
+        "name": "file"
+      }
+    },
+    {
+      "id": "table:fileschemaclass",
+      "kind": "table",
+      "data": {
+        "name": "FileSchemaClass"
+      }
+    },
+    {
+      "id": "table:role",
+      "kind": "table",
+      "data": {
+        "name": "role"
+      }
+    },
+    {
+      "id": "table:session",
+      "kind": "table",
+      "data": {
+        "name": "session"
+      }
+    },
+    {
+      "id": "table:sessionschemaclass",
+      "kind": "table",
+      "data": {
+        "name": "SessionSchemaClass"
+      }
+    },
+    {
+      "id": "table:status",
+      "kind": "table",
+      "data": {
+        "name": "status"
+      }
+    },
+    {
+      "id": "table:user",
+      "kind": "table",
+      "data": {
+        "name": "user"
+      }
+    },
+    {
+      "id": "table:userschemaclass",
+      "kind": "table",
+      "data": {
+        "name": "UserSchemaClass"
+      }
+    }
+  ]
+}

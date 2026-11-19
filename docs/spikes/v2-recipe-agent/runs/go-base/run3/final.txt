@@ -1,0 +1,18 @@
+I've written the recipe to `.gantry/recipe.json`, and the dry-run says `ACCEPTED`. It is only partly right: the endpoint paths are missing their mount prefixes, and I couldn't fix that from the recipe.
+
+**Stack:** Go with chi v5 and uptrace/bun. Tables are created by raw `CREATE TABLE` strings in the migration Go files.
+
+**What the dry-run lists:**
+- **Routes:** 0. The repository has no frontend pages.
+- **Endpoints:** 16 listed, but the paths are wrong, as explained below.
+- **Tables:** 3, namely `accounts`, `tokens` and `profiles`.
+
+**Problem with endpoint paths:**
+- The listed paths lack the prefixes the code applies. For example, the account handlers appear as `GET /` instead of `GET /api/account`.
+- The admin handlers should be under `/admin/accounts`, and the auth handlers under `/auth`.
+- The rules matched 19 endpoint registrations, but only 16 are listed.
+- I think the cause is how the mounts are written, for example `r.Mount("/account", a.Account.router())`. The mounted router comes from a method call on a struct field, and the engine's `call-return` helper doesn't seem to follow that.
+- I haven't confirmed this. I'm calling it a missing capability: resolving a method call on a struct field to the router it returns.
+- The recipe has the right mount rules (`Mount`, `Route`, `Group`). Once the engine resolves those calls, the prefixes should apply.
+
+**Not expressed:** The tables come from migration SQL, so I used a text regex on `CREATE TABLE`. The code has no bun struct tags to read the names from.

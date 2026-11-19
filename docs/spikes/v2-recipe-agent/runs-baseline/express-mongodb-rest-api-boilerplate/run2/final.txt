@@ -1,0 +1,16 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED`.
+
+**Stack:** Express with TypeScript, using Mongoose models on MongoDB.
+
+**Listed:**
+- **Routes:** 0. The repo is a backend API with no frontend pages.
+- **Endpoints:** 23. They cover:
+  - the auth, user, media and notifications routers;
+  - `/health/live` and `/health/ready`;
+  - the docs routes under `/docs/...`, plus `/openapi.json`.
+- **Tables:** 7: `User`, `Media`, `ResetPassword`, `Verification`, `EmailBudget`, `EmailOutbox` and `EmailWorker`. I used the Mongoose model names, not the `collection:` overrides (`email_outbox`, `email_workers`).
+
+**Not expressed:**
+- **Dynamic docs paths:** the dry-run lists one registration as unresolved (`src/app/http/documentation/routes.ts:101`). It is a loop that registers `/${filename}` for `swagger-ui.css` and `swagger-ui-bundle.js`. Its path is a template string over a loop variable, which the engine can't read. So `/docs/swagger-ui.css` and `/docs/swagger-ui-bundle.js` are missing from the endpoints.
+- **Possible extra endpoint:** `GET /openapi.json` may not be a real route under that path, because I didn't check how the `/docs` and `/openapi.json` auth middleware at `routes.ts:56` interacts with it.
+- **Mounts:** every mount in this repo is unprefixed except `/docs/`, so I did not model the other mounts. That is why the paths come out correct.

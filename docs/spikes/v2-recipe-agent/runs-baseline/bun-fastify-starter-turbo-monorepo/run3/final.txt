@@ -1,0 +1,10 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says ACCEPTED with all examples passing.
+
+- **Stack:** a Bun and Fastify backend in `apps/backend`, in a Turbo monorepo. The database layer is Kysely. It has no frontend pages.
+- **Routes:** 0.
+- **Endpoints:** 2, `GET /` and `POST /users/email`.
+- **Tables:** 2, `users` and `userProviders`. The recipe reads them from the Kysely `Database` interface in `db/types/index.ts`.
+
+**Hardcoded prefix:** I couldn't get the router mounting to resolve the plugin functions' `fastify` parameter as a router. I tried `Fastify()` as the router with register mounts, and every endpoint came out dropped as "receiver is not a declared router". So the two endpoint rules are standalone. The `/users` prefix is hardcoded for the `api/users/*.route.ts` files. The missing capability is a way to declare a plugin's `fastify` parameter as a router, or to follow `register(fn, { prefix })` into the plugin function. Any new Fastify route file outside `api/users` or `api/index.ts` will need its own rule.
+
+The recipe still contains `router`, `mount-prefix` and `mount-plain` rules for the mounting. They produce no endpoints today.

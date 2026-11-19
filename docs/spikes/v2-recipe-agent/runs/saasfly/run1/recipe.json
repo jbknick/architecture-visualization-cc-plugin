@@ -1,0 +1,53 @@
+{
+  "name": "saasfly",
+  "frameworks": [
+    { "name": "nextjs", "evidence": "app router" },
+    { "name": "prisma", "evidence": "schema.prisma" }
+  ],
+  "rules": [
+    {
+      "id": "pages",
+      "language": "text",
+      "files": ["apps/nextjs/src/app/**/page.tsx"],
+      "rule": {},
+      "emit": {
+        "kind": "route",
+        "pathFromFile": {
+          "pattern": "^apps/nextjs/src/app/(.*)page\\.tsx$",
+          "template": "/$1",
+          "rewrite": [
+            { "regex": "\\([^/]*\\)/", "with": "" },
+            { "regex": "\\[\\[?\\.\\.\\.[^/]*\\]\\]?", "with": "*" },
+            { "regex": "(.)/$", "with": "$1" }
+          ]
+        }
+      },
+      "examples": { "match": ["export default function P() {}"], "noMatch": [] }
+    },
+    {
+      "id": "api-routes",
+      "language": "typescript",
+      "files": ["apps/nextjs/src/app/api/**/route.ts"],
+      "rule": { "pattern": "export { $H as $M }" },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|PATCH|DELETE)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "pathFromFile": {
+          "pattern": "^apps/nextjs/src/app/(.*)/route\\.ts$",
+          "template": "/$1",
+          "rewrite": [{ "regex": "\\[\\[?\\.\\.\\.[^/]*\\]\\]?", "with": "*" }]
+        }
+      },
+      "examples": { "match": ["export { handler as GET }"], "noMatch": ["export { handler }"] }
+    },
+    {
+      "id": "prisma-models",
+      "language": "text",
+      "files": ["packages/db/prisma/schema.prisma"],
+      "rule": { "regex": "^model\\s+(\\w+)\\s*\\{" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": { "match": ["model User {"], "noMatch": ["enum Role {"] }
+    }
+  ]
+}

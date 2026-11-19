@@ -1,0 +1,12 @@
+I wrote the recipe to `.gantry/recipe.json`, and the dry-run says `ACCEPTED`. All examples pass and no matches were dropped.
+
+- **Stack:** Go with plain `net/http`, using `http.NewServeMux`. There is no frontend and no database layer.
+- **Endpoints listed (6):**
+  - `ALL /` and `ALL /dreamsofcode.foo`, both registered in `main.go`.
+  - `POST /monster`, `PUT /monster/{id}`, `GET /monster/{id}` and `DELETE /monster/{id}`, registered in `router.go`.
+- **Routes:** 0.
+- **Tables:** 0.
+
+`dreamsofcode.foo/` is a host-based pattern in Go's mux. The engine reports it as the path `/dreamsofcode.foo`, because it has no way to separate a host from a path. The hostname is kept as part of the path.
+
+`loadRoutes` in `router.go` is never called from `main`. I declared its `*http.ServeMux` parameter as a router so the four `/monster` endpoints still count, since the code does define them.

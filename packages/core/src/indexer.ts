@@ -7,10 +7,11 @@ import { loadConfig } from "./config/index.js";
 import { discoverFiles, isIndexable } from "./discover/index.js";
 import { hashSymbol } from "./hash/index.js";
 import { fileId as makeFileId, pathOfFileId } from "./ids.js";
+import { createLangResolver, detectAllWorkspaces, langOfPath, parseFile } from "./lang/index.js";
 import { encodeParsed, LazyParsedMap, ParseCache } from "./parse/cache.js";
-import { type ParsedFile, parseSource } from "./parse/index.js";
+import type { ParsedFile } from "./parse/index.js";
 import { ensureDataDir, type GantryPaths } from "./paths/index.js";
-import { createResolver, type SpecifierClass } from "./resolve/index.js";
+import type { SpecifierClass } from "./resolve/index.js";
 import { openStore, type Store, splitIdentifier } from "./store/index.js";
 import type {
   AdapterNodeRecord,
@@ -21,7 +22,7 @@ import type {
   SymbolRecord,
   WorkspaceRecord,
 } from "./types.js";
-import { detectWorkspaces, workspaceForPath } from "./workspace/index.js";
+import { workspaceForPath } from "./workspace/index.js";
 
 export interface IndexResult {
   files: number;
@@ -61,7 +62,6 @@ interface Entry {
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 const sha256 = (b: Buffer | string): string => createHash("sha256").update(b).digest("hex");
-const langOf = (p: string): "ts" | "tsx" => (p.endsWith(".tsx") ? "tsx" : "ts");
 
 async function mapPool<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out = new Array<R>(items.length);
@@ -159,7 +159,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     if (store.getMeta("repo_root") !== root) store.setMeta("repo_root", root);
     if (store.getMeta("repo") !== repo) store.setMeta("repo", repo);
     const config = loadConfig(paths);
-    const workspaces = detectWorkspaces(root, config);
+    const workspaces = detectAllWorkspaces(root, config);
 
     // 1. Which files exist, and which of them are targets of this run.
     const discovered = discoverFiles(paths, config, workspaces);
@@ -214,7 +214,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
           parsed.setRaw(e.id, hit.data);
           continue;
         }
-        const pf = parseSource(repo, e.path, e.source as string);
+        const pf = parseFile(repo, e.path, e.source as string);
         parsed.set(e.id, pf);
         fresh.push({ path: e.path, hash: `${repo}\n${e.contentHash}`, data: encodeParsed(pf) });
       }
@@ -224,7 +224,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       cache?.close();
     }
 
-    const resolver = createResolver({ root, repo, workspaces, parsed });
+    const resolver = createLangResolver({ root, repo, workspaces, parsed });
     store.upsertWorkspaces(workspaces);
 
     // Framework adapters (routes, server functions, Hono endpoints). Their results depend on other files (route
@@ -234,12 +234,15 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       root,
       repo,
       workspaces,
-      files: present.map((e) => ({
-        path: e.path,
-        id: e.id,
-        workspaceId: e.workspaceId,
-        source: e.source as string,
-      })),
+      // The framework adapters read TypeScript; other languages have none yet.
+      files: present
+        .filter((e) => langOfPath(e.path) === "typescript")
+        .map((e) => ({
+          path: e.path,
+          id: e.id,
+          workspaceId: e.workspaceId,
+          source: e.source as string,
+        })),
       parsed,
       resolver,
     });
@@ -256,6 +259,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       mainFiles.set(row.id, {
         id: row.id,
         path: "",
+        lang: "typescript",
         workspaceId: null,
         contentHash: row.content_hash,
         mtimeMs: 0,
@@ -365,11 +369,11 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     const writeOne = (e: Entry): void => {
       const pf = parsed.get(e.id) as ParsedFile;
       const source = e.source as string;
-      const lang = langOf(e.path);
+      const lang = langOfPath(e.path);
       const symbols: SymbolRecord[] = pf.symbols.map((s) => {
         const body = pf.bodies.get(s.id);
         const h = body
-          ? hashSymbol(source, body, lang)
+          ? hashSymbol(source, body, e.path)
           : {
               exactHash: "",
               renamedHash: "",
@@ -377,12 +381,13 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
               minhash: new Uint32Array(64),
               nearMinhash: new Uint32Array(0),
             };
-        return { ...s, ...h };
+        return { ...s, lang, ...h };
       });
       const edges = [...resolver.edgesForFile(e.id), ...(routeEdges.get(e.id) ?? [])];
       const file: FileRecord = {
         id: e.id,
         path: e.path,
+        lang,
         workspaceId: e.workspaceId,
         contentHash: e.contentHash as string,
         mtimeMs: Math.round(e.mtimeMs),
@@ -516,8 +521,9 @@ function writeDependsOn(
     a.push(e);
     byFile.set(e.fileId, a);
   }
+  const manifestOf = (w: WorkspaceRecord): string => (w.lang === "go" ? "go.mod" : "package.json");
   const wsOfDir = new Map(
-    workspaces.map((w) => [makeFileId(repo, `${w.dir === "." ? "" : `${w.dir}/`}package.json`), w]),
+    workspaces.map((w) => [makeFileId(repo, `${w.dir === "." ? "" : `${w.dir}/`}${manifestOf(w)}`), w]),
   );
   for (const [fileId, es] of [...byFile].sort((a, b) => cmp(a[0], b[0]))) {
     const rel = pathOfFileId(fileId);
@@ -527,6 +533,7 @@ function writeDependsOn(
       {
         id: fileId,
         path: rel,
+        lang: wsOfDir.get(fileId)?.lang ?? "typescript", // a manifest belongs to the language that found the workspace
         workspaceId: wsOfDir.get(fileId)?.id ?? null,
         contentHash: hash,
         mtimeMs: Math.round(mtimeMs),
@@ -561,6 +568,7 @@ export function dumpGraph(store: Store): {
   const files = store.effectiveFiles().map((f) => ({
     id: f.id,
     path: f.path,
+    lang: f.lang,
     workspaceId: f.workspaceId,
     contentHash: f.contentHash,
     ...(f.directives && f.directives.length > 0 ? { directives: f.directives } : {}),

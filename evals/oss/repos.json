@@ -1,12 +1,28 @@
 {
   "repos": [
     {
+      "name": "bulletproof-react",
+      "url": "https://github.com/alan2207/bulletproof-react.git",
+      "sha": "9506629ed003a561c6627735480cce4994244bb4",
+      "stack": ["react-router", "nextjs"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
       "name": "bun-fastify-starter-turbo-monorepo",
       "url": "https://github.com/theogravity/bun-fastify-starter-turbo-monorepo.git",
       "sha": "774fcfe4c51f6e4d0190a321f42deff399852ca9",
       "stack": ["fastify", "kysely"],
       "lang": ["ts"],
       "role": "tuning"
+    },
+    {
+      "name": "caddy",
+      "url": "https://github.com/caddyserver/caddy.git",
+      "sha": "7ce9f0823762109fc67911f95f6af1a697345ab7",
+      "stack": ["go"],
+      "lang": ["go"],
+      "role": "held-out"
     },
     {
       "name": "cal.com",
@@ -30,6 +46,14 @@
       "sha": "8037bc89bcab9a264099afa2672581237a3e079b",
       "stack": ["ent"],
       "lang": ["go"],
+      "role": "tuning"
+    },
+    {
+      "name": "epic-stack",
+      "url": "https://github.com/epicweb-dev/epic-stack.git",
+      "sha": "893610db76127fb5a5f1ffa786bee6b050637429",
+      "stack": ["react-router", "express", "prisma"],
+      "lang": ["ts"],
       "role": "tuning"
     },
     {
@@ -65,6 +89,46 @@
       "role": "held-out"
     },
     {
+      "name": "go-base",
+      "url": "https://github.com/dhax/go-base.git",
+      "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a",
+      "stack": ["chi"],
+      "lang": ["go"],
+      "role": "tuning"
+    },
+    {
+      "name": "golang-gin-realworld-example-app",
+      "url": "https://github.com/realworld-apps/golang-gin-realworld-example-app.git",
+      "sha": "a41289b2a4951e7cc09066f86742a27f85121c9b",
+      "stack": ["gin", "gorm"],
+      "lang": ["go"],
+      "role": "tuning"
+    },
+    {
+      "name": "hono",
+      "url": "https://github.com/honojs/hono.git",
+      "sha": "75ff8e3ea18485589816881c6278bc9783e56602",
+      "stack": ["typescript"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
+      "name": "hugo",
+      "url": "https://github.com/gohugoio/hugo.git",
+      "sha": "93be9f1f5b43446231ed3255b660cd7d3dd0ba11",
+      "stack": ["go"],
+      "lang": ["go"],
+      "role": "held-out"
+    },
+    {
+      "name": "middleware",
+      "url": "https://github.com/honojs/middleware.git",
+      "sha": "6f11fdd162fd3ef5581fb2a8dbd1403631dcc93f",
+      "stack": ["typescript"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
       "name": "myapp",
       "url": "https://github.com/learning-cloud-native-go/myapp.git",
       "sha": "fc188d3e95bcbd8501a4bd671750c982cc3e409d",
@@ -94,6 +158,14 @@
       "sha": "6ec21637a0ad70c8a4e7d9e2498cc8b284e3eb74",
       "stack": ["nestjs", "sequelize"],
       "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
+      "name": "nethttp",
+      "url": "https://github.com/dreamsofcode-io/nethttp.git",
+      "sha": "63ead0d466e6ece610c2bcb1b304fab435981f35",
+      "stack": ["net-http"],
+      "lang": ["go"],
       "role": "tuning"
     },
     {
@@ -135,6 +207,14 @@
       "stack": ["tanstack-start", "drizzle"],
       "lang": ["ts"],
       "role": "held-out"
+    },
+    {
+      "name": "saasfly",
+      "url": "https://github.com/nextify-limited/saasfly.git",
+      "sha": "49f7e28f69eae9cd9eed84221e13a3dbae87da67",
+      "stack": ["nextjs", "kysely", "prisma"],
+      "lang": ["ts"],
+      "role": "tuning"
     },
     {
       "name": "simplebank",

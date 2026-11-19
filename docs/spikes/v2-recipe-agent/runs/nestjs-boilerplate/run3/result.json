@@ -1,0 +1,55 @@
+{
+  "run": 3,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 34,
+  "tokens": {
+    "input": 44,
+    "cacheRead": 581957,
+    "cacheCreate": 37307,
+    "output": 18116
+  },
+  "costUsdReported": 0.38867169999999995,
+  "wallMs": 146711,
+  "recipeSha256": "c6a6eb0136b1057dd872cc4d7953979136bccf823fc0b2a952d58bca8ce4477a",
+  "graphSha256": "f60b92f90bf17cf7e77d5c7250ef37d95eea841f6cef2187b18f38198da6f74c",
+  "nodes": {
+    "route": 0,
+    "endpoint": 23,
+    "table": 10
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 10,
+  "score": {
+    "case": "nestjs-boilerplate",
+    "sha": "9620f159eefe38f47747d02ab162852367c5472c",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 22,
+        "predicted": 23,
+        "matched": 22,
+        "precision": 0.9565,
+        "recall": 1,
+        "pass": true
+      },
+      "table": {
+        "labelled": 8,
+        "predicted": 10,
+        "matched": 8,
+        "precision": 0.8,
+        "recall": 1,
+        "pass": false
+      }
+    },
+    "missed": {},
+    "extra": {
+      "endpoint": ["GET /api/v1"],
+      "table": ["roleschema", "statusschema"]
+    },
+    "pass": false
+  }
+}

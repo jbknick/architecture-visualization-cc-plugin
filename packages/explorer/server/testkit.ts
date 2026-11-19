@@ -81,16 +81,16 @@ export function fixtureStore(name: string): { store: Store; dir: string } {
   let first = true;
   for (const [fileId, pf] of [...parsed].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const rel = pathOfFileId(fileId);
-    const lang = rel.endsWith("x") ? "tsx" : "ts";
     const src = sources.get(rel) as string;
     const symbols: SymbolRecord[] = pf.symbols.map((s) => {
       const range = pf.bodies.get(s.id) ?? { start: 0, end: 0 };
-      return { ...s, ...hashSymbol(src, range, lang) };
+      return { ...s, lang: "typescript" as const, ...hashSymbol(src, range, rel) };
     });
     const ws = [workspaceRecordOf(workspaces, rel)];
     const file: FileRecord = {
       id: fileId,
       path: rel,
+      lang: "typescript",
       workspaceId: ws[0]?.id ?? null,
       contentHash: `h-${rel}`,
       mtimeMs: 1,
