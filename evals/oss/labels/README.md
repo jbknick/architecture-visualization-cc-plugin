@@ -115,6 +115,6 @@ Notes by case:
 | `linking-pos`           |     14 |        6 | 2 wrapper_body, 6 dynamic  |
 | `linking-conduit-redux` |     19 |       19 | none                       |
 
-`linking-pos` and `linking-conduit-redux` have fewer than the 20 linkable labels a case needs. The repos
-are as pinned in the issue and were not replaced; `check-labels` reports both until the maintainer
-names a replacement.
+A case needs 20 linkable labels. `linking-conduit-redux` has 19: the maintainer accepted that, and the file
+records it as `"minLinkable": { "count": 19, "reason": "..." }` (a per-case minimum below 20, never a global
+one). `linking-pos` has 6 and is being replaced; `check-labels` reports it until then.

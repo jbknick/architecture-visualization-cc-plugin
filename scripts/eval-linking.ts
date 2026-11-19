@@ -48,6 +48,17 @@ export const linkingSchema = z.strictObject({
   case: z.string().regex(/^linking-[a-z0-9._-]+$/),
   repos: z.array(z.strictObject({ name: nonEmpty, sha })).min(1),
   labelledBy: nonEmpty,
+  // A case the maintainer accepted below the default minimum of linkable labels, with the reason.
+  minLinkable: z
+    .strictObject({
+      count: z
+        .number()
+        .int()
+        .min(1)
+        .max(MIN_LINKABLE - 1),
+      reason: nonEmpty,
+    })
+    .optional(),
   requests: z.array(siteSchema),
 });
 export type LinkingLabels = z.infer<typeof linkingSchema>;
@@ -119,10 +130,9 @@ export function checkLinking(labels: LinkingLabels, cloneOf: (repo: string) => s
     else if (!hasCall(lines[s.line - 1] as string)) out.push(`${where}: line holds no call`);
   }
   const linkable = labels.requests.filter((s) => s.expect !== null).length;
-  if (linkable < MIN_LINKABLE)
-    out.push(
-      `only ${linkable} linkable labels, ${MIN_LINKABLE} needed: ask the maintainer for a replacement repo`,
-    );
+  const needed = labels.minLinkable?.count ?? MIN_LINKABLE;
+  if (linkable < needed)
+    out.push(`only ${linkable} linkable labels, ${needed} needed: ask the maintainer for a replacement repo`);
   return out;
 }
 

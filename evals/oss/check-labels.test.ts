@@ -82,6 +82,23 @@ describe("check-labels", () => {
     expect(problems[0]).toMatch(/only 19 linkable labels/);
   });
 
+  it("takes a per-case minimum below 20 and still rejects fewer than that", () => {
+    const dir = clone({ "web/api.ts": manyCalls });
+    const sites = manySites.slice(0, MIN_LINKABLE - 1);
+    const accepted = linkingSchema.parse({
+      case: "linking-t",
+      repos: [{ name: "app", sha: SHA }],
+      labelledBy: "test",
+      minLinkable: { count: 19, reason: "accepted" },
+      requests: sites,
+    });
+    expect(checkLinking(accepted, () => dir)).toEqual([]);
+    expect(checkLinking({ ...accepted, requests: sites.slice(1) }, () => dir)[0]).toMatch(
+      /only 18 linkable labels, 19 needed/,
+    );
+    expect(() => linkingSchema.parse({ ...accepted, minLinkable: { count: 20, reason: "x" } })).toThrow();
+  });
+
   it("sees a call in common request forms", () => {
     for (const line of [
       "const r = await axios.get(`/a/${id}`);",

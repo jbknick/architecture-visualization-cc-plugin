@@ -11,6 +11,10 @@
     }
   ],
   "labelledBy": "hand-labelled by a research agent (not the matcher or recipe author): rg enumeration of request sites, then reading each call, its wrapper or base URL, and the backend routers",
+  "minLinkable": {
+    "count": 19,
+    "reason": "maintainer accepted 19: the repo has no other request site"
+  },
   "requests": [
     {
       "repo": "conduit-redux-web",
