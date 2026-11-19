@@ -43,8 +43,6 @@ export interface ReviewDiff {
   files: ReviewFile[];
   changes: SymbolChange[];
   importChanges: { path: string; added: string[]; removed: string[] }[];
-  /** Wall time of the diff. The only field that varies between runs. */
-  ms: number;
 }
 
 const GIT_MAX_BUFFER = 512 * 1024 * 1024;
@@ -174,10 +172,9 @@ function change(kind: SymbolChange["kind"], before?: Sym, after?: Sym): SymbolCh
 /**
  * Symbol-level diff between the merge base of `base` and `head` and `head` (spec section 11, "Review diff"). Reads
  * only the changed files' blobs with `git show`, parses them in memory, and writes nothing: not the store, not the
- * working tree. The result is sorted and deterministic apart from `ms`.
+ * working tree. The result is sorted and deterministic: no timing and no machine-specific value.
  */
 export async function reviewDiff(paths: GantryPaths, base: string, head: string): Promise<ReviewDiff> {
-  const t0 = Date.now();
   const root = paths.root;
   const baseSha = resolveCommit(root, base);
   const headSha = resolveCommit(root, head);
@@ -265,7 +262,7 @@ export async function reviewDiff(paths: GantryPaths, base: string, head: string)
   );
   files.sort((x, y) => cmp(x.path, y.path));
   importChanges.sort((x, y) => cmp(x.path, y.path));
-  return { base, head, mergeBase, files, changes, importChanges, ms: Date.now() - t0 };
+  return { base, head, mergeBase, files, changes, importChanges };
 }
 
 /**

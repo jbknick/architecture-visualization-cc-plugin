@@ -48,7 +48,6 @@ function commit(fx: MaterializedFixture, message: string): void {
   fx.git(["commit", "-m", message]);
 }
 
-const stable = (d: ReviewDiff) => ({ ...d, ms: 0 });
 const byId = (d: ReviewDiff, id: string): SymbolChange => {
   const c = d.changes.find((x) => x.id === id);
   if (!c)
@@ -232,7 +231,7 @@ describe("reviewDiff on fixtures/pnpm-turbo branches", () => {
     const before = sum();
     const a = await reviewDiff(paths, "main", "feature");
     const b = await reviewDiff(paths, "main", "feature");
-    expect(JSON.stringify(stable(a))).toBe(JSON.stringify(stable(b)));
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
     expect(sum()).toBe(before);
     expect(existsSync(`${paths.dbPath}-wal`)).toBe(false);
     expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
@@ -274,7 +273,6 @@ describe("reviewDiff on fixtures/pnpm-turbo branches", () => {
     expect(d.files).toHaveLength(20);
     expect(d.changes.filter((c) => c.kind === "modified")).toHaveLength(200);
     expect(d.importChanges).toHaveLength(20);
-    expect(d.ms).toBeLessThan(3000);
     expect(wall).toBeLessThan(3000);
   }, 30_000);
 });
