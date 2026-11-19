@@ -37,6 +37,11 @@ export class LazyParsedMap extends Map<string, ParsedFile> {
     return super.has(key) || this.raw.has(key);
   }
 
+  /** Every file id, those still undecoded included (a resolver that needs all files, like Go's package index, walks these). */
+  override keys(): MapIterator<string> {
+    return new Set([...super.keys(), ...this.raw.keys()]).values();
+  }
+
   override get(key: string): ParsedFile | undefined {
     let v = super.get(key);
     if (v === undefined) {
