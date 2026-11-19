@@ -29,6 +29,12 @@ export interface HybridOptions extends Omit<SearchOptions, "descriptions"> {
 export const HYBRID_CANDIDATES = 50;
 /** Reciprocal rank fusion constant. */
 export const RRF_K = 60;
+/**
+ * Smallest cosine similarity between the query and a description vector for that vector hit to be fused. Nearest
+ * neighbours below it are noise (the nearest vectors of a query that matches nothing are still returned), and
+ * fused by rank alone they outrank an exact keyword match.
+ */
+export const VECTOR_MIN_COSINE = 0.5;
 const EXPORTED_BOOST = 1.2;
 const EXACT_NAME_BOOST = 2;
 const MAX_QUERY_LEN = 200;
@@ -38,7 +44,7 @@ const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 /**
  * Hybrid search (spec section 9): keyword FTS over name tokens, suggested name, path, behavior and search terms
  * (top 50), plus nearest description vectors for the query (top 50, query embedded with the `query` prefix),
- * merged by reciprocal rank fusion (k = 60). Then the M1 boosts: exported x1.2, exact name x2. Ties break by id.
+ * merged by reciprocal rank fusion (k = 60); only vector hits with cosine similarity of at least 0.5 are fused. Then the M1 boosts: exported x1.2, exact name x2. Ties break by id.
  * Falls back to the keyword half alone when vectors or the model are unavailable.
  */
 export async function hybridSearch(store: Store, q: string, opts: HybridOptions = {}): Promise<HybridHit[]> {
@@ -118,6 +124,7 @@ async function vectorRanking(store: Store, query: string, opts: HybridOptions): 
   }
   const ids: string[] = [];
   for (const n of near) {
+    if (n.cosine < VECTOR_MIN_COSINE) break; // `near` is nearest first: the rest are further away
     for (const id of (byKey.get(n.contentKey) ?? []).sort(cmp)) {
       if (ids.length >= HYBRID_CANDIDATES) return ids;
       ids.push(id);
