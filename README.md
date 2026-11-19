@@ -208,6 +208,9 @@ pnpm check    # biome + tsc + vitest, the local quality gate
 pnpm fmt      # apply Biome fixes
 pnpm release patch   # bump every version file, write CHANGELOG.md, commit and tag v<version> (never pushes)
 pnpm perf     # absolute-speed checks (duplicate engine on a 6,000-function index); not part of check, run before releases
+pnpm eval:clone     # clone the pinned public repos in evals/oss/repos.json at their commits into ~/Dev/gantry-oss (GANTRY_OSS_DIR overrides)
+pnpm eval:score <case>   # score a clone's index against its committed labels; exits 1 below 90% recall at 95% precision
+pnpm eval:recipes   # score every case that has a committed reference recipe, with a byte-stability check
 pnpm readme:media   # regenerate the screenshots in docs/readme/ (add --gif to redo the GIFs too)
 ```
 

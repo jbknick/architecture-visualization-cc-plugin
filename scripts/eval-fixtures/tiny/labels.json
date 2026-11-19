@@ -1,0 +1,16 @@
+{
+  "repo": "tiny",
+  "sha": "0123456789abcdef0123456789abcdef01234567",
+  "labelledBy": "hand-written fixture",
+  "kinds": ["route", "endpoint", "table", "read", "write", "link"],
+  "route": [{ "path": "/", "file": "src/app.ts" }],
+  "endpoint": [
+    { "method": "get", "path": "/posts/$id", "file": "src/app.ts" },
+    { "method": "POST", "path": "/posts/", "file": "src/app.ts" },
+    { "method": "DELETE", "path": "/posts/[id]", "file": "src/app.ts" }
+  ],
+  "table": [{ "name": "Posts" }, { "name": "users" }],
+  "read": [{ "file": "src/db.ts", "table": "posts" }, { "file": "src/db.ts", "table": "users" }],
+  "write": [{ "file": "src/db.ts", "table": "posts" }],
+  "link": [{ "file": "src/app.ts", "endpoint": "GET /posts/:id" }]
+}
