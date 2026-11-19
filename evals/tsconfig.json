@@ -1,5 +1,5 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": { "composite": false, "declaration": false, "noEmit": true, "incremental": false },
-  "include": ["m2/*.ts", "run-m2.ts", "fixtures/*.ts", "../scripts/eval-*.ts"]
+  "include": ["m2/*.ts", "run-m2.ts", "fixtures/*.ts", "oss/*.ts", "../scripts/eval-*.ts"]
 }

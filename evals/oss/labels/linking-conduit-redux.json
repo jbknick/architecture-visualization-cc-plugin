@@ -1,0 +1,263 @@
+{
+  "case": "linking-conduit-redux",
+  "repos": [
+    {
+      "name": "conduit-express-prisma",
+      "sha": "6ac99ea5aeadc4e001dd4d6933c2e269f878a969"
+    },
+    {
+      "name": "conduit-redux-web",
+      "sha": "cb397562724ea7f53758d5511c220690b99fe2f5"
+    }
+  ],
+  "labelledBy": "hand-labelled by a research agent (not the matcher or recipe author): rg enumeration of request sites, then reading each call, its wrapper or base URL, and the backend routers",
+  "requests": [
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 28,
+      "method": "GET",
+      "path": "/api/articles",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "GET",
+        "path": "/api/articles"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 32,
+      "method": "GET",
+      "path": "/api/tags",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "GET",
+        "path": "/api/tags"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 37,
+      "method": "POST",
+      "path": "/api/users/login",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "POST",
+        "path": "/api/users/login"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 46,
+      "method": "GET",
+      "path": "/api/user",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "GET",
+        "path": "/api/user"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 51,
+      "method": "POST",
+      "path": "/api/articles/:slug/favorite",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "POST",
+        "path": "/api/articles/:slug/favorite"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 55,
+      "method": "DELETE",
+      "path": "/api/articles/:slug/favorite",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "DELETE",
+        "path": "/api/articles/:slug/favorite"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 60,
+      "method": "PUT",
+      "path": "/api/user",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "PUT",
+        "path": "/api/user"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 70,
+      "method": "POST",
+      "path": "/api/users",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "POST",
+        "path": "/api/users"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 80,
+      "method": "POST",
+      "path": "/api/articles",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "POST",
+        "path": "/api/articles"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 89,
+      "method": "GET",
+      "path": "/api/articles/:slug",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "GET",
+        "path": "/api/articles/:slug"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 95,
+      "method": "PUT",
+      "path": "/api/articles/:slug",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "PUT",
+        "path": "/api/articles/:slug"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 104,
+      "method": "GET",
+      "path": "/api/profiles/:username",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "GET",
+        "path": "/api/profiles/:username"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 109,
+      "method": "POST",
+      "path": "/api/profiles/:username/follow",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "POST",
+        "path": "/api/profiles/:username/follow"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 114,
+      "method": "DELETE",
+      "path": "/api/profiles/:username/follow",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "DELETE",
+        "path": "/api/profiles/:username/follow"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 124,
+      "method": "GET",
+      "path": "/api/articles/feed",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "GET",
+        "path": "/api/articles/feed"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 128,
+      "method": "GET",
+      "path": "/api/articles/:slug/comments",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "GET",
+        "path": "/api/articles/:slug/comments"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 133,
+      "method": "DELETE",
+      "path": "/api/articles/:slug/comments/:commentId",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "DELETE",
+        "path": "/api/articles/:slug/comments/:id"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 137,
+      "method": "POST",
+      "path": "/api/articles/:slug/comments",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "POST",
+        "path": "/api/articles/:slug/comments"
+      }
+    },
+    {
+      "repo": "conduit-redux-web",
+      "file": "src/services/conduit.ts",
+      "line": 142,
+      "method": "DELETE",
+      "path": "/api/articles/:slug",
+      "expect": {
+        "repo": "conduit-express-prisma",
+        "workspace": "express-prisma-realworld-official-app",
+        "method": "DELETE",
+        "path": "/api/articles/:slug"
+      }
+    }
+  ]
+}

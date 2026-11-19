@@ -1,6 +1,14 @@
 {
   "repos": [
     {
+      "name": "blogdev",
+      "url": "https://github.com/devat-youtuber/MERN-Typescript-Blogdev.git",
+      "sha": "939657f24a945f642c9680a989a9a440f027004a",
+      "stack": ["react", "axios", "express", "mongoose"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
       "name": "bulletproof-react",
       "url": "https://github.com/alan2207/bulletproof-react.git",
       "sha": "9506629ed003a561c6627735480cce4994244bb4",
@@ -15,6 +23,38 @@
       "stack": ["fastify", "kysely"],
       "lang": ["ts"],
       "role": "tuning"
+    },
+    {
+      "name": "conduit-express-prisma",
+      "url": "https://github.com/gothinkster/node-express-prisma-v1-official-app.git",
+      "sha": "6ac99ea5aeadc4e001dd4d6933c2e269f878a969",
+      "stack": ["express", "prisma"],
+      "lang": ["ts"],
+      "role": "held-out"
+    },
+    {
+      "name": "conduit-express-ts",
+      "url": "https://github.com/skopekreep/typescript-node-express-realworld-example-app.git",
+      "sha": "e55f4d58895912ac37aa8a01fe2edda665628bfa",
+      "stack": ["express"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
+      "name": "conduit-hooks-web",
+      "url": "https://github.com/chagweyh/react-hooks-typescript-realworld.git",
+      "sha": "6dbaeda7c207684291aa0d02214e81189457cf6b",
+      "stack": ["react", "axios"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
+      "name": "conduit-redux-web",
+      "url": "https://github.com/angelguzmaning/ts-redux-react-realworld-example-app.git",
+      "sha": "cb397562724ea7f53758d5511c220690b99fe2f5",
+      "stack": ["react", "axios"],
+      "lang": ["ts"],
+      "role": "held-out"
     },
     {
       "name": "ecom",
@@ -89,6 +129,14 @@
       "role": "tuning"
     },
     {
+      "name": "insta",
+      "url": "https://github.com/tuananhfr/instagram-MERN-typescript.git",
+      "sha": "139e2bf48e09b703080443feec3949ebbb3bcac7",
+      "stack": ["react", "axios", "express", "mongoose"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
       "name": "myapp",
       "url": "https://github.com/learning-cloud-native-go/myapp.git",
       "sha": "fc188d3e95bcbd8501a4bd671750c982cc3e409d",
@@ -151,6 +199,14 @@
       "stack": ["raw-sql", "pg"],
       "lang": ["ts"],
       "role": "tuning"
+    },
+    {
+      "name": "pos",
+      "url": "https://github.com/syedmoaaz/POS-Software.git",
+      "sha": "df25597c92ffcd945d6d371d1b82b764437a3218",
+      "stack": ["react", "express"],
+      "lang": ["ts"],
+      "role": "held-out"
     },
     {
       "name": "react-tanstarter",

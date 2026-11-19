@@ -1,0 +1,680 @@
+{
+  "case": "linking-insta",
+  "repos": [
+    {
+      "name": "insta",
+      "sha": "139e2bf48e09b703080443feec3949ebbb3bcac7"
+    }
+  ],
+  "labelledBy": "hand-labelled by a research agent (not the matcher or recipe author): rg enumeration of request sites, then reading each call, its wrapper or base URL, and the backend routers",
+  "requests": [
+    {
+      "repo": "insta",
+      "file": "client/src/services/authServices.ts",
+      "line": 17,
+      "method": "POST",
+      "path": "/api/auth/register",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/auth/register"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/authServices.ts",
+      "line": 25,
+      "method": "POST",
+      "path": "/api/auth/login",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/auth/login"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/authServices.ts",
+      "line": 34,
+      "method": "POST",
+      "path": "/api/auth/login-facebook",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/auth/login-facebook"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/authServices.ts",
+      "line": 42,
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/auth/reset-password"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/authServices.ts",
+      "line": 52,
+      "method": "POST",
+      "path": "/api/auth/refresh",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/auth/refresh"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/authServices.ts",
+      "line": 66,
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/auth/logout"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/authServices.ts",
+      "line": 72,
+      "method": "PUT",
+      "path": "/api/auth",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/auth"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/authServices.ts",
+      "line": 81,
+      "method": "GET",
+      "path": "/api/auth",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/auth"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/authServices.ts",
+      "line": 86,
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/auth/forgot-password"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/commentServices.ts",
+      "line": 8,
+      "method": "POST",
+      "path": "/api/comment",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/comment"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/commentServices.ts",
+      "line": 13,
+      "method": "GET",
+      "path": "/api/comment",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/comment"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/commentServices.ts",
+      "line": 18,
+      "method": "GET",
+      "path": "/api/comment/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/comment/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/commentServices.ts",
+      "line": 23,
+      "method": "PUT",
+      "path": "/api/comment/like/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/comment/like/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/commentServices.ts",
+      "line": 32,
+      "method": "PUT",
+      "path": "/api/comment/unlike/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/comment/unlike/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/commentServices.ts",
+      "line": 41,
+      "method": "PUT",
+      "path": "/api/comment/update",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/comment/update"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/commentServices.ts",
+      "line": 49,
+      "method": "DELETE",
+      "path": "/api/comment/delete/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "DELETE",
+        "path": "/api/comment/delete/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/uploadImgServices.ts",
+      "line": 6,
+      "method": "POST",
+      "path": "/api/upload/avatar",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/upload/avatar"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/uploadImgServices.ts",
+      "line": 14,
+      "method": "POST",
+      "path": "/api/upload/post",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/upload/post"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/uploadImgServices.ts",
+      "line": 19,
+      "method": "POST",
+      "path": "/api/upload/messages",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/upload/messages"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/uploadImgServices.ts",
+      "line": 28,
+      "method": "DELETE",
+      "path": "/api/upload/delete-img/avatar/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "DELETE",
+        "path": "/api/upload/delete-img/avatar/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/uploadImgServices.ts",
+      "line": 36,
+      "method": "DELETE",
+      "path": "/api/upload/delete-img/post/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "DELETE",
+        "path": "/api/upload/delete-img/post/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/uploadImgServices.ts",
+      "line": 44,
+      "method": "DELETE",
+      "path": "/api/upload/delete-img/messages/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "DELETE",
+        "path": "/api/upload/delete-img/messages/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/conversationServices.ts",
+      "line": 7,
+      "method": "POST",
+      "path": "/api/conversation/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/conversation/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/conversationServices.ts",
+      "line": 16,
+      "method": "GET",
+      "path": "/api/conversation",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/conversation"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/conversationServices.ts",
+      "line": 21,
+      "method": "DELETE",
+      "path": "/api/conversation/delete/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "DELETE",
+        "path": "/api/conversation/delete/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/conversationServices.ts",
+      "line": 29,
+      "method": "PUT",
+      "path": "/api/conversation/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/conversation/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/messagesServices.ts",
+      "line": 8,
+      "method": "POST",
+      "path": "/api/messages",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/messages"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/messagesServices.ts",
+      "line": 13,
+      "method": "GET",
+      "path": "/api/messages/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/messages/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/messagesServices.ts",
+      "line": 18,
+      "method": "DELETE",
+      "path": "/api/messages/delete/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "DELETE",
+        "path": "/api/messages/delete/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/notificationServices.ts",
+      "line": 9,
+      "method": "POST",
+      "path": "/api/notification",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/notification"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/notificationServices.ts",
+      "line": 13,
+      "method": "GET",
+      "path": "/api/notification",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/notification"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/notificationServices.ts",
+      "line": 18,
+      "method": "DELETE",
+      "path": "/api/notification/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "DELETE",
+        "path": "/api/notification/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/notificationServices.ts",
+      "line": 26,
+      "method": "PUT",
+      "path": "/api/notification/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/notification/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/postServices.ts",
+      "line": 9,
+      "method": "POST",
+      "path": "/api/post",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "POST",
+        "path": "/api/post"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/postServices.ts",
+      "line": 13,
+      "method": "GET",
+      "path": "/api/post",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/post"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/postServices.ts",
+      "line": 17,
+      "method": "GET",
+      "path": "/api/post/user/:username",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/post/user/:username"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/postServices.ts",
+      "line": 24,
+      "method": "GET",
+      "path": "/api/post/explore",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/post/explore"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/postServices.ts",
+      "line": 28,
+      "method": "GET",
+      "path": "/api/post/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/post/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/postServices.ts",
+      "line": 32,
+      "method": "PUT",
+      "path": "/api/post/like/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/post/like/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/postServices.ts",
+      "line": 40,
+      "method": "PUT",
+      "path": "/api/post/unlike/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/post/unlike/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/postServices.ts",
+      "line": 48,
+      "method": "PUT",
+      "path": "/api/post/update",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/post/update"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/postServices.ts",
+      "line": 52,
+      "method": "DELETE",
+      "path": "/api/post/delete/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "DELETE",
+        "path": "/api/post/delete/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/postServices.ts",
+      "line": 61,
+      "method": "GET",
+      "path": "/api/post/save/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/post/save/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/userServices.ts",
+      "line": 7,
+      "method": "GET",
+      "path": "/api/user/search",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/user/search"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/userServices.ts",
+      "line": 14,
+      "method": "GET",
+      "path": "/api/user/suggestions",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/user/suggestions"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/userServices.ts",
+      "line": 20,
+      "method": "GET",
+      "path": "/api/user/:username",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "GET",
+        "path": "/api/user/:username"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/userServices.ts",
+      "line": 26,
+      "method": "PUT",
+      "path": "/api/user/follow/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/user/follow/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/userServices.ts",
+      "line": 39,
+      "method": "PUT",
+      "path": "/api/user/unfollow/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/user/unfollow/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/userServices.ts",
+      "line": 52,
+      "method": "PUT",
+      "path": "/api/user/save-post/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/user/save-post/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/services/userServices.ts",
+      "line": 61,
+      "method": "PUT",
+      "path": "/api/user/unsave-post/:id",
+      "expect": {
+        "repo": "insta",
+        "workspace": "server",
+        "method": "PUT",
+        "path": "/api/user/unsave-post/:id"
+      }
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/utils/imagesUpload.ts",
+      "line": 22,
+      "method": "POST",
+      "path": "https://api.cloudinary.com/tuananh-pham/upload",
+      "expect": null,
+      "reason": "external"
+    },
+    {
+      "repo": "insta",
+      "file": "client/src/components/FaceBookLogin.tsx",
+      "line": 27,
+      "method": "GET",
+      "path": "https://graph.facebook.com/me",
+      "expect": null,
+      "reason": "external"
+    }
+  ]
+}
