@@ -31,7 +31,7 @@ export function cleanupData(): void {
 
 /** Materialises a fixture (optionally overriding/adding files), indexes it into a fresh store. */
 export async function indexedFixture(
-  name: "pnpm-turbo" | "single-pkg" | "nx" = "pnpm-turbo",
+  name: "pnpm-turbo" | "single-pkg" | "nx" | "go-basic" = "pnpm-turbo",
   files: Record<string, string> = {},
 ): Promise<Indexed> {
   const fx = await materializeFixture(name);
