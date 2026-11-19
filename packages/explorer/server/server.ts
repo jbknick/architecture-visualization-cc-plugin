@@ -27,6 +27,7 @@ import {
 import { HttpError, handleApi } from "./api.js";
 import { MAX_DISMISS_BODY_BYTES, putDismiss } from "./dismiss.js";
 import { MAX_LAYOUT_BODY_BYTES, putLayout } from "./layout.js";
+import { isOverlayWrite, MAX_OVERLAY_BODY_BYTES, overlayWrite } from "./overlay.js";
 import { type RefreshResult, runRefresh, singleFlight, staleInfo } from "./refresh.js";
 import {
   acquireLock,
@@ -261,7 +262,15 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
       const layoutPut = req.method === "PUT" && LAYOUT_ROUTE.test(url.pathname);
       const dismissPut = req.method === "PUT" && url.pathname === DISMISS_ROUTE;
       const refreshPost = req.method === "POST" && url.pathname === REFRESH_ROUTE;
-      if (req.method !== "GET" && req.method !== "HEAD" && !layoutPut && !dismissPut && !refreshPost) {
+      const overlayOp = isOverlayWrite(req.method ?? "", url.pathname);
+      if (
+        req.method !== "GET" &&
+        req.method !== "HEAD" &&
+        !layoutPut &&
+        !dismissPut &&
+        !refreshPost &&
+        !overlayOp
+      ) {
         res.setHeader("allow", "GET, HEAD");
         return void sendJson(res, 405, { error: "Method not allowed" });
       }
@@ -276,10 +285,14 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
           (Array.isArray(header) ? header[0] : header) ?? parseCookies(req.headers.cookie)[cookieName(port)];
         if (!supplied || !safeEqual(supplied, token))
           return void sendJson(res, 403, { error: "Missing or bad token" });
-        if (layoutPut || dismissPut || refreshPost) {
+        if (layoutPut || dismissPut || refreshPost || overlayOp) {
           let run: (body: unknown) => unknown;
           let limit: number;
-          if (refreshPost) {
+          if (overlayOp) {
+            limit = MAX_OVERLAY_BODY_BYTES;
+            const method = req.method ?? "";
+            run = (body) => overlayWrite(ctx, method, url.pathname, body);
+          } else if (refreshPost) {
             limit = MAX_REFRESH_BODY_BYTES;
             run = () => refresh();
           } else if (dismissPut) {
@@ -295,7 +308,8 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
             limit = MAX_LAYOUT_BODY_BYTES;
             run = (body) => putLayout(store, view, body);
           }
-          if (!String(req.headers["content-type"] ?? "").startsWith("application/json")) {
+          const noBody = req.method === "DELETE";
+          if (!noBody && !String(req.headers["content-type"] ?? "").startsWith("application/json")) {
             return void sendJson(res, 415, { error: "Content-Type must be application/json" });
           }
           readBody(req, limit).then(
@@ -306,7 +320,7 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
                 sendJson(res, 500, { error: "Internal error" });
               };
               try {
-                const out = run(JSON.parse(refreshPost && text === "" ? "{}" : text));
+                const out = run(noBody ? undefined : JSON.parse(refreshPost && text === "" ? "{}" : text));
                 if (out instanceof Promise) out.then((b) => sendJson(res, 200, b), fail);
                 else sendJson(res, 200, out);
               } catch (err) {

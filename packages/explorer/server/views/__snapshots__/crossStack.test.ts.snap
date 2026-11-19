@@ -515,6 +515,10 @@ exports[`determinism and containment > answers with the same JSON every time (sn
       "workspace": "ws:@demo/db",
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
   "totals": {
     "endpoints": 20,
     "expanded": false,
@@ -1207,6 +1211,10 @@ exports[`determinism and containment > answers with the same JSON every time (sn
       "workspace": "ws:@demo/db",
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
   "totals": {
     "endpoints": 20,
     "expanded": true,
@@ -2397,6 +2405,10 @@ exports[`determinism and containment > answers with the same JSON every time (sn
       "workspace": "ws:@demo/posts",
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
   "totals": {
     "endpoints": 20,
     "middleware": 3,
@@ -2599,6 +2611,10 @@ exports[`determinism and containment > answers with the same JSON every time (sn
       "workspace": "ws:@demo/db",
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
   "totals": {
     "endpoints": 1,
     "routes": 1,
@@ -2996,6 +3012,10 @@ exports[`determinism and containment > answers with the same JSON every time (sn
       "workspace": "ws:@demo/db",
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
   "totals": {
     "endpoints": 6,
     "routes": 1,
@@ -3264,6 +3284,10 @@ exports[`determinism and containment > answers with the same JSON every time (sn
       "workspace": "ws:@demo/web",
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
   "totals": {
     "endpoints": 20,
     "endpointsWithout": 12,
@@ -3744,6 +3768,10 @@ exports[`determinism and containment > answers with the same JSON every time (sn
       "workspace": "ws:@demo/db",
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
   "table": {
     "columns": [
       "id",

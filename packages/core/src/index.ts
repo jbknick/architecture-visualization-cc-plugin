@@ -27,6 +27,7 @@ export * from "./heal/index.js";
 export * from "./ids.js";
 export * from "./indexer.js";
 export * from "./lang/index.js";
+export * from "./overlay/index.js";
 export * from "./overview/index.js";
 export * from "./parse/index.js";
 export * from "./paths/index.js";

@@ -75,6 +75,10 @@ exports[`ego > snapshot: Button ego graph 1`] = `
       "workspace": "ws:@acme/ui",
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
 }
 `;
 
@@ -187,6 +191,10 @@ exports[`ego > snapshot: file ego graph (imports) 1`] = `
       "workspace": "ws:@acme/ui",
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
 }
 `;
 
@@ -954,6 +962,10 @@ exports[`project-map > snapshot: default level (files) 1`] = `
       },
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
 }
 `;
 
@@ -2144,6 +2156,10 @@ exports[`project-map > snapshot: symbols level with external packages 1`] = `
       },
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
 }
 `;
 
@@ -2300,5 +2316,9 @@ exports[`project-map > snapshot: workspaces level 1`] = `
       },
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
 }
 `;

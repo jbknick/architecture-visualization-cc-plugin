@@ -525,6 +525,7 @@ describe("/api/view/:id", () => {
         },
       ],
       layoutHint: "force",
+      overlay: { hidden: 0, groups: [] },
       // Files on disk the injected store does not know about (spec section 11 (c)).
       stale: { files: expect.any(Number) },
     });

@@ -21,6 +21,8 @@ export interface GraphNode {
   id: string;
   kind: string;
   label: string;
+  /** The label before a person-set label replaced it. */
+  labelOriginal?: string;
   /** Workspace nodes only: `label` without the npm scope shared by most workspaces. */
   shortLabel?: string;
   parent?: string;
