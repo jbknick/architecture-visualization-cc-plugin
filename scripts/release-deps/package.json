@@ -1,0 +1,16 @@
+{
+  "name": "gantry-cli",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "gantry": "bin/gantry"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.2",
+    "better-sqlite3": "13.1.1",
+    "onnxruntime-node": "1.30.0",
+    "oxc-parser": "0.158.0",
+    "oxc-resolver": "11.24.2",
+    "sqlite-vec": "0.1.9"
+  }
+}

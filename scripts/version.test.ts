@@ -1,11 +1,11 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { checkContent, checkSync, nextVersion, release, VERSION_FILES } from "./version.js";
+import { checkContent, checkReleaseDeps, checkSync, nextVersion, release, VERSION_FILES } from "./version.js";
 
 // Resolve tsx from this repository so the scripts run with a scratch repository as cwd.
 const tsxLoader = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
@@ -33,9 +33,26 @@ function scratch(version = "0.0.1"): string {
   run(root, "config", "commit.gpgsign", "false");
   run(root, "config", "tag.gpgsign", "false");
   for (const f of VERSION_FILES) put(root, f, f === ".claude-plugin/marketplace.json" ? null : version);
+  // `release()` runs `pnpm build` in the repository, so the scratch root has one that makes plugin/dist
+  put(
+    root,
+    "package.json",
+    version,
+    ',\n  "scripts": { "build": "mkdir -p plugin/dist && echo built > plugin/dist/cli.js" }',
+  );
+  writeFileSync(join(root, ".gitignore"), "dist\n");
+  writeFileSync(join(root, "LICENSE"), "MIT\n");
+  put(root, "scripts/release-deps/package.json", null, ',\n  "dependencies": { "zod": "1.0.0" }');
+  writeFileSync(join(root, "scripts/release-deps/package-lock.json"), "{}\n");
   run(root, "add", "-A");
   run(root, "commit", "-q", "-m", "#1 first change (#2)");
   return root;
+}
+
+/** Stands in for `pnpm build`: the packer only needs plugin/dist to exist. */
+function fakeBuild(root: string) {
+  mkdirSync(join(root, "plugin/dist"), { recursive: true });
+  writeFileSync(join(root, "plugin/dist/cli.js"), "// built\n");
 }
 
 describe("nextVersion", () => {
@@ -79,10 +96,38 @@ describe("checkSync", () => {
   });
 });
 
+describe("checkReleaseDeps", () => {
+  const rootDeps = (root: string, deps: string) =>
+    writeFileSync(join(root, "package.json"), `{ "version": "0.0.1", ${deps} }\n`);
+  const releaseDeps = (root: string, version: string) =>
+    writeFileSync(
+      join(root, "scripts/release-deps/package.json"),
+      `{ "name": "gantry-cli", "dependencies": { "zod": "${version}", "other": "9.9.9" } }\n`,
+    );
+
+  it("passes on equal versions, drops a range's prefix, and ignores packages the root lacks", () => {
+    const root = scratch();
+    releaseDeps(root, "4.6.7");
+    rootDeps(root, '"dependencies": { "zod": "^4.6.7" }');
+    expect(checkReleaseDeps(root)).toEqual([]);
+    rootDeps(root, '"devDependencies": { "zod": "4.6.7" }');
+    expect(checkReleaseDeps(root)).toEqual([]);
+  });
+
+  it("fails and names the package when a version drifted", () => {
+    const root = scratch();
+    releaseDeps(root, "4.6.6");
+    rootDeps(root, '"devDependencies": { "zod": "4.6.7" }');
+    expect(checkReleaseDeps(root)).toEqual([
+      expect.stringMatching(/zod is 4\.6\.6 but package\.json has 4\.6\.7/),
+    ]);
+  });
+});
+
 describe("release", () => {
   it("bumps every file, writes the CHANGELOG, commits and tags", () => {
     const root = scratch();
-    expect(release(root, "minor", "2026-11-16")).toBe("0.1.0");
+    expect(release(root, "minor", "2026-11-16", fakeBuild).version).toBe("0.1.0");
     for (const f of VERSION_FILES) {
       if (f === ".claude-plugin/marketplace.json") continue;
       expect(JSON.parse(readFileSync(join(root, f), "utf8")).version).toBe("0.1.0");
@@ -95,13 +140,21 @@ describe("release", () => {
     expect(run(root, "status", "--porcelain")).toBe("");
   });
 
+  it("packs the tarball after tagging and has no remote to push to", () => {
+    const root = scratch();
+    const { pack } = release(root, "minor", "2026-11-16", fakeBuild);
+    expect(existsSync(pack.tarball)).toBe(true);
+    expect(readFileSync(pack.sha256File, "utf8")).toBe(`${pack.sha256}  gantry-0.1.0.tgz\n`);
+    expect(run(root, "remote")).toBe("");
+  });
+
   it("lists only commits since the last tag in the next section, newest section first", () => {
     const root = scratch();
-    release(root, "patch", "2026-11-16");
+    release(root, "patch", "2026-11-16", fakeBuild);
     writeFileSync(join(root, "a.txt"), "a");
     run(root, "add", "-A");
     run(root, "commit", "-q", "-m", "#3 second change (#4)");
-    release(root, "0.2.0", "2026-11-17");
+    release(root, "0.2.0", "2026-11-17", fakeBuild);
     const log = readFileSync(join(root, "CHANGELOG.md"), "utf8");
     const second = log.slice(log.indexOf("## 0.2.0"), log.indexOf("## 0.0.2"));
     expect(second).toContain("#3 second change");
@@ -128,7 +181,11 @@ describe("release", () => {
       cwd: root,
       encoding: "utf8",
     });
-    expect(r.status).toBe(0);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain(
+      "gh release create v0.0.2 dist/gantry-0.0.2.tgz dist/gantry-0.0.2.tgz.sha256 --notes-from-tag",
+    );
+    expect(existsSync(join(root, "dist/gantry-0.0.2.tgz"))).toBe(true);
     expect(run(root, "tag", "--list")).toBe("v0.0.2");
     expect(run(root, "remote")).toBe("");
   });
@@ -141,7 +198,7 @@ describe("checkContent", () => {
 
   it("flags plugin content changed without a bump, ignores tests, and clears after a bump", () => {
     const root = scratch();
-    release(root, "patch", "2026-11-16");
+    release(root, "patch", "2026-11-16", fakeBuild);
     writeFileSync(join(root, "a.txt"), "a");
     run(root, "add", "-A");
     run(root, "commit", "-q", "-m", "unrelated");
@@ -159,7 +216,7 @@ describe("checkContent", () => {
     const c = checkContent(root);
     expect(c).toMatchObject({ status: "needs-bump", files: ["packages/core/src/x.ts"] });
 
-    release(root, "patch", "2026-11-17");
+    release(root, "patch", "2026-11-17", fakeBuild);
     expect(checkContent(root).status).toBe("ok");
   });
 });
