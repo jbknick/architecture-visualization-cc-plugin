@@ -1,0 +1,335 @@
+{
+  "repo": "react-router-fastify",
+  "labelledBy": "hand-written from the fixture source",
+  "kinds": [
+    "route",
+    "endpoint",
+    "table",
+    "read",
+    "write",
+    "link"
+  ],
+  "route": [
+    {
+      "path": "/app",
+      "file": "apps/web-data/src/router.tsx"
+    },
+    {
+      "path": "/app/posts",
+      "file": "apps/web-data/src/router.tsx"
+    },
+    {
+      "path": "/app/posts/:postId",
+      "file": "apps/web-data/src/router.tsx"
+    },
+    {
+      "path": "/app/posts/:postId/comments",
+      "file": "apps/web-data/src/router.tsx"
+    },
+    {
+      "path": "/app/posts/new",
+      "file": "apps/web-data/src/router.tsx"
+    },
+    {
+      "path": "/app/signin",
+      "file": "apps/web-data/src/router.tsx"
+    },
+    {
+      "path": "/app/signup",
+      "file": "apps/web-data/src/router.tsx"
+    },
+    {
+      "path": "/app/settings",
+      "file": "apps/web-data/src/router.tsx"
+    },
+    {
+      "path": "/app/*",
+      "file": "apps/web-data/src/router.tsx"
+    },
+    {
+      "path": "/preview",
+      "file": "apps/web-data/src/memory.tsx"
+    },
+    {
+      "path": "/preview/:postId",
+      "file": "apps/web-data/src/memory.tsx"
+    },
+    {
+      "path": "/docs",
+      "file": "apps/web-declarative/src/App.tsx"
+    },
+    {
+      "path": "/docs/about",
+      "file": "apps/web-declarative/src/App.tsx"
+    },
+    {
+      "path": "/docs/posts/*",
+      "file": "apps/web-declarative/src/App.tsx"
+    },
+    {
+      "path": "/docs/users",
+      "file": "apps/web-declarative/src/App.tsx"
+    },
+    {
+      "path": "/docs/users/:userId",
+      "file": "apps/web-declarative/src/App.tsx"
+    },
+    {
+      "path": "/docs/*",
+      "file": "apps/web-declarative/src/App.tsx"
+    },
+    {
+      "path": "/docs/posts",
+      "file": "apps/web-declarative/src/pages/PostsSection.tsx"
+    },
+    {
+      "path": "/docs/posts/:postId",
+      "file": "apps/web-declarative/src/pages/PostsSection.tsx"
+    },
+    {
+      "path": "/docs/posts/new",
+      "file": "apps/web-declarative/src/pages/PostsSection.tsx"
+    },
+    {
+      "path": "/contact",
+      "file": "apps/web-framework/app/routes.ts"
+    },
+    {
+      "path": "/dashboard",
+      "file": "apps/web-framework/app/routes.ts"
+    },
+    {
+      "path": "/dashboard/settings",
+      "file": "apps/web-framework/app/routes.ts"
+    },
+    {
+      "path": "/admin",
+      "file": "apps/web-framework/app/routes.ts"
+    },
+    {
+      "path": "/admin/users",
+      "file": "apps/web-framework/app/routes.ts"
+    },
+    {
+      "path": "/admin/users/:userId",
+      "file": "apps/web-framework/app/routes.ts"
+    },
+    {
+      "path": "/",
+      "file": "apps/web-framework/app/routes/flat/_index.tsx"
+    },
+    {
+      "path": "/articles",
+      "file": "apps/web-framework/app/routes/flat/articles._index.tsx"
+    },
+    {
+      "path": "/articles/:articleId",
+      "file": "apps/web-framework/app/routes/flat/articles.$articleId.tsx"
+    },
+    {
+      "path": "/articles/new",
+      "file": "apps/web-framework/app/routes/flat/articles_.new.tsx"
+    },
+    {
+      "path": "/login",
+      "file": "apps/web-framework/app/routes/flat/_auth.login.tsx"
+    },
+    {
+      "path": "/:lang?/about",
+      "file": "apps/web-framework/app/routes/flat/($lang).about.tsx"
+    },
+    {
+      "path": "/files/*",
+      "file": "apps/web-framework/app/routes/flat/files.$.tsx"
+    }
+  ],
+  "endpoint": [
+    {
+      "method": "GET",
+      "path": "/api/posts",
+      "file": "apps/api/src/routes/posts.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/posts",
+      "file": "apps/api/src/routes/posts.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/posts/:postId",
+      "file": "apps/api/src/routes/posts.ts"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/posts/:postId",
+      "file": "apps/api/src/routes/posts.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/posts/:postId",
+      "file": "apps/api/src/routes/posts.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/posts/:postId/comments",
+      "file": "apps/api/src/routes/comments.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/posts/:postId/comments",
+      "file": "apps/api/src/routes/comments.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stats",
+      "file": "apps/api/src/server.ts"
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/stats",
+      "file": "apps/api/src/server.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/version",
+      "file": "apps/api/src/server.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users",
+      "file": "apps/api/src/autoroutes/users/index.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/users",
+      "file": "apps/api/src/autoroutes/users/index.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/:userId",
+      "file": "apps/api/src/autoroutes/users/index.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "file": "apps/api/src/autoroutes/health.ts"
+    }
+  ],
+  "table": [
+    {
+      "name": "comments"
+    },
+    {
+      "name": "posts"
+    },
+    {
+      "name": "users"
+    }
+  ],
+  "read": [
+    {
+      "file": "packages/db/src/queries/posts.ts",
+      "table": "posts"
+    },
+    {
+      "file": "packages/db/src/queries/comments.ts",
+      "table": "comments"
+    },
+    {
+      "file": "packages/db/src/queries/comments.ts",
+      "table": "users"
+    },
+    {
+      "file": "packages/db/src/queries/users.ts",
+      "table": "users"
+    }
+  ],
+  "write": [
+    {
+      "file": "packages/db/src/queries/posts.ts",
+      "table": "posts"
+    },
+    {
+      "file": "packages/db/src/queries/comments.ts",
+      "table": "comments"
+    },
+    {
+      "file": "packages/db/src/queries/users.ts",
+      "table": "users"
+    }
+  ],
+  "link": [
+    {
+      "file": "apps/web-data/src/pages/PostList.tsx",
+      "endpoint": "GET /api/posts"
+    },
+    {
+      "file": "apps/web-data/src/pages/PostDetail.tsx",
+      "endpoint": "GET /api/posts/:postId"
+    },
+    {
+      "file": "apps/web-data/src/pages/Comments.tsx",
+      "endpoint": "GET /api/posts/:postId/comments"
+    },
+    {
+      "file": "apps/web-data/src/pages/NewPost.tsx",
+      "endpoint": "POST /api/posts"
+    },
+    {
+      "file": "apps/web-data/src/pages/Register.tsx",
+      "endpoint": "POST /api/users"
+    },
+    {
+      "file": "apps/web-declarative/src/pages/PostList.tsx",
+      "endpoint": "GET /api/posts"
+    },
+    {
+      "file": "apps/web-declarative/src/pages/PostDetail.tsx",
+      "endpoint": "GET /api/posts/:postId"
+    },
+    {
+      "file": "apps/web-declarative/src/pages/NewPost.tsx",
+      "endpoint": "POST /api/posts"
+    },
+    {
+      "file": "apps/web-declarative/src/pages/Users.tsx",
+      "endpoint": "GET /api/users"
+    },
+    {
+      "file": "apps/web-declarative/src/pages/Users.tsx",
+      "endpoint": "POST /api/users"
+    },
+    {
+      "file": "apps/web-declarative/src/pages/UserProfile.tsx",
+      "endpoint": "GET /api/users/:userId"
+    },
+    {
+      "file": "apps/web-framework/app/dashboard/index.tsx",
+      "endpoint": "GET /api/posts"
+    },
+    {
+      "file": "apps/web-framework/app/admin/users.tsx",
+      "endpoint": "GET /api/users"
+    },
+    {
+      "file": "apps/web-framework/app/admin/user.tsx",
+      "endpoint": "GET /api/users/:userId"
+    },
+    {
+      "file": "apps/web-framework/app/routes/flat/articles._index.tsx",
+      "endpoint": "GET /api/posts"
+    },
+    {
+      "file": "apps/web-framework/app/routes/flat/articles.$articleId.tsx",
+      "endpoint": "GET /api/posts/:postId"
+    },
+    {
+      "file": "apps/web-framework/app/routes/flat/articles_.new.tsx",
+      "endpoint": "POST /api/posts"
+    },
+    {
+      "file": "apps/web-framework/app/routes/flat/_auth.login.tsx",
+      "endpoint": "POST /api/users"
+    }
+  ]
+}
