@@ -4,6 +4,8 @@ export interface GraphNode {
   id: string;
   kind: string;
   label: string;
+  /** Overlay: the label before a person's label replaced it (spec section 11, "Overlay at view time"). */
+  labelOriginal?: string;
   /** Workspace nodes only: `label` without the npm scope shared by most workspaces (see views/labels.ts). */
   shortLabel?: string;
   parent?: string;

@@ -55,7 +55,7 @@ function slugPair(store: Store): [string, string] {
 }
 
 describe("the overlay file (overlay.db)", () => {
-  it("is created by the first openStore and holds dismissals and layouts; gantry.db has neither", async () => {
+  it("is created by the first openStore and holds the curation tables; gantry.db has none of them", async () => {
     const paths = await setup();
     expect(paths.overlayPath).toBe(join(paths.dataDir, "overlay.db"));
     const s = open(paths);
@@ -68,7 +68,15 @@ describe("the overlay file (overlay.db)", () => {
     const ov = (
       s.db.prepare("SELECT name FROM overlay.sqlite_master WHERE type = 'table'").all() as { name: string }[]
     ).map((r) => r.name);
-    expect(ov.sort()).toEqual(["dismissals", "layouts"]);
+    expect(ov.sort()).toEqual([
+      "dismissals",
+      "group_rules",
+      "groups",
+      "hidden",
+      "labels",
+      "layouts",
+      "views",
+    ]);
     s.close();
   });
 

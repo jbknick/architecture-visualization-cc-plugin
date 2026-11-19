@@ -1,5 +1,6 @@
 import { closeSync, fstatSync, openSync, readSync, realpathSync } from "node:fs";
 import path from "node:path";
+import type { FilterSpec } from "@gantry/core";
 import {
   behaviorOf,
   countEffective,
@@ -15,9 +16,11 @@ import {
   MAX_FILE_BYTES,
   nameOfSymId,
   pathOfFileId,
+  readOverlay,
 } from "@gantry/core";
 import { HttpError } from "./errors.js";
 import { getLayout } from "./layout.js";
+import { applyOverlay } from "./overlay.js";
 import type { ApiContext, ViewLevel, ViewModule, ViewParams } from "./types.js";
 import { adapterNodeBody } from "./views/adapterNode.js";
 import { getView, listViews } from "./views/index.js";
@@ -76,6 +79,9 @@ export function handleApi(ctx: ApiContext, pathname: string, query: URLSearchPar
       return source(ctx, query);
     case "layout":
       return getLayout(ctx.store, decodeSegment(segments[2]));
+    case "overlay":
+      if (segments.length > 2) throw new HttpError(404, "Unknown API route");
+      return readOverlay(ctx.store);
     default:
       throw new HttpError(404, "Unknown API route");
   }
@@ -122,20 +128,35 @@ function view(ctx: ApiContext, id: string, query: URLSearchParams) {
   const mod = getView(id);
   if (!mod) throw new HttpError(404, `Unknown view: ${id}`);
   if (!isEnabled(ctx, mod)) throw new HttpError(404, `View disabled: ${id}`);
+  const state = readOverlay(ctx.store);
+  // A saved view's level, focus and filters are the defaults; query parameters given explicitly win.
+  let spec: FilterSpec | undefined;
+  const savedId = query.get("saved");
+  if (savedId !== null) {
+    const saved = state.views.find((v) => v.id === savedId);
+    if (!saved) throw new HttpError(404, `Unknown saved view: ${savedId}`);
+    if (saved.spec.view !== id) {
+      throw new HttpError(400, `Saved view ${savedId} is for view ${saved.spec.view}, not ${id}`);
+    }
+    spec = saved.spec;
+  }
   const rawFilters = query.get("filters") ?? "";
   const filters = rawFilters
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const params: ViewParams = { filters, options: parseOptions(rawFilters, filters, query) };
-  const level = query.get("level");
+  const params: ViewParams = {
+    filters,
+    options: { ...spec?.filters, ...parseOptions(rawFilters, filters, query) },
+  };
+  const level = query.get("level") || spec?.level;
   if (level) {
     if (!(VIEW_LEVELS as readonly string[]).includes(level)) {
       throw new HttpError(400, `level must be one of ${VIEW_LEVELS.join(", ")}`);
     }
     params.level = level as ViewLevel;
   }
-  const focus = query.get("focus");
+  const focus = query.get("focus") || spec?.focus;
   if (focus) params.focus = focus;
   const depth = query.get("depth");
   if (depth !== null) {
@@ -143,7 +164,10 @@ function view(ctx: ApiContext, id: string, query: URLSearchParams) {
     if (!Number.isInteger(n) || n < 0 || n > 20) throw new HttpError(400, "depth must be an integer 0-20");
     params.depth = n;
   }
-  return mod.build(ctx, params);
+  const built = mod.build(ctx, params);
+  return built instanceof Promise
+    ? built.then((r) => applyOverlay(ctx, r, state, spec))
+    : applyOverlay(ctx, built, state, spec);
 }
 
 interface Labeler {
