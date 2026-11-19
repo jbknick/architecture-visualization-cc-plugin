@@ -12,29 +12,33 @@ Status: draft plan, not yet contracts. Nothing here has been reviewed or spiked;
 
 Everything here runs on the user's machine or in their CI, makes no model calls outside their own Claude session, and is free.
 
+**UI kit.** Every UI in this plan (the curation overlay's rename, hide, group and pin controls and view switcher, the review view's outer ring and hub entries, gate labels, and M20's confirm-the-area flow) is built from SmoothUI components (https://smoothui.dev/) with Hugeicons icons (https://hugeicons.com/react-icons, the free `@hugeicons/core-free-icons` set through `@hugeicons/react`). The explorer adopts the kit first, as side work (#252); see "UI kit" below.
+
 ## Milestones and paths
 
 | Milestone                                | Path      | What a user can do at the end                                                                                                                                                           |
 | ---------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **M16 Duplicates report and PR comment** | Side work | Print a duplicates report with one command; get one comment on every pull request listing the duplicates it adds and its blast radius.                                                  |
+| **UI kit**                               | Side work | The explorer's panels, bars and controls use SmoothUI components and Hugeicons icons, in light and dark, with the canvases unchanged.                                                   |
 | **M17 Curation overlay**                 | Path C    | Rename, hide, group and pin on the map by selection or by prompt; save views that survive re-indexing; get a warning when an edit crosses a group.                                      |
 | **M18 Deeper blast radius**              | Path D    | See every consumer a change can reach, not only three hops, ranked by hop, confidence and fan-in, with hubs collapsed into one entry each.                                              |
 | **M19 Gate-aware blast radius**          | Path D    | See consumers that sit behind a condition the code proves false, or behind arguments no caller passes, marked "behind a gate" with the condition, in a lower tier.                      |
 | **M20 Plan to actual**                   | Path C    | From a plan committed before the work, get a proposed area and radius with confidence; confirm it on the map; get a note when an edit leaves it; see estimate against actual in the PR. |
 
 - **Side work (M16):** runs on what exists today and comes first; M18 to M20 add to its comment.
+- **Side work (UI kit, #252):** runs on what exists today and lands before M17, the first milestone that adds UI.
 - **Path C (M17 → M20):** M20 confirms its area by selecting nodes on the map and stores it beside M17's overlay.
 - **Path D (M18 → M19):** both change the review engine (`core/review/impact.ts`). M19's tiers are M18's.
 
 ### Where this sits relative to V2
 
-| Milestone | Needs                                                                                   |
-| --------- | --------------------------------------------------------------------------------------- |
-| M16       | nothing                                                                                 |
-| M17       | M7 (one data dir, no migrations); the repo part in stable IDs (M11's first issue, #214) |
-| M18       | nothing                                                                                 |
-| M19       | M10's constant evaluator; M9's argument-flow helper; M18's tiers                        |
-| M20       | M16 (the comment), M17 (selection and storage)                                          |
+| Milestone | Needs                                                                                                      |
+| --------- | ---------------------------------------------------------------------------------------------------------- |
+| M16       | nothing                                                                                                    |
+| M17       | M7 (one data dir, no migrations); the repo part in stable IDs (M11's first issue, #214); the UI kit (#252) |
+| M18       | nothing                                                                                                    |
+| M19       | M10's constant evaluator; M9's argument-flow helper; M18's tiers                                           |
+| M20       | M16 (the comment), M17 (selection and storage)                                                             |
 
 M17 waits for the repo part in stable IDs so that overlay entries are not re-keyed under it. That change is M11's first issue in V2's Path B; landing it straight after M7 helps both plans.
 
@@ -46,6 +50,19 @@ M17 waits for the repo part in stable IDs so that overlay entries are not re-key
 - **Unverified:** how the CLI is installed in a runner (today it runs from a clone; this needs a published package or a tagged build); cold index plus review time on a hosted runner; the comment size limit on large PRs; pull requests from forks, whose token cannot comment.
 
 Spec sections touched: 1 (the Action is not repo CI), 3 (`action/`), 10, 11, 13.
+
+## UI kit (side work, #252)
+
+- **Components:** SmoothUI, a copy-paste registry of animated React components (MIT) on Tailwind CSS 4, Motion and shadcn. Components are added with `pnpm dlx shadcn@latest add @smoothui/<name>` into `packages/explorer/web/src/components/smoothui/`, on a `base-*` (Base UI) shadcn style, and committed as source with SmoothUI's MIT notice. `SOURCES.md` beside them lists each component, its registry URL and the date copied; nothing is fetched at build time.
+- **Fallback order:** a SmoothUI component; else a shadcn primitive on the same style; else hand-written, with the reason in the PR.
+- **Icons:** Hugeicons only, through `HugeiconsIcon` from `@hugeicons/react` with icons from `@hugeicons/core-free-icons` (MIT). Icon imports that come with copied components (for example `lucide-react`) are replaced. No `@hugeicons-pro` package: its licence does not allow open-source icon assets.
+- **What changes:** the chrome (top bar, left panel, inspector, status bar, search, lists, badges, review and cross-stack panels). The canvases (sigma, flow, three) keep drawing as they do.
+- **Theme:** the explorer's light and dark tokens become the CSS variables the components read.
+- **Determinism:** animations respect `prefers-reduced-motion`, and Playwright e2e and `pnpm readme:media` force reduced motion, so a second `pnpm build && pnpm readme:media` changes no PNG.
+- **New dependencies** (section 2): `@hugeicons/react`, `@hugeicons/core-free-icons`, `tailwindcss`, `@tailwindcss/vite`, `motion`, `clsx`, `tailwind-merge`, and the Base UI package the style needs. The shadcn CLI runs through `pnpm dlx` and is not a dependency.
+- **Verify:** `pnpm check`; the explorer's Playwright suites; `pnpm readme:media` twice with no diff; `rg -n "lucide-react|@hugeicons-pro" packages/explorer` prints nothing; the perf spec's budgets hold and the PR records the bundle-size change; every view on `fixtures/pnpm-turbo`, opened from the built CLI in light and dark, matches the regenerated README images.
+
+Spec sections touched: 2, 11.
 
 ## M17 Curation overlay (Path C)
 
@@ -121,6 +138,7 @@ Each is a report under `docs/spikes/<name>.md` with a verdict, on public repos o
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
 | 1 Ground rules         | The shipped GitHub Action is not CI for this repo. `gantry plan save` writes an estimate file into the repo, on request only.                                                                                               | M16, M20      |
 | 3 Repo layout          | `action/`.                                                                                                                                                                                                                  | M16           |
+| 2 Dependencies         | The UI kit's packages (see "UI kit").                                                                                                                                                                                       | UI kit        |
 | 4 Paths and data       | `overlay.db` in the data dir.                                                                                                                                                                                               | M17           |
 | 5 Config               | `views.slices` replaced by overlay groups. Plan paths glob. No `block` mode for boundaries or scope.                                                                                                                        | M17, M20      |
 | 7 Core types           | `Selector`, `FilterSpec`, `Group`, `SavedView`, `PlanEstimate`. Edge fields for conditional sites. Tier `reachable` and `gated`.                                                                                            | M17 to M20    |
