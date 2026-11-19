@@ -33,3 +33,41 @@ func (s *Store) Put(key, value string) {
 	defer s.mu.Unlock()
 	s.items[key] = value
 }
+
+// Mirror is a second Reader: it answers every key with its own prefix.
+type Mirror struct {
+	prefix string
+}
+
+// Get returns the prefix and key joined.
+func (m *Mirror) Get(key string) (string, bool) {
+	return m.prefix + key, true
+}
+
+// Cache embeds a Store and counts reads.
+type Cache struct {
+	Store
+	hits int
+}
+
+// Warm stores a value through the embedded Store.
+func Warm(c *Cache) {
+	c.Put("warm", "up")
+}
+
+// Lookup reads key from any Reader.
+func Lookup(r Reader, key string) string {
+	v, _ := r.Get(key)
+	return v
+}
+
+// Dump counts the stores in the slice that hold key.
+func Dump(stores []*Store, key string) int {
+	n := 0
+	for _, s := range stores {
+		if _, ok := s.Get(key); ok {
+			n++
+		}
+	}
+	return n
+}
