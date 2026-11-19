@@ -52,7 +52,7 @@ export function registerBacklog(program: Command): void {
           process.exitCode = EXIT_OK;
           return;
         }
-        const store = openStore(paths.dbPath);
+        const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
         try {
           const indexed = isIndexed(store);
           if (opts.retryFailed) {

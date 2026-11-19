@@ -16,7 +16,7 @@ export const INIT_REMINDER = "Gantry: run /gantry:init to index this repo";
 export async function sessionStart(paths: GantryPaths): Promise<string | undefined> {
   if (!fs.existsSync(paths.dbPath)) return INIT_REMINDER;
   await heal(paths);
-  const store = openStore(paths.dbPath);
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
   let n: number;
   try {
     if (!isIndexed(store)) return INIT_REMINDER;

@@ -103,7 +103,7 @@ describe("M2 badges", () => {
   it("a dismissed pair no longer badges, but a symbol with another live pair still does", () => {
     // Insert the dismissal only (the edge stays) to prove the badge itself honours it.
     const [lo, hi] = SLUG_WEB < SLUG_UTILS ? [SLUG_WEB, SLUG_UTILS] : [SLUG_UTILS, SLUG_WEB];
-    store.db.prepare("INSERT INTO dismissals(a, b, reason) VALUES (?, ?, 'test')").run(lo, hi);
+    store.db.prepare("INSERT INTO overlay.dismissals(a, b, reason) VALUES (?, ?, 'test')").run(lo, hi);
     const r = symbols();
     expect(badgesOf(r, SLUG_WEB)).not.toContain("dup");
     expect(badgesOf(r, SLUG_UTILS)).not.toContain("dup");
