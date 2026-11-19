@@ -6,7 +6,7 @@ import {
   hashSymbol,
   loadConfigForDb,
   openStore,
-  parseSource,
+  parseFile,
   type Store,
   type SymbolRecord,
 } from "@gantry/core";
@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   type DupFinding,
   diskCheck,
+  duplicateFindings,
   formatCapped,
   formatFinding,
   formatLines,
@@ -93,15 +94,16 @@ describe("diskCheck: the exact tier on a renamed copy (#151)", () => {
     source: string,
     opts: { renamed?: boolean; noShape?: boolean } = {},
   ): SymbolRecord {
-    const parsed = parseSource("repo", rel, source);
+    const parsed = parseFile("repo", rel, source);
     const sym = parsed.symbols.find((x) => x.name === name);
     const range = sym && parsed.bodies.get(sym.id);
     if (!sym || !range) throw new Error("no symbol");
     const h = hashSymbol(source, range, rel);
     const fileId = `file:repo:${rel}`;
+    const lang = rel.endsWith(".go") ? "go" : "typescript";
     const rec: SymbolRecord = {
       ...sym,
-      lang: "typescript",
+      lang,
       fileId,
       exactHash: h.exactHash,
       ...(opts.renamed === false ? {} : { renamedHash: h.renamedHash }),
@@ -116,7 +118,7 @@ describe("diskCheck: the exact tier on a renamed copy (#151)", () => {
       {
         id: fileId,
         path: rel,
-        lang: "typescript",
+        lang,
         workspaceId: null,
         contentHash: rel,
         mtimeMs: 0,
@@ -197,5 +199,57 @@ describe("diskCheck: the exact tier on a renamed copy (#151)", () => {
     const old = put(store, "src/old.ts", "clampDouble", fn("clampDouble", "const scaled = capped * 3;"));
     write(root, "src/old.ts", fn("clampDouble"));
     expect(diskCheck(root, store, config)(finding(mine, old, "code_vector"))).toBe(false);
+  });
+
+  describe("Go functions (#223)", () => {
+    const goFn = (name: string, limit = "100"): string =>
+      `package util
+
+func ${name}(values []int, factor int) int {
+	total := 0
+	for _, v := range values {
+		if v < 0 {
+			continue
+		}
+		total += v * factor
+	}
+	if total > ${limit} {
+		total = 100
+	}
+	return total
+}
+`;
+
+    it("a near copy of a Go function gives one note naming the Go function it copies", async () => {
+      const { store, config } = setup();
+      const old = put(store, "internal/util/sum.go", "ScaledSum", goFn("ScaledSum"));
+      // Another language's function with the same logic is not a candidate.
+      put(
+        store,
+        "web/sum.ts",
+        "scaledSum",
+        "export function scaledSum(a: number): number {\n  return a;\n}\n",
+      );
+      const mine = put(store, "internal/other/total.go", "CappedTotal", goFn("CappedTotal", "250"));
+      const notes = await duplicateFindings(store, [mine], config);
+      expect(notes).toHaveLength(1);
+      expect(notes[0]).toMatchObject({
+        kind: "duplicate",
+        name: "CappedTotal",
+        existing: "ScaledSum",
+        existingPath: "internal/util/sum.go",
+        tier: "near",
+      });
+      expect(notes[0]?.existingId).toBe(old.id);
+    });
+
+    it("the double-check hashes a Go file with the Go rules: an unchanged Go function keeps its note", () => {
+      const { root, store, config } = setup();
+      const mine = put(store, "internal/other/total.go", "CappedTotal", goFn("CappedTotal"));
+      const old = put(store, "internal/util/sum.go", "ScaledSum", goFn("ScaledSum"));
+      write(root, "internal/util/sum.go", goFn("ScaledSum"));
+      const f = { ...finding(mine, old, "exact"), path: "internal/other/total.go" };
+      expect(diskCheck(root, store, config)({ ...f, existingPath: "internal/util/sum.go" })).toBe(true);
+    });
   });
 });

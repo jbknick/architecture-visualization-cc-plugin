@@ -5,6 +5,7 @@
     "go/*.ts",
     "go-search/*.ts",
     "m2/*.ts",
+    "seeded-duplicates-go/*.ts",
     "run-m2.ts",
     "fixtures/*.ts",
     "oss/*.ts",

@@ -4,6 +4,7 @@ import { fileId as makeFileId, pathOfFileId, repoOfId, symIdOfFileId } from "../
 import type { Store } from "../store/index.js";
 import type { Description, SymbolRecord, WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
+import { adviseGo } from "./go.js";
 import { cmp, entryPoints, normPath, packageJsonPath, SCRIPT_EXTS, targetCandidates } from "./util.js";
 
 /**
@@ -167,9 +168,12 @@ export function adviseReuse(
   const matchRel = pathOfFileId(match.fileId);
   if (matchRel !== caller) {
     const all = store.listWorkspaces();
-    const callerWs = all.length > 0 ? workspaceForPath(all, caller) : undefined;
-    const matchWs = all.length > 0 ? workspaceForPath(all, matchRel) : undefined;
-    if (callerWs && matchWs) out.push(...primary(store, all, caller, callerWs, match, matchRel, matchWs));
+    if (match.lang === "go") out.push(...adviseGo(store, all, caller, match));
+    else {
+      const callerWs = all.length > 0 ? workspaceForPath(all, caller) : undefined;
+      const matchWs = all.length > 0 ? workspaceForPath(all, matchRel) : undefined;
+      if (callerWs && matchWs) out.push(...primary(store, all, caller, callerWs, match, matchRel, matchWs));
+    }
   }
   if (config?.renameSuggestions === true && description?.nameFits === false && description.suggestedName) {
     out.push({

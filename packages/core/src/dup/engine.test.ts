@@ -954,6 +954,24 @@ describe("duplicates never cross languages (#220)", () => {
     expect(await rebuildSimilarEdges(store)).toBe(1);
   });
 
+  it("Go init and _ functions are never candidates, however alike (#223)", async () => {
+    const { store } = tmpStore();
+    const hashes = { exactHash: "e9", renamedHash: "r9", shapeHash: "s9", minhash: randomMinhash(rng(9)) };
+    const [a] = addFile(store, "a/a.go", [{ ...hashes, name: "Load" }], "go");
+    addFile(
+      store,
+      "b/b.go",
+      [
+        { ...hashes, name: "init" },
+        { ...hashes, name: "_" },
+      ],
+      "go",
+    );
+    addFile(store, "c/c.go", [{ ...hashes, name: "Read" }], "go");
+    const r = await findDuplicatesDetailed(store, { symbol: a as SymbolRecord });
+    expect(ids(r.candidates)).toEqual(["sym:repo:c/c.go#Read"]);
+  });
+
   it("thresholdsFor returns the configured values for both languages", () => {
     const { store } = tmpStore();
     const config = loadConfigForDb(store.db.name, { HOME: "/nonexistent" });
