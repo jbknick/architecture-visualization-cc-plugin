@@ -1,0 +1,48 @@
+{
+  "repo": "ecom",
+  "sha": "6cc220748ec673a15fb818fd39843347244f39c3",
+  "labelledBy": "agent claude-sonnet-5-5, read call site by call site; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    {
+      "name": "users"
+    },
+    {
+      "name": "products"
+    },
+    {
+      "name": "orders"
+    },
+    {
+      "name": "order_items"
+    }
+  ],
+  "read": [
+    {
+      "file": "services/user/store.go",
+      "table": "users"
+    },
+    {
+      "file": "services/product/store.go",
+      "table": "products"
+    }
+  ],
+  "write": [
+    {
+      "file": "services/user/store.go",
+      "table": "users"
+    },
+    {
+      "file": "services/product/store.go",
+      "table": "products"
+    },
+    {
+      "file": "services/order/store.go",
+      "table": "orders"
+    },
+    {
+      "file": "services/order/store.go",
+      "table": "order_items"
+    }
+  ]
+}

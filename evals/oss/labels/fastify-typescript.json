@@ -1,0 +1,34 @@
+{
+  "repo": "fastify-typescript",
+  "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783",
+  "labelledBy": "agent claude-sonnet-5-5, read call site by call site; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    {
+      "name": "users"
+    },
+    {
+      "name": "Post"
+    }
+  ],
+  "read": [
+    {
+      "file": "src/controllers/user.controller.ts",
+      "table": "users"
+    },
+    {
+      "file": "src/helpers/auth.helper.ts",
+      "table": "users"
+    }
+  ],
+  "write": [
+    {
+      "file": "src/controllers/user.controller.ts",
+      "table": "users"
+    },
+    {
+      "file": "src/controllers/post.controller.ts",
+      "table": "Post"
+    }
+  ]
+}

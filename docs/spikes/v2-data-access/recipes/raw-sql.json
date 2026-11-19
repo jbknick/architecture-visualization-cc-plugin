@@ -1,0 +1,11 @@
+{
+  "name": "raw-sql",
+  "frameworks": [
+    { "name": "pg", "evidence": "SQL in template literals and strings run through a pg client" }
+  ],
+  "languages": ["typescript"],
+  "helpers": ["resolve-names", "const-strings", "call-return", "sql-text"],
+  "exclude": ["test/**", "docs/**", "**/tests/**", "**/test/**", "**/__tests__/**"],
+  "sql": { "tags": ["sql"], "knownTablesOnly": true },
+  "rules": []
+}

@@ -59,11 +59,9 @@ describe("schema", () => {
   const valid = json(realRepos);
   it("validates the real evals/oss/repos.json", () => {
     const r = reposSchema.parse(valid);
-    expect(r.repos.map((x) => x.name)).toEqual([
-      "formbricks",
-      "node-express-realworld-example-app",
-      "react-tanstarter",
-    ]);
+    const names = r.repos.map((x) => x.name);
+    for (const n of ["formbricks", "node-express-realworld-example-app", "react-tanstarter"])
+      expect(names).toContain(n);
   });
   it("rejects a bad sha, a duplicate name and an unknown role", () => {
     const one = valid.repos[0];

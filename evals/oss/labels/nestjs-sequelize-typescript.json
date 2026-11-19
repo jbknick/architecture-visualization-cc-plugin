@@ -1,0 +1,38 @@
+{
+  "repo": "nestjs-sequelize-typescript",
+  "sha": "6ec21637a0ad70c8a4e7d9e2498cc8b284e3eb74",
+  "labelledBy": "agent claude-sonnet-5-5, read call site by call site; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    {
+      "name": "user"
+    },
+    {
+      "name": "post"
+    }
+  ],
+  "read": [
+    {
+      "file": "src/users/users.service.ts",
+      "table": "user"
+    },
+    {
+      "file": "src/posts/posts.service.ts",
+      "table": "post"
+    },
+    {
+      "file": "src/posts/posts.service.ts",
+      "table": "user"
+    }
+  ],
+  "write": [
+    {
+      "file": "src/users/users.service.ts",
+      "table": "user"
+    },
+    {
+      "file": "src/posts/posts.service.ts",
+      "table": "post"
+    }
+  ]
+}

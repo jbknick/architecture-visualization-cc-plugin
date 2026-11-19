@@ -1,0 +1,23 @@
+{
+  "repo": "myapp",
+  "sha": "fc188d3e95bcbd8501a4bd671750c982cc3e409d",
+  "labelledBy": "agent claude-sonnet-5-5, read call site by call site; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    {
+      "name": "books"
+    }
+  ],
+  "read": [
+    {
+      "file": "app/book/bookrepo/repository.go",
+      "table": "books"
+    }
+  ],
+  "write": [
+    {
+      "file": "app/book/bookrepo/repository.go",
+      "table": "books"
+    }
+  ]
+}

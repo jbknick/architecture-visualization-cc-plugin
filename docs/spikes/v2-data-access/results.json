@@ -1,0 +1,754 @@
+{
+  "stacks": [
+    {
+      "stack": "drizzle",
+      "repo": "next-js-boilerplate",
+      "sha7": "b83157a",
+      "language": "ts",
+      "blocking": true,
+      "labels": {
+        "table": 1,
+        "read": 1,
+        "write": 1
+      },
+      "kinds": {
+        "table": {
+          "labelled": 1,
+          "predicted": 1,
+          "matched": 1,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 1,
+          "predicted": 1,
+          "matched": 1,
+          "recall": 1,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 1,
+          "predicted": 1,
+          "matched": 1,
+          "recall": 1,
+          "precision": 1
+        }
+      },
+      "recall": 1,
+      "precision": 1,
+      "pass": true,
+      "helpersDeclared": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+      "helpersFired": {
+        "method-classes": 3,
+        "model-naming": 1
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "0c6de4fc1041",
+      "lowConfidence": 0,
+      "lowConfidenceReasons": [],
+      "missed": {},
+      "extra": {}
+    },
+    {
+      "stack": "prisma",
+      "repo": "fastify-typescript",
+      "sha7": "3e195bf",
+      "language": "ts",
+      "blocking": true,
+      "labels": {
+        "table": 2,
+        "read": 2,
+        "write": 2
+      },
+      "kinds": {
+        "table": {
+          "labelled": 2,
+          "predicted": 2,
+          "matched": 2,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 2,
+          "predicted": 2,
+          "matched": 2,
+          "recall": 1,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 2,
+          "predicted": 2,
+          "matched": 2,
+          "recall": 1,
+          "precision": 1
+        }
+      },
+      "recall": 1,
+      "precision": 1,
+      "pass": true,
+      "helpersDeclared": [
+        "resolve-names",
+        "const-strings",
+        "text-rules",
+        "model-naming",
+        "method-classes",
+        "sql-text"
+      ],
+      "helpersFired": {
+        "method-classes": 5,
+        "model-naming": 5,
+        "text-rules": 3
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "f07214de3c6a",
+      "lowConfidence": 0,
+      "lowConfidenceReasons": [],
+      "missed": {},
+      "extra": {}
+    },
+    {
+      "stack": "typeorm",
+      "repo": "nestjs-boilerplate",
+      "sha7": "9620f15",
+      "language": "ts",
+      "blocking": false,
+      "labels": {
+        "table": 5,
+        "read": 6,
+        "write": 6
+      },
+      "kinds": {
+        "table": {
+          "labelled": 5,
+          "predicted": 5,
+          "matched": 5,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 6,
+          "predicted": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 6,
+          "predicted": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 1
+        }
+      },
+      "recall": 1,
+      "precision": 1,
+      "pass": true,
+      "helpersDeclared": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+      "helpersFired": {
+        "method-classes": 54,
+        "model-naming": 31
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "01c8650f76f5",
+      "lowConfidence": 0,
+      "lowConfidenceReasons": [],
+      "missed": {},
+      "extra": {}
+    },
+    {
+      "stack": "kysely",
+      "repo": "bun-fastify-starter-turbo-monorepo",
+      "sha7": "774fcfe",
+      "language": "ts",
+      "blocking": false,
+      "labels": {
+        "table": 2,
+        "read": 1,
+        "write": 2
+      },
+      "kinds": {
+        "table": {
+          "labelled": 2,
+          "predicted": 2,
+          "matched": 2,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 1,
+          "predicted": 1,
+          "matched": 1,
+          "recall": 1,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 2,
+          "predicted": 2,
+          "matched": 2,
+          "recall": 1,
+          "precision": 1
+        }
+      },
+      "recall": 1,
+      "precision": 1,
+      "pass": true,
+      "helpersDeclared": ["resolve-names", "const-strings", "model-naming"],
+      "helpersFired": {
+        "model-naming": 1
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "77f78c593434",
+      "lowConfidence": 0,
+      "lowConfidenceReasons": [],
+      "missed": {},
+      "extra": {}
+    },
+    {
+      "stack": "sequelize",
+      "repo": "nestjs-sequelize-typescript",
+      "sha7": "6ec2163",
+      "language": "ts",
+      "blocking": false,
+      "labels": {
+        "table": 2,
+        "read": 3,
+        "write": 2
+      },
+      "kinds": {
+        "table": {
+          "labelled": 2,
+          "predicted": 2,
+          "matched": 2,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 3,
+          "predicted": 3,
+          "matched": 3,
+          "recall": 1,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 2,
+          "predicted": 2,
+          "matched": 2,
+          "recall": 1,
+          "precision": 1
+        }
+      },
+      "recall": 1,
+      "precision": 1,
+      "pass": true,
+      "helpersDeclared": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+      "helpersFired": {
+        "method-classes": 22,
+        "resolve-names": 6
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "2d59ac56b3cc",
+      "lowConfidence": 0,
+      "lowConfidenceReasons": [],
+      "missed": {},
+      "extra": {}
+    },
+    {
+      "stack": "mikro-orm",
+      "repo": "express-ts-example-app",
+      "sha7": "03b5461",
+      "language": "ts",
+      "blocking": false,
+      "labels": {
+        "table": 4,
+        "read": 4,
+        "write": 2
+      },
+      "kinds": {
+        "table": {
+          "labelled": 4,
+          "predicted": 4,
+          "matched": 4,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 4,
+          "predicted": 2,
+          "matched": 2,
+          "recall": 0.5,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 2,
+          "predicted": 2,
+          "matched": 2,
+          "recall": 1,
+          "precision": 1
+        }
+      },
+      "recall": 0.5,
+      "precision": 1,
+      "pass": false,
+      "helpersDeclared": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+      "helpersFired": {
+        "method-classes": 9,
+        "resolve-names": 8
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "1c686380b6a0",
+      "lowConfidence": 0,
+      "lowConfidenceReasons": [],
+      "missed": {
+        "read": ["app/controllers/author.controller.ts|book", "app/controllers/book.controller.ts|author"]
+      },
+      "extra": {}
+    },
+    {
+      "stack": "mongoose",
+      "repo": "express-mongodb-rest-api-boilerplate",
+      "sha7": "0ed1f89",
+      "language": "ts",
+      "blocking": false,
+      "labels": {
+        "table": 7,
+        "read": 12,
+        "write": 11
+      },
+      "kinds": {
+        "table": {
+          "labelled": 7,
+          "predicted": 7,
+          "matched": 7,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 12,
+          "predicted": 6,
+          "matched": 6,
+          "recall": 0.5,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 11,
+          "predicted": 9,
+          "matched": 9,
+          "recall": 0.8182,
+          "precision": 1
+        }
+      },
+      "recall": 0.5,
+      "precision": 1,
+      "pass": false,
+      "helpersDeclared": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+      "helpersFired": {
+        "method-classes": 68,
+        "resolve-names": 65
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "3c8de14b1cb3",
+      "lowConfidence": 0,
+      "lowConfidenceReasons": [],
+      "missed": {
+        "read": [
+          "src/app/runtime/commands/database/indexes.ts|media",
+          "src/app/runtime/commands/database/indexes.ts|resetpassword",
+          "src/app/runtime/commands/database/indexes.ts|user",
+          "src/app/runtime/commands/database/indexes.ts|verification",
+          "src/app/runtime/commands/database/migrate.ts|resetpassword",
+          "src/app/runtime/commands/database/migrate.ts|verification"
+        ],
+        "write": [
+          "src/app/runtime/commands/database/migrate.ts|resetpassword",
+          "src/app/runtime/commands/database/migrate.ts|verification"
+        ]
+      },
+      "extra": {}
+    },
+    {
+      "stack": "raw-sql",
+      "repo": "pg-boss",
+      "sha7": "a2956ff",
+      "language": "ts",
+      "blocking": true,
+      "labels": {
+        "table": 12,
+        "read": 20,
+        "write": 18
+      },
+      "kinds": {
+        "table": {
+          "labelled": 12,
+          "predicted": 12,
+          "matched": 12,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 20,
+          "predicted": 20,
+          "matched": 20,
+          "recall": 1,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 18,
+          "predicted": 18,
+          "matched": 18,
+          "recall": 1,
+          "precision": 1
+        }
+      },
+      "recall": 1,
+      "precision": 1,
+      "pass": true,
+      "helpersDeclared": ["resolve-names", "const-strings", "call-return", "sql-text"],
+      "helpersFired": {
+        "call-return": 4,
+        "const-strings": 5,
+        "resolve-names": 63,
+        "sql-text": 212,
+        "sql-undeclared-skipped": 106
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "6d5d97b8f5b7",
+      "lowConfidence": 66,
+      "lowConfidenceReasons": ["table name is built at runtime"],
+      "missed": {},
+      "extra": {}
+    },
+    {
+      "stack": "database-sql",
+      "repo": "ecom",
+      "sha7": "6cc2207",
+      "language": "go",
+      "blocking": true,
+      "labels": {
+        "table": 4,
+        "read": 2,
+        "write": 4
+      },
+      "kinds": {
+        "table": {
+          "labelled": 4,
+          "predicted": 4,
+          "matched": 4,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 2,
+          "predicted": 2,
+          "matched": 2,
+          "recall": 1,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 4,
+          "predicted": 4,
+          "matched": 4,
+          "recall": 1,
+          "precision": 1
+        }
+      },
+      "recall": 1,
+      "precision": 1,
+      "pass": true,
+      "helpersDeclared": ["sql-text"],
+      "helpersFired": {
+        "sql-text": 14
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "6224632225e3",
+      "lowConfidence": 0,
+      "lowConfidenceReasons": [],
+      "missed": {},
+      "extra": {}
+    },
+    {
+      "stack": "sqlx",
+      "repo": "openencoder",
+      "sha7": "7bf6149",
+      "language": "go",
+      "blocking": true,
+      "labels": {
+        "table": 6,
+        "read": 12,
+        "write": 11
+      },
+      "kinds": {
+        "table": {
+          "labelled": 6,
+          "predicted": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 12,
+          "predicted": 12,
+          "matched": 12,
+          "recall": 1,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 11,
+          "predicted": 11,
+          "matched": 11,
+          "recall": 1,
+          "precision": 1
+        }
+      },
+      "recall": 1,
+      "precision": 1,
+      "pass": true,
+      "helpersDeclared": ["sql-text"],
+      "helpersFired": {
+        "sql-text": 87
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "b70b23805722",
+      "lowConfidence": 0,
+      "lowConfidenceReasons": [],
+      "missed": {},
+      "extra": {}
+    },
+    {
+      "stack": "sqlc",
+      "repo": "simplebank",
+      "sha7": "97f000f",
+      "language": "go",
+      "blocking": false,
+      "labels": {
+        "table": 6,
+        "read": 5,
+        "write": 6
+      },
+      "kinds": {
+        "table": {
+          "labelled": 6,
+          "predicted": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 5,
+          "predicted": 5,
+          "matched": 5,
+          "recall": 1,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 6,
+          "predicted": 6,
+          "matched": 6,
+          "recall": 1,
+          "precision": 1
+        }
+      },
+      "recall": 1,
+      "precision": 1,
+      "pass": true,
+      "helpersDeclared": ["sql-text"],
+      "helpersFired": {
+        "sql-text": 26
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "28f7960f76d0",
+      "lowConfidence": 0,
+      "lowConfidenceReasons": [],
+      "missed": {},
+      "extra": {}
+    },
+    {
+      "stack": "gorm",
+      "repo": "myapp",
+      "sha7": "fc188d3",
+      "language": "go",
+      "blocking": true,
+      "labels": {
+        "table": 1,
+        "read": 1,
+        "write": 1
+      },
+      "kinds": {
+        "table": {
+          "labelled": 1,
+          "predicted": 1,
+          "matched": 1,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 1,
+          "predicted": 1,
+          "matched": 1,
+          "recall": 1,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 1,
+          "predicted": 1,
+          "matched": 1,
+          "recall": 1,
+          "precision": 1
+        }
+      },
+      "recall": 1,
+      "precision": 1,
+      "pass": true,
+      "helpersDeclared": ["sql-text"],
+      "helpersFired": {
+        "sql-text": 5
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "bfc8b00f8e93",
+      "lowConfidence": 0,
+      "lowConfidenceReasons": [],
+      "missed": {},
+      "extra": {}
+    },
+    {
+      "stack": "ent",
+      "repo": "ent",
+      "sha7": "8037bc8",
+      "language": "go",
+      "blocking": false,
+      "labels": {
+        "table": 21,
+        "read": 38,
+        "write": 49
+      },
+      "kinds": {
+        "table": {
+          "labelled": 21,
+          "predicted": 21,
+          "matched": 21,
+          "recall": 1,
+          "precision": 1
+        },
+        "read": {
+          "labelled": 38,
+          "predicted": 24,
+          "matched": 24,
+          "recall": 0.6316,
+          "precision": 1
+        },
+        "write": {
+          "labelled": 49,
+          "predicted": 41,
+          "matched": 41,
+          "recall": 0.8367,
+          "precision": 1
+        }
+      },
+      "recall": 0.6316,
+      "precision": 1,
+      "pass": false,
+      "helpersDeclared": ["model-naming", "method-classes"],
+      "helpersFired": {
+        "method-classes": 188,
+        "model-naming": 170
+      },
+      "deterministic": true,
+      "runs": 3,
+      "dumpSha": "1d4042b35a05",
+      "lowConfidence": 0,
+      "lowConfidenceReasons": [],
+      "missed": {
+        "read": [
+          "examples/m2m2types/example_test.go|group_users",
+          "examples/m2m2types/example_test.go|groups",
+          "examples/m2m2types/example_test.go|users",
+          "examples/m2mbidi/example_test.go|user_friends",
+          "examples/m2mrecur/example_test.go|user_following",
+          "examples/o2m2types/example_test.go|pets",
+          "examples/o2m2types/example_test.go|users",
+          "examples/o2o2types/example_test.go|cards",
+          "examples/o2o2types/example_test.go|users",
+          "examples/start/start.go|cars",
+          "examples/start/start.go|group_users",
+          "examples/traversal/example_test.go|pet_friends",
+          "examples/traversal/example_test.go|user_friends",
+          "examples/traversal/example_test.go|users"
+        ],
+        "write": [
+          "examples/m2m2types/example_test.go|group_users",
+          "examples/m2mbidi/example_test.go|user_friends",
+          "examples/m2mrecur/example_test.go|user_following",
+          "examples/privacytenant/example_test.go|user_groups",
+          "examples/start/start.go|group_users",
+          "examples/traversal/example_test.go|group_users",
+          "examples/traversal/example_test.go|pet_friends",
+          "examples/traversal/example_test.go|user_friends"
+        ]
+      },
+      "extra": {}
+    }
+  ],
+  "drizzleFixtures": {
+    "pnpm-turbo": {
+      "tables": {
+        "recipe": 2,
+        "adapter": 2
+      },
+      "reads": {
+        "recipe": 2,
+        "adapter": 2
+      },
+      "writes": {
+        "recipe": 1,
+        "adapter": 1
+      },
+      "differences": [],
+      "exact": true,
+      "deterministic": true,
+      "adapterFieldsNotProduced": ["columns", "dialect", "symbol (table node)"]
+    },
+    "adapters": {
+      "tables": {
+        "recipe": 2,
+        "adapter": 2
+      },
+      "reads": {
+        "recipe": 5,
+        "adapter": 5
+      },
+      "writes": {
+        "recipe": 3,
+        "adapter": 3
+      },
+      "differences": [],
+      "exact": true,
+      "deterministic": true,
+      "adapterFieldsNotProduced": ["columns", "dialect", "symbol (table node)"]
+    }
+  },
+  "setup": {
+    "node": "v26.13.0",
+    "platform": "darwin arm64",
+    "cpu": "Apple M3 Pro",
+    "astGrepNapi": {
+      "@ast-grep/lang-go": "0.0.6",
+      "@ast-grep/napi": "0.51.3"
+    },
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "recallPrecisionDefinition": "per stack: the lowest recall and the lowest precision over the three kinds table, read, write"
+  }
+}
