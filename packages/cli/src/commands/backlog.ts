@@ -5,7 +5,6 @@ import {
   failedItems,
   isIndexed,
   openStore,
-  orphanedLegacyDataDir,
   resolvePaths,
   retryFailed,
 } from "@gantry/core";
@@ -37,13 +36,7 @@ export function registerBacklog(program: Command): void {
     .action((opts: BacklogOpts) => {
       try {
         const paths = resolvePaths(process.cwd());
-        const legacy = orphanedLegacyDataDir(paths);
-        const where = { data_dir: paths.dataDir, ...(legacy ? { legacy_data_dir: legacy } : {}) };
-        const notes = legacy
-          ? [
-              `Note: an older index for this repository is still in ${legacy} and is no longer used; see docs/INSTALL.md to remove it.`,
-            ]
-          : [];
+        const where = { data_dir: paths.dataDir };
         // Read-only: a repository with no index here gets no data dir created (#147).
         if (!fs.existsSync(paths.dbPath)) {
           if (opts.json) {
@@ -51,7 +44,7 @@ export function registerBacklog(program: Command): void {
             writeStdout(`${JSON.stringify({ ...body, ...where, indexed: false }, null, 2)}\n`);
           } else {
             writeStdout(
-              `${[`No Gantry index for this repository in ${paths.dataDir}. Run /gantry:init (or gantry init).`, ...notes].join("\n")}\n`,
+              `${[`No Gantry index for this repository in ${paths.dataDir}. Run /gantry:init (or gantry init).`].join("\n")}\n`,
             );
           }
           process.exitCode = EXIT_OK;
@@ -104,7 +97,6 @@ export function registerBacklog(program: Command): void {
                   : [
                       "Not initialised: the backlog was never built here. Run /gantry:init (or gantry init).",
                     ]),
-                ...notes,
               ];
               writeStdout(`${lines.join("\n")}\n`);
             }

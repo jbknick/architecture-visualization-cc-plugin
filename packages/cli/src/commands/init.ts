@@ -1,8 +1,10 @@
+import fs from "node:fs";
 import {
   BATCH_SIZE,
   BATCHES_PER_ROUND,
   type Estimate,
   estimate,
+  type GantryPaths,
   heal,
   indexRepo,
   openStore,
@@ -35,6 +37,11 @@ export function estimateLines(e: Estimate, exportsFirst: boolean): string[] {
   ];
 }
 
+export function noteFreshIndex(paths: GantryPaths): void {
+  if (fs.existsSync(paths.dbPath)) return;
+  process.stderr.write(`gantry: no index for this repository in ${paths.dataDir}; building a fresh one\n`);
+}
+
 export function registerInit(program: Command): void {
   program
     .command("init")
@@ -51,6 +58,7 @@ export function registerInit(program: Command): void {
     .action(async (opts: { estimate?: boolean; exportsFirst?: boolean; embed?: boolean }) => {
       try {
         const paths = resolvePaths(process.cwd());
+        noteFreshIndex(paths);
         const r = await indexRepo(paths, { layer: "main" });
         await heal(paths);
         const store = openStore(paths.dbPath);

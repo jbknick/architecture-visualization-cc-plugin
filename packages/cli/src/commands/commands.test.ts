@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   copyFileSync,
   existsSync,
@@ -76,6 +77,10 @@ afterAll(async () => {
   for (const f of fixtures.splice(0)) await f.cleanup();
 });
 
+/** The one stderr line a first `init` in a data dir without an index prints. */
+const FRESH_NOTE = (repoDir: string): string =>
+  `gantry: no index for this repository in ${resolvePaths(repoDir, { HOME: join(dataDir, "home"), CLAUDE_PLUGIN_DATA: dataDir }).dataDir}; building a fresh one\n`;
+
 function run(cwd: string, args: string[], extraEnv: Record<string, string> = {}) {
   const r = spawnSync("node", [cli, ...args], {
     cwd,
@@ -97,11 +102,35 @@ const BIG_FN =
   "export function sumPositive(xs: number[]) {\n  let total = 0;\n  for (const x of xs) {\n    if (x > 0) {\n      total += x;\n    }\n  }\n  const avg = total / xs.length;\n  return { total, avg };\n}\n" +
   "export function sumNegative(xs: number[]) {\n  let total = 0;\n  for (const x of xs) {\n    if (x < 0) {\n      total -= x;\n    }\n  }\n  const avg = total / xs.length;\n  return { total, avg };\n}\n";
 
+describe("gantry init: one data directory", () => {
+  it("builds a fresh index in an empty plugin data dir, says so on stderr and leaves ~/.gantry/data untouched", async () => {
+    const fx = await fixture("pnpm-turbo");
+    const home = mkdtempSync(join(tmpdir(), "gantry-onedir-home-"));
+    const plugin = mkdtempSync(join(tmpdir(), "gantry-onedir-plugin-"));
+    try {
+      const hash = resolvePaths(fx.dir, { HOME: home }).worktreeHash;
+      const legacyDb = join(home, ".gantry/data/repos", hash, "gantry.db");
+      expect(run(fx.dir, ["init"], { HOME: home, CLAUDE_PLUGIN_DATA: "" }).code).toBe(0);
+      const sha = () => createHash("sha256").update(readFileSync(legacyDb)).digest("hex");
+      const before = sha();
+      const r = run(fx.dir, ["init"], { HOME: home, CLAUDE_PLUGIN_DATA: plugin });
+      expect(r.code).toBe(0);
+      expect(r.err).toContain(`no index for this repository in ${join(plugin, "repos", hash)}`);
+      expect(existsSync(join(plugin, "repos", hash, "gantry.db"))).toBe(true);
+      expect(sha()).toBe(before);
+      expect(run(fx.dir, ["init"], { HOME: home, CLAUDE_PLUGIN_DATA: plugin }).err).toBe("");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+      rmSync(plugin, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("gantry init", () => {
   it("indexes fixtures/pnpm-turbo, prints a summary and exits 0 without touching the repo", async () => {
     const fx = await fixture("pnpm-turbo");
     const r = run(fx.dir, ["init"]);
-    expect(r.err).toBe("");
+    expect(r.err).toBe(FRESH_NOTE(fx.dir));
     expect(r.code).toBe(0);
     expect(r.out).toMatch(/Indexed \d+ files in \d+ ms/);
     expect(r.out).toMatch(/symbols:\s+\d+/);
@@ -115,7 +144,7 @@ describe("gantry init", () => {
   it("--estimate prints every estimate field for pnpm-turbo and makes no model calls", async () => {
     const fx = await fixture("pnpm-turbo");
     const r = run(fx.dir, ["init", "--estimate"]);
-    expect(r.err).toBe("");
+    expect(r.err).toBe(FRESH_NOTE(fx.dir));
     expect(r.code).toBe(0);
     expect(r.out).not.toContain("not estimated");
     const num = (label: string): number => {
@@ -177,7 +206,7 @@ describe("bundled CLI: vector tables and embeddings", () => {
   it("opens the store with migration v2 (sqlite-vec resolves from the bundle)", async () => {
     const fx = await fixture("single-pkg");
     const r = run(fx.dir, ["init"]);
-    expect(r.err).toBe("");
+    expect(r.err).toBe(FRESH_NOTE(fx.dir));
     expect(r.code).toBe(0);
     const db = openBundleDb();
     try {
@@ -208,7 +237,7 @@ describe("bundled CLI: vector tables and embeddings", () => {
     const t0 = Date.now();
     const r = run(fx.dir, ["init"], { GANTRY_MODELS_DIR: join(dataDir, "no-models-here") });
     const ms = Date.now() - t0;
-    expect(r.err).toBe("");
+    expect(r.err).toBe(FRESH_NOTE(fx.dir));
     expect(r.code).toBe(0);
     expect(ms).toBeLessThan(15_000);
     const db = openBundleDb();
