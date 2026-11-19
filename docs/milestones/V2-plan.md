@@ -29,7 +29,7 @@ The work is groundwork (M7) and then two paths. Path B is self-contained: it nee
 | **M11 Multirepo workspaces**          | Path B | List related repos once; search, duplicates, the map and go-to-source span all of them, and each repo stays up to date on its own.                                                                                                                                     |
 | **M13 Cross-repo call linking**       | Path B | A frontend call links to the handler in another repo, and a page in one repo traces to its handler and tables in another.                                                                                                                                              |
 
-- **Path A, TypeScript then the joined end (40 issues):** M9 → M10 → M8 → M14 → M15. M9 opens with two spikes (#245, #246), because agent-written recipes and generic data-access helpers are the bets the rest of V2 stands on. M10 follows, because a frontend calling an API through a client instance, a wrapper or an env-var base URL needs it next. M8 closes the remaining layout gaps: monorepos on pnpm, npm, yarn, bun, Nx and Turborepo already index.
+- **Path A, TypeScript then the joined end (41 issues):** M9 → M10 → M8 → M14 → M15. M9 opens with two spikes (#245, #246), because agent-written recipes and generic data-access helpers are the bets the rest of V2 stands on. M10 follows, because a frontend calling an API through a client instance, a wrapper or an env-var base URL needs it next. M8 closes the remaining layout gaps: monorepos on pnpm, npm, yarn, bun, Nx and Turborepo already index.
 - **Path B, Go and multirepo (17 issues):** M12 → M11 → M13. M12 goes first so the Go module is ready early for M14; M11 and M12 do not depend on each other.
 - **Groundwork (9 issues):** M7, built first, before both paths. It removes the legacy paths, makes the quality gate safe to run in several checkouts at once (#258), pins the toolchain (#259), adds the evaluation corpus (#260) and puts the repo part into stable IDs (#263), so the store schema changes of Path B (M11's repo column, M12's `lang` field) need no migration and nothing built later is re-keyed.
 
@@ -48,10 +48,10 @@ Touch points, not waits: M11's first issue adds a repo part to stable IDs (secti
 - Remove the legacy data-dir fallback (`~/.gantry/data`): the plugin data dir is the only location (section 4).
 - Remove the numbered store migrations and the `meta.index_format` re-index (#195). There is one schema. A store whose schema version is not the current one is deleted and rebuilt, and the user is told (sections 9, 11).
 
-- The quality gate runs beside untracked local files and never edits tracked sources (#258); Node and pnpm versions are pinned (#259).
+- The quality gate runs beside untracked local files and never edits tracked sources (#258); Node 26 and the pnpm version in use are pinned (#259).
 - The evaluation corpus, clone script and scoring script (#260; see "Verification").
 - `gantry review --json` is byte-stable (#261); search ranks the same function first with and without embeddings (#262).
-- **Stable IDs gain a repo part** (#263, section 6): file, symbol and adapter IDs carry a repo name that is the same on every machine and in CI. The name is the `repo` field of the workspace file, and by default the owner and name of the `origin` remote, or the directory name when there is no remote. Never a local path or `worktreeHash`.
+- **Stable IDs gain a repo part** (#263, section 6): file, symbol and adapter IDs carry a repo name that is the same on every machine and in CI. The name is the `repo` field of the workspace file, and by default the owner and name of the `origin` remote, or the directory name when there is no remote. Never a local path or `worktreeHash`. The repo part follows the prefix: `file:<repo>:<path>`, `sym:<repo>:<path>#<name>`, and the same for route, endpoint, middleware, table and client-call ids. Workspace ids (`ws:<package name>`) stay as they are.
 
 Spec sections touched: 1, 4, 6, 9, 11, 13, 14.
 
@@ -105,6 +105,7 @@ A table named only at runtime is a low-confidence node with a reason, never a gu
 
   `gantry recipe gaps` lists them, the SessionStart note has one line when any are open, and on-request discovery starts from them. Gaps never start the agent.
 - **Every change is checked and shown.** Examples must pass; a dry run over the whole repo shows routes, endpoints and tables added, removed and changed before the file is written; the user accepts or declines. Once written, the change is an ordinary diff to review and commit.
+- **Gaps in the explorer** (#314). The status bar counts the open gaps and a read-only panel lists them by kind, each with its file and line. The explorer still makes no model call.
 - **Dismissed gaps.** A gap the agent decides is not a route or table is recorded in the recipe as dismissed, with a reason, so it is not listed again.
 - **Discovery prompt** includes the ast-grep pattern pitfalls the spikes found, for example that a Go one-argument selector call needs the `context` plus `selector` form.
 
@@ -140,7 +141,7 @@ Runs straight after M9, before M8 (#242): it is what a frontend calling an API t
 
 Today `clients.ts` matches literal `fetch`/`ky`/`axios` URLs by method and path. On public full-stack repos it linked 1 of 70 linkable calls; the spike prototype linked 70 of 70 with no wrong links, but only 35% on a held-out repo before one fix, so the numbers below are targets to measure on held-out repos. Everything here works and is tested inside one repo.
 
-- **Client instances.** `axios.create`, `ky.create` and `ky.extend` are followed through imports, with each library's own URL joining rules.
+- **Client instances.** `axios.create`, `ky.create` and `ky.extend`, and the default instance configured through `axios.defaults.baseURL`, are followed through imports, with each library's own URL joining rules.
 - **Wrappers.** A function whose parameter supplies the start of the path or the method is inferred as a client wrapper; a recipe can list wrappers as an override.
 - **Constant URLs.** A small evaluator reads consts, enums, `as const` objects, env members, `??`, concatenation, `new URL` and both branches of a conditional.
 - **Base URLs.** The recipe maps `env:<NAME>`, `url:<origin>` and `path:<prefix>` to `{ workspace, prefix? }`, where `workspace` is a package in the repo (M13 lets it name a package in another repo). The prefix is required: in the held-out repo `VITE_API_URL` ends in `/api`, and the value is not in the repo (`.env*` is excluded as sensitive). The agent proposes the entries from the code, dev-server proxies and `.env.example`, and an unmatched call is listed as a gap for the next on-request run (#248).
@@ -151,7 +152,7 @@ Spec sections touched: 5, 7, 9, 15.
 
 ## M11 Multirepo workspaces (Path B)
 
-- **One store per workspace.** A workspace file lists repos by local path (no remote URLs). Its repos share one database with a repo column, so cross-repo edges, `trace` and search need no federated query layer. A repo used alone is a workspace of one.
+- **One store per workspace.** A workspace file, `gantry-workspace.json`, found by walking up from a repo, lists the repos of one Gantry project by local path (no remote URLs). Its repos share one database with a repo column, so cross-repo edges, `trace` and search need no federated query layer. A repo used alone is a workspace of one.
 - **Stable IDs already carry a repo part** (M7, #263), so file and symbol IDs stay unique across repos.
 - **Heal per repo.** Each repo's HEAD, hooks and working layer update only that repo's rows.
 - **Sibling packages.** A dependency on a package that a sibling repo publishes resolves to that repo's source, not `node_modules`.
@@ -252,7 +253,8 @@ Other order that the milestone order does not show:
 - #248 (gaps) comes before #205, because on-request discovery starts from the open gaps.
 - #247 deletes the Drizzle adapter; #206 deletes the oRPC and TanStack Start ones.
 - #212 is the fixed-recipe result for the five Go routers; #213 is the agent result for Go, on held-out repos, covering routers and data access.
-- M10's issues follow #203; M8's follow M10.
+- M10's issues follow #203. Its evaluation repos (#271) have Express or Fastify backends, so they are scored after #207 and #241; no M10 case waits for another framework. M8's issues follow M10.
+- #314 (gaps in the explorer) follows #248 and #252.
 
 ## Lost or at risk
 
