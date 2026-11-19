@@ -27,6 +27,7 @@ function honestSheet(idents: readonly string[] = []): FactSheet {
     id: `src/x.ts#${first}`,
     path: "src/x.ts",
     kind: "function",
+    language: "TypeScript",
     signature: `(${rest.map((i) => `${i}: unknown`).join(", ")}) => void`,
     doc: null,
     callees: [...rest],
