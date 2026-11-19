@@ -115,13 +115,15 @@ export function storeDescriptions(
  * attempt count and whether the row is now `failed` (attempts 0 when there is no such row). `extendable` (default
  * false: the caller must show it) allows the extra attempt for this failure; `tainted` (default true) marks
  * `last_error` with `NO_EXTRA_MARK`, which rules the extra attempt out after this failure. The read and the write run
- * in one transaction, so two processes recording a failure for the same row never lose an attempt (#175).
+ * in one transaction, so two processes recording a failure for the same row never lose an attempt (#175). With
+ * `batchId` the same transaction also checks that the row is still claimed by that batch (`claimed_by` ends in
+ * `:<batchId>`) and counts nothing otherwise (#180).
  */
 export function recordDescribeFailure(
   store: Store,
   key: string,
   errorText: string,
-  opts: { keepClaim?: boolean; extendable?: boolean; tainted?: boolean } = {},
+  opts: { keepClaim?: boolean; extendable?: boolean; tainted?: boolean; batchId?: string } = {},
 ): { attempts: number; failed: boolean } {
   const extendable = opts.extendable ?? false;
   const tainted = opts.tainted ?? true;
@@ -130,10 +132,16 @@ export function recordDescribeFailure(
     // The describer path counts only a row still claimed; the worker path any row not already failed.
     const row = store.db
       .prepare(
-        `SELECT attempts, last_error FROM backlog WHERE content_key = ? AND ${opts.keepClaim ? "status = 'claimed'" : "status <> 'failed'"}`,
+        `SELECT attempts, last_error, claimed_by FROM backlog WHERE content_key = ? AND ${opts.keepClaim ? "status = 'claimed'" : "status <> 'failed'"}`,
       )
-      .get(key) as { attempts: number | null; last_error: string | null } | undefined;
+      .get(key) as
+      | { attempts: number | null; last_error: string | null; claimed_by: string | null }
+      | undefined;
     if (!row) return { attempts: 0, failed: false };
+    // The batch-membership check is made here, in the same transaction as the write (#180): a row that another
+    // batch has claimed since the caller looked is not charged to this one.
+    if (opts.batchId !== undefined && !(row.claimed_by ?? "").endsWith(`:${opts.batchId}`))
+      return { attempts: 0, failed: false };
     const attempts = (row.attempts ?? 0) + 1;
     const failed =
       attempts >= describeAttemptLimit(attempts, errorReason(error), row.last_error, extendable && !tainted);

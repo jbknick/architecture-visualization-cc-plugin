@@ -186,7 +186,7 @@ export function diskCheck(root: string, store: Store, config: GantryConfig): (f:
     const disk = read(f.existingPath);
     const range = disk?.parsed.bodies.get(f.existingId);
     if (!disk || !range || !disk.parsed.symbols.some((s) => s.id === f.existingId)) return false;
-    const fresh = hashSymbol(disk.source, range, f.existingPath.endsWith("x") ? "tsx" : "ts");
+    const fresh = hashSymbol(disk.source, range, f.existingPath);
     const stored = store.getSymbol(f.existingId);
     if (stored && stored.exactHash === fresh.exactHash) return true;
     const mine = store.getSymbol(f.symbolId);

@@ -92,11 +92,14 @@ describe("fallbackDescription (#150, no names since #175)", () => {
       searchTerms: ["function"],
       nameFits: true,
     });
-    // The sentence without the marker passes the validator; the marker itself is the host's and is rejected in model
-    // text (#175), so a model cannot pass its text off as a fallback.
+    // The sentence without the marker passes the validator. The marker itself is the host's: the validator accepts
+    // it (#180, ordinary sentences must not be rejected), the extra-attempt gate flags it, and consumers read the
+    // provenance from `described_by`, never from the text.
     const bare = { ...d, behavior: (d?.behavior ?? "").replace(` ${FALLBACK_MARK}`, "") };
     expect(validateDescription(bare, sheet).ok).toBe(true);
-    expect(validateDescription(d, sheet)).toMatchObject({ ok: false, reason: "injection" });
+    expect(validateDescription(d, sheet).ok).toBe(true);
+    expect(instructionSignal(d, sheet)).toBe(true);
+    expect(instructionSignal(bare, sheet)).toBe(false);
   });
 
   it("is deterministic", () => {

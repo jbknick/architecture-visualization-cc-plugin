@@ -232,10 +232,10 @@ const MUTATIONS: Mutation[] = [
     replace: "const error = errorText;",
   },
   {
-    name: "fallback marker accepted from a model",
+    name: "gate: fallback marker no longer a cue",
     file: "validate.ts",
-    find: 'if (claimsFallbackMarker([original, ...d.searchTerms, d.suggestedName ?? ""].join(" ")))',
-    replace: "if (false)",
+    find: "if (addressingHits(joined).length > 0 || claimsFallbackMarker(joined)) return true;",
+    replace: "if (addressingHits(joined).length > 0) return true;",
   },
   {
     name: "fallback replaces an existing description",
@@ -297,7 +297,7 @@ const MUTATIONS: Mutation[] = [
   {
     name: "gate: clause starts not read",
     file: "clauses.ts",
-    find: 'if (first !== undefined && !descriptiveStart(first.split("-").pop() ?? first)) return true;',
+    find: "if (head !== null && !descriptiveStart(head.first)) return true;",
     replace: "",
   },
   {
@@ -324,10 +324,104 @@ const MUTATIONS: Mutation[] = [
     find: '|| gateCue(splitIdentifierWords(t).join(" "), { behavior: false })',
     replace: "",
   },
+  // Gate gaps closed in #180.
+  {
+    name: "gate: base-form verbs ending in -ed or -ing count as participles",
+    file: "clauses.ts",
+    find: "return candidates.some((c) => isWord(c));",
+    replace: "return true;",
+  },
+  {
+    name: "gate: clauses after a conjunction not read",
+    file: "clauses.ts",
+    find: "if (!CONJUNCTIONS.has(words[i] as string)) continue;",
+    replace: "continue;",
+  },
+  {
+    name: "gate: a clause that opens with a number is descriptive",
+    file: "clauses.ts",
+    find: "if (CLOSED_STARTERS.has(w)) return true;",
+    replace: "if (CLOSED_STARTERS.has(w) || /^\\d/.test(w)) return true;",
+  },
+  {
+    name: "gate: sanction, acceptance and permission words not read",
+    file: "clauses.ts",
+    find: "sanction\\w*|accept\\w*|audit\\w*|permit\\w*|allow\\w*|authori[sz]\\w*|certif\\w*|checked|green|",
+    replace: "",
+  },
+  {
+    name: "gate: secret-like values not read",
+    file: "clauses.ts",
+    find: "if (/^[0-9a-f]+$/i.test(tok) || /\\d/.test(tok)) return true;",
+    replace: "",
+  },
+  // Containment layer: catalog quoting and the fallback sentence (#180).
+  {
+    name: "catalog: signature outside quotes",
+    file: "../catalog/index.ts",
+    find: 'lines.push(`- ${sym.name} signature "${sig}" — ${text} [${p}:${sym.startLine}]`);',
+    replace: "lines.push(`- ${sym.name}${oneLine(args, SIGNATURE_MAX)} — ${text} [${p}:${sym.startLine}]`);",
+  },
+  {
+    name: "catalog: double quotes inside a signature kept",
+    file: "../catalog/index.ts",
+    find: 'const sig = oneLine(args, SIGNATURE_MAX).replace(/"/g, "\'");',
+    replace: "const sig = oneLine(args, SIGNATURE_MAX);",
+  },
+  {
+    name: "catalog: double quotes inside a description kept",
+    file: "../catalog/index.ts",
+    find: '${oneLine(desc, DESCRIPTION_MAX).replace(/"/g, "\'")}',
+    replace: "${oneLine(desc, DESCRIPTION_MAX)}",
+  },
+  {
+    name: "catalog: provenance label not read from the column",
+    file: "../catalog/index.ts",
+    find: 'desc && sym.exactHash !== "" ? (snap.describedBy.get(contentKey(sym.exactHash)) ?? "model") : "model";',
+    replace: '"model";',
+  },
+  {
+    name: "catalog: untrusted label dropped",
+    file: "../catalog/index.ts",
+    find: "`untrusted ${by} description: ",
+    replace: "`",
+  },
+  {
+    name: "fallback sentence repeats the function name",
+    file: "fallback.ts",
+    find: "return `Defines a ${sym.kind} that ${takes === null",
+    replace: "return `Defines a ${sym.kind} ${sym.name} that ${takes === null",
+  },
+  // Failure write and fallback return (#180).
+  {
+    name: "failure write ignores the batch",
+    file: "store.ts",
+    find: 'if (opts.batchId !== undefined && !(row.claimed_by ?? "").endsWith(`:${opts.batchId}`))',
+    replace: "if (false)",
+  },
+  {
+    name: "fallback rows never go back to the model",
+    file: "backlog.ts",
+    find: 'd.provenance === "fallback" && requeues(key) < MAX_FALLBACK_REQUEUES',
+    replace: "false",
+  },
+  {
+    name: "the last fallback return is dropped by the next sync",
+    file: "backlog.ts",
+    find: "if (!lastReturn.has(key)) dropUnclaimed.run(key);",
+    replace: "dropUnclaimed.run(key);",
+  },
+  {
+    name: "fallback returns to the model without a limit",
+    file: "backlog.ts",
+    find: "export const MAX_FALLBACK_REQUEUES = 3;",
+    replace: "export const MAX_FALLBACK_REQUEUES = 99;",
+  },
 ];
 
 const TEST_CMD =
-  process.env.GANTRY_MUTATION_CMD ?? "pnpm vitest run packages/core/src/describe --reporter=dot --bail=1";
+  process.env.GANTRY_MUTATION_CMD ??
+  "pnpm vitest run packages/core/src/describe packages/core/src/catalog --reporter=dot --bail=1";
 type Outcome = "green" | "killed" | "error";
 let lastOutput = "";
 let child: ReturnType<typeof spawn> | null = null;

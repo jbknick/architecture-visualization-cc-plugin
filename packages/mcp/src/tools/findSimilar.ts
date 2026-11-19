@@ -94,7 +94,14 @@ export const findSimilarTool = defineTool({
       .max(300)
       .optional()
       .describe("One sentence on what the code you are about to write does"),
-    code: z.string().min(1).max(MAX_CODE_CHARS).optional().describe("A draft of the code, TypeScript or TSX"),
+    code: z
+      .string()
+      .min(1)
+      .max(MAX_CODE_CHARS)
+      .optional()
+      .describe(
+        "A draft of the code: TypeScript, TSX or Go (Go when lang is go or caller_path is a .go file)",
+      ),
     kind: z.enum(KINDS).optional().describe("Restrict matches to this symbol kind"),
     lang: z
       .enum(LANG_IDS as [Lang, ...Lang[]])
@@ -128,9 +135,11 @@ export const findSimilarTool = defineTool({
 
     if (code !== undefined) {
       const dialect = /<\/?[A-Za-z][^>]*>/.test(code) ? "tsx" : "ts";
+      // A draft is Go when the caller says so (`lang`) or is editing a Go file; it is then compared with Go only.
+      const isGo = lang === "go" || (lang === undefined && (caller_path ?? "").endsWith(".go"));
       const r = await findDuplicatesDetailed(
         store,
-        { code: { source: code, lang: dialect } },
+        { code: { source: code, lang: dialect, ...(isGo ? { path: "scratch.go" } : {}) } },
         { limit: POOL },
       );
       for (const c of r.candidates) add(c.symbolId, { tier: c.tier, score: c.score, measured: true });

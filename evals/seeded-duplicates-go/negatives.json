@@ -1,0 +1,22 @@
+[
+  {
+    "id": "n01",
+    "kind": "unrelated",
+    "targetFile": "internal/extras/keyvalue.go",
+    "newCode": "package extras\n\nimport (\n\t\"fmt\"\n\t\"strings\"\n)\n\n// ParsePairs reads \"key=value\" lines into a map and reports the first malformed line.\nfunc ParsePairs(text string) (map[string]string, error) {\n\tpairs := map[string]string{}\n\tfor number, line := range strings.Split(text, \"\\n\") {\n\t\tline = strings.TrimSpace(line)\n\t\tif line == \"\" || strings.HasPrefix(line, \"#\") {\n\t\t\tcontinue\n\t\t}\n\t\tkey, value, found := strings.Cut(line, \"=\")\n\t\tif !found {\n\t\t\treturn nil, fmt.Errorf(\"line %d: missing '='\", number+1)\n\t\t}\n\t\tpairs[strings.TrimSpace(key)] = strings.TrimSpace(value)\n\t}\n\treturn pairs, nil\n}\n"
+  },
+  {
+    "id": "n02",
+    "kind": "unrelated",
+    "targetFile": "internal/extras/stats.go",
+    "newCode": "package extras\n\nimport \"math\"\n\n// Spread returns the mean and the population standard deviation of samples.\nfunc Spread(samples []float64) (float64, float64) {\n\tif len(samples) == 0 {\n\t\treturn 0, 0\n\t}\n\ttotal := 0.0\n\tfor _, s := range samples {\n\t\ttotal += s\n\t}\n\tmean := total / float64(len(samples))\n\tsquares := 0.0\n\tfor _, s := range samples {\n\t\tsquares += (s - mean) * (s - mean)\n\t}\n\tdeviation := math.Sqrt(squares / float64(len(samples)))\n\treturn mean, deviation\n}\n"
+  },
+  {
+    "id": "x01",
+    "kind": "cross_language",
+    "note": "A Go version of the logic of web/slug.ts; the only function of the repo with that logic is the TypeScript one.",
+    "tsExisting": "web/slug.ts#slugify",
+    "targetFile": "internal/extras/webslug.go",
+    "newCode": "package extras\n\nimport (\n\t\"regexp\"\n\t\"strings\"\n)\n\nvar wordChar = regexp.MustCompile(`[\\p{L}\\p{N}]`)\n\n// SlugFromInput lower-cases the text and joins its words with single dashes.\nfunc SlugFromInput(input string) string {\n\tout := \"\"\n\tlastDash := true\n\tfor _, ch := range strings.ToLower(strings.TrimSpace(input)) {\n\t\tif wordChar.MatchString(string(ch)) {\n\t\t\tout += string(ch)\n\t\t\tlastDash = false\n\t\t} else if !lastDash {\n\t\t\tout += \"-\"\n\t\t\tlastDash = true\n\t\t}\n\t}\n\tif strings.HasSuffix(out, \"-\") {\n\t\treturn out[:len(out)-1]\n\t}\n\treturn out\n}\n"
+  }
+]

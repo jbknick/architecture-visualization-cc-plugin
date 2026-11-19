@@ -12,8 +12,8 @@ import { FUNCTION_LIKE_KINDS } from "./factsheet.js";
 import { validateDescription } from "./validate.js";
 
 /**
- * The marker every fallback sentence carries before its full stop. The validator rejects it in model text, so the
- * sentence is validated without it and the host adds it afterwards.
+ * The marker every fallback sentence carries before its full stop. The extra-attempt gate treats it in model text as
+ * an instruction-like cue (#180); the sentence is validated without it and the host adds it afterwards.
  */
 export const FALLBACK_MARK = "(generated without a model)";
 /** Signatures longer than this are not parsed (the parameter clause is left out). */
