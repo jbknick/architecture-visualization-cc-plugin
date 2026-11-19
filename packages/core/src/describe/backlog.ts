@@ -18,6 +18,14 @@ import {
 } from "./factsheet.js";
 import { templateFor } from "./templates.js";
 
+/**
+ * How many times a fallback description puts its function back in the backlog for the model (#180). Each return is a
+ * full new round of attempts; after the third the fallback stays. The count is kept in `meta` under
+ * `fallback_requeues:<contentKey>`.
+ */
+export const MAX_FALLBACK_REQUEUES = 3;
+const REQUEUE_META = "fallback_requeues:";
+
 /** A claimed batch that was not submitted within this time goes back to `pending`. */
 export const CLAIM_TTL_MS = 10 * 60 * 1000;
 /** Measured in M0 (spec section 10): tokens per function with the p1 prompt on Haiku. */
@@ -154,18 +162,30 @@ function computeTemplates(
 /**
  * For every effective function-like symbol (or `opts.symbols`): skip it when `descriptions` has its contentKey,
  * insert a template description when one applies, else make sure a `pending` backlog row exists.
+ * A function whose description is a fallback (#150) is put back as `pending` for the model, at most
+ * `MAX_FALLBACK_REQUEUES` times (#180); a model description then replaces the fallback.
  * A full run also drops pending rows whose key no symbol has any more (moved or edited code).
  */
 export function syncBacklog(store: Store, opts: SyncOptions = {}): BacklogSyncResult {
   const full = opts.symbols === undefined;
   const groups = groupByKey(opts.symbols ?? store.effectiveSymbols({ kind: [...FUNCTION_LIKE_KINDS] }));
 
-  const hasDescription = store.db.prepare("SELECT 1 FROM descriptions WHERE content_key = ?");
+  const hasDescription = store.db.prepare("SELECT provenance FROM descriptions WHERE content_key = ?");
+  const requeues = (key: string): number => Number(store.getMeta(`${REQUEUE_META}${key}`) ?? 0);
   const describedKeys = new Set<string>();
   const todo: [string, Candidate][] = [];
+  const retry: [string, Candidate][] = [];
+  // Fallback keys past their last return: still described, but a row already in the backlog (the last return, pending
+  // or claimed) is left to run its course, never dropped here (#180). Only a fourth row is never created.
+  const lastReturn = new Set<string>();
   for (const [key, c] of groups) {
-    if (hasDescription.get(key)) describedKeys.add(key);
-    else todo.push([key, c]);
+    const d = hasDescription.get(key) as { provenance: string | null } | undefined;
+    if (!d) todo.push([key, c]);
+    else if (d.provenance === "fallback" && requeues(key) < MAX_FALLBACK_REQUEUES) retry.push([key, c]);
+    else {
+      describedKeys.add(key);
+      if (d.provenance === "fallback") lastReturn.add(key);
+    }
   }
   const templates = computeTemplates(store, todo, opts);
 
@@ -185,7 +205,14 @@ export function syncBacklog(store: Store, opts: SyncOptions = {}): BacklogSyncRe
   const result: BacklogSyncResult = { enqueued: 0, templated: 0, alreadyDescribed: describedKeys.size };
   const now = new Date().toISOString();
   store.tx(() => {
-    for (const key of describedKeys) dropUnclaimed.run(key);
+    for (const key of describedKeys) if (!lastReturn.has(key)) dropUnclaimed.run(key);
+    // A fallback goes back to the model: a new pending row, counted, unless one is already there (#180).
+    for (const [key, c] of retry) {
+      if (backlogRow.get(key)) continue;
+      insertBacklog.run(key, c.sym.id, c.priority);
+      store.setMeta(`${REQUEUE_META}${key}`, String(requeues(key) + 1));
+      result.enqueued++;
+    }
     for (const [key, c] of todo) {
       const tpl = templates.get(key);
       if (tpl) {

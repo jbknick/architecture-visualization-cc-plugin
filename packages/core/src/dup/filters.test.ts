@@ -24,6 +24,15 @@ describe("kindFamily", () => {
   });
 });
 
+describe("kindFamily for Go symbols (#223)", () => {
+  it("puts Go functions and methods in the function family and nothing else in a family", () => {
+    // The Go parser emits function, method, class (struct), interface, type, const (var and const) and no component or hook.
+    expect(kindFamily("function")).toBe("function");
+    expect(kindFamily("method")).toBe("function");
+    for (const k of ["class", "interface", "type", "const"] as const) expect(kindFamily(k)).toBeNull();
+  });
+});
+
 describe("path filters", () => {
   it("recognises tests, fixtures and generated files", () => {
     for (const p of ["a.test.ts", "src/a.spec.tsx", "src/__tests__/x.ts", "x/y.test.mts"]) {

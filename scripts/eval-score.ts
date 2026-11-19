@@ -11,6 +11,7 @@ import {
   runDump,
   score,
 } from "./eval-lib.js";
+import { isLinkingCase, loadLinkingCase, runLinkingCase } from "./eval-linking.js";
 
 function main(): number {
   try {
@@ -22,6 +23,16 @@ function main(): number {
     const [name, ...rest] = positional;
     if (!name || rest.length)
       throw new InputError("usage: pnpm eval:score <name> [--recipe f] [--dump f] [--labels f] [--repos f]");
+    if (isLinkingCase(name)) {
+      if (values.dump || values.recipe)
+        throw new InputError(
+          "a linking case runs the built CLI on each of its repos: --dump and --recipe do not apply",
+        );
+      const linking = loadLinkingCase(name, { repos: values.repos, labels: values.labels });
+      const result = runLinkingCase(linking.labels, linking.repos);
+      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      return result.pass ? 0 : 1;
+    }
     const { repo, labels } = loadCase(name, { repos: values.repos, labels: values.labels });
     let text: string;
     if (values.dump) {

@@ -132,20 +132,51 @@ export function goStreams(source: string, range: Range, _path: string): TokenStr
   return node ? analyze(node) : { exact: [], shape: [], selfRefs: [] };
 }
 
-/** Embedding text: the declaration's source with comments dropped and whitespace collapsed. */
+/**
+ * Embedding text (spec section 17): the declaration's source with comments dropped, whitespace collapsed, the
+ * declaration's own name and the names declared inside it (as for the exact stream) renamed `v1, v2…` in order of
+ * first appearance, and string literals replaced by `"s"`. Field, method and package names, and identifiers that are
+ * declared outside the declaration, are kept. Without the renaming a copy under a new name embedded far from the original.
+ */
 export function goEmbeddingText(source: string, range: Range, _path: string): string {
   const node = locate(rootOf(source), range);
   if (!node) return source.slice(range.start, range.end).replace(/\s+/g, " ").trim();
-  const comments = node
-    .findAll({ rule: { kind: "comment" } })
-    .map((c) => ({ start: c.range().start.index, end: c.range().end.index }))
-    .sort((a, b) => a.start - b.start);
+  const locals = declaredLocals(node);
+  const own = ownName(node);
+  const numbered = new Map<string, number>();
+  const edits: { start: number; end: number; text: string }[] = [];
+  for (const n of node.findAll({
+    rule: {
+      any: [
+        { kind: "comment" },
+        { kind: "identifier" },
+        { kind: "interpreted_string_literal" },
+        { kind: "raw_string_literal" },
+      ],
+    },
+  })) {
+    const kind = n.kind();
+    const r = n.range();
+    const edit = { start: r.start.index, end: r.end.index, text: " " };
+    if (kind === "identifier") {
+      const name = n.text();
+      if (!locals.has(name) && name !== own) continue;
+      let k = numbered.get(name);
+      if (k === undefined) {
+        k = numbered.size + 1;
+        numbered.set(name, k);
+      }
+      edit.text = `v${k}`;
+    } else if (kind !== "comment") edit.text = '"s"';
+    edits.push(edit);
+  }
+  edits.sort((a, b) => a.start - b.start);
   let out = "";
   let pos = range.start;
-  for (const c of comments) {
-    if (c.start < pos) continue;
-    out += `${source.slice(pos, c.start)} `;
-    pos = c.end;
+  for (const e of edits) {
+    if (e.start < pos) continue;
+    out += `${source.slice(pos, e.start)}${e.text === " " ? " " : e.text}`;
+    pos = e.end;
   }
   out += source.slice(pos, range.end);
   return out.replace(/\s+/g, " ").trim();

@@ -37,9 +37,9 @@ const sha = (f: string): string => createHash("sha256").update(readFileSync(f)).
 
 describe("a store from another version of Gantry", () => {
   it("is the current version when new", () => {
-    expect(SCHEMA_VERSION).toBe(10);
+    expect(SCHEMA_VERSION).toBe(11);
     const s = openStore(dbPath);
-    expect(s.getMeta("schema_version")).toBe("10");
+    expect(s.getMeta("schema_version")).toBe("11");
     s.close();
   });
 
@@ -52,7 +52,7 @@ describe("a store from another version of Gantry", () => {
       caught = err;
     }
     expect(caught).toBeInstanceOf(StaleStoreError);
-    expect(caught).toMatchObject({ found: 6, expected: 10, dbPath });
+    expect(caught).toMatchObject({ found: 6, expected: 11, dbPath });
     // Refusing it changes nothing.
     const raw = new Database(dbPath, { readonly: true });
     expect(raw.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get()).toEqual({ value: "6" });
@@ -70,10 +70,20 @@ describe("a store from another version of Gantry", () => {
       expect(existsSync(join(dir, f))).toBe(false);
     expect(existsSync(join(dir, "config.json"))).toBe(true);
     expect(stderr.join("")).toBe(
-      "gantry: the index was built by an older version of Gantry (schema 6, now 10); rebuilding it\n",
+      "gantry: the index was built by an older version of Gantry (schema 6, now 11); rebuilding it\n",
     );
     openStore(dbPath).close(); // a new store opens
     expect(resetStaleStore({ dbPath })).toEqual({ reset: false });
+  });
+
+  it("(b2) leaves overlay.db and its sidecars untouched when it deletes the store", () => {
+    build(6);
+    const overlay = join(dir, "overlay.db");
+    writeFileSync(`${overlay}-wal`, "wal");
+    writeFileSync(`${overlay}-shm`, "shm");
+    const before = [overlay, `${overlay}-wal`, `${overlay}-shm`].map(sha);
+    expect(resetStaleStore({ dbPath }).reset).toBe(true);
+    expect([overlay, `${overlay}-wal`, `${overlay}-shm`].map(sha)).toEqual(before);
   });
 
   it("(c) leaves a current store untouched", () => {
@@ -85,11 +95,11 @@ describe("a store from another version of Gantry", () => {
   });
 
   it("(d) resets a newer store too", () => {
-    build(11);
+    build(12);
     expect(() => openStore(dbPath)).toThrow(StaleStoreError);
-    expect(resetStaleStore({ dbPath })).toEqual({ reset: true, found: 11 });
+    expect(resetStaleStore({ dbPath })).toEqual({ reset: true, found: 12 });
     expect(existsSync(dbPath)).toBe(false);
-    expect(stderr.join("")).toContain("(schema 11, now 10)");
+    expect(stderr.join("")).toContain("(schema 12, now 11)");
   });
 
   it("(e) resets a current store whose repo name changed, and leaves one with the same name", () => {

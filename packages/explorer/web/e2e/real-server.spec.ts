@@ -126,12 +126,12 @@ test("project map: switch levels, drill into @acme/ui, then see Button's callers
   const inspector = page.getByRole("complementary", { name: "Inspector" });
   await expect(inspector.getByRole("heading", { name: "Button" })).toBeVisible();
   // Button has a stored template description (#175: /api/node returns it with described_by). It is shown under the
-  // model/template label as plain text: the JSX in it stays literal text and never becomes markup.
-  await expect(inspector.getByText("Generated description — may be wrong")).toBeVisible();
+  // template label as plain text: the JSX in it stays literal text and never becomes markup.
+  await expect(inspector.getByText("Template text copied from the code — may be wrong")).toBeVisible();
   const description = inspector.locator(".description-text");
   await expect(description).toContainText('Returns <button type="button"');
   await expect(description.locator("*")).toHaveCount(0);
-  await expect(inspector.getByText("Written without a model from names only")).toHaveCount(0);
+  await expect(inspector.getByText("Generated without a model from the kind")).toHaveCount(0);
   await expect(inspector.getByRole("button", { name: "Open in project map" })).toBeEnabled();
   await page.getByRole("button", { name: "Show whole repo" }).click();
   await expect(page).not.toHaveURL(/focus=/);

@@ -177,11 +177,31 @@ describe("go token streams", () => {
     expect(hashStreams(s).renamedHash).toBe(hashStreams(renamed).renamedHash);
   });
 
-  it("builds the embedding text without comments and with collapsed whitespace", () => {
-    const src = "package a\nfunc F() {\n\t// note\n\tx   := 1\n\t_ = x\n}\n";
+  it("builds the embedding text without comments and with collapsed whitespace, locals and own name renamed, strings reduced", () => {
+    const src =
+      'package a\nfunc F(n int) string {\n\t// note\n\tx   := n\n\tif x > 1 {\n\t\treturn F(x - 1) + "ab" + s.name\n\t}\n\treturn `raw`\n}\n';
     const p = parse(src);
     const r = p.bodies.get(p.symbols[0]?.id as string) as { start: number; end: number };
-    expect(goEmbeddingText(src, r, "a.go")).toBe("func F() { x := 1 _ = x }");
+    expect(goEmbeddingText(src, r, "a.go")).toBe(
+      'func v1(v2 int) string { v3 := v2 if v3 > 1 { return v1(v3 - 1) + "s" + s.name } return "s" }',
+    );
+  });
+
+  it("gives a copy under another name, with other local names, the same embedding text", () => {
+    const text = (src: string): string => {
+      const p = parse(src);
+      const r = p.bodies.get(p.symbols[0]?.id as string) as { start: number; end: number };
+      return goEmbeddingText(src, r, "a.go");
+    };
+    expect(
+      text(
+        "package a\nfunc Sum(xs []int) int {\n\tt := 0\n\tfor _, x := range xs {\n\t\tt += x\n\t}\n\treturn t\n}\n",
+      ),
+    ).toBe(
+      text(
+        "package a\nfunc Total(vals []int) int {\n\tacc := 0\n\tfor _, v := range vals {\n\t\tacc += v\n\t}\n\treturn acc\n}\n",
+      ),
+    );
   });
 });
 

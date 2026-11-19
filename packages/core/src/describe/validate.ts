@@ -309,9 +309,6 @@ export function validateDescription(
   // across fields), then each search term and the suggested name on their own.
   const b = scanInjection(`${original} ${d.searchTerms.join(" ")}`);
   if (b.reject.length > 0) return fail("injection", `behavior and terms: ${b.reject.join(", ")}`);
-  // Only the host writes the fallback marker (#175): a model that imitates it is claiming a provenance it lacks.
-  if (claimsFallbackMarker([original, ...d.searchTerms, d.suggestedName ?? ""].join(" ")))
-    return fail("injection", "behavior: fallback-marker");
   // Terms joined with no separator: a run of 12+ hex characters holding a digit is a key split across terms.
   if (/(?=[0-9a-f]{0,11}\d)[0-9a-f]{12}/i.test(d.searchTerms.join("").replace(/[^A-Za-z0-9]/g, "")))
     return fail("identifier", "searchTerms together hold a long hexadecimal run");
@@ -365,7 +362,12 @@ export function validateDescription(
 // about what else the text holds. `instructionSignal` therefore runs the validator's own secret and injection stages on
 // every field, with no shape or grounding gate, plus structural instruction cues of `behavior`.
 
-/** A sentence that claims the host's fallback provenance ("generated without a model" and close variants). */
+/**
+ * A sentence that claims the host's fallback provenance ("generated without a model" and close variants). Gate only
+ * since #180: the validator accepts ordinary sentences such as "Returns the config built from the host environment",
+ * and a model that imitates the marker still gets a stored description labelled `model`; consumers read provenance
+ * from `described_by`, never from the text. A rejected description that imitates it earns no extra attempt.
+ */
 const PRODUCED = "(?:generated|written|created|produced|made|built|composed|authored|derived)";
 const PRODUCERS = "(?:models?|llms?|ai|language models?|gantry|host|names only)";
 /**

@@ -1,0 +1,102 @@
+[
+  {
+    "id": "g01",
+    "misleading": true,
+    "existing": "internal/sliceutil/sliceutil.go#Dedupe",
+    "targetFile": "internal/extras/unique.go",
+    "newCode": "package extras\n\nimport \"strings\"\n\n// UniqueTrimmed keeps one entry per spelling, ignoring case and surrounding blanks.\nfunc UniqueTrimmed(entries []string) []string {\n\tknown := make(map[string]bool, len(entries))\n\tresult := make([]string, 0, len(entries))\n\tfor _, entry := range entries {\n\t\tnorm := strings.ToLower(strings.TrimSpace(entry))\n\t\tif norm != \"\" && !known[norm] {\n\t\t\tknown[norm] = true\n\t\t\tresult = append(result, entry)\n\t\t}\n\t}\n\treturn result\n}\n",
+    "expected": {
+      "tiers": ["code_vector", "semantic"]
+    }
+  },
+  {
+    "id": "g02",
+    "misleading": true,
+    "existing": "internal/sliceutil/sliceutil.go#Chunk",
+    "targetFile": "internal/extras/batches.go",
+    "newCode": "package extras\n\n// Batches cuts numbers into runs that are at most width long.\nfunc Batches(numbers []int, width int) [][]int {\n\tif width <= 0 {\n\t\treturn nil\n\t}\n\tbatches := make([][]int, 0, (len(numbers)+width-1)/width)\n\tfor from := 0; from < len(numbers); from += width {\n\t\tto := min(from+width, len(numbers))\n\t\tbatches = append(batches, numbers[from:to])\n\t}\n\treturn batches\n}\n",
+    "expected": {
+      "tiers": ["code_vector", "semantic"]
+    }
+  },
+  {
+    "id": "g03",
+    "misleading": true,
+    "existing": "internal/timeutil/timeutil.go#DaysBetween",
+    "targetFile": "internal/extras/apart.go",
+    "newCode": "package extras\n\nimport \"time\"\n\n// WholeDaysApart is the number of midnights between two moments.\nfunc WholeDaysApart(a, b time.Time) int {\n\tif b.Before(a) {\n\t\ta, b = b, a\n\t}\n\tfirst := time.Date(a.Year(), a.Month(), a.Day(), 0, 0, 0, 0, time.UTC)\n\tlast := time.Date(b.Year(), b.Month(), b.Day(), 0, 0, 0, 0, time.UTC)\n\tdays := 0\n\tfor cursor := first; cursor.Before(last); {\n\t\tcursor = cursor.AddDate(0, 0, 1)\n\t\tdays++\n\t}\n\treturn days\n}\n",
+    "expected": {
+      "tiers": ["code_vector", "semantic"]
+    }
+  },
+  {
+    "id": "g04",
+    "misleading": false,
+    "existing": "internal/strutil/strutil.go#Slugify",
+    "targetFile": "internal/extras/slugs.go",
+    "copyAs": "MakeSlug",
+    "expected": {
+      "tiers": ["exact"]
+    }
+  },
+  {
+    "id": "g05",
+    "misleading": false,
+    "existing": "internal/timeutil/timeutil.go#FormatAgo",
+    "targetFile": "internal/extras/ago.go",
+    "copyAs": "HowLongAgo",
+    "expected": {
+      "tiers": ["exact"]
+    }
+  },
+  {
+    "id": "g06",
+    "misleading": false,
+    "existing": "internal/maputil/maputil.go#MergeCounts",
+    "targetFile": "internal/extras/counts.go",
+    "copyAs": "SumCounts",
+    "expected": {
+      "tiers": ["exact"]
+    }
+  },
+  {
+    "id": "g07",
+    "misleading": false,
+    "existing": "internal/strutil/strutil.go#TitleCase",
+    "targetFile": "internal/extras/title.go",
+    "newCode": "package extras\n\nimport (\n\t\"strings\"\n\t\"unicode\"\n)\n\n// CapitalizeWords upper-cases the first letter of every word and lower-cases the rest.\nfunc CapitalizeWords(s string) string {\n\twords := strings.Fields(strings.ToLower(s))\n\tfor i, w := range words {\n\t\trunes := []rune(w)\n\t\tif len(runes) == 0 {\n\t\t\tcontinue\n\t\t}\n\t\trunes[0] = unicode.ToUpper(runes[0])\n\t\twords[i] = string(runes)\n\t}\n\tjoined := strings.Join(words, \"-\")\n\treturn strings.TrimSpace(joined)\n}\n",
+    "expected": {
+      "tiers": ["exact", "near"]
+    }
+  },
+  {
+    "id": "g08",
+    "misleading": false,
+    "existing": "internal/errutil/errutil.go#WrapAll",
+    "targetFile": "internal/extras/wrap.go",
+    "newCode": "package extras\n\nimport (\n\t\"errors\"\n\t\"fmt\"\n\t\"sort\"\n\t\"strings\"\n)\n\n// CollectErrors folds a batch of errors into one error naming each position under a label.\nfunc CollectErrors(label string, errs []error) error {\n\tvar parts []string\n\tfor i, err := range errs {\n\t\tif err == nil {\n\t\t\tcontinue\n\t\t}\n\t\tparts = append(parts, fmt.Sprintf(\"%s#%d: %v\", label, i, err))\n\t}\n\tif len(parts) == 0 {\n\t\treturn nil\n\t}\n\tsort.Strings(parts)\n\treturn errors.New(strings.Join(parts, \", \"))\n}\n",
+    "expected": {
+      "tiers": ["exact", "near"]
+    }
+  },
+  {
+    "id": "g09",
+    "misleading": false,
+    "existing": "internal/maputil/maputil.go#InvertMap",
+    "targetFile": "internal/extras/invert.go",
+    "newCode": "package extras\n\nimport (\n\t\"fmt\"\n\t\"sort\"\n)\n\n// Reverse swaps keys and values and fails when two keys share a value.\nfunc Reverse(table map[string]string) (map[string]string, error) {\n\tswapped := make(map[string]string, len(table))\n\tnames := make([]string, 0, len(table))\n\tfor name := range table {\n\t\tnames = append(names, name)\n\t}\n\tsort.Strings(names)\n\tfor _, name := range names {\n\t\tvalue := table[name]\n\t\tif other, taken := swapped[value]; taken {\n\t\t\treturn nil, fmt.Errorf(\"%q maps from %q and %q\", value, other, name)\n\t\t}\n\t\tswapped[value] = name\n\t}\n\treturn swapped, nil\n}\n",
+    "expected": {
+      "tiers": ["exact", "near"]
+    }
+  },
+  {
+    "id": "g10",
+    "misleading": false,
+    "existing": "internal/errutil/errutil.go#FirstError",
+    "targetFile": "internal/extras/first.go",
+    "newCode": "package extras\n\nimport (\n\t\"context\"\n\t\"errors\"\n\t\"fmt\"\n)\n\n// LeadingError returns the first real error of a batch and mentions how many ran out of time.\nfunc LeadingError(errs []error) error {\n\tvar lead error\n\ttimedOut := 0\n\tfor _, err := range errs {\n\t\tif err == nil {\n\t\t\tcontinue\n\t\t}\n\t\tif errors.Is(err, context.DeadlineExceeded) {\n\t\t\ttimedOut++\n\t\t\tcontinue\n\t\t}\n\t\tif lead == nil {\n\t\t\tlead = err\n\t\t}\n\t}\n\tif lead != nil && timedOut > 0 {\n\t\treturn fmt.Errorf(\"%w (and %d timed out)\", lead, timedOut)\n\t}\n\treturn lead\n}\n",
+    "expected": {
+      "tiers": ["exact", "near"]
+    }
+  }
+]

@@ -26,6 +26,7 @@ function slugSheet(over: Partial<FactSheet> = {}): FactSheet {
     id: "sym:src/lib/slug.ts#slugify",
     path: "src/lib/slug.ts",
     kind: "function",
+    language: "TypeScript",
     signature: "(text: string): string",
     doc: null,
     callees: ["normalizeText"],
@@ -204,20 +205,24 @@ describe("finding 4: the fallback never repeats a name", () => {
   });
 });
 
-describe("finding 6: the fallback marker cannot be imitated by a model", () => {
+describe("finding 6 (gate only since #180): the fallback marker earns no extra attempt", () => {
   it.each([
-    `Returns the slug ${FALLBACK_MARK}.`,
-    "Returns the slug (Generated without a model).",
-    "Returns the slug, generated-without-a-model.",
-    "Returns the slug, written without any LLM.",
-    "Returns the slug (ｇｅｎｅｒａｔｅｄ ｗｉｔｈｏｕｔ ａ ｍｏｄｅｌ).",
-  ])("%s is rejected", (b) => {
-    expect(validateDescription(raw(b), slugSheet()).ok).toBe(false);
+    `Returns the zqxj slug ${FALLBACK_MARK}.`,
+    "Returns the zqxj slug (Generated without a model).",
+    "Returns the zqxj slug, generated-without-a-model.",
+    "Returns the zqxj slug, written without any LLM.",
+    "Returns the zqxj slug (ｇｅｎｅｒａｔｅｄ ｗｉｔｈｏｕｔ ａ ｍｏｄｅｌ).",
+  ])("%s is rejected without an extra attempt", (b) => {
+    expectNoExtra(raw(b));
+    expect(instructionSignal(raw(b), slugSheet())).toBe(true);
   });
 
-  it("a term or suggested name with the marker is rejected too", () => {
-    expect(validateDescription(raw("Returns the slug.", ["generated without a model"]), slugSheet()).ok).toBe(
-      false,
+  it("a term or suggested name with the marker taints too", () => {
+    expect(instructionSignal(raw("Returns the slug.", ["generated without a model"]), slugSheet())).toBe(
+      true,
+    );
+    expect(instructionSignal(raw("Returns the slug.", ["slug"], "generatedWithoutAModel"), slugSheet())).toBe(
+      true,
     );
   });
 

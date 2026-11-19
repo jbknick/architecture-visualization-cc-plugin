@@ -1,0 +1,407 @@
+{
+  "case": "linking-meetmind",
+  "repos": [
+    {
+      "name": "meetmind-ai",
+      "sha": "515664df7a5ddb3de7883066b1057dede9ce487d"
+    }
+  ],
+  "labelledBy": "hand-labelled by a research agent (not the matcher or recipe author): rg enumeration of request sites, then reading each call, its wrapper or base URL, and the backend routers",
+  "requests": [
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/Settings.tsx",
+      "line": 62,
+      "method": "PUT",
+      "path": "/api/auth/profile",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "PUT",
+        "path": "/api/auth/profile"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/MeetingWorkspace.tsx",
+      "line": 60,
+      "method": "GET",
+      "path": "/api/meetings",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "GET",
+        "path": "/api/meetings"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/MeetingWorkspace.tsx",
+      "line": 72,
+      "method": "GET",
+      "path": "/api/meetings/:id",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "GET",
+        "path": "/api/meetings/:id"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/MeetingWorkspace.tsx",
+      "line": 98,
+      "method": "POST",
+      "path": "/api/meetings",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "POST",
+        "path": "/api/meetings"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/MeetingWorkspace.tsx",
+      "line": 112,
+      "method": "PUT",
+      "path": "/api/meetings/:id",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "PUT",
+        "path": "/api/meetings/:id"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/MeetingWorkspace.tsx",
+      "line": 125,
+      "method": "DELETE",
+      "path": "/api/meetings/:id",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "DELETE",
+        "path": "/api/meetings/:id"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/MeetingWorkspace.tsx",
+      "line": 139,
+      "method": "POST",
+      "path": "/api/meetings/:id/summary",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "POST",
+        "path": "/api/meetings/:id/summary"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/MeetingWorkspace.tsx",
+      "line": 152,
+      "method": "POST",
+      "path": "/api/meetings/:id/email",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "POST",
+        "path": "/api/meetings/:id/email"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/MeetingWorkspace.tsx",
+      "line": 165,
+      "method": "POST",
+      "path": "/api/meetings/:id/tasks",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "POST",
+        "path": "/api/meetings/:id/tasks"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/Dashboard.tsx",
+      "line": 41,
+      "method": "GET",
+      "path": "/api/meetings",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "GET",
+        "path": "/api/meetings"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/Dashboard.tsx",
+      "line": 47,
+      "method": "GET",
+      "path": "/api/tasks",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "GET",
+        "path": "/api/tasks"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/AdminUsers.tsx",
+      "line": 53,
+      "method": "GET",
+      "path": "/api/admin/users",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "GET",
+        "path": "/api/admin/users"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/AdminUsers.tsx",
+      "line": 92,
+      "method": "PUT",
+      "path": "/api/admin/users/:id/status",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "PUT",
+        "path": "/api/admin/users/:id/status"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/AdminUsers.tsx",
+      "line": 110,
+      "method": "PUT",
+      "path": "/api/admin/users/:id/role",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "PUT",
+        "path": "/api/admin/users/:id/role"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/AdminUsers.tsx",
+      "line": 126,
+      "method": "DELETE",
+      "path": "/api/admin/users/:id",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "DELETE",
+        "path": "/api/admin/users/:id"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/services/api.ts",
+      "line": 55,
+      "method": "POST",
+      "path": "/api/auth/refresh-token",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "POST",
+        "path": "/api/auth/refresh-token"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/AdminDashboard.tsx",
+      "line": 63,
+      "method": "GET",
+      "path": "/api/admin/analytics",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "GET",
+        "path": "/api/admin/analytics"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/components/AuthBootstrap.tsx",
+      "line": 17,
+      "method": "POST",
+      "path": "/api/auth/refresh-token",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "POST",
+        "path": "/api/auth/refresh-token"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/components/AuthBootstrap.tsx",
+      "line": 24,
+      "method": "GET",
+      "path": "/api/auth/profile",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "GET",
+        "path": "/api/auth/profile"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/components/Sidebar.tsx",
+      "line": 97,
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "POST",
+        "path": "/api/auth/logout"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/AdminAnalytics.tsx",
+      "line": 41,
+      "method": "GET",
+      "path": "/api/admin/analytics",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "GET",
+        "path": "/api/admin/analytics"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/TaskBoard.tsx",
+      "line": 54,
+      "method": "GET",
+      "path": "/api/tasks",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "GET",
+        "path": "/api/tasks"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/TaskBoard.tsx",
+      "line": 60,
+      "method": "GET",
+      "path": "/api/meetings",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "GET",
+        "path": "/api/meetings"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/TaskBoard.tsx",
+      "line": 80,
+      "method": "POST",
+      "path": "/api/tasks",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "POST",
+        "path": "/api/tasks"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/TaskBoard.tsx",
+      "line": 92,
+      "method": "PUT",
+      "path": "/api/tasks/:id",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "PUT",
+        "path": "/api/tasks/:id"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/TaskBoard.tsx",
+      "line": 105,
+      "method": "PUT",
+      "path": "/api/tasks/:id",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "PUT",
+        "path": "/api/tasks/:id"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/TaskBoard.tsx",
+      "line": 114,
+      "method": "DELETE",
+      "path": "/api/tasks/:id",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "DELETE",
+        "path": "/api/tasks/:id"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/Login.tsx",
+      "line": 35,
+      "method": "POST",
+      "path": "/api/auth/login",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "POST",
+        "path": "/api/auth/login"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/pages/Register.tsx",
+      "line": 39,
+      "method": "POST",
+      "path": "/api/auth/register",
+      "expect": {
+        "repo": "meetmind-ai",
+        "workspace": "meetmind-server",
+        "method": "POST",
+        "path": "/api/auth/register"
+      }
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/services/api.ts",
+      "line": 43,
+      "method": "ANY",
+      "path": "/api/:param",
+      "expect": null,
+      "reason": "dynamic"
+    },
+    {
+      "repo": "meetmind-ai",
+      "file": "meetmind-client/src/services/api.ts",
+      "line": 58,
+      "method": "ANY",
+      "path": "/api/:param",
+      "expect": null,
+      "reason": "dynamic"
+    }
+  ]
+}

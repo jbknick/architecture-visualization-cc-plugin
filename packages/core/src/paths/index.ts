@@ -11,6 +11,8 @@ export interface GantryPaths {
   worktreeHash: string;
   dataDir: string;
   dbPath: string;
+  /** `<dataDir>/overlay.db`: what a person decided; survives an index rebuild (spec section 9). */
+  overlayPath: string;
   configPath: string;
   catalogDir: string;
   logsDir: string;
@@ -94,6 +96,7 @@ export function resolvePaths(cwd: string, env: NodeJS.ProcessEnv = process.env):
     worktreeHash,
     dataDir,
     dbPath: path.join(dataDir, "gantry.db"),
+    overlayPath: path.join(dataDir, "overlay.db"),
     configPath: path.join(dataDir, "config.json"),
     catalogDir: path.join(dataDir, "catalog"),
     logsDir: path.join(dataDir, "logs"),

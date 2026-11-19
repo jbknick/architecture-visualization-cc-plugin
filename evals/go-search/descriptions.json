@@ -1,0 +1,86 @@
+[
+  {
+    "symbol": "cmd/server/main.go#main",
+    "behavior": "Runs the demo program that stores a greeting in a new store, reads it back and prints it as a slug.",
+    "searchTerms": ["entry point", "demo program", "print greeting slug"],
+    "nameFits": true
+  },
+  {
+    "symbol": "internal/gen/zz_generated.go#Describe",
+    "behavior": "Returns a string saying generated followed by the generator version constant.",
+    "searchTerms": ["generator version", "generated text"],
+    "nameFits": true
+  },
+  {
+    "symbol": "internal/net/listen.go#listen",
+    "behavior": "Returns tcp as the name of the default network transport.",
+    "searchTerms": ["network transport", "default transport name", "tcp"],
+    "nameFits": true
+  },
+  {
+    "symbol": "internal/net/listen_unix.go#listen",
+    "behavior": "Returns unix as the name of the network transport used on unix platforms.",
+    "searchTerms": ["network transport", "unix platforms", "unix"],
+    "nameFits": true
+  },
+  {
+    "symbol": "internal/store/store.go#New",
+    "behavior": "Creates and returns an empty Store that holds no entries yet.",
+    "searchTerms": ["new store", "create empty store", "in memory key value"],
+    "nameFits": true
+  },
+  {
+    "symbol": "internal/store/store.go#Store.Get",
+    "behavior": "Looks up the value stored under a key and returns it with a flag saying whether the key exists.",
+    "searchTerms": ["look up value", "read value by key", "key value get"],
+    "nameFits": true
+  },
+  {
+    "symbol": "internal/store/store.go#Store.Put",
+    "behavior": "Saves a value under a key while holding the store lock, replacing any earlier value.",
+    "searchTerms": ["save value", "write value by key", "key value put"],
+    "nameFits": true
+  },
+  {
+    "symbol": "internal/store/store_test.go#TestPutGet",
+    "behavior": "Checks that a value saved with Put can be read back with Get and reports a failure otherwise.",
+    "searchTerms": ["store test", "round trip test"],
+    "nameFits": true
+  },
+  {
+    "symbol": "internal/text/format.go#Kind.String",
+    "behavior": "Returns the text plain for the zero kind and the text fancy for every other kind.",
+    "searchTerms": ["kind label", "print style name"],
+    "nameFits": true
+  },
+  {
+    "symbol": "internal/text/init.go#init",
+    "behavior": "Sets the slug entry of the package registry to one when the package loads.",
+    "searchTerms": ["registry setup", "package load", "slug entry"],
+    "nameFits": true
+  },
+  {
+    "symbol": "internal/text/init.go#init~2",
+    "behavior": "Sets the format entry of the package registry to two when the package loads.",
+    "searchTerms": ["registry setup", "package load", "format entry"],
+    "nameFits": true
+  },
+  {
+    "symbol": "internal/text/slug.go#Slugify",
+    "behavior": "Converts text to lowercase, replaces every character that is not a letter or digit with a dash and trims the ends.",
+    "searchTerms": ["url slug", "lowercase dashes", "make url friendly"],
+    "nameFits": true
+  },
+  {
+    "symbol": "internal/text/slug.go#trimDashes",
+    "behavior": "Removes leading and trailing dashes from a string.",
+    "searchTerms": ["strip dashes", "strip hyphens", "trim edges"],
+    "nameFits": true
+  },
+  {
+    "symbol": "tools/main.go#main",
+    "behavior": "Prints the word tools to standard output.",
+    "searchTerms": ["tools program", "print tools"],
+    "nameFits": true
+  }
+]
