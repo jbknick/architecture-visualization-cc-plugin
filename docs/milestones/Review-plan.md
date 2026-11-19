@@ -95,7 +95,7 @@ Spec sections touched: 7 (edge fields), 9, 11, 15.
 - **The plan.** A markdown file committed on the branch before the work starts, for example a saved Claude Code plan. Plan paths are a config glob (section 5), `docs/plans/**` by default.
 - **Estimate.** `/gantry:plan <file>` runs a subagent, as the describer and explainer run, with no API key: plan text → `gantry_search` over descriptions → candidate nodes → `gantry_impact` by hop → a proposed area with a confidence per node and its estimated radius. Plan text is untrusted and passed as data in an `untrusted_` field, as descriptions are (section 15).
 - **Confirm.** A person confirms or adjusts the area by selecting nodes on the map. Estimation never runs unattended.
-- **Saved with the plan.** CI has no data dir and makes no model calls, so the confirmed estimate is committed beside the plan, as `<plan>.estimate.json` (node ids, confidence, the plan's content hash). Gantry writes it only when the user runs `gantry plan save <file>`, as `gantry hooks install` is the one command that writes under `.git/` today. Section 1 gains that exception.
+- **Saved with the plan.** CI has no data dir and makes no model calls, so the confirmed estimate is committed beside the plan, as `<plan>.estimate.json` (node ids, confidence, the plan's content hash). Gantry writes it only when the user runs `gantry plan save <file>`, as V2's recipe file (`.gantry/recipe.json`) is written only by init and on-request discovery. Section 1 gains that exception.
 - **Scope note.** While a branch has a confirmed estimate, an edit outside the area adds one line to the Stop note. Warn only.
 - **Estimate against actual.** `gantry review <base>...<head> --plan <file>`, and the M16 comment when the PR contains a plan with an estimate, list changed nodes outside the area, planned nodes left untouched, and the estimated radius against the actual one. The difference is recorded in `overlay.db` to calibrate later estimates.
 - **Unverified:** estimate accuracy, which depends on description coverage. This milestone is planned as issues only if the `plan-estimates` spike passes.
@@ -137,8 +137,8 @@ Each is a report under `docs/spikes/<name>.md` with a verdict, on public repos o
 - **M11's ordering.** M17 needs the repo part in stable IDs, which is M11's first issue (#214), after M12 in Path B. Split it out of #214 and land it straight after M7. V2 already says Path A rebases its snapshots onto this change, so earlier is cheaper for every path.
 - **M7 deletes stale stores.** That would delete curation and "not a duplicate" decisions if they stayed in `gantry.db`. M17 moves them to the overlay file, which M7's rule must not cover.
 - **Section 1** says never to add GitHub Actions. M16 ships one for users. The spec must say the rule is about this repo's own gate.
-- **Section 1 and the README** say nothing is written into the repo's working tree, except by `gantry hooks install`. M20's `gantry plan save` is a second exception, run only by the user.
-- **M9 recipes live in the data dir.** CI has no data dir, so a graph built by the M16 Action lacks routes and endpoints, and its radius differs from the local one. Until recipes can reach CI, the comment says so.
+- **Section 1 and the README** say nothing is written into the repo's working tree, except by `gantry hooks install` and, from V2's M9, the committed recipe. M20's `gantry plan save` is one more exception, run only by the user.
+- **M9 recipes are committed** (`.gantry/recipe.json`, #244), so the M16 Action applies the same recipe as every developer and its radius matches the local one. A repo with no recipe gets a structural radius, and the comment says so.
 - **M19 waits on V2.** It reuses M10's evaluator and M9's argument-flow helper rather than writing its own.
 
 ## Not covered
