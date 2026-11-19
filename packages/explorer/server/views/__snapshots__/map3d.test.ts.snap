@@ -300,7 +300,11 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       "confidence": "high"
     }
   ],
-  "layoutHint": "force-3d"
+  "layoutHint": "force-3d",
+  "overlay": {
+    "hidden": 0,
+    "groups": []
+  }
 }"
 `;
 
@@ -881,7 +885,11 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "confidence": "high"
     }
   ],
-  "layoutHint": "force-3d"
+  "layoutHint": "force-3d",
+  "overlay": {
+    "hidden": 0,
+    "groups": []
+  }
 }"
 `;
 
@@ -1033,6 +1041,10 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
       "confidence": "high"
     }
   ],
-  "layoutHint": "force-3d"
+  "layoutHint": "force-3d",
+  "overlay": {
+    "hidden": 0,
+    "groups": []
+  }
 }"
 `;

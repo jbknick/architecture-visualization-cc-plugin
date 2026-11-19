@@ -204,6 +204,10 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
       "workspace": "ws:@acme/utils",
     },
   ],
+  "overlay": {
+    "groups": [],
+    "hidden": 0,
+  },
   "skipped": [
     {
       "message": "Run gantry embed to also find renamed copies.",
