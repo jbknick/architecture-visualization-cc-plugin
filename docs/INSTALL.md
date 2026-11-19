@@ -1,6 +1,6 @@
 # Installing the plugin from a local clone
 
-The plugin lives in `plugin/`. A development marketplace file at `.claude-plugin/marketplace.json` (marketplace name `gantry-dev`) points at it, so you install it from your clone. You need Node 22 or newer, pnpm and Claude Code.
+The plugin lives in `plugin/`. A development marketplace file at `.claude-plugin/marketplace.json` (marketplace name `gantry-dev`) points at it, so you install it from your clone. You need Node 26, pnpm 10.31.0 and Claude Code.
 
 ## Install
 
