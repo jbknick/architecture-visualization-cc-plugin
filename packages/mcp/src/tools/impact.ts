@@ -2,6 +2,7 @@ import {
   behaviorOf,
   computeImpact,
   describedByOf,
+  fileId,
   type Impact,
   modifiedChanges,
   nodeInfo,
@@ -109,10 +110,10 @@ export const impactTool = defineTool({
     } else {
       for (const p of files ?? []) {
         const rel = p.replace(/\\/g, "/").replace(/^\.\//, "");
-        if (!store.effectiveFile(`file:${rel}`)) {
+        if (!store.effectiveFile(fileId(store.repo(), rel))) {
           return { error: "not_found", message: `Not an indexed file: ${rel}` };
         }
-        for (const s of store.effectiveSymbols({ fileId: `file:${rel}` })) ids.push(s.id);
+        for (const s of store.effectiveSymbols({ fileId: fileId(store.repo(), rel) })) ids.push(s.id);
       }
     }
     return shape(computeImpact(store, modifiedChanges(store, ids)), store);

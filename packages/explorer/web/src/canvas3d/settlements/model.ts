@@ -2,6 +2,7 @@
 // project map draws (files level), so every count shown comes from the API's own numbers.
 import { kindTier, TIER_FILE, type TreeNode } from "../../canvas/hierarchy.ts";
 import { nodeTitle, type Scene } from "../../canvas/scene.ts";
+import { pathOfFileId } from "../../ids.ts";
 import { placeSettlements } from "./placement.ts";
 import { PLAN_PARAMS, type Plan, planSettlement } from "./plan.ts";
 import { hash01 } from "./rng.ts";
@@ -210,7 +211,7 @@ export function buildLandscape(scene: Scene, opts: LandscapeOptions = {}): Lands
     const wsPath = node.path && node.path !== "." ? node.path : "";
     const files = filesOf.get(r) ?? [];
     const rel = files.map((i) => {
-      const p = scene.nodes[i]?.path ?? (tree.nodes[i] as TreeNode).id.replace(/^file:/, "");
+      const p = scene.nodes[i]?.path ?? pathOfFileId((tree.nodes[i] as TreeNode).id);
       const inWs = wsPath && p.startsWith(`${wsPath}/`) ? p.slice(wsPath.length + 1) : p;
       const cut = inWs.lastIndexOf("/");
       return { i, p, inWs, dir: cut >= 0 ? inWs.slice(0, cut) : "" };

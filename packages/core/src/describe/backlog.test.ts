@@ -58,7 +58,7 @@ describe("syncBacklog", () => {
       expect(r.alreadyDescribed).toBe(0);
 
       // createPost is `return db.insert(...)`: described by template, not in the backlog.
-      const createKey = keyOf(ix.store, "sym:packages/db/src/queries.ts#createPost");
+      const createKey = keyOf(ix.store, "sym:pnpm-turbo:packages/db/src/queries.ts#createPost");
       const d = ix.store.db.prepare("SELECT * FROM descriptions WHERE content_key = ?").get(createKey) as
         | Record<string, unknown>
         | undefined;
@@ -71,12 +71,12 @@ describe("syncBacklog", () => {
 
       const rows = backlog(ix.store);
       const byId = new Map(rows.map((b) => [b.symbol_id, b]));
-      expect(byId.get("sym:apps/web/src/hooks/useDebounce.ts#useDebounce")).toMatchObject({
+      expect(byId.get("sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce")).toMatchObject({
         priority: 0,
         status: "pending",
       });
       // utils/slug.ts#slugify is a local copy of the exported apps/web one: same contentKey, best priority wins.
-      expect(byId.get("sym:apps/web/src/lib/slug.ts#slugify")?.priority).toBe(0);
+      expect(byId.get("sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify")?.priority).toBe(0);
       for (const b of rows) expect(b.content_key.endsWith(":p1")).toBe(true);
 
       // Idempotent.
@@ -93,7 +93,7 @@ describe("syncBacklog", () => {
   it("skips functions that already have a description", async () => {
     const ix = await indexedFixture();
     try {
-      const key = keyOf(ix.store, "sym:packages/utils/src/time.ts#parseTimestamp");
+      const key = keyOf(ix.store, "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp");
       ix.store.db
         .prepare(
           "INSERT INTO descriptions(content_key, behavior, search_terms, name_fits, provenance) VALUES (?, 'b', '[]', 1, 'model')",
@@ -118,10 +118,10 @@ describe("syncBacklog", () => {
     const ix = await indexedFixture();
     try {
       syncBacklog(ix.store);
-      const key = keyOf(ix.store, "sym:packages/utils/src/date.ts#formatRelativeDate");
+      const key = keyOf(ix.store, "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate");
       const before = backlog(ix.store);
       expect(before.find((b) => b.content_key === key)?.symbol_id).toBe(
-        "sym:packages/utils/src/date.ts#formatRelativeDate",
+        "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
       );
       await move(ix);
       const r = syncBacklog(ix.store);
@@ -129,7 +129,7 @@ describe("syncBacklog", () => {
       const after = backlog(ix.store);
       expect(after).toHaveLength(before.length);
       expect(after.find((b) => b.content_key === key)?.symbol_id).toBe(
-        "sym:packages/utils/src/moved-date.ts#formatRelativeDate",
+        "sym:pnpm-turbo:packages/utils/src/moved-date.ts#formatRelativeDate",
       );
     } finally {
       await ix.close();
@@ -139,7 +139,7 @@ describe("syncBacklog", () => {
   it("does not re-enqueue a described function that moved to another file", async () => {
     const ix = await indexedFixture();
     try {
-      const key = keyOf(ix.store, "sym:packages/utils/src/date.ts#formatRelativeDate");
+      const key = keyOf(ix.store, "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate");
       ix.store.db
         .prepare(
           "INSERT INTO descriptions(content_key, behavior, search_terms, name_fits, provenance) VALUES (?, 'b', '[]', 1, 'model')",
@@ -147,7 +147,9 @@ describe("syncBacklog", () => {
         .run(key);
       syncBacklog(ix.store);
       await move(ix);
-      expect(ix.store.getSymbol("sym:packages/utils/src/moved-date.ts#formatRelativeDate")).toBeDefined();
+      expect(
+        ix.store.getSymbol("sym:pnpm-turbo:packages/utils/src/moved-date.ts#formatRelativeDate"),
+      ).toBeDefined();
       const r = syncBacklog(ix.store);
       expect(r.enqueued).toBe(0);
       expect(backlog(ix.store).some((b) => b.content_key === key)).toBe(false);
@@ -163,7 +165,7 @@ describe("syncBacklog", () => {
       claimBatch(ix.store, "w", 1);
       ix.store.db
         .prepare(
-          "INSERT INTO backlog(content_key, symbol_id, priority, status) VALUES ('gone:p1', 'sym:x#y', 1, 'pending')",
+          "INSERT INTO backlog(content_key, symbol_id, priority, status) VALUES ('gone:p1', 'sym:pnpm-turbo:x#y', 1, 'pending')",
         )
         .run();
       syncBacklog(ix.store);
@@ -203,7 +205,7 @@ describe("syncBacklog", () => {
         join(ix.fx.dir, "packages/db/src/queries.ts"),
         "export async function createPost() {\n  return 42;\n}\n",
       );
-      const key = keyOf(ix.store, "sym:packages/db/src/queries.ts#createPost");
+      const key = keyOf(ix.store, "sym:pnpm-turbo:packages/db/src/queries.ts#createPost");
       syncBacklog(ix.store);
       expect(
         ix.store.db.prepare("SELECT 1 FROM descriptions WHERE content_key = ?").get(key),
@@ -263,12 +265,12 @@ describe("claimBatch and releaseExpiredClaims", () => {
       syncBacklog(ix.store);
       ix.store.db
         .prepare(
-          "INSERT INTO backlog(content_key, symbol_id, priority, status) VALUES ('old:p1', 'sym:packages/utils/src/slug.ts#slugify', 0, 'pending')",
+          "INSERT INTO backlog(content_key, symbol_id, priority, status) VALUES ('old:p1', 'sym:pnpm-turbo:packages/utils/src/slug.ts#slugify', 0, 'pending')",
         )
         .run();
       ix.store.db
         .prepare(
-          "INSERT INTO backlog(content_key, symbol_id, priority, status) VALUES ('none:p1', 'sym:no/where.ts#f', 0, 'pending')",
+          "INSERT INTO backlog(content_key, symbol_id, priority, status) VALUES ('none:p1', 'sym:pnpm-turbo:no/where.ts#f', 0, 'pending')",
         )
         .run();
       const r = claimBatch(ix.store, "w", 1000);
@@ -280,7 +282,7 @@ describe("claimBatch and releaseExpiredClaims", () => {
       // A missing file leaves the row pending.
       syncBacklog(ix.store);
       rmSync(join(ix.fx.dir, "packages/utils/src/time.ts"));
-      const key = keyOf(ix.store, "sym:packages/utils/src/time.ts#parseTimestamp");
+      const key = keyOf(ix.store, "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp");
       ix.store.db
         .prepare("UPDATE backlog SET status = 'pending', claimed_by = NULL WHERE content_key = ?")
         .run(key);

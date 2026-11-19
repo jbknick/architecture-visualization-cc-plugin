@@ -1,4 +1,10 @@
-import type { AdapterNodeRecord, EdgeRecord, FileRecord, SymbolRecord } from "@gantry/core";
+import {
+  type AdapterNodeRecord,
+  type EdgeRecord,
+  type FileRecord,
+  kindOfId,
+  type SymbolRecord,
+} from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { GraphEdge, GraphNode, ViewModule, ViewResult } from "../types.js";
 import { buildBadgeIndex, symbolBadges } from "./badges.js";
@@ -94,7 +100,7 @@ export const pagesView: ViewModule = {
     const inApp = allRoutes.filter((r) => appOk(r.ws));
     const contains = store.effectiveEdges({ kind: ["contains"] });
     const parentOf = new Map<string, string>();
-    for (const e of contains) if (e.src.startsWith("route:")) parentOf.set(e.dst, e.src);
+    for (const e of contains) if (kindOfId(e.src) === "route") parentOf.set(e.dst, e.src);
     const kept = new Set<string>();
     for (const r of inApp) {
       if (r.data.root === true || !underPrefix(str(r.data.urlPath) ?? "/", prefix)) continue;

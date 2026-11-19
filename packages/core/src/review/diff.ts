@@ -119,11 +119,11 @@ interface Side {
 const EMPTY: Side = { symbols: [], imports: new Set() };
 
 /** Parses the blob of `path` at `sha` in memory. Undefined when it cannot be read or is too large to index. */
-function readSide(root: string, sha: string, path: string): Side | undefined {
+function readSide(root: string, repo: string, sha: string, path: string): Side | undefined {
   const r = git(root, ["show", `${sha}:${path}`]);
   if (!r.ok || r.out.length > MAX_FILE_BYTES) return undefined;
   const source = r.out.toString("utf8");
-  const parsed = parseSource(path, source);
+  const parsed = parseSource(repo, path, source);
   const lang = path.endsWith(".tsx") ? "tsx" : "ts";
   const symbols: Sym[] = parsed.symbols.map((s) => {
     const body = parsed.bodies.get(s.id);
@@ -198,8 +198,8 @@ export async function reviewDiff(paths: GantryPaths, base: string, head: string)
 
   for (const f of changed) {
     const path = (f.newPath ?? f.oldPath) as string;
-    const b = f.oldPath !== undefined ? readSide(root, mergeBase, f.oldPath) : EMPTY;
-    const a = f.newPath !== undefined ? readSide(root, headSha, f.newPath) : EMPTY;
+    const b = f.oldPath !== undefined ? readSide(root, paths.repo, mergeBase, f.oldPath) : EMPTY;
+    const a = f.newPath !== undefined ? readSide(root, paths.repo, headSha, f.newPath) : EMPTY;
     if (!a || !b) continue; // unreadable or too large to index: not a symbol-level change
     files.push({ path, status: f.status });
     if (f.status === "R") renamed.set(f.oldPath as string, f.newPath as string);

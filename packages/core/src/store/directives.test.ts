@@ -38,7 +38,7 @@ afterAll(async () => {
 });
 
 function _secretOf(s: Store) {
-  const sym = s.getSymbol("sym:packages/ui/src/secret.ts#readSecret");
+  const sym = s.getSymbol("sym:pnpm-turbo:packages/ui/src/secret.ts#readSecret");
   if (!sym) throw new Error("no secret symbol");
   return sym;
 }
@@ -47,8 +47,8 @@ describe("dumpGraph directives", () => {
   it("adds directives to a file row only when non-empty", async () => {
     const ix = await fixture();
     const files = dumpGraph(ix.store).files as { id: string; directives?: string[] }[];
-    expect(files.find((f) => f.id === `file:${CLIENT}`)?.directives).toEqual(["use client"]);
-    const plain = files.find((f) => f.id === `file:${PLAIN}`);
+    expect(files.find((f) => f.id === `file:pnpm-turbo:${CLIENT}`)?.directives).toEqual(["use client"]);
+    const plain = files.find((f) => f.id === `file:pnpm-turbo:${PLAIN}`);
     expect(plain).toBeDefined();
     expect(plain && "directives" in plain).toBe(false);
     expect(files.filter((f) => "directives" in f)).toHaveLength(1);
@@ -61,7 +61,7 @@ describe("working layer carries directives", () => {
     const effective = () => {
       const s = openStore(ix.paths.dbPath);
       try {
-        return s.effectiveFile(`file:${PLAIN}`)?.directives;
+        return s.effectiveFile(`file:pnpm-turbo:${PLAIN}`)?.directives;
       } finally {
         s.close();
       }

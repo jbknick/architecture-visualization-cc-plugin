@@ -87,7 +87,7 @@ function indexFiles(files: Record<string, string>): string {
   for (const [path, source] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), source);
-    const parsed = parseSource(path, source);
+    const parsed = parseSource("repo", path, source);
     const lang = path.endsWith(".tsx") ? "tsx" : "ts";
     const symbols: SymbolRecord[] = parsed.symbols.map((s) => {
       const body = parsed.bodies.get(s.id);
@@ -97,7 +97,7 @@ function indexFiles(files: Record<string, string>): string {
       return { ...s, ...h };
     });
     const file: FileRecord = {
-      id: `file:${path}`,
+      id: `file:repo:${path}`,
       path,
       workspaceId: null,
       contentHash: "h",
@@ -130,7 +130,7 @@ describe("vector serialization", () => {
 
 describe("vec tables of a new store", () => {
   it("loads sqlite-vec, creates both vec tables for the M0 model and records the model", () => {
-    expect(store.getMeta("schema_version")).toBe("7");
+    expect(store.getMeta("schema_version")).toBe("8");
     expect(store.getMeta("vec_available")).toBe("1");
     expect(store.getMeta("embed_model")).toBe(EMBED_MODEL_ID);
     expect(store.getMeta("embed_dim")).toBe(String(EMBED_DIM));
@@ -249,7 +249,7 @@ describe("embedPending", () => {
       expect(t).not.toContain("\n");
     }
     // KNN of a symbol's own code vector finds its contentKey first.
-    const sym = store.getSymbol("sym:src/c.ts#gamma") as SymbolRecord;
+    const sym = store.getSymbol("sym:repo:src/c.ts#gamma") as SymbolRecord;
     const key = `${sym.exactHash}:p1`;
     const [own] = await emb.embed([texts.find((t) => t.includes("+ 1")) as string], "code");
     expect(knn(store, "vec_code", own as Float32Array, 2)[0]).toMatchObject({ contentKey: key });

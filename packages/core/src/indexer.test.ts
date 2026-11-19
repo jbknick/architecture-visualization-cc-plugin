@@ -103,7 +103,9 @@ describe("main layer", () => {
     await indexRepo(paths, { layer: "main" });
     const g = dump(paths);
     expect(g.files.some((f) => (f as { path: string }).path === "src/math.ts")).toBe(false);
-    expect(g.symbols.some((x) => (x as { fileId: string }).fileId === "file:src/math.ts")).toBe(false);
+    expect(g.symbols.some((x) => (x as { fileId: string }).fileId === "file:single-pkg:src/math.ts")).toBe(
+      false,
+    );
   });
 
   it("indexes the same graph from in-memory sources as from disk", async () => {
@@ -122,7 +124,7 @@ describe("fts", () => {
     const { fx, paths } = await setup("single-pkg");
     await indexRepo(paths, { layer: "main" });
     const s = openStore(paths.dbPath);
-    const id = "sym:src/util/format.ts#formatName";
+    const id = "sym:single-pkg:src/util/format.ts#formatName";
     s.fts.upsert(id, {
       nameTokens: "format name",
       suggestedName: "",
@@ -140,7 +142,7 @@ describe("fts", () => {
     }[];
     s2.close();
     expect(rows.find((r) => r.symbol_id === id)?.behavior).toBe("joins names");
-    expect(rows.some((r) => r.symbol_id.startsWith("sym:src/math.ts#"))).toBe(false);
+    expect(rows.some((r) => r.symbol_id.startsWith("sym:single-pkg:src/math.ts#"))).toBe(false);
     expect(new Set(rows.map((r) => r.symbol_id)).size).toBe(rows.length);
   });
 });
@@ -172,20 +174,26 @@ describe("working layer", () => {
 
     const syms = diff(before.symbols, after.symbols);
     expect(
-      [...syms.removed, ...syms.added].every((s) => (s as { fileId: string }).fileId === `file:${rel}`),
+      [...syms.removed, ...syms.added].every(
+        (s) => (s as { fileId: string }).fileId === `file:single-pkg:${rel}`,
+      ),
     ).toBe(true);
     expect(syms.added.map((s) => (s as { name: string }).name)).toEqual(["formatFullName"]);
 
     const edges = diff(before.edges, after.edges);
     const touches = (e: unknown) => {
       const x = e as { src: string; dst: string; fileId: string };
-      return x.fileId === `file:${rel}` || x.src.includes(rel) || x.dst.includes(rel);
+      return x.fileId === `file:single-pkg:${rel}` || x.src.includes(rel) || x.dst.includes(rel);
     };
     expect(edges.removed.length).toBeGreaterThan(0);
     expect(edges.removed.every(touches)).toBe(true);
     // Added edges either live in the changed file or are re-resolved edges of its importers.
     for (const e of edges.added as { fileId: string; kind: string }[]) {
-      expect(["file:src/util/format.ts", "file:src/greet.ts", "file:src/index.ts"]).toContain(e.fileId);
+      expect([
+        "file:single-pkg:src/util/format.ts",
+        "file:single-pkg:src/greet.ts",
+        "file:single-pkg:src/index.ts",
+      ]).toContain(e.fileId);
     }
 
     // Only the changed file and files importing it got working rows; unrelated files did not.
@@ -194,9 +202,9 @@ describe("working layer", () => {
       .map((r) => r.id)
       .sort();
     s.close();
-    expect(working).toContain(`file:${rel}`);
-    expect(working).not.toContain("file:src/math.ts");
-    expect(working).not.toContain("file:src/counter.ts");
+    expect(working).toContain(`file:single-pkg:${rel}`);
+    expect(working).not.toContain("file:single-pkg:src/math.ts");
+    expect(working).not.toContain("file:single-pkg:src/counter.ts");
     expect(working.length).toBeLessThanOrEqual(3);
   });
 
@@ -214,8 +222,8 @@ describe("working layer", () => {
     const ids = (s1.db.prepare("SELECT id FROM files WHERE layer = 'working'").all() as { id: string }[]).map(
       (r) => r.id,
     );
-    expect(ids).toContain("file:src/math.ts");
-    expect(ids).not.toContain("file:src/counter.ts");
+    expect(ids).toContain("file:single-pkg:src/math.ts");
+    expect(ids).not.toContain("file:single-pkg:src/counter.ts");
     s1.close();
 
     // Reverting the file clears its working rows.

@@ -90,11 +90,11 @@ const LONG_DRAFT = LONG_SOURCE.replace("normalizeRows", "tidyLines").replace(
 );
 
 const DESCRIPTIONS: Record<string, string> = {
-  "sym:src/time/format.ts#formatRelativeDate": "Formats a date as time ago text such as 5 minutes ago.",
-  "sym:src/time/parse.ts#parseTimestamp": `Parses a timestamp into a date ready to format as time ago. ${MARKER}`,
-  "sym:src/lib/slug.ts#slugify": "Turns a title into a url-safe string.",
-  "sym:src/util/sum.ts#sum": "Adds up numbers.",
-  "sym:src/util/rows.ts#normalizeRows": "Trims, lowercases, dedupes and sorts text rows.",
+  "sym:repo:src/time/format.ts#formatRelativeDate": "Formats a date as time ago text such as 5 minutes ago.",
+  "sym:repo:src/time/parse.ts#parseTimestamp": `Parses a timestamp into a date ready to format as time ago. ${MARKER}`,
+  "sym:repo:src/lib/slug.ts#slugify": "Turns a title into a url-safe string.",
+  "sym:repo:src/util/sum.ts#sum": "Adds up numbers.",
+  "sym:repo:src/util/rows.ts#normalizeRows": "Trims, lowercases, dedupes and sorts text rows.",
 };
 
 const repos: Repo[] = [];
@@ -176,7 +176,7 @@ describe("gantry_find_similar", () => {
     expect(hits.length).toBeGreaterThan(0);
     for (const h of hits) expect(h.key).toBe(UNTRUSTED_FIELD);
     const parse = matches.find((m) => m.name === "parseTimestamp");
-    expect(parse?.[UNTRUSTED_FIELD]).toBe(DESCRIPTIONS["sym:src/time/parse.ts#parseTimestamp"]);
+    expect(parse?.[UNTRUSTED_FIELD]).toBe(DESCRIPTIONS["sym:repo:src/time/parse.ts#parseTimestamp"]);
     const stripped = leaves(r.json)
       .filter((l) => l.key === UNTRUSTED_FIELD)
       .reduce((acc, l) => acc.replaceAll(JSON.stringify(l.text), '""'), r.text);

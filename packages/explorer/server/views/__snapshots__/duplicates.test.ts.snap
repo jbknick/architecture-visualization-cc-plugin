@@ -4,13 +4,13 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
 {
   "clusters": [
     {
-      "id": "cluster:sym:packages/utils/src/date.ts#formatRelativeDate",
-      "keep": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "id": "cluster:sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+      "keep": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
       "keepReason": "In the shared package @acme/utils, exported, called by 1 function; the other copy can use it.",
       "links": [
         {
-          "a": "sym:packages/utils/src/date.ts#formatRelativeDate",
-          "b": "sym:packages/utils/src/time.ts#parseTimestamp",
+          "a": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+          "b": "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
           "tier": "exact",
         },
       ],
@@ -20,7 +20,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
           "endLine": 11,
           "exported": true,
           "fanIn": 1,
-          "id": "sym:packages/utils/src/date.ts#formatRelativeDate",
+          "id": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
           "keep": true,
           "kind": "function",
           "line": 1,
@@ -40,7 +40,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
           "endLine": 12,
           "exported": true,
           "fanIn": 0,
-          "id": "sym:packages/utils/src/time.ts#parseTimestamp",
+          "id": "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
           "keep": false,
           "kind": "function",
           "line": 2,
@@ -66,13 +66,13 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
       ],
     },
     {
-      "id": "cluster:sym:apps/web/src/lib/slug.ts#slugify",
-      "keep": "sym:packages/utils/src/slug.ts#slugify",
+      "id": "cluster:sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+      "keep": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
       "keepReason": "In the shared package @acme/utils, not exported yet, called by 1 function; the other copy can use it.",
       "links": [
         {
-          "a": "sym:apps/web/src/lib/slug.ts#slugify",
-          "b": "sym:packages/utils/src/slug.ts#slugify",
+          "a": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+          "b": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
           "tier": "exact",
         },
       ],
@@ -82,7 +82,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
           "endLine": 9,
           "exported": false,
           "fanIn": 1,
-          "id": "sym:packages/utils/src/slug.ts#slugify",
+          "id": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
           "keep": true,
           "kind": "function",
           "line": 2,
@@ -102,7 +102,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
           "endLine": 8,
           "exported": true,
           "fanIn": 1,
-          "id": "sym:apps/web/src/lib/slug.ts#slugify",
+          "id": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
           "keep": false,
           "kind": "function",
           "line": 1,
@@ -132,25 +132,25 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
   "edges": [
     {
       "confidence": "high",
-      "dst": "sym:packages/utils/src/slug.ts#slugify",
-      "id": "sym:apps/web/src/lib/slug.ts#slugify|similar_to|sym:packages/utils/src/slug.ts#slugify",
+      "dst": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
+      "id": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify|similar_to|sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
       "kind": "similar_to",
-      "src": "sym:apps/web/src/lib/slug.ts#slugify",
+      "src": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
       "weight": 1,
     },
     {
       "confidence": "high",
-      "dst": "sym:packages/utils/src/time.ts#parseTimestamp",
-      "id": "sym:packages/utils/src/date.ts#formatRelativeDate|similar_to|sym:packages/utils/src/time.ts#parseTimestamp",
+      "dst": "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
+      "id": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate|similar_to|sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
       "kind": "similar_to",
-      "src": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "src": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
       "weight": 1,
     },
   ],
   "layoutHint": "clusters",
   "nodes": [
     {
-      "id": "sym:apps/web/src/lib/slug.ts#slugify",
+      "id": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
       "kind": "function",
       "label": "slugify",
       "path": "apps/web/src/lib/slug.ts",
@@ -165,7 +165,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
       "badges": [
         "keep",
       ],
-      "id": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "id": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
       "kind": "function",
       "label": "formatRelativeDate",
       "path": "packages/utils/src/date.ts",
@@ -180,7 +180,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
       "badges": [
         "keep",
       ],
-      "id": "sym:packages/utils/src/slug.ts#slugify",
+      "id": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
       "kind": "function",
       "label": "slugify",
       "path": "packages/utils/src/slug.ts",
@@ -192,7 +192,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
       "workspace": "ws:@acme/utils",
     },
     {
-      "id": "sym:packages/utils/src/time.ts#parseTimestamp",
+      "id": "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
       "kind": "function",
       "label": "parseTimestamp",
       "path": "packages/utils/src/time.ts",

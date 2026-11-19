@@ -47,6 +47,8 @@ export type AdapterResolver = Pick<Resolver, "resolveSpecifier" | "resolveSymbol
 
 /** What `extract` gets for one file. */
 export interface AdapterFileContext {
+  /** The repo name in every id (`GantryPaths.repo`). */
+  repo: string;
   fileId: string;
   path: string;
   ws: WorkspaceRecord;
@@ -64,6 +66,7 @@ export interface AdapterExtract<F> extends Partial<AdapterOutput> {
 
 export interface AdapterLinkContext<F> {
   root: string;
+  repo: string;
   workspaces: WorkspaceRecord[];
   /** Every file this adapter extracted, in path order, with its facts (files without facts included). */
   files: { file: AdapterFileContext; facts: F | undefined }[];
@@ -88,6 +91,7 @@ export interface Adapter<F = unknown> {
 
 export interface AdapterRunContext {
   root: string;
+  repo: string;
   workspaces: WorkspaceRecord[];
   files: AdapterFile[];
   parsed: { get(fileId: string): ParsedFile | undefined };
@@ -248,6 +252,7 @@ export function runAdapterList(ctx: AdapterRunContext, adapters: readonly Adapte
     let c = contexts.get(f.id);
     if (!c) {
       c = {
+        repo: ctx.repo,
         fileId: f.id,
         path: f.path,
         ws,
@@ -294,6 +299,7 @@ export function runAdapterList(ctx: AdapterRunContext, adapters: readonly Adapte
     const sorted = [...nodes].sort((a, b) => cmp(a.id, b.id));
     const out = adapter.link({
       root: ctx.root,
+      repo: ctx.repo,
       workspaces: ctx.workspaces,
       files: mine,
       nodes: sorted,

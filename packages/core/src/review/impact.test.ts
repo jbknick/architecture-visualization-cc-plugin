@@ -55,7 +55,7 @@ async function setup(prepare?: (fx: MaterializedFixture) => void) {
   return { fx, paths, store };
 }
 
-const BUTTON = "sym:packages/ui/src/button.tsx#Button";
+const BUTTON = "sym:pnpm-turbo:packages/ui/src/button.tsx#Button";
 
 function changeButtonSignature(fx: MaterializedFixture): void {
   fx.git(["checkout", "-b", "feature"]);
@@ -79,10 +79,13 @@ describe("impact on fixtures/pnpm-turbo", () => {
 
     expect(impact.changed.map((c) => c.id)).toEqual([BUTTON]);
     expect(impact.changed[0]?.signatureChanged).toBe(true);
-    const home = "sym:apps/web/src/routes/index.tsx#HomePage";
-    const profile = "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage";
+    const home = "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage";
+    const profile = "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage";
     // The barrel re-exports button.tsx and no symbol of it renders Button, so the file itself is a direct consumer.
-    expect(impact.callersByHop[0]).toEqual({ hop: 1, ids: ["file:packages/ui/src/index.ts", home, profile] });
+    expect(impact.callersByHop[0]).toEqual({
+      hop: 1,
+      ids: ["file:pnpm-turbo:packages/ui/src/index.ts", home, profile],
+    });
     expect(impact.crossings).toEqual([
       { from: BUTTON, to: home, kind: "app" },
       { from: BUTTON, to: profile, kind: "app" },
@@ -120,10 +123,12 @@ describe("impact on fixtures/pnpm-turbo", () => {
     write(fx, "packages/utils/src/date.ts", "export const DATE_UNIT = 1;\n");
     commit(fx, "remove formatRelativeDate");
     const impact = await reviewImpact(paths, store, await reviewDiff(paths, "main", "feature"));
-    const id = "sym:packages/utils/src/date.ts#formatRelativeDate";
+    const id = "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate";
     expect(impact.changed.map((c) => `${c.kind} ${c.id}`)).toContain(`removed ${id}`);
     expect(impact.notes.join("\n")).toContain(`Removed export ${id} is still used by`);
-    expect(impact.notes.join("\n")).toContain("sym:apps/web/src/routes/posts.$postId.tsx#PostPage");
+    expect(impact.notes.join("\n")).toContain(
+      "sym:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#PostPage",
+    );
     expect(impact.risk.reasons).toContain("+30 removed exported symbol that still has callers");
     // the page is in an app and the removed function in a package
     expect(impact.crossings.some((c) => c.kind === "app" && c.from === id)).toBe(true);
@@ -147,7 +152,7 @@ describe("impact on fixtures/pnpm-turbo", () => {
     expect(impact.notes).toContain('New undeclared import "clsx" in packages/ui/src/card.tsx:1.');
     expect(
       impact.notes.some((n) =>
-        /^New function sym:apps\/web\/src\/lib\/slugCopy\.ts#makeSlug duplicates sym:apps\/web\/src\/lib\/slug\.ts#slugify \(/.test(
+        /^New function sym:pnpm-turbo:apps\/web\/src\/lib\/slugCopy\.ts#makeSlug duplicates sym:pnpm-turbo:apps\/web\/src\/lib\/slug\.ts#slugify \(/.test(
           n,
         ),
       ),
@@ -176,18 +181,18 @@ describe("impact on fixtures/pnpm-turbo", () => {
   it("walks callers hop by hop, records the first hop and honors maxHops", async () => {
     const { store } = await setup();
     // slugify <- SLUG_VERSION (hop 1), and PostList calls apps/web slugify; use the web one: slugify <- PostList <- HomePage
-    const changes = modifiedChanges(store, ["sym:apps/web/src/lib/slug.ts#slugify"]);
+    const changes = modifiedChanges(store, ["sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify"]);
     expect(changes).toHaveLength(1);
     const full = computeImpact(store, changes);
     expect(full.callersByHop).toEqual([
-      { hop: 1, ids: ["sym:apps/web/src/components/PostList.tsx#PostList"] },
-      { hop: 2, ids: ["sym:apps/web/src/routes/index.tsx#HomePage"] },
+      { hop: 1, ids: ["sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList"] },
+      { hop: 2, ids: ["sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage"] },
       // the route serves HomePage (route edges count as uses)
-      { hop: 3, ids: ["route:@acme/web:/"] },
+      { hop: 3, ids: ["route:pnpm-turbo:@acme/web:/"] },
     ]);
     const one = computeImpact(store, changes, { maxHops: 1 });
     expect(one.callersByHop).toEqual([
-      { hop: 1, ids: ["sym:apps/web/src/components/PostList.tsx#PostList"] },
+      { hop: 1, ids: ["sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList"] },
     ]);
     // every caller is listed once, at its first hop
     const all = full.callersByHop.flatMap((h) => h.ids);
@@ -197,7 +202,9 @@ describe("impact on fixtures/pnpm-turbo", () => {
 
   it("scores a changed function above complexity 15", async () => {
     const { store } = await setup();
-    const [base] = modifiedChanges(store, ["sym:apps/web/src/lib/slug.ts#slugify"]) as [SymbolChange];
+    const [base] = modifiedChanges(store, ["sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify"]) as [
+      SymbolChange,
+    ];
     const hot: SymbolChange = {
       ...base,
       after: { ...(base.after as NonNullable<SymbolChange["after"]>), complexity: 20 },
@@ -214,10 +221,14 @@ describe("impact on fixtures/pnpm-turbo", () => {
         `"use client";\n${read(f, "apps/web/src/components/PostList.tsx")}`,
       ),
     );
-    const slugify = "sym:apps/web/src/lib/slug.ts#slugify";
+    const slugify = "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify";
     const impact = computeImpact(store, modifiedChanges(store, [slugify]));
     expect(impact.crossings).toEqual([
-      { from: slugify, to: "sym:apps/web/src/components/PostList.tsx#PostList", kind: "client_server" },
+      {
+        from: slugify,
+        to: "sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
+        kind: "client_server",
+      },
     ]);
   });
 
@@ -232,10 +243,10 @@ describe("impact on fixtures/pnpm-turbo", () => {
   it("notes changed symbols the index does not know", async () => {
     const { store } = await setup();
     const ghost: SymbolChange = {
-      id: "sym:nowhere.ts#gone",
+      id: "sym:pnpm-turbo:nowhere.ts#gone",
       kind: "removed",
       before: {
-        id: "sym:nowhere.ts#gone",
+        id: "sym:pnpm-turbo:nowhere.ts#gone",
         path: "nowhere.ts",
         line: 1,
         signature: "gone()",

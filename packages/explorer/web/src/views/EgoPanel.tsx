@@ -1,6 +1,7 @@
 import { useId, useMemo } from "react";
 import type { GraphNode } from "../api.ts";
 import { weightOf, workspaceRanks } from "../canvas/bowtieLayout.ts";
+import { isFileId } from "../ids.ts";
 import type { FilterPanelProps } from "../slots.ts";
 import { currentScheme } from "../theme.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
@@ -25,7 +26,7 @@ const EDGE_KINDS: { id: string; label: string; hint: string }[] = [
 
 /** The server's default connection types: file imports for a file, everything else for a function. */
 export function defaultEdgeKinds(focus: string | null): string[] {
-  return focus?.startsWith("file:") ? ["imports"] : ["calls", "renders", "uses_hook"];
+  return (focus ? isFileId(focus) : false) ? ["imports"] : ["calls", "renders", "uses_hook"];
 }
 
 /** Scrolls and zooms the ego canvas to a node (the canvas listens for this event). */

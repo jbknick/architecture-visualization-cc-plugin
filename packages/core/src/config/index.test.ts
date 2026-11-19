@@ -12,6 +12,7 @@ beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gantry-config-"));
   p = {
     root: tmp,
+    repo: "repo",
     worktreeHash: "0".repeat(16),
     dataDir: path.join(tmp, "data"),
     dbPath: path.join(tmp, "data", "gantry.db"),

@@ -14,9 +14,11 @@ export interface MaterializedFixture {
 
 const fixturesRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../../fixtures");
 
-/** Copy a fixture to a temp dir, `git init -b main`, set a local user, commit everything as "fixture". */
+/** Copy a fixture to `<temp dir>/<name>`, `git init -b main`, set a local user, commit everything as "fixture". */
 export async function materializeFixture(name: FixtureName): Promise<MaterializedFixture> {
-  const dir = await mkdtemp(join(tmpdir(), `gantry-fixture-${name}-`));
+  // The repo name of a fixture (no remote) is the basename of its directory, so every run gets the same ids.
+  const parent = await mkdtemp(join(tmpdir(), `gantry-fixture-${name}-`));
+  const dir = join(parent, name);
   await cp(join(fixturesRoot, name), dir, { recursive: true });
   const git = (args: string[]): string =>
     execFileSync("git", args, { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
@@ -26,5 +28,5 @@ export async function materializeFixture(name: FixtureName): Promise<Materialize
   git(["config", "commit.gpgsign", "false"]);
   git(["add", "-A", "-f"]);
   git(["commit", "-m", "fixture"]);
-  return { dir, git, cleanup: () => rm(dir, { recursive: true, force: true }) };
+  return { dir, git, cleanup: () => rm(parent, { recursive: true, force: true }) };
 }

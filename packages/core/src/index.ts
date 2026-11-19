@@ -23,6 +23,7 @@ export * from "./dup/index.js";
 export * from "./embed/index.js";
 export * from "./hash/index.js";
 export * from "./heal/index.js";
+export * from "./ids.js";
 export * from "./indexer.js";
 export * from "./overview/index.js";
 export * from "./parse/index.js";

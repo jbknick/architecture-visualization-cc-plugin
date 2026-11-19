@@ -6,8 +6,15 @@ import {
   type Crossing,
   describedByOf,
   directConsumers,
+  fileId,
+  fileIdBeside,
+  fileIdOfSymId,
   type Impact,
+  isFileId,
+  isSymId,
+  parseId,
   parseRange,
+  pathOfId,
   type ReviewDiff,
   type ReviewFile,
   RISK_LEVELS,
@@ -146,7 +153,7 @@ export interface ReviewData {
   /** Rings mode: edges between rings before the cap. */
   edgesTotal?: number;
   /** Each changed file with its symbol change count and its consumers (the files that import it, then theirs). */
-  files: (ReviewFile & { changes: number; consumers: ReviewConsumers })[];
+  files: (ReviewFile & { id: string; changes: number; consumers: ReviewConsumers })[];
   changes: ReviewChangeRow[];
   callersByHop: { hop: number; count: number }[];
   crossings: Crossing[];
@@ -179,6 +186,8 @@ interface Computed {
   /** Direct edges into the changed symbols, sorted (see `directEdges`). */
   direct: DirectEdge[];
   ms: number;
+  /** The repo name of the index the review ran on. */
+  repo: string;
   /** The index state the impact was computed on (see `indexMarker`); any index write invalidates the entry. */
   marker: string;
 }
@@ -220,18 +229,19 @@ function resolvePr(ctx: ApiContext, n: number): { base: string; head: string } {
 }
 
 const nameOf = (id: string): string => {
-  if (id.startsWith("sym:")) return id.slice(id.lastIndexOf("#") + 1);
-  if (id.startsWith("file:")) return id.slice(id.lastIndexOf("/") + 1);
-  // An adapter node such as `route:<ws>:<path>` is named by its path.
-  return id.split(":").slice(2).join(":") || id;
+  const p = parseId(id);
+  if (p?.kind === "sym") return p.name as string;
+  if (p?.kind === "file") return (p.path as string).slice((p.path as string).lastIndexOf("/") + 1);
+  // An adapter node such as `route:<repo>:<ws>:<path>` is named by its path.
+  return (p?.ws !== undefined ? p.rest : "") || id;
 };
-const pathOf = (id: string): string | undefined =>
-  id.startsWith("sym:") ? id.slice(4, id.lastIndexOf("#")) : id.startsWith("file:") ? id.slice(5) : undefined;
+const pathOf = (id: string): string | undefined => pathOfId(id);
 
 /** The node that shows a store id on this map: itself, else its file. */
 function placeId(place: MapPlacement, id: string, path?: string): string | undefined {
   const p = path || pathOf(id);
-  return place.rep(id) ?? (p ? place.rep(`file:${p}`) : undefined);
+  const fid = p ? fileIdBeside(id, p) : undefined;
+  return place.rep(id) ?? (fid ? place.rep(fid) : undefined);
 }
 
 /** A change's consumers with their nodes on this map. */
@@ -330,6 +340,7 @@ async function compute(
     diff,
     impact,
     direct: directEdges(new ConsumerGraph(ctx.store), impact),
+    repo: ctx.store.repo(),
     ms: Date.now() - t0,
     marker,
   };
@@ -372,7 +383,8 @@ function placeChange(c: SymbolChange, place: MapPlacement): string | undefined {
     if (r !== undefined) return r;
   }
   for (const p of [c.after?.path, c.before?.path]) {
-    const r = p === undefined ? undefined : place.rep(`file:${p}`);
+    const fid = p === undefined ? undefined : fileIdBeside(c.id, p);
+    const r = fid === undefined ? undefined : place.rep(fid);
     if (r !== undefined) return r;
   }
   return undefined;
@@ -414,7 +426,7 @@ function buildLayer(c: Computed, place: MapPlacement): ReviewLayer {
     m.changes = (m.changes ?? 0) + 1;
   }
   for (const f of diff.files) {
-    const id = `file:${f.path}`;
+    const id = fileId(c.repo, f.path);
     const node = place.rep(id);
     if (node === undefined) continue;
     if (!placed.has(id)) placed.set(id, node);
@@ -424,7 +436,8 @@ function buildLayer(c: Computed, place: MapPlacement): ReviewLayer {
   }
   for (const h of impact.callersByHop) {
     for (const id of h.ids) {
-      const node = place.rep(id) ?? (pathOf(id) !== undefined ? place.rep(`file:${pathOf(id)}`) : undefined);
+      const fid = fileIdOfSymId(id);
+      const node = place.rep(id) ?? (fid !== undefined ? place.rep(fid) : undefined);
       if (node === undefined) continue;
       const m = markOf(node);
       if (m.change !== undefined) continue;
@@ -446,7 +459,8 @@ function buildLayer(c: Computed, place: MapPlacement): ReviewLayer {
     const dst = nodeOfChange.get(e.dst);
     const kind = kindOfChange.get(e.dst);
     const src =
-      place.rep(e.src) ?? (pathOf(e.src) !== undefined ? place.rep(`file:${pathOf(e.src)}`) : undefined);
+      place.rep(e.src) ??
+      (fileIdOfSymId(e.src) !== undefined ? place.rep(fileIdOfSymId(e.src) as string) : undefined);
     if (dst === undefined || src === undefined || kind === undefined || src === dst) continue;
     if (place.contains(src, dst) || place.contains(dst, src)) continue;
     const id = `${src}->${dst}`;
@@ -641,11 +655,11 @@ function ringLayout(
         });
         continue;
       }
-      const sym = id.startsWith("sym:") ? store.getSymbol(id) : undefined;
+      const sym = isSymId(id) ? store.getSymbol(id) : undefined;
       const path = pathOf(id);
       nodes.push({
         id,
-        kind: sym?.kind ?? (id.startsWith("file:") ? "file" : "function"),
+        kind: sym?.kind ?? (isFileId(id) ? "file" : "function"),
         label: nameOf(id),
         ...(path !== undefined ? { path, group: path } : {}),
         size: 1,
@@ -733,8 +747,9 @@ function dataOf(
     map: reviewMapOf(params),
     files: diff.files.map((f) => ({
       ...f,
+      id: fileId(store.repo(), f.path),
       changes: perFile.get(f.path) ?? 0,
-      consumers: consumersOn(consumersOf.get(`file:${f.path}`), place),
+      consumers: consumersOn(consumersOf.get(fileId(store.repo(), f.path)), place),
     })),
     changes,
     callersByHop: impact.callersByHop.map((h) => ({ hop: h.hop, count: h.ids.length })),

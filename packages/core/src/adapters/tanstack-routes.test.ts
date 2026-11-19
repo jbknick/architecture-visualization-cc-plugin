@@ -228,13 +228,14 @@ describe("detectTanstackRoutes", () => {
   };
   const src = (path: string, source: string) => ({
     path: `apps/web/src/routes/${path}`,
-    id: `file:apps/web/src/routes/${path}`,
+    id: `file:repo:apps/web/src/routes/${path}`,
     workspaceId: web.id,
     source,
   });
   const run = (files: ReturnType<typeof src>[], workspaces = [web, lib]) =>
     detectTanstackRoutes({
       root: "/nonexistent",
+      repo: "repo",
       workspaces,
       files,
       parsed: { get: () => undefined },
@@ -251,26 +252,26 @@ describe("detectTanstackRoutes", () => {
       src("helper.tsx", "export const h = 1;"),
     ]);
     expect(r.nodes.map((n) => [n.id, n.label])).toEqual([
-      ["route:@a/web:/", "/"],
-      ["route:@a/web:/posts", "/posts"],
-      ["route:@a/web:/posts/$postId", "/posts/$postId"],
-      ["route:@a/web:__root__", "__root"],
+      ["route:repo:@a/web:/", "/"],
+      ["route:repo:@a/web:/posts", "/posts"],
+      ["route:repo:@a/web:/posts/$postId", "/posts/$postId"],
+      ["route:repo:@a/web:__root__", "__root"],
     ]);
     expect(r.nodes.find((n) => n.id.endsWith("$postId"))?.data).toMatchObject({
       loader: "load",
       urlPath: "/posts/$postId",
     });
     expect(r.edges.map((e) => `${e.src} > ${e.dst} ${e.kind}`)).toEqual([
-      "route:@a/web:__root__ > route:@a/web:/ contains",
-      "route:@a/web:__root__ > route:@a/web:/posts contains",
-      "route:@a/web:/posts > route:@a/web:/posts/$postId contains",
+      "route:repo:@a/web:__root__ > route:repo:@a/web:/ contains",
+      "route:repo:@a/web:__root__ > route:repo:@a/web:/posts contains",
+      "route:repo:@a/web:/posts > route:repo:@a/web:/posts/$postId contains",
     ]);
-    expect(r.edges.every((e) => e.fileId.startsWith("file:apps/web/src/routes/"))).toBe(true);
+    expect(r.edges.every((e) => e.fileId.startsWith("file:repo:apps/web/src/routes/"))).toBe(true);
   });
 
   it("uses the createFileRoute argument as the id when it differs from the file name", () => {
     const r = run([src("whatever.tsx", 'export const Route = createFileRoute("/custom/path")({});')]);
-    expect(r.nodes.map((n) => n.id)).toEqual(["route:@a/web:/custom/path"]);
+    expect(r.nodes.map((n) => n.id)).toEqual(["route:repo:@a/web:/custom/path"]);
   });
 
   it("skips workspaces that are not apps using TanStack Router", () => {
@@ -286,11 +287,12 @@ describe("detectTanstackRoutes", () => {
     const rootWs: WorkspaceRecord = { ...web, id: "ws:.", name: "root", dir: "." };
     const r = detectTanstackRoutes({
       root: "/nonexistent",
+      repo: "repo",
       workspaces: [rootWs],
       files: [
         {
           path: "src/routes/index.tsx",
-          id: "file:src/routes/index.tsx",
+          id: "file:repo:src/routes/index.tsx",
           workspaceId: "ws:.",
           source: 'export const Route = createFileRoute("/")({});',
         },
@@ -298,6 +300,6 @@ describe("detectTanstackRoutes", () => {
       parsed: { get: () => undefined },
       resolver: { resolveSpecifier: () => ({ kind: "unresolved" }), resolveSymbol: () => null },
     });
-    expect(r.nodes.map((n) => n.id)).toEqual(["route:.:/"]);
+    expect(r.nodes.map((n) => n.id)).toEqual(["route:repo:.:/"]);
   });
 });

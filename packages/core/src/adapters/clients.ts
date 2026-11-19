@@ -1,3 +1,4 @@
+import { callId, fileId as makeFileId, symId } from "../ids.js";
 import { isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
 import type { EdgeRecord, WorkspaceRecord } from "../types.js";
 import {
@@ -416,9 +417,9 @@ export const clientsAdapter: Adapter<ClientFacts> = {
       if (n.kind !== "endpoint") continue;
       const d = n.data;
       if (d.adapter === "tanstack-start" && typeof d.name === "string" && typeof d.file === "string") {
-        const fileId = `file:${d.file}`;
+        const fileId = makeFileId(ctx.repo, d.file);
         const sym = d.exported === true ? ctx.resolver.resolveSymbol(fileId, d.name) : null;
-        fnBySym.set(sym ?? `sym:${d.file}#${d.name}`, n.id);
+        fnBySym.set(sym ?? symId(ctx.repo, d.file, d.name), n.id);
         // A const that is no symbol of its file (a non-exported `createServerFn()` chain) is found by name there.
         fnByLocal.set(`${fileId}\0${d.name}`, n.id);
         const key = `${n.ws}\0${d.name}`;
@@ -705,7 +706,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
       const a = alloc.get(ws) ?? new IdAllocator();
       alloc.set(ws, a);
       nodes.push({
-        id: a.take(`call:${wsName(ws)}:${hit.label}`),
+        id: a.take(callId(ctx.repo, wsName(ws), hit.label)),
         kind: "client_call",
         ws,
         label: hit.label,

@@ -1,3 +1,4 @@
+import { displayOfId } from "../ids.ts";
 import "./canvas.css";
 import Graph from "graphology";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -48,7 +49,7 @@ function shortLabel(label: string): string {
 }
 
 function plain(id: string): string {
-  return id.replace(/^(sym|file|ws|dir):/, "");
+  return displayOfId(id);
 }
 
 /**

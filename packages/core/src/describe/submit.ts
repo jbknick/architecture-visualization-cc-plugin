@@ -1,9 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import { pathOfFileId } from "../ids.js";
 import type { Store } from "../store/index.js";
 import type { FactSheet } from "../types.js";
 import type { SourceContext } from "./backlog.js";
-import { buildFactSheet, contentKey, pathOfFileId, SensitivePathError } from "./factsheet.js";
+import { buildFactSheet, contentKey, SensitivePathError } from "./factsheet.js";
 import { fallbackDescription } from "./fallback.js";
 import { type FeedbackField, rejectionFeedback } from "./feedback.js";
 import {

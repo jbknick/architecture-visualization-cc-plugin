@@ -140,7 +140,7 @@ export interface RefreshResult {
   changed: { files: number; functions: number };
   ms: number;
   healed: boolean;
-  /** Ids of the changed files (`file:<path>`). */
+  /** Ids of the changed files (`file:<repo>:<path>`). */
   files: string[];
   functions: { added: string[]; changed: string[]; removed: string[] };
 }
@@ -369,7 +369,13 @@ export interface ReviewData {
   map: "2d" | "3d";
   /** Rings mode: edges between rings before the cap. */
   edgesTotal?: number;
-  files: { path: string; status: "A" | "M" | "D" | "R"; changes: number; consumers: ReviewConsumers }[];
+  files: {
+    id: string;
+    path: string;
+    status: "A" | "M" | "D" | "R";
+    changes: number;
+    consumers: ReviewConsumers;
+  }[];
   changes: ReviewChange[];
   callersByHop: { hop: number; count: number }[];
   crossings: { from: string; to: string; kind: "workspace" | "app" | "client_server" }[];

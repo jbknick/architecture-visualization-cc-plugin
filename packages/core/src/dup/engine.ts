@@ -249,7 +249,7 @@ const FUNCTION_LIKE: ReadonlySet<SymbolKind> = new Set(FUNCTION_LIKE_KINDS);
 function featuresOfCode(q: DupQuery): Features | null {
   const code = q.code as NonNullable<DupQuery["code"]>;
   const path = code.path ?? (code.lang === "tsx" ? "scratch.tsx" : "scratch.ts");
-  const parsed = parseSource(path, code.source);
+  const parsed = parseSource("scratch", path, code.source);
   const sym = parsed.symbols.find((s) => FUNCTION_LIKE.has(s.kind));
   const range = sym && parsed.bodies.get(sym.id);
   if (!sym || !range) return null;

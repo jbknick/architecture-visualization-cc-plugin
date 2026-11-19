@@ -10,9 +10,9 @@ afterEach(cleanup);
 
 const route = (id: string, label: string): GraphNode => ({ id, kind: "route", label, size: 1 });
 const nodes: GraphNode[] = [
-  route("route:@a/web:/", "/"),
-  route("route:@a/web:/posts", "/posts"),
-  { id: "sym:b.tsx#Button", kind: "component", label: "Button", size: 1, badges: ["shared by 2"] },
+  route("route:pnpm-turbo:@a/web:/", "/"),
+  route("route:pnpm-turbo:@a/web:/posts", "/posts"),
+  { id: "sym:pnpm-turbo:b.tsx#Button", kind: "component", label: "Button", size: 1, badges: ["shared by 2"] },
 ];
 const data = (over: Partial<ViewData> = {}): ViewData => ({
   nodes,
@@ -81,7 +81,7 @@ describe("SlicesPanel", () => {
       ],
       shared: [
         {
-          id: "sym:ui#Button",
+          id: "sym:pnpm-turbo:ui#Button",
           name: "Button",
           kind: "component",
           path: "ui/button.tsx",

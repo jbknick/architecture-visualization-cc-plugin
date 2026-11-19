@@ -22,8 +22,8 @@ import {
 
 const dup = (i: number): DupFinding => ({
   kind: "duplicate",
-  symbolId: `sym:apps/web/src/lib/new.ts#newFn${i}`,
-  existingId: "sym:packages/utils/src/slug.ts#slugify",
+  symbolId: `sym:repo:apps/web/src/lib/new.ts#newFn${i}`,
+  existingId: "sym:repo:packages/utils/src/slug.ts#slugify",
   name: `newFn${i}`,
   path: "apps/web/src/lib/new.ts",
   line: i,
@@ -93,12 +93,12 @@ describe("diskCheck: the exact tier on a renamed copy (#151)", () => {
     source: string,
     opts: { renamed?: boolean; noShape?: boolean } = {},
   ): SymbolRecord {
-    const parsed = parseSource(rel, source);
+    const parsed = parseSource("repo", rel, source);
     const sym = parsed.symbols.find((x) => x.name === name);
     const range = sym && parsed.bodies.get(sym.id);
     if (!sym || !range) throw new Error("no symbol");
     const h = hashSymbol(source, range, "ts");
-    const fileId = `file:${rel}`;
+    const fileId = `file:repo:${rel}`;
     const rec: SymbolRecord = {
       ...sym,
       fileId,
@@ -109,6 +109,7 @@ describe("diskCheck: the exact tier on a renamed copy (#151)", () => {
       minhash: opts.noShape ? new Uint32Array(64) : h.minhash,
       nearMinhash: h.nearMinhash,
     };
+    store.setMeta("repo", "repo");
     store.replaceFile(
       "main",
       { id: fileId, path: rel, workspaceId: null, contentHash: rel, mtimeMs: 0, deleted: false },

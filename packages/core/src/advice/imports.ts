@@ -1,4 +1,5 @@
 import { builtinModules } from "node:module";
+import { fileId, isFileId } from "../ids.js";
 import type { ParsedFile } from "../parse/index.js";
 import type { Store } from "../store/index.js";
 import type { WorkspaceRecord } from "../types.js";
@@ -35,8 +36,8 @@ export function checkImports(store: Store, filePath: string, parsed: ParsedFile)
 
   // Lines whose import the index resolved to a file: for a non-workspace name that is a tsconfig alias.
   const fileEdgeLines = new Set<number>();
-  for (const e of store.effectiveEdges({ src: `file:${rel}`, kind: ["imports"] })) {
-    if (!e.dst.startsWith("file:") || e.dst === e.src) continue;
+  for (const e of store.effectiveEdges({ src: fileId(store.repo(), rel), kind: ["imports"] })) {
+    if (!isFileId(e.dst) || e.dst === e.src) continue;
     for (const ev of e.evidence) {
       const m = /:(\d+)$/.exec(ev);
       if (m?.[1]) fileEdgeLines.add(Number(m[1]));

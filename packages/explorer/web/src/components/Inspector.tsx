@@ -12,6 +12,7 @@ import type {
 } from "../api.ts";
 import { m2Of, m2Spec } from "../badges.ts";
 import { useNodeDetail, useOverview } from "../hooks.ts";
+import { fileIdBeside, isFileId, isSymId, nameOfSymId } from "../ids.ts";
 import { useStore } from "../store.tsx";
 import { isServerNode } from "../views/drill.ts";
 import { expandedIds, withExpanded } from "../views/egoGroups.ts";
@@ -25,8 +26,10 @@ const SOURCE_LINES = 40;
 
 const baseName = (p: string): string => p.slice(p.lastIndexOf("/") + 1);
 
-/** A readable name for an id nobody told us about, e.g. `sym:a/b.ts#Foo` becomes `Foo`. */
+/** A readable name for an id nobody told us about, e.g. `sym:pnpm-turbo:a/b.ts#Foo` becomes `Foo`. */
 function shortLabel(id: string): string {
+  const named = nameOfSymId(id);
+  if (named !== undefined) return named;
   const afterHash = id.split("#").pop() ?? id;
   return afterHash.split(/[:/]/).pop() || id;
 }
@@ -390,7 +393,7 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
   const hit = state.pickedHit?.id === id ? state.pickedHit : null;
   const graphNode = nodes.find((n) => n.id === id) ?? null;
   const reviewChange = review?.changes.find((c) => c.id === id) ?? null;
-  const reviewFile = review?.files.find((f) => `file:${f.path}` === id) ?? null;
+  const reviewFile = review?.files.find((f) => f.id === id) ?? null;
   const usedBy = reviewChange?.consumers ?? reviewFile?.consumers ?? null;
   const current = detail && detail.node.id === id ? detail : null;
   const body = current?.node;
@@ -404,8 +407,8 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
   const path = body?.path ?? hit?.path ?? graphNode?.path ?? null;
   const line = body?.line ?? hit?.line ?? null;
   const endLine = body?.endLine ?? (line !== null ? line + SOURCE_LINES - 1 : null);
-  const isSymbol = id.startsWith("sym:");
-  const isFile = id.startsWith("file:");
+  const isSymbol = isSymId(id);
+  const isFile = isFileId(id);
   const kindOfNode = graphNode?.kind ?? kind;
   const isAdapter = /^(route|ep|table|mw|mwref|call):/.test(id);
   const canMap =
@@ -415,7 +418,7 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
   const egoReady = state.meta?.views.some((v) => v.id === "ego" && v.enabled) ?? true;
   const mapReady = state.meta?.views.some((v) => v.id === "project-map" && v.enabled) ?? true;
   // A function is shown inside its file in the project map; folders, files and workspaces are shown as themselves.
-  const mapTarget = (isSymbol || isAdapter) && path ? `file:${path}` : id;
+  const mapTarget = (isSymbol || isAdapter) && path ? (fileIdBeside(id, path) ?? id) : id;
   const flowReady = (v: string) => state.meta?.views.some((x) => x.id === v && x.enabled) ?? true;
 
   const copy = async () => {

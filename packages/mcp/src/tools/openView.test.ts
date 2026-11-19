@@ -88,7 +88,7 @@ describe("gantry_open_view", () => {
       const t0 = Date.now();
       const r = await call(client, "gantry_open_view", {
         view: "ego",
-        focus: "sym:src/math.ts#clamp",
+        focus: "sym:repo:src/math.ts#clamp",
         filters: { depth: "2" },
       });
       const elapsed = Date.now() - t0;
@@ -97,7 +97,7 @@ describe("gantry_open_view", () => {
       const url = new URL(r.json.url as string);
       expect(url.origin).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
       expect(url.searchParams.get("t")).toMatch(/^[A-Za-z0-9_-]{43}$/);
-      expect(url.hash).toBe(`#/ego?focus=${encodeURIComponent("sym:src/math.ts#clamp")}&depth=2`);
+      expect(url.hash).toBe(`#/ego?focus=${encodeURIComponent("sym:repo:src/math.ts#clamp")}&depth=2`);
 
       // Working: the token authenticates, no token does not.
       const token = url.searchParams.get("t") ?? "";
@@ -137,13 +137,13 @@ describe("gantry_open_view", () => {
       repo.git("checkout", "-q", "main");
       const r = await call(client, "gantry_open_view", {
         view: "review",
-        focus: "sym:src/math.ts#two",
+        focus: "sym:repo:src/math.ts#two",
         filters: { range: "main...feature" },
       });
       expect(r.isError).toBe(false);
       const url = new URL(r.json.url as string);
       expect(url.hash).toBe(
-        `#/review?focus=${encodeURIComponent("sym:src/math.ts#two")}&range=main...feature`,
+        `#/review?focus=${encodeURIComponent("sym:repo:src/math.ts#two")}&range=main...feature`,
       );
       const token = url.searchParams.get("t") ?? "";
       const q = encodeURIComponent(JSON.stringify({ range: "main...feature" }));
@@ -153,7 +153,7 @@ describe("gantry_open_view", () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as { review: { changes: { id: string; kind: string }[] } };
       expect(body.review.changes).toEqual([
-        expect.objectContaining({ id: "sym:src/math.ts#two", kind: "added" }),
+        expect.objectContaining({ id: "sym:repo:src/math.ts#two", kind: "added" }),
       ]);
       // Same token, Origin and Host checks as every other view.
       expect((await fetch(`${url.origin}/api/view/review?filters=${q}`)).status).toBe(403);

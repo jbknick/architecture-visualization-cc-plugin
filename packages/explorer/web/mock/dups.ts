@@ -539,7 +539,7 @@ function build(specs: Spec[], wsDefs: WsDef[], dirs: Record<string, string>): Bu
       const path = symbolPath(spec, row, dirs);
       const lines = bodyOf(spec, row, i);
       const line = 8 + i * 9;
-      const id = `sym:${path}#${row[0]}`;
+      const id = `sym:pnpm-turbo:${path}#${row[0]}`;
       sources.set(`${path}:${line}`, lines);
       const ws = wsByKey.get(row[1]) as WsDef;
       return {

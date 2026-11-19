@@ -298,7 +298,7 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
               {review.files.map((f) => (
                 <li key={f.path}>
                   {item(
-                    `file:${f.path}`,
+                    f.id,
                     <>
                       <span className="rv-item-name rv-path">{f.path}</span>
                       <span className="rv-item-meta">
@@ -310,12 +310,12 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
                     f.path,
                     true,
                   )}
-                  {expanded === `file:${f.path}` && f.consumers && (
+                  {expanded === f.id && f.consumers && (
                     <ConsumerTiers
                       consumers={f.consumers}
                       label={`Consumers of ${f.path}`}
                       sel={sel}
-                      onPick={(id) => pickConsumer(`file:${f.path}`, id)}
+                      onPick={(id) => pickConsumer(f.id, id)}
                     />
                   )}
                 </li>

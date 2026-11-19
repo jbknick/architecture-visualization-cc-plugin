@@ -71,7 +71,7 @@ test("mid zoom shows directories and files inside the workspace", async ({ page 
 
 test("near zoom shows file regions with labelled symbols", async ({ page }) => {
   await openMap(page);
-  await zoomTo(page, "file:packages/web/src/components/Modal.ts", "near");
+  await zoomTo(page, "file:pnpm-turbo:packages/web/src/components/Modal.ts", "near");
   await page.screenshot({ path: resolve(shots, "canvas-near.png") });
 });
 

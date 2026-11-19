@@ -91,145 +91,145 @@
   ],
   "files": [
     {
-      "id": "file:apps/api/package.json",
+      "id": "file:pnpm-turbo:apps/api/package.json",
       "path": "apps/api/package.json",
       "workspaceId": "ws:@acme/api",
       "contentHash": "6bfaa526d8e045950ce7eface3c279b28a411cc07b88b06a63ef9ba4403a1af8"
     },
     {
-      "id": "file:apps/api/src/app.ts",
+      "id": "file:pnpm-turbo:apps/api/src/app.ts",
       "path": "apps/api/src/app.ts",
       "workspaceId": "ws:@acme/api",
       "contentHash": "586c4f38192dd885c733455516c33bc7bcd01cc72a6e41856a54f665d53a5054"
     },
     {
-      "id": "file:apps/api/src/index.ts",
+      "id": "file:pnpm-turbo:apps/api/src/index.ts",
       "path": "apps/api/src/index.ts",
       "workspaceId": "ws:@acme/api",
       "contentHash": "edd07d974cfaae9f8a66f82fff4da4a3543702ff309f20bf640a2ec709798f53"
     },
     {
-      "id": "file:apps/api/src/router.ts",
+      "id": "file:pnpm-turbo:apps/api/src/router.ts",
       "path": "apps/api/src/router.ts",
       "workspaceId": "ws:@acme/api",
       "contentHash": "d0a4587103e96e793299e0beaad4b25e5b10d40cdebc0940693747d91068592b"
     },
     {
-      "id": "file:apps/web/package.json",
+      "id": "file:pnpm-turbo:apps/web/package.json",
       "path": "apps/web/package.json",
       "workspaceId": "ws:@acme/web",
       "contentHash": "e11dcf2ee40d1282595de1bf74a25bef58f6452302d7358874af821437fdf89e"
     },
     {
-      "id": "file:apps/web/src/components/Header.tsx",
+      "id": "file:pnpm-turbo:apps/web/src/components/Header.tsx",
       "path": "apps/web/src/components/Header.tsx",
       "workspaceId": "ws:@acme/web",
       "contentHash": "9df027e26363f794203f896559ee51cd4f01d67908653f9609ab77a6e1233aea"
     },
     {
-      "id": "file:apps/web/src/components/PostList.tsx",
+      "id": "file:pnpm-turbo:apps/web/src/components/PostList.tsx",
       "path": "apps/web/src/components/PostList.tsx",
       "workspaceId": "ws:@acme/web",
       "contentHash": "6536b70858a8855e179a1a4cb0a6cf8f61d9b42191071f9206c65a1a88a5df32"
     },
     {
-      "id": "file:apps/web/src/hooks/useDebounce.ts",
+      "id": "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
       "path": "apps/web/src/hooks/useDebounce.ts",
       "workspaceId": "ws:@acme/web",
       "contentHash": "956350a526c6a647409e7716e99965d0f9efe5311adba46062b78f2c1c9d839a"
     },
     {
-      "id": "file:apps/web/src/lib/slug.ts",
+      "id": "file:pnpm-turbo:apps/web/src/lib/slug.ts",
       "path": "apps/web/src/lib/slug.ts",
       "workspaceId": "ws:@acme/web",
       "contentHash": "ad9b5f3bdaa0b01bc00798c9ec96673e908814acdaea882643c185b8c9ec4103"
     },
     {
-      "id": "file:apps/web/src/routes/__root.tsx",
+      "id": "file:pnpm-turbo:apps/web/src/routes/__root.tsx",
       "path": "apps/web/src/routes/__root.tsx",
       "workspaceId": "ws:@acme/web",
       "contentHash": "4159d7bd018a6fbc9c2e52843d542785601e67fab811cc1516092e44bd81b538"
     },
     {
-      "id": "file:apps/web/src/routes/index.tsx",
+      "id": "file:pnpm-turbo:apps/web/src/routes/index.tsx",
       "path": "apps/web/src/routes/index.tsx",
       "workspaceId": "ws:@acme/web",
       "contentHash": "a3bcdac0dd3f47e3b2c6657e4ed15535ae2359bdcaccdc1000b03f7c9e6dc96c"
     },
     {
-      "id": "file:apps/web/src/routes/posts.$postId.tsx",
+      "id": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
       "path": "apps/web/src/routes/posts.$postId.tsx",
       "workspaceId": "ws:@acme/web",
       "contentHash": "ed67df2529c5d0307dd93c30a94e6b6038f2191bad8fc0fd2782e665c58d04fd"
     },
     {
-      "id": "file:apps/web/src/routes/settings/profile.tsx",
+      "id": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
       "path": "apps/web/src/routes/settings/profile.tsx",
       "workspaceId": "ws:@acme/web",
       "contentHash": "5cba289fde16c8dd40258f2c954c36b4743b5996d5ba005a904b2d1117178c05"
     },
     {
-      "id": "file:packages/db/src/index.ts",
+      "id": "file:pnpm-turbo:packages/db/src/index.ts",
       "path": "packages/db/src/index.ts",
       "workspaceId": "ws:@acme/db",
       "contentHash": "bee55050e5fa4e8237f711325e8c39e463a9d6567964b98286154025f75afd87"
     },
     {
-      "id": "file:packages/db/src/queries.ts",
+      "id": "file:pnpm-turbo:packages/db/src/queries.ts",
       "path": "packages/db/src/queries.ts",
       "workspaceId": "ws:@acme/db",
       "contentHash": "5425eb309ec58f998fdb0f0a9dcafcd017b0853c344255c38ac0a45ddb008353"
     },
     {
-      "id": "file:packages/db/src/schema.ts",
+      "id": "file:pnpm-turbo:packages/db/src/schema.ts",
       "path": "packages/db/src/schema.ts",
       "workspaceId": "ws:@acme/db",
       "contentHash": "20b5ed83a34c4fd38d5682354c72f8e8e526561803d446dbd6b3e03368182015"
     },
     {
-      "id": "file:packages/ui/src/button.tsx",
+      "id": "file:pnpm-turbo:packages/ui/src/button.tsx",
       "path": "packages/ui/src/button.tsx",
       "workspaceId": "ws:@acme/ui",
       "contentHash": "7f0d73536ec239b69803013e92ba0df1f18186fd8a784c366b5aaca1eaf53371"
     },
     {
-      "id": "file:packages/ui/src/card.tsx",
+      "id": "file:pnpm-turbo:packages/ui/src/card.tsx",
       "path": "packages/ui/src/card.tsx",
       "workspaceId": "ws:@acme/ui",
       "contentHash": "a24b654756b525a260816628007786bdc365aaa39a0dfb91a5aebbf55bbeefb9"
     },
     {
-      "id": "file:packages/ui/src/index.ts",
+      "id": "file:pnpm-turbo:packages/ui/src/index.ts",
       "path": "packages/ui/src/index.ts",
       "workspaceId": "ws:@acme/ui",
       "contentHash": "cf92efb6f9ecd429bda8c570ba213ae9300e2363e04b026a1ccf5563045cc6d7"
     },
     {
-      "id": "file:packages/ui/src/internal.ts",
+      "id": "file:pnpm-turbo:packages/ui/src/internal.ts",
       "path": "packages/ui/src/internal.ts",
       "workspaceId": "ws:@acme/ui",
       "contentHash": "7c24d19c77ece2bf9b6dbca63064cfb6b6dd1ea02a905aa8ae826021050b0458"
     },
     {
-      "id": "file:packages/utils/src/date.ts",
+      "id": "file:pnpm-turbo:packages/utils/src/date.ts",
       "path": "packages/utils/src/date.ts",
       "workspaceId": "ws:@acme/utils",
       "contentHash": "bfd82675e95a1c1ae8e3fd27e61ed217d233397a8dacaa208f02d6f047e228a2"
     },
     {
-      "id": "file:packages/utils/src/index.ts",
+      "id": "file:pnpm-turbo:packages/utils/src/index.ts",
       "path": "packages/utils/src/index.ts",
       "workspaceId": "ws:@acme/utils",
       "contentHash": "ff00895ff692d4445f90a55be0fc929006564eeea3f374f9bbe8b01d1f1669a3"
     },
     {
-      "id": "file:packages/utils/src/slug.ts",
+      "id": "file:pnpm-turbo:packages/utils/src/slug.ts",
       "path": "packages/utils/src/slug.ts",
       "workspaceId": "ws:@acme/utils",
       "contentHash": "c82d0b79f2c37a260d3f092d6071f2bfc2831eaa47092393062049122a98354b"
     },
     {
-      "id": "file:packages/utils/src/time.ts",
+      "id": "file:pnpm-turbo:packages/utils/src/time.ts",
       "path": "packages/utils/src/time.ts",
       "workspaceId": "ws:@acme/utils",
       "contentHash": "8931db956997e62df917bd48d946fb217fa3c63b1fa636f70d0d3a8aa479df24"
@@ -237,8 +237,8 @@
   ],
   "symbols": [
     {
-      "id": "sym:apps/api/src/app.ts#app",
-      "fileId": "file:apps/api/src/app.ts",
+      "id": "sym:pnpm-turbo:apps/api/src/app.ts#app",
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts",
       "name": "app",
       "kind": "const",
       "exported": true,
@@ -252,8 +252,8 @@
       "shapeHash": "0ced2a1203dbf226767528f661c94b92"
     },
     {
-      "id": "sym:apps/api/src/router.ts#router",
-      "fileId": "file:apps/api/src/router.ts",
+      "id": "sym:pnpm-turbo:apps/api/src/router.ts#router",
+      "fileId": "file:pnpm-turbo:apps/api/src/router.ts",
       "name": "router",
       "kind": "const",
       "exported": true,
@@ -267,8 +267,8 @@
       "shapeHash": "c5729d49a8eae801cb9531328e4a1dcd"
     },
     {
-      "id": "sym:apps/web/src/components/Header.tsx#Header",
-      "fileId": "file:apps/web/src/components/Header.tsx",
+      "id": "sym:pnpm-turbo:apps/web/src/components/Header.tsx#Header",
+      "fileId": "file:pnpm-turbo:apps/web/src/components/Header.tsx",
       "name": "Header",
       "kind": "component",
       "exported": true,
@@ -282,8 +282,8 @@
       "shapeHash": "bcae0954b4d7b19aa0033658bf34069d"
     },
     {
-      "id": "sym:apps/web/src/components/PostList.tsx#PostList",
-      "fileId": "file:apps/web/src/components/PostList.tsx",
+      "id": "sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
+      "fileId": "file:pnpm-turbo:apps/web/src/components/PostList.tsx",
       "name": "PostList",
       "kind": "component",
       "exported": true,
@@ -297,8 +297,8 @@
       "shapeHash": "6b6c5284bb2d9b9b2605ece390aabf1e"
     },
     {
-      "id": "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
-      "fileId": "file:apps/web/src/hooks/useDebounce.ts",
+      "id": "sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "fileId": "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
       "name": "useDebounce",
       "kind": "hook",
       "exported": true,
@@ -312,8 +312,8 @@
       "shapeHash": "3fa9e56041697505ca92e5d434d06b65"
     },
     {
-      "id": "sym:apps/web/src/lib/slug.ts#slugify",
-      "fileId": "file:apps/web/src/lib/slug.ts",
+      "id": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+      "fileId": "file:pnpm-turbo:apps/web/src/lib/slug.ts",
       "name": "slugify",
       "kind": "function",
       "exported": true,
@@ -327,8 +327,8 @@
       "shapeHash": "7807c63975879dc5e3fd5ecef8e77794"
     },
     {
-      "id": "sym:apps/web/src/routes/__root.tsx#RootLayout",
-      "fileId": "file:apps/web/src/routes/__root.tsx",
+      "id": "sym:pnpm-turbo:apps/web/src/routes/__root.tsx#RootLayout",
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/__root.tsx",
       "name": "RootLayout",
       "kind": "component",
       "exported": false,
@@ -342,8 +342,8 @@
       "shapeHash": "a7006ffd94f1fbb863e1787965317785"
     },
     {
-      "id": "sym:apps/web/src/routes/__root.tsx#Route",
-      "fileId": "file:apps/web/src/routes/__root.tsx",
+      "id": "sym:pnpm-turbo:apps/web/src/routes/__root.tsx#Route",
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/__root.tsx",
       "name": "Route",
       "kind": "const",
       "exported": true,
@@ -357,8 +357,8 @@
       "shapeHash": "f143d124d36e94c8fa5901d06e03ee17"
     },
     {
-      "id": "sym:apps/web/src/routes/index.tsx#HomePage",
-      "fileId": "file:apps/web/src/routes/index.tsx",
+      "id": "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx",
       "name": "HomePage",
       "kind": "component",
       "exported": false,
@@ -372,8 +372,8 @@
       "shapeHash": "f8b955a8d55a83c5daa8aa5b714ac3b7"
     },
     {
-      "id": "sym:apps/web/src/routes/index.tsx#Route",
-      "fileId": "file:apps/web/src/routes/index.tsx",
+      "id": "sym:pnpm-turbo:apps/web/src/routes/index.tsx#Route",
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx",
       "name": "Route",
       "kind": "const",
       "exported": true,
@@ -387,8 +387,8 @@
       "shapeHash": "5e3e78071be790470b170d6411f7d783"
     },
     {
-      "id": "sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx",
+      "id": "sym:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
       "name": "PostPage",
       "kind": "component",
       "exported": false,
@@ -402,8 +402,8 @@
       "shapeHash": "dafc080e75306a066b9864246c27bd48"
     },
     {
-      "id": "sym:apps/web/src/routes/posts.$postId.tsx#Route",
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx",
+      "id": "sym:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#Route",
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
       "name": "Route",
       "kind": "const",
       "exported": true,
@@ -417,8 +417,8 @@
       "shapeHash": "5e3e78071be790470b170d6411f7d783"
     },
     {
-      "id": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx",
+      "id": "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
       "name": "ProfilePage",
       "kind": "component",
       "exported": false,
@@ -432,8 +432,8 @@
       "shapeHash": "0a49ccdf9d969c0a143a2f591819b0a5"
     },
     {
-      "id": "sym:apps/web/src/routes/settings/profile.tsx#Route",
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx",
+      "id": "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#Route",
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
       "name": "Route",
       "kind": "const",
       "exported": true,
@@ -447,8 +447,8 @@
       "shapeHash": "5e3e78071be790470b170d6411f7d783"
     },
     {
-      "id": "sym:packages/db/src/queries.ts#createPost",
-      "fileId": "file:packages/db/src/queries.ts",
+      "id": "sym:pnpm-turbo:packages/db/src/queries.ts#createPost",
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts",
       "name": "createPost",
       "kind": "function",
       "exported": true,
@@ -462,8 +462,8 @@
       "shapeHash": "7b50a0d8a39ec4c8ed2c7386c749ef4d"
     },
     {
-      "id": "sym:packages/db/src/queries.ts#getPost",
-      "fileId": "file:packages/db/src/queries.ts",
+      "id": "sym:pnpm-turbo:packages/db/src/queries.ts#getPost",
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts",
       "name": "getPost",
       "kind": "function",
       "exported": true,
@@ -477,8 +477,8 @@
       "shapeHash": "d05895bd756312c60a6588ea2e79f696"
     },
     {
-      "id": "sym:packages/db/src/queries.ts#listPosts",
-      "fileId": "file:packages/db/src/queries.ts",
+      "id": "sym:pnpm-turbo:packages/db/src/queries.ts#listPosts",
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts",
       "name": "listPosts",
       "kind": "function",
       "exported": true,
@@ -492,8 +492,8 @@
       "shapeHash": "b1af1dd673e81692d066db883e2d0ec1"
     },
     {
-      "id": "sym:packages/db/src/schema.ts#posts",
-      "fileId": "file:packages/db/src/schema.ts",
+      "id": "sym:pnpm-turbo:packages/db/src/schema.ts#posts",
+      "fileId": "file:pnpm-turbo:packages/db/src/schema.ts",
       "name": "posts",
       "kind": "const",
       "exported": true,
@@ -507,8 +507,8 @@
       "shapeHash": "fa023f80c823f2df67a2d3648b797eb6"
     },
     {
-      "id": "sym:packages/db/src/schema.ts#users",
-      "fileId": "file:packages/db/src/schema.ts",
+      "id": "sym:pnpm-turbo:packages/db/src/schema.ts#users",
+      "fileId": "file:pnpm-turbo:packages/db/src/schema.ts",
       "name": "users",
       "kind": "const",
       "exported": true,
@@ -522,8 +522,8 @@
       "shapeHash": "a0391c86b72d35b1de912a36cfa4ed5a"
     },
     {
-      "id": "sym:packages/ui/src/button.tsx#Button",
-      "fileId": "file:packages/ui/src/button.tsx",
+      "id": "sym:pnpm-turbo:packages/ui/src/button.tsx#Button",
+      "fileId": "file:pnpm-turbo:packages/ui/src/button.tsx",
       "name": "Button",
       "kind": "component",
       "exported": true,
@@ -537,8 +537,8 @@
       "shapeHash": "2669208887a3e01284627baa4ead52ca"
     },
     {
-      "id": "sym:packages/ui/src/card.tsx#Card",
-      "fileId": "file:packages/ui/src/card.tsx",
+      "id": "sym:pnpm-turbo:packages/ui/src/card.tsx#Card",
+      "fileId": "file:pnpm-turbo:packages/ui/src/card.tsx",
       "name": "Card",
       "kind": "component",
       "exported": true,
@@ -552,8 +552,8 @@
       "shapeHash": "af5df38522efa39121efa25df5134d87"
     },
     {
-      "id": "sym:packages/ui/src/internal.ts#INTERNAL_PADDING",
-      "fileId": "file:packages/ui/src/internal.ts",
+      "id": "sym:pnpm-turbo:packages/ui/src/internal.ts#INTERNAL_PADDING",
+      "fileId": "file:pnpm-turbo:packages/ui/src/internal.ts",
       "name": "INTERNAL_PADDING",
       "kind": "const",
       "exported": true,
@@ -567,8 +567,8 @@
       "shapeHash": "287a67281d1cfff082d49df03d811ab4"
     },
     {
-      "id": "sym:packages/utils/src/date.ts#formatRelativeDate",
-      "fileId": "file:packages/utils/src/date.ts",
+      "id": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+      "fileId": "file:pnpm-turbo:packages/utils/src/date.ts",
       "name": "formatRelativeDate",
       "kind": "function",
       "exported": true,
@@ -582,8 +582,8 @@
       "shapeHash": "ee6b2e3bd22eb8f336b2d0171755b3a0"
     },
     {
-      "id": "sym:packages/utils/src/slug.ts#SLUG_VERSION",
-      "fileId": "file:packages/utils/src/slug.ts",
+      "id": "sym:pnpm-turbo:packages/utils/src/slug.ts#SLUG_VERSION",
+      "fileId": "file:pnpm-turbo:packages/utils/src/slug.ts",
       "name": "SLUG_VERSION",
       "kind": "const",
       "exported": true,
@@ -597,8 +597,8 @@
       "shapeHash": "3c90e9c916bcc348a4da5137ba4cd487"
     },
     {
-      "id": "sym:packages/utils/src/slug.ts#slugify",
-      "fileId": "file:packages/utils/src/slug.ts",
+      "id": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
+      "fileId": "file:pnpm-turbo:packages/utils/src/slug.ts",
       "name": "slugify",
       "kind": "function",
       "exported": false,
@@ -612,8 +612,8 @@
       "shapeHash": "7807c63975879dc5e3fd5ecef8e77794"
     },
     {
-      "id": "sym:packages/utils/src/time.ts#parseTimestamp",
-      "fileId": "file:packages/utils/src/time.ts",
+      "id": "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
+      "fileId": "file:pnpm-turbo:packages/utils/src/time.ts",
       "name": "parseTimestamp",
       "kind": "function",
       "exported": true,
@@ -629,51 +629,51 @@
   ],
   "edges": [
     {
-      "src": "ep:@acme/api:GET /posts/:id",
-      "dst": "file:apps/api/src/app.ts",
+      "src": "ep:pnpm-turbo:@acme/api:GET /posts/:id",
+      "dst": "file:pnpm-turbo:apps/api/src/app.ts",
       "kind": "handles",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/api/src/app.ts:6"
       ],
-      "fileId": "file:apps/api/src/app.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts"
     },
     {
-      "src": "ep:@acme/api:POST /posts",
-      "dst": "file:apps/api/src/app.ts",
+      "src": "ep:pnpm-turbo:@acme/api:POST /posts",
+      "dst": "file:pnpm-turbo:apps/api/src/app.ts",
       "kind": "handles",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/api/src/app.ts:11"
       ],
-      "fileId": "file:apps/api/src/app.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts"
     },
     {
-      "src": "ep:@acme/api:rpc posts.create",
-      "dst": "sym:apps/api/src/router.ts#router",
+      "src": "ep:pnpm-turbo:@acme/api:rpc posts.create",
+      "dst": "sym:pnpm-turbo:apps/api/src/router.ts#router",
       "kind": "handles",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/api/src/router.ts:7"
       ],
-      "fileId": "file:apps/api/src/router.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/router.ts"
     },
     {
-      "src": "ep:@acme/api:rpc posts.list",
-      "dst": "sym:apps/api/src/router.ts#router",
+      "src": "ep:pnpm-turbo:@acme/api:rpc posts.list",
+      "dst": "sym:pnpm-turbo:apps/api/src/router.ts#router",
       "kind": "handles",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/api/src/router.ts:6"
       ],
-      "fileId": "file:apps/api/src/router.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/router.ts"
     },
     {
-      "src": "file:apps/api/src/app.ts",
+      "src": "file:pnpm-turbo:apps/api/src/app.ts",
       "dst": "ext:hono",
       "kind": "imports",
       "confidence": "high",
@@ -681,22 +681,22 @@
       "evidence": [
         "apps/api/src/app.ts:1"
       ],
-      "fileId": "file:apps/api/src/app.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts"
     },
     {
-      "src": "file:apps/api/src/app.ts",
-      "dst": "file:packages/db/src/index.ts",
+      "src": "file:pnpm-turbo:apps/api/src/app.ts",
+      "dst": "file:pnpm-turbo:packages/db/src/index.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 2,
       "evidence": [
         "apps/api/src/app.ts:2"
       ],
-      "fileId": "file:apps/api/src/app.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts"
     },
     {
-      "src": "file:apps/api/src/app.ts",
-      "dst": "sym:apps/api/src/app.ts#app",
+      "src": "file:pnpm-turbo:apps/api/src/app.ts",
+      "dst": "sym:pnpm-turbo:apps/api/src/app.ts#app",
       "kind": "calls",
       "confidence": "high",
       "count": 2,
@@ -704,86 +704,86 @@
         "apps/api/src/app.ts:6",
         "apps/api/src/app.ts:11"
       ],
-      "fileId": "file:apps/api/src/app.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts"
     },
     {
-      "src": "file:apps/api/src/app.ts",
-      "dst": "sym:apps/api/src/app.ts#app",
+      "src": "file:pnpm-turbo:apps/api/src/app.ts",
+      "dst": "sym:pnpm-turbo:apps/api/src/app.ts#app",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/api/src/app.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts"
     },
     {
-      "src": "file:apps/api/src/app.ts",
-      "dst": "sym:apps/api/src/app.ts#app",
+      "src": "file:pnpm-turbo:apps/api/src/app.ts",
+      "dst": "sym:pnpm-turbo:apps/api/src/app.ts#app",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/api/src/app.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts"
     },
     {
-      "src": "file:apps/api/src/app.ts",
-      "dst": "sym:packages/db/src/queries.ts#createPost",
+      "src": "file:pnpm-turbo:apps/api/src/app.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#createPost",
       "kind": "calls",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/api/src/app.ts:13"
       ],
-      "fileId": "file:apps/api/src/app.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts"
     },
     {
-      "src": "file:apps/api/src/app.ts",
-      "dst": "sym:packages/db/src/queries.ts#getPost",
+      "src": "file:pnpm-turbo:apps/api/src/app.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#getPost",
       "kind": "calls",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/api/src/app.ts:7"
       ],
-      "fileId": "file:apps/api/src/app.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts"
     },
     {
-      "src": "file:apps/api/src/index.ts",
-      "dst": "file:apps/api/src/app.ts",
+      "src": "file:pnpm-turbo:apps/api/src/index.ts",
+      "dst": "file:pnpm-turbo:apps/api/src/app.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/api/src/index.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/index.ts"
     },
     {
-      "src": "file:apps/api/src/index.ts",
-      "dst": "file:apps/api/src/router.ts",
+      "src": "file:pnpm-turbo:apps/api/src/index.ts",
+      "dst": "file:pnpm-turbo:apps/api/src/router.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/api/src/index.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/index.ts"
     },
     {
-      "src": "file:apps/api/src/index.ts",
-      "dst": "sym:apps/api/src/app.ts#app",
+      "src": "file:pnpm-turbo:apps/api/src/index.ts",
+      "dst": "sym:pnpm-turbo:apps/api/src/app.ts#app",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/api/src/index.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/index.ts"
     },
     {
-      "src": "file:apps/api/src/index.ts",
-      "dst": "sym:apps/api/src/router.ts#router",
+      "src": "file:pnpm-turbo:apps/api/src/index.ts",
+      "dst": "sym:pnpm-turbo:apps/api/src/router.ts#router",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/api/src/index.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/index.ts"
     },
     {
-      "src": "file:apps/api/src/router.ts",
+      "src": "file:pnpm-turbo:apps/api/src/router.ts",
       "dst": "ext:@orpc/server",
       "kind": "imports",
       "confidence": "high",
@@ -791,57 +791,57 @@
       "evidence": [
         "apps/api/src/router.ts:1"
       ],
-      "fileId": "file:apps/api/src/router.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/router.ts"
     },
     {
-      "src": "file:apps/api/src/router.ts",
-      "dst": "file:packages/db/src/index.ts",
+      "src": "file:pnpm-turbo:apps/api/src/router.ts",
+      "dst": "file:pnpm-turbo:packages/db/src/index.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 2,
       "evidence": [
         "apps/api/src/router.ts:2"
       ],
-      "fileId": "file:apps/api/src/router.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/router.ts"
     },
     {
-      "src": "file:apps/api/src/router.ts",
-      "dst": "sym:apps/api/src/router.ts#router",
+      "src": "file:pnpm-turbo:apps/api/src/router.ts",
+      "dst": "sym:pnpm-turbo:apps/api/src/router.ts#router",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/api/src/router.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/router.ts"
     },
     {
-      "src": "file:apps/api/src/router.ts",
-      "dst": "sym:apps/api/src/router.ts#router",
+      "src": "file:pnpm-turbo:apps/api/src/router.ts",
+      "dst": "sym:pnpm-turbo:apps/api/src/router.ts#router",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/api/src/router.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/router.ts"
     },
     {
-      "src": "file:apps/web/src/components/Header.tsx",
-      "dst": "sym:apps/web/src/components/Header.tsx#Header",
+      "src": "file:pnpm-turbo:apps/web/src/components/Header.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/components/Header.tsx#Header",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/components/Header.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/components/Header.tsx"
     },
     {
-      "src": "file:apps/web/src/components/Header.tsx",
-      "dst": "sym:apps/web/src/components/Header.tsx#Header",
+      "src": "file:pnpm-turbo:apps/web/src/components/Header.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/components/Header.tsx#Header",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/components/Header.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/components/Header.tsx"
     },
     {
-      "src": "file:apps/web/src/components/PostList.tsx",
+      "src": "file:pnpm-turbo:apps/web/src/components/PostList.tsx",
       "dst": "ext:react",
       "kind": "imports",
       "confidence": "high",
@@ -849,50 +849,50 @@
       "evidence": [
         "apps/web/src/components/PostList.tsx:1"
       ],
-      "fileId": "file:apps/web/src/components/PostList.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/components/PostList.tsx"
     },
     {
-      "src": "file:apps/web/src/components/PostList.tsx",
-      "dst": "file:apps/web/src/hooks/useDebounce.ts",
+      "src": "file:pnpm-turbo:apps/web/src/components/PostList.tsx",
+      "dst": "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/components/PostList.tsx:2"
       ],
-      "fileId": "file:apps/web/src/components/PostList.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/components/PostList.tsx"
     },
     {
-      "src": "file:apps/web/src/components/PostList.tsx",
-      "dst": "file:apps/web/src/lib/slug.ts",
+      "src": "file:pnpm-turbo:apps/web/src/components/PostList.tsx",
+      "dst": "file:pnpm-turbo:apps/web/src/lib/slug.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/components/PostList.tsx:3"
       ],
-      "fileId": "file:apps/web/src/components/PostList.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/components/PostList.tsx"
     },
     {
-      "src": "file:apps/web/src/components/PostList.tsx",
-      "dst": "sym:apps/web/src/components/PostList.tsx#PostList",
+      "src": "file:pnpm-turbo:apps/web/src/components/PostList.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/components/PostList.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/components/PostList.tsx"
     },
     {
-      "src": "file:apps/web/src/components/PostList.tsx",
-      "dst": "sym:apps/web/src/components/PostList.tsx#PostList",
+      "src": "file:pnpm-turbo:apps/web/src/components/PostList.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/components/PostList.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/components/PostList.tsx"
     },
     {
-      "src": "file:apps/web/src/hooks/useDebounce.ts",
+      "src": "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
       "dst": "ext:react",
       "kind": "imports",
       "confidence": "high",
@@ -900,46 +900,46 @@
       "evidence": [
         "apps/web/src/hooks/useDebounce.ts:1"
       ],
-      "fileId": "file:apps/web/src/hooks/useDebounce.ts"
+      "fileId": "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts"
     },
     {
-      "src": "file:apps/web/src/hooks/useDebounce.ts",
-      "dst": "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "src": "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
+      "dst": "sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/hooks/useDebounce.ts"
+      "fileId": "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts"
     },
     {
-      "src": "file:apps/web/src/hooks/useDebounce.ts",
-      "dst": "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "src": "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
+      "dst": "sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/hooks/useDebounce.ts"
+      "fileId": "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts"
     },
     {
-      "src": "file:apps/web/src/lib/slug.ts",
-      "dst": "sym:apps/web/src/lib/slug.ts#slugify",
+      "src": "file:pnpm-turbo:apps/web/src/lib/slug.ts",
+      "dst": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/lib/slug.ts"
+      "fileId": "file:pnpm-turbo:apps/web/src/lib/slug.ts"
     },
     {
-      "src": "file:apps/web/src/lib/slug.ts",
-      "dst": "sym:apps/web/src/lib/slug.ts#slugify",
+      "src": "file:pnpm-turbo:apps/web/src/lib/slug.ts",
+      "dst": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/lib/slug.ts"
+      "fileId": "file:pnpm-turbo:apps/web/src/lib/slug.ts"
     },
     {
-      "src": "file:apps/web/src/routes/__root.tsx",
+      "src": "file:pnpm-turbo:apps/web/src/routes/__root.tsx",
       "dst": "ext:@tanstack/react-router",
       "kind": "imports",
       "confidence": "high",
@@ -947,37 +947,37 @@
       "evidence": [
         "apps/web/src/routes/__root.tsx:1"
       ],
-      "fileId": "file:apps/web/src/routes/__root.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/__root.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/__root.tsx",
-      "dst": "sym:apps/web/src/routes/__root.tsx#RootLayout",
+      "src": "file:pnpm-turbo:apps/web/src/routes/__root.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/__root.tsx#RootLayout",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/__root.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/__root.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/__root.tsx",
-      "dst": "sym:apps/web/src/routes/__root.tsx#Route",
+      "src": "file:pnpm-turbo:apps/web/src/routes/__root.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/__root.tsx#Route",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/__root.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/__root.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/__root.tsx",
-      "dst": "sym:apps/web/src/routes/__root.tsx#Route",
+      "src": "file:pnpm-turbo:apps/web/src/routes/__root.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/__root.tsx#Route",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/__root.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/__root.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/index.tsx",
+      "src": "file:pnpm-turbo:apps/web/src/routes/index.tsx",
       "dst": "ext:@tanstack/react-router",
       "kind": "imports",
       "confidence": "high",
@@ -985,59 +985,59 @@
       "evidence": [
         "apps/web/src/routes/index.tsx:1"
       ],
-      "fileId": "file:apps/web/src/routes/index.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/index.tsx",
-      "dst": "file:apps/web/src/components/PostList.tsx",
+      "src": "file:pnpm-turbo:apps/web/src/routes/index.tsx",
+      "dst": "file:pnpm-turbo:apps/web/src/components/PostList.tsx",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/index.tsx:3"
       ],
-      "fileId": "file:apps/web/src/routes/index.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/index.tsx",
-      "dst": "file:packages/ui/src/button.tsx",
+      "src": "file:pnpm-turbo:apps/web/src/routes/index.tsx",
+      "dst": "file:pnpm-turbo:packages/ui/src/button.tsx",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/index.tsx:2"
       ],
-      "fileId": "file:apps/web/src/routes/index.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/index.tsx",
-      "dst": "sym:apps/web/src/routes/index.tsx#HomePage",
+      "src": "file:pnpm-turbo:apps/web/src/routes/index.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/index.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/index.tsx",
-      "dst": "sym:apps/web/src/routes/index.tsx#Route",
+      "src": "file:pnpm-turbo:apps/web/src/routes/index.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/index.tsx#Route",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/index.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/index.tsx",
-      "dst": "sym:apps/web/src/routes/index.tsx#Route",
+      "src": "file:pnpm-turbo:apps/web/src/routes/index.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/index.tsx#Route",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/index.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/posts.$postId.tsx",
+      "src": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
       "dst": "ext:@tanstack/react-router",
       "kind": "imports",
       "confidence": "high",
@@ -1045,59 +1045,59 @@
       "evidence": [
         "apps/web/src/routes/posts.$postId.tsx:1"
       ],
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/posts.$postId.tsx",
-      "dst": "file:packages/db/src/index.ts",
+      "src": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "file:pnpm-turbo:packages/db/src/index.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/posts.$postId.tsx:3"
       ],
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/posts.$postId.tsx",
-      "dst": "file:packages/utils/src/index.ts",
+      "src": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "file:pnpm-turbo:packages/utils/src/index.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/posts.$postId.tsx:2"
       ],
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/posts.$postId.tsx",
-      "dst": "sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "src": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#PostPage",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/posts.$postId.tsx",
-      "dst": "sym:apps/web/src/routes/posts.$postId.tsx#Route",
+      "src": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#Route",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/posts.$postId.tsx",
-      "dst": "sym:apps/web/src/routes/posts.$postId.tsx#Route",
+      "src": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#Route",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/settings/profile.tsx",
+      "src": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
       "dst": "ext:@tanstack/react-router",
       "kind": "imports",
       "confidence": "high",
@@ -1105,122 +1105,122 @@
       "evidence": [
         "apps/web/src/routes/settings/profile.tsx:1"
       ],
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/settings/profile.tsx",
-      "dst": "file:packages/ui/src/button.tsx",
+      "src": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "dst": "file:pnpm-turbo:packages/ui/src/button.tsx",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/settings/profile.tsx:2"
       ],
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/settings/profile.tsx",
-      "dst": "file:packages/ui/src/index.ts",
+      "src": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "dst": "file:pnpm-turbo:packages/ui/src/index.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/settings/profile.tsx:3"
       ],
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/settings/profile.tsx",
-      "dst": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "src": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/settings/profile.tsx",
-      "dst": "sym:apps/web/src/routes/settings/profile.tsx#Route",
+      "src": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#Route",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"
     },
     {
-      "src": "file:apps/web/src/routes/settings/profile.tsx",
-      "dst": "sym:apps/web/src/routes/settings/profile.tsx#Route",
+      "src": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#Route",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"
     },
     {
-      "src": "file:packages/db/src/index.ts",
-      "dst": "file:packages/db/src/queries.ts",
+      "src": "file:pnpm-turbo:packages/db/src/index.ts",
+      "dst": "file:pnpm-turbo:packages/db/src/queries.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/index.ts"
     },
     {
-      "src": "file:packages/db/src/index.ts",
-      "dst": "file:packages/db/src/schema.ts",
+      "src": "file:pnpm-turbo:packages/db/src/index.ts",
+      "dst": "file:pnpm-turbo:packages/db/src/schema.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/index.ts"
     },
     {
-      "src": "file:packages/db/src/index.ts",
-      "dst": "sym:packages/db/src/queries.ts#createPost",
+      "src": "file:pnpm-turbo:packages/db/src/index.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#createPost",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/index.ts"
     },
     {
-      "src": "file:packages/db/src/index.ts",
-      "dst": "sym:packages/db/src/queries.ts#getPost",
+      "src": "file:pnpm-turbo:packages/db/src/index.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#getPost",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/index.ts"
     },
     {
-      "src": "file:packages/db/src/index.ts",
-      "dst": "sym:packages/db/src/queries.ts#listPosts",
+      "src": "file:pnpm-turbo:packages/db/src/index.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#listPosts",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/index.ts"
     },
     {
-      "src": "file:packages/db/src/index.ts",
-      "dst": "sym:packages/db/src/schema.ts#posts",
+      "src": "file:pnpm-turbo:packages/db/src/index.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/schema.ts#posts",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/index.ts"
     },
     {
-      "src": "file:packages/db/src/index.ts",
-      "dst": "sym:packages/db/src/schema.ts#users",
+      "src": "file:pnpm-turbo:packages/db/src/index.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/schema.ts#users",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/index.ts"
     },
     {
-      "src": "file:packages/db/src/queries.ts",
+      "src": "file:pnpm-turbo:packages/db/src/queries.ts",
       "dst": "ext:drizzle-orm",
       "kind": "imports",
       "confidence": "high",
@@ -1229,75 +1229,75 @@
         "packages/db/src/queries.ts:1",
         "packages/db/src/queries.ts:2"
       ],
-      "fileId": "file:packages/db/src/queries.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts"
     },
     {
-      "src": "file:packages/db/src/queries.ts",
-      "dst": "file:packages/db/src/schema.ts",
+      "src": "file:pnpm-turbo:packages/db/src/queries.ts",
+      "dst": "file:pnpm-turbo:packages/db/src/schema.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "packages/db/src/queries.ts:3"
       ],
-      "fileId": "file:packages/db/src/queries.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts"
     },
     {
-      "src": "file:packages/db/src/queries.ts",
-      "dst": "sym:packages/db/src/queries.ts#createPost",
+      "src": "file:pnpm-turbo:packages/db/src/queries.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#createPost",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/queries.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts"
     },
     {
-      "src": "file:packages/db/src/queries.ts",
-      "dst": "sym:packages/db/src/queries.ts#createPost",
+      "src": "file:pnpm-turbo:packages/db/src/queries.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#createPost",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/queries.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts"
     },
     {
-      "src": "file:packages/db/src/queries.ts",
-      "dst": "sym:packages/db/src/queries.ts#getPost",
+      "src": "file:pnpm-turbo:packages/db/src/queries.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#getPost",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/queries.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts"
     },
     {
-      "src": "file:packages/db/src/queries.ts",
-      "dst": "sym:packages/db/src/queries.ts#getPost",
+      "src": "file:pnpm-turbo:packages/db/src/queries.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#getPost",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/queries.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts"
     },
     {
-      "src": "file:packages/db/src/queries.ts",
-      "dst": "sym:packages/db/src/queries.ts#listPosts",
+      "src": "file:pnpm-turbo:packages/db/src/queries.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#listPosts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/queries.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts"
     },
     {
-      "src": "file:packages/db/src/queries.ts",
-      "dst": "sym:packages/db/src/queries.ts#listPosts",
+      "src": "file:pnpm-turbo:packages/db/src/queries.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#listPosts",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/queries.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts"
     },
     {
-      "src": "file:packages/db/src/schema.ts",
+      "src": "file:pnpm-turbo:packages/db/src/schema.ts",
       "dst": "ext:drizzle-orm",
       "kind": "imports",
       "confidence": "high",
@@ -1305,490 +1305,490 @@
       "evidence": [
         "packages/db/src/schema.ts:1"
       ],
-      "fileId": "file:packages/db/src/schema.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/schema.ts"
     },
     {
-      "src": "file:packages/db/src/schema.ts",
-      "dst": "sym:packages/db/src/schema.ts#posts",
+      "src": "file:pnpm-turbo:packages/db/src/schema.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/schema.ts#posts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/schema.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/schema.ts"
     },
     {
-      "src": "file:packages/db/src/schema.ts",
-      "dst": "sym:packages/db/src/schema.ts#posts",
+      "src": "file:pnpm-turbo:packages/db/src/schema.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/schema.ts#posts",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/schema.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/schema.ts"
     },
     {
-      "src": "file:packages/db/src/schema.ts",
-      "dst": "sym:packages/db/src/schema.ts#users",
+      "src": "file:pnpm-turbo:packages/db/src/schema.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/schema.ts#users",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/schema.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/schema.ts"
     },
     {
-      "src": "file:packages/db/src/schema.ts",
-      "dst": "sym:packages/db/src/schema.ts#users",
+      "src": "file:pnpm-turbo:packages/db/src/schema.ts",
+      "dst": "sym:pnpm-turbo:packages/db/src/schema.ts#users",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/schema.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/schema.ts"
     },
     {
-      "src": "file:packages/ui/src/button.tsx",
-      "dst": "sym:packages/ui/src/button.tsx#Button",
+      "src": "file:pnpm-turbo:packages/ui/src/button.tsx",
+      "dst": "sym:pnpm-turbo:packages/ui/src/button.tsx#Button",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/button.tsx"
+      "fileId": "file:pnpm-turbo:packages/ui/src/button.tsx"
     },
     {
-      "src": "file:packages/ui/src/button.tsx",
-      "dst": "sym:packages/ui/src/button.tsx#Button",
+      "src": "file:pnpm-turbo:packages/ui/src/button.tsx",
+      "dst": "sym:pnpm-turbo:packages/ui/src/button.tsx#Button",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/button.tsx"
+      "fileId": "file:pnpm-turbo:packages/ui/src/button.tsx"
     },
     {
-      "src": "file:packages/ui/src/card.tsx",
-      "dst": "sym:packages/ui/src/card.tsx#Card",
+      "src": "file:pnpm-turbo:packages/ui/src/card.tsx",
+      "dst": "sym:pnpm-turbo:packages/ui/src/card.tsx#Card",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/card.tsx"
+      "fileId": "file:pnpm-turbo:packages/ui/src/card.tsx"
     },
     {
-      "src": "file:packages/ui/src/card.tsx",
-      "dst": "sym:packages/ui/src/card.tsx#Card",
+      "src": "file:pnpm-turbo:packages/ui/src/card.tsx",
+      "dst": "sym:pnpm-turbo:packages/ui/src/card.tsx#Card",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/card.tsx"
+      "fileId": "file:pnpm-turbo:packages/ui/src/card.tsx"
     },
     {
-      "src": "file:packages/ui/src/index.ts",
-      "dst": "file:packages/ui/src/button.tsx",
+      "src": "file:pnpm-turbo:packages/ui/src/index.ts",
+      "dst": "file:pnpm-turbo:packages/ui/src/button.tsx",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/ui/src/index.ts"
     },
     {
-      "src": "file:packages/ui/src/index.ts",
-      "dst": "file:packages/ui/src/card.tsx",
+      "src": "file:pnpm-turbo:packages/ui/src/index.ts",
+      "dst": "file:pnpm-turbo:packages/ui/src/card.tsx",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/ui/src/index.ts"
     },
     {
-      "src": "file:packages/ui/src/index.ts",
-      "dst": "sym:packages/ui/src/button.tsx#Button",
+      "src": "file:pnpm-turbo:packages/ui/src/index.ts",
+      "dst": "sym:pnpm-turbo:packages/ui/src/button.tsx#Button",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/ui/src/index.ts"
     },
     {
-      "src": "file:packages/ui/src/index.ts",
-      "dst": "sym:packages/ui/src/card.tsx#Card",
+      "src": "file:pnpm-turbo:packages/ui/src/index.ts",
+      "dst": "sym:pnpm-turbo:packages/ui/src/card.tsx#Card",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/ui/src/index.ts"
     },
     {
-      "src": "file:packages/ui/src/internal.ts",
-      "dst": "sym:packages/ui/src/internal.ts#INTERNAL_PADDING",
+      "src": "file:pnpm-turbo:packages/ui/src/internal.ts",
+      "dst": "sym:pnpm-turbo:packages/ui/src/internal.ts#INTERNAL_PADDING",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/internal.ts"
+      "fileId": "file:pnpm-turbo:packages/ui/src/internal.ts"
     },
     {
-      "src": "file:packages/ui/src/internal.ts",
-      "dst": "sym:packages/ui/src/internal.ts#INTERNAL_PADDING",
+      "src": "file:pnpm-turbo:packages/ui/src/internal.ts",
+      "dst": "sym:pnpm-turbo:packages/ui/src/internal.ts#INTERNAL_PADDING",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/internal.ts"
+      "fileId": "file:pnpm-turbo:packages/ui/src/internal.ts"
     },
     {
-      "src": "file:packages/utils/src/date.ts",
-      "dst": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "src": "file:pnpm-turbo:packages/utils/src/date.ts",
+      "dst": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/date.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/date.ts"
     },
     {
-      "src": "file:packages/utils/src/date.ts",
-      "dst": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "src": "file:pnpm-turbo:packages/utils/src/date.ts",
+      "dst": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/date.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/date.ts"
     },
     {
-      "src": "file:packages/utils/src/index.ts",
-      "dst": "file:packages/utils/src/date.ts",
+      "src": "file:pnpm-turbo:packages/utils/src/index.ts",
+      "dst": "file:pnpm-turbo:packages/utils/src/date.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/index.ts"
     },
     {
-      "src": "file:packages/utils/src/index.ts",
-      "dst": "file:packages/utils/src/time.ts",
+      "src": "file:pnpm-turbo:packages/utils/src/index.ts",
+      "dst": "file:pnpm-turbo:packages/utils/src/time.ts",
       "kind": "imports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/index.ts"
     },
     {
-      "src": "file:packages/utils/src/index.ts",
-      "dst": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "src": "file:pnpm-turbo:packages/utils/src/index.ts",
+      "dst": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/index.ts"
     },
     {
-      "src": "file:packages/utils/src/index.ts",
-      "dst": "sym:packages/utils/src/time.ts#parseTimestamp",
+      "src": "file:pnpm-turbo:packages/utils/src/index.ts",
+      "dst": "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/index.ts"
     },
     {
-      "src": "file:packages/utils/src/slug.ts",
-      "dst": "sym:packages/utils/src/slug.ts#SLUG_VERSION",
+      "src": "file:pnpm-turbo:packages/utils/src/slug.ts",
+      "dst": "sym:pnpm-turbo:packages/utils/src/slug.ts#SLUG_VERSION",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/slug.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/slug.ts"
     },
     {
-      "src": "file:packages/utils/src/slug.ts",
-      "dst": "sym:packages/utils/src/slug.ts#SLUG_VERSION",
+      "src": "file:pnpm-turbo:packages/utils/src/slug.ts",
+      "dst": "sym:pnpm-turbo:packages/utils/src/slug.ts#SLUG_VERSION",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/slug.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/slug.ts"
     },
     {
-      "src": "file:packages/utils/src/slug.ts",
-      "dst": "sym:packages/utils/src/slug.ts#slugify",
+      "src": "file:pnpm-turbo:packages/utils/src/slug.ts",
+      "dst": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/slug.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/slug.ts"
     },
     {
-      "src": "file:packages/utils/src/time.ts",
-      "dst": "sym:packages/utils/src/time.ts#parseTimestamp",
+      "src": "file:pnpm-turbo:packages/utils/src/time.ts",
+      "dst": "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/time.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/time.ts"
     },
     {
-      "src": "file:packages/utils/src/time.ts",
-      "dst": "sym:packages/utils/src/time.ts#parseTimestamp",
+      "src": "file:pnpm-turbo:packages/utils/src/time.ts",
+      "dst": "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
       "kind": "exports",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/time.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/time.ts"
     },
     {
-      "src": "route:@acme/web:/",
-      "dst": "sym:apps/web/src/routes/index.tsx#HomePage",
+      "src": "route:pnpm-turbo:@acme/web:/",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
       "kind": "serves",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/index.tsx"
       ],
-      "fileId": "file:apps/web/src/routes/index.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx"
     },
     {
-      "src": "route:@acme/web:/posts/$postId",
-      "dst": "sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "src": "route:pnpm-turbo:@acme/web:/posts/$postId",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#PostPage",
       "kind": "serves",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/posts.$postId.tsx"
       ],
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx"
     },
     {
-      "src": "route:@acme/web:/settings/profile",
-      "dst": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "src": "route:pnpm-turbo:@acme/web:/settings/profile",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
       "kind": "serves",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/settings/profile.tsx"
       ],
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"
     },
     {
-      "src": "route:@acme/web:__root__",
-      "dst": "route:@acme/web:/",
+      "src": "route:pnpm-turbo:@acme/web:__root__",
+      "dst": "route:pnpm-turbo:@acme/web:/",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/index.tsx"
       ],
-      "fileId": "file:apps/web/src/routes/index.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx"
     },
     {
-      "src": "route:@acme/web:__root__",
-      "dst": "route:@acme/web:/posts/$postId",
+      "src": "route:pnpm-turbo:@acme/web:__root__",
+      "dst": "route:pnpm-turbo:@acme/web:/posts/$postId",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/posts.$postId.tsx"
       ],
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx"
     },
     {
-      "src": "route:@acme/web:__root__",
-      "dst": "route:@acme/web:/settings/profile",
+      "src": "route:pnpm-turbo:@acme/web:__root__",
+      "dst": "route:pnpm-turbo:@acme/web:/settings/profile",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/settings/profile.tsx"
       ],
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"
     },
     {
-      "src": "route:@acme/web:__root__",
-      "dst": "sym:apps/web/src/routes/__root.tsx#RootLayout",
+      "src": "route:pnpm-turbo:@acme/web:__root__",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/__root.tsx#RootLayout",
       "kind": "serves",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/__root.tsx"
       ],
-      "fileId": "file:apps/web/src/routes/__root.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/__root.tsx"
     },
     {
-      "src": "sym:apps/api/src/router.ts#router",
-      "dst": "sym:packages/db/src/queries.ts#createPost",
+      "src": "sym:pnpm-turbo:apps/api/src/router.ts#router",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#createPost",
       "kind": "calls",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/api/src/router.ts:7"
       ],
-      "fileId": "file:apps/api/src/router.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/router.ts"
     },
     {
-      "src": "sym:apps/api/src/router.ts#router",
-      "dst": "sym:packages/db/src/queries.ts#listPosts",
+      "src": "sym:pnpm-turbo:apps/api/src/router.ts#router",
+      "dst": "sym:pnpm-turbo:packages/db/src/queries.ts#listPosts",
       "kind": "calls",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/api/src/router.ts:6"
       ],
-      "fileId": "file:apps/api/src/router.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/router.ts"
     },
     {
-      "src": "sym:apps/web/src/components/PostList.tsx#PostList",
-      "dst": "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "src": "sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
+      "dst": "sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce",
       "kind": "uses_hook",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/components/PostList.tsx:7"
       ],
-      "fileId": "file:apps/web/src/components/PostList.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/components/PostList.tsx"
     },
     {
-      "src": "sym:apps/web/src/components/PostList.tsx#PostList",
-      "dst": "sym:apps/web/src/lib/slug.ts#slugify",
+      "src": "sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
+      "dst": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
       "kind": "calls",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/components/PostList.tsx:11"
       ],
-      "fileId": "file:apps/web/src/components/PostList.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/components/PostList.tsx"
     },
     {
-      "src": "sym:apps/web/src/routes/index.tsx#HomePage",
-      "dst": "sym:apps/web/src/components/PostList.tsx#PostList",
+      "src": "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
+      "dst": "sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
       "kind": "renders",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/index.tsx:10"
       ],
-      "fileId": "file:apps/web/src/routes/index.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx"
     },
     {
-      "src": "sym:apps/web/src/routes/index.tsx#HomePage",
-      "dst": "sym:packages/ui/src/button.tsx#Button",
+      "src": "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
+      "dst": "sym:pnpm-turbo:packages/ui/src/button.tsx#Button",
       "kind": "renders",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/index.tsx:11"
       ],
-      "fileId": "file:apps/web/src/routes/index.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx"
     },
     {
-      "src": "sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
-      "dst": "sym:apps/web/src/routes/posts.$postId.tsx#Route",
+      "src": "sym:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "dst": "sym:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#Route",
       "kind": "uses_hook",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/posts.$postId.tsx:8"
       ],
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx"
     },
     {
-      "src": "sym:apps/web/src/routes/posts.$postId.tsx#PostPage",
-      "dst": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "src": "sym:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "dst": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
       "kind": "calls",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/posts.$postId.tsx:11"
       ],
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx"
     },
     {
-      "src": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
-      "dst": "sym:packages/ui/src/button.tsx#Button",
+      "src": "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "dst": "sym:pnpm-turbo:packages/ui/src/button.tsx#Button",
       "kind": "renders",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/settings/profile.tsx:11"
       ],
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"
     },
     {
-      "src": "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
-      "dst": "sym:packages/ui/src/card.tsx#Card",
+      "src": "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "dst": "sym:pnpm-turbo:packages/ui/src/card.tsx#Card",
       "kind": "renders",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/routes/settings/profile.tsx:10"
       ],
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"
     },
     {
-      "src": "sym:packages/db/src/queries.ts#createPost",
-      "dst": "table:posts",
+      "src": "sym:pnpm-turbo:packages/db/src/queries.ts#createPost",
+      "dst": "table:pnpm-turbo:posts",
       "kind": "writes",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "packages/db/src/queries.ts:16"
       ],
-      "fileId": "file:packages/db/src/queries.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts"
     },
     {
-      "src": "sym:packages/db/src/queries.ts#getPost",
-      "dst": "table:posts",
+      "src": "sym:pnpm-turbo:packages/db/src/queries.ts#getPost",
+      "dst": "table:pnpm-turbo:posts",
       "kind": "reads",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "packages/db/src/queries.ts:12"
       ],
-      "fileId": "file:packages/db/src/queries.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts"
     },
     {
-      "src": "sym:packages/db/src/queries.ts#listPosts",
-      "dst": "table:posts",
+      "src": "sym:pnpm-turbo:packages/db/src/queries.ts#listPosts",
+      "dst": "table:pnpm-turbo:posts",
       "kind": "reads",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "packages/db/src/queries.ts:8"
       ],
-      "fileId": "file:packages/db/src/queries.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts"
     },
     {
-      "src": "sym:packages/utils/src/slug.ts#SLUG_VERSION",
-      "dst": "sym:packages/utils/src/slug.ts#slugify",
+      "src": "sym:pnpm-turbo:packages/utils/src/slug.ts#SLUG_VERSION",
+      "dst": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
       "kind": "calls",
       "confidence": "high",
       "count": 1,
       "evidence": [
         "packages/utils/src/slug.ts:11"
       ],
-      "fileId": "file:packages/utils/src/slug.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/slug.ts"
     },
     {
       "src": "ws:@acme/api",
-      "dst": "file:apps/api/src/app.ts",
+      "dst": "file:pnpm-turbo:apps/api/src/app.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/api/src/app.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts"
     },
     {
       "src": "ws:@acme/api",
-      "dst": "file:apps/api/src/index.ts",
+      "dst": "file:pnpm-turbo:apps/api/src/index.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/api/src/index.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/index.ts"
     },
     {
       "src": "ws:@acme/api",
-      "dst": "file:apps/api/src/router.ts",
+      "dst": "file:pnpm-turbo:apps/api/src/router.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/api/src/router.ts"
+      "fileId": "file:pnpm-turbo:apps/api/src/router.ts"
     },
     {
       "src": "ws:@acme/api",
@@ -1797,178 +1797,178 @@
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/api/package.json"
+      "fileId": "file:pnpm-turbo:apps/api/package.json"
     },
     {
       "src": "ws:@acme/db",
-      "dst": "file:packages/db/src/index.ts",
+      "dst": "file:pnpm-turbo:packages/db/src/index.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/index.ts"
     },
     {
       "src": "ws:@acme/db",
-      "dst": "file:packages/db/src/queries.ts",
+      "dst": "file:pnpm-turbo:packages/db/src/queries.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/queries.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/queries.ts"
     },
     {
       "src": "ws:@acme/db",
-      "dst": "file:packages/db/src/schema.ts",
+      "dst": "file:pnpm-turbo:packages/db/src/schema.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/db/src/schema.ts"
+      "fileId": "file:pnpm-turbo:packages/db/src/schema.ts"
     },
     {
       "src": "ws:@acme/ui",
-      "dst": "file:packages/ui/src/button.tsx",
+      "dst": "file:pnpm-turbo:packages/ui/src/button.tsx",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/button.tsx"
+      "fileId": "file:pnpm-turbo:packages/ui/src/button.tsx"
     },
     {
       "src": "ws:@acme/ui",
-      "dst": "file:packages/ui/src/card.tsx",
+      "dst": "file:pnpm-turbo:packages/ui/src/card.tsx",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/card.tsx"
+      "fileId": "file:pnpm-turbo:packages/ui/src/card.tsx"
     },
     {
       "src": "ws:@acme/ui",
-      "dst": "file:packages/ui/src/index.ts",
+      "dst": "file:pnpm-turbo:packages/ui/src/index.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/ui/src/index.ts"
     },
     {
       "src": "ws:@acme/ui",
-      "dst": "file:packages/ui/src/internal.ts",
+      "dst": "file:pnpm-turbo:packages/ui/src/internal.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/ui/src/internal.ts"
+      "fileId": "file:pnpm-turbo:packages/ui/src/internal.ts"
     },
     {
       "src": "ws:@acme/utils",
-      "dst": "file:packages/utils/src/date.ts",
+      "dst": "file:pnpm-turbo:packages/utils/src/date.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/date.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/date.ts"
     },
     {
       "src": "ws:@acme/utils",
-      "dst": "file:packages/utils/src/index.ts",
+      "dst": "file:pnpm-turbo:packages/utils/src/index.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/index.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/index.ts"
     },
     {
       "src": "ws:@acme/utils",
-      "dst": "file:packages/utils/src/slug.ts",
+      "dst": "file:pnpm-turbo:packages/utils/src/slug.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/slug.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/slug.ts"
     },
     {
       "src": "ws:@acme/utils",
-      "dst": "file:packages/utils/src/time.ts",
+      "dst": "file:pnpm-turbo:packages/utils/src/time.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:packages/utils/src/time.ts"
+      "fileId": "file:pnpm-turbo:packages/utils/src/time.ts"
     },
     {
       "src": "ws:@acme/web",
-      "dst": "file:apps/web/src/components/Header.tsx",
+      "dst": "file:pnpm-turbo:apps/web/src/components/Header.tsx",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/components/Header.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/components/Header.tsx"
     },
     {
       "src": "ws:@acme/web",
-      "dst": "file:apps/web/src/components/PostList.tsx",
+      "dst": "file:pnpm-turbo:apps/web/src/components/PostList.tsx",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/components/PostList.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/components/PostList.tsx"
     },
     {
       "src": "ws:@acme/web",
-      "dst": "file:apps/web/src/hooks/useDebounce.ts",
+      "dst": "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/hooks/useDebounce.ts"
+      "fileId": "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts"
     },
     {
       "src": "ws:@acme/web",
-      "dst": "file:apps/web/src/lib/slug.ts",
+      "dst": "file:pnpm-turbo:apps/web/src/lib/slug.ts",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/lib/slug.ts"
+      "fileId": "file:pnpm-turbo:apps/web/src/lib/slug.ts"
     },
     {
       "src": "ws:@acme/web",
-      "dst": "file:apps/web/src/routes/__root.tsx",
+      "dst": "file:pnpm-turbo:apps/web/src/routes/__root.tsx",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/__root.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/__root.tsx"
     },
     {
       "src": "ws:@acme/web",
-      "dst": "file:apps/web/src/routes/index.tsx",
+      "dst": "file:pnpm-turbo:apps/web/src/routes/index.tsx",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/index.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx"
     },
     {
       "src": "ws:@acme/web",
-      "dst": "file:apps/web/src/routes/posts.$postId.tsx",
+      "dst": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx"
     },
     {
       "src": "ws:@acme/web",
-      "dst": "file:apps/web/src/routes/settings/profile.tsx",
+      "dst": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx"
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"
     },
     {
       "src": "ws:@acme/web",
@@ -1977,7 +1977,7 @@
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/package.json"
+      "fileId": "file:pnpm-turbo:apps/web/package.json"
     },
     {
       "src": "ws:@acme/web",
@@ -1986,16 +1986,16 @@
       "confidence": "high",
       "count": 1,
       "evidence": [],
-      "fileId": "file:apps/web/package.json"
+      "fileId": "file:pnpm-turbo:apps/web/package.json"
     }
   ],
   "adapterNodes": [
     {
-      "id": "ep:@acme/api:GET /posts/:id",
+      "id": "ep:pnpm-turbo:@acme/api:GET /posts/:id",
       "kind": "endpoint",
       "ws": "ws:@acme/api",
       "label": "GET /posts/:id",
-      "fileId": "file:apps/api/src/app.ts",
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts",
       "data": {
         "adapter": "hono",
         "method": "GET",
@@ -2012,11 +2012,11 @@
       }
     },
     {
-      "id": "ep:@acme/api:POST /posts",
+      "id": "ep:pnpm-turbo:@acme/api:POST /posts",
       "kind": "endpoint",
       "ws": "ws:@acme/api",
       "label": "POST /posts",
-      "fileId": "file:apps/api/src/app.ts",
+      "fileId": "file:pnpm-turbo:apps/api/src/app.ts",
       "data": {
         "adapter": "hono",
         "method": "POST",
@@ -2033,11 +2033,11 @@
       }
     },
     {
-      "id": "ep:@acme/api:rpc posts.create",
+      "id": "ep:pnpm-turbo:@acme/api:rpc posts.create",
       "kind": "endpoint",
       "ws": "ws:@acme/api",
       "label": "rpc posts.create",
-      "fileId": "file:apps/api/src/router.ts",
+      "fileId": "file:pnpm-turbo:apps/api/src/router.ts",
       "data": {
         "adapter": "orpc",
         "path": "posts.create",
@@ -2055,11 +2055,11 @@
       }
     },
     {
-      "id": "ep:@acme/api:rpc posts.list",
+      "id": "ep:pnpm-turbo:@acme/api:rpc posts.list",
       "kind": "endpoint",
       "ws": "ws:@acme/api",
       "label": "rpc posts.list",
-      "fileId": "file:apps/api/src/router.ts",
+      "fileId": "file:pnpm-turbo:apps/api/src/router.ts",
       "data": {
         "adapter": "orpc",
         "path": "posts.list",
@@ -2077,11 +2077,11 @@
       }
     },
     {
-      "id": "route:@acme/web:/",
+      "id": "route:pnpm-turbo:@acme/web:/",
       "kind": "route",
       "ws": "ws:@acme/web",
       "label": "/",
-      "fileId": "file:apps/web/src/routes/index.tsx",
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/index.tsx",
       "data": {
         "routeId": "/",
         "urlPath": "/",
@@ -2094,11 +2094,11 @@
       }
     },
     {
-      "id": "route:@acme/web:/posts/$postId",
+      "id": "route:pnpm-turbo:@acme/web:/posts/$postId",
       "kind": "route",
       "ws": "ws:@acme/web",
       "label": "/posts/$postId",
-      "fileId": "file:apps/web/src/routes/posts.$postId.tsx",
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
       "data": {
         "routeId": "/posts/$postId",
         "urlPath": "/posts/$postId",
@@ -2110,11 +2110,11 @@
       }
     },
     {
-      "id": "route:@acme/web:/settings/profile",
+      "id": "route:pnpm-turbo:@acme/web:/settings/profile",
       "kind": "route",
       "ws": "ws:@acme/web",
       "label": "/settings/profile",
-      "fileId": "file:apps/web/src/routes/settings/profile.tsx",
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
       "data": {
         "routeId": "/settings/profile",
         "urlPath": "/settings/profile",
@@ -2126,11 +2126,11 @@
       }
     },
     {
-      "id": "route:@acme/web:__root__",
+      "id": "route:pnpm-turbo:@acme/web:__root__",
       "kind": "route",
       "ws": "ws:@acme/web",
       "label": "__root",
-      "fileId": "file:apps/web/src/routes/__root.tsx",
+      "fileId": "file:pnpm-turbo:apps/web/src/routes/__root.tsx",
       "data": {
         "routeId": "__root__",
         "urlPath": "/",
@@ -2143,16 +2143,16 @@
       }
     },
     {
-      "id": "table:posts",
+      "id": "table:pnpm-turbo:posts",
       "kind": "table",
       "ws": "ws:@acme/db",
       "label": "posts",
-      "fileId": "file:packages/db/src/schema.ts",
+      "fileId": "file:pnpm-turbo:packages/db/src/schema.ts",
       "data": {
         "adapter": "drizzle",
         "name": "posts",
         "exportName": "posts",
-        "symbol": "sym:packages/db/src/schema.ts#posts",
+        "symbol": "sym:pnpm-turbo:packages/db/src/schema.ts#posts",
         "dialect": "sqlite",
         "columns": [
           "id",
@@ -2165,16 +2165,16 @@
       }
     },
     {
-      "id": "table:users",
+      "id": "table:pnpm-turbo:users",
       "kind": "table",
       "ws": "ws:@acme/db",
       "label": "users",
-      "fileId": "file:packages/db/src/schema.ts",
+      "fileId": "file:pnpm-turbo:packages/db/src/schema.ts",
       "data": {
         "adapter": "drizzle",
         "name": "users",
         "exportName": "users",
-        "symbol": "sym:packages/db/src/schema.ts#users",
+        "symbol": "sym:pnpm-turbo:packages/db/src/schema.ts#users",
         "dialect": "sqlite",
         "columns": [
           "id",

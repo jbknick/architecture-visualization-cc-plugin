@@ -1,6 +1,9 @@
 import {
   type AdapterNodeRecord,
   type FileRecord,
+  isFileId,
+  nameOfSymId,
+  pathOfFileId,
   type Store,
   snapshotOf,
   type TraceEdge,
@@ -218,14 +221,14 @@ export function describeNode(c: CrossCtx, id: string): GraphNode {
       ...(badges.length > 0 ? { badges } : {}),
     };
   }
-  if (id.startsWith("file:")) {
+  if (isFileId(id)) {
     const f = c.files.get(id);
     return {
       id,
       kind: "file",
-      label: baseName(id.slice(5)),
+      label: baseName(pathOfFileId(id)),
       size: 1,
-      path: id.slice(5),
+      path: pathOfFileId(id),
       ...(f?.workspaceId ? { workspace: f.workspaceId } : {}),
     };
   }
@@ -234,7 +237,7 @@ export function describeNode(c: CrossCtx, id: string): GraphNode {
   return {
     id,
     kind: s?.kind ?? "symbol",
-    label: s?.name ?? id.slice(id.lastIndexOf("#") + 1),
+    label: s?.name ?? nameOfSymId(id) ?? id,
     size: 1,
     ...(f ? { path: f.path } : {}),
     ...(f?.workspaceId ? { workspace: f.workspaceId } : {}),

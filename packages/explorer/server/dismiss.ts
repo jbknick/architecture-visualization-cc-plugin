@@ -1,4 +1,4 @@
-import { dismiss } from "@gantry/core";
+import { dismiss, isSymId } from "@gantry/core";
 import { HttpError } from "./errors.js";
 import type { ApiContext } from "./types.js";
 import { buildDuplicates, type DuplicatesResult } from "./views/duplicates.js";
@@ -25,7 +25,7 @@ function symbolId(ctx: ApiContext, value: unknown, name: string): string {
   if (typeof value !== "string" || value.length === 0 || value.length > MAX_ID_LENGTH) {
     throw new HttpError(400, `${name} must be a symbol id`);
   }
-  if (!value.startsWith("sym:") || !ctx.store.getSymbol(value)) {
+  if (!isSymId(value) || !ctx.store.getSymbol(value)) {
     throw new HttpError(404, `Unknown symbol: ${name}`);
   }
   return value;

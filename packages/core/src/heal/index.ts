@@ -6,6 +6,7 @@ import { writeCatalog } from "../catalog/index.js";
 import { loadConfig } from "../config/index.js";
 import { isIndexable } from "../discover/index.js";
 import { rebuildSimilarEdges } from "../dup/index.js";
+import { fileId } from "../ids.js";
 import { indexRepo } from "../indexer.js";
 import type { GantryPaths } from "../paths/index.js";
 import { refreshDescriptionFts } from "../search/descfts.js";
@@ -19,7 +20,6 @@ const GIT_MAX_BUFFER = 512 * 1024 * 1024;
 const STRUCTURAL = /(^|\/)(package\.json|tsconfig[^/]*\.json|pnpm-workspace\.yaml|nx\.json|turbo\.json)$/;
 
 const sha256 = (b: Buffer | string): string => createHash("sha256").update(b).digest("hex");
-const fileId = (p: string): string => `file:${p}`;
 
 /**
  * Every git call here only reads. `--no-optional-locks` keeps `git status` from taking `.git/index.lock` to refresh
@@ -227,7 +227,7 @@ export async function heal(
         pruneWorking(
           store,
           root,
-          changedPaths.map(([, p]) => fileId(p)),
+          changedPaths.map(([, p]) => fileId(paths.repo, p)),
         );
         // Edges of the files still modified in the tree may point into what just changed.
         const keep = [...layerRows(store, "working").values()]
@@ -291,7 +291,7 @@ export async function refreshWorking(
     const reindex: string[] = [];
     const targets = new Set<string>();
     for (const p of [...dirty].sort()) {
-      const id = fileId(p);
+      const id = fileId(paths.repo, p);
       const w = working.get(id);
       let mtime: number | undefined;
       try {
@@ -393,7 +393,7 @@ export function staleFiles(paths: GantryPaths, store: Store): StaleFiles {
   const working = layerRows(store, "working");
   const main = layerRows(store, "main");
   for (const p of dirty) {
-    const id = fileId(p);
+    const id = fileId(paths.repo, p);
     const w = working.get(id);
     const m = main.get(id);
     const mainLive = m !== undefined && m.deleted === 0;

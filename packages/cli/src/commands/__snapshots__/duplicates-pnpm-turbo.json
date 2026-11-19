@@ -7,7 +7,7 @@
   },
   "clusters": [
     {
-      "id": "cluster:sym:packages/utils/src/date.ts#formatRelativeDate",
+      "id": "cluster:sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
       "tier": "exact",
       "tiers": {
         "exact": 1,
@@ -18,14 +18,14 @@
       "size": 2,
       "loc": 22,
       "rank": 44,
-      "keep": "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "keep": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
       "keepReason": "In the shared package @acme/utils, exported, called by 1 function; the other copy can use it.",
       "workspaces": [
         "ws:@acme/utils"
       ],
       "members": [
         {
-          "id": "sym:packages/utils/src/date.ts#formatRelativeDate",
+          "id": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
           "name": "formatRelativeDate",
           "kind": "function",
           "path": "packages/utils/src/date.ts",
@@ -40,7 +40,7 @@
           "keep": true
         },
         {
-          "id": "sym:packages/utils/src/time.ts#parseTimestamp",
+          "id": "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
           "name": "parseTimestamp",
           "kind": "function",
           "path": "packages/utils/src/time.ts",
@@ -62,14 +62,14 @@
       ],
       "links": [
         {
-          "a": "sym:packages/utils/src/date.ts#formatRelativeDate",
-          "b": "sym:packages/utils/src/time.ts#parseTimestamp",
+          "a": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+          "b": "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
           "tier": "exact"
         }
       ]
     },
     {
-      "id": "cluster:sym:apps/web/src/lib/slug.ts#slugify",
+      "id": "cluster:sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
       "tier": "exact",
       "tiers": {
         "exact": 1,
@@ -80,7 +80,7 @@
       "size": 2,
       "loc": 16,
       "rank": 32,
-      "keep": "sym:packages/utils/src/slug.ts#slugify",
+      "keep": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
       "keepReason": "In the shared package @acme/utils, not exported yet, called by 1 function; the other copy can use it.",
       "workspaces": [
         "ws:@acme/utils",
@@ -88,7 +88,7 @@
       ],
       "members": [
         {
-          "id": "sym:packages/utils/src/slug.ts#slugify",
+          "id": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
           "name": "slugify",
           "kind": "function",
           "path": "packages/utils/src/slug.ts",
@@ -103,7 +103,7 @@
           "keep": true
         },
         {
-          "id": "sym:apps/web/src/lib/slug.ts#slugify",
+          "id": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
           "name": "slugify",
           "kind": "function",
           "path": "apps/web/src/lib/slug.ts",
@@ -125,8 +125,8 @@
       ],
       "links": [
         {
-          "a": "sym:apps/web/src/lib/slug.ts#slugify",
-          "b": "sym:packages/utils/src/slug.ts#slugify",
+          "a": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+          "b": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
           "tier": "exact"
         }
       ]

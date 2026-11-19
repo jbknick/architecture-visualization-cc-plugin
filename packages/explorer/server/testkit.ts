@@ -15,6 +15,7 @@ import {
   openStore,
   type ParsedFile,
   parseSource,
+  pathOfFileId,
   type Store,
   type SymbolRecord,
   type WorkspaceRecord,
@@ -51,22 +52,24 @@ export function fixtureStore(name: string): { store: Store; dir: string } {
     if (!isIndexable(rel, config) || rel.startsWith(".claude/") || rel.includes("/.claude/")) continue;
     const src = readFileSync(join(root, rel), "utf8");
     sources.set(rel, src);
-    const pf = parseSource(rel, src);
+    const pf = parseSource(name, rel, src);
     parsed.set(pf.fileId, pf);
   }
   const dir = mkdtempSync(join(tmpdir(), "gantry-views-"));
   const store = openStore(join(dir, "gantry.db"));
+  store.setMeta("repo", name);
   store.upsertWorkspaces(workspaces);
-  const resolver = createResolver({ root, workspaces, parsed });
+  const resolver = createResolver({ root, repo: name, workspaces, parsed });
   const wsEdges = resolver.workspaceEdges();
   const routes = detectTanstackRoutes({
     root,
+    repo: name,
     workspaces,
     files: [...parsed.keys()].map((id) => ({
       id,
-      path: id.slice(5),
-      workspaceId: workspaceOf(workspaces, id.slice(5)),
-      source: sources.get(id.slice(5)) as string,
+      path: pathOfFileId(id),
+      workspaceId: workspaceOf(workspaces, pathOfFileId(id)),
+      source: sources.get(pathOfFileId(id)) as string,
     })),
     parsed,
     resolver,
@@ -77,7 +80,7 @@ export function fixtureStore(name: string): { store: Store; dir: string } {
   for (const n of routes.nodes) routeNodes.set(n.fileId, [...(routeNodes.get(n.fileId) ?? []), n]);
   let first = true;
   for (const [fileId, pf] of [...parsed].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
-    const rel = fileId.slice(5);
+    const rel = pathOfFileId(fileId);
     const lang = rel.endsWith("x") ? "tsx" : "ts";
     const src = sources.get(rel) as string;
     const symbols: SymbolRecord[] = pf.symbols.map((s) => {

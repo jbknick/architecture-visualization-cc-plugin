@@ -1,4 +1,4 @@
-import { nodeInfo } from "@gantry/core";
+import { nodeInfo, pathOfFileId } from "@gantry/core";
 import type { Command } from "commander";
 import { openFresh, table } from "./lookup.js";
 import { EXIT_OK, fail, writeStdout } from "./shared.js";
@@ -18,7 +18,7 @@ export function registerNode(program: Command): void {
           const { node } = info;
           const rows = Object.entries(info.neighbors).flatMap(([kind, ids]) => ids.map((id) => [kind, id]));
           if ("fileId" in node) {
-            const filePath = node.fileId.slice("file:".length);
+            const filePath = pathOfFileId(node.fileId);
             if (opts.json) {
               const { minhash: _minhash, ...rest } = node;
               writeStdout(`${JSON.stringify({ ...info, node: { ...rest, path: filePath } }, null, 2)}\n`);

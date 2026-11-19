@@ -26,6 +26,7 @@ import {
   normalizeForEmbedding,
   openStore,
   parseSource,
+  pathOfFileId,
   resolvePaths,
   type Store,
 } from "../../packages/core/src/index.js";
@@ -63,7 +64,7 @@ if (!embedder) throw new Error("embedding model is not cached");
 function derivedCopy(existingId: string, newName: string): string {
   const sym = store.getSymbol(existingId);
   if (!sym) throw new Error("existing symbol missing");
-  const rel = sym.fileId.replace(/^file:/, "");
+  const rel = pathOfFileId(sym.fileId);
   const lines = readFileSync(join(repo, rel), "utf8")
     .split("\n")
     .slice(sym.startLine - 1, sym.endLine);
@@ -113,7 +114,7 @@ try {
     const queryMatches = await similar({ query, caller_path: b.targetFile });
 
     // diagnostics
-    const parsed = parseSource(`scratch.${lang}`, code);
+    const parsed = parseSource("repo", `scratch.${lang}`, code);
     const sym = parsed.symbols.find((s) => ["function", "component", "hook", "method"].includes(s.kind));
     const range = sym && parsed.bodies.get(sym.id);
     let draftCos: number | null = null;
@@ -149,9 +150,7 @@ try {
       const ctxText = (JSON.parse(hook.stdout) as { hookSpecificOutput: { additionalContext: string } })
         .hookSpecificOutput.additionalContext;
       const re = new RegExp(
-        ` looks like ${existing.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} in ${existing.fileId
-          .replace(/^file:/, "")
-          .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\d+ \\[(\\w+) ([0-9.]+)\\]`,
+        ` looks like ${existing.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} in ${pathOfFileId(existing.fileId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\d+ \\[(\\w+) ([0-9.]+)\\]`,
       );
       const m = re.exec(ctxText);
       if (m) {

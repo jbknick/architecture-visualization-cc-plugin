@@ -5,9 +5,14 @@ import {
   describedByOf,
   getOverview,
   hybridSearch,
+  isFileId,
   isIndexable,
   isSensitive,
+  isSymId,
+  kindOfId,
   MAX_FILE_BYTES,
+  nameOfSymId,
+  pathOfFileId,
 } from "@gantry/core";
 import { HttpError } from "./errors.js";
 import { getLayout } from "./layout.js";
@@ -163,8 +168,8 @@ function makeLabeler({ store }: ApiContext): Labeler {
     label(id) {
       const a = adapters.get(id);
       if (a !== undefined) return a;
-      if (id.startsWith("sym:")) return store.getSymbol(id)?.name ?? id.slice(4);
-      if (id.startsWith("file:")) return files.get(id) ?? id.slice(5);
+      if (isSymId(id)) return store.getSymbol(id)?.name ?? nameOfSymId(id) ?? id;
+      if (isFileId(id)) return files.get(id) ?? pathOfFileId(id);
       if (id.startsWith("ws:")) return ws.get(id) ?? id.slice(3);
       return id;
     },
@@ -178,7 +183,7 @@ function node(ctx: ApiContext, id: string) {
   let description: string | null = null;
   let describedBy: "model" | "template" | "fallback" | null = null;
   const files = new Map(store.effectiveFiles().map((f) => [f.id, f]));
-  if (id.startsWith("sym:")) {
+  if (isSymId(id)) {
     const s = store.getSymbol(id);
     if (s) {
       const f = files.get(s.fileId);
@@ -198,10 +203,10 @@ function node(ctx: ApiContext, id: string) {
         complexity: s.complexity,
       };
     }
-  } else if (id.startsWith("file:")) {
+  } else if (isFileId(id)) {
     const f = files.get(id);
     if (f) nodeBody = { id: f.id, kind: "file", name: f.path, path: f.path, workspaceId: f.workspaceId };
-  } else if (id.startsWith("route:")) {
+  } else if (kindOfId(id) === "route") {
     const r = store.effectiveAdapterNodes({ kind: "route" }).find((x) => x.id === id);
     if (r) {
       nodeBody = {

@@ -15,7 +15,7 @@ const shots = join(repoRoot, "docs/milestones/screenshots");
 test.describe.configure({ mode: "serial" });
 test.use({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
 
-const BUTTON = "sym:packages/ui/src/button.tsx#Button";
+const BUTTON = "sym:pnpm-turbo:packages/ui/src/button.tsx#Button";
 const problems: string[] = [];
 test.beforeEach(({ page }) => {
   page.on("console", (m) => {
@@ -108,9 +108,9 @@ async function open(page: Page, hash: string) {
   await page.mouse.move(2, 2);
 }
 
-const BUTTON_FILE = "file:packages/ui/src/button.tsx";
-const HOME_FILE = "file:apps/web/src/routes/index.tsx";
-const HOME = "sym:apps/web/src/routes/index.tsx#HomePage";
+const BUTTON_FILE = "file:pnpm-turbo:packages/ui/src/button.tsx";
+const HOME_FILE = "file:pnpm-turbo:apps/web/src/routes/index.tsx";
+const HOME = "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage";
 
 interface ReviewProbe {
   positions: Record<string, [number, number]>;
@@ -208,7 +208,7 @@ test("2D map: Button's file coloured by its change, caller files tinted, file-to
     expect.objectContaining({ src: HOME_FILE, dst: BUTTON_FILE, change: "signature" }),
   );
   for (const l of drawn?.links ?? [])
-    if (!l.soft) expect([BUTTON_FILE, "file:packages/utils/src/slug.ts"]).toContain(l.dst);
+    if (!l.soft) expect([BUTTON_FILE, "file:pnpm-turbo:packages/utils/src/slug.ts"]).toContain(l.dst);
 
   await expect(page.getByRole("complementary", { name: "Review legend" })).toContainText("Signature changed");
   const risk = page.getByRole("region", { name: "Risk" });
@@ -219,11 +219,11 @@ test("2D map: Button's file coloured by its change, caller files tinted, file-to
   await page.screenshot({ path: join(shots, "review-map-fixture.png") });
 });
 
-const QUERIES = "file:packages/db/src/queries.ts";
-const DB_INDEX = "file:packages/db/src/index.ts";
-const APP = "file:apps/api/src/app.ts";
-const API_INDEX = "file:apps/api/src/index.ts";
-const POST_ROUTE = "file:apps/web/src/routes/posts.$postId.tsx";
+const QUERIES = "file:pnpm-turbo:packages/db/src/queries.ts";
+const DB_INDEX = "file:pnpm-turbo:packages/db/src/index.ts";
+const APP = "file:pnpm-turbo:apps/api/src/app.ts";
+const API_INDEX = "file:pnpm-turbo:apps/api/src/index.ts";
+const POST_ROUTE = "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx";
 
 test("secondary chain (#173): nothing selected, hop-2 consumers tinted with dashed lines to the step nearer; Show filters them", async ({
   page,
@@ -238,7 +238,7 @@ test("secondary chain (#173): nothing selected, hop-2 consumers tinted with dash
   expect(links.find((l) => l.src === APP && l.dst === QUERIES)?.soft).toBeUndefined();
   expect(links).toContainEqual(expect.objectContaining({ src: API_INDEX, dst: APP, soft: true }));
   expect(links).toContainEqual(
-    expect.objectContaining({ src: "file:apps/api/src/router.ts", dst: DB_INDEX, soft: true }),
+    expect.objectContaining({ src: "file:pnpm-turbo:apps/api/src/router.ts", dst: DB_INDEX, soft: true }),
   );
   // Dashed lines are drawn first, under the solid ones.
   const firstSolid = links.findIndex((l) => !l.soft);
