@@ -6,6 +6,7 @@ import {
   estimate,
   type GantryPaths,
   heal,
+  indexCounts,
   indexRepo,
   openStore,
   rebuildSimilarEdges,
@@ -68,7 +69,9 @@ export function registerInit(program: Command): void {
           syncBacklog(store, { root: paths.root });
           writeCatalog(store, paths);
           await rebuildSimilarEdges(store);
-          for (const line of summaryLines(r, paths.dataDir)) process.stdout.write(`${line}\n`);
+          // Totals of the finished index, read the way `/api/meta` and the estimate read them (spec section 10).
+          const totals = { ...r, ...indexCounts(store) };
+          for (const line of summaryLines(totals, paths.dataDir)) process.stdout.write(`${line}\n`);
           if (opts.estimate) {
             const exportsFirst = opts.exportsFirst === true;
             for (const line of estimateLines(estimate(store, { exportsFirst }), exportsFirst)) {
