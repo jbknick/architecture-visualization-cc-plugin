@@ -9,6 +9,7 @@ import {
   indexRepo,
   openStore,
   rebuildSimilarEdges,
+  resetStaleStore,
   resolvePaths,
   SECONDS_PER_FUNCTION_SEQUENTIAL,
   syncBacklog,
@@ -58,6 +59,7 @@ export function registerInit(program: Command): void {
     .action(async (opts: { estimate?: boolean; exportsFirst?: boolean; embed?: boolean }) => {
       try {
         const paths = resolvePaths(process.cwd());
+        resetStaleStore(paths);
         noteFreshIndex(paths);
         const r = await indexRepo(paths, { layer: "main" });
         await heal(paths);

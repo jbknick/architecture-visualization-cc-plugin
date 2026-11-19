@@ -16,7 +16,14 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { contentKey, type GantryPaths, openStore, resolvePaths, storeDescriptions } from "@gantry/core";
+import {
+  contentKey,
+  type GantryPaths,
+  openStore,
+  readSchemaVersion,
+  resolvePaths,
+  storeDescriptions,
+} from "@gantry/core";
 import { build } from "tsup";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { preCommit, runHook } from "./entry.js";
@@ -644,37 +651,68 @@ describe("entry points", () => {
     expect(gantry(fx.dir, ["hook", "session-start"])).toEqual({ code: 0, out: "", err: "" });
   });
 
-  it("session-start defers the full re-index of an older index format; the next heal runs it (#195)", async () => {
+  it("every hook leaves a stale store alone and exits 0; the next non-hook command rebuilds it", async () => {
     const fx = await fixture();
     expect(gantry(fx.dir, ["init"]).code).toBe(0);
     const p = pathsOf(fx.dir);
-    const s = openStore(p.dbPath);
-    try {
-      expect(s.getMeta("index_format")).toBe("1");
-      s.db.exec("DELETE FROM meta WHERE key = 'index_format'"); // as a store from before #195 has it
-    } finally {
-      s.close();
-    }
-    const metaOf = (k: string) => {
+    const versionOf = () => String(readSchemaVersion(p.dbPath));
+    const setVersion = (v: string) => {
       const st = openStore(p.dbPath);
       try {
-        return st.getMeta(k);
+        st.setMeta("schema_version", v);
       } finally {
         st.close();
       }
     };
-    // Stdout stays clean, the hook exits 0, and it does not run the full re-index.
-    expect(gantry(fx.dir, ["hook", "session-start"])).toEqual({ code: 0, out: "", err: "" });
-    expect(metaOf("index_format")).toBeUndefined();
-    expect(metaOf("head_sha")).toBeUndefined(); // forgotten on open: the next heal is a full one
-    expect(gantry(fx.dir, ["hook", "session-start"], { GANTRY_WORKER: "1" })).toEqual({
+    expect(versionOf()).toBe("7");
+    setVersion("6");
+    const input = JSON.stringify({
+      session_id: "s",
+      cwd: fx.dir,
+      tool_name: "Edit",
+      tool_input: { file_path: join(fx.dir, "apps/web/src/new.ts") },
+    });
+    const run = (name: string, args: string[] = [], stdin = "") => {
+      const t0 = Date.now();
+      const r = spawnSync("node", [cli, "hook", name, ...args], {
+        cwd: fx.dir,
+        encoding: "utf8",
+        env,
+        input: stdin,
+      });
+      return { code: r.status, out: r.stdout, err: r.stderr, ms: Date.now() - t0 };
+    };
+    for (const [name, args, stdin] of [
+      ["post-checkout", ["HEAD", "HEAD", "1"], ""],
+      ["post-merge", ["0"], ""],
+      ["post-rewrite", ["amend"], ""],
+      ["pre-push", [], ""],
+      ["pre-commit", [], ""],
+      ["post-tool-use", [], input],
+      ["stop", [], input],
+    ] as const) {
+      const r = run(name, [...args], stdin);
+      expect([name, r.code, r.out, r.err]).toEqual([name, 0, "", ""]);
+      expect(versionOf()).toBe("6");
+    }
+    // A budgeted hook finishes well inside its 1,500 ms (startup of the bundled CLI included).
+    expect(run("post-tool-use", [], input).ms).toBeLessThan(1500);
+    // SessionStart prints its usual reminder and does not rebuild.
+    expect(run("session-start")).toMatchObject({
       code: 0,
-      out: "",
+      out: "Gantry: run /gantry:init to index this repo\n",
       err: "",
     });
-    expect(gantry(fx.dir, ["heal"]).code).toBe(0);
-    expect(metaOf("index_format")).toBe("1");
-    expect(metaOf("head_sha")).toBe(git(fx.dir, ["rev-parse", "HEAD"]).out.trim());
+    expect(versionOf()).toBe("6");
+    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 7)");
+
+    // The next non-hook command rebuilds from scratch, with one message naming the reason.
+    const init = gantry(fx.dir, ["init"]);
+    expect(init.code).toBe(0);
+    expect(
+      init.err.split("built by an older version of Gantry (schema 6, now 7); rebuilding it").length - 1,
+    ).toBe(1);
+    expect(versionOf()).toBe("7");
   });
 
   it("session-start and the git hooks create no data dir for a repository without an index (#147)", async () => {

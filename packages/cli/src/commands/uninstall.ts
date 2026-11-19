@@ -1,4 +1,4 @@
-import { resolvePaths } from "@gantry/core";
+import { resetStaleStore, resolvePaths } from "@gantry/core";
 import type { Command } from "commander";
 import { removeDataDir, uninstallHooks } from "../hooks/install.js";
 import { EXIT_OK, fail } from "./shared.js";
@@ -11,6 +11,7 @@ export function registerUninstall(program: Command): void {
     .action((opts: { keepData?: boolean }) => {
       try {
         const paths = resolvePaths(process.cwd());
+        resetStaleStore(paths);
         uninstallHooks(paths);
         if (!opts.keepData) removeDataDir(paths);
         process.stdout.write(`Uninstalled Gantry${opts.keepData ? " (data kept)" : ""}\n`);

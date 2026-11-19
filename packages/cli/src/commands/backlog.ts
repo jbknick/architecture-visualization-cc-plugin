@@ -5,6 +5,7 @@ import {
   failedItems,
   isIndexed,
   openStore,
+  resetStaleStore,
   resolvePaths,
   retryFailed,
 } from "@gantry/core";
@@ -36,6 +37,7 @@ export function registerBacklog(program: Command): void {
     .action((opts: BacklogOpts) => {
       try {
         const paths = resolvePaths(process.cwd());
+        resetStaleStore(paths);
         const where = { data_dir: paths.dataDir };
         // Read-only: a repository with no index here gets no data dir created (#147).
         if (!fs.existsSync(paths.dbPath)) {
