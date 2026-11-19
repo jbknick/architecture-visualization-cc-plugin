@@ -3,6 +3,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { handleMockApi } from "../../mock/fixture.ts";
 import type { ReviewConsumer, ReviewData, ReviewLayer, ViewData } from "../api.ts";
+import { pathOfFileId, pathOfSymId } from "../ids.ts";
 import "../canvases.ts";
 import { ringEdges, ringNodes } from "../../mock/review.ts";
 import { computeLayout } from "../canvas/layout.ts";
@@ -32,11 +33,11 @@ import {
   showOf,
 } from "./reviewModel.ts";
 
-const BUTTON = "sym:packages/ui/src/button.tsx#Button";
-const BUTTON_FILE = "file:packages/ui/src/button.tsx";
-const CARD_FILE = "file:packages/ui/src/card.tsx";
-const DEBOUNCE_FILE = "file:apps/web/src/hooks/useDebounce.ts";
-const POSTLIST_FILE = "file:apps/web/src/components/PostList.tsx";
+const BUTTON = "sym:pnpm-turbo:packages/ui/src/button.tsx#Button";
+const BUTTON_FILE = "file:pnpm-turbo:packages/ui/src/button.tsx";
+const CARD_FILE = "file:pnpm-turbo:packages/ui/src/card.tsx";
+const DEBOUNCE_FILE = "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts";
+const POSTLIST_FILE = "file:pnpm-turbo:apps/web/src/components/PostList.tsx";
 
 function mockView(view: string, filters: Record<string, string>, level?: string): ViewData {
   const q = new URLSearchParams({ filters: JSON.stringify(filters), ...(level ? { level } : {}) });
@@ -48,7 +49,7 @@ function mockView(view: string, filters: Record<string, string>, level?: string)
 describe("reviewModel", () => {
   it("names, mark kinds and one colour per kind in both themes", () => {
     expect(shortName(BUTTON)).toBe("Button");
-    expect(shortName("file:a/b/c.ts")).toBe("c.ts");
+    expect(shortName("file:pnpm-turbo:a/b/c.ts")).toBe("c.ts");
     expect(markKindOf({ kind: "modified", signatureChanged: true })).toBe("signature");
     expect(markKindOf({ kind: "modified", signatureChanged: false })).toBe("modified");
     expect(markKindOf({ kind: "renamed", signatureChanged: true })).toBe("moved");
@@ -62,39 +63,39 @@ describe("reviewModel", () => {
   it("paintLayer and the Show filter: the whole chain by default, soft dashed lines under direct ones", () => {
     // ws -> dir -> {a.ts, b.ts, c.ts}; a.ts changed, b.ts hop 1, c.ts hop 2 (via b.ts).
     const tree = {
-      ids: ["ws:x", "dir:x", "file:a.ts", "file:b.ts", "file:c.ts", "ws:y"],
+      ids: ["ws:x", "dir:x", "file:pnpm-turbo:a.ts", "file:pnpm-turbo:b.ts", "file:pnpm-turbo:c.ts", "ws:y"],
       parents: [-1, 0, 1, 1, 1, -1],
     };
     const layer: ReviewLayer = {
       marks: [
-        { id: "file:a.ts", change: "signature", changes: 1 },
-        { id: "file:b.ts", hop: 1 },
-        { id: "file:c.ts", hop: 2 },
-        { id: "file:gone.ts", change: "added" },
+        { id: "file:pnpm-turbo:a.ts", change: "signature", changes: 1 },
+        { id: "file:pnpm-turbo:b.ts", hop: 1 },
+        { id: "file:pnpm-turbo:c.ts", hop: 2 },
+        { id: "file:pnpm-turbo:gone.ts", change: "added" },
       ],
       links: [
         {
-          id: "file:b.ts->file:a.ts",
-          src: "file:b.ts",
-          dst: "file:a.ts",
+          id: "file:pnpm-turbo:b.ts->file:pnpm-turbo:a.ts",
+          src: "file:pnpm-turbo:b.ts",
+          dst: "file:pnpm-turbo:a.ts",
           change: "signature",
           weight: 2,
           tier: "direct",
           hop: 1,
         },
         {
-          id: "file:zz.ts->file:a.ts",
-          src: "file:zz.ts",
-          dst: "file:a.ts",
+          id: "file:pnpm-turbo:zz.ts->file:pnpm-turbo:a.ts",
+          src: "file:pnpm-turbo:zz.ts",
+          dst: "file:pnpm-turbo:a.ts",
           change: "signature",
           weight: 1,
           tier: "direct",
           hop: 1,
         },
         {
-          id: "file:c.ts->file:b.ts",
-          src: "file:c.ts",
-          dst: "file:b.ts",
+          id: "file:pnpm-turbo:c.ts->file:pnpm-turbo:b.ts",
+          src: "file:pnpm-turbo:c.ts",
+          dst: "file:pnpm-turbo:b.ts",
           change: "signature",
           weight: 1,
           tier: "potential",
@@ -102,7 +103,7 @@ describe("reviewModel", () => {
         },
       ],
       linksTotal: 3,
-      placed: [["sym:a.ts#f", "file:a.ts"]],
+      placed: [["sym:pnpm-turbo:a.ts#f", "file:pnpm-turbo:a.ts"]],
       unplaced: [],
     };
     // Default (+ Potentially affected): both tints, the dashed line first so the solid one is drawn over it.
@@ -114,7 +115,7 @@ describe("reviewModel", () => {
       { src: 4, dst: 3, change: "signature", weight: 1, soft: true },
       { src: 3, dst: 2, change: "signature", weight: 2 },
     ]);
-    expect(p.placed.get("sym:a.ts#f")).toBe(2);
+    expect(p.placed.get("sym:pnpm-turbo:a.ts#f")).toBe(2);
     expect(paintLayer(tree, layer, "potential")).toEqual(p);
     // + Directly affected: hop 1 and its solid lines only.
     const direct = paintLayer(tree, layer, "direct");
@@ -126,11 +127,11 @@ describe("reviewModel", () => {
     expect([...changed.hop]).toEqual([0, 0, 0, 0, 0, 0]);
     expect([...changed.lit]).toEqual([1, 1, 1, 0, 0, 0]);
     expect(changed.links).toEqual([]);
-    expect(placedId(layer, "sym:a.ts#f")).toBe("file:a.ts");
-    expect(placedId(layer, "file:b.ts")).toBe("file:b.ts");
+    expect(placedId(layer, "sym:pnpm-turbo:a.ts#f")).toBe("file:pnpm-turbo:a.ts");
+    expect(placedId(layer, "file:pnpm-turbo:b.ts")).toBe("file:pnpm-turbo:b.ts");
 
     // Hover: the hop in words and the path to the change along the lines (the solid one first).
-    const names = (i: number) => tree.ids[i]?.slice(5) ?? "";
+    const names = (i: number) => pathOfFileId(tree.ids[i] ?? "");
     expect(pathToChange(p, 4)).toEqual([4, 3, 2]);
     expect(reviewTipLines(p, 4, names)).toEqual([
       "Review: potentially affected (hop 2)",
@@ -205,7 +206,7 @@ describe("reviewModel", () => {
     expect(p.links).toContainEqual(
       expect.objectContaining({ src: at(DEBOUNCE_FILE), dst: at(POSTLIST_FILE), soft: true }),
     );
-    expect(p.lit[at("file:packages/db/src/queries.ts")]).toBe(0);
+    expect(p.lit[at("file:pnpm-turbo:packages/db/src/queries.ts")]).toBe(0);
     expect(p.placed.get(BUTTON)).toBe(at(BUTTON_FILE));
   });
 });
@@ -239,16 +240,16 @@ describe("rings model", () => {
   });
 
   it("a node's path runs inward to the centre and outward to its callers", () => {
-    const p = ringPath("sym:apps/web/src/components/PostList.tsx#PostList", ringEdges);
+    const p = ringPath("sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList", ringEdges);
     expect([...p.nodes].sort()).toEqual(
       [
-        "sym:apps/web/src/components/PostList.tsx#PostList",
-        "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
-        "sym:packages/utils/src/date.ts#formatTimeAgo",
+        "sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
+        "sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce",
+        "sym:pnpm-turbo:packages/utils/src/date.ts#formatTimeAgo",
       ].sort(),
     );
     expect(p.edges.size).toBe(2);
-    expect(p.nodes.has("sym:packages/ui/src/button.tsx#Button")).toBe(false);
+    expect(p.nodes.has("sym:pnpm-turbo:packages/ui/src/button.tsx#Button")).toBe(false);
   });
 });
 
@@ -271,7 +272,7 @@ describe("review view", () => {
     ).toBeTruthy();
     // Edges point from the caller to the callee (an arrowhead at the callee).
     const e = canvas.querySelector(
-      '[data-edge="sym:packages/ui/src/card.tsx#Card->sym:packages/ui/src/button.tsx#Button"]',
+      '[data-edge="sym:pnpm-turbo:packages/ui/src/card.tsx#Card->sym:pnpm-turbo:packages/ui/src/button.tsx#Button"]',
     );
     expect(e?.getAttribute("marker-end")).toContain("rv-arrow");
     // Hover: its path stays, the rest fades; the tooltip names the file and the hop.
@@ -339,7 +340,7 @@ describe("review view", () => {
   it("a deep link with focus opens that symbol; a renamed one shows both names", async () => {
     installMockFetch();
     renderApp(
-      `#/review?range=main...feature&focus=${encodeURIComponent("sym:packages/utils/src/date.ts#formatTimeAgo")}`,
+      `#/review?range=main...feature&focus=${encodeURIComponent("sym:pnpm-turbo:packages/utils/src/date.ts#formatTimeAgo")}`,
     );
     const inspector = await screen.findByRole("complementary", { name: "Inspector" });
     const change = await within(inspector).findByRole("region", { name: "Change in this review" });
@@ -394,7 +395,7 @@ describe("consumers (#169)", () => {
     id,
     name: shortName(id),
     kind: "function",
-    path: id.slice(4, id.lastIndexOf("#")),
+    path: pathOfSymId(id) as string,
     line: 1,
     workspace: null,
     hop: 1,
@@ -405,20 +406,26 @@ describe("consumers (#169)", () => {
 
   it("paintLayer with a focused change: only it, its direct consumers (strong) and potential ones (soft)", () => {
     const tree = {
-      ids: ["ws:x", "file:a.ts", "file:b.ts", "file:c.ts", "file:d.ts"],
+      ids: [
+        "ws:x",
+        "file:pnpm-turbo:a.ts",
+        "file:pnpm-turbo:b.ts",
+        "file:pnpm-turbo:c.ts",
+        "file:pnpm-turbo:d.ts",
+      ],
       parents: [-1, 0, 0, 0, 0],
     };
     const layer: ReviewLayer = {
       marks: [
-        { id: "file:a.ts", change: "signature", changes: 1 },
-        { id: "file:b.ts", hop: 1 },
-        { id: "file:d.ts", change: "added", changes: 1 },
+        { id: "file:pnpm-turbo:a.ts", change: "signature", changes: 1 },
+        { id: "file:pnpm-turbo:b.ts", hop: 1 },
+        { id: "file:pnpm-turbo:d.ts", change: "added", changes: 1 },
       ],
       links: [
         {
-          id: "file:b.ts->file:a.ts",
-          src: "file:b.ts",
-          dst: "file:a.ts",
+          id: "file:pnpm-turbo:b.ts->file:pnpm-turbo:a.ts",
+          src: "file:pnpm-turbo:b.ts",
+          dst: "file:pnpm-turbo:a.ts",
           change: "signature",
           weight: 1,
           tier: "direct",
@@ -426,14 +433,14 @@ describe("consumers (#169)", () => {
         },
       ],
       linksTotal: 1,
-      placed: [["sym:a.ts#f", "file:a.ts"]],
+      placed: [["sym:pnpm-turbo:a.ts#f", "file:pnpm-turbo:a.ts"]],
       unplaced: [],
     };
     const p = paintLayer(tree, layer, "potential", {
-      node: "file:a.ts",
+      node: "file:pnpm-turbo:a.ts",
       kind: "signature",
-      direct: ["file:b.ts"],
-      potential: [{ node: "file:c.ts", next: "file:b.ts" }],
+      direct: ["file:pnpm-turbo:b.ts"],
+      potential: [{ node: "file:pnpm-turbo:c.ts", next: "file:pnpm-turbo:b.ts" }],
     });
     // d.ts (another change) fades; c.ts gets the soft tint; the soft line comes first (drawn under)
     expect(p.change).toEqual([null, "signature", null, null, null]);
@@ -447,16 +454,16 @@ describe("consumers (#169)", () => {
 
   it("focusedChange keeps the change while one of its consumers is selected; groupByFile keeps the order", () => {
     const review = mockView("review", { range: "main...feature" }, "symbols").review as ReviewData;
-    const card = "sym:packages/ui/src/card.tsx#Card";
+    const card = "sym:pnpm-turbo:packages/ui/src/card.tsx#Card";
     expect(focusedChange(review, BUTTON, null)).toBe(BUTTON);
     expect(focusedChange(review, BUTTON_FILE, BUTTON)).toBe(BUTTON_FILE);
     expect(focusedChange(review, card, BUTTON)).toBe(BUTTON);
     expect(focusedChange(review, card, null)).toBeNull();
     expect(focusedChange(review, null, BUTTON)).toBeNull();
     const groups = groupByFile([
-      consumer("sym:a.ts#x", "a"),
-      consumer("sym:a.ts#y", "a"),
-      consumer("sym:b.ts#z", "b"),
+      consumer("sym:pnpm-turbo:a.ts#x", "a"),
+      consumer("sym:pnpm-turbo:a.ts#y", "a"),
+      consumer("sym:pnpm-turbo:b.ts#z", "b"),
     ]);
     expect(groups.map((g) => [g.path, g.items.length])).toEqual([
       ["a.ts", 2],
@@ -471,16 +478,18 @@ describe("consumers (#169)", () => {
 
   it("ringFocus: direct edges strong, potential edges soft", () => {
     const review = mockView("review", { range: "main...feature", mode: "rings" }).review as ReviewData;
-    const f = ringFocus(review, "sym:packages/utils/src/date.ts#formatTimeAgo", ringEdges);
-    expect([...(f?.direct ?? [])]).toEqual(["sym:apps/web/src/components/PostList.tsx#PostList"]);
-    expect([...(f?.potential ?? [])]).toEqual(["sym:apps/web/src/hooks/useDebounce.ts#useDebounce"]);
+    const f = ringFocus(review, "sym:pnpm-turbo:packages/utils/src/date.ts#formatTimeAgo", ringEdges);
+    expect([...(f?.direct ?? [])]).toEqual(["sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList"]);
+    expect([...(f?.potential ?? [])]).toEqual([
+      "sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce",
+    ]);
     expect([...(f?.strong ?? [])]).toEqual([
-      "sym:apps/web/src/components/PostList.tsx#PostList->sym:packages/utils/src/date.ts#formatTimeAgo",
+      "sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList->sym:pnpm-turbo:packages/utils/src/date.ts#formatTimeAgo",
     ]);
     expect([...(f?.soft ?? [])]).toEqual([
-      "sym:apps/web/src/hooks/useDebounce.ts#useDebounce->sym:apps/web/src/components/PostList.tsx#PostList",
+      "sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce->sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
     ]);
-    expect(ringFocus(review, "sym:nope", ringEdges)).toBeNull();
+    expect(ringFocus(review, "sym:pnpm-turbo:nope", ringEdges)).toBeNull();
   });
 
   it("a selected change expands to its two tiers in the panel and the inspector; a consumer click selects it", async () => {
@@ -504,7 +513,7 @@ describe("consumers (#169)", () => {
     fireEvent.click(within(tiers).getByRole("button", { name: /^Card/ }));
     await waitFor(() =>
       expect(window.location.hash).toContain(
-        `sel=${encodeURIComponent("sym:packages/ui/src/card.tsx#Card")}`,
+        `sel=${encodeURIComponent("sym:pnpm-turbo:packages/ui/src/card.tsx#Card")}`,
       ),
     );
     expect(within(list).getByRole("region", { name: "Consumers of Button" })).toBeTruthy();
@@ -519,19 +528,19 @@ describe("consumers (#169)", () => {
 
   it("rings: selecting a change marks its direct consumers strong and its potential ones soft", async () => {
     installMockFetch();
-    const date = "sym:packages/utils/src/date.ts#formatTimeAgo";
+    const date = "sym:pnpm-turbo:packages/utils/src/date.ts#formatTimeAgo";
     renderApp(`#/review?range=main...feature&mode=rings&sel=${encodeURIComponent(date)}`);
     const canvas = await screen.findByTestId("review-canvas");
     await waitFor(() =>
       expect(canvas.querySelector(".rv-rings")?.getAttribute("data-focus-change")).toBe(date),
     );
     const node = (id: string) => canvas.querySelector(`[data-id="${id}"]`);
-    expect(node("sym:apps/web/src/components/PostList.tsx#PostList")?.getAttribute("data-tier")).toBe(
-      "direct",
-    );
-    expect(node("sym:apps/web/src/hooks/useDebounce.ts#useDebounce")?.getAttribute("data-tier")).toBe(
-      "potential",
-    );
+    expect(
+      node("sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList")?.getAttribute("data-tier"),
+    ).toBe("direct");
+    expect(
+      node("sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce")?.getAttribute("data-tier"),
+    ).toBe("potential");
     expect(node(BUTTON)?.getAttribute("class")).toContain("rv-dim");
   });
 });

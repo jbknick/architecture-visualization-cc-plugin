@@ -1,4 +1,5 @@
 import { parseSync } from "oxc-parser";
+import { fileId as makeFileId, symId } from "../ids.js";
 import type { ParsedSymbol, SymbolKind } from "../types.js";
 import {
   chainName,
@@ -747,8 +748,8 @@ function cmp(a: string, b: string): number {
  * is what oxc reports for JS strings. Module-level code (top-level calls such as `app.get(...)`)
  * is attributed to the file id in `sites[].fromSymbol`.
  */
-export function parseSource(repoRelPath: string, source: string): ParsedFile {
-  const fileId = `file:${repoRelPath}`;
+export function parseSource(repo: string, repoRelPath: string, source: string): ParsedFile {
+  const fileId = makeFileId(repo, repoRelPath);
   const result: ParsedFile = {
     fileId,
     symbols: [],
@@ -776,7 +777,7 @@ export function parseSource(repoRelPath: string, source: string): ParsedFile {
     const seen = new Map<string, number>();
     const sites: ParsedSite[] = [];
     for (const d of ex.drafts) {
-      const base = `sym:${repoRelPath}#${d.name}`;
+      const base = symId(repo, repoRelPath, d.name);
       const n = (seen.get(base) ?? 0) + 1;
       seen.set(base, n);
       const id = n === 1 ? base : `${base}~${n}`;

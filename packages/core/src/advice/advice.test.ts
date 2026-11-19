@@ -19,7 +19,7 @@ afterAll(async () => {
 });
 
 function sym(ix: Indexed, path: string, name: string): SymbolRecord {
-  const s = ix.store.getSymbol(`sym:${path}#${name}`);
+  const s = ix.store.getSymbol(`sym:pnpm-turbo:${path}#${name}`);
   if (!s) throw new Error(`no symbol ${path}#${name}`);
   return s;
 }
@@ -294,8 +294,10 @@ describe("(2) -> (4): server/client boundary", () => {
   });
 
   it("stores the directive on the file row and emits no self import edge", () => {
-    expect(ix.store.effectiveFile("file:apps/api/src/client.tsx")?.directives).toEqual(["use client"]);
-    expect(ix.store.effectiveFile("file:apps/api/src/server.ts")?.directives).toBeUndefined();
+    expect(ix.store.effectiveFile("file:pnpm-turbo:apps/api/src/client.tsx")?.directives).toEqual([
+      "use client",
+    ]);
+    expect(ix.store.effectiveFile("file:pnpm-turbo:apps/api/src/server.ts")?.directives).toBeUndefined();
     const selfImports = ix.store.effectiveEdges({ kind: ["imports"] }).filter((e) => e.src === e.dst);
     expect(selfImports).toEqual([]);
     const raw = ix.store.db
@@ -305,10 +307,13 @@ describe("(2) -> (4): server/client boundary", () => {
   });
 
   it("parses the directive the indexer stores", () => {
-    expect(parseSource("a.tsx", '"use client";\nexport const a = 1;\n').directives).toEqual(["use client"]);
-    expect(parseSource("a.ts", "export const a = 1;\n").directives).toBeUndefined();
+    expect(parseSource("pnpm-turbo", "a.tsx", '"use client";\nexport const a = 1;\n').directives).toEqual([
+      "use client",
+    ]);
+    expect(parseSource("pnpm-turbo", "a.ts", "export const a = 1;\n").directives).toBeUndefined();
     expect(
-      parseSource("a.ts", "// c\n'use strict';\n'use client';\nexport const a = 1;\n").directives,
+      parseSource("pnpm-turbo", "a.ts", "// c\n'use strict';\n'use client';\nexport const a = 1;\n")
+        .directives,
     ).toEqual(["use strict", "use client"]);
   });
 
@@ -339,7 +344,12 @@ describe("checkImports", () => {
     ix = await fixture();
   });
   const check = (path: string, src: string) =>
-    checkImports(ix.store, path, parseSource(path, src)).map((f) => [f.kind, f.specifier, f.line, f.action]);
+    checkImports(ix.store, path, parseSource("pnpm-turbo", path, src)).map((f) => [
+      f.kind,
+      f.specifier,
+      f.line,
+      f.action,
+    ]);
 
   it("reports the fixture's undeclared @acme/db import in apps/web", () => {
     const path = "apps/web/src/routes/posts.$postId.tsx";

@@ -116,43 +116,43 @@ describe("reviewDiff on fixtures/pnpm-turbo branches", () => {
     const d = await reviewDiff(paths, "main", "feature");
     const out = d.changes.map((c) => `${c.kind} ${c.id}`);
 
-    const body = byId(d, "sym:packages/utils/src/date.ts#formatRelativeDate");
+    const body = byId(d, "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate");
     expect(body.kind).toBe("modified");
     expect(body.signatureChanged).toBe(false);
     expect(body.exportedChanged).toBe(false);
     expect(body.before?.exactHash).not.toBe(body.after?.exactHash);
 
-    const sig = byId(d, "sym:packages/utils/src/time.ts#parseTimestamp");
+    const sig = byId(d, "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp");
     expect(sig.kind).toBe("modified");
     expect(sig.signatureChanged).toBe(true);
     expect(sig.after?.signature).toContain("tz = 0");
 
-    const added = byId(d, "sym:packages/utils/src/slug.ts#slugifyAll");
+    const added = byId(d, "sym:pnpm-turbo:packages/utils/src/slug.ts#slugifyAll");
     expect(added.kind).toBe("added");
     expect(added.before).toBeUndefined();
     expect(added.locDelta).toBe(3);
 
-    const flip = byId(d, "sym:apps/web/src/lib/slug.ts#slugify");
+    const flip = byId(d, "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify");
     expect(flip.kind).toBe("modified");
     expect(flip.exportedChanged).toBe(true);
     expect(flip.signatureChanged).toBe(false);
     expect(flip.before?.exactHash).toBe(flip.after?.exactHash);
 
-    const moved = byId(d, "sym:apps/web/src/lib/debounce.ts#useDebounce");
+    const moved = byId(d, "sym:pnpm-turbo:apps/web/src/lib/debounce.ts#useDebounce");
     expect(moved.kind).toBe("moved");
-    expect(moved.before?.id).toBe("sym:apps/web/src/hooks/useDebounce.ts#useDebounce");
+    expect(moved.before?.id).toBe("sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce");
     expect(moved.before?.path).toBe("apps/web/src/hooks/useDebounce.ts");
     expect(moved.after?.path).toBe("apps/web/src/lib/debounce.ts");
     expect(moved.locDelta).toBe(0);
 
-    const renamed = byId(d, "sym:packages/db/src/queries.ts#listAllPosts");
+    const renamed = byId(d, "sym:pnpm-turbo:packages/db/src/queries.ts#listAllPosts");
     expect(renamed.kind).toBe("renamed");
-    expect(renamed.before?.id).toBe("sym:packages/db/src/queries.ts#listPosts");
+    expect(renamed.before?.id).toBe("sym:pnpm-turbo:packages/db/src/queries.ts#listPosts");
 
     // the constant removed from internal.ts is a removal, and the new constant in useDebounce.ts an addition
-    expect(out).toContain("removed sym:packages/ui/src/internal.ts#INTERNAL_PADDING");
-    expect(byId(d, "sym:packages/ui/src/internal.ts#INTERNAL_PADDING").after).toBeUndefined();
-    expect(out).toContain("added sym:apps/web/src/hooks/useDebounce.ts#DEBOUNCE_DEFAULT_MS");
+    expect(out).toContain("removed sym:pnpm-turbo:packages/ui/src/internal.ts#INTERNAL_PADDING");
+    expect(byId(d, "sym:pnpm-turbo:packages/ui/src/internal.ts#INTERNAL_PADDING").after).toBeUndefined();
+    expect(out).toContain("added sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#DEBOUNCE_DEFAULT_MS");
 
     expect(d.importChanges).toContainEqual({
       path: "packages/ui/src/card.tsx",
@@ -177,7 +177,7 @@ describe("reviewDiff on fixtures/pnpm-turbo branches", () => {
     expect(d.files).toEqual([{ path: "packages/utils/src/clock.ts", status: "R" }]);
     expect(d.changes).toHaveLength(1);
     expect(d.changes[0]?.kind).toBe("moved");
-    expect(d.changes[0]?.id).toBe("sym:packages/utils/src/clock.ts#parseTimestamp");
+    expect(d.changes[0]?.id).toBe("sym:pnpm-turbo:packages/utils/src/clock.ts#parseTimestamp");
 
     write(
       fx,
@@ -200,7 +200,7 @@ describe("reviewDiff on fixtures/pnpm-turbo branches", () => {
     const d = await reviewDiff(paths, "main", "del");
     expect(d.files).toEqual([{ path: "packages/utils/src/time.ts", status: "D" }]);
     expect(d.changes.map((c) => `${c.kind} ${c.id}`)).toEqual([
-      "removed sym:packages/utils/src/time.ts#parseTimestamp",
+      "removed sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
     ]);
     expect(d.changes[0]?.locDelta).toBeLessThan(0);
     expect(d.importChanges).toEqual([]);
@@ -216,7 +216,7 @@ describe("reviewDiff on fixtures/pnpm-turbo branches", () => {
     commit(fx, "main moved on");
     const d = await reviewDiff(paths, "main", "topic");
     expect(d.mergeBase).not.toBe(fx.git(["rev-parse", "main"]).trim());
-    expect(d.changes.map((c) => c.id)).toEqual(["sym:packages/utils/src/extra.ts#extra"]);
+    expect(d.changes.map((c) => c.id)).toEqual(["sym:pnpm-turbo:packages/utils/src/extra.ts#extra"]);
     expect(d.changes[0]?.kind).toBe("added");
   });
 

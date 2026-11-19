@@ -1,4 +1,5 @@
 import { isSensitive } from "../discover/index.js";
+import { nameOfSymId, pathOfFileId } from "../ids.js";
 import type { Store } from "../store/index.js";
 import type { FactSheet, SymbolKind } from "../types.js";
 import { redactForFactSheet } from "./secrets.js";
@@ -24,11 +25,6 @@ export class SensitivePathError extends Error {
 /** `<exactHash>:<PROMPT_MAJOR>`; descriptions are keyed by this, never by symbol id. */
 export function contentKey(exactHash: string): string {
   return `${exactHash}:${PROMPT_MAJOR}`;
-}
-
-/** Repo-relative path of a file id (`file:<path>`). */
-export function pathOfFileId(fileId: string): string {
-  return fileId.startsWith("file:") ? fileId.slice(5) : fileId;
 }
 
 /** Keeps the head and the tail of `body` and puts `/* … *\/` between them so the result is at most `max` chars. */
@@ -134,10 +130,8 @@ const CALLEE_EDGES = ["calls", "renders", "uses_hook"] as const;
 
 /** Name part of a symbol id: `sym:src/a.ts#Class.method` -> `Class.method`. */
 function nameOfSymbolId(id: string): string | null {
-  if (!id.startsWith("sym:")) return null;
-  const hash = id.indexOf("#");
-  if (hash < 0) return null;
-  return id.slice(hash + 1).replace(/~\d+$/, "");
+  const name = nameOfSymId(id);
+  return name === undefined ? null : name.replace(/~\d+$/, "");
 }
 
 /**

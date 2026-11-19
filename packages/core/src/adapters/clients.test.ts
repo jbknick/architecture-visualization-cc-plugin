@@ -40,8 +40,10 @@ async function indexDir(dir: string): Promise<Graph> {
 
 /** A temp git repo from a map of files. */
 function repo(files: Record<string, string>): string {
-  const dir = mkdtempSync(join(tmpdir(), "gantry-clients-repo-"));
-  cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
+  const parent = mkdtempSync(join(tmpdir(), "gantry-clients-repo-"));
+  const dir = join(parent, "repo"); // the repo name (no remote) is this basename
+  mkdirSync(dir);
+  cleanups.push(() => rmSync(parent, { recursive: true, force: true }));
   for (const [p, text] of Object.entries(files)) {
     mkdirSync(dirname(join(dir, p)), { recursive: true });
     writeFileSync(join(dir, p), text);
@@ -102,44 +104,44 @@ describe("client calls on fixtures/adapters", () => {
     cleanups.push(() => fx.cleanup());
     g = await indexDir(fx.dir);
   });
-  const HOOK = "sym:apps/web/src/hooks/usePostActions.ts#usePostActions";
+  const HOOK = "sym:adapters:apps/web/src/hooks/usePostActions.ts#usePostActions";
 
   it("rule 1: a server function call (same file or imported) and useServerFn, high", () => {
-    expect(requests(g, "sym:apps/web/src/routes/index.tsx#checkCount")).toEqual([
-      ["ep:@demo/web:fn countPosts", "high", "apps/web/src/routes/index.tsx:12"],
+    expect(requests(g, "sym:adapters:apps/web/src/routes/index.tsx#checkCount")).toEqual([
+      ["ep:adapters:@demo/web:fn countPosts", "high", "apps/web/src/routes/index.tsx:12"],
     ]);
     expect(requests(g, HOOK)).toContainEqual([
-      "ep:@demo/web:fn savePost",
+      "ep:adapters:@demo/web:fn savePost",
       "high",
       "apps/web/src/hooks/usePostActions.ts:9",
     ]);
     // The route definition's loader is the route's own edge (TanStack Start adapter), not a second one.
-    expect(requests(g, "sym:apps/web/src/routes/posts.$postId.tsx#Route")).toEqual([]);
+    expect(requests(g, "sym:adapters:apps/web/src/routes/posts.$postId.tsx#Route")).toEqual([]);
   });
 
   it("rule 2: oRPC client and query utils chains, helpers stripped, through a client factory, high", () => {
-    expect(requests(g, "sym:apps/web/src/routes/posts.$postId.tsx#PostPage")).toEqual([
-      ["ep:@demo/api:rpc posts.get", "high", "apps/web/src/routes/posts.$postId.tsx:15"],
+    expect(requests(g, "sym:adapters:apps/web/src/routes/posts.$postId.tsx#PostPage")).toEqual([
+      ["ep:adapters:@demo/api:rpc posts.get", "high", "apps/web/src/routes/posts.$postId.tsx:15"],
     ]);
-    expect(requests(g, "sym:apps/web/src/routes/users.tsx#loadCount")).toEqual([
-      ["ep:@demo/api:rpc users.count", "high", "apps/web/src/routes/users.tsx:7"],
+    expect(requests(g, "sym:adapters:apps/web/src/routes/users.tsx#loadCount")).toEqual([
+      ["ep:adapters:@demo/api:rpc users.count", "high", "apps/web/src/routes/users.tsx:7"],
     ]);
     expect(requests(g, HOOK)).toContainEqual([
-      "ep:@demo/api:rpc posts.remove",
+      "ep:adapters:@demo/api:rpc posts.remove",
       "high",
       "apps/web/src/hooks/usePostActions.ts:10",
     ]);
     // `orpc.posts.key()` names a router: a cache helper, neither a request nor an unmatched call.
     expect(g.nodes.some((n) => n.kind === "client_call" && n.label === "rpc posts")).toBe(false);
     // Through a sub-client alias (`const postsClient = client.posts`).
-    expect(requests(g, "sym:apps/web/src/lib/clients.ts#listPostsNow")).toEqual([
-      ["ep:@demo/api:rpc posts.list", "high", "apps/web/src/lib/clients.ts:10"],
+    expect(requests(g, "sym:adapters:apps/web/src/lib/clients.ts#listPostsNow")).toEqual([
+      ["ep:adapters:@demo/api:rpc posts.list", "high", "apps/web/src/lib/clients.ts:10"],
     ]);
   });
 
   it("rule 3: a Hono RPC client chain with a computed path key, high", () => {
     expect(requests(g, HOOK)).toContainEqual([
-      "ep:@demo/server:GET /api/posts/:id",
+      "ep:adapters:@demo/server:GET /api/posts/:id",
       "high",
       "apps/web/src/hooks/usePostActions.ts:15",
     ]);
@@ -147,26 +149,26 @@ describe("client calls on fixtures/adapters", () => {
 
   it("rule 4: fetch with a template URL and a method option, low (flagged)", () => {
     expect(requests(g, HOOK)).toContainEqual([
-      "ep:@demo/server:PATCH /api/posts/:id",
+      "ep:adapters:@demo/server:PATCH /api/posts/:id",
       "low",
       "apps/web/src/hooks/usePostActions.ts:16",
     ]);
     // Only the fetch match is low.
     const low = g.edges.filter((e) => e.kind === "requests" && e.confidence === "low").map((e) => e.dst);
-    expect(low).toEqual(["ep:@demo/server:PATCH /api/posts/:id"]);
+    expect(low).toEqual(["ep:adapters:@demo/server:PATCH /api/posts/:id"]);
   });
 
   it("rule 5: unmatched calls are reported as client_call nodes, never guessed", () => {
     const calls = g.nodes.filter((n) => n.kind === "client_call");
     expect(calls.map((n) => [n.id, n.data.rule, n.data.reason, n.data.caller, n.data.line])).toEqual([
-      ["call:@demo/web:GET https://status.example.com/ping", "fetch", "external_url", HOOK, 17],
-      ["call:@demo/web:rpc posts.archive", "orpc", "no_endpoint", HOOK, 12],
+      ["call:adapters:@demo/web:GET https://status.example.com/ping", "fetch", "external_url", HOOK, 17],
+      ["call:adapters:@demo/web:rpc posts.archive", "orpc", "no_endpoint", HOOK, 12],
       // A sub-client passed on as a value: where its calls go cannot be followed.
       [
-        "call:@demo/web:rpc users.*",
+        "call:adapters:@demo/web:rpc users.*",
         "orpc",
         "client_alias",
-        "sym:apps/web/src/lib/clients.ts#usersClient",
+        "sym:adapters:apps/web/src/lib/clients.ts#usersClient",
         7,
       ],
     ]);
@@ -204,12 +206,12 @@ describe("narrowing candidates", () => {
         ...client("other", {}),
       }),
     );
-    expect(requests(g, "sym:apps/web/src/client.ts#load")).toEqual([
-      ["ep:@x/one:rpc posts.list", "high", "apps/web/src/client.ts:4"],
+    expect(requests(g, "sym:repo:apps/web/src/client.ts#load")).toEqual([
+      ["ep:repo:@x/one:rpc posts.list", "high", "apps/web/src/client.ts:4"],
     ]);
-    expect(requests(g, "sym:apps/other/src/client.ts#load")).toEqual([
-      ["ep:@x/one:rpc posts.list", "low", "apps/other/src/client.ts:4"],
-      ["ep:@x/two:rpc posts.list", "low", "apps/other/src/client.ts:4"],
+    expect(requests(g, "sym:repo:apps/other/src/client.ts#load")).toEqual([
+      ["ep:repo:@x/one:rpc posts.list", "low", "apps/other/src/client.ts:4"],
+      ["ep:repo:@x/two:rpc posts.list", "low", "apps/other/src/client.ts:4"],
     ]);
   });
 });

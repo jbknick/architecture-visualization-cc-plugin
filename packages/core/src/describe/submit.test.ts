@@ -44,7 +44,7 @@ describe("submitDescriptions", () => {
     expect(row(ix, SLUG)).toBeUndefined();
     const fts = ix.store.db
       .prepare("SELECT behavior, search_terms, name_tokens FROM fts_symbols WHERE symbol_id = ?")
-      .get("sym:apps/web/src/lib/slug.ts#slugify") as {
+      .get("sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify") as {
       behavior: string;
       search_terms: string;
       name_tokens: string;

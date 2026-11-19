@@ -55,7 +55,7 @@ function edited(nodes: GraphNode[], file: string, other: string): GraphNode[] {
   const gone = nodes.find((n) => n.parent === other)?.id;
   const out = nodes.filter((n) => n.id !== gone);
   out.push({
-    id: `sym:${file.slice(5)}#addedByRefresh`,
+    id: `sym:pnpm-turbo:${file.slice(5)}#addedByRefresh`,
     kind: "function",
     label: "addedByRefresh",
     parent: file,
@@ -100,7 +100,7 @@ describe("a refresh keeps the map layout (spec section 11 (c))", () => {
       ),
     ).toBe(true);
 
-    const added = `sym:${file.slice(5)}#addedByRefresh`;
+    const added = `sym:pnpm-turbo:${file.slice(5)}#addedByRefresh`;
     const a = rectOf(scene1, kept.map, added);
     const f = rectOf(scene1, kept.map, file);
     expect(a.w * a.h).toBeGreaterThan(0);
@@ -133,10 +133,10 @@ describe("a refresh keeps the structure decisions of the scene", () => {
   const nodes = (loose: number): GraphNode[] => {
     const fns = (file: string, n: number): GraphNode[] =>
       Array.from({ length: n }, (_, k) => ({
-        id: `sym:${file}#f${k}`,
+        id: `sym:pnpm-turbo:${file}#f${k}`,
         kind: "function",
         label: `f${k}`,
-        parent: `file:${file}`,
+        parent: `file:pnpm-turbo:${file}`,
         size: 1,
       }));
     return [
@@ -150,7 +150,7 @@ describe("a refresh keeps the structure decisions of the scene", () => {
         stats: { functions: 9, files: 1 },
       },
       {
-        id: "file:a/src/x.ts",
+        id: "file:pnpm-turbo:a/src/x.ts",
         kind: "file",
         label: "x.ts",
         parent: "dir:a/src",
@@ -159,7 +159,7 @@ describe("a refresh keeps the structure decisions of the scene", () => {
       },
       ...fns("a/src/x.ts", 9),
       {
-        id: "file:a/cfg.ts",
+        id: "file:pnpm-turbo:a/cfg.ts",
         kind: "file",
         label: "cfg.ts",
         parent: "ws:a",

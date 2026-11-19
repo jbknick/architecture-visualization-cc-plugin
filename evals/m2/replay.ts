@@ -38,6 +38,7 @@ import { postToolUse } from "../../packages/cli/src/hooks/postToolUse.js";
 import {
   adviseReuse,
   cachedEmbedder,
+  fileId,
   findDuplicates,
   heal,
   isIndexable,
@@ -113,7 +114,7 @@ try {
     for (const [, rel] of changes) {
       prev.set(
         rel,
-        new Map(before.effectiveSymbols({ fileId: `file:${rel}` }).map((s) => [s.id, s.exactHash])),
+        new Map(before.effectiveSymbols({ fileId: fileId(paths.repo, rel) }).map((s) => [s.id, s.exactHash])),
       );
     }
     before.close();
@@ -149,9 +150,9 @@ try {
         continue;
       }
       const text = git(repo, ["show", `${c}:${rel}`]);
-      const parsed = parseSource(rel, text);
+      const parsed = parseSource(paths.repo, rel, text);
       const changed = changedSymbols(
-        store.effectiveSymbols({ fileId: `file:${rel}` }),
+        store.effectiveSymbols({ fileId: fileId(paths.repo, rel) }),
         prev.get(rel) ?? new Map(),
       );
       const cands: Record<string, unknown>[] = [];
@@ -213,7 +214,7 @@ try {
       }
       let head: ReturnType<typeof parseSource> | undefined;
       try {
-        head = parseSource(rel, git(repo, ["show", `${c}^:${rel}`]));
+        head = parseSource(paths.repo, rel, git(repo, ["show", `${c}^:${rel}`]));
       } catch {
         head = undefined;
       }

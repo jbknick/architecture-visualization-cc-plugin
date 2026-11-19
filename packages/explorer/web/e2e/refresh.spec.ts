@@ -119,8 +119,8 @@ test("edit a file, see the marker, refresh: the new function is highlighted and 
   expect(after.positions[added]).toBeDefined();
 
   // Every node outside the changed file is exactly where it was (the file itself keeps its cell too).
-  const changedFile = `file:${EDITED}`;
-  const unchanged = Object.keys(before.positions).filter((id) => !id.startsWith(`sym:${EDITED}`));
+  const changedFile = `file:pnpm-turbo:${EDITED}`;
+  const unchanged = Object.keys(before.positions).filter((id) => !id.startsWith(`sym:pnpm-turbo:${EDITED}`));
   expect(unchanged).toContain(changedFile);
   for (const id of unchanged) expect(after.positions[id], id).toEqual(before.positions[id]);
 });

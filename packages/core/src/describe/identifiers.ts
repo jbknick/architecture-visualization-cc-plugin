@@ -12,6 +12,7 @@
 // or a default parameter value; only by identifiers, paths, callees and relative import file names. Every input the
 // scanner reads is capped before any regex runs.
 
+import { parseId } from "../ids.js";
 import type { FactSheet } from "../types.js";
 import { isCredentialName } from "./secrets.js";
 import { echoToken, tokenize } from "./text.js";
@@ -142,9 +143,13 @@ export function stripLiteralsAndComments(code: string): string {
   return out;
 }
 
-/** Name part of a symbol id `sym:src/a.ts#Class.method~2` or `src/a.ts#fn`. */
+/** Path and name of a symbol id `sym:<repo>:src/a.ts#Class.method~2` (or a bare `src/a.ts#fn`). */
 function idParts(id: string): { path: string; name: string } {
-  const bare = (id.startsWith("sym:") ? id.slice(4) : id).slice(0, GROUNDING_CAPS.path + 100);
+  const parsed = parseId(id);
+  const bare = (parsed?.kind === "sym" ? `${parsed.path}#${parsed.name}` : id.replace(/^sym:/, "")).slice(
+    0,
+    GROUNDING_CAPS.path + 100,
+  );
   const hash = bare.indexOf("#");
   if (hash < 0) return { path: "", name: bare };
   return { path: bare.slice(0, hash), name: bare.slice(hash + 1).replace(/~\d+$/, "") };

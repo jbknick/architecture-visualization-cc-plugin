@@ -89,7 +89,7 @@ describe("explorer refresh (spec section 11 (c))", () => {
     expect(r.status).toBe(200);
     const body = r.json();
     expect(body.changed).toEqual({ files: 2, functions: 2 });
-    expect(body.files).toEqual(["file:packages/utils/src/added.ts", `file:${rel}`]);
+    expect(body.files).toEqual(["file:repo:packages/utils/src/added.ts", `file:repo:${rel}`]);
     expect(body.functions.added).toHaveLength(2);
     expect(body.functions.added.some((id: string) => id.includes("refreshedSlug"))).toBe(true);
     expect(body.functions.removed).toEqual([]);

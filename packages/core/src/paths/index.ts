@@ -6,6 +6,8 @@ import path from "node:path";
 
 export interface GantryPaths {
   root: string;
+  /** The repo name carried in every stable id (`repoName`, spec section 6); the same on every machine. */
+  repo: string;
   worktreeHash: string;
   dataDir: string;
   dbPath: string;
@@ -38,6 +40,34 @@ export function pluginDataFromRoot(pluginRoot: string): string | undefined {
   return path.join(parts.slice(0, n - 4).join(path.sep) || path.sep, "data", id);
 }
 
+/** The last two path segments of a remote URL (`a/b`), trailing slashes and any `.git` suffix removed. */
+function ownerAndName(url: string): string | undefined {
+  const parts = url
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\.git$/, "")
+    .split(/[/:]/)
+    .filter((p) => p !== "");
+  if (parts.length < 2) return undefined;
+  return `${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
+}
+
+/**
+ * The repo name carried in every stable id (spec section 6): the last two path segments of the `origin` remote URL with
+ * any `.git` suffix removed (`https://github.com/a/b.git`, `git@github.com:a/b.git` and `ssh://git@host/a/b` all give
+ * `a/b`); with no `origin`, the basename of the worktree root. Never a local path. A `:` in the name becomes `_`
+ * because ids split on it. `root` is any directory of the repo (a linked worktree gives the name of its `origin`).
+ */
+export function repoName(root: string): string {
+  const res = spawnSync("git", ["remote", "get-url", "origin"], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  });
+  const fromRemote = res.status === 0 ? ownerAndName(res.stdout) : undefined;
+  return (fromRemote ?? path.basename(path.resolve(root))).replace(/:/g, "_");
+}
+
 /** Resolve the per-worktree data locations (spec section 4). Never touches the repo working tree. */
 export function resolvePaths(cwd: string, env: NodeJS.ProcessEnv = process.env): GantryPaths {
   const res = spawnSync("git", ["rev-parse", "--show-toplevel"], {
@@ -60,6 +90,7 @@ export function resolvePaths(cwd: string, env: NodeJS.ProcessEnv = process.env):
 
   return {
     root,
+    repo: repoName(root),
     worktreeHash,
     dataDir,
     dbPath: path.join(dataDir, "gantry.db"),

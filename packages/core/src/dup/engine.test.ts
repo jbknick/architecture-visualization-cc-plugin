@@ -85,7 +85,7 @@ interface SymSpec {
 }
 
 function addFile(store: Store, path: string, syms: SymSpec[]): SymbolRecord[] {
-  const fileId = `file:${path}`;
+  const fileId = `file:repo:${path}`;
   const file: FileRecord = {
     id: fileId,
     path,
@@ -96,7 +96,7 @@ function addFile(store: Store, path: string, syms: SymSpec[]): SymbolRecord[] {
   };
   const records = syms.map(
     (s): SymbolRecord => ({
-      id: `sym:${path}#${s.name}`,
+      id: `sym:repo:${path}#${s.name}`,
       fileId,
       name: s.name,
       kind: s.kind ?? "function",
@@ -161,7 +161,7 @@ describe("renamed copies of short functions (#151)", () => {
 
   function addReal(store: Store, path: string, name: string, withRenamed = true): string {
     const source = short(name);
-    const parsed = parseSource(path, source);
+    const parsed = parseSource("repo", path, source);
     const sym = parsed.symbols.find((x) => x.name === name);
     const range = sym && parsed.bodies.get(sym.id);
     if (!sym || !range) throw new Error("no symbol");
@@ -220,8 +220,8 @@ describe("renamed copies of short functions (#151)", () => {
 describe("fixture pnpm-turbo", () => {
   it("finds formatRelativeDate from parseTimestamp (misleading name) and the slugify copy as exact", async () => {
     const { store } = await fixtureStore();
-    const parse = sym(store, "sym:packages/utils/src/time.ts#parseTimestamp");
-    const fmt = "sym:packages/utils/src/date.ts#formatRelativeDate";
+    const parse = sym(store, "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp");
+    const fmt = "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate";
     const found = await findDuplicates(store, { symbol: parse });
     expect(ids(found)).toContain(fmt);
     const hit = found.find((c) => c.symbolId === fmt);
@@ -230,8 +230,8 @@ describe("fixture pnpm-turbo", () => {
     expect(hit?.score).toBe(1);
     expect(ids(found)).not.toContain(parse.id);
 
-    const slug = sym(store, "sym:packages/utils/src/slug.ts#slugify");
-    const copy = "sym:apps/web/src/lib/slug.ts#slugify";
+    const slug = sym(store, "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify");
+    const copy = "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify";
     const s = await findDuplicates(store, { symbol: slug });
     expect(s).toEqual([{ symbolId: copy, tier: "exact", score: 1 }]);
     // and the other way round
@@ -242,7 +242,7 @@ describe("fixture pnpm-turbo", () => {
 
   it("finds the same matches for unsaved code as for the indexed symbol", async () => {
     const { store, fx } = await fixtureStore();
-    const parse = sym(store, "sym:packages/utils/src/time.ts#parseTimestamp");
+    const parse = sym(store, "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp");
     const indexed = await findDuplicates(store, { symbol: parse });
     const source = readFileSync(join(fx.dir, "packages/utils/src/time.ts"), "utf8");
     const unsaved = await findDuplicates(store, { code: { source, lang: "ts" } }, { excludeIds: [parse.id] });
@@ -271,8 +271,8 @@ describe("fixture pnpm-turbo", () => {
       code: { source, lang: "ts", path: "apps/web/src/lib/new.ts" },
     });
     expect(found.map((c) => [c.symbolId, c.tier]).sort()).toEqual([
-      ["sym:apps/web/src/lib/slug.ts#slugify", "exact"],
-      ["sym:packages/utils/src/slug.ts#slugify", "exact"],
+      ["sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify", "exact"],
+      ["sym:pnpm-turbo:packages/utils/src/slug.ts#slugify", "exact"],
     ]);
   });
 
@@ -294,15 +294,15 @@ describe("fixture pnpm-turbo", () => {
     const n = await rebuildSimilarEdges(store);
     const edges = store.effectiveEdges({ kind: ["similar_to"] });
     expect(edges).toHaveLength(n);
-    const date = "sym:packages/utils/src/date.ts#formatRelativeDate";
-    const time = "sym:packages/utils/src/time.ts#parseTimestamp";
+    const date = "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate";
+    const time = "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp";
     expect(edges).toContainEqual(
       expect.objectContaining({ src: date, dst: time, confidence: "high", evidence: ["exact"] }),
     );
     expect(edges).toContainEqual(
       expect.objectContaining({
-        src: "sym:apps/web/src/lib/slug.ts#slugify",
-        dst: "sym:packages/utils/src/slug.ts#slugify",
+        src: "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+        dst: "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
       }),
     );
     // Idempotent and deterministic.
@@ -335,7 +335,7 @@ describe("tiers and filters (synthetic hashes)", () => {
       { name: "mid", stmtCount: 4, exactHash: "E-mid", shapeHash: "S-target", minhash: base },
     ]);
     const found = await findDuplicates(store, { symbol: target });
-    expect(found).toEqual([{ symbolId: "sym:src/b.ts#dupe", tier: "exact", score: 1 }]);
+    expect(found).toEqual([{ symbolId: "sym:repo:src/b.ts#dupe", tier: "exact", score: 1 }]);
   });
 
   it("near: same shape hash or Jaccard at the threshold, nothing below it, parameters within one", async () => {
@@ -375,7 +375,7 @@ describe("tiers and filters (synthetic hashes)", () => {
       },
     ]);
     expect(ids(await findDuplicates(store, { symbol: target }, { limit: 20 }))).not.toContain(
-      "sym:src/p.ts#p4",
+      "sym:repo:src/p.ts#p4",
     );
   });
 
@@ -388,7 +388,7 @@ describe("tiers and filters (synthetic hashes)", () => {
     const cfg = join(dir, "data", "config.json");
     mkdirSync(dirname(cfg), { recursive: true });
     writeFileSync(cfg, JSON.stringify({ duplicates: { thresholds: { nearJaccard: 0.75 } } }));
-    expect(ids(await findDuplicates(store, { symbol: target }))).toEqual(["sym:src/n.ts#j80"]);
+    expect(ids(await findDuplicates(store, { symbol: target }))).toEqual(["sym:repo:src/n.ts#j80"]);
     writeFileSync(cfg, JSON.stringify({ duplicates: { thresholds: { nearJaccard: 0.9 } } }));
     expect(await findDuplicates(store, { symbol: target })).toEqual([]);
     expect(
@@ -403,8 +403,8 @@ describe("tiers and filters (synthetic hashes)", () => {
       { name: "useThing", kind: "hook", exactHash: "E-target", shapeHash: "S-target", minhash: base },
       { name: "meth", kind: "method", exactHash: "E-target", shapeHash: "S-target", minhash: base },
     ]);
-    expect(ids(await findDuplicates(store, { symbol: target }))).toEqual(["sym:src/k.tsx#meth"]);
-    const comp = store.getSymbol("sym:src/k.tsx#Comp") as SymbolRecord;
+    expect(ids(await findDuplicates(store, { symbol: target }))).toEqual(["sym:repo:src/k.tsx#meth"]);
+    const comp = store.getSymbol("sym:repo:src/k.tsx#Comp") as SymbolRecord;
     expect(await findDuplicates(store, { symbol: comp })).toEqual([]);
   });
 
@@ -426,15 +426,15 @@ describe("tiers and filters (synthetic hashes)", () => {
     addFile(store, "legacy/old.ts", [{ name: "twin", ...twin }]);
     addFile(store, "src/real.ts", [{ name: "twin", ...twin }]);
     expect(ids(await findDuplicates(store, { symbol: target }))).toEqual([
-      "sym:legacy/old.ts#twin",
-      "sym:src/real.ts#twin",
+      "sym:repo:legacy/old.ts#twin",
+      "sym:repo:src/real.ts#twin",
     ]);
     const config = GantryConfigSchema.parse({
       ...loadConfigForDb(store.db.name, { HOME: "/nonexistent" }),
     });
     config.duplicates.ignore = ["legacy/**"];
     expect(ids(await findDuplicates(store, { symbol: target }, { config }))).toEqual([
-      "sym:src/real.ts#twin",
+      "sym:repo:src/real.ts#twin",
     ]);
   });
 
@@ -444,19 +444,21 @@ describe("tiers and filters (synthetic hashes)", () => {
     addFile(store, "src/b.ts", [{ name: "b", ...twin }]);
     addFile(store, "src/c.ts", [{ name: "c", ...twin }]);
     expect(ids(await findDuplicates(store, { symbol: target }))).toEqual([
-      "sym:src/b.ts#b",
-      "sym:src/c.ts#c",
+      "sym:repo:src/b.ts#b",
+      "sym:repo:src/c.ts#c",
     ]);
-    dismiss(store, "sym:src/b.ts#b", target.id, "intentional");
-    expect(ids(await findDuplicates(store, { symbol: target }))).toEqual(["sym:src/c.ts#c"]);
-    const b = store.getSymbol("sym:src/b.ts#b") as SymbolRecord;
-    expect(ids(await findDuplicates(store, { symbol: b }))).toEqual(["sym:src/c.ts#c"]);
-    dismiss(store, target.id, "sym:src/b.ts#b", "updated reason");
+    dismiss(store, "sym:repo:src/b.ts#b", target.id, "intentional");
+    expect(ids(await findDuplicates(store, { symbol: target }))).toEqual(["sym:repo:src/c.ts#c"]);
+    const b = store.getSymbol("sym:repo:src/b.ts#b") as SymbolRecord;
+    expect(ids(await findDuplicates(store, { symbol: b }))).toEqual(["sym:repo:src/c.ts#c"]);
+    dismiss(store, target.id, "sym:repo:src/b.ts#b", "updated reason");
     const rows = store.db.prepare("SELECT a, b, reason FROM dismissals").all();
-    expect(rows).toEqual([{ a: "sym:src/a.ts#target", b: "sym:src/b.ts#b", reason: "updated reason" }]);
-    expect(ids(await findDuplicates(store, { symbol: target }, { excludeIds: ["sym:src/c.ts#c"] }))).toEqual(
-      [],
-    );
+    expect(rows).toEqual([
+      { a: "sym:repo:src/a.ts#target", b: "sym:repo:src/b.ts#b", reason: "updated reason" },
+    ]);
+    expect(
+      ids(await findDuplicates(store, { symbol: target }, { excludeIds: ["sym:repo:src/c.ts#c"] })),
+    ).toEqual([]);
   });
 
   it("sorts by tier rank then score then id, stops at the limit and honours tiers", async () => {
@@ -490,8 +492,8 @@ describe("tiers and filters (synthetic hashes)", () => {
     addFile(store, "src/late.ts", [
       { name: "late", exactHash: "E-target", shapeHash: "S", minhash: randomMinhash(r) },
     ]);
-    expect(ids(await findDuplicates(store, { symbol: target }))).toEqual(["sym:src/late.ts#late"]);
-    store.markDeleted("main", "file:src/late.ts");
+    expect(ids(await findDuplicates(store, { symbol: target }))).toEqual(["sym:repo:src/late.ts#late"]);
+    store.markDeleted("main", "file:repo:src/late.ts");
     expect(await findDuplicates(store, { symbol: target })).toEqual([]);
     // A write from another connection is seen too.
     const other = openStore(store.db.name);
@@ -499,7 +501,7 @@ describe("tiers and filters (synthetic hashes)", () => {
       { name: "o", exactHash: "E-target", shapeHash: "S", minhash: randomMinhash(r) },
     ]);
     other.close();
-    expect(ids(await findDuplicates(store, { symbol: target }))).toEqual(["sym:src/other.ts#o"]);
+    expect(ids(await findDuplicates(store, { symbol: target }))).toEqual(["sym:repo:src/other.ts#o"]);
   });
 
   it("working-layer edits override the main layer in queries", async () => {
@@ -507,9 +509,9 @@ describe("tiers and filters (synthetic hashes)", () => {
     addFile(store, "src/b.ts", [
       { name: "b", exactHash: "E-target", shapeHash: "S", minhash: randomMinhash(r) },
     ]);
-    expect(ids(await findDuplicates(store, { symbol: target }))).toEqual(["sym:src/b.ts#b"]);
+    expect(ids(await findDuplicates(store, { symbol: target }))).toEqual(["sym:repo:src/b.ts#b"]);
     const file: FileRecord = {
-      id: "file:src/b.ts",
+      id: "file:repo:src/b.ts",
       path: "src/b.ts",
       workspaceId: null,
       contentHash: "w",
@@ -517,7 +519,7 @@ describe("tiers and filters (synthetic hashes)", () => {
       deleted: false,
     };
     const changed: SymbolRecord = {
-      ...(store.getSymbol("sym:src/b.ts#b") as SymbolRecord),
+      ...(store.getSymbol("sym:repo:src/b.ts#b") as SymbolRecord),
       exactHash: "E-other",
     };
     store.replaceFile("working", file, [changed], []);
@@ -682,7 +684,7 @@ describe("vector tiers", () => {
       return { store, target: target as SymbolRecord };
     })();
     const res = await findDuplicatesDetailed(store, { symbol: target });
-    expect(ids(res.candidates)).toEqual(["sym:src/b.ts#b"]);
+    expect(ids(res.candidates)).toEqual(["sym:repo:src/b.ts#b"]);
     if (vecAvailable(store)) {
       expect(res.skipped.map((s) => [s.tier, s.reason, s.message])).toEqual([
         ["code_vector", "not_embedded", "vector tiers unavailable: run gantry embed"],
@@ -692,7 +694,7 @@ describe("vector tiers", () => {
     // sqlite-vec not loaded for this store: reported as unavailable, nothing thrown.
     store.setMeta("vec_available", "0");
     const off = await findDuplicatesDetailed(store, { symbol: target });
-    expect(ids(off.candidates)).toEqual(["sym:src/b.ts#b"]);
+    expect(ids(off.candidates)).toEqual(["sym:repo:src/b.ts#b"]);
     expect(off.skipped.map((s) => [s.tier, s.reason])).toEqual([
       ["code_vector", "vectors_unavailable"],
       ["semantic", "vectors_unavailable"],
@@ -756,9 +758,9 @@ describe("rebuildSimilarEdges (synthetic)", () => {
     const edges = store.effectiveEdges({ kind: ["similar_to"] });
     expect(n).toBe(edges.length);
     expect(edges.map((e) => [e.src, e.dst, e.confidence, e.evidence[0]])).toEqual([
-      ["sym:src/a.ts#a", "sym:src/b.ts#b", "high", "exact"],
-      ["sym:src/a.ts#a", "sym:src/b.ts#c", "high", "near"],
-      ["sym:src/b.ts#b", "sym:src/b.ts#c", "high", "near"],
+      ["sym:repo:src/a.ts#a", "sym:repo:src/b.ts#b", "high", "exact"],
+      ["sym:repo:src/a.ts#a", "sym:repo:src/b.ts#c", "high", "near"],
+      ["sym:repo:src/b.ts#b", "sym:repo:src/b.ts#c", "high", "near"],
     ]); // the unexported 4-statement pair is exact-equal, but neither side is exported or has 6 statements
   });
 });
@@ -864,7 +866,7 @@ describe("near tier keeps literals (#131)", () => {
   const STATUS = (name: string, a: string, b: string, c: string, d: string) =>
     `export function ${name}(status: string): string {\n  if (status === "${a}") return "${b}";\n  if (status === "${c}") return "${d}";\n  if (status === "x${a}") return "x${b}";\n  if (status === "y${a}") return "y${b}";\n  if (status === "z${a}") return "z${b}";\n  return "${d}${b}";\n}\n`;
   const features = (code: string) => {
-    const parsed = parseSource("x.ts", code);
+    const parsed = parseSource("repo", "x.ts", code);
     const s = parsed.symbols[0] as (typeof parsed.symbols)[number];
     const range = parsed.bodies.get(s.id) as { start: number; end: number };
     return { stmt: s.stmtCount, ...hashSymbol(code, range, "ts") };
@@ -906,7 +908,7 @@ describe("near tier keeps literals (#131)", () => {
       STATUS("programText", "open", "Open now", "closed", "Closed"),
     );
     await indexRepo(paths, { layer: "working", files: ["packages/utils/src/status.ts"], store });
-    const target = "sym:packages/utils/src/status.ts#programText";
+    const target = "sym:pnpm-turbo:packages/utils/src/status.ts#programText";
     const other = await findDuplicates(store, {
       code: { source: STATUS("requestTitle", "draft", "Draft saved", "sent", "Sent"), lang: "ts" },
     });

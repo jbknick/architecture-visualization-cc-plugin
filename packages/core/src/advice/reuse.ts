@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import type { GantryConfig } from "../config/index.js";
+import { fileId as makeFileId, pathOfFileId, repoOfId, symIdOfFileId } from "../ids.js";
 import type { Store } from "../store/index.js";
 import type { Description, SymbolRecord, WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
@@ -50,7 +51,7 @@ function importable(match: SymbolRecord): { id: string; name: string; isDefault:
   const dot = match.name.indexOf(".");
   if (match.kind === "method" && dot > 0) {
     const name = match.name.slice(0, dot);
-    return { id: `${match.fileId.replace(/^file:/, "sym:")}#${name}`, name, isDefault: false };
+    return { id: symIdOfFileId(match.fileId, name), name, isDefault: false };
   }
   return { id: match.id, name: match.name, isDefault: match.id.endsWith("#default") };
 }
@@ -65,7 +66,8 @@ function rank(subpath: string): number {
 
 function reach(ws: WorkspaceRecord, match: SymbolRecord, store?: Store): Reach | null {
   const sym = importable(match);
-  const matchRel = match.fileId.replace(/^file:/, "");
+  const matchRel = pathOfFileId(match.fileId);
+  const repo = repoOfId(match.fileId) as string;
   const exportsIt = (fileId: string): boolean =>
     store
       ? store.effectiveEdges({ src: fileId, kind: ["exports"] }).some((e) => e.dst === sym.id)
@@ -93,7 +95,7 @@ function reach(ws: WorkspaceRecord, match: SymbolRecord, store?: Store): Reach |
       continue;
     }
     for (const cand of targetCandidates(ws, entry.target)) {
-      const fileId = `file:${cand}`;
+      const fileId = makeFileId(repo, cand);
       if (done.has(fileId + entry.subpath)) continue;
       done.add(fileId + entry.subpath);
       const present = store
@@ -162,7 +164,7 @@ export function adviseReuse(
 ): Advice[] {
   const out: Advice[] = [];
   const caller = normPath(callerPath);
-  const matchRel = match.fileId.replace(/^file:/, "");
+  const matchRel = pathOfFileId(match.fileId);
   if (matchRel !== caller) {
     const all = store.listWorkspaces();
     const callerWs = all.length > 0 ? workspaceForPath(all, caller) : undefined;
@@ -237,7 +239,7 @@ function primary(
       },
     ];
   }
-  const callerClient = isClientFile(store, `file:${caller}`);
+  const callerClient = isClientFile(store, makeFileId(store.repo(), caller));
   const serverOnly = isServerOnlyFile(store, match.fileId) || isServerOnlyFile(store, r.entryFileId);
   if (callerClient && serverOnly) {
     return [

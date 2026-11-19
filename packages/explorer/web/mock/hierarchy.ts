@@ -86,13 +86,13 @@ export function buildHierarchy(): { nodes: GraphNode[]; edges: GraphEdge[] } {
       nodes.push({ id: dirId, kind: "directory", label: dir, parent: wsId, size: 0 });
       for (const base of files) {
         const path = `${ws.name.replace("@acme/", "packages/")}/${dir}/${base}.ts`;
-        const fileId = `file:${path}`;
+        const fileId = `file:pnpm-turbo:${path}`;
         nodes.push({ id: fileId, kind: "file", label: `${base}.ts`, parent: dirId, size: 0 });
         const n = 3 + (hashString(path) % 5);
         for (let k = 0; k < n; k++) {
           const name =
             k === 0 ? base : `${HELPERS[(hashString(path) + k) % HELPERS.length]}${k > 3 ? k : ""}`;
-          const id = `sym:${path}#${name}`;
+          const id = `sym:pnpm-turbo:${path}#${name}`;
           nodes.push({ id, kind: kindFor(dir, base, k), label: name, parent: fileId, size: 1 });
           symbols.push(id);
           count++;

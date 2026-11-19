@@ -1,11 +1,19 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { kindOfId, qualifyId } from "@gantry/core";
 import { buildExplorerUrl, ensureExplorer, listViews } from "@gantry/explorer";
 import { z } from "zod";
 import { defineTool } from "../tool.js";
 
 export { START_TIMEOUT_MS } from "@gantry/explorer";
+
+/** A node id typed without the repo part (`route:<ws>:<path>`, `table:<name>`) gets this repo after its prefix. */
+function qualifyFocus(repo: string, focus: string): string {
+  const kind = kindOfId(focus);
+  if (kind === undefined || focus.startsWith(`${kind}:${repo}:`)) return focus;
+  return qualifyId(repo, focus) ?? focus;
+}
 
 /** Parts of the URL that are set by other arguments; a filter must not override them. */
 const RESERVED_FILTER_KEYS = new Set(["focus", "t", "view"]);
@@ -60,7 +68,7 @@ export const openViewTool = defineTool({
         port: state.port,
         token: state.token,
         view,
-        ...(focus ? { focus } : {}),
+        ...(focus ? { focus: qualifyFocus(paths.repo, focus) } : {}),
         ...(filters ? { filters } : {}),
       }),
     };

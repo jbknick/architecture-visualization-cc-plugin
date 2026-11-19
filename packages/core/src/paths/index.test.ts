@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { ensureDataDir, NotAGitRepoError, pluginDataFromRoot, resolvePaths } from "./index.js";
+import { ensureDataDir, NotAGitRepoError, pluginDataFromRoot, repoName, resolvePaths } from "./index.js";
 
 let tmp: string;
 let repo: string;
@@ -143,5 +143,55 @@ describe("ensureDataDir", () => {
     for (const d of [p.dataDir, p.catalogDir, p.logsDir]) {
       expect(fs.statSync(d).mode & 0o777).toBe(0o700);
     }
+  });
+});
+
+describe("repoName", () => {
+  const env = { HOME: "/home/x" } as NodeJS.ProcessEnv;
+  let n = 0;
+  const mk = (name: string, url?: string): string => {
+    const dir = path.join(tmp, `${name}-${n++}`);
+    fs.mkdirSync(dir);
+    git(dir, "init", "-q");
+    if (url !== undefined) git(dir, "remote", "add", "origin", url);
+    return dir;
+  };
+
+  test.each([
+    ["https://github.com/a/b.git", "a/b"],
+    ["https://github.com/a/b", "a/b"],
+    ["git@github.com:a/b.git", "a/b"],
+    ["ssh://git@host/a/b", "a/b"],
+    ["ssh://git@host:2222/a/b.git", "a/b"],
+    ["https://github.com/a/b/", "a/b"],
+    ["https://github.com/a/b.git/", "a/b"],
+    ["https://host/group/sub/b.git", "sub/b"],
+  ])("origin %s gives %s", (url, want) => {
+    const dir = mk("remote", url);
+    expect(repoName(dir)).toBe(want);
+    expect(resolvePaths(dir, env).repo).toBe(want);
+  });
+
+  test("without an origin it is the basename of the worktree root", () => {
+    const dir = mk("no-remote");
+    expect(repoName(dir)).toBe(path.basename(dir));
+    expect(resolvePaths(dir, env).repo).toBe(path.basename(dir));
+  });
+
+  test("a linked worktree of a repo with an origin gives the origin name", () => {
+    const main = mk("with-origin", "https://github.com/example/shop.git");
+    git(main, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--allow-empty", "-qm", "i");
+    const linked = path.join(main, ".claude", "worktrees", "x");
+    git(main, "worktree", "add", "-q", linked, "-b", `wt-${n}`);
+    expect(repoName(linked)).toBe("example/shop");
+    expect(resolvePaths(linked, env).repo).toBe("example/shop");
+  });
+
+  test("never contains a local path, a colon or the worktree hash", () => {
+    const dir = mk("colon", "weird:host:a/b:c.git");
+    const p = resolvePaths(dir, env);
+    expect(p.repo).not.toContain(":");
+    expect(p.repo).not.toContain(tmp);
+    expect(p.repo).not.toContain(p.worktreeHash);
   });
 });

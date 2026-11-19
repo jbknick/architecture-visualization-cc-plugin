@@ -168,7 +168,7 @@ export function diskCheck(root: string, store: Store, config: GantryConfig): (f:
     if (v === undefined) {
       try {
         const source = fs.readFileSync(path.join(root, rel), "utf8");
-        v = { parsed: parseSource(rel, source), source };
+        v = { parsed: parseSource(store.repo(), rel, source), source };
       } catch {
         v = null;
       }

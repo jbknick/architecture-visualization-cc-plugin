@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { backlogPriority } from "../describe/backlog.js";
-import { contentKey, FACT_BODY_MAX, FUNCTION_LIKE_KINDS, pathOfFileId } from "../describe/factsheet.js";
+import { contentKey, FACT_BODY_MAX, FUNCTION_LIKE_KINDS } from "../describe/factsheet.js";
 import { isSensitive } from "../discover/index.js";
 import { normalizeForEmbedding } from "../hash/index.js";
+import { pathOfFileId, repoOfId } from "../ids.js";
 import { parseSource } from "../parse/index.js";
 import type { Store } from "../store/index.js";
 import type { SymbolRecord } from "../types.js";
@@ -174,7 +175,11 @@ function makeCodeText(root: string): (c: CodeCandidate) => string | null {
       cached = null;
       try {
         const source = readFileSync(join(root, c.path), "utf8");
-        cached = { path: c.path, source, parsed: parseSource(c.path, source) };
+        cached = {
+          path: c.path,
+          source,
+          parsed: parseSource(repoOfId(c.symbol.id) as string, c.path, source),
+        };
       } catch {
         return null;
       }

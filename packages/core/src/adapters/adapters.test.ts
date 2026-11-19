@@ -87,9 +87,13 @@ describe("adapters on fixtures/pnpm-turbo", () => {
   });
 
   it("finds the Hono routes GET /posts/:id and POST /posts with their handlers", () => {
-    const get = node(g, "ep:@acme/api:GET /posts/:id");
-    const post = node(g, "ep:@acme/api:POST /posts");
-    expect(get).toMatchObject({ kind: "endpoint", ws: "ws:@acme/api", fileId: "file:apps/api/src/app.ts" });
+    const get = node(g, "ep:pnpm-turbo:@acme/api:GET /posts/:id");
+    const post = node(g, "ep:pnpm-turbo:@acme/api:POST /posts");
+    expect(get).toMatchObject({
+      kind: "endpoint",
+      ws: "ws:@acme/api",
+      fileId: "file:pnpm-turbo:apps/api/src/app.ts",
+    });
     expect(get?.data).toMatchObject({
       adapter: "hono",
       method: "GET",
@@ -98,8 +102,12 @@ describe("adapters on fixtures/pnpm-turbo", () => {
     });
     expect(post?.data).toMatchObject({ method: "POST", path: "/posts", handler: "inline" });
     // Module-level inline handlers: their calls are attributed to the file, so that is what they handle.
-    expect(edgesOf(g, "handles", "ep:@acme/api:GET /posts/:id")).toEqual(["file:apps/api/src/app.ts"]);
-    expect(edgesOf(g, "handles", "ep:@acme/api:POST /posts")).toEqual(["file:apps/api/src/app.ts"]);
+    expect(edgesOf(g, "handles", "ep:pnpm-turbo:@acme/api:GET /posts/:id")).toEqual([
+      "file:pnpm-turbo:apps/api/src/app.ts",
+    ]);
+    expect(edgesOf(g, "handles", "ep:pnpm-turbo:@acme/api:POST /posts")).toEqual([
+      "file:pnpm-turbo:apps/api/src/app.ts",
+    ]);
   });
 
   it("skips workspaces without the framework dependency", () => {
@@ -111,33 +119,36 @@ describe("adapters on fixtures/pnpm-turbo", () => {
 
   it("finds the oRPC procedures posts.list and posts.create with their handlers", () => {
     const rpc = g.nodes.filter((n) => n.data.adapter === "orpc").map((n) => n.id);
-    expect(rpc).toEqual(["ep:@acme/api:rpc posts.create", "ep:@acme/api:rpc posts.list"]);
-    expect(node(g, "ep:@acme/api:rpc posts.list")).toMatchObject({
+    expect(rpc).toEqual([
+      "ep:pnpm-turbo:@acme/api:rpc posts.create",
+      "ep:pnpm-turbo:@acme/api:rpc posts.list",
+    ]);
+    expect(node(g, "ep:pnpm-turbo:@acme/api:rpc posts.list")).toMatchObject({
       kind: "endpoint",
       ws: "ws:@acme/api",
-      fileId: "file:apps/api/src/router.ts",
+      fileId: "file:pnpm-turbo:apps/api/src/router.ts",
       data: { path: "posts.list", router: "apps/api/src/router.ts#router", handler: "inline" },
     });
     // Inline handlers in a router object: their calls belong to the router const.
-    expect(edgesOf(g, "handles", "ep:@acme/api:rpc posts.list")).toEqual([
-      "sym:apps/api/src/router.ts#router",
+    expect(edgesOf(g, "handles", "ep:pnpm-turbo:@acme/api:rpc posts.list")).toEqual([
+      "sym:pnpm-turbo:apps/api/src/router.ts#router",
     ]);
-    expect(edgesOf(g, "handles", "ep:@acme/api:rpc posts.create")).toEqual([
-      "sym:apps/api/src/router.ts#router",
+    expect(edgesOf(g, "handles", "ep:pnpm-turbo:@acme/api:rpc posts.create")).toEqual([
+      "sym:pnpm-turbo:apps/api/src/router.ts#router",
     ]);
   });
 
   it("finds the posts and users tables, and which queries read or write them", () => {
     const tables = g.nodes.filter((n) => n.kind === "table");
-    expect(tables.map((n) => n.id)).toEqual(["table:posts", "table:users"]);
-    expect(node(g, "table:posts")).toMatchObject({
+    expect(tables.map((n) => n.id)).toEqual(["table:pnpm-turbo:posts", "table:pnpm-turbo:users"]);
+    expect(node(g, "table:pnpm-turbo:posts")).toMatchObject({
       ws: "ws:@acme/db",
-      fileId: "file:packages/db/src/schema.ts",
+      fileId: "file:pnpm-turbo:packages/db/src/schema.ts",
       data: {
         adapter: "drizzle",
         name: "posts",
         exportName: "posts",
-        symbol: "sym:packages/db/src/schema.ts#posts",
+        symbol: "sym:pnpm-turbo:packages/db/src/schema.ts#posts",
         dialect: "sqlite",
         columns: ["id", "title", "authorId", "createdAt"],
       },
@@ -146,22 +157,22 @@ describe("adapters on fixtures/pnpm-turbo", () => {
     expect(rw.map((e) => [e.kind, e.src, e.dst, e.confidence, e.evidence])).toEqual([
       [
         "writes",
-        "sym:packages/db/src/queries.ts#createPost",
-        "table:posts",
+        "sym:pnpm-turbo:packages/db/src/queries.ts#createPost",
+        "table:pnpm-turbo:posts",
         "high",
         ["packages/db/src/queries.ts:16"],
       ],
       [
         "reads",
-        "sym:packages/db/src/queries.ts#getPost",
-        "table:posts",
+        "sym:pnpm-turbo:packages/db/src/queries.ts#getPost",
+        "table:pnpm-turbo:posts",
         "high",
         ["packages/db/src/queries.ts:12"],
       ],
       [
         "reads",
-        "sym:packages/db/src/queries.ts#listPosts",
-        "table:posts",
+        "sym:pnpm-turbo:packages/db/src/queries.ts#listPosts",
+        "table:pnpm-turbo:posts",
         "high",
         ["packages/db/src/queries.ts:8"],
       ],
@@ -181,43 +192,43 @@ describe("adapters on fixtures/adapters", () => {
       .map((n) => n.id)
       .sort();
     expect(eps).toEqual([
-      "ep:@demo/server:GET /api/posts/:id",
-      "ep:@demo/server:GET /api/users/v1",
-      "ep:@demo/server:GET /health",
-      "ep:@demo/server:PATCH /api/posts/:id",
-      "ep:@demo/server:POST /api/posts",
-      "ep:@demo/server:POST /api/users/v1",
-      "ep:@demo/server:PUT /api/posts/:id",
+      "ep:adapters:@demo/server:GET /api/posts/:id",
+      "ep:adapters:@demo/server:GET /api/users/v1",
+      "ep:adapters:@demo/server:GET /health",
+      "ep:adapters:@demo/server:PATCH /api/posts/:id",
+      "ep:adapters:@demo/server:POST /api/posts",
+      "ep:adapters:@demo/server:POST /api/users/v1",
+      "ep:adapters:@demo/server:PUT /api/posts/:id",
     ]);
     // The sub-app lives in another workspace; the node stays with the file that registers the route.
-    expect(node(g, "ep:@demo/server:GET /api/posts/:id")).toMatchObject({
-      fileId: "file:packages/posts/src/routes.ts",
+    expect(node(g, "ep:adapters:@demo/server:GET /api/posts/:id")).toMatchObject({
+      fileId: "file:adapters:packages/posts/src/routes.ts",
       data: { routePath: "/posts/:id", handler: "showPost" },
     });
   });
 
   it("links handlers: named ones to their symbol (through imports), inline ones to the code holding them", () => {
-    expect(edgesOf(g, "handles", "ep:@demo/server:GET /api/posts/:id")).toEqual([
-      "sym:packages/posts/src/handlers.ts#showPost",
+    expect(edgesOf(g, "handles", "ep:adapters:@demo/server:GET /api/posts/:id")).toEqual([
+      "sym:adapters:packages/posts/src/handlers.ts#showPost",
     ]);
-    expect(edgesOf(g, "handles", "ep:@demo/server:POST /api/users/v1")).toEqual([
-      "sym:apps/server/src/users.ts#createUser",
+    expect(edgesOf(g, "handles", "ep:adapters:@demo/server:POST /api/users/v1")).toEqual([
+      "sym:adapters:apps/server/src/users.ts#createUser",
     ]);
-    expect(edgesOf(g, "handles", "ep:@demo/server:GET /health")).toEqual([
-      "sym:apps/server/src/app.ts#createApp",
+    expect(edgesOf(g, "handles", "ep:adapters:@demo/server:GET /health")).toEqual([
+      "sym:adapters:apps/server/src/app.ts#createApp",
     ]);
   });
 
   it("finds middleware and the endpoints it serves by prefix", () => {
-    expect(node(g, "mw:@demo/server:/* cors")?.kind).toBe("middleware");
-    expect(edgesOf(g, "serves", "mw:@demo/server:/* cors")).toHaveLength(7);
-    const api = edgesOf(g, "serves", "mw:@demo/server:/api/* inline");
+    expect(node(g, "mw:adapters:@demo/server:/* cors")?.kind).toBe("middleware");
+    expect(edgesOf(g, "serves", "mw:adapters:@demo/server:/* cors")).toHaveLength(7);
+    const api = edgesOf(g, "serves", "mw:adapters:@demo/server:/api/* inline");
     expect(api).toHaveLength(6);
-    expect(api).not.toContain("ep:@demo/server:GET /health");
+    expect(api).not.toContain("ep:adapters:@demo/server:GET /health");
   });
 
   it("finds server functions with method, validator, middleware and handler", () => {
-    expect(node(g, "ep:@demo/web:fn fetchPost")?.data).toMatchObject({
+    expect(node(g, "ep:adapters:@demo/web:fn fetchPost")?.data).toMatchObject({
       adapter: "tanstack-start",
       method: "GET",
       validator: true,
@@ -225,17 +236,17 @@ describe("adapters on fixtures/adapters", () => {
       handler: "inline",
       exported: true,
     });
-    expect(node(g, "ep:@demo/web:fn savePost")?.data).toMatchObject({
+    expect(node(g, "ep:adapters:@demo/web:fn savePost")?.data).toMatchObject({
       method: "POST",
       validator: false,
       middleware: ["requireUser"],
       handler: "savePostHandler",
     });
-    expect(edgesOf(g, "handles", "ep:@demo/web:fn fetchPost")).toEqual([
-      "sym:apps/web/src/server/posts.ts#fetchPost",
+    expect(edgesOf(g, "handles", "ep:adapters:@demo/web:fn fetchPost")).toEqual([
+      "sym:adapters:apps/web/src/server/posts.ts#fetchPost",
     ]);
-    expect(edgesOf(g, "handles", "ep:@demo/web:fn savePost")).toEqual([
-      "sym:apps/web/src/server/posts.ts#savePostHandler",
+    expect(edgesOf(g, "handles", "ep:adapters:@demo/web:fn savePost")).toEqual([
+      "sym:adapters:apps/web/src/server/posts.ts#savePostHandler",
     ]);
   });
 
@@ -243,12 +254,17 @@ describe("adapters on fixtures/adapters", () => {
     // From routes; requests from code (client calls) are tested in clients.test.ts.
     const req = g.edges.filter((e) => e.kind === "requests" && e.src.startsWith("route:"));
     expect(req.map((e) => [e.src, e.dst, e.confidence, e.fileId])).toEqual([
-      ["route:@demo/web:/", "ep:@demo/web:fn countPosts", "high", "file:apps/web/src/routes/index.tsx"],
       [
-        "route:@demo/web:/posts/$postId",
-        "ep:@demo/web:fn fetchPost",
+        "route:adapters:@demo/web:/",
+        "ep:adapters:@demo/web:fn countPosts",
         "high",
-        "file:apps/web/src/routes/posts.$postId.tsx",
+        "file:adapters:apps/web/src/routes/index.tsx",
+      ],
+      [
+        "route:adapters:@demo/web:/posts/$postId",
+        "ep:adapters:@demo/web:fn fetchPost",
+        "high",
+        "file:adapters:apps/web/src/routes/posts.$postId.tsx",
       ],
     ]);
   });
@@ -258,54 +274,57 @@ describe("adapters on fixtures/adapters", () => {
     expect(ids.some((id) => id.includes("only-in-tests"))).toBe(false);
     expect(g.nodes.some((n) => n.ws === "ws:@demo/legacy")).toBe(false);
     expect(ids.some((id) => id.includes("legacy"))).toBe(false);
-    expect(g.edges.some((e) => e.fileId.startsWith("file:packages/legacy/"))).toBe(false);
+    expect(g.edges.some((e) => e.fileId.startsWith("file:adapters:packages/legacy/"))).toBe(false);
   });
 
   it("composes oRPC procedure paths across imported routers, builders, router(), lazy, factories and contracts", () => {
     const rpc = g.nodes.filter((n) => n.data.adapter === "orpc");
     expect(rpc.map((n) => n.id)).toEqual([
-      "ep:@demo/api:rpc admin.purgePost",
-      "ep:@demo/api:rpc health",
-      "ep:@demo/api:rpc posts.authors",
-      "ep:@demo/api:rpc posts.create",
-      "ep:@demo/api:rpc posts.get",
-      "ep:@demo/api:rpc posts.list",
-      "ep:@demo/api:rpc posts.remove",
-      "ep:@demo/api:rpc stats.summary",
-      "ep:@demo/api:rpc users.count",
-      "ep:@demo/api:rpc users.rename",
+      "ep:adapters:@demo/api:rpc admin.purgePost",
+      "ep:adapters:@demo/api:rpc health",
+      "ep:adapters:@demo/api:rpc posts.authors",
+      "ep:adapters:@demo/api:rpc posts.create",
+      "ep:adapters:@demo/api:rpc posts.get",
+      "ep:adapters:@demo/api:rpc posts.list",
+      "ep:adapters:@demo/api:rpc posts.remove",
+      "ep:adapters:@demo/api:rpc stats.summary",
+      "ep:adapters:@demo/api:rpc users.count",
+      "ep:adapters:@demo/api:rpc users.rename",
     ]);
-    expect(node(g, "ep:@demo/api:rpc posts.list")).toMatchObject({
-      fileId: "file:packages/api/src/routers/posts.ts",
+    expect(node(g, "ep:adapters:@demo/api:rpc posts.list")).toMatchObject({
+      fileId: "file:adapters:packages/api/src/routers/posts.ts",
       data: {
         router: "packages/api/src/router.ts#appRouter",
         route: { method: "GET", path: "/posts" },
         input: false,
       },
     });
-    expect(node(g, "ep:@demo/api:rpc posts.create")?.data).toMatchObject({
+    expect(node(g, "ep:adapters:@demo/api:rpc posts.create")?.data).toMatchObject({
       input: true,
       handler: "inline",
       handlerSpan: { start: 15, end: 15 },
     });
-    expect(node(g, "ep:@demo/api:rpc posts.remove")?.data).toMatchObject({ handler: "removePost" });
+    expect(node(g, "ep:adapters:@demo/api:rpc posts.remove")?.data).toMatchObject({ handler: "removePost" });
     // A named handler is its own symbol: no span. A multi-line inline handler spans its lines.
-    expect(node(g, "ep:@demo/api:rpc posts.remove")?.data.handlerSpan).toBeUndefined();
-    expect(node(g, "ep:@demo/api:rpc users.rename")?.data.handlerSpan).toEqual({ start: 8, end: 11 });
+    expect(node(g, "ep:adapters:@demo/api:rpc posts.remove")?.data.handlerSpan).toBeUndefined();
+    expect(node(g, "ep:adapters:@demo/api:rpc users.rename")?.data.handlerSpan).toEqual({
+      start: 8,
+      end: 11,
+    });
   });
 
   it("links procedure handlers to the code holding them", () => {
-    expect(edgesOf(g, "handles", "ep:@demo/api:rpc posts.list")).toEqual([
-      "sym:packages/api/src/routers/posts.ts#postsRouter",
+    expect(edgesOf(g, "handles", "ep:adapters:@demo/api:rpc posts.list")).toEqual([
+      "sym:adapters:packages/api/src/routers/posts.ts#postsRouter",
     ]);
-    expect(edgesOf(g, "handles", "ep:@demo/api:rpc posts.remove")).toEqual([
-      "sym:packages/api/src/routers/posts.ts#removePost",
+    expect(edgesOf(g, "handles", "ep:adapters:@demo/api:rpc posts.remove")).toEqual([
+      "sym:adapters:packages/api/src/routers/posts.ts#removePost",
     ]);
-    expect(edgesOf(g, "handles", "ep:@demo/api:rpc users.count")).toEqual([
-      "sym:packages/api/src/routers/users.ts#countUsersProc",
+    expect(edgesOf(g, "handles", "ep:adapters:@demo/api:rpc users.count")).toEqual([
+      "sym:adapters:packages/api/src/routers/users.ts#countUsersProc",
     ]);
-    expect(edgesOf(g, "handles", "ep:@demo/api:rpc admin.purgePost")).toEqual([
-      "sym:packages/api/src/routers/admin.ts#makeAdminRouter",
+    expect(edgesOf(g, "handles", "ep:adapters:@demo/api:rpc admin.purgePost")).toEqual([
+      "sym:adapters:packages/api/src/routers/admin.ts#makeAdminRouter",
     ]);
   });
 
@@ -319,8 +338,8 @@ describe("adapters on fixtures/adapters", () => {
   it("finds Drizzle tables with columns (object and callback forms)", () => {
     const tables = g.nodes.filter((n) => n.kind === "table");
     expect(tables.map((n) => [n.id, n.ws, n.data.columns])).toEqual([
-      ["table:posts", "ws:@demo/db", ["id", "title", "authorId", "views"]],
-      ["table:users", "ws:@demo/db", ["id", "name"]],
+      ["table:adapters:posts", "ws:@demo/db", ["id", "title", "authorId", "views"]],
+      ["table:adapters:users", "ws:@demo/db", ["id", "name"]],
     ]);
   });
 
@@ -329,14 +348,14 @@ describe("adapters on fixtures/adapters", () => {
       .filter((e) => e.kind === "reads" || e.kind === "writes")
       .map((e) => `${e.kind} ${e.src.replace(/^sym:[^#]*#/, "")} ${e.dst} ${e.confidence}`);
     expect(rw).toEqual([
-      "reads reportPosts table:posts low",
-      "reads countUsers table:users high",
-      "writes createPost table:posts high",
-      "writes deletePost table:posts high",
-      "reads listPosts table:posts high",
-      "reads postWithAuthor table:posts high",
-      "reads postWithAuthor table:users high",
-      "writes renameUser table:users high",
+      "reads reportPosts table:adapters:posts low",
+      "reads countUsers table:adapters:users high",
+      "writes createPost table:adapters:posts high",
+      "writes deletePost table:adapters:posts high",
+      "reads listPosts table:adapters:posts high",
+      "reads postWithAuthor table:adapters:posts high",
+      "reads postWithAuthor table:adapters:users high",
+      "writes renameUser table:adapters:users high",
     ]);
     const list = g.edges.find((e) => e.kind === "reads" && e.src.endsWith("#listPosts"));
     expect(list?.evidence).toEqual(["packages/db/src/queries.ts:8"]);
@@ -350,11 +369,13 @@ describe("adapters on fixtures/adapters", () => {
       from: 'app.route("/api", posts)',
       to: 'app.route("/v2", posts)',
     });
-    const ids = after.nodes.filter((n) => n.fileId === "file:packages/posts/src/routes.ts").map((n) => n.id);
-    expect(ids).toContain("ep:@demo/server:GET /v2/posts/:id");
-    expect(ids).not.toContain("ep:@demo/server:GET /api/posts/:id");
+    const ids = after.nodes
+      .filter((n) => n.fileId === "file:adapters:packages/posts/src/routes.ts")
+      .map((n) => n.id);
+    expect(ids).toContain("ep:adapters:@demo/server:GET /v2/posts/:id");
+    expect(ids).not.toContain("ep:adapters:@demo/server:GET /api/posts/:id");
     // The `/api/*` middleware no longer covers the posts routes.
-    expect(edgesOf(after, "serves", "mw:@demo/server:/api/* inline")).toHaveLength(2);
+    expect(edgesOf(after, "serves", "mw:adapters:@demo/server:/api/* inline")).toHaveLength(2);
   });
 
   it("re-derives procedure paths of other files when the root router changes", async () => {
@@ -364,15 +385,15 @@ describe("adapters on fixtures/adapters", () => {
       to: "articles: postsRouter,",
     });
     const ids = after.nodes
-      .filter((n) => n.fileId === "file:packages/api/src/routers/posts.ts")
+      .filter((n) => n.fileId === "file:adapters:packages/api/src/routers/posts.ts")
       .map((n) => n.id)
       .sort();
     expect(ids).toEqual([
-      "ep:@demo/api:rpc articles.authors",
-      "ep:@demo/api:rpc articles.create",
-      "ep:@demo/api:rpc articles.get",
-      "ep:@demo/api:rpc articles.list",
-      "ep:@demo/api:rpc articles.remove",
+      "ep:adapters:@demo/api:rpc articles.authors",
+      "ep:adapters:@demo/api:rpc articles.create",
+      "ep:adapters:@demo/api:rpc articles.get",
+      "ep:adapters:@demo/api:rpc articles.list",
+      "ep:adapters:@demo/api:rpc articles.remove",
     ]);
   });
 

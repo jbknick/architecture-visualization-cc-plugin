@@ -1,4 +1,4 @@
-import { pathOfFileId } from "../describe/factsheet.js";
+import { isFileId, isSymId, fileId as makeFileId, parseId, pathOfFileId, pathOfId } from "../ids.js";
 import type { Store } from "../store/index.js";
 import type { EdgeKind, WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
@@ -103,7 +103,7 @@ export class ConsumerGraph {
   incoming(node: string): Neighbour[] {
     let hit = this.incomingCache.get(node);
     if (hit) return hit;
-    const kinds: EdgeKind[] = node.startsWith("file:") ? [...CONSUMER_KINDS, "imports"] : [...CONSUMER_KINDS];
+    const kinds: EdgeKind[] = isFileId(node) ? [...CONSUMER_KINDS, "imports"] : [...CONSUMER_KINDS];
     hit = this.store
       .effectiveEdges({ dst: node, kind: kinds })
       .filter((e) => !e.src.startsWith("ext:") && e.src !== node)
@@ -115,9 +115,14 @@ export class ConsumerGraph {
 
   /** The file path of a node id (a symbol's file, a file, or the file an adapter node was found in). */
   pathOf(id: string): string {
-    if (id.startsWith("sym:")) return id.slice(4, id.lastIndexOf("#"));
-    if (id.startsWith("file:")) return id.slice(5);
+    const own = pathOfId(id);
+    if (own !== undefined) return own;
     return this.pathCache.get(id) ?? "";
+  }
+
+  /** The id of the file at repo-relative `path`. */
+  fileId(path: string): string {
+    return makeFileId(this.store.repo(), path);
   }
 
   workspaceOf(path: string): WorkspaceRecord | undefined {
@@ -125,7 +130,7 @@ export class ConsumerGraph {
   }
 
   isClient(path: string): boolean {
-    return this.store.effectiveFile(`file:${path}`)?.directives?.includes("use client") ?? false;
+    return this.store.effectiveFile(this.fileId(path))?.directives?.includes("use client") ?? false;
   }
 
   /** Crossing kinds between a consumer at `consumerPath` and the changed item at `changedPath`. */
@@ -145,7 +150,7 @@ export class ConsumerGraph {
     if (hit) return hit;
     const path = this.pathOf(id);
     const ws = this.workspaceOf(path)?.name ?? null;
-    if (id.startsWith("sym:")) {
+    if (isSymId(id)) {
       const s = this.store.getSymbol(id);
       hit = {
         id,
@@ -155,7 +160,7 @@ export class ConsumerGraph {
         line: s?.startLine ?? null,
         workspace: ws,
       };
-    } else if (id.startsWith("file:")) {
+    } else if (isFileId(id)) {
       hit = {
         id,
         name: path.slice(path.lastIndexOf("/") + 1),
@@ -166,7 +171,8 @@ export class ConsumerGraph {
       };
     } else {
       const colon = id.indexOf(":");
-      const label = id.split(":").slice(2).join(":") || id;
+      const parsed = parseId(id);
+      const label = (parsed?.ws !== undefined ? parsed.rest : "") || id;
       hit = {
         id,
         name: label,
@@ -209,8 +215,8 @@ function directOfSymbol(g: ConsumerGraph, c: SymbolChange): Map<string, Set<UseK
     : (c.after?.exported ?? false) || (c.before?.exported ?? false);
   if (c.kind !== "added" && exported && file !== undefined) {
     const usedFrom = new Set([...out.keys()].map((id) => g.pathOf(id)));
-    for (const n of g.incoming(`file:${file}`)) {
-      if (n.kind !== "imports" || !n.src.startsWith("file:") || usedFrom.has(g.pathOf(n.src))) continue;
+    for (const n of g.incoming(g.fileId(file))) {
+      if (n.kind !== "imports" || !isFileId(n.src) || usedFrom.has(g.pathOf(n.src))) continue;
       add(n.src, "imports");
     }
   }
@@ -220,7 +226,7 @@ function directOfSymbol(g: ConsumerGraph, c: SymbolChange): Map<string, Set<UseK
 /** Direct consumers of a changed file: the files that import it. */
 function directOfFile(g: ConsumerGraph, path: string): Map<string, Set<UseKind>> {
   const out = new Map<string, Set<UseKind>>();
-  for (const n of g.incoming(`file:${path}`)) {
+  for (const n of g.incoming(g.fileId(path))) {
     if (n.kind !== "imports") continue;
     const set = out.get(n.src) ?? new Set<UseKind>();
     set.add("imports");
@@ -330,7 +336,7 @@ export function computeConsumers(
     out.push(build(g, c.id, "symbol", path, own, directOfSymbol(g, c), maxHops));
   }
   for (const p of [...new Set(files)].sort(cmp)) {
-    out.push(build(g, `file:${p}`, "file", p, [`file:${p}`], directOfFile(g, p), maxHops));
+    out.push(build(g, g.fileId(p), "file", p, [g.fileId(p)], directOfFile(g, p), maxHops));
   }
   return out;
 }

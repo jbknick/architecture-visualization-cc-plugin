@@ -46,14 +46,14 @@ function load(root: string, workspaces: WorkspaceRecord[], extra: Record<string,
   const parsed = new Map<string, ParsedFile>();
   for (const rel of walk(root)) {
     if (!isIndexable(rel, config)) continue;
-    const pf = parseSource(rel, readFileSync(join(root, rel), "utf8"));
+    const pf = parseSource("repo", rel, readFileSync(join(root, rel), "utf8"));
     parsed.set(pf.fileId, pf);
   }
   for (const [rel, src] of Object.entries(extra)) {
-    const pf = parseSource(rel, src);
+    const pf = parseSource("repo", rel, src);
     parsed.set(pf.fileId, pf);
   }
-  return { root, workspaces, parsed };
+  return { root, repo: "repo", workspaces, parsed };
 }
 
 function fixture(name: string, extra: Record<string, string> = {}) {
@@ -81,27 +81,27 @@ describe("pnpm-turbo fixture", () => {
       [rel]: `import { Button } from "@acme/ui";\nexport function Page() {\n  return <Button label="x" />;\n}\n`,
     });
     const r = createResolver(ctx);
-    expect(r.resolveSpecifier(`file:${rel}`, "@acme/ui")).toEqual({
+    expect(r.resolveSpecifier(`file:repo:${rel}`, "@acme/ui")).toEqual({
       kind: "file",
-      fileId: "file:packages/ui/src/index.ts",
+      fileId: "file:repo:packages/ui/src/index.ts",
     });
-    expect(r.resolveSymbol("file:packages/ui/src/index.ts", "Button")).toBe(
-      "sym:packages/ui/src/button.tsx#Button",
+    expect(r.resolveSymbol("file:repo:packages/ui/src/index.ts", "Button")).toBe(
+      "sym:repo:packages/ui/src/button.tsx#Button",
     );
-    const edges = r.edgesForFile(`file:${rel}`);
+    const edges = r.edgesForFile(`file:repo:${rel}`);
     expect(edges).toContainEqual({
-      src: `sym:${rel}#Page`,
-      dst: "sym:packages/ui/src/button.tsx#Button",
+      src: `sym:repo:${rel}#Page`,
+      dst: "sym:repo:packages/ui/src/button.tsx#Button",
       kind: "renders",
       confidence: "high",
       count: 1,
       evidence: [`${rel}:3`],
-      fileId: `file:${rel}`,
+      fileId: `file:repo:${rel}`,
     });
     expect(edges).toContainEqual(
       expect.objectContaining({
-        src: `file:${rel}`,
-        dst: "file:packages/ui/src/index.ts",
+        src: `file:repo:${rel}`,
+        dst: "file:repo:packages/ui/src/index.ts",
         kind: "imports",
         count: 1,
       }),
@@ -111,26 +111,26 @@ describe("pnpm-turbo fixture", () => {
   test("subpath export and the real index route resolve", () => {
     const ctx = fixture("pnpm-turbo");
     const r = createResolver(ctx);
-    const idx = "file:apps/web/src/routes/index.tsx";
+    const idx = "file:repo:apps/web/src/routes/index.tsx";
     expect(r.resolveSpecifier(idx, "@acme/ui/button")).toEqual({
       kind: "file",
-      fileId: "file:packages/ui/src/button.tsx",
+      fileId: "file:repo:packages/ui/src/button.tsx",
     });
     // internal.ts is not in the exports map, so it is not reachable through the package name.
     expect(r.resolveSpecifier(idx, "@acme/ui/internal")).toEqual({ kind: "unresolved" });
     const edges = r.edgesForFile(idx);
     expect(edges).toContainEqual(
       expect.objectContaining({
-        src: "sym:apps/web/src/routes/index.tsx#HomePage",
-        dst: "sym:packages/ui/src/button.tsx#Button",
+        src: "sym:repo:apps/web/src/routes/index.tsx#HomePage",
+        dst: "sym:repo:packages/ui/src/button.tsx#Button",
         kind: "renders",
         confidence: "high",
       }),
     );
     expect(edges).toContainEqual(
       expect.objectContaining({
-        src: "sym:apps/web/src/routes/index.tsx#HomePage",
-        dst: "sym:apps/web/src/components/PostList.tsx#PostList",
+        src: "sym:repo:apps/web/src/routes/index.tsx#HomePage",
+        dst: "sym:repo:apps/web/src/components/PostList.tsx#PostList",
         kind: "renders",
       }),
     );
@@ -145,17 +145,17 @@ describe("pnpm-turbo fixture", () => {
   test("hooks and local calls resolve; edges are sorted and deterministic", () => {
     const ctx = fixture("pnpm-turbo");
     const r = createResolver(ctx);
-    const list = "file:apps/web/src/components/PostList.tsx";
+    const list = "file:repo:apps/web/src/components/PostList.tsx";
     const edges = r.edgesForFile(list);
     expect(edges).toContainEqual(
       expect.objectContaining({
-        dst: "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
+        dst: "sym:repo:apps/web/src/hooks/useDebounce.ts#useDebounce",
         kind: "uses_hook",
         confidence: "high",
       }),
     );
     expect(edges).toContainEqual(
-      expect.objectContaining({ dst: "sym:apps/web/src/lib/slug.ts#slugify", kind: "calls" }),
+      expect.objectContaining({ dst: "sym:repo:apps/web/src/lib/slug.ts#slugify", kind: "calls" }),
     );
     const keys = edges.map((e) => `${e.src}\0${e.dst}\0${e.kind}`);
     expect(keys).toEqual([...keys].sort());
@@ -186,30 +186,30 @@ describe("pnpm-turbo fixture", () => {
     expect(edges.every((e) => e.kind === "depends_on")).toBe(true);
     const keys = edges.map((e) => e.src + e.dst);
     expect(keys).toEqual([...keys].sort());
-    expect(dependsOnEdges(ctx.workspaces)).toEqual(edges);
+    expect(dependsOnEdges("repo", ctx.workspaces)).toEqual(edges);
   });
 
   test("contains and exports edges for a file", () => {
     const ctx = fixture("pnpm-turbo");
-    const edges = createResolver(ctx).edgesForFile("file:packages/ui/src/button.tsx");
+    const edges = createResolver(ctx).edgesForFile("file:repo:packages/ui/src/button.tsx");
     expect(edges).toContainEqual(
       expect.objectContaining({
         src: "ws:@acme/ui",
-        dst: "file:packages/ui/src/button.tsx",
+        dst: "file:repo:packages/ui/src/button.tsx",
         kind: "contains",
       }),
     );
     expect(edges).toContainEqual(
       expect.objectContaining({
-        src: "file:packages/ui/src/button.tsx",
-        dst: "sym:packages/ui/src/button.tsx#Button",
+        src: "file:repo:packages/ui/src/button.tsx",
+        dst: "sym:repo:packages/ui/src/button.tsx#Button",
         kind: "contains",
       }),
     );
     expect(edges).toContainEqual(
       expect.objectContaining({
-        src: "file:packages/ui/src/button.tsx",
-        dst: "sym:packages/ui/src/button.tsx#Button",
+        src: "file:repo:packages/ui/src/button.tsx",
+        dst: "sym:repo:packages/ui/src/button.tsx#Button",
         kind: "exports",
       }),
     );
@@ -217,14 +217,14 @@ describe("pnpm-turbo fixture", () => {
 
   test("barrel exports edges point at the resolved originals", () => {
     const ctx = fixture("pnpm-turbo");
-    const edges = createResolver(ctx).edgesForFile("file:packages/ui/src/index.ts");
+    const edges = createResolver(ctx).edgesForFile("file:repo:packages/ui/src/index.ts");
     expect(edges.filter((e) => e.kind === "exports").map((e) => e.dst)).toEqual([
-      "sym:packages/ui/src/button.tsx#Button",
-      "sym:packages/ui/src/card.tsx#Card",
+      "sym:repo:packages/ui/src/button.tsx#Button",
+      "sym:repo:packages/ui/src/card.tsx#Card",
     ]);
     expect(edges.filter((e) => e.kind === "imports").map((e) => e.dst)).toEqual([
-      "file:packages/ui/src/button.tsx",
-      "file:packages/ui/src/card.tsx",
+      "file:repo:packages/ui/src/button.tsx",
+      "file:repo:packages/ui/src/card.tsx",
     ]);
   });
 });
@@ -233,17 +233,17 @@ describe("single-pkg fixture", () => {
   test("path alias @/x resolves via the nearest tsconfig", () => {
     const ctx = fixture("single-pkg");
     const r = createResolver(ctx);
-    const main = "file:src/main.ts";
-    expect(r.resolveSpecifier(main, "@/greet")).toEqual({ kind: "file", fileId: "file:src/greet.ts" });
-    expect(r.resolveSpecifier(main, "@/index")).toEqual({ kind: "file", fileId: "file:src/index.ts" });
-    expect(r.resolveSymbol("file:src/index.ts", "Counter")).toBe("sym:src/counter.ts#Counter");
-    expect(r.resolveSymbol("file:src/index.ts", "greet")).toMatch(/^sym:src\/greet\.ts#/);
+    const main = "file:repo:src/main.ts";
+    expect(r.resolveSpecifier(main, "@/greet")).toEqual({ kind: "file", fileId: "file:repo:src/greet.ts" });
+    expect(r.resolveSpecifier(main, "@/index")).toEqual({ kind: "file", fileId: "file:repo:src/index.ts" });
+    expect(r.resolveSymbol("file:repo:src/index.ts", "Counter")).toBe("sym:repo:src/counter.ts#Counter");
+    expect(r.resolveSymbol("file:repo:src/index.ts", "greet")).toMatch(/^sym:repo:src\/greet\.ts#/);
   });
 
   test("alias target in a generated file is classified generated, not unresolved", () => {
     const ctx = fixture("single-pkg");
     const r = createResolver(ctx);
-    expect(r.resolveSpecifier("file:src/main.ts", "@/gen/api.gen")).toEqual({ kind: "unresolved" });
+    expect(r.resolveSpecifier("file:repo:src/main.ts", "@/gen/api.gen")).toEqual({ kind: "unresolved" });
     const st = r.stats();
     expect(st.counts.generated).toBe(1);
     expect(st.counts.unresolved).toBe(0);
@@ -260,19 +260,19 @@ describe("symbol resolution", () => {
       "c.ts": `import { foo } from "./a";\nimport * as ns from "./a";\nexport { foo as again };\nexport { ns };\nexport * from "./b";`,
     });
     const r = createResolver(ctx);
-    expect(r.resolveSymbol("file:b.ts", "foo")).toBe("sym:a.ts#foo");
-    expect(r.resolveSymbol("file:b.ts", "bar")).toBe("sym:a.ts#foo");
-    expect(r.resolveSymbol("file:b.ts", "dflt")).toBe("sym:a.ts#main");
-    expect(r.resolveSymbol("file:b.ts", "nsA")).toBeNull();
-    expect(r.resolveSymbol("file:c.ts", "again")).toBe("sym:a.ts#foo");
-    expect(r.resolveSymbol("file:c.ts", "k")).toBe("sym:a.ts#k");
-    expect(r.resolveSymbol("file:c.ts", "missing")).toBeNull();
-    expect(r.resolveSymbol("file:nope.ts", "x")).toBeNull();
+    expect(r.resolveSymbol("file:repo:b.ts", "foo")).toBe("sym:repo:a.ts#foo");
+    expect(r.resolveSymbol("file:repo:b.ts", "bar")).toBe("sym:repo:a.ts#foo");
+    expect(r.resolveSymbol("file:repo:b.ts", "dflt")).toBe("sym:repo:a.ts#main");
+    expect(r.resolveSymbol("file:repo:b.ts", "nsA")).toBeNull();
+    expect(r.resolveSymbol("file:repo:c.ts", "again")).toBe("sym:repo:a.ts#foo");
+    expect(r.resolveSymbol("file:repo:c.ts", "k")).toBe("sym:repo:a.ts#k");
+    expect(r.resolveSymbol("file:repo:c.ts", "missing")).toBeNull();
+    expect(r.resolveSymbol("file:repo:nope.ts", "x")).toBeNull();
     const exportsOfB = r
-      .edgesForFile("file:b.ts")
+      .edgesForFile("file:repo:b.ts")
       .filter((e) => e.kind === "exports")
       .map((e) => e.dst);
-    expect(exportsOfB).toEqual(["sym:a.ts#foo", "sym:a.ts#k", "sym:a.ts#main"]);
+    expect(exportsOfB).toEqual(["sym:repo:a.ts#foo", "sym:repo:a.ts#k", "sym:repo:a.ts#main"]);
   });
 
   test("re-export cycles terminate (star cycles, self re-export, long chains)", () => {
@@ -285,14 +285,14 @@ describe("symbol resolution", () => {
     for (let i = 0; i < 15; i++) files[`c${i}.ts`] = `export { z } from "./c${i + 1}";`;
     files["c15.ts"] = "export const z = 1;";
     const r = createResolver(repo(files));
-    expect(r.resolveSymbol("file:a.ts", "x")).toBeNull();
-    expect(r.resolveSymbol("file:b.ts", "nothing")).toBeNull();
-    expect(r.resolveSymbol("file:self.ts", "y")).toBeNull();
-    expect(r.edgesForFile("file:a.ts").filter((e) => e.kind === "exports")).toEqual([]);
-    expect(r.edgesForFile("file:self.ts").filter((e) => e.kind === "exports")).toEqual([]);
+    expect(r.resolveSymbol("file:repo:a.ts", "x")).toBeNull();
+    expect(r.resolveSymbol("file:repo:b.ts", "nothing")).toBeNull();
+    expect(r.resolveSymbol("file:repo:self.ts", "y")).toBeNull();
+    expect(r.edgesForFile("file:repo:a.ts").filter((e) => e.kind === "exports")).toEqual([]);
+    expect(r.edgesForFile("file:repo:self.ts").filter((e) => e.kind === "exports")).toEqual([]);
     // depth is capped at 10 hops
-    expect(r.resolveSymbol("file:c14.ts", "z")).toBe("sym:c15.ts#z");
-    expect(r.resolveSymbol("file:c0.ts", "z")).toBeNull();
+    expect(r.resolveSymbol("file:repo:c14.ts", "z")).toBe("sym:repo:c15.ts#z");
+    expect(r.resolveSymbol("file:repo:c0.ts", "z")).toBeNull();
   });
 });
 
@@ -316,28 +316,28 @@ export const x: Shape = null as never;
 
   test("imported, namespace, local, extends/implements and low-confidence methods", () => {
     const r = createResolver(repo(files));
-    const edges = r.edgesForFile("file:main.ts");
+    const edges = r.edgesForFile("file:repo:main.ts");
     const find = (src: string, dst: string, kind: string) =>
       edges.find((e) => e.src === src && e.dst === dst && e.kind === kind);
-    expect(find("sym:main.ts#local", "sym:lib.ts#helper", "calls")).toMatchObject({
+    expect(find("sym:repo:main.ts#local", "sym:repo:lib.ts#helper", "calls")).toMatchObject({
       count: 2,
       confidence: "high",
       evidence: ["main.ts:3"],
     });
-    expect(find("sym:main.ts#run", "sym:main.ts#local", "calls")).toMatchObject({
+    expect(find("sym:repo:main.ts#run", "sym:repo:main.ts#local", "calls")).toMatchObject({
       count: 2,
       confidence: "high",
       evidence: ["main.ts:4"],
     });
-    expect(find("sym:main.ts#run", "sym:lib.ts#helper", "calls")?.count).toBe(1);
-    expect(find("sym:main.ts#Child", "sym:lib.ts#Base", "extends")).toBeDefined();
-    expect(find("sym:main.ts#Child", "sym:lib.ts#Shape", "implements")).toBeDefined();
-    expect(edges.some((e) => e.kind === "references_type" && e.dst === "sym:lib.ts#Shape")).toBe(true);
+    expect(find("sym:repo:main.ts#run", "sym:repo:lib.ts#helper", "calls")?.count).toBe(1);
+    expect(find("sym:repo:main.ts#Child", "sym:repo:lib.ts#Base", "extends")).toBeDefined();
+    expect(find("sym:repo:main.ts#Child", "sym:repo:lib.ts#Shape", "implements")).toBeDefined();
+    expect(edges.some((e) => e.kind === "references_type" && e.dst === "sym:repo:lib.ts#Shape")).toBe(true);
     // this.two() and thing.two(): exactly one method named `two` in the file => low
-    expect(find("sym:main.ts#Child.one", "sym:main.ts#Child.two", "calls")).toMatchObject({
+    expect(find("sym:repo:main.ts#Child.one", "sym:repo:main.ts#Child.two", "calls")).toMatchObject({
       confidence: "low",
     });
-    expect(find("sym:main.ts#Child.three", "sym:main.ts#Child.two", "calls")).toMatchObject({
+    expect(find("sym:repo:main.ts#Child.three", "sym:repo:main.ts#Child.two", "calls")).toMatchObject({
       confidence: "low",
     });
     // no method called `nope` => skipped
@@ -351,7 +351,7 @@ export const x: Shape = null as never;
         "m.ts": `import { missing } from "./gone";\nclass A { go() {} }\nclass B { go() {} }\nexport function f(o: A) { o.go(); missing(); }`,
       }),
     );
-    expect(r.edgesForFile("file:m.ts").filter((e) => e.kind === "calls")).toEqual([]);
+    expect(r.edgesForFile("file:repo:m.ts").filter((e) => e.kind === "calls")).toEqual([]);
     expect(r.stats().counts.unresolved).toBe(0 + 1);
   });
 
@@ -364,7 +364,7 @@ export const x: Shape = null as never;
         "m.ts": `import { helper } from "./lib";\nexport function f() {\n${calls}\n}`,
       }),
     );
-    const e = r.edgesForFile("file:m.ts").find((x) => x.kind === "calls");
+    const e = r.edgesForFile("file:repo:m.ts").find((x) => x.kind === "calls");
     expect(e?.count).toBe(25);
     expect(e?.evidence).toEqual(Array.from({ length: 20 }, (_, i) => `m.ts:${i + 3}`));
   });
@@ -377,10 +377,10 @@ export const x: Shape = null as never;
         "m.ts": `import { a, b } from "./lib";\nimport "./lib";\nconst l = () => import("./lib");\nimport { Hono } from "hono";\nimport fs from "node:fs";\nimport x from "cloudflare:workers";`,
       }),
     );
-    const imports = r.edgesForFile("file:m.ts").filter((e) => e.kind === "imports");
+    const imports = r.edgesForFile("file:repo:m.ts").filter((e) => e.kind === "imports");
     expect(imports.map((e) => [e.dst, e.count])).toEqual([
       ["ext:hono", 1],
-      ["file:lib.ts", 4],
+      ["file:repo:lib.ts", 4],
     ]);
     expect(r.stats().counts).toMatchObject({ builtin: 1, virtual: 1, external: 1, file: 1, unresolved: 0 });
   });
@@ -389,10 +389,10 @@ export const x: Shape = null as never;
 describe("classification", () => {
   test("unresolved specifiers are counted and listed, never thrown", () => {
     const r = createResolver(repo({ "package.json": JSON.stringify({ name: "u" }), "m.ts": "export {};" }));
-    expect(r.resolveSpecifier("file:m.ts", "./nope")).toEqual({ kind: "unresolved" });
-    expect(r.resolveSpecifier("file:m.ts", "not-declared-pkg")).toEqual({ kind: "unresolved" });
-    expect(r.resolveSpecifier("file:m.ts", "../../outside")).toEqual({ kind: "unresolved" });
-    expect(r.resolveSpecifier("file:m.ts", "@/")).toEqual({ kind: "unresolved" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "./nope")).toEqual({ kind: "unresolved" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "not-declared-pkg")).toEqual({ kind: "unresolved" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "../../outside")).toEqual({ kind: "unresolved" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "@/")).toEqual({ kind: "unresolved" });
     const st = r.stats();
     expect(st.counts.unresolved).toBe(4);
     expect(st.unresolved.map((u) => u.specifier).sort()).toEqual([
@@ -405,13 +405,13 @@ describe("classification", () => {
 
   test("node builtins, bare builtins and scheme specifiers are not failures", () => {
     const r = createResolver(repo({ "package.json": "{}", "m.ts": "export {};" }));
-    expect(r.resolveSpecifier("file:m.ts", "node:path")).toEqual({ kind: "external", pkg: "node:path" });
-    expect(r.resolveSpecifier("file:m.ts", "fs")).toEqual({ kind: "external", pkg: "fs" });
-    expect(r.resolveSpecifier("file:m.ts", "virtual:uno.css")).toEqual({
+    expect(r.resolveSpecifier("file:repo:m.ts", "node:path")).toEqual({ kind: "external", pkg: "node:path" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "fs")).toEqual({ kind: "external", pkg: "fs" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "virtual:uno.css")).toEqual({
       kind: "external",
       pkg: "virtual:uno.css",
     });
-    expect(r.resolveSpecifier("file:m.ts", "bun:test")).toEqual({ kind: "external", pkg: "bun:test" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "bun:test")).toEqual({ kind: "external", pkg: "bun:test" });
     const st = r.stats();
     expect(st.counts).toMatchObject({ builtin: 2, virtual: 2, unresolved: 0 });
     expect(st.unresolved).toEqual([]);
@@ -428,11 +428,11 @@ describe("classification", () => {
       }),
     );
     // present on disk but not in the parsed set (excluded by discovery)
-    expect(r.resolveSpecifier("file:m.ts", "./routeTree.gen")).toEqual({ kind: "unresolved" });
-    expect(r.resolveSpecifier("file:m.ts", "./plain")).toEqual({ kind: "unresolved" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "./routeTree.gen")).toEqual({ kind: "unresolved" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "./plain")).toEqual({ kind: "unresolved" });
     // absent on disk but matching a built-in exclude (untracked codegen / build output)
-    expect(r.resolveSpecifier("file:m.ts", "./client.gen")).toEqual({ kind: "unresolved" });
-    expect(r.resolveSpecifier("file:m.ts", "./dist/out.js")).toEqual({ kind: "unresolved" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "./client.gen")).toEqual({ kind: "unresolved" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "./dist/out.js")).toEqual({ kind: "unresolved" });
     const st = r.stats();
     expect(st.counts.generated).toBe(3);
     expect(st.counts.excluded).toBe(1);
@@ -448,12 +448,12 @@ describe("classification", () => {
     writeFileSync(join(dir, "m.ts"), "export {};");
     const ws = detectWorkspaces(dir, { workspaces: { overrides: {} } });
     const r = createResolver(load(dir, ws));
-    expect(r.resolveSpecifier("file:m.ts", "hast")).toEqual({ kind: "external", pkg: "hast" });
-    expect(r.resolveSpecifier("file:m.ts", "@scope/pkg/sub")).toEqual({
+    expect(r.resolveSpecifier("file:repo:m.ts", "hast")).toEqual({ kind: "external", pkg: "hast" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "@scope/pkg/sub")).toEqual({
       kind: "external",
       pkg: "@scope/pkg",
     });
-    expect(r.resolveSpecifier("file:m.ts", "mdast")).toEqual({ kind: "unresolved" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "mdast")).toEqual({ kind: "unresolved" });
   });
 
   test("installed npm packages classify external with the package name (scoped and subpath)", () => {
@@ -469,8 +469,8 @@ describe("classification", () => {
     writeFileSync(join(dir, "m.ts"), "export {};");
     const ws = detectWorkspaces(dir, { workspaces: { overrides: {} } });
     const r = createResolver(load(dir, ws));
-    expect(r.resolveSpecifier("file:m.ts", "@s/p")).toEqual({ kind: "external", pkg: "@s/p" });
-    expect(r.resolveSpecifier("file:m.ts", "@s/p/sub")).toEqual({ kind: "external", pkg: "@s/p" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "@s/p")).toEqual({ kind: "external", pkg: "@s/p" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "@s/p/sub")).toEqual({ kind: "external", pkg: "@s/p" });
   });
 
   test("extensionAlias: ./x.js resolves to x.ts", () => {
@@ -482,7 +482,10 @@ describe("classification", () => {
         "m.ts": `import { x } from "./x.js";`,
       }),
     );
-    expect(r.resolveSpecifier("file:m.ts", "./x.js")).toEqual({ kind: "file", fileId: "file:x.ts" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "./x.js")).toEqual({
+      kind: "file",
+      fileId: "file:repo:x.ts",
+    });
   });
 
   test("a symlinked repo root is realpath'd (files are not classified as outside the repo)", () => {
@@ -496,15 +499,15 @@ describe("classification", () => {
     const ws = detectWorkspaces(real, { workspaces: { overrides: {} } });
     const ctx = load(real, ws);
     const r = createResolver({ ...ctx, root: link });
-    expect(r.resolveSpecifier("file:m.ts", "./a")).toEqual({ kind: "file", fileId: "file:a.ts" });
+    expect(r.resolveSpecifier("file:repo:m.ts", "./a")).toEqual({ kind: "file", fileId: "file:repo:a.ts" });
   });
 
   test("self-import is not an edge and unknown files yield no edges", () => {
     const r = createResolver(
       repo({ "package.json": "{}", "m.ts": `import { m } from "./m";\nexport const m = 1;` }),
     );
-    expect(r.edgesForFile("file:m.ts").filter((e) => e.kind === "imports")).toEqual([]);
-    expect(r.edgesForFile("file:unknown.ts")).toEqual([]);
+    expect(r.edgesForFile("file:repo:m.ts").filter((e) => e.kind === "imports")).toEqual([]);
+    expect(r.edgesForFile("file:repo:unknown.ts")).toEqual([]);
   });
 
   test("workspace fallback without an exports map uses main/types and subpaths", () => {
@@ -518,14 +521,14 @@ describe("classification", () => {
       "packages/b/src/m.ts": "export {};",
     });
     const r = createResolver(ctx);
-    const from = "file:packages/b/src/m.ts";
+    const from = "file:repo:packages/b/src/m.ts";
     expect(r.resolveSpecifier(from, "@w/a")).toEqual({
       kind: "file",
-      fileId: "file:packages/a/src/index.ts",
+      fileId: "file:repo:packages/a/src/index.ts",
     });
     expect(r.resolveSpecifier(from, "@w/a/util")).toEqual({
       kind: "file",
-      fileId: "file:packages/a/src/util.ts",
+      fileId: "file:repo:packages/a/src/util.ts",
     });
     expect(r.workspaceEdges().map((e) => `${e.src}>${e.dst}`)).toEqual(["ws:@w/b>ws:@w/a"]);
   });

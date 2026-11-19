@@ -63,7 +63,7 @@ describe("titles and edge widths", () => {
           stats: { files: 260, functions: 1700 },
         },
         {
-          id: "file:a.ts",
+          id: "file:pnpm-turbo:a.ts",
           kind: "file",
           label: "a.ts",
           parent: "ws:@org/api",
@@ -485,7 +485,7 @@ describe("the review layer (#173)", () => {
     }
     // Affected cells (direct and potential) carry their names when the cell has room.
     const at = (id: string) => scene.tree.index.get(id) as number;
-    expect(result.review?.named).toContain(at("file:apps/web/src/hooks/useDebounce.ts"));
+    expect(result.review?.named).toContain(at("file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts"));
     // + Directly affected: no dashed line at all.
     strokes.length = 0;
     const direct = draw("direct");

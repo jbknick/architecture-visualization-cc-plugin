@@ -161,7 +161,7 @@ function buildWorkspace(wsKey: string, items: GroupItem[], info: WorkspaceInfo |
   const members = (d: Dir): GroupItem[] => [...d.files.values(), ...[...d.dirs.values()].map(members)].flat();
   const fileNode = (path: string, its: GroupItem[]): TNode =>
     mk({
-      key: `file:${path}`,
+      key: `path:${path}`,
       level: "file",
       ws,
       path,

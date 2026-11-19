@@ -9,7 +9,7 @@ function symbolsOf(
   path: string,
   source: string,
 ): { syms: Map<string, SymbolRecord>; parsed: ReturnType<typeof parseSource> } {
-  const parsed = parseSource(path, source);
+  const parsed = parseSource("repo", path, source);
   const syms = new Map<string, SymbolRecord>();
   for (const s of parsed.symbols) {
     const body = parsed.bodies.get(s.id);
@@ -99,7 +99,7 @@ describe("termsFromName", () => {
 
 describe("re-export templates", () => {
   const src = 'export { a, b as c } from "./x";\nexport * as ns from "./y";\nexport * from "./z";\n';
-  const parsed = parseSource("src/index.ts", src);
+  const parsed = parseSource("repo", "src/index.ts", src);
 
   it("describes a re-export line", () => {
     expect(reexportTemplate(parsed, "c")?.behavior).toBe("Re-exports b from ./x.");
@@ -110,6 +110,6 @@ describe("re-export templates", () => {
 
   it("recognises barrel files", () => {
     expect(isBarrelFile(parsed)).toBe(true);
-    expect(isBarrelFile(parseSource("src/a.ts", "export function f() { return 1; }\n"))).toBe(false);
+    expect(isBarrelFile(parseSource("repo", "src/a.ts", "export function f() { return 1; }\n"))).toBe(false);
   });
 });

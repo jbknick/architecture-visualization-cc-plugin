@@ -1,3 +1,4 @@
+import { endpointId } from "../ids.js";
 import { chainName, isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
 import type { EdgeRecord } from "../types.js";
 import {
@@ -202,7 +203,7 @@ export const tanstackStartAdapter: Adapter<ServerFnFact[]> = {
         const ws = file.ws.id;
         const alloc = ids.get(ws) ?? new IdAllocator();
         ids.set(ws, alloc);
-        const id = alloc.take(`ep:${wsName(ws)}:fn ${fn.exportName}`);
+        const id = alloc.take(endpointId(ctx.repo, wsName(ws), `fn ${fn.exportName}`));
         nodes.push({
           id,
           kind: "endpoint",

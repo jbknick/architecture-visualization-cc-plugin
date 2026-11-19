@@ -38,8 +38,8 @@ const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as 
   materializeFixture: (name: string) => Promise<MaterializedFixture>;
 };
 
-const BUTTON = "sym:packages/ui/src/button.tsx#Button";
-const HOME = "sym:apps/web/src/routes/index.tsx#HomePage";
+const BUTTON = "sym:pnpm-turbo:packages/ui/src/button.tsx#Button";
+const HOME = "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage";
 const MARKER = "ZetaNineReviewMarker";
 
 const fixtures: MaterializedFixture[] = [];
@@ -100,7 +100,7 @@ const strip = (r: ReviewResult) => ({
   ...r,
   review: r.review ? { ...r.review, ms: 0, cached: false } : null,
 });
-const fileId = (p: string) => `file:${p}`;
+const fileId = (p: string) => `file:pnpm-turbo:${p}`;
 const BUTTON_FILE = fileId("packages/ui/src/button.tsx");
 const HOME_FILE = fileId("apps/web/src/routes/index.tsx");
 
@@ -125,7 +125,7 @@ describe("review view", () => {
       const r = await buildReview(ctx, opts({ range: "main...chain" }, level));
       const layer = r.review?.layer;
       const links = layer?.links ?? [];
-      const dst = level === "files" ? QUERIES : "sym:packages/db/src/queries.ts#getPost";
+      const dst = level === "files" ? QUERIES : "sym:pnpm-turbo:packages/db/src/queries.ts#getPost";
       expect(links.filter((l) => l.tier === "direct").map((l) => [l.src, l.dst, l.hop])).toEqual([
         [APP, dst, 1],
         [DB_INDEX, dst, 1],
@@ -231,12 +231,12 @@ describe("review view", () => {
       expect.objectContaining({ path: "packages/ui/src/button.tsx", status: "M", changes: 1 }),
     ]);
     expect(review?.files[0]?.consumers.direct.map((d) => [d.id, d.uses, d.node])).toEqual([
-      ["file:packages/ui/src/index.ts", ["imports"], "file:packages/ui/src/index.ts"],
+      ["file:pnpm-turbo:packages/ui/src/index.ts", ["imports"], "file:pnpm-turbo:packages/ui/src/index.ts"],
       [HOME_FILE, ["imports"], HOME_FILE],
       [
-        "file:apps/web/src/routes/settings/profile.tsx",
+        "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
         ["imports"],
-        "file:apps/web/src/routes/settings/profile.tsx",
+        "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
       ],
     ]);
     const change = review?.changes[0];
@@ -253,22 +253,29 @@ describe("review view", () => {
     const c = r.review?.changes[0]?.consumers;
     expect(c?.directTotal).toBe(3);
     expect(c?.direct.map((d) => [d.id, d.uses, d.crosses, d.node])).toEqual([
-      ["file:packages/ui/src/index.ts", ["imports"], [], "file:packages/ui/src/index.ts"],
+      [
+        "file:pnpm-turbo:packages/ui/src/index.ts",
+        ["imports"],
+        [],
+        "file:pnpm-turbo:packages/ui/src/index.ts",
+      ],
       [HOME, ["renders"], ["app"], HOME_FILE],
       [
-        "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+        "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
         ["renders"],
         ["app"],
-        "file:apps/web/src/routes/settings/profile.tsx",
+        "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
       ],
     ]);
-    const route = c?.potential.find((p) => p.id === "route:@acme/web:/");
+    const route = c?.potential.find((p) => p.id === "route:pnpm-turbo:@acme/web:/");
     expect(route).toMatchObject({ hop: 2, via: HOME, next: HOME, node: HOME_FILE, nextNode: HOME_FILE });
     // reached through the barrel: its line runs to the barrel's node
-    expect(c?.potential.find((p) => p.id === "file:apps/web/src/routes/settings/profile.tsx")).toMatchObject({
+    expect(
+      c?.potential.find((p) => p.id === "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"),
+    ).toMatchObject({
       hop: 2,
-      via: "file:packages/ui/src/index.ts",
-      nextNode: "file:packages/ui/src/index.ts",
+      via: "file:pnpm-turbo:packages/ui/src/index.ts",
+      nextNode: "file:pnpm-turbo:packages/ui/src/index.ts",
     });
     // every consumer id is placed, so clicking one selects and zooms to its node
     const placed = new Map(r.review?.layer.placed);
@@ -362,18 +369,18 @@ describe("review view", () => {
 
   it("ring slots: files grouped together with one empty slot between groups; radii fit the slots", () => {
     const { slots, at } = ringSlots([
-      { id: "sym:b.ts#y", group: "b.ts" },
-      { id: "sym:a.ts#z", group: "a.ts" },
-      { id: "sym:b.ts#x", group: "b.ts" },
-      { id: "sym:a.ts#w", group: "a.ts" },
-      { id: "sym:c.ts#v", group: "c.ts" },
+      { id: "sym:pnpm-turbo:b.ts#y", group: "b.ts" },
+      { id: "sym:pnpm-turbo:a.ts#z", group: "a.ts" },
+      { id: "sym:pnpm-turbo:b.ts#x", group: "b.ts" },
+      { id: "sym:pnpm-turbo:a.ts#w", group: "a.ts" },
+      { id: "sym:pnpm-turbo:c.ts#v", group: "c.ts" },
     ]);
     expect(Object.fromEntries(at)).toEqual({
-      "sym:a.ts#w": 0,
-      "sym:a.ts#z": 1,
-      "sym:b.ts#x": 3,
-      "sym:b.ts#y": 4,
-      "sym:c.ts#v": 6,
+      "sym:pnpm-turbo:a.ts#w": 0,
+      "sym:pnpm-turbo:a.ts#z": 1,
+      "sym:pnpm-turbo:b.ts#x": 3,
+      "sym:pnpm-turbo:b.ts#y": 4,
+      "sym:pnpm-turbo:c.ts#v": 6,
     });
     expect(slots).toBe(8);
     expect(ringSlots([{ id: "x", group: "a" }])).toEqual({ slots: 1, at: new Map([["x", 0]]) });

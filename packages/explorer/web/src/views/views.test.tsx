@@ -200,9 +200,13 @@ describe("going into a node", () => {
     const nodes: GraphNode[] = [
       { id: "ws:a", kind: "workspace", label: "a", size: 1 },
       { id: "dir:a/src", kind: "dir", label: "src", size: 1, parent: "ws:a" },
-      { id: "file:a/src/x.ts", kind: "file", label: "x.ts", size: 1, parent: "dir:a/src" },
+      { id: "file:pnpm-turbo:a/src/x.ts", kind: "file", label: "x.ts", size: 1, parent: "dir:a/src" },
     ];
-    expect(breadcrumbTrail(nodes, "file:a/src/x.ts").map((n) => n.label)).toEqual(["a", "src", "x.ts"]);
+    expect(breadcrumbTrail(nodes, "file:pnpm-turbo:a/src/x.ts").map((n) => n.label)).toEqual([
+      "a",
+      "src",
+      "x.ts",
+    ]);
     expect(breadcrumbTrail(nodes, null)).toEqual([]);
     expect(breadcrumbTrail(nodes, "missing")).toEqual([]);
   });
@@ -301,9 +305,9 @@ describe("ego view", () => {
 
   it("shows the server's error for a bad focus, with a way out", async () => {
     installMockFetch();
-    renderApp("#/ego?focus=sym%3Anope");
+    renderApp("#/ego?focus=sym%3Apnpm-turbo%3Anope");
     const alert = await screen.findByRole("alert");
-    expect(within(alert).getByText("Unknown focus: sym:nope")).toBeTruthy();
+    expect(within(alert).getByText("Unknown focus: sym:pnpm-turbo:nope")).toBeTruthy();
     fireEvent.click(within(alert).getByRole("button", { name: "Reset this view" }));
     expect(await screen.findByText("Pick a function to see its callers and callees")).toBeTruthy();
   });

@@ -38,13 +38,13 @@ const embedder = await cachedEmbedder()();
 if (!embedder) throw new Error("embedding model is not cached");
 
 function codeText(src: string): string {
-  const parsed = parseSource("pair.ts", src);
+  const parsed = parseSource("repo", "pair.ts", src);
   const sym = parsed.symbols.find((s) => ["function", "component", "hook", "method"].includes(s.kind));
   const range = sym && parsed.bodies.get(sym.id);
   return range ? normalizeForEmbedding(src, range, "ts") : src;
 }
 function features(src: string): { stmt: number } & ReturnType<typeof hashSymbol> {
-  const parsed = parseSource("pair.ts", src);
+  const parsed = parseSource("repo", "pair.ts", src);
   const sym = parsed.symbols.find((s) => ["function", "component", "hook", "method"].includes(s.kind));
   const range = sym && parsed.bodies.get(sym.id);
   if (!sym || !range) throw new Error("pair without a function");

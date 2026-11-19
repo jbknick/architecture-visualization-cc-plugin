@@ -9,6 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { GantryConfig, TaskName } from "../config/index.js";
 import { isSensitive } from "../discover/index.js";
+import { nameOfSymId } from "../ids.js";
 import type { Store } from "../store/index.js";
 import type { FactSheet } from "../types.js";
 import { BATCH_SIZE, backlogPriority } from "./backlog.js";
@@ -108,8 +109,8 @@ export function workerArgs(model: string, effort: string, systemPromptFile: stri
 }
 
 function nameOfId(id: string): string {
-  const hash = id.indexOf("#");
-  return hash < 0 ? id : id.slice(hash + 1).replace(/~\d+$/, "");
+  const name = nameOfSymId(id);
+  return name === undefined ? id : name.replace(/~\d+$/, "");
 }
 
 /** stdin of the worker: one block per fact sheet, headed by the line the system prompt refers to. */

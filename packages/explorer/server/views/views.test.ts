@@ -46,9 +46,9 @@ describe("project-map", () => {
   it("builds workspace > dir > file > symbol and collapses single-child directory chains", () => {
     const r = view("project-map", "level=symbols");
     const byId = new Map(r.nodes.map((n) => [n.id, n]));
-    const btn = byId.get("sym:packages/ui/src/button.tsx#Button");
-    expect(btn?.parent).toBe("file:packages/ui/src/button.tsx");
-    expect(byId.get("file:packages/ui/src/button.tsx")?.parent).toBe("dir:packages/ui/src");
+    const btn = byId.get("sym:pnpm-turbo:packages/ui/src/button.tsx#Button");
+    expect(btn?.parent).toBe("file:pnpm-turbo:packages/ui/src/button.tsx");
+    expect(byId.get("file:pnpm-turbo:packages/ui/src/button.tsx")?.parent).toBe("dir:packages/ui/src");
     // packages/ui has only `src` underneath: the workspace holds `src` directly, not nested twice.
     const dirNode = byId.get("dir:packages/ui/src");
     expect(dirNode?.label).toBe("src");
@@ -87,14 +87,17 @@ describe("project-map", () => {
     const r = view("project-map", `focus=${encodeURIComponent("dir:packages/ui/src")}`);
     expect(ids(r)).toEqual([
       "dir:packages/ui/src",
-      "file:packages/ui/src/button.tsx",
-      "file:packages/ui/src/card.tsx",
-      "file:packages/ui/src/index.ts",
-      "file:packages/ui/src/internal.ts",
+      "file:pnpm-turbo:packages/ui/src/button.tsx",
+      "file:pnpm-turbo:packages/ui/src/card.tsx",
+      "file:pnpm-turbo:packages/ui/src/index.ts",
+      "file:pnpm-turbo:packages/ui/src/internal.ts",
       "ws:@acme/ui",
     ]);
-    const deeper = view("project-map", `focus=${encodeURIComponent("file:packages/ui/src/button.tsx")}`);
-    expect(ids(deeper)).toContain("sym:packages/ui/src/button.tsx#Button");
+    const deeper = view(
+      "project-map",
+      `focus=${encodeURIComponent("file:pnpm-turbo:packages/ui/src/button.tsx")}`,
+    );
+    expect(ids(deeper)).toContain("sym:pnpm-turbo:packages/ui/src/button.tsx#Button");
     for (const e of r.edges) expect(ids(r)).toEqual(expect.arrayContaining([e.src, e.dst]));
     expect(() => view("project-map", "focus=nope")).toThrow(HttpError);
   });
@@ -127,7 +130,7 @@ describe("project-map", () => {
     const { store: s2, dir: d2 } = fixtureStore("single-pkg");
     try {
       const file = (p: string): FileRecord => ({
-        id: `file:${p}`,
+        id: `file:pnpm-turbo:${p}`,
         path: p,
         workspaceId: null,
         contentHash: p,
@@ -138,8 +141,8 @@ describe("project-map", () => {
       const c = { ...ctx, store: s2 };
       const get = (qs: string) =>
         (handleApi(c, "/api/view/project-map", new URLSearchParams(qs)) as ViewResult).nodes;
-      expect(get("").some((n) => n.id === "file:src/a.test.ts")).toBe(false);
-      expect(get("filters=hideTests=false").some((n) => n.id === "file:src/a.test.ts")).toBe(true);
+      expect(get("").some((n) => n.id === "file:pnpm-turbo:src/a.test.ts")).toBe(false);
+      expect(get("filters=hideTests=false").some((n) => n.id === "file:pnpm-turbo:src/a.test.ts")).toBe(true);
     } finally {
       s2.close();
       rmSync(d2, { recursive: true, force: true });
@@ -148,15 +151,17 @@ describe("project-map", () => {
 });
 
 describe("ego", () => {
-  const BUTTON = "sym:packages/ui/src/button.tsx#Button";
+  const BUTTON = "sym:pnpm-turbo:packages/ui/src/button.tsx#Button";
   it("Button's callers are the pages and components that render it", () => {
     const r = view("ego", `focus=${encodeURIComponent(BUTTON)}`);
     const callers = r.nodes.filter((n) => n.side === "in" && n.hop === 1).map((n) => n.id);
-    expect(callers).toContain("sym:apps/web/src/routes/index.tsx#HomePage");
+    expect(callers).toContain("sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage");
     expect(
       r.edges.some(
         (e) =>
-          e.kind === "renders" && e.dst === BUTTON && e.src === "sym:apps/web/src/routes/index.tsx#HomePage",
+          e.kind === "renders" &&
+          e.dst === BUTTON &&
+          e.src === "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
       ),
     ).toBe(true);
     expect(r.nodes.find((n) => n.id === BUTTON)).toMatchObject({ side: "focus", hop: 0 });
@@ -167,7 +172,7 @@ describe("ego", () => {
   });
   it("snapshot: file ego graph (imports)", () => {
     expect(
-      view("ego", `focus=${encodeURIComponent("file:apps/web/src/routes/index.tsx")}`),
+      view("ego", `focus=${encodeURIComponent("file:pnpm-turbo:apps/web/src/routes/index.tsx")}`),
     ).toMatchSnapshot();
   });
   it("hops and edgeKinds and highConfidence filters", () => {
@@ -220,13 +225,13 @@ describe("scale", () => {
       seed = (seed * 1103515245 + 12345) & 0x7fffffff;
       return seed % n;
     };
-    const sym = (fi: number, k: number) => `sym:pkgs/w${fi % 20}/src/d${fi % 7}/f${fi}.ts#fn${k}`;
+    const sym = (fi: number, k: number) => `sym:pnpm-turbo:pkgs/w${fi % 20}/src/d${fi % 7}/f${fi}.ts#fn${k}`;
     const total = 42000;
     const perFile = Math.ceil(total / N_FILES);
     for (let fi = 0; fi < N_FILES; fi++) {
       const p = `pkgs/w${fi % 20}/src/d${fi % 7}/f${fi}.ts`;
       const file: FileRecord = {
-        id: `file:${p}`,
+        id: `file:pnpm-turbo:${p}`,
         path: p,
         workspaceId: `ws:w${fi % 20}`,
         contentHash: p,
@@ -255,7 +260,7 @@ describe("scale", () => {
         const tf = rnd(N_FILES);
         const isImp = rnd(3) === 0;
         const src = isImp ? file.id : sym(fi, rnd(PER));
-        const dst = isImp ? `file:pkgs/w${tf % 20}/src/d${tf % 7}/f${tf}.ts` : sym(tf, rnd(PER));
+        const dst = isImp ? `file:pnpm-turbo:pkgs/w${tf % 20}/src/d${tf % 7}/f${tf}.ts` : sym(tf, rnd(PER));
         const kind = isImp ? "imports" : "calls";
         const key = `${src}|${dst}|${kind}`;
         if (src === dst || seen.has(key)) continue;
@@ -314,7 +319,7 @@ describe("scale", () => {
   }, 60_000); // the budget is CPU time; this wall-clock guard only has to survive a loaded machine
 
   it("ego caps at 400 nodes with +K more collapse nodes and answers in under 300 ms", () => {
-    const qs = `focus=${encodeURIComponent("sym:pkgs/w0/src/d0/f0.ts#fn0")}&hops=4`;
+    const qs = `focus=${encodeURIComponent("sym:pnpm-turbo:pkgs/w0/src/d0/f0.ts#fn0")}&hops=4`;
     const { ms, r } = bestOfThree("ego", qs);
     expect(ms).toBeLessThan(300);
     expect(r.nodes.length).toBeLessThanOrEqual(EGO_MAX_NODES);

@@ -38,8 +38,8 @@ function fakeEmbedder(dim = 64): Embedder {
   };
 }
 
-const SLUG = "sym:packages/utils/src/slug.ts#slugify";
-const DATE = "sym:packages/utils/src/date.ts#formatRelativeDate";
+const SLUG = "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify";
+const DATE = "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate";
 
 let ix: Indexed;
 beforeEach(async () => {
@@ -82,7 +82,10 @@ describe("description columns of fts_symbols", () => {
   it("are filled for template descriptions and again as a no-op", () => {
     const row = ix.store.db
       .prepare("SELECT behavior, search_terms FROM fts_symbols WHERE symbol_id = ?")
-      .get("sym:packages/db/src/queries.ts#createPost") as { behavior: string; search_terms: string };
+      .get("sym:pnpm-turbo:packages/db/src/queries.ts#createPost") as {
+      behavior: string;
+      search_terms: string;
+    };
     expect(row.behavior).toMatch(/^Returns db\.insert\(posts\)/);
     expect(row.search_terms).toContain("create post");
     expect(refreshDescriptionFts(ix.store)).toBe(0);

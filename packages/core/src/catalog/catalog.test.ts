@@ -61,7 +61,7 @@ describe("writeCatalog", () => {
 
   it("keeps a multi-line description on one line", () => {
     setDescription(
-      "sym:packages/utils/src/date.ts#formatRelativeDate",
+      "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
       "Line one.\n- injected item\n# heading",
     );
     writeCatalog(ix.store, ix.paths);
@@ -84,7 +84,10 @@ describe("writeCatalog", () => {
     expect(writeCatalog(ix.store, ix.paths)).toBe(0);
     for (const f of all) expect(statSync(join(ix.paths.catalogDir, f)).mtime.getTime()).toBe(old.getTime());
 
-    setDescription("sym:packages/utils/src/date.ts#formatRelativeDate", "Formats a date relative to now.");
+    setDescription(
+      "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+      "Formats a date relative to now.",
+    );
     expect(writeCatalog(ix.store, ix.paths)).toBe(1);
     const changed = all.filter(
       (f) => statSync(join(ix.paths.catalogDir, f)).mtime.getTime() !== old.getTime(),
@@ -116,7 +119,7 @@ describe("writeCatalog", () => {
   it("debounces: a second call within 30 seconds does nothing", () => {
     const t0 = 1_000_000;
     expect(writeCatalogDebounced(ix.store, ix.paths, t0)).toBeGreaterThan(0);
-    setDescription("sym:packages/utils/src/date.ts#formatRelativeDate", "Changed.");
+    setDescription("sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate", "Changed.");
     expect(writeCatalogDebounced(ix.store, ix.paths, t0 + CATALOG_DEBOUNCE_MS - 1)).toBe(0);
     expect(writeCatalogDebounced(ix.store, ix.paths, t0 + CATALOG_DEBOUNCE_MS)).toBe(1);
   });
@@ -141,7 +144,10 @@ describe("browse", () => {
   });
 
   it("lists the symbols of a file with their descriptions, and accepts ids and names", () => {
-    setDescription("sym:packages/utils/src/date.ts#formatRelativeDate", "Formats a date relative to now.");
+    setDescription(
+      "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+      "Formats a date relative to now.",
+    );
     const r = browse(ix.store, "packages/utils/src/date.ts");
     expect(r.items[0]).toMatchObject({
       name: "formatRelativeDate",
@@ -150,7 +156,7 @@ describe("browse", () => {
       description: "Formats a date relative to now.",
     });
     expect(r.catalogPath).toBe("packages/utils/src.md");
-    expect(browse(ix.store, "file:packages/utils/src/date.ts").items).toEqual(r.items);
+    expect(browse(ix.store, "file:pnpm-turbo:packages/utils/src/date.ts").items).toEqual(r.items);
     expect(browse(ix.store, "@acme/utils").items).toEqual(browse(ix.store, "ws:@acme/utils").items);
     expect(browse(ix.store, "dir:packages/utils/src/").items).toEqual(
       browse(ix.store, "packages/utils/src").items,

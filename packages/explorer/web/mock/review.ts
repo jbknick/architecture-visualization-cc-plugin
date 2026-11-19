@@ -13,15 +13,16 @@ import type {
   ReviewMark,
   ReviewMarkKind,
 } from "../src/api.ts";
+import { isFileId, isSymId, nameOfSymId, parseId, pathOfId as pathOfAnyId, pathOfSymId } from "../src/ids.ts";
 
-const BUTTON = "sym:packages/ui/src/button.tsx#Button";
-const DATE = "sym:packages/utils/src/date.ts#formatTimeAgo";
-const DATE_BEFORE = "sym:packages/utils/src/date.ts#formatRelativeDate";
-const SLUG = "sym:packages/utils/src/slug.ts#slugify";
-const CARD = "sym:packages/ui/src/card.tsx#Card";
-const POSTLIST = "sym:apps/web/src/components/PostList.tsx#PostList";
-const HOME = "sym:apps/web/src/routes/index.tsx#HomePage";
-const ROUTER = "sym:apps/api/src/router.ts#createRouter";
+const BUTTON = "sym:pnpm-turbo:packages/ui/src/button.tsx#Button";
+const DATE = "sym:pnpm-turbo:packages/utils/src/date.ts#formatTimeAgo";
+const DATE_BEFORE = "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate";
+const SLUG = "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify";
+const CARD = "sym:pnpm-turbo:packages/ui/src/card.tsx#Card";
+const POSTLIST = "sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList";
+const HOME = "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage";
+const ROUTER = "sym:pnpm-turbo:apps/api/src/router.ts#createRouter";
 
 /** Where a map puts ids, and whether one node holds another. */
 export interface MockPlacement {
@@ -50,12 +51,11 @@ const hops: [string, number][] = [
   [HOME, 1],
   [POSTLIST, 1],
   [ROUTER, 1],
-  ["sym:apps/web/src/hooks/useDebounce.ts#useDebounce", 2],
+  ["sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce", 2],
 ];
 
-const USE_DEBOUNCE = "sym:apps/web/src/hooks/useDebounce.ts#useDebounce";
-const pathOfId = (id: string) =>
-  id.startsWith("sym:") ? id.slice(4, id.lastIndexOf("#")) : id.startsWith("file:") ? id.slice(5) : "";
+const USE_DEBOUNCE = "sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce";
+const pathOfId = (id: string) => pathOfAnyId(id) ?? "";
 const WS: Record<string, string> = { apps: "@acme/web", packages: "@acme/ui" };
 
 /** A consumer of the mock review, as the server sends it (names and paths only). */
@@ -69,11 +69,11 @@ function consumer(
   path = pathOfId(id),
   link?: { via: string; next: string },
 ): ReviewConsumer {
-  const name = id.startsWith("sym:")
-    ? id.slice(id.lastIndexOf("#") + 1)
-    : id.startsWith("file:")
+  const name = isSymId(id)
+    ? (nameOfSymId(id) as string)
+    : isFileId(id)
       ? path.slice(path.lastIndexOf("/") + 1)
-      : id.split(":").slice(2).join(":");
+      : (parseId(id)?.rest ?? id);
   return {
     id,
     name,
@@ -96,10 +96,19 @@ const CONSUMERS: Record<string, { direct: ReviewConsumer[]; potential: ReviewCon
       consumer(HOME, "component", 1, ["renders"], ["app"], 7),
     ],
     potential: [
-      consumer("route:@acme/web:/", "route", 2, ["serves"], ["app"], null, "apps/web/src/routes/index.tsx", {
-        via: HOME,
-        next: HOME,
-      }),
+      consumer(
+        "route:pnpm-turbo:@acme/web:/",
+        "route",
+        2,
+        ["serves"],
+        ["app"],
+        null,
+        "apps/web/src/routes/index.tsx",
+        {
+          via: HOME,
+          next: HOME,
+        },
+      ),
     ],
   },
   [DATE]: {
@@ -109,10 +118,10 @@ const CONSUMERS: Record<string, { direct: ReviewConsumer[]; potential: ReviewCon
     ],
   },
   [SLUG]: { direct: [consumer(ROUTER, "function", 1, ["calls"], ["app"], 5)], potential: [] },
-  "file:packages/ui/src/button.tsx": {
+  "file:pnpm-turbo:packages/ui/src/button.tsx": {
     direct: [
-      consumer("file:packages/ui/src/index.ts", "file", 1, ["imports"], [], null),
-      consumer("file:apps/web/src/routes/index.tsx", "file", 1, ["imports"], ["app"], null),
+      consumer("file:pnpm-turbo:packages/ui/src/index.ts", "file", 1, ["imports"], [], null),
+      consumer("file:pnpm-turbo:apps/web/src/routes/index.tsx", "file", 1, ["imports"], ["app"], null),
     ],
     potential: [],
   },
@@ -121,7 +130,8 @@ const CONSUMERS: Record<string, { direct: ReviewConsumer[]; potential: ReviewCon
 /** The consumers of `id` with the nodes that show them on this map (itself, else its file). */
 function consumersOn(id: string, place: MockPlacement): ReviewConsumers {
   const c = CONSUMERS[id] ?? { direct: [], potential: [] };
-  const nodeOf = (x: string, path: string) => place.rep(x) ?? (path ? place.rep(`file:${path}`) : undefined);
+  const nodeOf = (x: string, path: string) =>
+    place.rep(x) ?? (path ? place.rep(`file:pnpm-turbo:${path}`) : undefined);
   const all = [...c.direct, ...c.potential];
   const row = (x: ReviewConsumer): ReviewConsumer => {
     const node = nodeOf(x.id, x.path);
@@ -148,7 +158,9 @@ export function reviewLayer(place: MockPlacement): ReviewLayer {
   const nodeOf = new Map<string, string>();
   const unplaced: string[] = [];
   for (const c of changesOf) {
-    const node = [...c.ids, `file:${c.path}`].map((id) => place.rep(id)).find((x) => x !== undefined);
+    const node = [...c.ids, `file:pnpm-turbo:${c.path}`]
+      .map((id) => place.rep(id))
+      .find((x) => x !== undefined);
     if (!node) {
       unplaced.push(c.id);
       continue;
@@ -160,8 +172,8 @@ export function reviewLayer(place: MockPlacement): ReviewLayer {
     m.changes = (m.changes ?? 0) + 1;
   }
   for (const c of changesOf) {
-    const node = place.rep(`file:${c.path}`);
-    if (node && !placed.has(`file:${c.path}`)) placed.set(`file:${c.path}`, node);
+    const node = place.rep(`file:pnpm-turbo:${c.path}`);
+    if (node && !placed.has(`file:pnpm-turbo:${c.path}`)) placed.set(`file:pnpm-turbo:${c.path}`, node);
     if (node) {
       const m = markOf(node);
       if (!m.change) m.change = "modified";
@@ -238,22 +250,25 @@ export function reviewData(
     map,
     files: [
       {
+        id: "file:pnpm-turbo:packages/ui/src/button.tsx",
         path: "packages/ui/src/button.tsx",
         status: "M",
         changes: 1,
-        consumers: consumersOn("file:packages/ui/src/button.tsx", place),
+        consumers: consumersOn("file:pnpm-turbo:packages/ui/src/button.tsx", place),
       },
       {
+        id: "file:pnpm-turbo:packages/utils/src/date.ts",
         path: "packages/utils/src/date.ts",
         status: "M",
         changes: 1,
-        consumers: consumersOn("file:packages/utils/src/date.ts", place),
+        consumers: consumersOn("file:pnpm-turbo:packages/utils/src/date.ts", place),
       },
       {
+        id: "file:pnpm-turbo:packages/utils/src/slug.ts",
         path: "packages/utils/src/slug.ts",
         status: "D",
         changes: 1,
-        consumers: consumersOn("file:packages/utils/src/slug.ts", place),
+        consumers: consumersOn("file:pnpm-turbo:packages/utils/src/slug.ts", place),
       },
     ],
     changes: [
@@ -370,15 +385,15 @@ const ringPos = (i: number, n: number, h: number, r: number) => {
   const a = -Math.PI / 2 + (2 * Math.PI * (i + (h % 2 === 0 ? 0.5 : 0.25))) / n;
   return { x: Math.round(r * Math.cos(a) * 10) / 10, y: Math.round(r * Math.sin(a) * 10) / 10 };
 };
-const pathOf = (id: string) => id.slice(4, id.lastIndexOf("#"));
-const nameOf = (id: string) => id.slice(id.lastIndexOf("#") + 1);
+const pathOf = (id: string) => pathOfSymId(id) as string;
+const nameOf = (id: string) => nameOfSymId(id) as string;
 const RING0: { id: string; kind: string; change: "modified" | "renamed" | "removed"; sig: boolean }[] = [
   { id: BUTTON, kind: "component", change: "modified", sig: true },
   { id: DATE, kind: "function", change: "renamed", sig: true },
   { id: SLUG, kind: "function", change: "removed", sig: false },
 ];
 const RING1 = [CARD, HOME, POSTLIST, ROUTER];
-const RING2 = ["sym:apps/web/src/hooks/useDebounce.ts#useDebounce"];
+const RING2 = ["sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce"];
 
 function slotsOf(ids: string[]): { n: number; at: Map<string, number> } {
   const sorted = [...ids].sort((a, b) =>
@@ -445,7 +460,7 @@ export const ringEdges: GraphEdge[] = [
   edge(HOME, BUTTON),
   edge(POSTLIST, DATE, "calls"),
   edge(ROUTER, SLUG, "calls"),
-  edge("sym:apps/web/src/hooks/useDebounce.ts#useDebounce", POSTLIST, "calls"),
+  edge("sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce", POSTLIST, "calls"),
 ];
 
 /** Rings mode of the mock review view: the ring nodes are the layer's nodes. */
