@@ -77,13 +77,13 @@ rg -n "<wrapper or instance names found in the first pass>" <frontend dir>
 rg -n "router\.(get|post|put|patch|delete)|\.route\(|\.use\(" <backend dir>
 ```
 
-| Case                    | Repos (role)                                              | Frontend dir | Second-pass grep (after the first pass found these names)                   |
-| ----------------------- | --------------------------------------------------------- | ------------ | --------------------------------------------------------------------------- |
-| `linking-blogdev`       | `blogdev` (tuning)                                        | `client/src` | `rg -n "getAPI\(\|postAPI\(\|putAPI\(\|patchAPI\(\|deleteAPI\(" client/src` |
-| `linking-insta`         | `insta` (tuning)                                          | `client/src` | `rg -n "BASE_URL\|axios\.(get\|post\|put\|patch\|delete)\(" client/src`     |
-| `linking-conduit-hooks` | `conduit-hooks-web` + `conduit-express-ts` (tuning)       | `src`        | `rg -n "API\.(get\|post\|put\|patch\|delete)\(" src`                        |
-| `linking-pos`           | `pos` (held-out)                                          | `apps/web`   | `rg -n "apiFetch\(\|bridgeFetch\(\|apiBase\(" apps/web`                     |
-| `linking-conduit-redux` | `conduit-redux-web` + `conduit-express-prisma` (held-out) | `src`        | `rg -n "axios\.(get\|post\|put\|patch\|delete)\(" src`                      |
+| Case                    | Repos (role)                                              | Frontend dir          | Second-pass grep (after the first pass found these names)                       |
+| ----------------------- | --------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------- |
+| `linking-blogdev`       | `blogdev` (tuning)                                        | `client/src`          | `rg -n "getAPI\(\|postAPI\(\|putAPI\(\|patchAPI\(\|deleteAPI\(" client/src`     |
+| `linking-insta`         | `insta` (tuning)                                          | `client/src`          | `rg -n "BASE_URL\|axios\.(get\|post\|put\|patch\|delete)\(" client/src`         |
+| `linking-conduit-hooks` | `conduit-hooks-web` + `conduit-express-ts` (tuning)       | `src`                 | `rg -n "API\.(get\|post\|put\|patch\|delete)\(" src`                            |
+| `linking-meetmind`      | `meetmind-ai` (held-out, client and server in one repo)   | `meetmind-client/src` | `rg -n "\bapi\.(get\|post\|put\|patch\|delete)\(\|\bapi\(" meetmind-client/src` |
+| `linking-conduit-redux` | `conduit-redux-web` + `conduit-express-prisma` (held-out) | `src`                 | `rg -n "axios\.(get\|post\|put\|patch\|delete)\(" src`                          |
 
 Notes by case:
 
@@ -97,10 +97,11 @@ Notes by case:
 - **conduit-hooks.** `src/api/APIUtils.ts` sets `axios.defaults.baseURL` to the deployed Conduit API
   origin plus `/api` and exports `axios` as `API`; the origin is dropped. `conduit-express-ts` mounts
   `MainRouter` at `/api`; its `users` router is mounted at `/`, so `/api/user` and `/api/users` are served.
-- **pos.** `apiFetch(path)` requests `` `${API_BASE}/api/v1${path}` ``, with `API_BASE` from `VITE_API_URL`
-  (default `http://localhost:4000`). The print bridge calls go to a URL the user stores in `localStorage`
-  and are `dynamic`; the service worker's `fetch(req)` forwards whatever request it was given (`dynamic`).
-  The other frontend features read mock data and make no request.
+- **meetmind.** One axios instance, `api` in `meetmind-client/src/services/api.ts`, with `baseURL` from
+  `VITE_API_URL` (default `http://localhost:5000/api`); every call passes a literal or template path. The two
+  `api(original)` calls in its 401 interceptor retry whatever request failed (`dynamic`). The server mounts
+  `auth`, `users`, `meetings`, `tasks` and `admin` routers under `/api` in `meetmind-server/src/app.ts`.
+  This case replaced `pos`, which had only 6 linkable sites (7 `apiFetch` calls, the rest mock data).
 - **conduit-redux.** Every request is in `src/services/conduit.ts`; `axios.defaults.baseURL` is
   `settings.baseApiUrl` (the deployed API origin plus `/api/`, dropped). `conduit-express-prisma` mounts all
   controllers under `/api` in `src/routes/routes.ts`.
@@ -112,9 +113,9 @@ Notes by case:
 | `linking-blogdev`       |     38 |       32 | 1 external, 5 wrapper_body |
 | `linking-insta`         |     52 |       50 | 2 external                 |
 | `linking-conduit-hooks` |     22 |       22 | none                       |
-| `linking-pos`           |     14 |        6 | 2 wrapper_body, 6 dynamic  |
+| `linking-meetmind`      |     31 |       29 | 2 dynamic                  |
 | `linking-conduit-redux` |     19 |       19 | none                       |
 
 A case needs 20 linkable labels. `linking-conduit-redux` has 19: the maintainer accepted that, and the file
 records it as `"minLinkable": { "count": 19, "reason": "..." }` (a per-case minimum below 20, never a global
-one). `linking-pos` has 6 and is being replaced; `check-labels` reports it until then.
+one).

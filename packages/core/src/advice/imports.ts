@@ -1,5 +1,6 @@
 import { builtinModules } from "node:module";
 import { fileId, isFileId } from "../ids.js";
+import { languageOfPath } from "../lang/index.js";
 import type { ParsedFile } from "../parse/index.js";
 import type { Store } from "../store/index.js";
 import type { WorkspaceRecord } from "../types.js";
@@ -29,6 +30,8 @@ const SCHEME_RE = /^[a-z][a-z0-9+.-]+:/i;
 
 export function checkImports(store: Store, filePath: string, parsed: ParsedFile): ImportFinding[] {
   const rel = normPath(filePath);
+  const mod = languageOfPath(rel);
+  if (mod && mod.id !== "typescript") return []; // package.json rules; other languages have none yet
   const all = store.listWorkspaces();
   if (all.length === 0) return [];
   const ws = workspaceForPath(all, rel);

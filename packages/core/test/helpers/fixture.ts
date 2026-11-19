@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export type FixtureName = "single-pkg" | "pnpm-turbo" | "nx" | "adapters";
+export type FixtureName = "single-pkg" | "pnpm-turbo" | "nx" | "adapters" | "go-basic";
 
 export interface MaterializedFixture {
   dir: string;
