@@ -1,11 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { syncBacklog } from "../describe/backlog.js";
-import { contentKey } from "../describe/factsheet.js";
+import { contentKey, FUNCTION_LIKE_KINDS } from "../describe/factsheet.js";
 import { cleanupData, type Indexed, indexedFixture } from "../describe/testkit.js";
-import { type Embedder, embedPending, offlineEmbedder, vecAvailable } from "../embed/index.js";
+import {
+  type Embedder,
+  embedPending,
+  ensureVecTables,
+  offlineEmbedder,
+  putVectors,
+  vecAvailable,
+} from "../embed/index.js";
 import { refreshDescriptionFts } from "./descfts.js";
 import { ftsSearch } from "./fts.js";
-import { hybridSearch } from "./hybrid.js";
+import { hybridSearch, VECTOR_MIN_COSINE } from "./hybrid.js";
 
 /** Deterministic stand-in for the model: hashed bag of words, L2-normalized. Never loads the real model. */
 function fakeEmbedder(dim = 64): Embedder {
@@ -95,7 +102,55 @@ describe("description columns of fts_symbols", () => {
   });
 });
 
+/**
+ * Stub model for the weak-neighbour tests: the query is the unit vector on axis 0, and every function-like symbol
+ * except `skip` gets a stored vector at cosine `cosine` to it, on its own axis, so nothing is downloaded.
+ */
+function storeWeakVectors(cosine: number, skip: string[]): Embedder {
+  const dim = 32;
+  const embedder: Embedder = {
+    dim,
+    modelId: "fake/test-model",
+    available: true,
+    async embed(texts) {
+      return texts.map(() => Float32Array.from({ length: dim }, (_, i) => (i === 0 ? 1 : 0)));
+    },
+  };
+  ensureVecTables(ix.store, dim, embedder.modelId);
+  const rows = ix.store
+    .effectiveSymbols({ kind: [...FUNCTION_LIKE_KINDS] })
+    .filter((s) => s.exactHash !== "" && !skip.includes(s.name))
+    .map((s, n) => ({
+      contentKey: contentKey(s.exactHash),
+      vector: Float32Array.from({ length: dim }, (_, i) =>
+        i === 0 ? cosine : i === (n % (dim - 1)) + 1 ? Math.sqrt(1 - cosine * cosine) : 0,
+      ),
+    }));
+  putVectors(ix.store, "vec_descriptions", rows);
+  return embedder;
+}
+
 describe("hybridSearch", () => {
+  it("keeps the top keyword hit first when the vector half is only weak neighbours that omit it", async () => {
+    describeAll();
+    if (!vecAvailable(ix.store)) return;
+    const query = "turn a title into a url slug";
+    const keywordOnly = await hybridSearch(ix.store, query, { limit: 5 });
+    expect(keywordOnly[0]?.name).toBe("slugify");
+    const embedder = storeWeakVectors(VECTOR_MIN_COSINE - 0.1, ["slugify"]);
+    const hits = await hybridSearch(ix.store, query, { embedder, limit: 5 });
+    expect(hits.map((h) => h.id)).toEqual(keywordOnly.map((h) => h.id));
+    expect(hits[0]?.name).toBe("slugify");
+  });
+
+  it("still fuses vector hits at or above the cosine floor", async () => {
+    describeAll();
+    if (!vecAvailable(ix.store)) return;
+    const embedder = storeWeakVectors(VECTOR_MIN_COSINE + 0.2, ["slugify"]);
+    const hits = await hybridSearch(ix.store, "turn a title into a url slug", { embedder, limit: 5 });
+    expect(hits[0]?.name).not.toBe("slugify");
+  });
+
   it("finds slugify from a query worded by meaning, with vectors", async () => {
     describeAll();
     if (!vecAvailable(ix.store)) return; // no sqlite-vec on this platform: the keyword test below covers it
