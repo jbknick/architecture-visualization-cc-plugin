@@ -97,10 +97,11 @@ describe("diskCheck: the exact tier on a renamed copy (#151)", () => {
     const sym = parsed.symbols.find((x) => x.name === name);
     const range = sym && parsed.bodies.get(sym.id);
     if (!sym || !range) throw new Error("no symbol");
-    const h = hashSymbol(source, range, "ts");
+    const h = hashSymbol(source, range, rel);
     const fileId = `file:repo:${rel}`;
     const rec: SymbolRecord = {
       ...sym,
+      lang: "typescript",
       fileId,
       exactHash: h.exactHash,
       ...(opts.renamed === false ? {} : { renamedHash: h.renamedHash }),
@@ -112,7 +113,15 @@ describe("diskCheck: the exact tier on a renamed copy (#151)", () => {
     store.setMeta("repo", "repo");
     store.replaceFile(
       "main",
-      { id: fileId, path: rel, workspaceId: null, contentHash: rel, mtimeMs: 0, deleted: false },
+      {
+        id: fileId,
+        path: rel,
+        lang: "typescript",
+        workspaceId: null,
+        contentHash: rel,
+        mtimeMs: 0,
+        deleted: false,
+      },
       [rec],
       [],
     );

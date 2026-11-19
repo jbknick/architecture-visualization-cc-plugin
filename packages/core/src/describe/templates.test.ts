@@ -14,9 +14,9 @@ function symbolsOf(
   for (const s of parsed.symbols) {
     const body = parsed.bodies.get(s.id);
     const h = body
-      ? hashSymbol(source, body, path.endsWith(".tsx") ? "tsx" : "ts")
+      ? hashSymbol(source, body, path)
       : { exactHash: "", shapeHash: "", minhash: new Uint32Array(64) };
-    syms.set(s.name, { ...s, ...h });
+    syms.set(s.name, { ...s, lang: "typescript", ...h });
   }
   return { syms, parsed };
 }

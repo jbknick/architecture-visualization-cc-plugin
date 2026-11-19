@@ -337,8 +337,8 @@ kbd {
   position: absolute;
   z-index: 10;
   top: 42px;
-  left: 0;
   right: 0;
+  width: max(100%, 340px); /* wide enough for name, kind, language and path */
   max-height: 420px;
   overflow-y: auto;
   background: var(--surface);
@@ -373,6 +373,7 @@ kbd {
 }
 .hit-tag {
   font-size: 12px;
+  white-space: nowrap;
   color: var(--muted);
 }
 .hit-path {

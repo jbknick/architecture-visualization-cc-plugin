@@ -564,10 +564,16 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
               </section>
             )}
 
-            {isSymbol && (
+            {(isSymbol || (isFile && body?.langLabel !== undefined)) && (
               <section>
                 <h3>Details</h3>
                 <dl className="fan">
+                  {body?.langLabel !== undefined && (
+                    <div>
+                      <dt>Language</dt>
+                      <dd>{body.langLabel}</dd>
+                    </div>
+                  )}
                   {body?.exported !== undefined && (
                     <div>
                       <dt>Exported</dt>

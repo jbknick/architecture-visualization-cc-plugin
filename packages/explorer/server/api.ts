@@ -10,6 +10,7 @@ import {
   isSensitive,
   isSymId,
   kindOfId,
+  langLabel,
   MAX_FILE_BYTES,
   nameOfSymId,
   pathOfFileId,
@@ -33,6 +34,8 @@ export interface SearchHit {
   id: string;
   name: string;
   kind: string;
+  lang: string;
+  langLabel: string;
   path: string;
   line: number;
   exported: boolean;
@@ -194,6 +197,8 @@ function node(ctx: ApiContext, id: string) {
         id: s.id,
         kind: s.kind,
         name: s.name,
+        lang: s.lang,
+        langLabel: langLabel(s.lang),
         path: f?.path ?? null,
         workspaceId: f?.workspaceId ?? null,
         line: s.startLine,
@@ -205,7 +210,17 @@ function node(ctx: ApiContext, id: string) {
     }
   } else if (isFileId(id)) {
     const f = files.get(id);
-    if (f) nodeBody = { id: f.id, kind: "file", name: f.path, path: f.path, workspaceId: f.workspaceId };
+    if (f) {
+      nodeBody = {
+        id: f.id,
+        kind: "file",
+        name: f.path,
+        lang: f.lang,
+        langLabel: langLabel(f.lang),
+        path: f.path,
+        workspaceId: f.workspaceId,
+      };
+    }
   } else if (kindOfId(id) === "route") {
     const r = store.effectiveAdapterNodes({ kind: "route" }).find((x) => x.id === id);
     if (r) {
@@ -302,6 +317,8 @@ async function search(ctx: ApiContext, raw: string): Promise<{ hits: SearchHit[]
     id: h.id,
     name: h.name,
     kind: h.kind,
+    lang: h.lang,
+    langLabel: langLabel(h.lang),
     path: h.path,
     line: h.line,
     exported: store.getSymbol(h.id)?.exported ?? false,
@@ -323,6 +340,8 @@ async function search(ctx: ApiContext, raw: string): Promise<{ hits: SearchHit[]
         id: s.id,
         name: s.name,
         kind: s.kind,
+        lang: s.lang,
+        langLabel: langLabel(s.lang),
         path: files.get(s.fileId)?.path ?? "",
         line: s.startLine,
         exported: s.exported,
