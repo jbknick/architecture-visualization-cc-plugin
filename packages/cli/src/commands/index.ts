@@ -4,6 +4,7 @@ import {
   indexRepo,
   type Layer,
   openStore,
+  reattachOverlay,
   resetStaleStore,
   resolvePaths,
 } from "@gantry/core";
@@ -32,6 +33,7 @@ export function registerIndex(program: Command): void {
         const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
         try {
           const r = await indexRepo(paths, { layer: opts.layer as Layer, files: opts.files, store });
+          reattachOverlay(store);
           if (opts.dump) {
             for (const line of summaryLines(r, paths.dataDir)) process.stderr.write(`${line}\n`);
             writeStdout(`${JSON.stringify(dumpGraph(store), null, 2)}\n`);

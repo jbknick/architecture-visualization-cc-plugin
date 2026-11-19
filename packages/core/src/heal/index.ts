@@ -8,6 +8,7 @@ import { isIndexable } from "../discover/index.js";
 import { rebuildSimilarEdges } from "../dup/index.js";
 import { fileId } from "../ids.js";
 import { indexRepo } from "../indexer.js";
+import { reattachOverlay } from "../overlay/reattach.js";
 import type { GantryPaths } from "../paths/index.js";
 import { refreshDescriptionFts } from "../search/descfts.js";
 import { openStore, type Store } from "../store/index.js";
@@ -248,6 +249,8 @@ export async function heal(
       } catch {
         // the catalog is a convenience; a failed write must not fail a heal
       }
+      // Hand-picked overlay entries follow their function to its new id (spec section 11).
+      reattachOverlay(store);
     }
     return done(changed, full);
   });
@@ -337,6 +340,7 @@ export async function refreshWorking(
     const after = layerRows(store, "working");
     let cleared = 0;
     for (const id of before) if (!after.has(id)) cleared++;
+    if (targets.size > 0 || cleared > 0) reattachOverlay(store);
     return { reindexed: reindex.length, cleared, ms: Math.round(performance.now() - t0) };
   });
 }

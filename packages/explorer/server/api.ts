@@ -13,6 +13,7 @@ import {
   isSymId,
   kindOfId,
   langLabel,
+  listUnresolved,
   MAX_FILE_BYTES,
   nameOfSymId,
   pathOfFileId,
@@ -81,7 +82,7 @@ export function handleApi(ctx: ApiContext, pathname: string, query: URLSearchPar
       return getLayout(ctx.store, decodeSegment(segments[2]));
     case "overlay":
       if (segments.length > 2) throw new HttpError(404, "Unknown API route");
-      return readOverlay(ctx.store);
+      return { ...readOverlay(ctx.store), unresolved: listUnresolved(ctx.store) };
     default:
       throw new HttpError(404, "Unknown API route");
   }

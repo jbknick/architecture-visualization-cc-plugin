@@ -3,7 +3,7 @@ import type Database from "better-sqlite3";
 
 /**
  * The overlay: `<dataDir>/overlay.db`, a second SQLite file attached to every store connection as `overlay`.
- * It holds what a person decided (duplicate dismissals, saved node positions, labels, hidden parts, groups, saved views), so deleting and rebuilding
+ * It holds what a person decided (duplicate dismissals, saved node positions, labels, hidden parts, groups, saved views, the `exactHash` anchors that re-attach them after a move), so deleting and rebuilding
  * `gantry.db` (spec section 9, `resetStaleStore`) never loses it.
  *
  * Rule for this file: tables are only ever added, with `CREATE TABLE IF NOT EXISTS`; they are never dropped or
@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS overlay.hidden(position INTEGER PRIMARY KEY, selector
 CREATE TABLE IF NOT EXISTS overlay.groups(id TEXT PRIMARY KEY, name TEXT NOT NULL, selectors TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS overlay.group_rules(group_id TEXT PRIMARY KEY, may_use TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS overlay.views(id TEXT PRIMARY KEY, name TEXT NOT NULL, spec TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS overlay.anchors(node_id TEXT PRIMARY KEY, exact_hash TEXT NOT NULL);
 `;
 
 /** Attaches the overlay file as `overlay` and makes sure its tables exist. `":memory:"` attaches a private in-memory one. */
