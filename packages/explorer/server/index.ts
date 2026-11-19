@@ -27,6 +27,12 @@ export type {
   ViewResult,
 } from "./types.js";
 export { buildExplorerUrl, type ExplorerUrlOptions } from "./url.js";
+export {
+  buildDuplicates,
+  type DupCluster,
+  type DuplicatesResult,
+  type DupMember,
+} from "./views/duplicates.js";
 export { getView, listViews, registerView } from "./views/index.js";
 export {
   clearReviewCache,

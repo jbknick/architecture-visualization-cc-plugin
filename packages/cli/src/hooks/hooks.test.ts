@@ -1309,6 +1309,21 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     );
   });
 
+  it("hooks install warns when no plugin data directory is found, and stays quiet with one", async () => {
+    const fx = await fixture();
+    const bare = { CLAUDE_PLUGIN_DATA: "", CLAUDE_PLUGIN_ROOT: "" };
+    const w = gantry(fx.dir, ["hooks", "install"], bare);
+    expect(w.code).toBe(0);
+    expect(w.err).toContain("gantry: warning: no plugin data directory found; the git hooks will read ");
+    expect(w.err).toContain("Run this from /gantry:init or set CLAUDE_PLUGIN_DATA.");
+    gantry(fx.dir, ["hooks", "uninstall"], bare);
+    const ok = gantry(fx.dir, ["hooks", "install"]);
+    expect(ok.err).not.toContain("no plugin data directory found");
+    expect(readFileSync(join(fx.dir, ".git/hooks/post-merge"), "utf8")).toContain(
+      `CLAUDE_PLUGIN_DATA='${dataRoot}'`,
+    );
+  });
+
   it("an install against the default data dir writes the plain call line", () => {
     const line = hookScript("pre-commit", false).split("\n")[1];
     expect(line).toBe(

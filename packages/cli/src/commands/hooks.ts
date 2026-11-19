@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { resolvePaths } from "@gantry/core";
 import type { Command } from "commander";
-import { installHooks, uninstallHooks } from "../hooks/install.js";
+import { hookDataBase, installHooks, uninstallHooks } from "../hooks/install.js";
 import { EXIT_OK, fail } from "./shared.js";
 
 // Bundled to plugin/dist/cli.js, so this file is the CLI the shim must point at.
@@ -16,7 +16,13 @@ export function registerHooks(program: Command): void {
     .description("Write ~/.gantry/bin/gantry and the git hooks, chaining any existing hooks")
     .action(() => {
       try {
-        const r = installHooks(resolvePaths(process.cwd()), { cliPath });
+        const paths = resolvePaths(process.cwd());
+        const r = installHooks(paths, { cliPath });
+        if (hookDataBase(paths) === undefined) {
+          process.stderr.write(
+            `gantry: warning: no plugin data directory found; the git hooks will read ${paths.dataDir}. Run this from /gantry:init or set CLAUDE_PLUGIN_DATA.\n`,
+          );
+        }
         process.stdout.write(`Installed Gantry hooks in ${r.dir}\n`);
         for (const n of r.chained) process.stdout.write(`  chained existing ${n}\n`);
         for (const w of r.warnings) process.stderr.write(`gantry: ${w}\n`);
