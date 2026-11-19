@@ -32,6 +32,13 @@
       "contentHash": "d6d44bb21f5bc8ecf4c8246fb947aee5c6f86957bdde378d39a8d4ee491d0b47"
     },
     {
+      "id": "file:go-basic:internal/app/app.go",
+      "path": "internal/app/app.go",
+      "lang": "go",
+      "workspaceId": "ws:example.com/gobasic",
+      "contentHash": "fb4741eef6bd517d860d9fecee9e6a0054999dda8a8f1a6b924c6eaddcb72a2f"
+    },
+    {
       "id": "file:go-basic:internal/gen/zz_generated.go",
       "path": "internal/gen/zz_generated.go",
       "lang": "go",
@@ -60,7 +67,7 @@
       "path": "internal/store/store.go",
       "lang": "go",
       "workspaceId": "ws:example.com/gobasic",
-      "contentHash": "69e3acd88b1fdaa5122d6ffc44205dd95489b1bd372eb5695e39bf2c670cac3c"
+      "contentHash": "ea8cf5375c3438e2fb525437a6195dfdcae5182e327b28ac62fc7373eb646637"
     },
     {
       "id": "file:go-basic:internal/store/store_test.go",
@@ -121,6 +128,86 @@
       "stmtCount": 7,
       "exactHash": "d22104107928b40911996a2f9a8d36e1",
       "shapeHash": "8af3fb36a71a1da827dbbc2280bc0177"
+    },
+    {
+      "id": "sym:go-basic:internal/app/app.go#App",
+      "fileId": "file:go-basic:internal/app/app.go",
+      "name": "App",
+      "kind": "class",
+      "lang": "go",
+      "exported": true,
+      "signature": "",
+      "startLine": 15,
+      "endLine": 17,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "454cb2ecb10004b2670b10c75787c9e9",
+      "shapeHash": "daa4c8673057ccdfcdb33c4ce0dc9c29"
+    },
+    {
+      "id": "sym:go-basic:internal/app/app.go#App.Run",
+      "fileId": "file:go-basic:internal/app/app.go",
+      "name": "App.Run",
+      "kind": "method",
+      "lang": "go",
+      "exported": true,
+      "signature": "(title string) string",
+      "startLine": 25,
+      "endLine": 29,
+      "loc": 5,
+      "complexity": 1,
+      "stmtCount": 3,
+      "exactHash": "80e17f9623c7f0549ff67612d6738507",
+      "shapeHash": "9520893d4018e2c4801daddeff6269d9"
+    },
+    {
+      "id": "sym:go-basic:internal/app/app.go#Deps",
+      "fileId": "file:go-basic:internal/app/app.go",
+      "name": "Deps",
+      "kind": "class",
+      "lang": "go",
+      "exported": true,
+      "signature": "",
+      "startLine": 10,
+      "endLine": 12,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "dea0b4d9d2c3b91d3676bcc96c70f1ff",
+      "shapeHash": "d08e1713e0eeff7fe8ee6935fc45d70f"
+    },
+    {
+      "id": "sym:go-basic:internal/app/app.go#New",
+      "fileId": "file:go-basic:internal/app/app.go",
+      "name": "New",
+      "kind": "function",
+      "lang": "go",
+      "exported": true,
+      "signature": "() *App",
+      "startLine": 20,
+      "endLine": 22,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "9a9a72322c851637a6333aecb0962102",
+      "shapeHash": "7bc2c52dd3d7e58956001316cce3a9d7"
+    },
+    {
+      "id": "sym:go-basic:internal/app/app.go#clean",
+      "fileId": "file:go-basic:internal/app/app.go",
+      "name": "clean",
+      "kind": "function",
+      "lang": "go",
+      "exported": false,
+      "signature": "(s string) string",
+      "startLine": 31,
+      "endLine": 33,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "e23b461cbfa8e851192b8c81aea85a07",
+      "shapeHash": "d2ef05adce9beafda639fa38ca977ad1"
     },
     {
       "id": "sym:go-basic:internal/gen/zz_generated.go#Describe",
@@ -187,6 +274,86 @@
       "shapeHash": "7c5235091071599a08a23c553b42d355"
     },
     {
+      "id": "sym:go-basic:internal/store/store.go#Cache",
+      "fileId": "file:go-basic:internal/store/store.go",
+      "name": "Cache",
+      "kind": "class",
+      "lang": "go",
+      "exported": true,
+      "signature": "",
+      "startLine": 48,
+      "endLine": 51,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "2dbb1da38ae1a044dc90ed40392794a9",
+      "shapeHash": "374320081e1745bd59494b0374fcb316"
+    },
+    {
+      "id": "sym:go-basic:internal/store/store.go#Dump",
+      "fileId": "file:go-basic:internal/store/store.go",
+      "name": "Dump",
+      "kind": "function",
+      "lang": "go",
+      "exported": true,
+      "signature": "(stores []*Store, key string) int",
+      "startLine": 65,
+      "endLine": 73,
+      "loc": 9,
+      "complexity": 3,
+      "stmtCount": 6,
+      "exactHash": "6f8596c5971734945e059317ae6a9008",
+      "shapeHash": "75506bf87d2f781fb6492bdbdd7cb9c7"
+    },
+    {
+      "id": "sym:go-basic:internal/store/store.go#Lookup",
+      "fileId": "file:go-basic:internal/store/store.go",
+      "name": "Lookup",
+      "kind": "function",
+      "lang": "go",
+      "exported": true,
+      "signature": "(r Reader, key string) string",
+      "startLine": 59,
+      "endLine": 62,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "deed279a569824a32ca0c2b0dd0939e4",
+      "shapeHash": "b4bb98008c31f15d108350324ebde37a"
+    },
+    {
+      "id": "sym:go-basic:internal/store/store.go#Mirror",
+      "fileId": "file:go-basic:internal/store/store.go",
+      "name": "Mirror",
+      "kind": "class",
+      "lang": "go",
+      "exported": true,
+      "signature": "",
+      "startLine": 38,
+      "endLine": 40,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "9cd24d175fe61abb6bace0c2f3d06525",
+      "shapeHash": "daa4c8673057ccdfcdb33c4ce0dc9c29"
+    },
+    {
+      "id": "sym:go-basic:internal/store/store.go#Mirror.Get",
+      "fileId": "file:go-basic:internal/store/store.go",
+      "name": "Mirror.Get",
+      "kind": "method",
+      "lang": "go",
+      "exported": true,
+      "signature": "(key string) (string, bool)",
+      "startLine": 43,
+      "endLine": 45,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "0f87a7c2a8a7598111ceffc257adc842",
+      "shapeHash": "4b09a0db1decbc3f6fc0165ab4e7fbef"
+    },
+    {
       "id": "sym:go-basic:internal/store/store.go#New",
       "fileId": "file:go-basic:internal/store/store.go",
       "name": "New",
@@ -217,6 +384,22 @@
       "stmtCount": 0,
       "exactHash": "1e32005d1e5028eb296ab49bc1184aa2",
       "shapeHash": "b3eba5b387d4f1bbe54188d41b2ec3d6"
+    },
+    {
+      "id": "sym:go-basic:internal/store/store.go#Reader.Get",
+      "fileId": "file:go-basic:internal/store/store.go",
+      "name": "Reader.Get",
+      "kind": "method",
+      "lang": "go",
+      "exported": true,
+      "signature": "(key string) (string, bool)",
+      "startLine": 8,
+      "endLine": 8,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "3677fc5f74a874c07cd3f4efc03867d0",
+      "shapeHash": "d928d44fac7f3135d66fb654a0fc5750"
     },
     {
       "id": "sym:go-basic:internal/store/store.go#Store",
@@ -265,6 +448,22 @@
       "stmtCount": 3,
       "exactHash": "17f176f5058be4819b6ae0b96d2dcd6a",
       "shapeHash": "5ad2284278383626285951da9d67d2c3"
+    },
+    {
+      "id": "sym:go-basic:internal/store/store.go#Warm",
+      "fileId": "file:go-basic:internal/store/store.go",
+      "name": "Warm",
+      "kind": "function",
+      "lang": "go",
+      "exported": true,
+      "signature": "(c *Cache)",
+      "startLine": 54,
+      "endLine": 56,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "6bc2bcb0cd77c46484e788ac95153cc6",
+      "shapeHash": "7bf8c1d2cfb7df59ad90dd5894218d73"
     },
     {
       "id": "sym:go-basic:internal/store/store_test.go#TestPutGet",
@@ -502,6 +701,51 @@
       "fileId": "file:go-basic:cmd/server/main.go"
     },
     {
+      "src": "file:go-basic:internal/app/app.go",
+      "dst": "sym:go-basic:internal/app/app.go#App",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/app/app.go"
+    },
+    {
+      "src": "file:go-basic:internal/app/app.go",
+      "dst": "sym:go-basic:internal/app/app.go#App.Run",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/app/app.go"
+    },
+    {
+      "src": "file:go-basic:internal/app/app.go",
+      "dst": "sym:go-basic:internal/app/app.go#Deps",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/app/app.go"
+    },
+    {
+      "src": "file:go-basic:internal/app/app.go",
+      "dst": "sym:go-basic:internal/app/app.go#New",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/app/app.go"
+    },
+    {
+      "src": "file:go-basic:internal/app/app.go",
+      "dst": "sym:go-basic:internal/app/app.go#clean",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/app/app.go"
+    },
+    {
       "src": "file:go-basic:internal/gen/zz_generated.go",
       "dst": "sym:go-basic:internal/gen/zz_generated.go#Describe",
       "kind": "contains",
@@ -539,6 +783,51 @@
     },
     {
       "src": "file:go-basic:internal/store/store.go",
+      "dst": "sym:go-basic:internal/store/store.go#Cache",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "file:go-basic:internal/store/store.go",
+      "dst": "sym:go-basic:internal/store/store.go#Dump",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "file:go-basic:internal/store/store.go",
+      "dst": "sym:go-basic:internal/store/store.go#Lookup",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "file:go-basic:internal/store/store.go",
+      "dst": "sym:go-basic:internal/store/store.go#Mirror",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "file:go-basic:internal/store/store.go",
+      "dst": "sym:go-basic:internal/store/store.go#Mirror.Get",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "file:go-basic:internal/store/store.go",
       "dst": "sym:go-basic:internal/store/store.go#New",
       "kind": "contains",
       "confidence": "high",
@@ -549,6 +838,15 @@
     {
       "src": "file:go-basic:internal/store/store.go",
       "dst": "sym:go-basic:internal/store/store.go#Reader",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "file:go-basic:internal/store/store.go",
+      "dst": "sym:go-basic:internal/store/store.go#Reader.Get",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
@@ -576,6 +874,15 @@
     {
       "src": "file:go-basic:internal/store/store.go",
       "dst": "sym:go-basic:internal/store/store.go#Store.Put",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "file:go-basic:internal/store/store.go",
+      "dst": "sym:go-basic:internal/store/store.go#Warm",
       "kind": "contains",
       "confidence": "high",
       "count": 1,
@@ -709,6 +1016,237 @@
       "fileId": "file:go-basic:tools/main.go"
     },
     {
+      "src": "sym:go-basic:cmd/server/main.go#main",
+      "dst": "sym:go-basic:internal/store/store.go#New",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "cmd/server/main.go:11"
+      ],
+      "fileId": "file:go-basic:cmd/server/main.go"
+    },
+    {
+      "src": "sym:go-basic:cmd/server/main.go#main",
+      "dst": "sym:go-basic:internal/store/store.go#Store.Get",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "cmd/server/main.go:13"
+      ],
+      "fileId": "file:go-basic:cmd/server/main.go"
+    },
+    {
+      "src": "sym:go-basic:cmd/server/main.go#main",
+      "dst": "sym:go-basic:internal/store/store.go#Store.Put",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "cmd/server/main.go:12"
+      ],
+      "fileId": "file:go-basic:cmd/server/main.go"
+    },
+    {
+      "src": "sym:go-basic:cmd/server/main.go#main",
+      "dst": "sym:go-basic:internal/text/slug.go#Slugify",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "cmd/server/main.go:18"
+      ],
+      "fileId": "file:go-basic:cmd/server/main.go"
+    },
+    {
+      "src": "sym:go-basic:internal/app/app.go#App.Run",
+      "dst": "sym:go-basic:internal/app/app.go#clean",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/app/app.go:28"
+      ],
+      "fileId": "file:go-basic:internal/app/app.go"
+    },
+    {
+      "src": "sym:go-basic:internal/app/app.go#App.Run",
+      "dst": "sym:go-basic:internal/store/store.go#Store.Get",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/app/app.go:27"
+      ],
+      "fileId": "file:go-basic:internal/app/app.go"
+    },
+    {
+      "src": "sym:go-basic:internal/app/app.go#App.Run",
+      "dst": "sym:go-basic:internal/store/store.go#Store.Put",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/app/app.go:26"
+      ],
+      "fileId": "file:go-basic:internal/app/app.go"
+    },
+    {
+      "src": "sym:go-basic:internal/app/app.go#App.Run",
+      "dst": "sym:go-basic:internal/text/slug.go#Slugify",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/app/app.go:26"
+      ],
+      "fileId": "file:go-basic:internal/app/app.go"
+    },
+    {
+      "src": "sym:go-basic:internal/app/app.go#New",
+      "dst": "sym:go-basic:internal/store/store.go#New",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/app/app.go:21"
+      ],
+      "fileId": "file:go-basic:internal/app/app.go"
+    },
+    {
+      "src": "sym:go-basic:internal/app/app.go#clean",
+      "dst": "sym:go-basic:internal/text/slug.go#Slugify",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/app/app.go:32"
+      ],
+      "fileId": "file:go-basic:internal/app/app.go"
+    },
+    {
+      "src": "sym:go-basic:internal/store/store.go#Cache",
+      "dst": "sym:go-basic:internal/store/store.go#Reader",
+      "kind": "implements",
+      "confidence": "low",
+      "count": 1,
+      "evidence": [
+        "internal/store/store.go:48"
+      ],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "sym:go-basic:internal/store/store.go#Cache",
+      "dst": "sym:go-basic:internal/store/store.go#Store",
+      "kind": "extends",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/store/store.go:49"
+      ],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "sym:go-basic:internal/store/store.go#Dump",
+      "dst": "sym:go-basic:internal/store/store.go#Store.Get",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/store/store.go:68"
+      ],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "sym:go-basic:internal/store/store.go#Lookup",
+      "dst": "sym:go-basic:internal/store/store.go#Reader.Get",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/store/store.go:60"
+      ],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "sym:go-basic:internal/store/store.go#Mirror",
+      "dst": "sym:go-basic:internal/store/store.go#Reader",
+      "kind": "implements",
+      "confidence": "low",
+      "count": 1,
+      "evidence": [
+        "internal/store/store.go:38"
+      ],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "sym:go-basic:internal/store/store.go#Store",
+      "dst": "sym:go-basic:internal/store/store.go#Reader",
+      "kind": "implements",
+      "confidence": "low",
+      "count": 1,
+      "evidence": [
+        "internal/store/store.go:12"
+      ],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "sym:go-basic:internal/store/store.go#Warm",
+      "dst": "sym:go-basic:internal/store/store.go#Store.Put",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/store/store.go:55"
+      ],
+      "fileId": "file:go-basic:internal/store/store.go"
+    },
+    {
+      "src": "sym:go-basic:internal/store/store_test.go#TestPutGet",
+      "dst": "sym:go-basic:internal/store/store.go#New",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/store/store_test.go:6"
+      ],
+      "fileId": "file:go-basic:internal/store/store_test.go"
+    },
+    {
+      "src": "sym:go-basic:internal/store/store_test.go#TestPutGet",
+      "dst": "sym:go-basic:internal/store/store.go#Store.Get",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/store/store_test.go:8"
+      ],
+      "fileId": "file:go-basic:internal/store/store_test.go"
+    },
+    {
+      "src": "sym:go-basic:internal/store/store_test.go#TestPutGet",
+      "dst": "sym:go-basic:internal/store/store.go#Store.Put",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/store/store_test.go:7"
+      ],
+      "fileId": "file:go-basic:internal/store/store_test.go"
+    },
+    {
+      "src": "sym:go-basic:internal/text/slug.go#Slugify",
+      "dst": "sym:go-basic:internal/text/slug.go#trimDashes",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "internal/text/slug.go:16"
+      ],
+      "fileId": "file:go-basic:internal/text/slug.go"
+    },
+    {
       "src": "ws:example.com/gobasic",
       "dst": "file:go-basic:cmd/server/main.go",
       "kind": "contains",
@@ -716,6 +1254,15 @@
       "count": 1,
       "evidence": [],
       "fileId": "file:go-basic:cmd/server/main.go"
+    },
+    {
+      "src": "ws:example.com/gobasic",
+      "dst": "file:go-basic:internal/app/app.go",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:go-basic:internal/app/app.go"
     },
     {
       "src": "ws:example.com/gobasic",

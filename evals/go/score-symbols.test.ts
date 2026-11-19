@@ -38,6 +38,25 @@ describe("score-symbols", () => {
     expect(passes(s)).toBe(true);
   });
 
+  it("ignores the methods of an interface body", () => {
+    const dump = {
+      files,
+      symbols: [
+        sym("file:r:a.go", "S.Get", "method"),
+        sym("file:r:a.go", "Reader", "interface"),
+        sym("file:r:a.go", "Reader.Get", "method"),
+      ],
+    };
+    const s = scoreSymbols(dump, {
+      module: "example.com/m",
+      symbols: [
+        { file: "a.go", name: "Get", receiver: "S", kind: "method" },
+        { file: "a.go", name: "Reader", kind: "interface" },
+      ],
+    });
+    expect(s.perKind.method).toEqual({ truth: 1, found: 1, matched: 1, precision: 1, recall: 1 });
+  });
+
   it("fails a kind that misses or invents symbols", () => {
     const dump = {
       files,
