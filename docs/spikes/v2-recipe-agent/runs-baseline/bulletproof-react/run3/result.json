@@ -1,0 +1,46 @@
+{
+  "run": 3,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 18,
+  "tokens": {
+    "input": 28,
+    "cacheRead": 222285,
+    "cacheCreate": 17778,
+    "output": 9682
+  },
+  "costUsdReported": 0.1902165,
+  "wallMs": 74996,
+  "recipeSha256": "17dd35ec284bd510222fde5cc05aee69a216e2e99532a543ef7e2c36388f98bb",
+  "graphSha256": "e4a8aaddb77ab4230c84fc388d211128aaed2c3537d8e224cb1ad1f8b935aa5d",
+  "nodes": {
+    "route": 19,
+    "endpoint": 0,
+    "table": 0
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 7,
+  "score": {
+    "case": "bulletproof-react",
+    "sha": "9506629ed003a561c6627735480cce4994244bb4",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "route": {
+        "labelled": 10,
+        "predicted": 11,
+        "matched": 10,
+        "precision": 0.9091,
+        "recall": 1,
+        "pass": false
+      }
+    },
+    "missed": {},
+    "extra": {
+      "route": ["/404"]
+    },
+    "pass": false
+  }
+}

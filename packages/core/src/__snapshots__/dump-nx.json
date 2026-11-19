@@ -34,18 +34,21 @@
     {
       "id": "file:nx:apps/shop/src/main.ts",
       "path": "apps/shop/src/main.ts",
+      "lang": "typescript",
       "workspaceId": "ws:shop",
       "contentHash": "f9d107c8bd3f53540cf5085ce35c6e1208f3195904db743860cf2f96091c8abf"
     },
     {
       "id": "file:nx:libs/cart/src/cart.ts",
       "path": "libs/cart/src/cart.ts",
+      "lang": "typescript",
       "workspaceId": "ws:cart",
       "contentHash": "59176bf4268fc2bf09c6dd1c3f1bfb3fc115bc91710687ca07491bdc26309271"
     },
     {
       "id": "file:nx:libs/cart/src/index.ts",
       "path": "libs/cart/src/index.ts",
+      "lang": "typescript",
       "workspaceId": "ws:cart",
       "contentHash": "593945827ab6acd3725bebf4fb4d12e01db119de19a5ca77f8740e9d6921b4ab"
     }
@@ -56,6 +59,7 @@
       "fileId": "file:nx:libs/cart/src/cart.ts",
       "name": "CartItem",
       "kind": "interface",
+      "lang": "typescript",
       "exported": true,
       "signature": "",
       "startLine": 1,
@@ -71,6 +75,7 @@
       "fileId": "file:nx:libs/cart/src/cart.ts",
       "name": "addItem",
       "kind": "function",
+      "lang": "typescript",
       "exported": true,
       "signature": "(cart: CartItem[], item: CartItem): CartItem[]",
       "startLine": 3,
@@ -86,6 +91,7 @@
       "fileId": "file:nx:libs/cart/src/cart.ts",
       "name": "totalPrice",
       "kind": "function",
+      "lang": "typescript",
       "exported": true,
       "signature": "(cart: CartItem[]): number",
       "startLine": 7,

@@ -1,0 +1,82 @@
+{
+  "name": "fastify-typescript",
+  "frameworks": [
+    { "name": "fastify", "evidence": "package.json dependency" },
+    { "name": "prisma", "evidence": "prisma/schema.prisma" }
+  ],
+  "when": { "dependency": ["fastify"] },
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "fastify-router",
+      "language": "typescript",
+      "files": ["src/**/*.ts"],
+      "rule": { "pattern": "fastify($$A)" },
+      "emit": { "kind": "router" },
+      "examples": { "match": ["fastify({ logger: true })"], "noMatch": ["foo.fastify"] }
+    },
+    {
+      "id": "fastify-endpoint",
+      "language": "typescript",
+      "files": ["src/main.ts"],
+      "rule": { "pattern": "$R.$M($X, $$REST)" },
+      "constraints": {
+        "M": { "regex": "^(get|post|put|patch|delete|head|options)$" },
+        "X": { "regex": "^['\"`]" }
+      },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$X" },
+      "examples": {
+        "match": ["server.get('/health', async () => {})"],
+        "noMatch": ["map.get(key)"]
+      }
+    },
+    {
+      "id": "user-plugin-endpoint",
+      "language": "typescript",
+      "files": ["src/routes/user.router.ts"],
+      "rule": { "any": [{ "pattern": "$R.$M($X, $A, $H)" }, { "pattern": "$R.$M($X, $H)" }] },
+      "constraints": {
+        "R": { "regex": "^fastify$" },
+        "M": { "regex": "^(get|post|put|patch|delete)$" },
+        "X": { "regex": "^['\"`]" }
+      },
+      "emit": { "kind": "endpoint", "method": "$M", "path": "$X", "prefix": "=/api/user" },
+      "examples": {
+        "match": ["fastify.post('/login', { schema: { a: 1 } }, h)", "fastify.get('/x', h)"],
+        "noMatch": ["fastify.decorateRequest('a', null)"]
+      }
+    },
+    {
+      "id": "post-plugin-endpoint",
+      "language": "typescript",
+      "files": ["src/routes/post.router.ts"],
+      "rule": { "any": [{ "pattern": "$R.$M($X, $A, $H)" }, { "pattern": "$R.$M($X, $H)" }] },
+      "constraints": {
+        "R": { "regex": "^fastify$" },
+        "M": { "regex": "^(get|post|put|patch|delete)$" },
+        "X": { "regex": "^['\"`]" }
+      },
+      "emit": { "kind": "endpoint", "method": "$M", "path": "$X", "prefix": "=/api/post" },
+      "examples": {
+        "match": ["fastify.post('/create', { schema: { a: 1 } }, h)", "fastify.get('/x', h)"],
+        "noMatch": ["fastify.decorateRequest('a', null)"]
+      }
+    },
+    {
+      "id": "prisma-model-mapped",
+      "language": "text",
+      "files": ["prisma/schema.prisma"],
+      "rule": { "regex": "model\\s+\\w+\\s*\\{[^}]*@@map\\(\"(\\w+)\"\\)" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": { "match": ["model A {\n id Int\n @@map(\"as\")\n}"], "noMatch": ["model B {\n id Int\n}"] }
+    },
+    {
+      "id": "prisma-model",
+      "language": "text",
+      "files": ["prisma/schema.prisma"],
+      "rule": { "regex": "model\\s+(\\w+)\\s*\\{(?![^}]*@@map)" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": { "match": ["model B {\n id Int\n}"], "noMatch": ["model A {\n id Int\n @@map(\"as\")\n}"] }
+    }
+  ]
+}

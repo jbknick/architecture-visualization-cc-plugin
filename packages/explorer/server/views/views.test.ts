@@ -132,6 +132,7 @@ describe("project-map", () => {
       const file = (p: string): FileRecord => ({
         id: `file:pnpm-turbo:${p}`,
         path: p,
+        lang: "typescript",
         workspaceId: null,
         contentHash: p,
         mtimeMs: 1,
@@ -233,6 +234,7 @@ describe("scale", () => {
       const file: FileRecord = {
         id: `file:pnpm-turbo:${p}`,
         path: p,
+        lang: "typescript",
         workspaceId: `ws:w${fi % 20}`,
         contentHash: p,
         mtimeMs: 1,
@@ -243,6 +245,7 @@ describe("scale", () => {
         fileId: file.id,
         name: `fn${k}`,
         kind: "function",
+        lang: "typescript",
         exported: true,
         signature: "",
         startLine: 1,

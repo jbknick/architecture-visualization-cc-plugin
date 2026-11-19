@@ -1,0 +1,2315 @@
+{
+  "jobs": 4,
+  "repos": [
+    {
+      "name": "bulletproof-react",
+      "sha": "9506629ed003a561c6627735480cce4994244bb4",
+      "stack": ["react-router", "nextjs"],
+      "files": 415,
+      "labels": {
+        "route": 10,
+        "endpoint": 0,
+        "table": 0
+      },
+      "kinds": ["route"],
+      "runs": [
+        {
+          "run": 1,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 13,
+          "tokens": {
+            "input": 22,
+            "cacheRead": 172862,
+            "cacheCreate": 20851,
+            "output": 8166
+          },
+          "costUsdReported": 0.1823942,
+          "wallMs": 65431,
+          "recipeSha256": "4568ba0680581fe44919952ec6652a99a4aefc8b4ef026f6804991329695a60b",
+          "graphSha256": "f698284e03678045cc0ef762c49fcac5ac0d655a51b5c72658e1a683563bf046",
+          "nodes": {
+            "route": 18,
+            "endpoint": 0,
+            "table": 0
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 5,
+          "score": {
+            "case": "bulletproof-react",
+            "sha": "9506629ed003a561c6627735480cce4994244bb4",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "route": {
+                "labelled": 10,
+                "predicted": 10,
+                "matched": 10,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {},
+            "pass": true
+          }
+        },
+        {
+          "run": 2,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 10,
+          "tokens": {
+            "input": 16,
+            "cacheRead": 102464,
+            "cacheCreate": 20960,
+            "output": 5454
+          },
+          "costUsdReported": 0.1486584,
+          "wallMs": 47976,
+          "recipeSha256": "14614ff5feb1357a17833b2a004681666239c71330fe98c688fa00a3e1602d86",
+          "graphSha256": "e4a8aaddb77ab4230c84fc388d211128aaed2c3537d8e224cb1ad1f8b935aa5d",
+          "nodes": {
+            "route": 19,
+            "endpoint": 0,
+            "table": 0
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 4,
+          "score": {
+            "case": "bulletproof-react",
+            "sha": "9506629ed003a561c6627735480cce4994244bb4",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "route": {
+                "labelled": 10,
+                "predicted": 11,
+                "matched": 10,
+                "precision": 0.9091,
+                "recall": 1,
+                "pass": false
+              }
+            },
+            "missed": {},
+            "extra": {
+              "route": ["/404"]
+            },
+            "pass": false
+          }
+        },
+        {
+          "run": 3,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 13,
+          "tokens": {
+            "input": 18,
+            "cacheRead": 129069,
+            "cacheCreate": 13591,
+            "output": 6984
+          },
+          "costUsdReported": 0.13714690000000002,
+          "wallMs": 52411,
+          "recipeSha256": "12e1d86b7293cfe88963f028a8f3d5c3023b988eaea6fb5608e7fe9b8fd088be",
+          "graphSha256": "e4a8aaddb77ab4230c84fc388d211128aaed2c3537d8e224cb1ad1f8b935aa5d",
+          "nodes": {
+            "route": 19,
+            "endpoint": 0,
+            "table": 0
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 5,
+          "score": {
+            "case": "bulletproof-react",
+            "sha": "9506629ed003a561c6627735480cce4994244bb4",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "route": {
+                "labelled": 10,
+                "predicted": 11,
+                "matched": 10,
+                "precision": 0.9091,
+                "recall": 1,
+                "pass": false
+              }
+            },
+            "missed": {},
+            "extra": {
+              "route": ["/404"]
+            },
+            "pass": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "bun-fastify-starter-turbo-monorepo",
+      "sha": "774fcfe4c51f6e4d0190a321f42deff399852ca9",
+      "stack": ["fastify", "kysely"],
+      "files": 70,
+      "labels": {
+        "route": 0,
+        "endpoint": 2,
+        "table": 2
+      },
+      "kinds": ["endpoint", "table"],
+      "runs": [
+        {
+          "run": 1,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 10,
+          "tokens": {
+            "input": 16,
+            "cacheRead": 120634,
+            "cacheCreate": 18987,
+            "output": 5845
+          },
+          "costUsdReported": 0.1464934,
+          "wallMs": 44784,
+          "recipeSha256": "9f13e940bbb9e329433695ceac6addceef895cdd4f20d7fa752e9962c0d7ac81",
+          "graphSha256": "31eb9450ffe3ddbd3d5ef315a55377d9733dc087710d8e95131b35a7e6f9026a",
+          "nodes": {
+            "route": 0,
+            "endpoint": 2,
+            "table": 2
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 5,
+          "score": {
+            "case": "bun-fastify-starter-turbo-monorepo",
+            "sha": "774fcfe4c51f6e4d0190a321f42deff399852ca9",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 2,
+                "predicted": 2,
+                "matched": 2,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 2,
+                "predicted": 2,
+                "matched": 2,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {},
+            "pass": true
+          }
+        },
+        {
+          "run": 2,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 17,
+          "tokens": {
+            "input": 28,
+            "cacheRead": 239514,
+            "cacheCreate": 25968,
+            "output": 7615
+          },
+          "costUsdReported": 0.20402940000000003,
+          "wallMs": 69598,
+          "recipeSha256": "866bcc6cea711f0eaa6edc9f5d29aa9fdc81b615664527cd63dd75d389a8df4e",
+          "graphSha256": "31eb9450ffe3ddbd3d5ef315a55377d9733dc087710d8e95131b35a7e6f9026a",
+          "nodes": {
+            "route": 0,
+            "endpoint": 2,
+            "table": 2
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 8,
+          "score": {
+            "case": "bun-fastify-starter-turbo-monorepo",
+            "sha": "774fcfe4c51f6e4d0190a321f42deff399852ca9",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 2,
+                "predicted": 2,
+                "matched": 2,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 2,
+                "predicted": 2,
+                "matched": 2,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {},
+            "pass": true
+          }
+        },
+        {
+          "run": 3,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 19,
+          "tokens": {
+            "input": 20,
+            "cacheRead": 165542,
+            "cacheCreate": 16766,
+            "output": 7056
+          },
+          "costUsdReported": 0.15421819999999997,
+          "wallMs": 56247,
+          "recipeSha256": "a5566f40f826ee150062ba1836f4005ce016e6dee136ce2a2ecaad21c027e46b",
+          "graphSha256": "31eb9450ffe3ddbd3d5ef315a55377d9733dc087710d8e95131b35a7e6f9026a",
+          "nodes": {
+            "route": 0,
+            "endpoint": 2,
+            "table": 2
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 5,
+          "score": {
+            "case": "bun-fastify-starter-turbo-monorepo",
+            "sha": "774fcfe4c51f6e4d0190a321f42deff399852ca9",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 2,
+                "predicted": 2,
+                "matched": 2,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 2,
+                "predicted": 2,
+                "matched": 2,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {},
+            "pass": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "epic-stack",
+      "sha": "893610db76127fb5a5f1ffa786bee6b050637429",
+      "stack": ["react-router", "express", "prisma"],
+      "files": 155,
+      "labels": {
+        "route": 30,
+        "endpoint": 18,
+        "table": 11
+      },
+      "kinds": ["route", "endpoint", "table"],
+      "runs": [
+        {
+          "run": 1,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 14,
+          "tokens": {
+            "input": 24,
+            "cacheRead": 194205,
+            "cacheCreate": 23563,
+            "output": 9219
+          },
+          "costUsdReported": 0.2059105,
+          "wallMs": 77942,
+          "recipeSha256": "4c8f97e27d1a9bf4677585682a28196a30828f3c160451983ea8b07e809d6ae6",
+          "graphSha256": "3561eec931fb36041d42bc2183baf4fa0809b522c0b33afe6e01db6a97730e10",
+          "nodes": {
+            "route": 30,
+            "endpoint": 15,
+            "table": 11
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 5,
+          "score": {
+            "case": "epic-stack",
+            "sha": "893610db76127fb5a5f1ffa786bee6b050637429",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 18,
+                "predicted": 15,
+                "matched": 15,
+                "precision": 1,
+                "recall": 0.8333,
+                "pass": false
+              },
+              "route": {
+                "labelled": 30,
+                "predicted": 30,
+                "matched": 30,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 11,
+                "predicted": 11,
+                "matched": 11,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": ["GET /*", "GET /favicons/*", "GET /img/*"]
+            },
+            "extra": {},
+            "pass": false
+          }
+        },
+        {
+          "run": 2,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 12,
+          "tokens": {
+            "input": 16,
+            "cacheRead": 117461,
+            "cacheCreate": 27563,
+            "output": 7683
+          },
+          "costUsdReported": 0.19886009999999998,
+          "wallMs": 62168,
+          "recipeSha256": "5d706c6902d006cac0321e918795cef98be2508f0490c50d40742ec31e164a86",
+          "graphSha256": "c2ac57d75be5cca0de583a0ef3328aede4b2f5d4b83ab6bca74bfbc7533b97d0",
+          "nodes": {
+            "route": 30,
+            "endpoint": 14,
+            "table": 11
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 3,
+          "score": {
+            "case": "epic-stack",
+            "sha": "893610db76127fb5a5f1ffa786bee6b050637429",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 18,
+                "predicted": 14,
+                "matched": 14,
+                "precision": 1,
+                "recall": 0.7778,
+                "pass": false
+              },
+              "route": {
+                "labelled": 30,
+                "predicted": 30,
+                "matched": 30,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 11,
+                "predicted": 11,
+                "matched": 11,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": ["ALL /admin/cache/sqlite", "GET /*", "GET /favicons/*", "GET /img/*"]
+            },
+            "extra": {},
+            "pass": false
+          }
+        },
+        {
+          "run": 3,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 13,
+          "tokens": {
+            "input": 20,
+            "cacheRead": 151456,
+            "cacheCreate": 19265,
+            "output": 9779
+          },
+          "costUsdReported": 0.19003559999999997,
+          "wallMs": 76225,
+          "recipeSha256": "6611c3d1dda65b712d7b5c1b68a89df5a08e87e29fe849c0d48598321559ce21",
+          "graphSha256": "266ffd07a6e008b04267571991577f3e4ba6da59751b9fbf092c58995fcfc9b0",
+          "nodes": {
+            "route": 30,
+            "endpoint": 14,
+            "table": 11
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 4,
+          "score": {
+            "case": "epic-stack",
+            "sha": "893610db76127fb5a5f1ffa786bee6b050637429",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 18,
+                "predicted": 14,
+                "matched": 14,
+                "precision": 1,
+                "recall": 0.7778,
+                "pass": false
+              },
+              "route": {
+                "labelled": 30,
+                "predicted": 30,
+                "matched": 30,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 11,
+                "predicted": 11,
+                "matched": 11,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": ["ALL /admin/cache/sqlite", "GET /*", "GET /favicons/*", "GET /img/*"]
+            },
+            "extra": {},
+            "pass": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "express-mongodb-rest-api-boilerplate",
+      "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7",
+      "stack": ["express", "mongoose"],
+      "files": 126,
+      "labels": {
+        "route": 0,
+        "endpoint": 26,
+        "table": 7
+      },
+      "kinds": ["endpoint", "table"],
+      "runs": [
+        {
+          "run": 1,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 27,
+          "tokens": {
+            "input": 40,
+            "cacheRead": 472037,
+            "cacheCreate": 37558,
+            "output": 15246
+          },
+          "costUsdReported": 0.3499757,
+          "wallMs": 124663,
+          "recipeSha256": "0907f3380205b1ea5064699903ed897fa1df409c737f8d1a554df5b9f80b6419",
+          "graphSha256": "699b27ccf942007f11e13d3b711d00eecab9982c0c7c6fbf77a336346a101803",
+          "nodes": {
+            "route": 0,
+            "endpoint": 21,
+            "table": 7
+          },
+          "zeroMatchRules": ["endpoint-chain", "endpoint-chain-2"],
+          "dryRuns": 10,
+          "score": {
+            "case": "express-mongodb-rest-api-boilerplate",
+            "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 26,
+                "predicted": 21,
+                "matched": 21,
+                "precision": 1,
+                "recall": 0.8077,
+                "pass": false
+              },
+              "table": {
+                "labelled": 7,
+                "predicted": 7,
+                "matched": 7,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /storage/public/conversions",
+                "GET /auth/sign-out",
+                "GET /docs/swagger-ui-bundle.js",
+                "GET /docs/swagger-ui.css",
+                "POST /auth/sign-out"
+              ]
+            },
+            "extra": {},
+            "pass": false
+          }
+        },
+        {
+          "run": 2,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 16,
+          "tokens": {
+            "input": 26,
+            "cacheRead": 237159,
+            "cacheCreate": 33235,
+            "output": 9169
+          },
+          "costUsdReported": 0.24839790000000003,
+          "wallMs": 76397,
+          "recipeSha256": "19889ad41859d3cb8e176146c83bb975a61d09964af3c5b2e0fb10b12b021c5d",
+          "graphSha256": "99b72481da7a3510614c8f7138c9bcb6d1d05ac03414c2fac497c51501cec235",
+          "nodes": {
+            "route": 0,
+            "endpoint": 26,
+            "table": 7
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 6,
+          "score": {
+            "case": "express-mongodb-rest-api-boilerplate",
+            "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 26,
+                "predicted": 26,
+                "matched": 23,
+                "precision": 0.8846,
+                "recall": 0.8846,
+                "pass": false
+              },
+              "table": {
+                "labelled": 7,
+                "predicted": 7,
+                "matched": 7,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /storage/public/conversions",
+                "GET /docs/swagger-ui-bundle.js",
+                "GET /docs/swagger-ui.css"
+              ]
+            },
+            "extra": {
+              "endpoint": ["GET /", "GET /config.json", "GET /initializer.js"]
+            },
+            "pass": false
+          }
+        },
+        {
+          "run": 3,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 22,
+          "tokens": {
+            "input": 34,
+            "cacheRead": 327171,
+            "cacheCreate": 23684,
+            "output": 11772
+          },
+          "costUsdReported": 0.24524110000000005,
+          "wallMs": 97614,
+          "recipeSha256": "c0bd0de06b0f221ef470f94dec02e5666aad4d3a2ec424a630ec73564a8542c4",
+          "graphSha256": "720cb7a6e60098e5bced94191632b71797b59ba9b6d8c027d1704b98ab36518a",
+          "nodes": {
+            "route": 0,
+            "endpoint": 23,
+            "table": 7
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 7,
+          "score": {
+            "case": "express-mongodb-rest-api-boilerplate",
+            "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 26,
+                "predicted": 23,
+                "matched": 23,
+                "precision": 1,
+                "recall": 0.8846,
+                "pass": false
+              },
+              "table": {
+                "labelled": 7,
+                "predicted": 7,
+                "matched": 7,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /storage/public/conversions",
+                "GET /docs/swagger-ui-bundle.js",
+                "GET /docs/swagger-ui.css"
+              ]
+            },
+            "extra": {},
+            "pass": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "fastify-typescript",
+      "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783",
+      "stack": ["fastify", "prisma"],
+      "files": 15,
+      "labels": {
+        "route": 0,
+        "endpoint": 5,
+        "table": 2
+      },
+      "kinds": ["endpoint", "table"],
+      "runs": [
+        {
+          "run": 1,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 15,
+          "tokens": {
+            "input": 22,
+            "cacheRead": 164003,
+            "cacheCreate": 15580,
+            "output": 8069
+          },
+          "costUsdReported": 0.15945430000000002,
+          "wallMs": 60881,
+          "recipeSha256": "b861cf3ab9e5945609a1d63a2051276f5149d24f2785fb6ca4e60594f9632e2b",
+          "graphSha256": "68dc3ff0f24a6ec9ed01e88f6670a5a2edf65cc4bfab36510400a419e8d63b61",
+          "nodes": {
+            "route": 0,
+            "endpoint": 5,
+            "table": 2
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 7,
+          "score": {
+            "case": "fastify-typescript",
+            "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "predicted": 5,
+                "matched": 5,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 2,
+                "predicted": 2,
+                "matched": 2,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {},
+            "pass": true
+          }
+        },
+        {
+          "run": 2,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 16,
+          "tokens": {
+            "input": 22,
+            "cacheRead": 161303,
+            "cacheCreate": 13038,
+            "output": 6830
+          },
+          "costUsdReported": 0.1366263,
+          "wallMs": 62279,
+          "recipeSha256": "3c9dfa1d217dc7f22e7b03c5822d6952296ba33d218df984a112ff306521f71b",
+          "graphSha256": "68dc3ff0f24a6ec9ed01e88f6670a5a2edf65cc4bfab36510400a419e8d63b61",
+          "nodes": {
+            "route": 0,
+            "endpoint": 5,
+            "table": 2
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 4,
+          "score": {
+            "case": "fastify-typescript",
+            "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "predicted": 5,
+                "matched": 5,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 2,
+                "predicted": 2,
+                "matched": 2,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {},
+            "pass": true
+          }
+        },
+        {
+          "run": 3,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 9,
+          "tokens": {
+            "input": 14,
+            "cacheRead": 88225,
+            "cacheCreate": 9311,
+            "output": 4544
+          },
+          "costUsdReported": 0.0915345,
+          "wallMs": 44680,
+          "recipeSha256": "ca2a34f458646c031254290bf3333a582b6f3a202d6f4ae26ddd4e216d3627fa",
+          "graphSha256": "e23eb3a6c6bb344c9070bd45b468d99f012223bd9bd55d071f714d789c82bc6c",
+          "nodes": {
+            "route": 0,
+            "endpoint": 5,
+            "table": 2
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 4,
+          "score": {
+            "case": "fastify-typescript",
+            "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "predicted": 5,
+                "matched": 5,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 2,
+                "predicted": 2,
+                "matched": 1,
+                "precision": 0.5,
+                "recall": 0.5,
+                "pass": false
+              }
+            },
+            "missed": {
+              "table": ["users"]
+            },
+            "extra": {
+              "table": ["user"]
+            },
+            "pass": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "go-base",
+      "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a",
+      "stack": ["chi"],
+      "files": 42,
+      "labels": {
+        "route": 0,
+        "endpoint": 19,
+        "table": 3
+      },
+      "kinds": ["endpoint", "table"],
+      "runs": [
+        {
+          "run": 1,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 7,
+          "tokens": {
+            "input": 12,
+            "cacheRead": 74967,
+            "cacheCreate": 9399,
+            "output": 2857
+          },
+          "costUsdReported": 0.0736867,
+          "wallMs": 30785,
+          "recipeSha256": "7490f5401103fa77bfc16dba7d2a756c63b3e1f41b1f81d20a95e0f2de93aa86",
+          "graphSha256": "e0193e44be670d0ee4b743e906fcb9fbed7d3c030cb2f2a60c4fa27a3f1462c8",
+          "nodes": {
+            "route": 0,
+            "endpoint": 16,
+            "table": 3
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 1,
+          "score": {
+            "case": "go-base",
+            "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 19,
+                "predicted": 15,
+                "matched": 2,
+                "precision": 0.1333,
+                "recall": 0.1053,
+                "pass": false
+              },
+              "table": {
+                "labelled": 3,
+                "predicted": 3,
+                "matched": 3,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "DELETE /admin/accounts/:param",
+                "DELETE /api/account",
+                "DELETE /api/account/token/:param",
+                "GET /admin",
+                "GET /admin/accounts",
+                "GET /admin/accounts/:param",
+                "GET /api/account",
+                "GET /api/profile",
+                "POST /admin/accounts",
+                "POST /auth/login",
+                "POST /auth/logout",
+                "POST /auth/refresh",
+                "POST /auth/token",
+                "PUT /admin/accounts/:param",
+                "PUT /api/account",
+                "PUT /api/account/token/:param",
+                "PUT /api/profile"
+              ]
+            },
+            "extra": {
+              "endpoint": [
+                "DELETE /",
+                "DELETE /:param",
+                "DELETE /token/:param",
+                "GET /",
+                "GET /:param",
+                "POST /",
+                "POST /login",
+                "POST /logout",
+                "POST /refresh",
+                "POST /token",
+                "PUT /",
+                "PUT /:param",
+                "PUT /token/:param"
+              ]
+            },
+            "pass": false
+          }
+        },
+        {
+          "run": 2,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 9,
+          "tokens": {
+            "input": 14,
+            "cacheRead": 87379,
+            "cacheCreate": 9728,
+            "output": 3914
+          },
+          "costUsdReported": 0.0868179,
+          "wallMs": 40275,
+          "recipeSha256": "f69dabaed516c69ea7bd0e2115e62c6f999ced9b664873e1d6e6940162a879ec",
+          "graphSha256": "e0193e44be670d0ee4b743e906fcb9fbed7d3c030cb2f2a60c4fa27a3f1462c8",
+          "nodes": {
+            "route": 0,
+            "endpoint": 16,
+            "table": 3
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 2,
+          "score": {
+            "case": "go-base",
+            "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 19,
+                "predicted": 15,
+                "matched": 2,
+                "precision": 0.1333,
+                "recall": 0.1053,
+                "pass": false
+              },
+              "table": {
+                "labelled": 3,
+                "predicted": 3,
+                "matched": 3,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "DELETE /admin/accounts/:param",
+                "DELETE /api/account",
+                "DELETE /api/account/token/:param",
+                "GET /admin",
+                "GET /admin/accounts",
+                "GET /admin/accounts/:param",
+                "GET /api/account",
+                "GET /api/profile",
+                "POST /admin/accounts",
+                "POST /auth/login",
+                "POST /auth/logout",
+                "POST /auth/refresh",
+                "POST /auth/token",
+                "PUT /admin/accounts/:param",
+                "PUT /api/account",
+                "PUT /api/account/token/:param",
+                "PUT /api/profile"
+              ]
+            },
+            "extra": {
+              "endpoint": [
+                "DELETE /",
+                "DELETE /:param",
+                "DELETE /token/:param",
+                "GET /",
+                "GET /:param",
+                "POST /",
+                "POST /login",
+                "POST /logout",
+                "POST /refresh",
+                "POST /token",
+                "PUT /",
+                "PUT /:param",
+                "PUT /token/:param"
+              ]
+            },
+            "pass": false
+          }
+        },
+        {
+          "run": 3,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 9,
+          "tokens": {
+            "input": 14,
+            "cacheRead": 95499,
+            "cacheCreate": 11376,
+            "output": 3170
+          },
+          "costUsdReported": 0.0867819,
+          "wallMs": 33828,
+          "recipeSha256": "abf7def831d6000e70af51bed247a50f0d78aa4f5a8c4638a6db0c18447e8102",
+          "graphSha256": "e0193e44be670d0ee4b743e906fcb9fbed7d3c030cb2f2a60c4fa27a3f1462c8",
+          "nodes": {
+            "route": 0,
+            "endpoint": 16,
+            "table": 3
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 1,
+          "score": {
+            "case": "go-base",
+            "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 19,
+                "predicted": 15,
+                "matched": 2,
+                "precision": 0.1333,
+                "recall": 0.1053,
+                "pass": false
+              },
+              "table": {
+                "labelled": 3,
+                "predicted": 3,
+                "matched": 3,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "DELETE /admin/accounts/:param",
+                "DELETE /api/account",
+                "DELETE /api/account/token/:param",
+                "GET /admin",
+                "GET /admin/accounts",
+                "GET /admin/accounts/:param",
+                "GET /api/account",
+                "GET /api/profile",
+                "POST /admin/accounts",
+                "POST /auth/login",
+                "POST /auth/logout",
+                "POST /auth/refresh",
+                "POST /auth/token",
+                "PUT /admin/accounts/:param",
+                "PUT /api/account",
+                "PUT /api/account/token/:param",
+                "PUT /api/profile"
+              ]
+            },
+            "extra": {
+              "endpoint": [
+                "DELETE /",
+                "DELETE /:param",
+                "DELETE /token/:param",
+                "GET /",
+                "GET /:param",
+                "POST /",
+                "POST /login",
+                "POST /logout",
+                "POST /refresh",
+                "POST /token",
+                "PUT /",
+                "PUT /:param",
+                "PUT /token/:param"
+              ]
+            },
+            "pass": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "golang-gin-realworld-example-app",
+      "sha": "a41289b2a4951e7cc09066f86742a27f85121c9b",
+      "stack": ["gin", "gorm"],
+      "files": 21,
+      "labels": {
+        "route": 0,
+        "endpoint": 20,
+        "table": 7
+      },
+      "kinds": ["endpoint", "table"],
+      "runs": [
+        {
+          "run": 1,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 18,
+          "tokens": {
+            "input": 26,
+            "cacheRead": 260184,
+            "cacheCreate": 27252,
+            "output": 13423
+          },
+          "costUsdReported": 0.2693084,
+          "wallMs": 101805,
+          "recipeSha256": "9b74db557e5d0ef8afa92601aa62618da493600a1e2d0f89a01a5973d3e47ba2",
+          "graphSha256": "fdf8addc40f6292ce718005364b0d874f7bd5ff0281ec35a1b8cee7de7b6f6d2",
+          "nodes": {
+            "route": 0,
+            "endpoint": 20,
+            "table": 7
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 9,
+          "score": {
+            "case": "golang-gin-realworld-example-app",
+            "sha": "a41289b2a4951e7cc09066f86742a27f85121c9b",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 20,
+                "predicted": 20,
+                "matched": 20,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 7,
+                "predicted": 7,
+                "matched": 7,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {},
+            "pass": true
+          }
+        },
+        {
+          "run": 2,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 21,
+          "tokens": {
+            "input": 28,
+            "cacheRead": 292001,
+            "cacheCreate": 25619,
+            "output": 13665
+          },
+          "costUsdReported": 0.2683821,
+          "wallMs": 97207,
+          "recipeSha256": "8e3050ced78d43a4842e8ef5ee1f59de67920a653d8441d7857415bb86d6f6af",
+          "graphSha256": "fdf8addc40f6292ce718005364b0d874f7bd5ff0281ec35a1b8cee7de7b6f6d2",
+          "nodes": {
+            "route": 0,
+            "endpoint": 20,
+            "table": 7
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 7,
+          "score": {
+            "case": "golang-gin-realworld-example-app",
+            "sha": "a41289b2a4951e7cc09066f86742a27f85121c9b",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 20,
+                "predicted": 20,
+                "matched": 20,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 7,
+                "predicted": 7,
+                "matched": 7,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {},
+            "pass": true
+          }
+        },
+        {
+          "run": 3,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 26,
+          "tokens": {
+            "input": 38,
+            "cacheRead": 433614,
+            "cacheCreate": 36681,
+            "output": 18198
+          },
+          "costUsdReported": 0.3721414,
+          "wallMs": 127309,
+          "recipeSha256": "64b7b8b4126d795fffd747daf125fa1cdc324cf5f07227717822ed31e3faaf64",
+          "graphSha256": "bb74035e9d654a62b26a27c3a5a54806e9c5ace352d47d1c642dec710f3372ed",
+          "nodes": {
+            "route": 0,
+            "endpoint": 20,
+            "table": 6
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 10,
+          "score": {
+            "case": "golang-gin-realworld-example-app",
+            "sha": "a41289b2a4951e7cc09066f86742a27f85121c9b",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 20,
+                "predicted": 20,
+                "matched": 20,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 7,
+                "predicted": 6,
+                "matched": 6,
+                "precision": 1,
+                "recall": 0.8571,
+                "pass": false
+              }
+            },
+            "missed": {
+              "table": ["usermodel"]
+            },
+            "extra": {},
+            "pass": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "nestjs-boilerplate",
+      "sha": "9620f159eefe38f47747d02ab162852367c5472c",
+      "stack": ["nestjs", "typeorm", "mongoose"],
+      "files": 184,
+      "labels": {
+        "route": 0,
+        "endpoint": 22,
+        "table": 8
+      },
+      "kinds": ["endpoint", "table"],
+      "runs": [
+        {
+          "run": 1,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 20,
+          "tokens": {
+            "input": 28,
+            "cacheRead": 263911,
+            "cacheCreate": 22394,
+            "output": 11707
+          },
+          "costUsdReported": 0.23309310000000003,
+          "wallMs": 92985,
+          "recipeSha256": "acc846f5174ef1d2dfe0ebeebd201f6cbedc7c366b926b3197562c6f5c063aa5",
+          "graphSha256": "58587f7b438351b01032b7032e1dac9ef9096ad05d6806718fae17b6ad1bba79",
+          "nodes": {
+            "route": 0,
+            "endpoint": 19,
+            "table": 8
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 9,
+          "score": {
+            "case": "nestjs-boilerplate",
+            "sha": "9620f159eefe38f47747d02ab162852367c5472c",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 22,
+                "predicted": 19,
+                "matched": 0,
+                "precision": 0,
+                "recall": 0,
+                "pass": false
+              },
+              "table": {
+                "labelled": 8,
+                "predicted": 8,
+                "matched": 8,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "DELETE /api/v1/auth/me",
+                "DELETE /api/v1/users/:param",
+                "GET /",
+                "GET /api/v1/auth/me",
+                "GET /api/v1/files/:param",
+                "GET /api/v1/users",
+                "GET /api/v1/users/:param",
+                "PATCH /api/v1/auth/me",
+                "PATCH /api/v1/users/:param",
+                "POST /api/v1/auth/apple/login",
+                "POST /api/v1/auth/email/confirm",
+                "POST /api/v1/auth/email/confirm/new",
+                "POST /api/v1/auth/email/login",
+                "POST /api/v1/auth/email/register",
+                "POST /api/v1/auth/facebook/login",
+                "POST /api/v1/auth/forgot/password",
+                "POST /api/v1/auth/google/login",
+                "POST /api/v1/auth/logout",
+                "POST /api/v1/auth/refresh",
+                "POST /api/v1/auth/reset/password",
+                "POST /api/v1/files/upload",
+                "POST /api/v1/users"
+              ]
+            },
+            "extra": {
+              "endpoint": [
+                "DELETE /auth/me",
+                "DELETE /users/:param",
+                "GET /auth/me",
+                "GET /files/:param",
+                "GET /users/:param",
+                "PATCH /auth/me",
+                "PATCH /users/:param",
+                "POST /auth/apple/login",
+                "POST /auth/email/confirm",
+                "POST /auth/email/confirm/new",
+                "POST /auth/email/login",
+                "POST /auth/email/register",
+                "POST /auth/facebook/login",
+                "POST /auth/forgot/password",
+                "POST /auth/google/login",
+                "POST /auth/logout",
+                "POST /auth/refresh",
+                "POST /auth/reset/password",
+                "POST /files/upload"
+              ]
+            },
+            "pass": false
+          }
+        },
+        {
+          "run": 2,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 16,
+          "tokens": {
+            "input": 20,
+            "cacheRead": 169139,
+            "cacheCreate": 22489,
+            "output": 9241
+          },
+          "costUsdReported": 0.19931990000000002,
+          "wallMs": 69277,
+          "recipeSha256": "2c84842561e244ea4b78f5f836df0d79fa69e4881e68eaf7568bf768ad77047a",
+          "graphSha256": "3ae1215ef85a42373f1aa6bf391c91546ff175422f94a26b669a2ce5ff6fe73f",
+          "nodes": {
+            "route": 0,
+            "endpoint": 22,
+            "table": 8
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 6,
+          "score": {
+            "case": "nestjs-boilerplate",
+            "sha": "9620f159eefe38f47747d02ab162852367c5472c",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 22,
+                "predicted": 22,
+                "matched": 22,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 8,
+                "predicted": 8,
+                "matched": 8,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {},
+            "pass": true
+          }
+        },
+        {
+          "run": 3,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 34,
+          "tokens": {
+            "input": 44,
+            "cacheRead": 581957,
+            "cacheCreate": 37307,
+            "output": 18116
+          },
+          "costUsdReported": 0.38867169999999995,
+          "wallMs": 146711,
+          "recipeSha256": "c6a6eb0136b1057dd872cc4d7953979136bccf823fc0b2a952d58bca8ce4477a",
+          "graphSha256": "f60b92f90bf17cf7e77d5c7250ef37d95eea841f6cef2187b18f38198da6f74c",
+          "nodes": {
+            "route": 0,
+            "endpoint": 23,
+            "table": 10
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 10,
+          "score": {
+            "case": "nestjs-boilerplate",
+            "sha": "9620f159eefe38f47747d02ab162852367c5472c",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 22,
+                "predicted": 23,
+                "matched": 22,
+                "precision": 0.9565,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 8,
+                "predicted": 10,
+                "matched": 8,
+                "precision": 0.8,
+                "recall": 1,
+                "pass": false
+              }
+            },
+            "missed": {},
+            "extra": {
+              "endpoint": ["GET /api/v1"],
+              "table": ["roleschema", "statusschema"]
+            },
+            "pass": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "nethttp",
+      "sha": "63ead0d466e6ece610c2bcb1b304fab435981f35",
+      "stack": ["net-http"],
+      "files": 11,
+      "labels": {
+        "route": 0,
+        "endpoint": 5,
+        "table": 0
+      },
+      "kinds": ["endpoint"],
+      "runs": [
+        {
+          "run": 1,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 12,
+          "tokens": {
+            "input": 16,
+            "cacheRead": 93082,
+            "cacheCreate": 7699,
+            "output": 4496
+          },
+          "costUsdReported": 0.08509619999999998,
+          "wallMs": 38251,
+          "recipeSha256": "2fcdb94e08d51ea28a7f17816bd64b3552b53a6a2f95c4e7b232f5bf45637854",
+          "graphSha256": "3c761290651f8c6252d79204a206d584b8aafbd452000fb70dd14f5c1e0eb81e",
+          "nodes": {
+            "route": 0,
+            "endpoint": 6,
+            "table": 0
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 3,
+          "score": {
+            "case": "nethttp",
+            "sha": "63ead0d466e6ece610c2bcb1b304fab435981f35",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "predicted": 6,
+                "matched": 5,
+                "precision": 0.8333,
+                "recall": 1,
+                "pass": false
+              }
+            },
+            "missed": {},
+            "extra": {
+              "endpoint": ["ALL /dreamsofcode.foo"]
+            },
+            "pass": false
+          }
+        },
+        {
+          "run": 2,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 12,
+          "tokens": {
+            "input": 16,
+            "cacheRead": 91620,
+            "cacheCreate": 7299,
+            "output": 3940
+          },
+          "costUsdReported": 0.07779000000000001,
+          "wallMs": 38613,
+          "recipeSha256": "fc58114bd6bd39c2044e47e6a18c314c75429b9ad7d0abb66982016f4927a50b",
+          "graphSha256": "3c761290651f8c6252d79204a206d584b8aafbd452000fb70dd14f5c1e0eb81e",
+          "nodes": {
+            "route": 0,
+            "endpoint": 6,
+            "table": 0
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 4,
+          "score": {
+            "case": "nethttp",
+            "sha": "63ead0d466e6ece610c2bcb1b304fab435981f35",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "predicted": 6,
+                "matched": 5,
+                "precision": 0.8333,
+                "recall": 1,
+                "pass": false
+              }
+            },
+            "missed": {},
+            "extra": {
+              "endpoint": ["ALL /dreamsofcode.foo"]
+            },
+            "pass": false
+          }
+        },
+        {
+          "run": 3,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 9,
+          "tokens": {
+            "input": 12,
+            "cacheRead": 63079,
+            "cacheCreate": 5650,
+            "output": 2918
+          },
+          "costUsdReported": 0.0581119,
+          "wallMs": 28923,
+          "recipeSha256": "e920f05eb7e6a6ca51a56fb5c0f67258a9f22e4311c12bb41ddc789010fcb0db",
+          "graphSha256": "3c761290651f8c6252d79204a206d584b8aafbd452000fb70dd14f5c1e0eb81e",
+          "nodes": {
+            "route": 0,
+            "endpoint": 6,
+            "table": 0
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 2,
+          "score": {
+            "case": "nethttp",
+            "sha": "63ead0d466e6ece610c2bcb1b304fab435981f35",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "predicted": 6,
+                "matched": 5,
+                "precision": 0.8333,
+                "recall": 1,
+                "pass": false
+              }
+            },
+            "missed": {},
+            "extra": {
+              "endpoint": ["ALL /dreamsofcode.foo"]
+            },
+            "pass": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "next-js-boilerplate",
+      "sha": "b83157a8018f55b926a3c25a4b7a7e14b0dfbc35",
+      "stack": ["nextjs", "drizzle"],
+      "files": 62,
+      "labels": {
+        "route": 9,
+        "endpoint": 1,
+        "table": 1
+      },
+      "kinds": ["route", "endpoint", "table"],
+      "runs": [
+        {
+          "run": 1,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 11,
+          "tokens": {
+            "input": 16,
+            "cacheRead": 91764,
+            "cacheCreate": 7273,
+            "output": 4074
+          },
+          "costUsdReported": 0.0790404,
+          "wallMs": 40612,
+          "recipeSha256": "56d9b6cc81655bcaac19443de16215f0332ed74a952260579c06427e9aa2b5f1",
+          "graphSha256": "711057d2c4b065d6b1184b15a1306a01c8f8f736c91ec6f7d776f0f02f99ae6b",
+          "nodes": {
+            "route": 9,
+            "endpoint": 1,
+            "table": 1
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 2,
+          "score": {
+            "case": "next-js-boilerplate",
+            "sha": "b83157a8018f55b926a3c25a4b7a7e14b0dfbc35",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 1,
+                "predicted": 1,
+                "matched": 1,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "route": {
+                "labelled": 9,
+                "predicted": 9,
+                "matched": 9,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 1,
+                "predicted": 1,
+                "matched": 1,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {},
+            "pass": true
+          }
+        },
+        {
+          "run": 2,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 10,
+          "tokens": {
+            "input": 14,
+            "cacheRead": 75969,
+            "cacheCreate": 5700,
+            "output": 3443
+          },
+          "costUsdReported": 0.06485490000000001,
+          "wallMs": 30971,
+          "recipeSha256": "91440c0a6bd3767e397101a64ba581769aee65cbfc8806993eb7de4bd520f65a",
+          "graphSha256": "711057d2c4b065d6b1184b15a1306a01c8f8f736c91ec6f7d776f0f02f99ae6b",
+          "nodes": {
+            "route": 9,
+            "endpoint": 1,
+            "table": 1
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 3,
+          "score": {
+            "case": "next-js-boilerplate",
+            "sha": "b83157a8018f55b926a3c25a4b7a7e14b0dfbc35",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 1,
+                "predicted": 1,
+                "matched": 1,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "route": {
+                "labelled": 9,
+                "predicted": 9,
+                "matched": 9,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 1,
+                "predicted": 1,
+                "matched": 1,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {},
+            "pass": true
+          }
+        },
+        {
+          "run": 3,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 7,
+          "tokens": {
+            "input": 10,
+            "cacheRead": 52465,
+            "cacheCreate": 6015,
+            "output": 3060
+          },
+          "costUsdReported": 0.05992650000000001,
+          "wallMs": 25467,
+          "recipeSha256": "894a0cb759fd0530537fb7530549b1d2b4766eb2f16c3021932d983d5439429a",
+          "graphSha256": "711057d2c4b065d6b1184b15a1306a01c8f8f736c91ec6f7d776f0f02f99ae6b",
+          "nodes": {
+            "route": 9,
+            "endpoint": 1,
+            "table": 1
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 2,
+          "score": {
+            "case": "next-js-boilerplate",
+            "sha": "b83157a8018f55b926a3c25a4b7a7e14b0dfbc35",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 1,
+                "predicted": 1,
+                "matched": 1,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "route": {
+                "labelled": 9,
+                "predicted": 9,
+                "matched": 9,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 1,
+                "predicted": 1,
+                "matched": 1,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {},
+            "pass": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "saasfly",
+      "sha": "49f7e28f69eae9cd9eed84221e13a3dbae87da67",
+      "stack": ["nextjs", "kysely", "prisma"],
+      "files": 202,
+      "labels": {
+        "route": 14,
+        "endpoint": 5,
+        "table": 6
+      },
+      "kinds": ["route", "endpoint", "table"],
+      "runs": [
+        {
+          "run": 1,
+          "status": "failed",
+          "model": "claude-sonnet-5-5",
+          "turns": 15,
+          "tokens": {
+            "input": 22,
+            "cacheRead": 129492,
+            "cacheCreate": 8331,
+            "output": 5021
+          },
+          "costUsdReported": 0.0965272,
+          "wallMs": 46845,
+          "recipeSha256": "872fdd4dd7edafc6287d3536c8c4f7945bcc99d1830c942334f86815068ca225",
+          "graphSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "nodes": {
+            "route": 0,
+            "endpoint": 0,
+            "table": 0
+          },
+          "zeroMatchRules": null,
+          "dryRuns": 4,
+          "score": {
+            "case": "saasfly",
+            "sha": "49f7e28f69eae9cd9eed84221e13a3dbae87da67",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "predicted": 0,
+                "matched": 0,
+                "precision": 1,
+                "recall": 0,
+                "pass": false
+              },
+              "route": {
+                "labelled": 14,
+                "predicted": 0,
+                "matched": 0,
+                "precision": 1,
+                "recall": 0,
+                "pass": false
+              },
+              "table": {
+                "labelled": 6,
+                "predicted": 0,
+                "matched": 0,
+                "precision": 1,
+                "recall": 0,
+                "pass": false
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /*",
+                "GET /api/auth/*",
+                "GET /api/webhooks/stripe",
+                "POST /api/auth/*",
+                "POST /api/webhooks/stripe"
+              ],
+              "route": [
+                "/:param",
+                "/:param/blog",
+                "/:param/blog/*",
+                "/:param/dashboard",
+                "/:param/dashboard/billing",
+                "/:param/dashboard/settings",
+                "/:param/docs/*",
+                "/:param/editor/cluster/:param",
+                "/:param/login",
+                "/:param/login-clerk/*",
+                "/:param/pricing",
+                "/:param/register",
+                "/admin/dashboard",
+                "/admin/login"
+              ],
+              "table": ["account", "customer", "k8sclusterconfig", "session", "user", "verificationtoken"]
+            },
+            "extra": {},
+            "pass": false
+          },
+          "failure": "the final recipe is not accepted: REJECTED: 1 structure problem(s)   - helpers must be an array "
+        },
+        {
+          "run": 2,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 12,
+          "tokens": {
+            "input": 16,
+            "cacheRead": 97048,
+            "cacheCreate": 9179,
+            "output": 4345
+          },
+          "costUsdReported": 0.0899028,
+          "wallMs": 38426,
+          "recipeSha256": "bb828befdb4d0c7f83d2b14e70bd37c6ebc06bdf45617c0f14236f3a2371382f",
+          "graphSha256": "254f2dc63ef08f1bfddb6aabe56792bd847cc8a729512de0af4885527242aeef",
+          "nodes": {
+            "route": 14,
+            "endpoint": 6,
+            "table": 6
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 4,
+          "score": {
+            "case": "saasfly",
+            "sha": "49f7e28f69eae9cd9eed84221e13a3dbae87da67",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "predicted": 6,
+                "matched": 4,
+                "precision": 0.6667,
+                "recall": 0.8,
+                "pass": false
+              },
+              "route": {
+                "labelled": 14,
+                "predicted": 14,
+                "matched": 14,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 6,
+                "predicted": 6,
+                "matched": 6,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": ["ALL /*"]
+            },
+            "extra": {
+              "endpoint": ["GET /api/trpc/edge/:param", "POST /api/trpc/edge/:param"]
+            },
+            "pass": false
+          }
+        },
+        {
+          "run": 3,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 13,
+          "tokens": {
+            "input": 20,
+            "cacheRead": 135749,
+            "cacheCreate": 12705,
+            "output": 5730
+          },
+          "costUsdReported": 0.12173490000000001,
+          "wallMs": 48912,
+          "recipeSha256": "ec487401f0e7218264f7a911bcf251b84615b7887c519a2945cc21049f2a2fcd",
+          "graphSha256": "432cbf2da0afc9822de7c9ad79262a9b9c69a33865bb282c88fb6156f20e6502",
+          "nodes": {
+            "route": 14,
+            "endpoint": 7,
+            "table": 6
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 4,
+          "score": {
+            "case": "saasfly",
+            "sha": "49f7e28f69eae9cd9eed84221e13a3dbae87da67",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "predicted": 7,
+                "matched": 5,
+                "precision": 0.7143,
+                "recall": 1,
+                "pass": false
+              },
+              "route": {
+                "labelled": 14,
+                "predicted": 14,
+                "matched": 14,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              },
+              "table": {
+                "labelled": 6,
+                "predicted": 6,
+                "matched": 6,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {},
+            "extra": {
+              "endpoint": ["GET /api/trpc/edge/:param", "POST /api/trpc/edge/:param"]
+            },
+            "pass": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "simplebank",
+      "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263",
+      "stack": ["gin", "sqlc", "database-sql"],
+      "files": 77,
+      "labels": {
+        "route": 0,
+        "endpoint": 8,
+        "table": 6
+      },
+      "kinds": ["endpoint", "table"],
+      "runs": [
+        {
+          "run": 1,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 8,
+          "tokens": {
+            "input": 12,
+            "cacheRead": 53178,
+            "cacheCreate": 5308,
+            "output": 2225
+          },
+          "costUsdReported": 0.0488238,
+          "wallMs": 22635,
+          "recipeSha256": "1e1af38a0dd77bf91af10f21977823d6c4e2e58762a8670ce645e990c548825d",
+          "graphSha256": "98b516ea819e1e893e577576791727f37373dc98c5bc11c22cce11c34674b6c6",
+          "nodes": {
+            "route": 0,
+            "endpoint": 3,
+            "table": 6
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 1,
+          "score": {
+            "case": "simplebank",
+            "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 8,
+                "predicted": 3,
+                "matched": 3,
+                "precision": 1,
+                "recall": 0.375,
+                "pass": false
+              },
+              "table": {
+                "labelled": 6,
+                "predicted": 6,
+                "matched": 6,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /swagger",
+                "GET /accounts",
+                "GET /accounts/:param",
+                "POST /accounts",
+                "POST /transfers"
+              ]
+            },
+            "extra": {},
+            "pass": false
+          }
+        },
+        {
+          "run": 2,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 14,
+          "tokens": {
+            "input": 22,
+            "cacheRead": 151103,
+            "cacheCreate": 12734,
+            "output": 6687
+          },
+          "costUsdReported": 0.1329603,
+          "wallMs": 57593,
+          "recipeSha256": "c99ed9577259751e58467baabf7e6d5da4716ff044e09745164c1b1b983d8db4",
+          "graphSha256": "155bf4b86294d0d043e18f30293d465164cb4b89f7befec2016f2cb739704c7f",
+          "nodes": {
+            "route": 0,
+            "endpoint": 7,
+            "table": 6
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 5,
+          "score": {
+            "case": "simplebank",
+            "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 8,
+                "predicted": 7,
+                "matched": 7,
+                "precision": 1,
+                "recall": 0.875,
+                "pass": false
+              },
+              "table": {
+                "labelled": 6,
+                "predicted": 6,
+                "matched": 6,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": ["ALL /swagger"]
+            },
+            "extra": {},
+            "pass": false
+          }
+        },
+        {
+          "run": 3,
+          "status": "ok",
+          "model": "claude-sonnet-5-5",
+          "turns": 15,
+          "tokens": {
+            "input": 22,
+            "cacheRead": 150685,
+            "cacheCreate": 11708,
+            "output": 6075
+          },
+          "costUsdReported": 0.1226945,
+          "wallMs": 60329,
+          "recipeSha256": "d55c5b0cd4022a2a8db2633dbf217f64fca7fbadd7d3e54405e73923fffac4d2",
+          "graphSha256": "155bf4b86294d0d043e18f30293d465164cb4b89f7befec2016f2cb739704c7f",
+          "nodes": {
+            "route": 0,
+            "endpoint": 7,
+            "table": 6
+          },
+          "zeroMatchRules": [],
+          "dryRuns": 6,
+          "score": {
+            "case": "simplebank",
+            "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263",
+            "bar": {
+              "recall": 0.9,
+              "precision": 0.95
+            },
+            "kinds": {
+              "endpoint": {
+                "labelled": 8,
+                "predicted": 7,
+                "matched": 7,
+                "precision": 1,
+                "recall": 0.875,
+                "pass": false
+              },
+              "table": {
+                "labelled": 6,
+                "predicted": 6,
+                "matched": 6,
+                "precision": 1,
+                "recall": 1,
+                "pass": true
+              }
+            },
+            "missed": {
+              "endpoint": ["ALL /swagger"]
+            },
+            "extra": {},
+            "pass": false
+          }
+        }
+      ]
+    }
+  ]
+}

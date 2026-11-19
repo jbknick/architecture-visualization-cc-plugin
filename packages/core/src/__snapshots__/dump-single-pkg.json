@@ -16,66 +16,77 @@
     {
       "id": "file:single-pkg:src/config.ts",
       "path": "src/config.ts",
+      "lang": "typescript",
       "workspaceId": "ws:.",
       "contentHash": "2ed33a9a1f460e7d056a5646965b181f7bcf5100a786281b61d00aca84b193d7"
     },
     {
       "id": "file:single-pkg:src/counter.ts",
       "path": "src/counter.ts",
+      "lang": "typescript",
       "workspaceId": "ws:.",
       "contentHash": "ccfcd225204f6e59db165327f0157a5fad6445460722afeecfe5b2b385896f2a"
     },
     {
       "id": "file:single-pkg:src/greet.ts",
       "path": "src/greet.ts",
+      "lang": "typescript",
       "workspaceId": "ws:.",
       "contentHash": "4558d07c049d6592fa810ddaed3f91ffb2555b2a29faedb60f5e054ce03e3788"
     },
     {
       "id": "file:single-pkg:src/index.ts",
       "path": "src/index.ts",
+      "lang": "typescript",
       "workspaceId": "ws:.",
       "contentHash": "6e5bd325174542573070bdb29343d3dff507dfcc57cf218eb8f81331c0d73295"
     },
     {
       "id": "file:single-pkg:src/main.ts",
       "path": "src/main.ts",
+      "lang": "typescript",
       "workspaceId": "ws:.",
       "contentHash": "4cb32f750f05f10e907bef730ec84a373bc3828d9360a148fc677997962628ec"
     },
     {
       "id": "file:single-pkg:src/math.ts",
       "path": "src/math.ts",
+      "lang": "typescript",
       "workspaceId": "ws:.",
       "contentHash": "00d6297a00733079f4846e86744df6da6a7cbfd443922c97125d2b8a5e92d5f9"
     },
     {
       "id": "file:single-pkg:src/types.ts",
       "path": "src/types.ts",
+      "lang": "typescript",
       "workspaceId": "ws:.",
       "contentHash": "18cfd3070ddb27ba287157587ef78a2fb8de2ce7881391c5b5166bf8106fa075"
     },
     {
       "id": "file:single-pkg:src/users.ts",
       "path": "src/users.ts",
+      "lang": "typescript",
       "workspaceId": "ws:.",
       "contentHash": "588cbd7666fb82481760f5efd3e7cc4ad911f69af047fe05615a157a4e74cccb"
     },
     {
       "id": "file:single-pkg:src/util/format.ts",
       "path": "src/util/format.ts",
+      "lang": "typescript",
       "workspaceId": "ws:.",
       "contentHash": "6f868ada7f2b16e99f6ea742b1c89b9d966a62572894a9f896163663d7dd4c29"
     },
     {
       "id": "file:single-pkg:src/util/strings.ts",
       "path": "src/util/strings.ts",
+      "lang": "typescript",
       "workspaceId": "ws:.",
       "contentHash": "f4ce90fc1f86df178e4b39c83015972caff5bc2d33afe841ef94b55b0101daa7"
     },
     {
       "id": "file:single-pkg:test/greet.test.ts",
       "path": "test/greet.test.ts",
+      "lang": "typescript",
       "workspaceId": "ws:.",
       "contentHash": "804544193ec430ca98a80798955382ebb92e9e426597bb1cf9a7096abfca167b"
     }
@@ -86,6 +97,7 @@
       "fileId": "file:single-pkg:src/config.ts",
       "name": "config",
       "kind": "const",
+      "lang": "typescript",
       "exported": true,
       "signature": "",
       "startLine": 1,
@@ -101,6 +113,7 @@
       "fileId": "file:single-pkg:src/counter.ts",
       "name": "Counter",
       "kind": "class",
+      "lang": "typescript",
       "exported": true,
       "signature": "",
       "startLine": 1,
@@ -116,6 +129,7 @@
       "fileId": "file:single-pkg:src/counter.ts",
       "name": "Counter.current",
       "kind": "method",
+      "lang": "typescript",
       "exported": true,
       "signature": "(): number",
       "startLine": 13,
@@ -131,6 +145,7 @@
       "fileId": "file:single-pkg:src/counter.ts",
       "name": "Counter.increment",
       "kind": "method",
+      "lang": "typescript",
       "exported": true,
       "signature": "(by = 1): number",
       "startLine": 4,
@@ -146,6 +161,7 @@
       "fileId": "file:single-pkg:src/counter.ts",
       "name": "Counter.reset",
       "kind": "method",
+      "lang": "typescript",
       "exported": true,
       "signature": "(): void",
       "startLine": 9,
@@ -161,6 +177,7 @@
       "fileId": "file:single-pkg:src/greet.ts",
       "name": "greet",
       "kind": "function",
+      "lang": "typescript",
       "exported": true,
       "signature": "(first: string, last: string): string",
       "startLine": 3,
@@ -176,6 +193,7 @@
       "fileId": "file:single-pkg:src/math.ts",
       "name": "clamp",
       "kind": "function",
+      "lang": "typescript",
       "exported": true,
       "signature": "(n: number, min: number, max: number): number",
       "startLine": 1,
@@ -191,6 +209,7 @@
       "fileId": "file:single-pkg:src/math.ts",
       "name": "sum",
       "kind": "function",
+      "lang": "typescript",
       "exported": true,
       "signature": "(values: number[]): number",
       "startLine": 5,
@@ -206,6 +225,7 @@
       "fileId": "file:single-pkg:src/types.ts",
       "name": "User",
       "kind": "interface",
+      "lang": "typescript",
       "exported": true,
       "signature": "",
       "startLine": 1,
@@ -221,6 +241,7 @@
       "fileId": "file:single-pkg:src/types.ts",
       "name": "UserId",
       "kind": "type",
+      "lang": "typescript",
       "exported": true,
       "signature": "",
       "startLine": 2,
@@ -236,6 +257,7 @@
       "fileId": "file:single-pkg:src/users.ts",
       "name": "findUser",
       "kind": "function",
+      "lang": "typescript",
       "exported": true,
       "signature": "(users: User[], id: string): User | undefined",
       "startLine": 3,
@@ -251,6 +273,7 @@
       "fileId": "file:single-pkg:src/util/format.ts",
       "name": "formatName",
       "kind": "function",
+      "lang": "typescript",
       "exported": true,
       "signature": "(first: string, last: string): string",
       "startLine": 1,
@@ -266,6 +289,7 @@
       "fileId": "file:single-pkg:src/util/strings.ts",
       "name": "capitalize",
       "kind": "function",
+      "lang": "typescript",
       "exported": true,
       "signature": "(s: string): string",
       "startLine": 1,
@@ -281,6 +305,7 @@
       "fileId": "file:single-pkg:test/greet.test.ts",
       "name": "result",
       "kind": "const",
+      "lang": "typescript",
       "exported": true,
       "signature": "",
       "startLine": 3,

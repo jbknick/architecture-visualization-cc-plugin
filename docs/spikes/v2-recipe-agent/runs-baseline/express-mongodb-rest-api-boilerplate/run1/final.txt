@@ -1,0 +1,9 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED`.
+
+- **Stack:** Express 5 with TypeScript, using Mongoose models. It has no frontend, so there are no routes.
+- **Counts:** 0 routes, 23 endpoints and 7 tables.
+- **Endpoints:** They cover the auth, user, media and notification routers, the health checks and the docs routes. I compared them against the route files and all of them appear, including the two `/auth/sign-out` methods registered through `router.route(...).post(...).get(...)`.
+- **Tables:** `User`, `Media`, `ResetPassword`, `Verification`, `EmailBudget`, `EmailOutbox` and `EmailWorker`.
+- **Not expressed:** `router.use(a(), b(), c(), d())` in `src/app/http/router.ts` mounts four routers in one call. The recipe has no way to mount a variable number of children, so I added four fixed-arity rules for that one file. A fifth router in that call would need another rule.
+- **Not listed:** The docs route registered in a loop (`docs.get(`/${filename}`, ...)` in `src/app/http/documentation/routes.ts`) has a computed path. The dry-run reports it as unresolved, so `GET /docs/swagger-ui.css` and `GET /docs/swagger-ui-bundle.js` are missing.
+- **Also not covered:** The `express.static` mount for `STORAGE_URL/conversions` is not an endpoint, so it is not listed.

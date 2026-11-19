@@ -18,6 +18,7 @@ export {
   type SkipReason,
   TIER_RANK,
   type Tier,
+  thresholdsFor,
   tokensShared,
 } from "./engine.js";
 export {

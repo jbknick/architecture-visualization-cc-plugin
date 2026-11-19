@@ -1,0 +1,40 @@
+{
+  "name": "fastify-kysely",
+  "frameworks": [
+    { "name": "fastify", "evidence": "package.json dependency" },
+    { "name": "kysely", "evidence": "package.json dependency" }
+  ],
+  "when": { "dependency": ["fastify", "kysely"] },
+  "helpers": [],
+  "rules": [
+    {
+      "id": "root-routes",
+      "language": "typescript",
+      "files": ["apps/backend/src/api/index.ts"],
+      "rule": { "pattern": "fastify.$M($P, $$A)" },
+      "constraints": { "M": { "regex": "^(get|post|put|patch|delete)$" } },
+      "emit": { "kind": "endpoint", "method": "$M", "path": "$P", "standalone": true },
+      "examples": { "match": ["fastify.get(\"/\", async () => {})"], "noMatch": ["map.set(\"/\", 1)"] }
+    },
+    {
+      "id": "user-routes",
+      "language": "typescript",
+      "files": ["apps/backend/src/api/users/*.route.ts"],
+      "rule": { "pattern": "fastify.$M($P, $S, $H)" },
+      "constraints": { "M": { "regex": "^(get|post|put|patch|delete)$" } },
+      "emit": { "kind": "endpoint", "method": "$M", "path": "$P", "prefix": "=/users", "standalone": true },
+      "examples": {
+        "match": ["fastify.post(\"/email\", { schema: 1 }, h)"],
+        "noMatch": ["fastify.register(x)"]
+      }
+    },
+    {
+      "id": "kysely-tables",
+      "language": "text",
+      "files": ["apps/backend/src/db/types/index.ts"],
+      "rule": { "regex": "^\\s+(\\w+): \\w+Table;" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": { "match": ["  users: UsersTable;"], "noMatch": ["export interface Database {"] }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED` with all examples passing. It lists 20 endpoints, 0 routes and 7 tables.
+
+- **Stack:** Go with Gin and GORM. The only frontend-free app code is the API, so there are no routes.
+- **Endpoints (20):**
+  - Gin registers its routes in `users/routers.go` and `articles/routers.go`. The `/api/...` prefixes are set in `hello.go` by `v1.Group(...)` calls, and the Register functions live in other packages.
+  - The mount helpers don't follow a router passed into a function in another package, so the recipe doesn't use the mounts for these files. Instead it has one rule per Register function, each with its `/api/...` prefix written in as a literal.
+  - The `/api/ping` route in `hello.go` goes through the normal Gin router rules. A list check of every route I'm unsure of is below.
+  - The dry-run output I looked at lists only some of the 20. I didn't read the user and profile entries past `POST /api/users/login`, or check how the empty-path (`""`) and `"/"` duplicates were merged.
+- **Tables (7):** `ArticleModel`, `ArticleUserModel`, `FavoriteModel`, `TagModel`, `CommentModel`, `UserModel` and `FollowModel`. The rule takes any struct named `*Model` in a `models.go` file, because `UserModel` doesn't embed `gorm.Model`.
+- **Not expressed:** a router passed as an argument to a function in a different package. Because of that, a new Register function or a changed prefix means editing the matching rule by hand.

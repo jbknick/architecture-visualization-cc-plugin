@@ -1,0 +1,61 @@
+{
+  "name": "nethttp",
+  "frameworks": [{ "name": "net/http", "evidence": "http.NewServeMux in main.go" }],
+  "when": { "imports": ["net/http"] },
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "mux",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "http.NewServeMux()" },
+      "emit": { "kind": "router" },
+      "examples": { "match": ["http.NewServeMux()"], "noMatch": ["http.NewRequest()"] }
+    },
+    {
+      "id": "mux-param",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "kind": "parameter_declaration", "regex": "http\\.ServeMux" },
+      "emit": { "kind": "router" },
+      "examples": { "match": ["func f(router *http.ServeMux) {}"], "noMatch": ["func f(r int) {}"] }
+    },
+    {
+      "id": "handle-method",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "$R.$M($P, $H)" },
+      "constraints": {
+        "M": { "regex": "^(HandleFunc|Handle)$" },
+        "P": { "regex": "^\"(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) " }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "=ALL",
+        "path": "$P",
+        "handler": "$H",
+        "splitMethod": true
+      },
+      "examples": {
+        "match": ["router.HandleFunc(\"GET /x/{id}\", h)"],
+        "noMatch": ["router.HandleFunc(\"/x\", h)"]
+      }
+    },
+    {
+      "id": "handle-plain",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "$R.$M($P, $H)" },
+      "constraints": {
+        "M": { "regex": "^(HandleFunc|Handle)$" },
+        "P": { "regex": "^\"[^ ]*\"$" }
+      },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "=ALL", "path": "$P", "handler": "$H" },
+      "examples": {
+        "match": ["router.HandleFunc(\"/x\", h)"],
+        "noMatch": ["router.HandleFunc(\"GET /x\", h)"]
+      }
+    }
+  ]
+}

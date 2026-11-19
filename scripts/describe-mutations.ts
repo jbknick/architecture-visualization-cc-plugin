@@ -406,6 +406,12 @@ const MUTATIONS: Mutation[] = [
     replace: "false",
   },
   {
+    name: "the last fallback return is dropped by the next sync",
+    file: "backlog.ts",
+    find: "if (!lastReturn.has(key)) dropUnclaimed.run(key);",
+    replace: "dropUnclaimed.run(key);",
+  },
+  {
     name: "fallback returns to the model without a limit",
     file: "backlog.ts",
     find: "export const MAX_FALLBACK_REQUEUES = 3;",

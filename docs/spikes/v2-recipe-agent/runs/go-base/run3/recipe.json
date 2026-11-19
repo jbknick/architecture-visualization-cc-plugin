@@ -1,0 +1,72 @@
+{
+  "name": "go-base",
+  "frameworks": [{ "name": "chi", "evidence": "go.mod" }],
+  "when": { "imports": ["github.com/go-chi/chi/v5"] },
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "rules": [
+    {
+      "id": "chi-router",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "chi.NewRouter()" },
+      "emit": { "kind": "router" },
+      "examples": {
+        "match": ["package a\nfunc f() { r := chi.NewRouter() }"],
+        "noMatch": ["package a\nfunc f() { r := other.New() }"]
+      }
+    },
+    {
+      "id": "chi-endpoint",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "$R.$M($P, $H)" },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Delete|Patch|Head|Options)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$P", "handler": "$H" },
+      "examples": {
+        "match": ["package a\nfunc f() { r.Get(\"/x\", h) }"],
+        "noMatch": ["package a\nfunc f() { r.Foo(\"/x\", h) }"]
+      }
+    },
+    {
+      "id": "chi-mount",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "$P.Mount($X, $C)" },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C", "prefix": "$X" },
+      "examples": {
+        "match": ["package a\nfunc f() { r.Mount(\"/a\", b) }"],
+        "noMatch": ["package a\nfunc f() { r.Use(b) }"]
+      }
+    },
+    {
+      "id": "chi-route",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": "$P.Route($X, $C)" },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C", "prefix": "$X", "childIsScope": true },
+      "examples": {
+        "match": ["package a\nfunc f() { r.Route(\"/a\", func(r chi.Router) {}) }"],
+        "noMatch": ["package a\nfunc f() { r.Use(b) }"]
+      }
+    },
+    {
+      "id": "chi-group",
+      "language": "go",
+      "files": ["**/*.go"],
+      "rule": { "pattern": { "context": "func _() { $P.Group($C) }", "selector": "call_expression" } },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$C", "childIsScope": true },
+      "examples": {
+        "match": ["package a\nfunc f() { r.Group(func(r chi.Router) {}) }"],
+        "noMatch": ["package a\nfunc f() { r.Use(b) }"]
+      }
+    },
+    {
+      "id": "sql-tables",
+      "language": "text",
+      "files": ["database/migrations/*.go"],
+      "rule": { "regex": "CREATE TABLE (\\w+)" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": { "match": ["CREATE TABLE accounts ("], "noMatch": ["INSERT INTO accounts"] }
+    }
+  ]
+}

@@ -8,7 +8,7 @@ import { hashSymbol, minhashJaccard, normalizeForEmbedding } from "./index.js";
 const fixturesRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../../fixtures");
 
 const whole = (s: string) => ({ start: 0, end: s.length });
-const h = (s: string, lang: "ts" | "tsx" = "ts") => hashSymbol(s, whole(s), lang);
+const h = (s: string, lang: "ts" | "tsx" = "ts") => hashSymbol(s, whole(s), `x.${lang}`);
 
 function fixtureSymbol(rel: string, name: string) {
   const source = readFileSync(join(fixturesRoot, rel), "utf8");
@@ -17,7 +17,7 @@ function fixtureSymbol(rel: string, name: string) {
   if (!sym) throw new Error(`no symbol ${name}`);
   const range = parsed.bodies.get(sym.id);
   if (!range) throw new Error(`no body for ${name}`);
-  return { source, range, ...hashSymbol(source, range, "ts") };
+  return { source, range, ...hashSymbol(source, range, "x.ts") };
 }
 
 const BASE = `export function total(items: Item[], tax: number): number {
@@ -177,8 +177,8 @@ class Calc {
     const add = parsed.symbols.find((s) => s.name === "add");
     const mul = parsed.symbols.find((s) => s.name === "Calc.mul");
     if (!add || !mul) throw new Error("symbols missing");
-    const ha = hashSymbol(src, parsed.bodies.get(add.id) as { start: number; end: number }, "ts");
-    const hm = hashSymbol(src, parsed.bodies.get(mul.id) as { start: number; end: number }, "ts");
+    const ha = hashSymbol(src, parsed.bodies.get(add.id) as { start: number; end: number }, "x.ts");
+    const hm = hashSymbol(src, parsed.bodies.get(mul.id) as { start: number; end: number }, "x.ts");
     const alt = `export const add = (p: number, q: number) => p + q;`;
     expect(h(alt).exactHash).toBe(ha.exactHash);
     expect(hm.exactHash).not.toBe(ha.exactHash);
@@ -187,7 +187,7 @@ class Calc {
     const m2 = p2.symbols.find((s) => s.name === "Calc.mul");
     if (!m2) throw new Error("mul missing");
     expect(
-      hashSymbol(altMethod, p2.bodies.get(m2.id) as { start: number; end: number }, "ts").exactHash,
+      hashSymbol(altMethod, p2.bodies.get(m2.id) as { start: number; end: number }, "x.ts").exactHash,
     ).toBe(hm.exactHash);
   });
 
@@ -216,13 +216,13 @@ class Calc {
     const src = `import { a } from "./a";\n\n${BASE}\n\nexport const other = 1;\n`;
     const start = src.indexOf("export function total");
     const end = src.indexOf("\n\nexport const other");
-    expect(hashSymbol(src, { start, end }, "ts")).toEqual(h(BASE));
+    expect(hashSymbol(src, { start, end }, "x.ts")).toEqual(h(BASE));
   });
 
   test("handles unicode before the range (UTF-16 offsets)", () => {
     const src = `// héllo 🎉 wörld\n${BASE}`;
     const start = src.indexOf("export function");
-    expect(hashSymbol(src, { start, end: src.length }, "ts").exactHash).toBe(h(BASE).exactHash);
+    expect(hashSymbol(src, { start, end: src.length }, "x.ts").exactHash).toBe(h(BASE).exactHash);
   });
 
   test("falls back for unparseable input without throwing", () => {
@@ -233,7 +233,7 @@ class Calc {
   });
 
   test("empty range yields all-empty minhash", () => {
-    const r = hashSymbol("const a = 1;", { start: 3, end: 3 }, "ts");
+    const r = hashSymbol("const a = 1;", { start: 3, end: 3 }, "x.ts");
     expect(Array.from(r.minhash).every((x) => x === 0xffffffff)).toBe(true);
   });
 
@@ -241,9 +241,9 @@ class Calc {
     const src = `class A {\n  run(x) { return x + 1; }\n}\nfunction broken( {{{`;
     const start = src.indexOf("run(");
     const end = src.indexOf("\n}\nfunction");
-    const r = hashSymbol(src, { start, end }, "ts");
+    const r = hashSymbol(src, { start, end }, "x.ts");
     expect(r.exactHash).toBe(
-      hashSymbol(`class A {\n  run(y) { return y + 1; }\n}`, { start: 12, end: 36 }, "ts").exactHash,
+      hashSymbol(`class A {\n  run(y) { return y + 1; }\n}`, { start: 12, end: 36 }, "x.ts").exactHash,
     );
   });
 });
@@ -335,7 +335,7 @@ describe("minhash", () => {
   test("tiny functions use a single shingle; empty is all 0xffffffff", () => {
     const tiny = h("x;");
     expect(tiny.minhash.every((v) => v !== 0xffffffff)).toBe(true);
-    const empty = hashSymbol("", { start: 0, end: 0 }, "ts");
+    const empty = hashSymbol("", { start: 0, end: 0 }, "x.ts");
     expect(Array.from(empty.minhash)).toEqual(new Array(64).fill(0xffffffff));
   });
 
@@ -438,7 +438,7 @@ describe("normalizeForEmbedding", () => {
   const msg = polite ? "Good day, " : 'yo ';
   return { name, text: msg + name }; /* trailing */
 }`;
-    const out = normalizeForEmbedding(src, whole(src), "ts");
+    const out = normalizeForEmbedding(src, whole(src), "x.ts");
     expect(out).toBe(
       'function v1(v2: string, v3 = true) { const v4 = v3 ? "s" : "s"; return { name: v2, text: v4 + v2 }; }',
     );
@@ -447,16 +447,16 @@ describe("normalizeForEmbedding", () => {
   test("same text for renamed locals and reformatting; strings and the function name do not matter", () => {
     const a = `function f(a, b) { return a + b + "x"; }`;
     const b = `function g(p,\n q) {\n // c\n return p + q + 'other'; }`;
-    expect(normalizeForEmbedding(b, whole(b), "ts")).toBe(normalizeForEmbedding(a, whole(a), "ts"));
+    expect(normalizeForEmbedding(b, whole(b), "x.ts")).toBe(normalizeForEmbedding(a, whole(a), "x.ts"));
   });
 
   test("keeps property names, well-known globals and free identifiers", () => {
     const src = `function f(user) { return fetchUser(user.id).name; }`;
-    expect(normalizeForEmbedding(src, whole(src), "ts")).toBe(
+    expect(normalizeForEmbedding(src, whole(src), "x.ts")).toBe(
       "function v1(v2) { return fetchUser(v2.id).name; }",
     );
     const m = `const clamp = (x, lo, hi) => Math.min(Math.max(x, lo), hi);`;
-    expect(normalizeForEmbedding(m, whole(m), "ts")).toBe(
+    expect(normalizeForEmbedding(m, whole(m), "x.ts")).toBe(
       "const v1 = (v2, v3, v4) => Math.min(Math.max(v2, v3), v4);",
     );
   });
@@ -464,25 +464,27 @@ describe("normalizeForEmbedding", () => {
   test("capitalize and decapitalize no longer normalize to the same text", () => {
     const up = `function f(s) { return s.charAt(0).toUpperCase() + s.slice(1); }`;
     const low = `function f(s) { return s.charAt(0).toLowerCase() + s.slice(1); }`;
-    expect(normalizeForEmbedding(up, whole(up), "ts")).not.toBe(normalizeForEmbedding(low, whole(low), "ts"));
+    expect(normalizeForEmbedding(up, whole(up), "x.ts")).not.toBe(
+      normalizeForEmbedding(low, whole(low), "x.ts"),
+    );
   });
 
   test("template literals become the same placeholder as strings", () => {
     // biome-ignore lint/suspicious/noTemplateCurlyInString: source code under test, not a template
     const src = "function f(n) { return `item ${n}` + 'x'; }";
-    expect(normalizeForEmbedding(src, whole(src), "ts")).toBe('function v1(v2) { return "s" + "s"; }');
+    expect(normalizeForEmbedding(src, whole(src), "x.ts")).toBe('function v1(v2) { return "s" + "s"; }');
   });
 
   test("a recursive reference follows the renamed function name", () => {
     const src = `function fact(n) { return n <= 1 ? 1 : n * fact(n - 1); }`;
-    expect(normalizeForEmbedding(src, whole(src), "ts")).toBe(
+    expect(normalizeForEmbedding(src, whole(src), "x.ts")).toBe(
       "function v1(v2) { return v2 <= 1 ? 1 : v2 * v1(v2 - 1); }",
     );
   });
 
   test("tsx", () => {
     const src = `function C({ label }: P) { return <b title="t">{label}</b>; }`;
-    expect(normalizeForEmbedding(src, whole(src), "tsx")).toBe(
+    expect(normalizeForEmbedding(src, whole(src), "x.tsx")).toBe(
       'function v1({ label: v2 }: P) { return <b title="s">{v2}</b>; }',
     );
   });
@@ -491,7 +493,7 @@ describe("normalizeForEmbedding", () => {
     // biome-ignore lint/suspicious/noTemplateCurlyInString: source code under test, not a template
     const src = "function f(n) { return `item ${n}`; }";
     const before = h(src);
-    normalizeForEmbedding(src, whole(src), "ts");
+    normalizeForEmbedding(src, whole(src), "x.ts");
     expect(h(src)).toEqual(before);
   });
 });

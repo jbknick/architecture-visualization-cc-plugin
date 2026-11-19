@@ -1,0 +1,48 @@
+{
+  "repo": "bulletproof-react",
+  "sha": "9506629ed003a561c6627735480cce4994244bb4",
+  "labelledBy": "hand-labelled by a research agent (not the recipe agent) by rg enumeration and reading each site",
+  "kinds": ["route"],
+  "route": [
+    {
+      "path": "/",
+      "file": "apps/react-vite/src/app/routes/landing.tsx"
+    },
+    {
+      "path": "/auth/register",
+      "file": "apps/react-vite/src/app/routes/auth/register.tsx"
+    },
+    {
+      "path": "/auth/login",
+      "file": "apps/react-vite/src/app/routes/auth/login.tsx"
+    },
+    {
+      "path": "/app",
+      "file": "apps/react-vite/src/app/routes/app/dashboard.tsx"
+    },
+    {
+      "path": "/app/discussions",
+      "file": "apps/react-vite/src/app/routes/app/discussions/discussions.tsx"
+    },
+    {
+      "path": "/app/discussions/:discussionId",
+      "file": "apps/react-vite/src/app/routes/app/discussions/discussion.tsx"
+    },
+    {
+      "path": "/app/users",
+      "file": "apps/react-vite/src/app/routes/app/users.tsx"
+    },
+    {
+      "path": "/app/profile",
+      "file": "apps/react-vite/src/app/routes/app/profile.tsx"
+    },
+    {
+      "path": "/*",
+      "file": "apps/react-vite/src/app/routes/not-found.tsx"
+    },
+    {
+      "path": "/public/discussions/:discussionId",
+      "file": "apps/nextjs-app/src/app/public/discussions/[discussionId]/page.tsx"
+    }
+  ]
+}

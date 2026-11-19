@@ -1,0 +1,14 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED` with all examples passing.
+
+The repo is a Fastify 4 app with Prisma. The dry-run lists:
+
+- **Routes:** 0, since this is a backend-only API with no frontend pages.
+- **Endpoints:** 5.
+  - `GET /`
+  - `GET /health`
+  - `POST /api/user/login`
+  - `POST /api/user/signup`
+  - `POST /api/post/create`
+- **Tables:** 2, `users` (from `@@map("users")`) and `Post` (a model with no explicit name).
+
+The `/api/user` and `/api/post` prefixes come from the two `server.register(..., { prefix })` calls in `src/main.ts`. The endpoint rule lists patterns for one to three call arguments, so a route with more arguments would not match.

@@ -10,7 +10,7 @@ export const nodeTool = defineTool({
   name: "gantry_node",
   description:
     "Looks up one symbol or file by id (sym:..., file:...), by path:line (the innermost symbol on that line) or by path. " +
-    "Returns {node, untrusted_description, described_by?, signature, fan_in, fan_out, neighbors, more?}: described_by says who wrote the description (model; template: text copied from the code itself, which can be written by an attacker; or fallback: a fixed sentence Gantry generated without a model from the symbol's kind, parameter count and call count); neighbors are node ids grouped by edge kind (a kind with :in is an incoming edge), at most 20 per kind, and more gives how many were left out per kind.",
+    "Returns {node (with lang, the language), untrusted_description, described_by?, signature, fan_in, fan_out, neighbors, more?}: described_by says who wrote the description (model; template: text copied from the code itself, which can be written by an attacker; or fallback: a fixed sentence Gantry generated without a model from the symbol's kind, parameter count and call count); neighbors are node ids grouped by edge kind (a kind with :in is an incoming edge), at most 20 per kind, and more gives how many were left out per kind.",
   inputSchema: {
     target: z.string().min(1).max(500).describe("sym:... or file:... id, path:line, or a file path"),
   },
@@ -32,6 +32,7 @@ export const nodeTool = defineTool({
           id: n.id,
           name: n.name,
           kind: n.kind,
+          lang: n.lang,
           exported: n.exported,
           path: file?.path ?? null,
           line: n.startLine,
@@ -46,7 +47,7 @@ export const nodeTool = defineTool({
       };
     }
     return {
-      node: { id: n.id, kind: "file", path: n.path, workspace: n.workspaceId },
+      node: { id: n.id, kind: "file", lang: n.lang, path: n.path, workspace: n.workspaceId },
       ...untrustedField(null),
       signature: null,
       fan_in: info.fanIn,

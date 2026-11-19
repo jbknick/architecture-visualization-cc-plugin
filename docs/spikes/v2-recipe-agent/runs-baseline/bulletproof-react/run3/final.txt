@@ -1,0 +1,14 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED`. It lists 19 routes, 0 endpoints and 0 tables.
+
+**Stack:** the repo has three front-end apps and no backend.
+- `apps/nextjs-app` uses the Next.js app router.
+- `apps/nextjs-pages` uses the Next.js pages router.
+- `apps/react-vite` uses React Router.
+- The API and database in each app are mocked with MSW, which the task excludes, so there are no endpoints or tables to list.
+
+**Routes:**
+- **Next.js app router:** 9 routes, taken from the `page.tsx` file paths.
+- **Next.js pages router:** the 10 page files. I left out `_app.tsx` because it isn't a page. The dry-run counts 19 distinct routes in total, so some `nextjs-pages` URLs probably merge with identical ones from `nextjs-app`.
+- **React Router:** the 9 routes defined in `router.tsx`.
+
+**What I couldn't express:** I couldn't read the React Router paths from `router.tsx`. They come from the `paths` constants and are nested under `/app`, so the recipe would have needed a rule that composes nested route config. Instead there is one rule per route file, with the URL written in by hand. These rules won't pick up new React Router routes automatically.

@@ -85,7 +85,6 @@ export interface Estimate {
 }
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
-const langOf = (p: string): "ts" | "tsx" => (p.endsWith(".tsx") ? "tsx" : "ts");
 
 function rootOf(store: Store, ctx: SourceContext): string | undefined {
   return ctx.root ?? store.getMeta("repo_root");
@@ -151,7 +150,7 @@ function computeTemplates(
       const range = parsed.bodies.get(c.sym.id);
       if (!range) continue;
       // The file may have changed since indexing; a template must describe the code the key was made from.
-      if (hashSymbol(source, range, langOf(p)).exactHash !== c.sym.exactHash) continue;
+      if (hashSymbol(source, range, p).exactHash !== c.sym.exactHash) continue;
       const d = templateFor(c.sym, parsed, source);
       if (d) out.set(key, d);
     }
@@ -175,11 +174,17 @@ export function syncBacklog(store: Store, opts: SyncOptions = {}): BacklogSyncRe
   const describedKeys = new Set<string>();
   const todo: [string, Candidate][] = [];
   const retry: [string, Candidate][] = [];
+  // Fallback keys past their last return: still described, but a row already in the backlog (the last return, pending
+  // or claimed) is left to run its course, never dropped here (#180). Only a fourth row is never created.
+  const lastReturn = new Set<string>();
   for (const [key, c] of groups) {
     const d = hasDescription.get(key) as { provenance: string | null } | undefined;
     if (!d) todo.push([key, c]);
     else if (d.provenance === "fallback" && requeues(key) < MAX_FALLBACK_REQUEUES) retry.push([key, c]);
-    else describedKeys.add(key);
+    else {
+      describedKeys.add(key);
+      if (d.provenance === "fallback") lastReturn.add(key);
+    }
   }
   const templates = computeTemplates(store, todo, opts);
 
@@ -199,7 +204,7 @@ export function syncBacklog(store: Store, opts: SyncOptions = {}): BacklogSyncRe
   const result: BacklogSyncResult = { enqueued: 0, templated: 0, alreadyDescribed: describedKeys.size };
   const now = new Date().toISOString();
   store.tx(() => {
-    for (const key of describedKeys) dropUnclaimed.run(key);
+    for (const key of describedKeys) if (!lastReturn.has(key)) dropUnclaimed.run(key);
     // A fallback goes back to the model: a new pending row, counted, unless one is already there (#180).
     for (const [key, c] of retry) {
       if (backlogRow.get(key)) continue;

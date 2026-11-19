@@ -115,6 +115,32 @@ describe("item 6: a fallback row is re-queued for the model, at most three times
     await ix.close();
   });
 
+  it("the third return survives later syncs until the model describes it, and no fourth row is made", async () => {
+    const ix = await indexedFixture();
+    syncBacklog(ix.store);
+    runToFallback(ix, SLUG);
+    for (let n = 1; n <= 2; n++) {
+      syncBacklog(ix.store);
+      runToFallback(ix, SLUG);
+    }
+    syncBacklog(ix.store); // the third return
+    expect(ix.store.getMeta(`fallback_requeues:${SLUG}`)).toBe("3");
+    expect(row(ix, SLUG)).toMatchObject({ status: "pending" });
+    syncBacklog(ix.store);
+    syncBacklog(ix.store);
+    expect(row(ix, SLUG)).toMatchObject({ status: "pending", attempts: 0 });
+    expect(ix.store.getMeta(`fallback_requeues:${SLUG}`)).toBe("3");
+    const { batchId } = claimBatch(ix.store, "w1", 40);
+    syncBacklog(ix.store); // a claimed return survives too
+    expect(row(ix, SLUG)).toMatchObject({ status: "claimed" });
+    const ok = submitDescriptions(ix.store, batchId, [{ contentKey: SLUG, description: GOOD }]);
+    expect(ok.accepted).toBe(1);
+    expect(provenance(ix, SLUG)).toBe("model");
+    syncBacklog(ix.store);
+    expect(row(ix, SLUG)).toBeUndefined();
+    await ix.close();
+  });
+
   it("does not put a second row next to one that is already pending or claimed", async () => {
     const ix = await indexedFixture();
     syncBacklog(ix.store);

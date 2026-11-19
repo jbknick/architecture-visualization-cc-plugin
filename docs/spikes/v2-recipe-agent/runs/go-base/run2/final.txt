@@ -1,0 +1,10 @@
+I wrote the recipe to `.gantry/recipe.json`, and the dry-run says `ACCEPTED`. The endpoint list is incomplete and every path is missing its mount prefixes.
+
+**Stack:** Go with chi v5 for HTTP, and bun on Postgres. Table schemas are `CREATE TABLE` statements in the migration files.
+
+**Listed:** 0 routes, 16 endpoints, 3 tables (`accounts`, `tokens`, `profiles`). There are no frontend routes, because the repo is a Go API that serves a built SPA.
+
+**What I could not express:**
+- **Mount prefixes missing:** The dry-run does not resolve mounts whose child is a method call, such as `r.Mount("/accounts", a.Accounts.router())` or `r.Mount("/auth", authResource.Router())`. The sub-router paths therefore come out unprefixed, for example `GET /` instead of `GET /admin/accounts`, and `POST /login` instead of `POST /auth/login`. `/api/account/...` and `/api/profile/...` have the same problem. Prefixes that sit in the same file, from `Route` and `Group`, are applied.
+- **Endpoints not listed:** The endpoint rule matched 19 registrations but only 16 are listed. The missing ones appear to be `GET /` and `PUT /` in `api/app/profile.go`, and `GET /` in `api/admin/api.go`.
+- **Missing capability:** `call-return` resolves a function that returns a router. It does not appear to follow a method called through a struct field or a variable.

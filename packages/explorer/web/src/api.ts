@@ -420,6 +420,9 @@ export interface NodeBody {
   kind: string;
   name: string;
   path: string | null;
+  /** Symbols and files: the language id (`typescript`) and its display label. */
+  lang?: string;
+  langLabel?: string;
   workspaceId?: string | null;
   workspaceKind?: string;
   line?: number;
@@ -502,6 +505,9 @@ export interface SearchHit {
   id: string;
   name: string;
   kind: string;
+  /** Language id and display label (`TypeScript`). */
+  lang?: string;
+  langLabel?: string;
   path: string;
   line: number;
   exported: boolean;

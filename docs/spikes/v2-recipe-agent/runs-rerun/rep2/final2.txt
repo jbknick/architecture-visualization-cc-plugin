@@ -1,0 +1,7 @@
+I extended `.gantry/recipe.json` with four new rules, and the dry-run says ACCEPTED with all examples passing. The old rules are unchanged.
+
+- **Express app (`apps/express`):** `express-router`, `express-endpoint` and `express-mount` cover the five `api.*` sites and the `app.use("/api", api)` mount. The dry-run lists five endpoints under `/api`: `GET /api/items`, `GET /api/items/:id`, `POST /api/items`, `DELETE /api/items/:id` and `GET /api/health`.
+- **Prisma schema:** `prisma-model` finds the `Item` and `Tag` tables.
+- **Dismissed:** I listed `@orpc/server` under `dismissed` because oRPC procedures are not method + path. `react` is a UI library, not a registration. `@tanstack/react-router`, `@prisma/client` and `express` are already covered by rules, so I dismissed them too.
+
+The dry-run now reports 7 endpoints, 3 routes and 4 tables in total. The Hono endpoints, TanStack routes and Drizzle tables are the same as before.

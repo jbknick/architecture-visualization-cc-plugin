@@ -1,0 +1,12 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says ACCEPTED with all examples passing.
+
+**Stack:** a Go backend with Gin, a gRPC gateway defined in `proto/service_simple_bank.proto`, and SQL migrations. There is also a Vue frontend in `frontend/`.
+
+**Counts:** 11 endpoints, 6 tables and 0 routes.
+- **Endpoints, Gin (7):** the Gin routes in `api/server.go`, including the `/accounts` and `/transfers` routes under the `Group("/").Use(...)` chain. I compared them with `api/server.go` and they match.
+- **Endpoints, gateway (4):** the gateway `post`/`get`/`patch` entries under `/v1/` (`create_user`, `login_user`, `update_user`, `verify_email`). They are listed with method `ALL` because the regex rule can't read the method from the proto entry.
+- **Tables (6):** `accounts`, `entries`, `transfers`, `users`, `sessions` and `verify_emails`, from the `CREATE TABLE` statements in the up migrations.
+
+**Not expressed:**
+- **Frontend route:** `frontend/src/router/index.ts` has a single route, `/`, and I didn't write a rule for it. I wasn't sure the route emit works for a `path:` entry in a Vue router file, and I didn't test it.
+- **gRPC methods:** these have no HTTP path of their own, so they are not listed.
