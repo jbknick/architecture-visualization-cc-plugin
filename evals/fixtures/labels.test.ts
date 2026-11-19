@@ -2,36 +2,11 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
+import { endpointKey, endpointText, labelsSchema } from "../../scripts/eval-lib.js";
 
-// The hand-label schema for evaluation repos (route, endpoint, table, read, write, link),
-// used here for a committed fixture. `sha` is only for pinned third-party repos.
-const file = z.string().regex(/^[^\\]+$/);
-const labelSchema = z.object({
-  repo: z.string().regex(/^[a-z0-9._-]+$/),
-  sha: z
-    .string()
-    .regex(/^[0-9a-f]{40}$/)
-    .optional(),
-  labelledBy: z.string(),
-  kinds: z.array(z.enum(["route", "endpoint", "table", "read", "write", "link"])),
-  route: z.array(z.object({ path: z.string().startsWith("/"), file }).strict()).default([]),
-  endpoint: z
-    .array(
-      z
-        .object({
-          method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]),
-          path: z.string().startsWith("/"),
-          file,
-        })
-        .strict(),
-    )
-    .default([]),
-  table: z.array(z.object({ name: z.string() }).strict()).default([]),
-  read: z.array(z.object({ file, table: z.string() }).strict()).default([]),
-  write: z.array(z.object({ file, table: z.string() }).strict()).default([]),
-  link: z.array(z.object({ file, endpoint: z.string() }).strict()).default([]),
-});
+// The corpus label schema (spec section 13), used here for a committed fixture: `sha` is only for pinned
+// third-party repos, so it is optional here.
+const labelSchema = labelsSchema.omit({ sha: true }).extend({ sha: labelsSchema.shape.sha.optional() });
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const fixtureDir = join(root, "fixtures/react-router-fastify");
@@ -61,7 +36,7 @@ describe("react-router-fastify labels", () => {
   it("has no duplicate keys in a kind", () => {
     const dup = (keys: string[]) => keys.filter((k, i) => keys.indexOf(k) !== i);
     expect(dup(labels.route.map((r) => r.path))).toEqual([]);
-    expect(dup(labels.endpoint.map((e) => `${e.method} ${e.path}`))).toEqual([]);
+    expect(dup(labels.endpoint.map(endpointKey))).toEqual([]);
     expect(dup(labels.table.map((t) => t.name))).toEqual([]);
     expect(dup(labels.read.map((r) => `${r.file}|${r.table}`))).toEqual([]);
     expect(dup(labels.write.map((r) => `${r.file}|${r.table}`))).toEqual([]);
@@ -93,8 +68,8 @@ describe("react-router-fastify labels", () => {
   });
 
   it("links point at labelled endpoints and traces from a page through a handler to a table", () => {
-    const endpoints = new Set(labels.endpoint.map((e) => `${e.method} ${e.path}`));
-    expect(labels.link.filter((l) => !endpoints.has(l.endpoint))).toEqual([]);
+    const endpoints = new Set(labels.endpoint.map(endpointKey));
+    expect(labels.link.filter((l) => !endpoints.has(endpointText(l.endpoint)))).toEqual([]);
     // Every web app has a page that calls an endpoint.
     for (const app of ["web-data", "web-declarative", "web-framework"]) {
       expect(labels.link.some((l) => l.file.startsWith(`apps/${app}/`))).toBe(true);
