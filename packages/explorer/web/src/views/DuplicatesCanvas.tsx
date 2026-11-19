@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type DupCluster, type DuplicatesData, type DupMember, type DupWorkspace } from "../api.ts";
 import { RELOAD_VIEW_EVENT } from "../hooks.ts";
+import { fileIdOfSymId } from "../ids.ts";
 import type { CanvasProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
@@ -361,7 +362,7 @@ function MemberCard({
             type="button"
             className="btn"
             disabled={!hasView("project-map")}
-            onClick={() => openInView("project-map", `file:${member.path}`, member.id)}
+            onClick={() => openInView("project-map", fileIdOfSymId(member.id) ?? member.id, member.id)}
           >
             Open in project map
           </button>

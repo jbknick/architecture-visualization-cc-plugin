@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  fileId,
   type GantryConfig,
   type GantryPaths,
   indexRepo,
@@ -170,7 +171,9 @@ export async function settleBatch(
  */
 export function recordEdit(store: Store, session: string, rel: string, source: boolean): string {
   const baseline = source
-    ? Object.fromEntries(store.effectiveSymbols({ fileId: `file:${rel}` }).map((s) => [s.id, s.exactHash]))
+    ? Object.fromEntries(
+        store.effectiveSymbols({ fileId: fileId(store.repo(), rel) }).map((s) => [s.id, s.exactHash]),
+      )
     : {};
   const at = stamp();
   store.db
@@ -302,7 +305,7 @@ export async function settle(
       } catch {
         baseline = {};
       }
-      const current = store.effectiveSymbols({ fileId: `file:${r.path}` });
+      const current = store.effectiveSymbols({ fileId: fileId(store.repo(), r.path) });
       found.push(
         ...(await duplicateFindings(
           store,
@@ -319,8 +322,10 @@ export async function settle(
       }
       if (text !== undefined) {
         const head = git(paths.root, ["show", `HEAD:${r.path}`]);
-        const before = head.ok ? parseSource(r.path, head.out.toString("utf8")) : undefined;
-        found.push(...importFindings(store, r.path, parseSource(r.path, text), before).filter(check));
+        const before = head.ok ? parseSource(store.repo(), r.path, head.out.toString("utf8")) : undefined;
+        found.push(
+          ...importFindings(store, r.path, parseSource(store.repo(), r.path, text), before).filter(check),
+        );
       }
       del.run(session, r.path, r.created_at);
     });

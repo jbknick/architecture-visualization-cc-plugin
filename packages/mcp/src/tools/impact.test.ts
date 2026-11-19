@@ -20,7 +20,7 @@ const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as 
 
 const MARKER = "ZetaNineImpactMarker";
 const FIELD = "untrusted_description";
-const BUTTON = "sym:packages/ui/src/button.tsx#Button";
+const BUTTON = "sym:pnpm-turbo:packages/ui/src/button.tsx#Button";
 
 const fixtures: MaterializedFixture[] = [];
 const dataDirs: string[] = [];
@@ -126,9 +126,9 @@ describe("gantry_impact", () => {
       hop: 1,
       count: 3,
       ids: [
-        "file:packages/ui/src/index.ts",
-        "sym:apps/web/src/routes/index.tsx#HomePage",
-        "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+        "file:pnpm-turbo:packages/ui/src/index.ts",
+        "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
+        "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
       ],
     });
     const consumers = (r.json as { consumers: Record<string, unknown>[] }).consumers;
@@ -137,19 +137,19 @@ describe("gantry_impact", () => {
       id: BUTTON,
       direct_total: 3,
       direct: [
-        { id: "file:packages/ui/src/index.ts", uses: ["imports"] },
-        { id: "sym:apps/web/src/routes/index.tsx#HomePage", uses: ["renders"], crosses: ["app"] },
+        { id: "file:pnpm-turbo:packages/ui/src/index.ts", uses: ["imports"] },
+        { id: "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage", uses: ["renders"], crosses: ["app"] },
         {
-          id: "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+          id: "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
           uses: ["renders"],
           crosses: ["app"],
         },
       ],
     });
     expect(consumers[0]?.potential).toContainEqual({
-      id: "route:@acme/web:/",
+      id: "route:pnpm-turbo:@acme/web:/",
       hop: 2,
-      via: "sym:apps/web/src/routes/index.tsx#HomePage",
+      via: "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
     });
     expect(j.crossings.map((c) => c.kind)).toEqual(["app", "app"]);
     expect(j.risk.level).toBe("medium");
@@ -179,7 +179,7 @@ describe("gantry_impact", () => {
     expect((await call(client, "gantry_impact", { range: "--output=x...feature" })).json.error).toBe(
       "bad_range",
     );
-    expect((await call(client, "gantry_impact", { symbol: "sym:no/such.ts#x" })).json.error).toBe(
+    expect((await call(client, "gantry_impact", { symbol: "sym:pnpm-turbo:no/such.ts#x" })).json.error).toBe(
       "not_found",
     );
     expect((await call(client, "gantry_impact", { paths: ["no/such.ts"] })).json.error).toBe("not_found");

@@ -37,9 +37,9 @@ const sha = (f: string): string => createHash("sha256").update(readFileSync(f)).
 
 describe("a store from another version of Gantry", () => {
   it("is the current version when new", () => {
-    expect(SCHEMA_VERSION).toBe(7);
+    expect(SCHEMA_VERSION).toBe(8);
     const s = openStore(dbPath);
-    expect(s.getMeta("schema_version")).toBe("7");
+    expect(s.getMeta("schema_version")).toBe("8");
     s.close();
   });
 
@@ -52,7 +52,7 @@ describe("a store from another version of Gantry", () => {
       caught = err;
     }
     expect(caught).toBeInstanceOf(StaleStoreError);
-    expect(caught).toMatchObject({ found: 6, expected: 7, dbPath });
+    expect(caught).toMatchObject({ found: 6, expected: 8, dbPath });
     // Refusing it changes nothing.
     const raw = new Database(dbPath, { readonly: true });
     expect(raw.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get()).toEqual({ value: "6" });
@@ -70,7 +70,7 @@ describe("a store from another version of Gantry", () => {
       expect(existsSync(join(dir, f))).toBe(false);
     expect(existsSync(join(dir, "config.json"))).toBe(true);
     expect(stderr.join("")).toBe(
-      "gantry: the index was built by an older version of Gantry (schema 6, now 7); rebuilding it\n",
+      "gantry: the index was built by an older version of Gantry (schema 6, now 8); rebuilding it\n",
     );
     openStore(dbPath).close(); // a new store opens
     expect(resetStaleStore({ dbPath })).toEqual({ reset: false });
@@ -85,11 +85,22 @@ describe("a store from another version of Gantry", () => {
   });
 
   it("(d) resets a newer store too", () => {
-    build(8);
+    build(9);
     expect(() => openStore(dbPath)).toThrow(StaleStoreError);
-    expect(resetStaleStore({ dbPath })).toEqual({ reset: true, found: 8 });
+    expect(resetStaleStore({ dbPath })).toEqual({ reset: true, found: 9 });
     expect(existsSync(dbPath)).toBe(false);
-    expect(stderr.join("")).toContain("(schema 8, now 7)");
+    expect(stderr.join("")).toContain("(schema 9, now 8)");
+  });
+
+  it("(e) resets a current store whose repo name changed, and leaves one with the same name", () => {
+    const s = openStore(dbPath);
+    s.setMeta("repo", "a/b");
+    s.close();
+    expect(resetStaleStore({ dbPath, repo: "a/b" })).toEqual({ reset: false });
+    expect(existsSync(dbPath)).toBe(true);
+    expect(resetStaleStore({ dbPath, repo: "c/d" })).toEqual({ reset: true, found: SCHEMA_VERSION });
+    expect(existsSync(dbPath)).toBe(false);
+    expect(stderr.join("")).toContain("(a/b -> c/d)");
   });
 
   it("does nothing when there is no store", () => {

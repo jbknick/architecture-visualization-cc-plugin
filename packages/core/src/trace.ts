@@ -1,3 +1,4 @@
+import { fileIdOfSymId, isFileId, isSymId, pathOfFileId, qualifyId, symIdOfFileId, tableId } from "./ids.js";
 import { EVIDENCE_CAP } from "./resolve/index.js";
 import { nodeInfo } from "./search/node.js";
 import type { Store } from "./store/index.js";
@@ -121,8 +122,11 @@ export function resolveTraceTarget(store: Store, target: string): string | null 
   const t = target.trim();
   if (t === "") return null;
   const adapters = store.effectiveAdapterNodes();
+  const repo = store.getMeta("repo");
+  const long = repo === undefined ? undefined : qualifyId(repo, t);
   if (adapters.some((n) => n.id === t)) return t;
-  if (t.startsWith("sym:")) return store.getSymbol(t) ? t : null;
+  if (long !== undefined && adapters.some((n) => n.id === long)) return long;
+  if (isSymId(t)) return store.getSymbol(t) ? t : long !== undefined && store.getSymbol(long) ? long : null;
   // A route id or URL path (`/posts/$postId`), an endpoint label (`GET /posts/:id`, `rpc posts.list`), a table name.
   const pick = (ns: AdapterNodeRecord[]): string | null =>
     ns.length > 0 ? (ns.map((n) => n.id).sort(cmp)[0] as string) : null;
@@ -132,7 +136,11 @@ export function resolveTraceTarget(store: Store, target: string): string | null 
   if (route) return route;
   const ep = pick(adapters.filter((n) => n.kind === "endpoint" && n.label === t));
   if (ep) return ep;
-  const table = pick(adapters.filter((n) => n.kind === "table" && (n.label === t || n.id === `table:${t}`)));
+  const table = pick(
+    adapters.filter(
+      (n) => n.kind === "table" && (n.label === t || (repo !== undefined && n.id === tableId(repo, t))),
+    ),
+  );
   if (table) return table;
   const info = nodeInfo(store, t);
   return info ? info.node.id : null;
@@ -170,20 +178,20 @@ export function trace(store: Store, target: string, opts: TraceOptions = {}): Tr
   const kindOf = (id: string): string => {
     const a = adapters.get(id);
     if (a) return a.kind;
-    if (id.startsWith("file:")) return "file";
+    if (isFileId(id)) return "file";
     return store.getSymbol(id)?.kind ?? "symbol";
   };
   const labelOf = (id: string): string => {
     const a = adapters.get(id);
     if (a) return a.label;
-    if (id.startsWith("file:")) return id.slice(5);
+    if (isFileId(id)) return pathOfFileId(id);
     return store.getSymbol(id)?.name ?? id;
   };
   /** The `Route` const of a route's file: it holds the loader and any inline component. */
   const routeConst = (routeId: string): string | null => {
     const r = adapters.get(routeId);
     if (!r) return null;
-    const id = `sym:${r.fileId.slice(5)}#Route`;
+    const id = symIdOfFileId(r.fileId, "Route");
     return store.getSymbol(id) ? id : null;
   };
 
@@ -319,7 +327,7 @@ export function trace(store: Store, target: string, opts: TraceOptions = {}): Tr
       endpointsOf(id);
       // The `Route` const of a route file leads to its route.
       if (id.endsWith("#Route")) {
-        const fileId = `file:${id.slice(4, id.lastIndexOf("#"))}`;
+        const fileId = fileIdOfSymId(id) as string;
         for (const r of routeByFile.get(fileId) ?? []) {
           if (reach(r, id, "serves", false)) record({ src: r, dst: id, kind: "serves", confidence: "high" });
         }

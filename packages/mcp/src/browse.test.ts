@@ -89,7 +89,7 @@ async function setup(files: Record<string, string> = {}, embed = true) {
   const embedder = fakeEmbedder();
   const store = openStore(repo.paths.dbPath);
   try {
-    const key = contentKey(store.getSymbol("sym:src/lib/slug.ts#slugify")?.exactHash as string);
+    const key = contentKey(store.getSymbol("sym:repo:src/lib/slug.ts#slugify")?.exactHash as string);
     store.db
       .prepare(
         `INSERT OR REPLACE INTO descriptions(content_key, behavior, search_terms, name_fits, suggested_name,
@@ -184,11 +184,11 @@ describe("gantry_browse", () => {
 describe("gantry_node", () => {
   it("returns the node, its description only as untrusted_description, and fan counts", async () => {
     const { client } = await setup();
-    for (const target of ["sym:src/lib/slug.ts#slugify", "src/lib/slug.ts:2"]) {
+    for (const target of ["sym:repo:src/lib/slug.ts#slugify", "src/lib/slug.ts:2"]) {
       const r = await call(client, "gantry_node", { target });
       expect(r.isError).toBe(false);
       expect(r.json.node).toMatchObject({
-        id: "sym:src/lib/slug.ts#slugify",
+        id: "sym:repo:src/lib/slug.ts#slugify",
         name: "slugify",
         path: "src/lib/slug.ts",
       });
@@ -215,7 +215,7 @@ describe("gantry_node", () => {
         `import { hub } from "./hub";\nexport function use${i}(n: number): number {\n  return hub(n);\n}\n`;
     }
     const { client } = await setup(files);
-    const r = await call(client, "gantry_node", { target: "file:src/hub.ts" });
+    const r = await call(client, "gantry_node", { target: "file:repo:src/hub.ts" });
     const neighbors = r.json.neighbors as Record<string, string[]>;
     expect(neighbors["imports:in"]).toHaveLength(20);
     expect((r.json.more as Record<string, number>)["imports:in"]).toBe(5);

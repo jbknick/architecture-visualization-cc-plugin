@@ -8,11 +8,12 @@ import { nodeInfo } from "./node.js";
 let store: Store;
 beforeEach(() => {
   store = openStore(":memory:");
+  store.setMeta("repo", "repo");
 });
 afterEach(() => store.close());
 
 const file = (path: string, workspaceId = "ws:a", extra: Partial<FileRecord> = {}): FileRecord => ({
-  id: `file:${path}`,
+  id: `file:repo:${path}`,
   path,
   workspaceId,
   contentHash: `h-${path}`,
@@ -23,8 +24,8 @@ const file = (path: string, workspaceId = "ws:a", extra: Partial<FileRecord> = {
 
 function sym(path: string, name: string, extra: Partial<SymbolRecord> = {}): SymbolRecord {
   return {
-    id: `sym:${path}#${name}`,
-    fileId: `file:${path}`,
+    id: `sym:repo:${path}#${name}`,
+    fileId: `file:repo:${path}`,
     name,
     kind: "function",
     exported: true,
@@ -134,7 +135,7 @@ describe("ftsSearch", () => {
   });
 
   it("hides symbols of files deleted in the working layer", () => {
-    store.markDeleted("working", "file:b/other.ts");
+    store.markDeleted("working", "file:repo:b/other.ts");
     expect(ftsSearch(store, "parser")).toEqual([]);
   });
 });
@@ -148,15 +149,15 @@ describe("nodeInfo", () => {
         sym("src/a.ts", "inner", { kind: "method", startLine: 5, endLine: 8 }),
       ],
       [
-        ["file:src/a.ts", "sym:src/a.ts#outer", "contains"],
-        ["sym:src/a.ts#outer", "sym:src/b.ts#target", "calls"],
-        ["sym:src/a.ts#outer", "sym:src/b.ts#other", "calls"],
+        ["file:repo:src/a.ts", "sym:repo:src/a.ts#outer", "contains"],
+        ["sym:repo:src/a.ts#outer", "sym:repo:src/b.ts#target", "calls"],
+        ["sym:repo:src/a.ts#outer", "sym:repo:src/b.ts#other", "calls"],
       ],
     );
     put(
       file("src/b.ts"),
       [sym("src/b.ts", "target")],
-      [["sym:src/c.ts#caller", "sym:src/b.ts#target", "calls"]],
+      [["sym:repo:src/c.ts#caller", "sym:repo:src/b.ts#target", "calls"]],
     );
   });
 
@@ -168,23 +169,29 @@ describe("nodeInfo", () => {
   });
 
   it("groups neighbors by edge kind and counts fan-in/out without contains", () => {
-    const info = nodeInfo(store, "sym:src/a.ts#outer");
+    const info = nodeInfo(store, "sym:repo:src/a.ts#outer");
     expect(info?.fanOut).toBe(2);
     expect(info?.fanIn).toBe(0);
     expect(info?.neighbors).toEqual({
-      calls: ["sym:src/b.ts#other", "sym:src/b.ts#target"],
-      "contains:in": ["file:src/a.ts"],
+      calls: ["sym:repo:src/b.ts#other", "sym:repo:src/b.ts#target"],
+      "contains:in": ["file:repo:src/a.ts"],
     });
-    const target = nodeInfo(store, "sym:src/b.ts#target");
+    const target = nodeInfo(store, "sym:repo:src/b.ts#target");
     expect(target?.fanIn).toBe(2);
-    expect(target?.neighbors["calls:in"]).toEqual(["sym:src/a.ts#outer", "sym:src/c.ts#caller"]);
+    expect(target?.neighbors["calls:in"]).toEqual(["sym:repo:src/a.ts#outer", "sym:repo:src/c.ts#caller"]);
   });
 
   it("resolves file ids and bare paths to the file", () => {
-    expect(nodeInfo(store, "file:src/a.ts")?.node).toMatchObject({ path: "src/a.ts" });
-    expect(nodeInfo(store, "src/b.ts")?.node).toMatchObject({ id: "file:src/b.ts" });
-    expect(nodeInfo(store, "file:nope.ts")).toBeNull();
-    expect(nodeInfo(store, "sym:nope#x")).toBeNull();
+    expect(nodeInfo(store, "file:repo:src/a.ts")?.node).toMatchObject({ path: "src/a.ts" });
+    expect(nodeInfo(store, "src/b.ts")?.node).toMatchObject({ id: "file:repo:src/b.ts" });
+    expect(nodeInfo(store, "file:repo:nope.ts")).toBeNull();
+    expect(nodeInfo(store, "sym:repo:nope#x")).toBeNull();
+  });
+
+  it("accepts the short forms of ids and resolves them against the store's repo", () => {
+    expect(nodeInfo(store, "file:src/a.ts")?.node.id).toBe("file:repo:src/a.ts");
+    expect(nodeInfo(store, "sym:src/a.ts#outer")?.node.id).toBe("sym:repo:src/a.ts#outer");
+    expect(nodeInfo(store, "file:other:src/a.ts")).toBeNull();
   });
 });
 

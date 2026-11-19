@@ -283,7 +283,7 @@ describe("heal: fallbacks and no-ops", () => {
     const names = (
       s.db
         .prepare(
-          "SELECT name FROM symbols WHERE layer = 'main' AND file_id = 'file:packages/utils/src/alpha.ts'",
+          "SELECT name FROM symbols WHERE layer = 'main' AND file_id = 'file:pnpm-turbo:packages/utils/src/alpha.ts'",
         )
         .all() as {
         name: string;
@@ -310,16 +310,18 @@ describe("heal and the working layer", () => {
     const { fx, paths } = await setup();
     write(fx, "packages/utils/src/slug.ts", "export const dirtySlug = 1;\n");
     expect((await refreshWorking(paths)).reindexed).toBe(1);
-    expect(workingIds(paths)).toContain("file:packages/utils/src/slug.ts");
+    expect(workingIds(paths)).toContain("file:pnpm-turbo:packages/utils/src/slug.ts");
 
     write(fx, "packages/utils/src/alpha.ts", "export const alpha = 1;\n");
     fx.git(["add", "packages/utils/src/alpha.ts"]);
     fx.git(["commit", "-q", "-m", "alpha only"]);
     const r = await heal(paths);
     expect(r.full).toBe(false);
-    expect(workingIds(paths)).toContain("file:packages/utils/src/slug.ts");
+    expect(workingIds(paths)).toContain("file:pnpm-turbo:packages/utils/src/slug.ts");
     const s = openStore(paths.dbPath);
-    const names = s.effectiveSymbols({ fileId: "file:packages/utils/src/slug.ts" }).map((x) => x.name);
+    const names = s
+      .effectiveSymbols({ fileId: "file:pnpm-turbo:packages/utils/src/slug.ts" })
+      .map((x) => x.name);
     s.close();
     expect(names).toEqual(["dirtySlug"]);
   });
@@ -328,7 +330,7 @@ describe("heal and the working layer", () => {
     const { fx, paths } = await setup();
     write(fx, "packages/utils/src/slug.ts", "export const committedSlug = 1;\n");
     await refreshWorking(paths);
-    expect(workingIds(paths)).toEqual(["file:packages/utils/src/slug.ts"]);
+    expect(workingIds(paths)).toEqual(["file:pnpm-turbo:packages/utils/src/slug.ts"]);
     commit(fx, "commit the dirty file");
     await heal(paths);
     expect(workingIds(paths)).toEqual([]);
@@ -360,8 +362,8 @@ describe("refreshWorking", () => {
     const r = await refreshWorking(paths);
     expect(r.reindexed).toBe(2);
     const rows = workingRows(paths);
-    expect(rows.find((x) => x.id === "file:packages/utils/src/time.ts")?.deleted).toBe(1);
-    expect(rows.map((x) => x.id)).toContain("file:packages/utils/src/fresh.ts");
+    expect(rows.find((x) => x.id === "file:pnpm-turbo:packages/utils/src/time.ts")?.deleted).toBe(1);
+    expect(rows.map((x) => x.id)).toContain("file:pnpm-turbo:packages/utils/src/fresh.ts");
     const s = openStore(paths.dbPath);
     const eff = s.effectiveFiles().map((f) => f.path);
     s.close();

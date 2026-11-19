@@ -13,10 +13,10 @@ import { type ExplorerServer, startExplorerServer } from "./index.js";
 import { fixtureStore } from "./testkit.js";
 import type { DuplicatesResult } from "./views/duplicates.js";
 
-const SLUG_WEB = "sym:apps/web/src/lib/slug.ts#slugify";
-const SLUG_UTILS = "sym:packages/utils/src/slug.ts#slugify";
-const DATE = "sym:packages/utils/src/date.ts#formatRelativeDate";
-const TIME = "sym:packages/utils/src/time.ts#parseTimestamp";
+const SLUG_WEB = "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify";
+const SLUG_UTILS = "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify";
+const DATE = "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate";
+const TIME = "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp";
 
 const config = {
   duplicates: {
@@ -104,8 +104,8 @@ describe("PUT /api/dismiss", () => {
     expect((await put({ a: SLUG_WEB })).status).toBe(400);
     expect((await put({ a: 1, b: 2 })).status).toBe(400);
     expect((await put({ a: SLUG_WEB, b: SLUG_WEB })).status).toBe(400);
-    expect((await put({ a: SLUG_WEB, b: "sym:nope.ts#missing" })).status).toBe(404);
-    expect((await put({ a: SLUG_WEB, b: "file:packages/utils/src/slug.ts" })).status).toBe(404);
+    expect((await put({ a: SLUG_WEB, b: "sym:pnpm-turbo:nope.ts#missing" })).status).toBe(404);
+    expect((await put({ a: SLUG_WEB, b: "file:pnpm-turbo:packages/utils/src/slug.ts" })).status).toBe(404);
     expect((await put({ a: SLUG_WEB, b: SLUG_UTILS, reason: 5 })).status).toBe(400);
     expect((await put({ a: SLUG_WEB, b: SLUG_UTILS, reason: "x".repeat(201) })).status).toBe(400);
     // Over 4 KB: the server answers 413 and may cut the connection while the body is still being sent.

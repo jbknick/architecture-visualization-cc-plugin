@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileId, symId } from "../ids.js";
 import { indexRepo } from "../indexer.js";
 import { type GantryPaths, resolvePaths } from "../paths/index.js";
 import { openStore, type Store } from "../store/index.js";
@@ -54,11 +55,14 @@ export async function indexedFixture(
   };
 }
 
+/** The repo name in the ids of hand-made stores. */
+export const TEST_REPO = "repo";
+
 /** A hand-made function-like symbol record for stores that are not built from source. */
 export function fakeSymbol(path: string, name: string, over: Partial<SymbolRecord> = {}): SymbolRecord {
   return {
-    id: `sym:${path}#${name}`,
-    fileId: `file:${path}`,
+    id: symId(TEST_REPO, path, name),
+    fileId: fileId(TEST_REPO, path),
     name,
     kind: "function",
     exported: true,
@@ -77,12 +81,13 @@ export function fakeSymbol(path: string, name: string, over: Partial<SymbolRecor
 
 export function putFile(store: Store, path: string, symbols: SymbolRecord[], edges: EdgeRecord[] = []): void {
   const file: FileRecord = {
-    id: `file:${path}`,
+    id: fileId(TEST_REPO, path),
     path,
     workspaceId: null,
     contentHash: "c",
     mtimeMs: 1,
     deleted: false,
   };
+  if (store.getMeta("repo") === undefined) store.setMeta("repo", TEST_REPO);
   store.replaceFile("main", file, symbols, edges);
 }

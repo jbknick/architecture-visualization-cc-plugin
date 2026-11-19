@@ -12,6 +12,7 @@ import type {
   ViewLevel,
 } from "../src/api.ts";
 import { generateSynthetic } from "../src/canvas/synthetic.ts";
+import { isFileId, pathOfFileId } from "../src/ids.ts";
 import { CROSS_STACK_VIEWS, crossStackNode, crossStackView } from "./crossStack.ts";
 import { duplicatesDismiss, duplicatesSource, duplicatesView, rememberScenario } from "./dups.ts";
 import { buildHierarchy } from "./hierarchy.ts";
@@ -194,8 +195,10 @@ export function Button({ label, onClick }: { label: string; onClick?: () => void
 ];
 
 const wsId = (name: string) => `ws:${name}`;
-const fileId = (path: string) => `file:${path}`;
-const symId = (path: string, name: string) => `sym:${path}#${name}`;
+const fileId = (path: string) => `file:pnpm-turbo:${path}`;
+const symId = (path: string, name: string) => `sym:pnpm-turbo:${path}#${name}`;
+/** Hash seeds keep the id without its repo part, so the generated scenery does not depend on the repo name. */
+const sid = (id: string): string => id.replace("file:pnpm-turbo:", "file:");
 const dirOf = (path: string) => path.slice(0, path.lastIndexOf("/"));
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 const isTest = (path: string) => /\.(test|spec)\./.test(path);
@@ -589,7 +592,7 @@ function ego(q: ParsedQuery): ViewData | { error: string; status: number } {
 function labelOf(id: string): string {
   const s = symbolById.get(id);
   if (s) return s.sym.name;
-  if (id.startsWith("file:")) return id.slice(5);
+  if (isFileId(id)) return pathOfFileId(id);
   if (id.startsWith("ws:")) return id.slice(3);
   return id;
 }
@@ -808,7 +811,7 @@ const m3Files: M3File[] = M3_WS.flatMap((w) =>
     const path = `${WS_DIR[w.name]}/${f}`;
     const segs = f.split("/");
     return {
-      id: `file:${path}`,
+      id: `file:pnpm-turbo:${path}`,
       path,
       ws: `ws:${w.name}`,
       dir: segs.length > 1 ? segs.slice(0, -1).join("/") : ".",
@@ -839,16 +842,16 @@ const m3Imports: { src: string; dst: string; w: number }[] = (() => {
     for (const [from, to, n] of rules) {
       if (f.ws !== from) continue;
       for (let k = 0; k < n; k++) {
-        const t = pick(to, `${f.id}>${to}>${k}`);
-        if (m3hash(`${f.id}${to}${k}`) % 3 !== 0)
-          out.set(`${f.id}|${t.id}`, 1 + (m3hash(`${f.id}${t.id}`) % 4));
+        const t = pick(to, `${sid(f.id)}>${to}>${k}`);
+        if (m3hash(`${sid(f.id)}${to}${k}`) % 3 !== 0)
+          out.set(`${f.id}|${t.id}`, 1 + (m3hash(`${sid(f.id)}${sid(t.id)}`) % 4));
       }
     }
     // a couple of local imports per file
     const mates = byWs.get(f.ws) as M3File[];
     for (let k = 0; k < 2; k++) {
-      const t = mates[m3hash(`${f.id}local${k}`) % mates.length] as M3File;
-      if (t.id !== f.id) out.set(`${f.id}|${t.id}`, 1 + (m3hash(`${f.id}${t.id}x`) % 3));
+      const t = mates[m3hash(`${sid(f.id)}local${k}`) % mates.length] as M3File;
+      if (t.id !== f.id) out.set(`${f.id}|${t.id}`, 1 + (m3hash(`${sid(f.id)}${sid(t.id)}x`) % 3));
     }
   }
   return [...out].map(([k, w]) => {
@@ -996,7 +999,7 @@ const M3_LARGE: M3Data = (() => {
       const rel = dir === "." ? `${base}.ts` : `${dir}/${base}.ts`;
       const path = `${w.dir}/${rel}`;
       mine.push({
-        id: `file:${path}`,
+        id: `file:pnpm-turbo:${path}`,
         path,
         ws: wsid,
         dir: dir === "." ? "." : dir.split("/").slice(0, 2).join("/"),
@@ -1052,15 +1055,15 @@ const M3_LARGE: M3Data = (() => {
       if (f.ws !== from) continue;
       const pool = byWs.get(to) as M3File[];
       for (let k = 0; k < n; k++) {
-        const t = pool[m3hash(`${f.id}>${to}>${k}`) % pool.length] as M3File;
-        if (m3hash(`${f.id}${to}${k}`) % 3 !== 0)
-          out.set(`${f.id}|${t.id}`, 1 + (m3hash(`${f.id}${t.id}`) % 3));
+        const t = pool[m3hash(`${sid(f.id)}>${to}>${k}`) % pool.length] as M3File;
+        if (m3hash(`${sid(f.id)}${to}${k}`) % 3 !== 0)
+          out.set(`${f.id}|${t.id}`, 1 + (m3hash(`${sid(f.id)}${sid(t.id)}`) % 3));
       }
     }
     const mates = byWs.get(f.ws) as M3File[];
     for (let k = 0; k < 2 && mates.length > 1; k++) {
-      const t = mates[m3hash(`${f.id}local${k}`) % mates.length] as M3File;
-      if (t.id !== f.id) out.set(`${f.id}|${t.id}`, 1 + (m3hash(`${f.id}${t.id}x`) % 3));
+      const t = mates[m3hash(`${sid(f.id)}local${k}`) % mates.length] as M3File;
+      if (t.id !== f.id) out.set(`${f.id}|${t.id}`, 1 + (m3hash(`${sid(f.id)}${sid(t.id)}x`) % 3));
     }
   }
   // One cycle: three imports back from core to api (against 267-ish the other way), so the pair has two arcs.
@@ -1097,7 +1100,7 @@ const M3_LARGE: M3Data = (() => {
   const apiDir = LARGE_SPEC[0]?.dir ?? "apps/api";
   for (const base of ["env.d", "globals.d"]) {
     files.push({
-      id: `file:${apiDir}/${base}.ts`,
+      id: `file:pnpm-turbo:${apiDir}/${base}.ts`,
       path: `${apiDir}/${base}.ts`,
       ws: id(wsName("api")),
       dir: ".",

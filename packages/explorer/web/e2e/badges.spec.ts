@@ -95,9 +95,9 @@ test("project map draws M2 badges on function tiles, with a legend and tooltips"
   expect(p.badged?.length ?? 0).toBeGreaterThan(0);
   const badgesById = new Map((p.badged ?? []).map((b) => [b.id, b.badges]));
   // A fresh index has no descriptions; the duplicate pairs from `init` are badged.
-  expect(badgesById.get("sym:packages/utils/src/slug.ts#slugify")).toEqual(["dup", "undescribed"]);
-  expect(badgesById.get("sym:packages/utils/src/date.ts#formatRelativeDate")).toContain("dup");
-  expect(badgesById.get("sym:packages/utils/src/time.ts#parseTimestamp")).toContain("dup");
+  expect(badgesById.get("sym:pnpm-turbo:packages/utils/src/slug.ts#slugify")).toEqual(["dup", "undescribed"]);
+  expect(badgesById.get("sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate")).toContain("dup");
+  expect(badgesById.get("sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp")).toContain("dup");
   const key = page.getByTestId("badge-key");
   await expect(key).toBeVisible();
   await expect(key.getByText("duplicate")).toBeVisible();
@@ -121,7 +121,7 @@ test("ego view draws badges on the focus card and on caller rows", async ({ page
   const base = url.replace(/#.*$/, "");
   const canvas = page.getByTestId("graph-canvas");
   // parseTimestamp is one end of a duplicate pair and has no description.
-  const tsId = "sym:packages/utils/src/time.ts#parseTimestamp";
+  const tsId = "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp";
   await page.goto(`${base}#/ego?focus=${encodeURIComponent(tsId)}`);
   await expect(canvas.locator("canvas[data-ready=true]")).toBeVisible({ timeout: 30_000 });
   await page.waitForTimeout(600);
@@ -129,7 +129,7 @@ test("ego view draws badges on the focus card and on caller rows", async ({ page
   await expect(page.getByTestId("badge-key")).toBeVisible();
 
   // formatRelativeDate is used by PostPage: an undescribed caller, not a duplicate.
-  const dateId = "sym:packages/utils/src/date.ts#formatRelativeDate";
+  const dateId = "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate";
   await page.goto(`${base}#/ego?focus=${encodeURIComponent(dateId)}`);
   await page.reload();
   await expect(canvas.locator("canvas[data-ready=true]")).toBeVisible({ timeout: 30_000 });
@@ -144,7 +144,7 @@ test("ego view draws badges on the focus card and on caller rows", async ({ page
 
 test("the inspector lists a function's badges with their meaning", async ({ page }) => {
   const base = url.replace(/#.*$/, "");
-  const tsId = "sym:packages/utils/src/time.ts#parseTimestamp";
+  const tsId = "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp";
   await page.goto(`${base}#/project-map?level=symbols&sel=${encodeURIComponent(tsId)}`);
   await page.reload();
   const inspector = page.getByRole("complementary", { name: "Inspector" });

@@ -4,14 +4,16 @@
 //   `#/ego?focus=<thinFocus>&scenario=hub-thin` callers spread thinly: 201 in one workspace over 104 files in 30
 //                                               folders (at most 11 per folder), 20 in another over 16 files
 import type { GraphEdge, GraphNode, NodeDetail, ViewData } from "../src/api.ts";
+import { nameOfSymId, pathOfSymId } from "../src/ids.ts";
 import { type GroupItem, type GroupPlan, planRows, type Row, type WorkspaceInfo } from "./egoRows.ts";
 import type { Counts } from "./largeMap.ts";
 
-export const hubFocus = "sym:packages/ui/src/DataTable/DataTable.tsx#DataTable";
-const CALLEE = "sym:packages/ui/src/DataTable/useTableState.ts#useTableState";
+export const hubFocus = "sym:pnpm-turbo:packages/ui/src/DataTable/DataTable.tsx#DataTable";
+const CALLEE = "sym:pnpm-turbo:packages/ui/src/DataTable/useTableState.ts#useTableState";
 const EGO_MAX = 400;
-export const thinFocus = "sym:packages/design-system-ui/src/components/Button/Button.tsx#Button";
-const THIN_CALLEE = "sym:packages/design-system-ui/src/components/Button/useButtonStyles.ts#useButtonStyles";
+export const thinFocus = "sym:pnpm-turbo:packages/design-system-ui/src/components/Button/Button.tsx#Button";
+const THIN_CALLEE =
+  "sym:pnpm-turbo:packages/design-system-ui/src/components/Button/useButtonStyles.ts#useButtonStyles";
 
 interface Ws {
   id: string;
@@ -100,7 +102,7 @@ for (const ws of WS) {
     for (let i = 0; i < n; i++) {
       const name = `${base.replace(/Page$/, "")}${SUFFIX[i % SUFFIX.length]}${i >= SUFFIX.length ? i : ""}`;
       CALLERS.push({
-        id: `sym:${path}#${name}`,
+        id: `sym:pnpm-turbo:${path}#${name}`,
         ws,
         path,
         folder,
@@ -231,7 +233,7 @@ function thinCallers(): Caller[] {
       const path = `${ws.dir}/src/${folder}/${stem}-${NOUNS[noun]}.tsx`;
       const name = `${cap(stem)}${SYMS[noun]}${k >= (nf[f] as number) ? k : ""}`;
       out.push({
-        id: `sym:${path}#${name}`,
+        id: `sym:pnpm-turbo:${path}#${name}`,
         ws,
         path,
         folder,
@@ -249,7 +251,15 @@ function thinCallers(): Caller[] {
     const noun = (Math.floor(file / 4) + (i % 4)) % NOUNS.length;
     const path = `${admin.dir}/src/pages/${d}/${d}-${NOUNS[noun]}${file >= 12 ? "-v2" : ""}.tsx`;
     const name = `Admin${cap(d)}${SYMS[noun]}${i}`;
-    out.push({ id: `sym:${path}#${name}`, ws: admin, path, folder: `pages/${d}`, name, line: 8, count: 1 });
+    out.push({
+      id: `sym:pnpm-turbo:${path}#${name}`,
+      ws: admin,
+      path,
+      folder: `pages/${d}`,
+      name,
+      line: 8,
+      count: 1,
+    });
   }
   return out;
 }
@@ -427,8 +437,8 @@ export function hubNode(id: string): NodeDetail | null {
   const c = [...CALLERS, ...THIN].find((x) => x.id === id);
   const known = new Set([hubFocus, CALLEE, thinFocus, THIN_CALLEE]);
   if (!c && !known.has(id)) return null;
-  const name = c ? c.name : (id.split("#")[1] ?? id);
-  const path = c ? c.path : (id.slice(4).split("#")[0] ?? "");
+  const name = c ? c.name : (nameOfSymId(id) ?? id);
+  const path = c ? c.path : (pathOfSymId(id) ?? "");
   return {
     node: {
       id,

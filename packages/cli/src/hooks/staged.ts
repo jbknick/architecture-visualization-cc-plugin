@@ -8,6 +8,7 @@ import {
   describeWithRetry,
   type FactSheet,
   FUNCTION_LIKE_KINDS,
+  fileId,
   type GantryPaths,
   indexRepo,
   isIndexable,
@@ -79,7 +80,7 @@ async function withStaged<T>(
     scratch = openStore(scratchPath);
     await indexRepo(paths, { layer: "working", files: [...sources.keys()], sources, store: scratch });
     const s = scratch;
-    const staged = [...sources.keys()].flatMap((p) => s.effectiveSymbols({ fileId: `file:${p}` }));
+    const staged = [...sources.keys()].flatMap((p) => s.effectiveSymbols({ fileId: fileId(s.repo(), p) }));
     if (onFindings) {
       try {
         const lines = await stagedFindings(paths, { real, scratch: s, sources, staged });
@@ -112,8 +113,8 @@ async function stagedFindings(paths: GantryPaths, c: StagedContext): Promise<str
   const findings: Finding[] = await duplicateFindings(c.scratch, changedSymbols(c.staged, previous), config);
   for (const [p, text] of [...c.sources].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const head = git(paths.root, ["show", `HEAD:${p}`]);
-    const before = head.ok ? parseSource(p, head.out.toString("utf8")) : undefined;
-    for (const f of importFindings(c.scratch, p, parseSource(p, text), before)) {
+    const before = head.ok ? parseSource(c.scratch.repo(), p, head.out.toString("utf8")) : undefined;
+    for (const f of importFindings(c.scratch, p, parseSource(c.scratch.repo(), p, text), before)) {
       findings.push({ ...f, action: `${p}: ${f.action}` });
     }
   }

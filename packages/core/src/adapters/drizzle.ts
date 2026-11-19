@@ -1,3 +1,4 @@
+import { tableId } from "../ids.js";
 import { isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
 import type { EdgeRecord, WorkspaceRecord } from "../types.js";
 import {
@@ -262,7 +263,7 @@ export const drizzleAdapter: Adapter<DrizzleFacts> = {
     const alloc = new IdAllocator();
     for (const { file, facts } of ctx.files) {
       for (const t of facts?.tables ?? []) {
-        const id = alloc.take(`table:${t.name}`);
+        const id = alloc.take(tableId(ctx.repo, t.name));
         nodes.push({
           id,
           kind: "table",

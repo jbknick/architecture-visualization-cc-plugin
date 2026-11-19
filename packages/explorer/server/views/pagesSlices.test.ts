@@ -24,8 +24,8 @@ const run = <T extends ViewResult>(id: string, qs = "", c: ApiContext = ctx): T 
   handleApi(c, `/api/view/${id}`, new URLSearchParams(qs)) as T;
 const edgeLines = (r: ViewResult) => r.edges.map((e) => `${e.src} ${e.kind} ${e.dst}`);
 
-const WEB = "route:@acme/web:";
-const sym = (p: string, n: string) => `sym:${p}#${n}`;
+const WEB = "route:pnpm-turbo:@acme/web:";
+const sym = (p: string, n: string) => `sym:pnpm-turbo:${p}#${n}`;
 const BUTTON = sym("packages/ui/src/button.tsx", "Button");
 
 describe("pages view", () => {
@@ -101,11 +101,11 @@ describe("slices view", () => {
       "slice:packages/utils",
     ]);
     expect(r.nodes.find((n) => n.id === "slice:apps/web#/settings")?.label).toBe("web /settings");
-    const file = r.nodes.find((n) => n.id === "file:apps/web/src/routes/posts.$postId.tsx");
+    const file = r.nodes.find((n) => n.id === "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx");
     expect(file?.parent).toBe("slice:apps/web#/posts");
     // Files outside every slice (apps/web's components, apps/api) are left out.
     expect(r.nodes.some((n) => n.id.includes("components/PostList"))).toBe(false);
-    expect(r.nodes.some((n) => n.id.startsWith("file:apps/api"))).toBe(false);
+    expect(r.nodes.some((n) => n.id.startsWith("file:pnpm-turbo:apps/api"))).toBe(false);
   });
 
   it("shows cross-slice imports with the right counts, and hides imports inside a slice", () => {
@@ -121,12 +121,12 @@ describe("slices view", () => {
     ]);
     expect(r.edges.every((e) => e.cross === true)).toBe(true);
     // packages/ui/src/index.ts re-exports button and card (inside one slice): not drawn.
-    expect(r.edges.some((e) => e.src.startsWith("file:packages/ui"))).toBe(false);
+    expect(r.edges.some((e) => e.src.startsWith("file:pnpm-turbo:packages/ui"))).toBe(false);
     const withIntra = run<SlicesResult>("slices", "filters=intra=true");
     const intra = withIntra.edges.filter((e) => e.cross === false);
     expect(intra.length).toBeGreaterThan(0);
-    expect(intra.every((e) => e.src.startsWith("file:packages/"))).toBe(true);
-    expect(intra.some((e) => e.src.startsWith("file:packages/ui"))).toBe(true);
+    expect(intra.every((e) => e.src.startsWith("file:pnpm-turbo:packages/"))).toBe(true);
+    expect(intra.some((e) => e.src.startsWith("file:pnpm-turbo:packages/ui"))).toBe(true);
   });
 
   it("lists functions used from at least two slices", () => {
@@ -141,7 +141,7 @@ describe("slices view", () => {
     expect(slicesOnly.nodes.every((n) => n.kind === "slice")).toBe(true);
     expect(slicesOnly.edges.find((e) => e.src === "slice:apps/web#/settings")?.weight).toBe(2);
     const fns = run<SlicesResult>("slices", "level=symbols");
-    expect(fns.nodes.find((n) => n.id === BUTTON)?.parent).toBe("file:packages/ui/src/button.tsx");
+    expect(fns.nodes.find((n) => n.id === BUTTON)?.parent).toBe("file:pnpm-turbo:packages/ui/src/button.tsx");
     expect(run<SlicesResult>("slices").nodes.some((n) => n.id === BUTTON)).toBe(false);
   });
 

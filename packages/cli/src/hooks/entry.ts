@@ -1,6 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
-import { type GantryPaths, heal, loadConfig, openStore, resolvePaths, StaleStoreError } from "@gantry/core";
+import {
+  type GantryPaths,
+  heal,
+  loadConfig,
+  openStore,
+  pathOfSymId,
+  resolvePaths,
+  StaleStoreError,
+} from "@gantry/core";
 import {
   POST_TOOL_BUDGET_MS,
   parsePostToolInput,
@@ -63,7 +71,7 @@ function pushBacklog(paths: GantryPaths): number {
         .split("\0")
         .filter((p) => p !== ""),
     );
-    return rows.filter((r) => pushed.has(r.symbol_id.slice("sym:".length).split("#")[0] ?? "")).length;
+    return rows.filter((r) => pushed.has(pathOfSymId(r.symbol_id) ?? "")).length;
   } finally {
     store.close();
   }

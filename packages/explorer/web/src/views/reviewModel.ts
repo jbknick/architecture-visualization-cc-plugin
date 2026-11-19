@@ -11,6 +11,7 @@ import type {
   UseKind,
 } from "../api.ts";
 import type { Rect } from "../canvas/types.ts";
+import { isFileId, nameOfSymId, pathOfFileId } from "../ids.ts";
 import type { Scheme } from "../theme.ts";
 
 export const CHANGE_WORDS: Record<ChangeKind, { label: string; hint: string }> = {
@@ -69,8 +70,12 @@ export const RISK_WORDS: Record<ReviewData["risk"]["level"], string> = {
 
 /** `sym:a/b.ts#name` -> `name`; `file:a/b.ts` -> `b.ts`. */
 export function shortName(id: string): string {
-  if (id.startsWith("sym:")) return id.slice(id.lastIndexOf("#") + 1);
-  if (id.startsWith("file:")) return id.slice(id.lastIndexOf("/") + 1);
+  const name = nameOfSymId(id);
+  if (name !== undefined) return name;
+  if (isFileId(id)) {
+    const p = pathOfFileId(id);
+    return p.slice(p.lastIndexOf("/") + 1);
+  }
   return id;
 }
 
@@ -210,12 +215,12 @@ export const USE_WORDS: Record<UseKind, string> = {
   requests: "requests",
 };
 
-/** The consumers of every change and changed file (`file:<path>`) of a review, by id. */
+/** The consumers of every change and changed file (file id) of a review, by id. */
 export function consumersById(review: ReviewData | null | undefined): Map<string, ReviewConsumers> {
   const out = new Map<string, ReviewConsumers>();
   if (!review) return out;
   for (const c of review.changes) if (c.consumers) out.set(c.id, c.consumers);
-  for (const f of review.files) if (f.consumers) out.set(`file:${f.path}`, f.consumers);
+  for (const f of review.files) if (f.consumers) out.set(f.id, f.consumers);
   return out;
 }
 

@@ -1,5 +1,6 @@
 // Synthetic monorepo generator for the performance check and tests. Fully seeded; the names are made up.
 import type { GraphEdge, GraphNode } from "../api.ts";
+import { fileId, pathOfFileId, symId } from "../ids.ts";
 import { mulberry32 } from "./prng.ts";
 
 export interface SyntheticOptions {
@@ -63,7 +64,7 @@ export function generateSynthetic(opts: SyntheticOptions = SYNTHETIC_30K): {
       dirIds.set(dirId, []);
       nodes.push({ id: dirId, kind: "directory", label: dirName, parent: ws, size: 0 });
     }
-    const id = `file:${ws.slice(3)}/${dirName}/f${f}.ts`;
+    const id = fileId("synthetic", `${ws.slice(3)}/${dirName}/f${f}.ts`);
     (dirIds.get(dirId) as string[]).push(id);
     fileIds.push({ id, ws });
     nodes.push({ id, kind: "file", label: `f${f}.ts`, parent: dirId, size: 0 });
@@ -72,7 +73,7 @@ export function generateSynthetic(opts: SyntheticOptions = SYNTHETIC_30K): {
   const perFile = opts.symbols / opts.files;
   for (let s = 0; s < opts.symbols; s++) {
     const file = fileIds[Math.min(fileIds.length - 1, Math.floor(s / perFile))] as { id: string; ws: string };
-    const id = `sym:${file.id.slice(5)}#s${s}`;
+    const id = symId("synthetic", pathOfFileId(file.id), `s${s}`);
     symIds.push(id);
     nodes.push({ id, kind: pick(KINDS), label: `${pick(NAMES)}${s}`, parent: file.id, size: 1 });
   }

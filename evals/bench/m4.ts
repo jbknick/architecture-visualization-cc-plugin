@@ -26,6 +26,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { pathOfId } from "../../packages/core/src/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..", "..");
@@ -258,8 +259,8 @@ async function main() {
       const after = await probe(page, true);
       const edited = new Set(files);
       const inEdited = (id: string) => {
-        const m = /^sym:(.*)#/.exec(id);
-        return m ? edited.has(m[1] as string) : false;
+        const m = pathOfId(id);
+        return m !== undefined ? edited.has(m) : false;
       };
       const compared = Object.keys(before.positions ?? {}).filter(
         (id) => !inEdited(id) && id in (after.positions ?? {}),

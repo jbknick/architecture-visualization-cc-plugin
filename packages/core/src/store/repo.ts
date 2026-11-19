@@ -1,4 +1,5 @@
 import type BetterSqlite3 from "better-sqlite3";
+import { pathOfFileId } from "../ids.js";
 import { restoreMainFts } from "../search/descfts.js";
 import type {
   AdapterNodeRecord,
@@ -21,6 +22,8 @@ export interface Store {
   tx<T>(fn: () => T): T;
   getMeta(k: string): string | undefined;
   setMeta(k: string, v: string): void;
+  /** The repo name in every id of this store (`meta.repo`, written by the indexer); throws when nothing was indexed yet. */
+  repo(): string;
   upsertWorkspaces(ws: WorkspaceRecord[]): void;
   /** All workspaces ordered by id. */
   listWorkspaces(): WorkspaceRecord[];
@@ -289,6 +292,11 @@ export function createStore(db: Database): Store {
         "INSERT INTO meta(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
       ).run(k, v);
     },
+    repo() {
+      const r = store.getMeta("repo");
+      if (r === undefined) throw new Error("The store has no repo name: it was not indexed");
+      return r;
+    },
     upsertWorkspaces(ws) {
       tx(() => {
         const s = stmt(
@@ -385,7 +393,7 @@ export function createStore(db: Database): Store {
           ? toFile(existing)
           : {
               id: fileId,
-              path: fileId.startsWith("file:") ? fileId.slice(5) : fileId,
+              path: pathOfFileId(fileId),
               workspaceId: null,
               contentHash: "",
               mtimeMs: 0,

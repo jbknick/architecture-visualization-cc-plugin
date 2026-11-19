@@ -1,4 +1,4 @@
-import type { FileRecord, SymbolRecord } from "@gantry/core";
+import { type FileRecord, isFileId, isSymId, type SymbolRecord } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { GraphEdge, GraphNode, ViewModule } from "../types.js";
 import { buildBadgeIndex, symbolBadges } from "./badges.js";
@@ -43,7 +43,7 @@ interface Link {
  *
  * Rows: a side at one hop has at most `maxRows` rows (option, 8-40, default 18) however its nodes are spread. A
  * side with more nodes is shown as groups: workspace, then folder, then file (see egoGroups.ts), small siblings
- * merged into one "other callers" row. A group is one node `group:<side>:<hop>:<ws:... | dir:... | file:... |
+ * merged into one "other callers" row. A group is one node `group:<side>:<hop>:<ws:... | dir:... | path:... |
  * rest:<parent> | more:<group>:<offset>>` (kind `group`, `members` lists what is inside) with aggregated edges.
  * `expand=<group id>|<group id>` (a filter) replaces those groups by their children, at most `pageRows` (option,
  * default 14) rows each, the rest behind a "+N more" group that expands to the next page.
@@ -57,8 +57,8 @@ export const egoView: ViewModule = {
   build({ store }, params) {
     const focus = params.focus;
     if (!focus) throw new HttpError(400, "ego requires focus=<symbol or file id>");
-    const fileFocus = focus.startsWith("file:");
-    if (!fileFocus && !focus.startsWith("sym:")) throw new HttpError(400, "focus must be a sym: or file: id");
+    const fileFocus = isFileId(focus);
+    if (!fileFocus && !isSymId(focus)) throw new HttpError(400, "focus must be a sym: or file: id");
 
     const hops = optInt(params, "hops") ?? params.depth ?? 2;
     if (!Number.isInteger(hops) || hops < 1 || hops > 4)
@@ -84,8 +84,7 @@ export const egoView: ViewModule = {
     const known = (id: string): boolean => (fileFocus ? files.has(id) : symbols.has(id) || files.has(id));
     if (!(fileFocus ? files.has(focus) : symbols.has(focus)))
       throw new HttpError(404, `Unknown focus: ${focus}`);
-    const lift = (id: string): string =>
-      fileFocus && id.startsWith("sym:") ? (symbols.get(id)?.fileId ?? id) : id;
+    const lift = (id: string): string => (fileFocus && isSymId(id) ? (symbols.get(id)?.fileId ?? id) : id);
 
     // Selected links, deduplicated after lifting.
     const linkMap = new Map<string, Link>();

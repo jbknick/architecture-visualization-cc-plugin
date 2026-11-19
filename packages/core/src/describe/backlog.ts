@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { isSensitive } from "../discover/index.js";
 import { hashSymbol } from "../hash/index.js";
+import { pathOfFileId, repoOfId } from "../ids.js";
 import { type ParsedFile, parseSource } from "../parse/index.js";
 import { refreshDescriptionFts } from "../search/descfts.js";
 import type { Store } from "../store/index.js";
@@ -12,7 +13,6 @@ import {
   contentKey,
   FUNCTION_LIKE_KINDS,
   PROMPT_MAJOR,
-  pathOfFileId,
   SensitivePathError,
 } from "./factsheet.js";
 import { templateFor } from "./templates.js";
@@ -135,7 +135,7 @@ function computeTemplates(
     if (source === undefined) continue;
     let parsed: ParsedFile;
     try {
-      parsed = parseSource(p, source);
+      parsed = parseSource(repoOfId(items[0]?.[1].sym.id ?? "") ?? store.repo(), p, source);
     } catch {
       continue;
     }

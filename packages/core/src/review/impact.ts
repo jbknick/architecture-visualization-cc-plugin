@@ -1,6 +1,6 @@
 import { checkImports } from "../advice/imports.js";
-import { pathOfFileId } from "../describe/factsheet.js";
 import { findDuplicates } from "../dup/engine.js";
+import { isSymId, fileId as makeFileId, pathOfFileId } from "../ids.js";
 import { parseSource } from "../parse/index.js";
 import type { GantryPaths } from "../paths/index.js";
 import type { Store } from "../store/index.js";
@@ -156,7 +156,7 @@ export function computeImpact(store: Store, changes: SymbolChange[], opts: Impac
 
   const importedByTest = (path: string): boolean =>
     store
-      .effectiveEdges({ dst: `file:${path}`, kind: ["imports"] })
+      .effectiveEdges({ dst: makeFileId(store.repo(), path), kind: ["imports"] })
       .some((e) => TEST_FILE_RE.test(pathOfFileId(e.src)));
   const functions = sources.filter((c) => {
     const side = c.after ?? c.before;
@@ -201,7 +201,7 @@ export async function reviewImpact(
     if (!specs || specs.size === 0) continue;
     const source = readBlobText(paths.root, diff.head, f.path);
     if (source === undefined) continue;
-    for (const finding of checkImports(store, f.path, parseSource(f.path, source))) {
+    for (const finding of checkImports(store, f.path, parseSource(paths.repo, f.path, source))) {
       if (finding.kind === "undeclared" && specs.has(finding.specifier)) {
         extra.push(`New undeclared import "${finding.specifier}" in ${f.path}:${finding.line}.`);
       }
@@ -214,7 +214,10 @@ export async function reviewImpact(
     const path = c.after.path;
     if (!parsedCache.has(path)) {
       const source = readBlobText(paths.root, diff.head, path);
-      parsedCache.set(path, source === undefined ? null : { source, parsed: parseSource(path, source) });
+      parsedCache.set(
+        path,
+        source === undefined ? null : { source, parsed: parseSource(paths.repo, path, source) },
+      );
     }
     const entry = parsedCache.get(path);
     const body = entry?.parsed.bodies.get(c.after.id);
@@ -277,7 +280,7 @@ function consumerLine(c: Consumer): string {
   const where = c.line === null ? c.path : `${c.path}:${c.line}`;
   const via =
     c.via !== undefined
-      ? ` hop ${c.hop} via ${c.via.slice(c.via.lastIndexOf(c.via.startsWith("sym:") ? "#" : "/") + 1)}`
+      ? ` hop ${c.hop} via ${c.via.slice(c.via.lastIndexOf(isSymId(c.via) ? "#" : "/") + 1)}`
       : "";
   const crosses = c.crosses.length > 0 ? `; crosses ${c.crosses.join(", ")}` : "";
   return `${c.name} (${c.kind}${where ? `, ${where}` : ""}) ${c.uses.join(", ")}${via}${crosses}`;

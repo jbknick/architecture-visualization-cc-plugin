@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -210,7 +211,7 @@ describe("bundled CLI: vector tables and embeddings", () => {
     expect(r.code).toBe(0);
     const db = openBundleDb();
     try {
-      expect(db.getMeta("schema_version")).toBe("7");
+      expect(db.getMeta("schema_version")).toBe("8");
       expect(db.getMeta("vec_available")).toBe("1");
       expect(db.getMeta("embed_model")).toBe("jinaai/jina-embeddings-v2-base-code");
       expect(db.getMeta("embed_dim")).toBe("768");
@@ -317,6 +318,49 @@ describe("gantry index --dump", () => {
     },
   );
 
+  it("two clones at different paths give byte-identical dumps, with the same origin and with no remote", () => {
+    const clone = (parent: string, remote: string | null): string => {
+      const dir = join(parent, "repo");
+      mkdirSync(dir, { recursive: true });
+      cpSync(join(repoRoot, "fixtures/pnpm-turbo"), dir, { recursive: true });
+      const git = (...a: string[]) => spawnSync("git", a, { cwd: dir, encoding: "utf8" });
+      git("init", "-q", "-b", "main");
+      git("add", "-A", "-f");
+      git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "fixture");
+      if (remote) git("remote", "add", "origin", remote);
+      return dir;
+    };
+    const dump = (dir: string): string => {
+      const data = mkdtempSync(join(tmpdir(), "gantry-dump-data-"));
+      try {
+        const r = run(dir, ["index", "--dump"], { CLAUDE_PLUGIN_DATA: data });
+        expect(r.code).toBe(0);
+        return r.out;
+      } finally {
+        rmSync(data, { recursive: true, force: true });
+      }
+    };
+    const base = mkdtempSync(join(tmpdir(), "gantry-clones-"));
+    try {
+      const url = "https://github.com/example/pnpm-turbo.git";
+      const a = clone(join(base, "x"), url);
+      const b = clone(join(base, "y", "z"), url);
+      const da = dump(a);
+      expect(da).toBe(dump(b));
+      expect(JSON.parse(da).files[0].id).toMatch(/^file:example\/pnpm-turbo:/);
+      expect(da).not.toContain(base);
+      expect(da).not.toContain(resolvePaths(a, { HOME: "/home/x" }).worktreeHash);
+
+      spawnSync("git", ["remote", "remove", "origin"], { cwd: a });
+      spawnSync("git", ["remote", "remove", "origin"], { cwd: b });
+      const na = dump(a);
+      expect(na).toBe(dump(b));
+      expect(JSON.parse(na).files[0].id).toMatch(/^file:repo:/);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
   it("rejects an invalid --layer with exit 1", async () => {
     const fx = await fixture("single-pkg");
     expect(run(fx.dir, ["index", "--layer", "nope"]).code).toBe(1);
@@ -361,7 +405,7 @@ describe("gantry review", () => {
     expect(j.head).toBe("feature");
     expect(j.files).toEqual([{ path: "packages/utils/src/slug.ts", status: "M" }]);
     expect(j.changes.map((c) => [c.kind, c.id])).toEqual([
-      ["added", "sym:packages/utils/src/slug.ts#slugifyAll"],
+      ["added", "sym:pnpm-turbo:packages/utils/src/slug.ts#slugifyAll"],
     ]);
     expect(existsSync(data)).toBe(false);
     expect(fx.git(["status", "--porcelain", "--ignored"])).toBe("");
@@ -400,12 +444,12 @@ describe("gantry review", () => {
     expect(r.out).toContain("Risk: medium (56/100)");
     expect(r.out).toContain("+30 signature changed on an exported symbol");
     expect(r.out).toContain(
-      "hop 1: 3 (file:packages/ui/src/index.ts, sym:apps/web/src/routes/index.tsx#HomePage",
+      "hop 1: 3 (file:pnpm-turbo:packages/ui/src/index.ts, sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
     );
     expect(r.out).toContain("Crossings: 2");
     expect(r.out).toContain(
       [
-        "Consumers of sym:packages/ui/src/button.tsx#Button:",
+        "Consumers of sym:pnpm-turbo:packages/ui/src/button.tsx#Button:",
         "  Directly affected (3):",
         "    index.ts (file, packages/ui/src/index.ts) imports",
         "    HomePage (component, apps/web/src/routes/index.tsx:7) renders; crosses app",
@@ -455,21 +499,25 @@ describe("gantry review", () => {
         }[];
       } | null;
     };
-    expect(j.changes.map((c) => c.id)).toEqual(["sym:packages/ui/src/button.tsx#Button"]);
+    expect(j.changes.map((c) => c.id)).toEqual(["sym:pnpm-turbo:packages/ui/src/button.tsx#Button"]);
     expect(j.impact?.risk).toMatchObject({ score: 56, level: "medium" });
-    const button = j.impact?.consumers.find((c) => c.id === "sym:packages/ui/src/button.tsx#Button");
+    const button = j.impact?.consumers.find(
+      (c) => c.id === "sym:pnpm-turbo:packages/ui/src/button.tsx#Button",
+    );
     expect(button?.target).toBe("symbol");
     expect(button?.directTotal).toBe(3);
     expect(button?.direct[1]).toMatchObject({
-      id: "sym:apps/web/src/routes/index.tsx#HomePage",
+      id: "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
       uses: ["renders"],
       crosses: ["app"],
     });
     expect(
-      button?.potential.some((p) => p.hop === 2 && p.via === "sym:apps/web/src/routes/index.tsx#HomePage"),
+      button?.potential.some(
+        (p) => p.hop === 2 && p.via === "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
+      ),
     ).toBe(true);
-    expect(j.impact?.consumers.map((c) => c.id)).toContain("file:packages/ui/src/button.tsx");
-    expect(j.impact?.callersByHop[0]?.ids).toContain("sym:apps/web/src/routes/index.tsx#HomePage");
+    expect(j.impact?.consumers.map((c) => c.id)).toContain("file:pnpm-turbo:packages/ui/src/button.tsx");
+    expect(j.impact?.callersByHop[0]?.ids).toContain("sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage");
     // The index was not brought to the new HEAD: --json never heals.
     const after = openStore(db);
     expect(after.getMeta("head_sha")).toBe(indexedAt);
@@ -529,7 +577,7 @@ describe("gantry review", () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as { review: { changes: { id: string; kind: string }[] } };
       expect(body.review.changes).toEqual([
-        expect.objectContaining({ id: "sym:packages/utils/src/extra.ts#extra", kind: "added" }),
+        expect.objectContaining({ id: "sym:pnpm-turbo:packages/utils/src/extra.ts#extra", kind: "added" }),
       ]);
     } finally {
       const f = join(resolvePaths(fx.dir, { HOME: join(dataDir, "home"), ...env }).dataDir, "explorer.json");
@@ -595,13 +643,28 @@ describe("gantry search / node", () => {
       path: "packages/utils/src/date.ts",
     });
     expect(info.node.minhash).toBeUndefined();
-    expect(info.neighbors["contains:in"]).toContain("file:packages/utils/src/date.ts");
+    expect(info.neighbors["contains:in"]).toContain("file:pnpm-turbo:packages/utils/src/date.ts");
     expect(typeof info.fanIn).toBe("number");
 
     const text = run(fx.dir, ["node", "packages/utils/src/date.ts:5"]);
     expect(text.out).toContain("formatRelativeDate (function, exported)");
     expect(text.out).toMatch(/EDGE\s+NODE/);
     expect(run(fx.dir, ["node", "packages/utils/src/date.ts:999"]).code).toBe(1);
+  });
+
+  it("node accepts the short forms of ids and prints the full id", async () => {
+    const fx = await fixture("pnpm-turbo");
+    for (const target of [
+      "packages/utils/src/date.ts",
+      "file:packages/utils/src/date.ts",
+      "file:pnpm-turbo:packages/utils/src/date.ts",
+    ]) {
+      const r = run(fx.dir, ["node", target, "--json"]);
+      expect(r.code).toBe(0);
+      expect(JSON.parse(r.out).node.id).toBe("file:pnpm-turbo:packages/utils/src/date.ts");
+    }
+    const sym = run(fx.dir, ["node", "sym:packages/utils/src/date.ts#formatRelativeDate", "--json"]);
+    expect(JSON.parse(sym.out).node.id).toBe("sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate");
   });
 
   it("lookups heal and refresh first: a new uncommitted file is searchable without init", async () => {
@@ -634,18 +697,18 @@ describe("gantry trace", () => {
     expect(down.code).toBe(0);
     const d = JSON.parse(down.out);
     expect(d).toMatchObject({
-      target: "route:@demo/web:/posts/$postId",
+      target: "route:adapters:@demo/web:/posts/$postId",
       direction: "down",
       truncated: false,
     });
     const ids = d.chain.map((s: { id: string }) => s.id);
-    expect(ids).toContain("ep:@demo/api:rpc posts.get");
-    expect(ids).toContain("table:posts");
+    expect(ids).toContain("ep:adapters:@demo/api:rpc posts.get");
+    expect(ids).toContain("table:adapters:posts");
 
     const text = run(fx.dir, ["trace", "/posts/$postId"]);
     expect(text.code).toBe(0);
-    expect(text.out.split("\n")[0]).toBe("Down from route:@demo/web:/posts/$postId");
-    expect(text.out).toContain("requests → endpoint ep:@demo/api:rpc posts.get");
+    expect(text.out.split("\n")[0]).toBe("Down from route:adapters:@demo/web:/posts/$postId");
+    expect(text.out).toContain("requests → endpoint ep:adapters:@demo/api:rpc posts.get");
     expect(text.out).toContain("(low confidence)");
     expect(text.out).toContain('unmatched client call "rpc posts.archive"');
 
@@ -653,7 +716,7 @@ describe("gantry trace", () => {
     expect(up.direction).toBe("up");
     expect(
       up.chain.filter((s: { kind: string }) => s.kind === "route").map((s: { id: string }) => s.id),
-    ).toEqual(["route:@demo/web:/posts/$postId"]);
+    ).toEqual(["route:adapters:@demo/web:/posts/$postId"]);
     expect(run(fx.dir, ["trace", "no-such-thing"]).code).toBe(1);
   });
 });

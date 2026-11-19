@@ -6,6 +6,7 @@ import { runAdapters } from "./adapters/index.js";
 import { loadConfig } from "./config/index.js";
 import { discoverFiles, isIndexable } from "./discover/index.js";
 import { hashSymbol } from "./hash/index.js";
+import { fileId as makeFileId, pathOfFileId } from "./ids.js";
 import { encodeParsed, LazyParsedMap, ParseCache } from "./parse/cache.js";
 import { type ParsedFile, parseSource } from "./parse/index.js";
 import { ensureDataDir, type GantryPaths } from "./paths/index.js";
@@ -149,12 +150,14 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
   const t0 = performance.now();
   const { layer, sources } = opts;
   const root = paths.root;
+  const repo = paths.repo;
   const ownStore = !opts.store;
   if (ownStore) ensureDataDir(paths);
   const store = opts.store ?? openStore(paths.dbPath);
   try {
     // Describe-side code (fact sheets, templates) reads file text and only has the store.
     if (store.getMeta("repo_root") !== root) store.setMeta("repo_root", root);
+    if (store.getMeta("repo") !== repo) store.setMeta("repo", repo);
     const config = loadConfig(paths);
     const workspaces = detectWorkspaces(root, config);
 
@@ -164,7 +167,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     for (const d of discovered) {
       entries.set(d.path, {
         path: d.path,
-        id: `file:${d.path}`,
+        id: makeFileId(repo, d.path),
         workspaceId: d.workspaceId,
         mtimeMs: d.mtimeMs,
       });
@@ -178,7 +181,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
         if (!entries.has(p)) {
           entries.set(p, {
             path: p,
-            id: `file:${p}`,
+            id: makeFileId(repo, p),
             workspaceId: workspaceForPath(workspaces, p).id,
             mtimeMs: 0,
           });
@@ -189,7 +192,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       if (!entries.has(p) && isIndexable(p, config)) {
         entries.set(p, {
           path: p,
-          id: `file:${p}`,
+          id: makeFileId(repo, p),
           workspaceId: workspaceForPath(workspaces, p).id,
           mtimeMs: 0,
         });
@@ -207,13 +210,13 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       const fresh: { path: string; hash: string; data: string }[] = [];
       for (const e of present) {
         const hit = cached?.get(e.path);
-        if (hit && hit.hash === e.contentHash) {
+        if (hit && hit.hash === `${repo}\n${e.contentHash}`) {
           parsed.setRaw(e.id, hit.data);
           continue;
         }
-        const pf = parseSource(e.path, e.source as string);
+        const pf = parseSource(repo, e.path, e.source as string);
         parsed.set(e.id, pf);
-        fresh.push({ path: e.path, hash: e.contentHash as string, data: encodeParsed(pf) });
+        fresh.push({ path: e.path, hash: `${repo}\n${e.contentHash}`, data: encodeParsed(pf) });
       }
       // Entries for paths that no longer exist are only pruned when this run saw the whole tree.
       cache?.save(fresh, !opts.files && !sources ? new Set(present.map((e) => e.path)) : undefined);
@@ -221,7 +224,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       cache?.close();
     }
 
-    const resolver = createResolver({ root, workspaces, parsed });
+    const resolver = createResolver({ root, repo, workspaces, parsed });
     store.upsertWorkspaces(workspaces);
 
     // Framework adapters (routes, server functions, Hono endpoints). Their results depend on other files (route
@@ -229,6 +232,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     // edge is then stored with the file it names, replaced per file like symbols.
     const routes = runAdapters({
       root,
+      repo,
       workspaces,
       files: present.map((e) => ({
         path: e.path,
@@ -273,7 +277,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       }
       toWrite.push(e);
     }
-    const missing = (full ? [...mainFiles.keys()] : [...targets].map((p) => `file:${p}`)).filter(
+    const missing = (full ? [...mainFiles.keys()] : [...targets].map((p) => makeFileId(repo, p))).filter(
       (id) => !existsNow.has(id),
     );
     // package.json rows carrying depends_on edges are not source files; never treat them as deleted.
@@ -452,7 +456,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
 
       if (layer === "main") {
         if (full) removeStaleMain(store, new Set([...existsNow, ...pkgIds]), !rebuildFts);
-        writeDependsOn(store, root, workspaces, wsEdges);
+        writeDependsOn(store, root, repo, workspaces, wsEdges);
         if (full) {
           result.edges += wsEdges.length;
           const sha = headSha(root);
@@ -462,7 +466,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       }
     });
 
-    const pathOf = (id: string): string => (id.startsWith("file:") ? id.slice(5) : id);
+    const pathOf = (id: string): string => pathOfFileId(id);
     const stats = resolver.stats();
     result.specifierCounts = stats.counts;
     result.unresolved = stats.unresolved
@@ -502,6 +506,7 @@ function removeStaleMain(store: Store, keep: Set<string>, removeFts: boolean): v
 function writeDependsOn(
   store: Store,
   root: string,
+  repo: string,
   workspaces: WorkspaceRecord[],
   edges: EdgeRecord[],
 ): void {
@@ -511,9 +516,11 @@ function writeDependsOn(
     a.push(e);
     byFile.set(e.fileId, a);
   }
-  const wsOfDir = new Map(workspaces.map((w) => [`file:${w.dir === "." ? "" : `${w.dir}/`}package.json`, w]));
+  const wsOfDir = new Map(
+    workspaces.map((w) => [makeFileId(repo, `${w.dir === "." ? "" : `${w.dir}/`}package.json`), w]),
+  );
   for (const [fileId, es] of [...byFile].sort((a, b) => cmp(a[0], b[0]))) {
-    const rel = fileId.slice(5);
+    const rel = pathOfFileId(fileId);
     const { hash, mtimeMs } = readJsonHash(root, rel);
     store.replaceFile(
       "main",

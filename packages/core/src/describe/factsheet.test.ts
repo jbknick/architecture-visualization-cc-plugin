@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { pathOfFileId } from "../ids.js";
 import { openStore } from "../store/index.js";
 import {
   buildFactSheet,
@@ -81,15 +82,15 @@ describe("buildFactSheet", () => {
     const ix = await indexedFixture("pnpm-turbo");
     try {
       const ids = [
-        "sym:packages/utils/src/date.ts#formatRelativeDate",
-        "sym:packages/utils/src/slug.ts#slugify",
-        "sym:apps/web/src/hooks/useDebounce.ts#useDebounce",
-        "sym:packages/db/src/queries.ts#createPost",
-        "sym:apps/web/src/components/PostList.tsx#PostList",
+        "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+        "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
+        "sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce",
+        "sym:pnpm-turbo:packages/db/src/queries.ts#createPost",
+        "sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
       ];
       const sheets = ids.map((id) => {
         const sym = ix.store.getSymbol(id);
-        const rel = (sym?.fileId ?? "").slice(5);
+        const rel = pathOfFileId(sym?.fileId ?? "");
         return buildFactSheet(ix.store, id, readFileSync(join(ix.fx.dir, rel), "utf8"));
       });
       expect(sheets).toMatchSnapshot();
@@ -124,9 +125,9 @@ describe("buildFactSheet", () => {
       [caller],
       [
         ...targets.map((t) => edge(t.id, "calls")),
-        edge("sym:src/x.ts#Widget", "renders"),
-        edge("sym:src/x.ts#useThing", "uses_hook"),
-        edge("sym:src/x.ts#SomeType", "references_type"),
+        edge("sym:repo:src/x.ts#Widget", "renders"),
+        edge("sym:repo:src/x.ts#useThing", "uses_hook"),
+        edge("sym:repo:src/x.ts#SomeType", "references_type"),
       ],
     );
     const sheet = buildFactSheet(store, caller.id, "// doc line\nfunction caller() {\n}\n");
@@ -143,7 +144,7 @@ describe("buildFactSheet", () => {
     const s = fakeSymbol("config/secrets.ts", "getKey");
     putFile(store, "config/secrets.ts", [s]);
     expect(() => buildFactSheet(store, s.id, "export function getKey() {}")).toThrow(SensitivePathError);
-    expect(() => buildFactSheet(store, "sym:nope#x", "")).toThrow(/Unknown symbol/);
+    expect(() => buildFactSheet(store, "sym:repo:nope#x", "")).toThrow(/Unknown symbol/);
     store.close();
   });
 });

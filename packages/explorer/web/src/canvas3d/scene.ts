@@ -6,6 +6,7 @@
 import ForceGraph3D, { type ForceGraph3DInstance, type NodeObject } from "3d-force-graph";
 import * as THREE from "three";
 import type { GraphEdge, GraphNode } from "../api.ts";
+import { displayOfId } from "../ids.ts";
 import type { RankedFile } from "../rankedFiles/rank.ts";
 import type { Scheme } from "../theme.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
@@ -1335,7 +1336,9 @@ export class MapScene {
       const e = this.entries.get(this.hoverNode);
       if (e) {
         const isl = this.islandEntries.get(e.island)?.island;
-        const path = this.hoverNode.replace(/^(file|dir|more):/, "").replace(/^ws:[^:]*:/, "");
+        const path = displayOfId(this.hoverNode)
+          .replace(/^more:/, "")
+          .replace(/^ws:[^:]*:/, "");
         this.cb.onTip(
           {
             title: e.node.label,

@@ -505,8 +505,8 @@ describe("entry points", () => {
     expect(r).toEqual({ code: 0, out: "", err: "" });
     const rows = backlog(p).filter((b) => b.symbol_id.includes("staged.ts"));
     expect(rows.map((b) => [b.symbol_id, b.priority, b.status])).toEqual([
-      ["sym:packages/utils/src/staged.ts#localFn", 2, "pending"],
-      ["sym:packages/utils/src/staged.ts#stagedFn", 0, "pending"],
+      ["sym:pnpm-turbo:packages/utils/src/staged.ts#localFn", 2, "pending"],
+      ["sym:pnpm-turbo:packages/utils/src/staged.ts#stagedFn", 0, "pending"],
     ]);
     // Not written to the persisted working layer.
     expect(workingRows(p)).toBe(workingBefore);
@@ -518,7 +518,7 @@ describe("entry points", () => {
     const hash = (
       s.db
         .prepare("SELECT exact_hash FROM symbols WHERE layer = 'main' AND id = ?")
-        .get("sym:packages/utils/src/staged.ts#stagedFn") as { exact_hash: string }
+        .get("sym:pnpm-turbo:packages/utils/src/staged.ts#stagedFn") as { exact_hash: string }
     ).exact_hash;
     s.close();
     const staged = rows.find((b) => b.symbol_id.endsWith("#stagedFn"));
@@ -567,8 +567,10 @@ describe("entry points", () => {
     );
     git(fx.dir, ["add", "packages/utils/src/tiny.ts"]);
     expect(gantry(fx.dir, ["hook", "pre-commit"])).toEqual({ code: 0, out: "", err: "" });
-    expect(backlog(p).map((b) => b.symbol_id)).not.toContain("sym:packages/utils/src/tiny.ts#tinyFn");
-    expect(backlog(p).map((b) => b.symbol_id)).toContain("sym:packages/utils/src/tiny.ts#bigFn");
+    expect(backlog(p).map((b) => b.symbol_id)).not.toContain(
+      "sym:pnpm-turbo:packages/utils/src/tiny.ts#tinyFn",
+    );
+    expect(backlog(p).map((b) => b.symbol_id)).toContain("sym:pnpm-turbo:packages/utils/src/tiny.ts#bigFn");
     const s = openStore(p.dbPath);
     const tpl = s.db
       .prepare("SELECT behavior, provenance FROM descriptions WHERE behavior = 'Returns a + 1.'")
@@ -664,7 +666,7 @@ describe("entry points", () => {
         st.close();
       }
     };
-    expect(versionOf()).toBe("7");
+    expect(versionOf()).toBe("8");
     setVersion("6");
     const input = JSON.stringify({
       session_id: "s",
@@ -704,15 +706,15 @@ describe("entry points", () => {
       err: "",
     });
     expect(versionOf()).toBe("6");
-    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 7)");
+    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 8)");
 
     // The next non-hook command rebuilds from scratch, with one message naming the reason.
     const init = gantry(fx.dir, ["init"]);
     expect(init.code).toBe(0);
     expect(
-      init.err.split("built by an older version of Gantry (schema 6, now 7); rebuilding it").length - 1,
+      init.err.split("built by an older version of Gantry (schema 6, now 8); rebuilding it").length - 1,
     ).toBe(1);
-    expect(versionOf()).toBe("7");
+    expect(versionOf()).toBe("8");
   });
 
   it("session-start and the git hooks create no data dir for a repository without an index (#147)", async () => {
@@ -915,7 +917,7 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     const st = openStore(p.dbPath);
     try {
       recordEdit(st, "s", "apps/web/src/lib/new.ts", true);
-      expect(st.effectiveSymbols({ fileId: "file:apps/web/src/lib/new.ts" })).toEqual([]);
+      expect(st.effectiveSymbols({ fileId: "file:pnpm-turbo:apps/web/src/lib/new.ts" })).toEqual([]);
       expect(st.db.prepare("SELECT reindexed FROM pending_files").get()).toEqual({ reindexed: 0 });
     } finally {
       st.close();
@@ -1220,7 +1222,7 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
   it("never puts a function body or a stored description in the output", async () => {
     const fx = await indexedFx();
     const store = openStore(pathsOf(fx.dir).dbPath);
-    const sym = store.getSymbol("sym:apps/web/src/lib/slug.ts#slugify");
+    const sym = store.getSymbol("sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify");
     expect(sym).toBeDefined();
     storeDescriptions(store, [
       {
@@ -1247,7 +1249,10 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     const paths = pathsOf(fx.dir);
     writeFileSync(paths.configPath, JSON.stringify({ renameSuggestions: true }));
     const store = openStore(paths.dbPath);
-    for (const id of ["sym:apps/web/src/lib/slug.ts#slugify", "sym:packages/utils/src/slug.ts#slugify"]) {
+    for (const id of [
+      "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+      "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
+    ]) {
       const sym = store.getSymbol(id);
       expect(sym).toBeDefined();
       storeDescriptions(store, [

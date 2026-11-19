@@ -9,7 +9,7 @@ afterEach(cleanup);
 const files: RankedFile[] = [
   {
     rank: 1,
-    id: "file:apps/api/src/routes/orderService.ts",
+    id: "file:pnpm-turbo:apps/api/src/routes/orderService.ts",
     name: "orderService.ts",
     functions: 120,
     path: "apps/api/src/routes/orderService.ts",
@@ -19,7 +19,7 @@ const files: RankedFile[] = [
   },
   {
     rank: 2,
-    id: "file:apps/web/index.ts",
+    id: "file:pnpm-turbo:apps/web/index.ts",
     name: "index.ts",
     functions: 40,
     path: "apps/web/index.ts",
@@ -64,15 +64,15 @@ describe("LargestFiles", () => {
   it("selects and focuses a file when its row is clicked", () => {
     const p = setup();
     fireEvent.click(screen.getByRole("button", { name: /orderService\.ts/ }));
-    expect(p.onSelect).toHaveBeenCalledWith("file:apps/api/src/routes/orderService.ts");
-    expect(p.onFocus).toHaveBeenCalledWith("file:apps/api/src/routes/orderService.ts");
+    expect(p.onSelect).toHaveBeenCalledWith("file:pnpm-turbo:apps/api/src/routes/orderService.ts");
+    expect(p.onFocus).toHaveBeenCalledWith("file:pnpm-turbo:apps/api/src/routes/orderService.ts");
   });
 
   it("reports the hovered row and clears it on leave", () => {
     const p = setup();
     const row = screen.getByRole("button", { name: /index\.ts/ });
     fireEvent.mouseEnter(row);
-    expect(p.onHover).toHaveBeenLastCalledWith("file:apps/web/index.ts");
+    expect(p.onHover).toHaveBeenLastCalledWith("file:pnpm-turbo:apps/web/index.ts");
     fireEvent.mouseLeave(row);
     expect(p.onHover).toHaveBeenLastCalledWith(null);
   });

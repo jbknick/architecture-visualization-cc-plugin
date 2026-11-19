@@ -1,3 +1,4 @@
+import { displayOfId } from "../ids.ts";
 import "./canvas.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type Filters, type GraphNode } from "../api.ts";
@@ -76,7 +77,7 @@ interface Crumb {
 }
 
 function plain(id: string): string {
-  return id.replace(/^(sym|file|ws|dir):/, "");
+  return displayOfId(id);
 }
 
 /** The last finished layout of a canvas, so a refresh can keep it (spec section 11 (c)). */

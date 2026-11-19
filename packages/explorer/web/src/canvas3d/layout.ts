@@ -1,6 +1,8 @@
 // Pure, deterministic layout for the 3D map. No WebGL, no Math.random: positions come from hashes of ids and a
 // fixed number of simulation ticks, so the same data always yields the same picture.
+
 import type { GraphEdge, GraphNode } from "../api.ts";
+import { isFileId, pathOfFileId } from "../ids.ts";
 
 export interface Vec3 {
   x: number;
@@ -196,7 +198,7 @@ function separate(bodies: Body[], gap: (a: Body, b: Body) => number, iterations:
 
 /** Folder key of a file or folded node inside its workspace: up to two directory segments, "." for the root. */
 export function folderKey(n: GraphNode, wsDir: string): string {
-  const path = n.path ?? n.id.replace(/^(file|more):/, "");
+  const path = n.path ?? (isFileId(n.id) ? pathOfFileId(n.id) : n.id.replace(/^more:/, ""));
   let rel = path;
   if (wsDir !== "." && wsDir !== "") {
     if (path === wsDir) rel = ".";

@@ -50,15 +50,15 @@ function indexFixture(root: string, extra: Record<string, string> = {}): void {
   }
   for (const [rel, src] of Object.entries(extra)) sources.set(rel, src);
   const parsed = new Map<string, ParsedFile>();
-  for (const [rel, src] of sources) parsed.set(`file:${rel}`, parseSource(rel, src));
-  const resolver = createResolver({ root, workspaces, parsed });
+  for (const [rel, src] of sources) parsed.set(`file:pnpm-turbo:${rel}`, parseSource("pnpm-turbo", rel, src));
+  const resolver = createResolver({ root, repo: "pnpm-turbo", workspaces, parsed });
   const wsEdges = resolver.workspaceEdges();
   const seenWs = new Set<string>();
   for (const rel of [...sources.keys()].sort()) {
     const ws = workspaces
       .filter((w) => w.dir === "." || rel.startsWith(`${w.dir}/`))
       .sort((a, b) => b.dir.length - a.dir.length)[0];
-    const pf = parsed.get(`file:${rel}`) as ParsedFile;
+    const pf = parsed.get(`file:pnpm-turbo:${rel}`) as ParsedFile;
     const src = sources.get(rel) as string;
     const symbols: SymbolRecord[] = pf.symbols.map((s) => ({
       id: s.id,
@@ -138,9 +138,9 @@ describe("map-3d view", () => {
 
   it("hides tests and generated files by default; hideTests=false shows tests", () => {
     const ids = (q: string) => view(q).nodes.map((n) => n.id);
-    const testFile = "file:apps/web/src/components/Header.test.tsx";
+    const testFile = "file:pnpm-turbo:apps/web/src/components/Header.test.tsx";
     expect(ids("level=files")).not.toContain(testFile);
-    expect(ids("level=files")).not.toContain("file:apps/web/src/routeTree.gen.ts");
+    expect(ids("level=files")).not.toContain("file:pnpm-turbo:apps/web/src/routeTree.gen.ts");
     const json = (o: object) => encodeURIComponent(JSON.stringify(o));
     expect(ids(`level=files&filters=${json({ hideTests: false })}`)).toContain(testFile);
     expect(ids("level=files&filters=hideTests=false")).toContain(testFile);

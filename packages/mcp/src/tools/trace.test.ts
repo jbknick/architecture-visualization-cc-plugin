@@ -18,7 +18,7 @@ const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as 
 };
 
 const MARKER = "ZetaNineTraceMarker";
-const ROUTE = "route:@demo/web:/posts/$postId";
+const ROUTE = "route:adapters:@demo/web:/posts/$postId";
 
 const fixtures: MaterializedFixture[] = [];
 const dataDirs: string[] = [];
@@ -85,9 +85,9 @@ describe("gantry_trace", () => {
     };
     expect(d.target).toBe(ROUTE);
     expect(d.direction).toBe("down");
-    expect(d.endpoints.map((e) => e.id)).toContain("ep:@demo/api:rpc posts.get");
-    expect(d.endpoints.find((e) => e.id === "ep:@demo/server:PATCH /api/posts/:id")?.low).toBe(true);
-    expect(d.tables).toContain("table:posts");
+    expect(d.endpoints.map((e) => e.id)).toContain("ep:adapters:@demo/api:rpc posts.get");
+    expect(d.endpoints.find((e) => e.id === "ep:adapters:@demo/server:PATCH /api/posts/:id")?.low).toBe(true);
+    expect(d.tables).toContain("table:adapters:posts");
 
     const up = await call(client, "gantry_trace", { target: "table:posts" });
     const u = up.json as { direction: string; routes: string[] };
@@ -117,34 +117,34 @@ describe("gantry_trace", () => {
 
   it("summarises a long chain with counts and stays under the limit", () => {
     const chain: TraceResult["chain"] = [
-      { id: "route:w:/a", kind: "route", label: "/a", via: "target", depth: 0 },
+      { id: "route:repo:w:/a", kind: "route", label: "/a", via: "target", depth: 0 },
     ];
     for (let i = 0; i < 400; i++) {
       chain.push({
-        id: `sym:apps/web/src/components/c${i}.tsx#Component${i}`,
+        id: `sym:repo:apps/web/src/components/c${i}.tsx#Component${i}`,
         kind: "component",
         label: `Component${i}`,
         via: "renders",
         depth: 2,
-        from: "sym:apps/web/src/a.tsx#Page",
+        from: "sym:repo:apps/web/src/a.tsx#Page",
       });
     }
     for (let i = 0; i < 60; i++) {
       chain.push({
-        id: `ep:w:rpc a.p${i}`,
+        id: `ep:repo:w:rpc a.p${i}`,
         kind: "endpoint",
         label: `rpc a.p${i}`,
         via: "requests",
         depth: 3,
       });
-      chain.push({ id: `table:t${i}`, kind: "table", label: `t${i}`, via: "reads", depth: 6 });
+      chain.push({ id: `table:repo:t${i}`, kind: "table", label: `t${i}`, via: "reads", depth: 6 });
     }
     const r: TraceResult = {
-      target: "route:w:/a",
+      target: "route:repo:w:/a",
       direction: "down",
       chain,
       edges: [],
-      gaps: Array.from({ length: 30 }, (_, i) => `no table reached from ep:w:rpc a.q${i}`),
+      gaps: Array.from({ length: 30 }, (_, i) => `no table reached from ep:repo:w:rpc a.q${i}`),
       omitted: 0,
       truncated: false,
     };

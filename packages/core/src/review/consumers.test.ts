@@ -55,9 +55,9 @@ async function setup(prepare?: (fx: MaterializedFixture) => void) {
   return { fx, paths, store };
 }
 
-const BUTTON = "sym:packages/ui/src/button.tsx#Button";
-const HOME = "sym:apps/web/src/routes/index.tsx#HomePage";
-const PROFILE = "sym:apps/web/src/routes/settings/profile.tsx#ProfilePage";
+const BUTTON = "sym:pnpm-turbo:packages/ui/src/button.tsx#Button";
+const HOME = "sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage";
+const PROFILE = "sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage";
 
 describe("consumers of a review's changes (#169)", () => {
   it("a component rendered elsewhere lists its renderers directly and their route and importers as potential", async () => {
@@ -75,20 +75,20 @@ describe("consumers of a review's changes (#169)", () => {
     expect(sym?.target).toBe("symbol");
     // sorted by workspace, then path, then name
     expect(sym?.direct.map((d) => [d.workspace, d.id, d.uses, d.crosses])).toEqual([
-      ["@acme/ui", "file:packages/ui/src/index.ts", ["imports"], []],
+      ["@acme/ui", "file:pnpm-turbo:packages/ui/src/index.ts", ["imports"], []],
       ["@acme/web", HOME, ["renders"], ["app"]],
       ["@acme/web", PROFILE, ["renders"], ["app"]],
     ]);
     expect(sym?.direct[1]).toMatchObject({ name: "HomePage", kind: "component", line: 7, hop: 1 });
     expect(sym?.directTotal).toBe(3);
-    const route = sym?.potential.find((p) => p.id === "route:@acme/web:/");
+    const route = sym?.potential.find((p) => p.id === "route:pnpm-turbo:@acme/web:/");
     expect(route).toMatchObject({ hop: 2, via: HOME, next: HOME, uses: ["serves"], kind: "route" });
     // profile.tsx imports the barrel: reached through the barrel at hop 2
     expect(
-      sym?.potential.find((p) => p.id === "file:apps/web/src/routes/settings/profile.tsx"),
+      sym?.potential.find((p) => p.id === "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx"),
     ).toMatchObject({
       hop: 2,
-      via: "file:packages/ui/src/index.ts",
+      via: "file:pnpm-turbo:packages/ui/src/index.ts",
       uses: ["imports"],
     });
     expect(sym?.potentialTotal).toBe(sym?.potential.length);
@@ -97,12 +97,12 @@ describe("consumers of a review's changes (#169)", () => {
     expect(sym?.potential.some((p) => direct.has(p.id) || p.id === BUTTON)).toBe(false);
 
     // the changed file: the files that import it
-    const file = impact.consumers.find((c) => c.id === "file:packages/ui/src/button.tsx");
+    const file = impact.consumers.find((c) => c.id === "file:pnpm-turbo:packages/ui/src/button.tsx");
     expect(file?.target).toBe("file");
     expect(file?.direct.map((d) => d.id)).toEqual([
-      "file:packages/ui/src/index.ts",
-      "file:apps/web/src/routes/index.tsx",
-      "file:apps/web/src/routes/settings/profile.tsx",
+      "file:pnpm-turbo:packages/ui/src/index.ts",
+      "file:pnpm-turbo:apps/web/src/routes/index.tsx",
+      "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
     ]);
     expect(
       file?.direct.every((d) => d.uses.join() === "imports" && d.kind === "file" && d.line === null),
@@ -128,12 +128,12 @@ describe("consumers of a review's changes (#169)", () => {
     write(fx, "packages/ui/src/size.ts", "export type Size = number | string;\n");
     commit(fx, "size");
     const impact = await reviewImpact(paths, store, await reviewDiff(paths, "main", "feature"));
-    const size = impact.consumers.find((c) => c.id === "sym:packages/ui/src/size.ts#Size");
+    const size = impact.consumers.find((c) => c.id === "sym:pnpm-turbo:packages/ui/src/size.ts#Size");
     expect(size?.direct.map((d) => [d.id, d.uses])).toEqual([
-      ["sym:packages/ui/src/sized.ts#sized", ["references_type"]],
+      ["sym:pnpm-turbo:packages/ui/src/sized.ts#sized", ["references_type"]],
     ]);
     // the walk and the risk follow references_type at hop 1 too
-    expect(impact.callersByHop[0]?.ids).toEqual(["sym:packages/ui/src/sized.ts#sized"]);
+    expect(impact.callersByHop[0]?.ids).toEqual(["sym:pnpm-turbo:packages/ui/src/sized.ts#sized"]);
   });
 
   it("caps each tier at MAX_CONSUMERS and reports the total", async () => {
@@ -148,12 +148,15 @@ describe("consumers of a review's changes (#169)", () => {
         );
       }
     });
-    const impact = computeImpact(store, modifiedChanges(store, ["sym:apps/web/src/lib/slug.ts#slugify"]));
+    const impact = computeImpact(
+      store,
+      modifiedChanges(store, ["sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify"]),
+    );
     const c = impact.consumers[0];
     expect(c?.directTotal).toBe(n + 1); // the generated callers and PostList
     expect(c?.direct).toHaveLength(MAX_CONSUMERS);
     const paths = c?.direct.map((d) => d.path) ?? [];
     expect([...paths].sort()).toEqual(paths);
-    expect(c?.direct[0]?.id).toBe("sym:apps/web/src/components/PostList.tsx#PostList");
+    expect(c?.direct[0]?.id).toBe("sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList");
   }, 60_000);
 });

@@ -1,3 +1,4 @@
+import { isSymId } from "@gantry/core";
 import type { ApiContext } from "../types.js";
 import {
   crossCtx,
@@ -82,7 +83,7 @@ const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
 function ref(ctx: ApiContext, id: string): NodeRef {
   const c = crossCtx(ctx.store);
   const n = describeNode(c, id);
-  const s = id.startsWith("sym:") ? c.snap.getSymbol(id) : undefined;
+  const s = isSymId(id) ? c.snap.getSymbol(id) : undefined;
   const a = c.adapters.get(id);
   const line = s?.startLine ?? (typeof a?.data.line === "number" ? a.data.line : null);
   return { id, label: n.label, path: n.path ?? null, line };

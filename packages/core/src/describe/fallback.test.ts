@@ -202,7 +202,7 @@ describe("bounded extra attempt (#150)", () => {
     expect(String(d?.behavior).endsWith(`${FALLBACK_MARK}.`)).toBe(true);
     const fts = ix.store.db
       .prepare("SELECT behavior FROM fts_symbols WHERE symbol_id = ?")
-      .get("sym:apps/web/src/lib/slug.ts#slugify") as { behavior: string };
+      .get("sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify") as { behavior: string };
     expect(fts.behavior).toBe(d?.behavior);
     expect(failedItems(ix.store).map((f) => f.contentKey)).not.toContain(SLUG);
     await ix.close();
