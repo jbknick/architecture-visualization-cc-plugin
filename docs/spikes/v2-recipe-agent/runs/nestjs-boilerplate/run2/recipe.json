@@ -1,0 +1,85 @@
+{
+  "name": "nestjs-boilerplate",
+  "frameworks": [{ "name": "nestjs", "evidence": "@Controller decorators, TypeORM + Mongoose" }],
+  "when": { "dependency": ["@nestjs/common"] },
+  "helpers": [],
+  "rules": [
+    {
+      "id": "nest-method-path",
+      "language": "typescript",
+      "files": ["src/**/*.controller.ts"],
+      "rule": { "pattern": "@$M($P)", "inside": { "kind": "class_body" } },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete)$" }, "P": { "kind": "string" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "path": "$P",
+        "prefix": "=/api/v1",
+        "ancestorPrefix": {
+          "kind": "class_declaration",
+          "rule": { "pattern": { "context": "({ path: $C })", "selector": "pair" } },
+          "capture": "$C"
+        }
+      },
+      "examples": {
+        "match": ["class A { @Get('x') f() {} }"],
+        "noMatch": ["class A { @Foo('x') f() {} }"]
+      }
+    },
+    {
+      "id": "nest-method-nopath",
+      "language": "typescript",
+      "files": ["src/users/*.controller.ts"],
+      "rule": { "pattern": "@$M()", "inside": { "kind": "class_body" } },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "method": "$M",
+        "path": "=",
+        "prefix": "=/api/v1",
+        "ancestorPrefix": {
+          "kind": "class_declaration",
+          "rule": { "pattern": { "context": "({ path: $C })", "selector": "pair" } },
+          "capture": "$C"
+        }
+      },
+      "examples": {
+        "match": ["class A { @Post() f() {} }"],
+        "noMatch": ["class A { @Post('x') f() {} }"]
+      }
+    },
+    {
+      "id": "nest-home-root",
+      "language": "typescript",
+      "files": ["src/home/*.controller.ts"],
+      "rule": { "pattern": "@Get()", "inside": { "kind": "class_body" } },
+      "emit": { "kind": "endpoint", "method": "=GET", "path": "=/", "standalone": true },
+      "examples": {
+        "match": ["class A { @Get() f() {} }"],
+        "noMatch": ["class A { @Get('x') f() {} }"]
+      }
+    },
+    {
+      "id": "typeorm-entity",
+      "language": "typescript",
+      "files": ["src/**/*.entity.ts"],
+      "rule": { "pattern": "@Entity({ name: $N })" },
+      "emit": { "kind": "table", "name": "$N" },
+      "examples": {
+        "match": ["@Entity({ name: 'user' })\nclass A {}"],
+        "noMatch": ["@Foo({ name: 'user' })\nclass A {}"]
+      }
+    },
+    {
+      "id": "mongoose-schema",
+      "language": "text",
+      "files": ["src/**/*.schema.ts"],
+      "rule": { "regex": "@Schema\\([\\s\\S]*?\\)\\s*export class (\\w+)" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": {
+        "match": ["@Schema({\n timestamps: true,\n})\nexport class UserSchemaClass {}"],
+        "noMatch": ["export class RoleSchema {}"]
+      }
+    }
+  ]
+}

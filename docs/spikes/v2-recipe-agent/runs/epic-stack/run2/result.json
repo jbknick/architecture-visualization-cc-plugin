@@ -1,0 +1,62 @@
+{
+  "run": 2,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 12,
+  "tokens": {
+    "input": 16,
+    "cacheRead": 117461,
+    "cacheCreate": 27563,
+    "output": 7683
+  },
+  "costUsdReported": 0.19886009999999998,
+  "wallMs": 62168,
+  "recipeSha256": "5d706c6902d006cac0321e918795cef98be2508f0490c50d40742ec31e164a86",
+  "graphSha256": "c2ac57d75be5cca0de583a0ef3328aede4b2f5d4b83ab6bca74bfbc7533b97d0",
+  "nodes": {
+    "route": 30,
+    "endpoint": 14,
+    "table": 11
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 3,
+  "score": {
+    "case": "epic-stack",
+    "sha": "893610db76127fb5a5f1ffa786bee6b050637429",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 18,
+        "predicted": 14,
+        "matched": 14,
+        "precision": 1,
+        "recall": 0.7778,
+        "pass": false
+      },
+      "route": {
+        "labelled": 30,
+        "predicted": 30,
+        "matched": 30,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      },
+      "table": {
+        "labelled": 11,
+        "predicted": 11,
+        "matched": 11,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      }
+    },
+    "missed": {
+      "endpoint": ["ALL /admin/cache/sqlite", "GET /*", "GET /favicons/*", "GET /img/*"]
+    },
+    "extra": {},
+    "pass": false
+  }
+}

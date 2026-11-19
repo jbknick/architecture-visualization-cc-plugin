@@ -1,0 +1,16 @@
+The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED`. All examples pass.
+
+- **Stack:** Go with the standard library `net/http`. It uses one `http.NewServeMux()` in `main.go` and Go 1.22-style method patterns in `router.go`. There is no database or schema code.
+- **Endpoints (6):**
+  - `ALL /`
+  - `ALL /dreamsofcode.foo`
+  - `POST /monster`
+  - `PUT /monster/{id}`
+  - `GET /monster/{id}`
+  - `DELETE /monster/{id}`
+- **Routes:** 0, because there is no frontend.
+- **Tables:** 0.
+
+**What I could not express:**
+- **Router resolution:** The four `/monster` routes are registered in `loadRoutes(router *http.ServeMux)`, which nothing calls, so the router never resolves to the mux. I made those rules `standalone`, so they no longer depend on a declared router. A second mux in the same repo would not be told apart.
+- **Host pattern:** `"dreamsofcode.foo/"` is a host-qualified pattern for host `dreamsofcode.foo` and path `/`. The engine lists it as `/dreamsofcode.foo`, and I found no way to keep the host separate from the path.

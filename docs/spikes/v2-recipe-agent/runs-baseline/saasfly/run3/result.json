@@ -1,0 +1,71 @@
+{
+  "run": 3,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 18,
+  "tokens": {
+    "input": 22,
+    "cacheRead": 136075,
+    "cacheCreate": 11162,
+    "output": 5996
+  },
+  "costUsdReported": 0.1182595,
+  "wallMs": 51107,
+  "recipeSha256": "0bbd630a07a865c89ecf1e49ff6a5403fefdf3e1688bff45e5f278707ef8394d",
+  "graphSha256": "4564b069efa0c3c93363f2b4625da5bbc80c13f1cedcc674e587c41a4a7a2c9e",
+  "nodes": {
+    "route": 14,
+    "endpoint": 6,
+    "table": 6
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 4,
+  "score": {
+    "case": "saasfly",
+    "sha": "49f7e28f69eae9cd9eed84221e13a3dbae87da67",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 5,
+        "predicted": 6,
+        "matched": 2,
+        "precision": 0.3333,
+        "recall": 0.4,
+        "pass": false
+      },
+      "route": {
+        "labelled": 14,
+        "predicted": 14,
+        "matched": 11,
+        "precision": 0.7857,
+        "recall": 0.7857,
+        "pass": false
+      },
+      "table": {
+        "labelled": 6,
+        "predicted": 6,
+        "matched": 6,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      }
+    },
+    "missed": {
+      "endpoint": ["ALL /*", "GET /api/auth/*", "POST /api/auth/*"],
+      "route": ["/:param/blog/*", "/:param/docs/*", "/:param/login-clerk/*"]
+    },
+    "extra": {
+      "endpoint": [
+        "GET /api/auth/:param",
+        "GET /api/trpc/edge/:param",
+        "POST /api/auth/:param",
+        "POST /api/trpc/edge/:param"
+      ],
+      "route": ["/:param/blog/:param", "/:param/docs/:param", "/:param/login-clerk/:param"]
+    },
+    "pass": false
+  }
+}

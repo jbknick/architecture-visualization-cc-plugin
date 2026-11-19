@@ -1,0 +1,51 @@
+{
+  "repo": "express-mongodb-rest-api-boilerplate",
+  "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7",
+  "labelledBy": "hand-labelled by a research agent (not the recipe agent) by rg enumeration and reading each site",
+  "kinds": ["endpoint", "table"],
+  "endpoint": [
+    { "method": "GET", "path": "/health/live", "file": "src/app/http/app.ts" },
+    { "method": "GET", "path": "/health/ready", "file": "src/app/http/app.ts" },
+    { "method": "ALL", "path": "/storage/public/conversions", "file": "src/app/http/app.ts" },
+    { "method": "POST", "path": "/auth/sign-in", "file": "src/domains/auth/routes.ts" },
+    { "method": "POST", "path": "/auth/sign-up", "file": "src/domains/auth/routes.ts" },
+    { "method": "POST", "path": "/auth/sign-out", "file": "src/domains/auth/routes.ts" },
+    { "method": "GET", "path": "/auth/sign-out", "file": "src/domains/auth/routes.ts" },
+    { "method": "POST", "path": "/auth/password/reset", "file": "src/domains/auth/routes.ts" },
+    { "method": "POST", "path": "/auth/password/new/:accessToken", "file": "src/domains/auth/routes.ts" },
+    { "method": "POST", "path": "/user/update/email", "file": "src/domains/auth/routes.ts" },
+    { "method": "POST", "path": "/user/update/password", "file": "src/domains/auth/routes.ts" },
+    { "method": "POST", "path": "/user/delete", "file": "src/domains/auth/routes.ts" },
+    {
+      "method": "POST",
+      "path": "/user/verification/request",
+      "file": "src/domains/auth/verification/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/user/verification/:accessToken",
+      "file": "src/domains/auth/verification/routes.ts"
+    },
+    { "method": "POST", "path": "/media/image/upload", "file": "src/domains/media/routes.ts" },
+    { "method": "POST", "path": "/user/update/avatar", "file": "src/domains/media/routes.ts" },
+    { "method": "GET", "path": "/me", "file": "src/domains/users/routes.ts" },
+    { "method": "POST", "path": "/user/update", "file": "src/domains/users/routes.ts" },
+    { "method": "GET", "path": "/notifications/templates", "file": "src/domains/notifications/routes.ts" },
+    { "method": "GET", "path": "/openapi.json", "file": "src/app/http/documentation/routes.ts" },
+    { "method": "GET", "path": "/docs", "file": "src/app/http/documentation/routes.ts" },
+    { "method": "GET", "path": "/docs/initializer.js", "file": "src/app/http/documentation/routes.ts" },
+    { "method": "GET", "path": "/docs/config.json", "file": "src/app/http/documentation/routes.ts" },
+    { "method": "GET", "path": "/docs/openapi.json", "file": "src/app/http/documentation/routes.ts" },
+    { "method": "GET", "path": "/docs/swagger-ui.css", "file": "src/app/http/documentation/routes.ts" },
+    { "method": "GET", "path": "/docs/swagger-ui-bundle.js", "file": "src/app/http/documentation/routes.ts" }
+  ],
+  "table": [
+    { "name": "User" },
+    { "name": "Media" },
+    { "name": "Verification" },
+    { "name": "ResetPassword" },
+    { "name": "EmailOutbox" },
+    { "name": "EmailWorker" },
+    { "name": "EmailBudget" }
+  ]
+}

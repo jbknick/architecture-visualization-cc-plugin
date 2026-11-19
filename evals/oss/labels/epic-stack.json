@@ -1,0 +1,255 @@
+{
+  "repo": "epic-stack",
+  "sha": "893610db76127fb5a5f1ffa786bee6b050637429",
+  "labelledBy": "hand-labelled by a research agent (not the recipe agent) by rg enumeration and reading each site",
+  "kinds": ["route", "endpoint", "table"],
+  "route": [
+    {
+      "path": "/*",
+      "file": "app/routes/$.tsx"
+    },
+    {
+      "path": "/",
+      "file": "app/routes/_marketing/index.tsx"
+    },
+    {
+      "path": "/about",
+      "file": "app/routes/_marketing/about.tsx"
+    },
+    {
+      "path": "/privacy",
+      "file": "app/routes/_marketing/privacy.tsx"
+    },
+    {
+      "path": "/support",
+      "file": "app/routes/_marketing/support.tsx"
+    },
+    {
+      "path": "/tos",
+      "file": "app/routes/_marketing/tos.tsx"
+    },
+    {
+      "path": "/login",
+      "file": "app/routes/_auth/login.tsx"
+    },
+    {
+      "path": "/signup",
+      "file": "app/routes/_auth/signup.tsx"
+    },
+    {
+      "path": "/reset-password",
+      "file": "app/routes/_auth/reset-password.tsx"
+    },
+    {
+      "path": "/verify",
+      "file": "app/routes/_auth/verify.tsx"
+    },
+    {
+      "path": "/forgot-password",
+      "file": "app/routes/_auth/forgot-password.tsx"
+    },
+    {
+      "path": "/onboarding",
+      "file": "app/routes/_auth/onboarding/index.tsx"
+    },
+    {
+      "path": "/onboarding/:provider",
+      "file": "app/routes/_auth/onboarding/$provider.tsx"
+    },
+    {
+      "path": "/users",
+      "file": "app/routes/users/index.tsx"
+    },
+    {
+      "path": "/users/:username",
+      "file": "app/routes/users/$username/index.tsx"
+    },
+    {
+      "path": "/users/:username/notes",
+      "file": "app/routes/users/$username/notes/_layout.tsx"
+    },
+    {
+      "path": "/users/:username/notes/:noteId",
+      "file": "app/routes/users/$username/notes/$noteId.tsx"
+    },
+    {
+      "path": "/users/:username/notes/:noteId/edit",
+      "file": "app/routes/users/$username/notes/$noteId_.edit.tsx"
+    },
+    {
+      "path": "/users/:username/notes/new",
+      "file": "app/routes/users/$username/notes/new.tsx"
+    },
+    {
+      "path": "/settings/profile",
+      "file": "app/routes/settings/profile/index.tsx"
+    },
+    {
+      "path": "/settings/profile/password",
+      "file": "app/routes/settings/profile/password.tsx"
+    },
+    {
+      "path": "/settings/profile/password/create",
+      "file": "app/routes/settings/profile/password_.create.tsx"
+    },
+    {
+      "path": "/settings/profile/connections",
+      "file": "app/routes/settings/profile/connections.tsx"
+    },
+    {
+      "path": "/settings/profile/passkeys",
+      "file": "app/routes/settings/profile/passkeys.tsx"
+    },
+    {
+      "path": "/settings/profile/photo",
+      "file": "app/routes/settings/profile/photo.tsx"
+    },
+    {
+      "path": "/settings/profile/change-email",
+      "file": "app/routes/settings/profile/change-email.tsx"
+    },
+    {
+      "path": "/settings/profile/two-factor",
+      "file": "app/routes/settings/profile/two-factor/index.tsx"
+    },
+    {
+      "path": "/settings/profile/two-factor/disable",
+      "file": "app/routes/settings/profile/two-factor/disable.tsx"
+    },
+    {
+      "path": "/settings/profile/two-factor/verify",
+      "file": "app/routes/settings/profile/two-factor/verify.tsx"
+    },
+    {
+      "path": "/admin/cache",
+      "file": "app/routes/admin/cache/index.tsx"
+    }
+  ],
+  "endpoint": [
+    {
+      "method": "ALL",
+      "path": "/me",
+      "file": "app/routes/me.tsx"
+    },
+    {
+      "method": "ALL",
+      "path": "/sitemap.xml",
+      "file": "app/routes/_seo/sitemap[.]xml.ts"
+    },
+    {
+      "method": "ALL",
+      "path": "/robots.txt",
+      "file": "app/routes/_seo/robots[.]txt.ts"
+    },
+    {
+      "method": "ALL",
+      "path": "/resources/download-user-data",
+      "file": "app/routes/resources/download-user-data.tsx"
+    },
+    {
+      "method": "ALL",
+      "path": "/resources/theme-switch",
+      "file": "app/routes/resources/theme-switch.tsx"
+    },
+    {
+      "method": "ALL",
+      "path": "/resources/images",
+      "file": "app/routes/resources/images.tsx"
+    },
+    {
+      "method": "ALL",
+      "path": "/resources/healthcheck",
+      "file": "app/routes/resources/healthcheck.tsx"
+    },
+    {
+      "method": "ALL",
+      "path": "/logout",
+      "file": "app/routes/_auth/logout.tsx"
+    },
+    {
+      "method": "ALL",
+      "path": "/auth/:provider",
+      "file": "app/routes/_auth/auth.$provider/index.ts"
+    },
+    {
+      "method": "ALL",
+      "path": "/auth/:provider/callback",
+      "file": "app/routes/_auth/auth.$provider/callback.ts"
+    },
+    {
+      "method": "ALL",
+      "path": "/webauthn/authentication",
+      "file": "app/routes/_auth/webauthn/authentication.ts"
+    },
+    {
+      "method": "ALL",
+      "path": "/webauthn/registration",
+      "file": "app/routes/_auth/webauthn/registration.ts"
+    },
+    {
+      "method": "ALL",
+      "path": "/admin/cache/sqlite",
+      "file": "app/routes/admin/cache/sqlite.tsx"
+    },
+    {
+      "method": "ALL",
+      "path": "/admin/cache/sqlite/:cacheKey",
+      "file": "app/routes/admin/cache/sqlite.$cacheKey.ts"
+    },
+    {
+      "method": "ALL",
+      "path": "/admin/cache/lru/:cacheKey",
+      "file": "app/routes/admin/cache/lru.$cacheKey.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/*",
+      "file": "server/index.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/img/*",
+      "file": "server/index.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/favicons/*",
+      "file": "server/index.ts"
+    }
+  ],
+  "table": [
+    {
+      "name": "User"
+    },
+    {
+      "name": "Note"
+    },
+    {
+      "name": "NoteImage"
+    },
+    {
+      "name": "UserImage"
+    },
+    {
+      "name": "Password"
+    },
+    {
+      "name": "Session"
+    },
+    {
+      "name": "Permission"
+    },
+    {
+      "name": "Role"
+    },
+    {
+      "name": "Verification"
+    },
+    {
+      "name": "Connection"
+    },
+    {
+      "name": "Passkey"
+    }
+  ]
+}

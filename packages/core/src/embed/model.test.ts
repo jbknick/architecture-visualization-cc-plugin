@@ -78,7 +78,7 @@ describe.skipIf(!cached)("real model (jina-embeddings-v2-base-code, q8)", () => 
     try {
       const codes: string[] = pairs
         .filter((p) => p.kind === "code")
-        .map((p) => normalizeForEmbedding(p.a, whole(p.a), "ts"));
+        .map((p) => normalizeForEmbedding(p.a, whole(p.a), "x.ts"));
       codes.splice(0, codes.length, ...new Set(codes)); // distinct texts only: equal code shares one vector
       const vecs = await embedder.embed(codes, "code");
       putVectors(
@@ -116,7 +116,7 @@ describe.skipIf(!cached)("real model (jina-embeddings-v2-base-code, q8)", () => 
         scores.filter((x) => !x.same).map((x) => x.s),
       );
     };
-    const code = await accuracy("code", (s) => normalizeForEmbedding(s, whole(s), "ts"), "code");
+    const code = await accuracy("code", (s) => normalizeForEmbedding(s, whole(s), "x.ts"), "code");
     const desc = await accuracy("description", (s) => s, "document");
     process.stderr.write(
       `embed: pairs.jsonl best-threshold accuracy code ${(code * 100).toFixed(1)}%, descriptions ${(desc * 100).toFixed(1)}%\n`,
@@ -133,7 +133,7 @@ describe.skipIf(!cached)("real model (jina-embeddings-v2-base-code, q8)", () => 
       const base = pairs
         .filter((p) => p.kind === "code")
         .flatMap((p) => [p.a, p.b])
-        .map((s) => normalizeForEmbedding(s, whole(s), "ts"));
+        .map((s) => normalizeForEmbedding(s, whole(s), "x.ts"));
       const texts = Array.from({ length: 1000 }, (_, i) => `${base[i % base.length]} // ${i}`);
       const t0 = performance.now();
       const out = await embedder.embed(texts, "code");

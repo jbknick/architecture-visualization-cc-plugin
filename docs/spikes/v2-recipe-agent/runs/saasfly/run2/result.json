@@ -1,0 +1,64 @@
+{
+  "run": 2,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 12,
+  "tokens": {
+    "input": 16,
+    "cacheRead": 97048,
+    "cacheCreate": 9179,
+    "output": 4345
+  },
+  "costUsdReported": 0.0899028,
+  "wallMs": 38426,
+  "recipeSha256": "bb828befdb4d0c7f83d2b14e70bd37c6ebc06bdf45617c0f14236f3a2371382f",
+  "graphSha256": "254f2dc63ef08f1bfddb6aabe56792bd847cc8a729512de0af4885527242aeef",
+  "nodes": {
+    "route": 14,
+    "endpoint": 6,
+    "table": 6
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 4,
+  "score": {
+    "case": "saasfly",
+    "sha": "49f7e28f69eae9cd9eed84221e13a3dbae87da67",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 5,
+        "predicted": 6,
+        "matched": 4,
+        "precision": 0.6667,
+        "recall": 0.8,
+        "pass": false
+      },
+      "route": {
+        "labelled": 14,
+        "predicted": 14,
+        "matched": 14,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      },
+      "table": {
+        "labelled": 6,
+        "predicted": 6,
+        "matched": 6,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      }
+    },
+    "missed": {
+      "endpoint": ["ALL /*"]
+    },
+    "extra": {
+      "endpoint": ["GET /api/trpc/edge/:param", "POST /api/trpc/edge/:param"]
+    },
+    "pass": false
+  }
+}

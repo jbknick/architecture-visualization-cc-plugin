@@ -573,9 +573,10 @@ export function createResolver(ctx: ResolveContext): Resolver {
 /** `depends_on` edges: workspace -> workspace for each package.json dependency that names a workspace. */
 export function dependsOnEdges(repo: string, workspaces: WorkspaceRecord[]): EdgeRecord[] {
   const byName = new Map<string, WorkspaceRecord>();
-  for (const w of workspaces) if (w.dir !== ".") byName.set(w.name, w);
+  for (const w of workspaces) if (w.dir !== "." && w.lang !== "go") byName.set(w.name, w);
   const edges: EdgeRecord[] = [];
   for (const w of workspaces) {
+    if (w.lang === "go") continue; // Go modules have their own edges (lang/go/workspace.ts)
     const pkgFile = makeFileId(repo, `${w.dir === "." ? "" : `${w.dir}/`}package.json`);
     for (const dep of w.deps) {
       const target = byName.get(dep);

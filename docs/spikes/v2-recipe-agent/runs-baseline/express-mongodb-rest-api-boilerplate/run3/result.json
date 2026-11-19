@@ -1,0 +1,58 @@
+{
+  "run": 3,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 21,
+  "tokens": {
+    "input": 30,
+    "cacheRead": 315940,
+    "cacheCreate": 25186,
+    "output": 12119
+  },
+  "costUsdReported": 0.253588,
+  "wallMs": 89889,
+  "recipeSha256": "66f264cc1d748451bda6026bb3422174d58ad4ca292580e75e3aeff7e19a85d3",
+  "graphSha256": "720cb7a6e60098e5bced94191632b71797b59ba9b6d8c027d1704b98ab36518a",
+  "nodes": {
+    "route": 0,
+    "endpoint": 23,
+    "table": 7
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 7,
+  "score": {
+    "case": "express-mongodb-rest-api-boilerplate",
+    "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 26,
+        "predicted": 23,
+        "matched": 23,
+        "precision": 1,
+        "recall": 0.8846,
+        "pass": false
+      },
+      "table": {
+        "labelled": 7,
+        "predicted": 7,
+        "matched": 7,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      }
+    },
+    "missed": {
+      "endpoint": [
+        "ALL /storage/public/conversions",
+        "GET /docs/swagger-ui-bundle.js",
+        "GET /docs/swagger-ui.css"
+      ]
+    },
+    "extra": {},
+    "pass": false
+  }
+}

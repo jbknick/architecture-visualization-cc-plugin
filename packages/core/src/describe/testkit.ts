@@ -65,6 +65,7 @@ export function fakeSymbol(path: string, name: string, over: Partial<SymbolRecor
     fileId: fileId(TEST_REPO, path),
     name,
     kind: "function",
+    lang: "typescript",
     exported: true,
     signature: "()",
     startLine: 1,
@@ -83,6 +84,7 @@ export function putFile(store: Store, path: string, symbols: SymbolRecord[], edg
   const file: FileRecord = {
     id: fileId(TEST_REPO, path),
     path,
+    lang: "typescript",
     workspaceId: null,
     contentHash: "c",
     mtimeMs: 1,

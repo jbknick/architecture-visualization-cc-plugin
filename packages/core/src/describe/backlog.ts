@@ -4,7 +4,8 @@ import path from "node:path";
 import { isSensitive } from "../discover/index.js";
 import { hashSymbol } from "../hash/index.js";
 import { pathOfFileId, repoOfId } from "../ids.js";
-import { type ParsedFile, parseSource } from "../parse/index.js";
+import { parseFile } from "../lang/index.js";
+import type { ParsedFile } from "../parse/index.js";
 import { refreshDescriptionFts } from "../search/descfts.js";
 import type { Store } from "../store/index.js";
 import type { Description, FactSheet, SymbolRecord } from "../types.js";
@@ -77,7 +78,6 @@ export interface Estimate {
 }
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
-const langOf = (p: string): "ts" | "tsx" => (p.endsWith(".tsx") ? "tsx" : "ts");
 
 function rootOf(store: Store, ctx: SourceContext): string | undefined {
   return ctx.root ?? store.getMeta("repo_root");
@@ -135,7 +135,7 @@ function computeTemplates(
     if (source === undefined) continue;
     let parsed: ParsedFile;
     try {
-      parsed = parseSource(repoOfId(items[0]?.[1].sym.id ?? "") ?? store.repo(), p, source);
+      parsed = parseFile(repoOfId(items[0]?.[1].sym.id ?? "") ?? store.repo(), p, source);
     } catch {
       continue;
     }
@@ -143,7 +143,7 @@ function computeTemplates(
       const range = parsed.bodies.get(c.sym.id);
       if (!range) continue;
       // The file may have changed since indexing; a template must describe the code the key was made from.
-      if (hashSymbol(source, range, langOf(p)).exactHash !== c.sym.exactHash) continue;
+      if (hashSymbol(source, range, p).exactHash !== c.sym.exactHash) continue;
       const d = templateFor(c.sym, parsed, source);
       if (d) out.set(key, d);
     }

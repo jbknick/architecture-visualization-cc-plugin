@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import picomatch from "picomatch";
 import { BUILTIN_EXCLUDES, type GantryConfig } from "../config/index.js";
+import { languageOfPath } from "../lang/index.js";
 import type { GantryPaths } from "../paths/index.js";
 import type { WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
@@ -16,8 +17,6 @@ export interface DiscoveredFile {
 
 /** Files larger than this are skipped (issue #12 step 5). */
 export const MAX_FILE_BYTES = 1024 * 1024;
-
-const EXTENSIONS = [".ts", ".tsx", ".mts", ".cts"];
 
 /**
  * Sensitive path patterns (spec section 5). Matched by path only, never by content.
@@ -91,7 +90,8 @@ export function isSensitive(repoRelPath: string): boolean {
 export function isIndexable(repoRelPath: string, config: GantryConfig): boolean {
   const p = safeNormalize(repoRelPath);
   if (p === null) return false;
-  if (!EXTENSIONS.includes(path.posix.extname(p))) return false;
+  const mod = languageOfPath(p); // file rules of the language modules
+  if (mod === undefined || mod.skipPath?.(p)) return false;
   if (isSensitive(p)) return false;
   if (matchesAny(BUILTIN_EXCLUDES, p)) return false;
   if (matchesAny(config.exclude, p)) return false;

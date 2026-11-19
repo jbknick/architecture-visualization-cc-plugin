@@ -72,7 +72,7 @@ export function syntheticFunction(name: string, lines: number, seed: number): st
 
 const normalized = (name: string, lines: number, i: number): string => {
   const src = syntheticFunction(name, lines, i * 7919 + lines);
-  return normalizeForEmbedding(src, { start: 0, end: src.length }, "ts");
+  return normalizeForEmbedding(src, { start: 0, end: src.length }, "x.ts");
 };
 
 describe("syntheticFunction (bench generator)", () => {

@@ -1,0 +1,52 @@
+{
+  "run": 1,
+  "status": "ok",
+  "model": "claude-sonnet-5-5",
+  "turns": 10,
+  "tokens": {
+    "input": 16,
+    "cacheRead": 120634,
+    "cacheCreate": 18987,
+    "output": 5845
+  },
+  "costUsdReported": 0.1464934,
+  "wallMs": 44784,
+  "recipeSha256": "9f13e940bbb9e329433695ceac6addceef895cdd4f20d7fa752e9962c0d7ac81",
+  "graphSha256": "31eb9450ffe3ddbd3d5ef315a55377d9733dc087710d8e95131b35a7e6f9026a",
+  "nodes": {
+    "route": 0,
+    "endpoint": 2,
+    "table": 2
+  },
+  "zeroMatchRules": [],
+  "dryRuns": 5,
+  "score": {
+    "case": "bun-fastify-starter-turbo-monorepo",
+    "sha": "774fcfe4c51f6e4d0190a321f42deff399852ca9",
+    "bar": {
+      "recall": 0.9,
+      "precision": 0.95
+    },
+    "kinds": {
+      "endpoint": {
+        "labelled": 2,
+        "predicted": 2,
+        "matched": 2,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      },
+      "table": {
+        "labelled": 2,
+        "predicted": 2,
+        "matched": 2,
+        "precision": 1,
+        "recall": 1,
+        "pass": true
+      }
+    },
+    "missed": {},
+    "extra": {},
+    "pass": true
+  }
+}

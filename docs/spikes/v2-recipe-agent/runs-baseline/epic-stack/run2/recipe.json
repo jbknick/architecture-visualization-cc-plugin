@@ -1,0 +1,69 @@
+{
+  "name": "epic-stack",
+  "frameworks": [
+    { "name": "react-router", "evidence": "app/routes.ts autoRoutes" },
+    { "name": "prisma", "evidence": "prisma/schema.prisma" }
+  ],
+  "helpers": [],
+  "rules": [
+    {
+      "id": "pages",
+      "language": "text",
+      "files": ["app/routes/**/*.tsx"],
+      "rule": { "regex": "(?<![\\s\\S])(?=[\\s\\S]*export default)[\\s\\S]" },
+      "emit": {
+        "kind": "route",
+        "pathFromFile": {
+          "pattern": "^app/routes/((?:(?!\\.server\\.|\\+|_layout)[^])*)\\.tsx$",
+          "template": "/$1",
+          "rewrite": [
+            { "regex": "/_[^/]*(?=/)", "with": "" },
+            { "regex": "/index$", "with": "" },
+            { "regex": "\\.", "with": "/" },
+            { "regex": "_(?=/|$)", "with": "" }
+          ]
+        }
+      },
+      "examples": {
+        "match": ["export default function A() {}"],
+        "noMatch": ["export async function loader() {}"]
+      }
+    },
+    {
+      "id": "resource-endpoints",
+      "language": "text",
+      "files": ["app/routes/**/*.ts", "app/routes/**/*.tsx"],
+      "rule": {
+        "regex": "(?<![\\s\\S])(?![\\s\\S]*export default)(?=[\\s\\S]*export (async function|function|const) (loader|action))[\\s\\S]"
+      },
+      "emit": {
+        "kind": "endpoint",
+        "method": "ALL",
+        "pathFromFile": {
+          "pattern": "^app/routes/((?:(?!\\.server\\.|\\+)[^])*)\\.tsx?$",
+          "template": "/$1",
+          "rewrite": [
+            { "regex": "\\[\\.\\]", "with": "~DOT~" },
+            { "regex": "/_[^/]*(?=/)", "with": "" },
+            { "regex": "/index$", "with": "" },
+            { "regex": "\\.", "with": "/" },
+            { "regex": "~DOT~", "with": "." },
+            { "regex": "_(?=/|$)", "with": "" }
+          ]
+        }
+      },
+      "examples": {
+        "match": ["export async function loader() {}"],
+        "noMatch": ["export default function A() {}\nexport function loader() {}"]
+      }
+    },
+    {
+      "id": "prisma-models",
+      "language": "text",
+      "files": ["prisma/schema.prisma"],
+      "rule": { "regex": "^model\\s+(\\w+)\\s*\\{" },
+      "emit": { "kind": "table", "name": "#1" },
+      "examples": { "match": ["model User {\n}"], "noMatch": ["enum Role {"] }
+    }
+  ]
+}
