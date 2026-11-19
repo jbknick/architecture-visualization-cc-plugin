@@ -116,7 +116,7 @@ afterAll(async () => {
   for (const f of fixtures.splice(0)) await f.cleanup();
 });
 
-async function fixture(name: "single-pkg" | "pnpm-turbo" = "single-pkg") {
+async function fixture(name: "single-pkg" | "pnpm-turbo" | "go-basic" = "single-pkg") {
   assertTempHome();
   const fx = await materializeFixture(name);
   fixtures.push(fx);
@@ -844,6 +844,18 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     const ctx = contextOf(r.out);
     expect(ctx.length).toBeLessThanOrEqual(600);
     expect(ctx).toBe(SLUG_LINE);
+  });
+
+  it("a renamed copy of a Go function yields the note with the Go import line (#223)", async () => {
+    const fx = await fixture("go-basic");
+    expect(gantry(fx.dir, ["init"]).code).toBe(0);
+    const copy =
+      "package main\n\nimport \"strings\"\n\nfunc MakeSlug(s string) string {\n\tvar b strings.Builder\n\tfor _, r := range strings.ToLower(s) {\n\t\tswitch {\n\t\tcase r >= 'a' && r <= 'z', r >= '0' && r <= '9':\n\t\t\tb.WriteRune(r)\n\t\tdefault:\n\t\t\tb.WriteByte('-')\n\t\t}\n\t}\n\treturn trimDashes(b.String())\n}\n";
+    const r = edit(fx, "cmd/server/slugcopy.go", copy);
+    expect(r.code).toBe(0);
+    expect(contextOf(r.out)).toBe(
+      'Gantry: MakeSlug (cmd/server/slugcopy.go:5) looks like Slugify in internal/text/slug.go:6 [exact 1.00]. Import it: import "example.com/gobasic/internal/text"',
+    );
   });
 
   const pendingPaths = (fx: MaterializedFixture, session = "s"): string[] => {
