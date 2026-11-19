@@ -235,9 +235,15 @@ export function groundingNames(sheet: FactSheet): Grounding {
   for (const m of body.matchAll(/["'`]([A-Z][A-Z0-9]{0,20}(?:_[A-Z0-9]{1,20}){1,5})["'`]/g))
     addName(m[1] as string);
   // Values assigned to credential names: any word copied from one is a leak, even when it is an ordinary word.
-  for (const m of body.matchAll(
-    /(?<n>[A-Za-z_$][\w$-]{0,60})["']?\s{0,5}[:=]\s{0,5}(["'`])(?<v>[^"'`\r\n]{4,100})\2/g,
-  )) {
+  // Go adds the short declaration `:=` and a declaration with a type between the name and `=`.
+  for (const m of [
+    ...body.matchAll(
+      /(?<n>[A-Za-z_$][\w$-]{0,60})["']?\s{0,5}(?::=|[:=])\s{0,5}(["'`])(?<v>[^"'`\r\n]{4,100})\2/g,
+    ),
+    ...body.matchAll(
+      /\b(?:var|const)[ \t]{1,10}(?<n>[A-Za-z_]\w{0,60})[ \t]{1,10}[*[\]A-Za-z_][\w.*[\]]{0,40}[ \t]{0,5}=\s{0,5}(["'`])(?<v>[^"'`\r\n]{4,100})\2/g,
+    ),
+  ]) {
     const g = m.groups as { n: string; v: string };
     if (g.v === "<redacted>" || !isCredentialName(g.n)) continue;
     for (const w of g.v.toLowerCase().split(/[^a-z0-9]+/))

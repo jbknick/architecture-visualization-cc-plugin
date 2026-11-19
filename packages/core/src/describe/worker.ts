@@ -120,6 +120,7 @@ export function renderFactSheets(sheets: FactSheet[]): string {
       const lines = [
         `=== FACT SHEET ${s.contentKey} ===`,
         `kind: ${s.kind}`,
+        `language: ${s.language}`,
         `name: ${nameOfId(s.id)}`,
         `path: ${s.path}`,
         `signature: ${s.signature}`,

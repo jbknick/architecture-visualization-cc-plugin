@@ -1,5 +1,6 @@
 import { isSensitive } from "../discover/index.js";
 import { nameOfSymId, pathOfFileId } from "../ids.js";
+import { langLabel } from "../lang/index.js";
 import type { Store } from "../store/index.js";
 import type { FactSheet, SymbolKind } from "../types.js";
 import { redactForFactSheet } from "./secrets.js";
@@ -126,6 +127,29 @@ export function returnTypeOf(signature: string): string | null {
   return ret === "" ? null : ret;
 }
 
+/**
+ * The result part of a Go signature as the index stores it (`(key string) (string, bool)` -> `(string, bool)`,
+ * `() *Store` -> `*Store`); null when the function returns nothing or the signature does not start with a parameter list.
+ */
+export function goReturnTypeOf(signature: string): string | null {
+  if (signature[0] !== "(") return null;
+  let depth = 0;
+  let i = 0;
+  for (; i < signature.length; i++) {
+    const c = signature[i];
+    if (c === "(") depth++;
+    else if (c === ")") {
+      depth--;
+      if (depth === 0) {
+        i++;
+        break;
+      }
+    }
+  }
+  const ret = signature.slice(i).trim();
+  return ret === "" ? null : ret;
+}
+
 const CALLEE_EDGES = ["calls", "renders", "uses_hook"] as const;
 
 /** Name part of a symbol id: `sym:src/a.ts#Class.method` -> `Class.method`. */
@@ -165,10 +189,11 @@ export function buildFactSheet(store: Store, symbolId: string, source: string): 
     id: sym.id,
     path,
     kind: sym.kind,
+    language: langLabel(sym.lang),
     signature: redactForFactSheet(sym.signature),
     doc: leadingDoc(lines, sym.startLine),
     callees,
-    returnType: returnTypeOf(sym.signature),
+    returnType: sym.lang === "go" ? goReturnTypeOf(sym.signature) : returnTypeOf(sym.signature),
     body: trimBody(body),
   };
 }
