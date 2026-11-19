@@ -79,6 +79,7 @@ export function attackSheet(over: Partial<FactSheet> = {}): FactSheet {
     id: "src/a.ts#fetchUser",
     path: "src/a.ts",
     kind: "function",
+    language: "TypeScript",
     signature: "(id: string) => Promise<User>",
     doc: null,
     callees: ["fetchUser2", "httpGet"],

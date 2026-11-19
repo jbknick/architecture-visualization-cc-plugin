@@ -16,6 +16,7 @@ beforeEach(() => {
     worktreeHash: "0".repeat(16),
     dataDir: path.join(tmp, "data"),
     dbPath: path.join(tmp, "data", "gantry.db"),
+    overlayPath: path.join(tmp, "data", "overlay.db"),
     configPath: path.join(tmp, "data", "config.json"),
     catalogDir: path.join(tmp, "data", "catalog"),
     logsDir: path.join(tmp, "data", "logs"),

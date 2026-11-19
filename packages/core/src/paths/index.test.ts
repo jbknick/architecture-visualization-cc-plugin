@@ -47,6 +47,7 @@ describe("resolvePaths", () => {
     const p = resolvePaths(repo, env);
     expect(p.dataDir).toBe(`/home/x/.gantry/data/repos/${p.worktreeHash}`);
     expect(p.dbPath).toBe(path.join(p.dataDir, "gantry.db"));
+    expect(p.overlayPath).toBe(path.join(p.dataDir, "overlay.db"));
     expect(p.configPath).toBe(path.join(p.dataDir, "config.json"));
     expect(p.catalogDir).toBe(path.join(p.dataDir, "catalog"));
     expect(p.logsDir).toBe(path.join(p.dataDir, "logs"));

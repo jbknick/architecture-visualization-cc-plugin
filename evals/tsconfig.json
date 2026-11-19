@@ -3,10 +3,12 @@
   "compilerOptions": { "composite": false, "declaration": false, "noEmit": true, "incremental": false },
   "include": [
     "go/*.ts",
+    "go-search/*.ts",
     "m2/*.ts",
     "seeded-duplicates-go/*.ts",
     "run-m2.ts",
     "fixtures/*.ts",
+    "oss/*.ts",
     "../scripts/eval-*.ts"
   ]
 }

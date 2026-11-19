@@ -78,9 +78,10 @@ export const dumpSchema = z.looseObject({
       fileId: z.string(),
     }),
   ),
-  adapterNodes: z.array(
-    z.looseObject({ id: z.string(), kind: z.string(), data: z.record(z.string(), z.unknown()) }),
-  ),
+  // The dump leaves `adapterNodes` out when no adapter found anything (a repo with no recipe yet).
+  adapterNodes: z
+    .array(z.looseObject({ id: z.string(), kind: z.string(), data: z.record(z.string(), z.unknown()) }))
+    .default([]),
 });
 export type Dump = z.infer<typeof dumpSchema>;
 
@@ -190,22 +191,24 @@ export interface Predictions {
 
 const str = (v: unknown): string | undefined => (typeof v === "string" && v !== "" ? v : undefined);
 
+/** The endpoint key of an adapter node, from its own `data`; undefined when it names no endpoint. */
+export function endpointKeyOfNode(n: Dump["adapterNodes"][number]): string | undefined {
+  const d = n.data;
+  if (d.adapter === "orpc") {
+    const p = str(d.path);
+    return p && `rpc ${p}`;
+  }
+  const method = str(d.method);
+  const path = str(d.path);
+  if (method && path) return `${method.toUpperCase()} ${normPath(path)}`;
+  const name = str(d.name);
+  return name && `fn ${name}`;
+}
+
 /** Predictions from the dump's own records: node `data` and edge `fileId`, never id strings. */
 export function predictionsOf(dump: Dump): Predictions {
   const nodes = new Map(dump.adapterNodes.map((n) => [n.id, n]));
   const filePath = new Map(dump.files.map((f) => [f.id, f.path]));
-  const endpointKeyOfNode = (n: Dump["adapterNodes"][number]): string | undefined => {
-    const d = n.data;
-    if (d.adapter === "orpc") {
-      const p = str(d.path);
-      return p && `rpc ${p}`;
-    }
-    const method = str(d.method);
-    const path = str(d.path);
-    if (method && path) return `${method.toUpperCase()} ${normPath(path)}`;
-    const name = str(d.name);
-    return name && `fn ${name}`;
-  };
 
   const route: string[] = [];
   const endpoint: string[] = [];

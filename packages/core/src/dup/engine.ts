@@ -542,7 +542,7 @@ function runTiers(inp: RunInput): DupCandidate[] {
 function dismissedWith(store: Store, id: string | undefined): Set<string> {
   const out = new Set<string>();
   if (id === undefined) return out;
-  const rows = store.db.prepare("SELECT a, b FROM dismissals WHERE a = ? OR b = ?").all(id, id) as {
+  const rows = store.db.prepare("SELECT a, b FROM overlay.dismissals WHERE a = ? OR b = ?").all(id, id) as {
     a: string;
     b: string;
   }[];
@@ -629,7 +629,10 @@ export async function rebuildSimilarEdges(store: Store, opts: RebuildOptions = {
   const limit = opts.perSymbolLimit ?? DEFAULT_LIMIT;
 
   const dismissedPairs = new Set<string>();
-  for (const r of store.db.prepare("SELECT a, b FROM dismissals").all() as { a: string; b: string }[]) {
+  for (const r of store.db.prepare("SELECT a, b FROM overlay.dismissals").all() as {
+    a: string;
+    b: string;
+  }[]) {
     dismissedPairs.add(pairKey(r.a, r.b));
   }
   const wantVectors = tiers.has("code_vector") && vecAvailable(store);
@@ -728,7 +731,7 @@ export function dismiss(store: Store, a: string, b: string, reason: string): voi
   store.tx(() => {
     store.db
       .prepare(
-        `INSERT INTO dismissals(a, b, reason) VALUES (?, ?, ?)
+        `INSERT INTO overlay.dismissals(a, b, reason) VALUES (?, ?, ?)
          ON CONFLICT(a, b) DO UPDATE SET reason = excluded.reason`,
       )
       .run(lo, hi, reason);
