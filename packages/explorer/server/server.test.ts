@@ -631,6 +631,24 @@ describe("/api/search", () => {
     expect(none.hits[0].untrusted_description).toBeNull();
   });
 
+  it("returns who wrote the description as described_by, outside the untrusted text (#180)", async () => {
+    const res = await api("/api/search?q=tokens");
+    expect(res.json().hits[0].described_by).toBe("model");
+    // The text is outside the label: only the provenance column decides it.
+    for (const by of ["template", "fallback"] as const) {
+      store.db
+        .prepare("UPDATE descriptions SET provenance = ? WHERE content_key = ?")
+        .run(by, contentKey("e-parseUserInput"));
+      expect((await api("/api/search?q=tokens")).json().hits[0].described_by).toBe(by);
+    }
+    store.db
+      .prepare("UPDATE descriptions SET provenance = 'model' WHERE content_key = ?")
+      .run(contentKey("e-parseUserInput"));
+    // A hit without a description carries no described_by.
+    const none = (await api("/api/search?q=alpha")).json();
+    expect(none.hits[0]).not.toHaveProperty("described_by");
+  });
+
   it("search hits have a fixed set of fields", async () => {
     const noModel = await startExplorerServer({
       paths,
