@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api.ts";
 import { uniqueId, viewFromRoute } from "../curation.ts";
+import { useOverlay } from "../overlayStore.ts";
 import { emptyRoute } from "../route.ts";
 import { useStore } from "../store.tsx";
 import { NameDialog } from "./NameDialog.tsx";
@@ -17,7 +18,7 @@ const RESET = "\u0000reset";
  */
 export function SavedViews() {
   const { state, view, navigate, writeOverlay } = useStore();
-  const overlay = state.overlay;
+  const overlay = useOverlay();
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);

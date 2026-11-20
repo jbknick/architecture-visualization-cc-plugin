@@ -3,6 +3,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
 import { api, type Group } from "../api.ts";
 import { uniqueId, withHidden, withMember } from "../curation.ts";
+import { useOverlay } from "../overlayStore.ts";
 import { useStore } from "../store.tsx";
 import { NameDialog } from "./NameDialog.tsx";
 import { Button } from "./ui/button.tsx";
@@ -16,8 +17,8 @@ const NEW_GROUP = "\u0000new-group";
  * the store then loads the overlay and the view again.
  */
 export function CurationActions({ id }: { id: string }) {
-  const { state, writeOverlay } = useStore();
-  const overlay = state.overlay;
+  const { writeOverlay } = useStore();
+  const overlay = useOverlay();
   const [renaming, setRenaming] = useState(false);
   const [text, setText] = useState("");
   const [creating, setCreating] = useState(false);

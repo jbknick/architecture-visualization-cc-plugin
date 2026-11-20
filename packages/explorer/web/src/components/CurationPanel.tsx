@@ -9,6 +9,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
 import { api, type Group, type Selector, type ViewData } from "../api.ts";
 import { describeSelector } from "../curation.ts";
+import { useOverlay } from "../overlayStore.ts";
 import { rankView } from "../rankedFiles/store.ts";
 import { useStore } from "../store.tsx";
 import { NameDialog } from "./NameDialog.tsx";
@@ -34,8 +35,8 @@ function hoverGroup(members: string[] | undefined) {
  * members are the view's (`overlay.groups[].members`), so a member that this view does not show is not counted.
  */
 export function CurationPanel({ data }: { data?: ViewData | null }) {
-  const { state, writeOverlay } = useStore();
-  const overlay = state.overlay;
+  const { writeOverlay } = useStore();
+  const overlay = useOverlay();
   const [renaming, setRenaming] = useState<Group | null>(null);
   const [error, setError] = useState<string | null>(null);
   if (!overlay) return null;

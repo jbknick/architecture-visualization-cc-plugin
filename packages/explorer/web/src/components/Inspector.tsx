@@ -16,6 +16,7 @@ import { m2Of, m2Spec } from "../badges.ts";
 import { descriptionLabel } from "../descriptionLabel.ts";
 import { useNodeDetail, useOverview } from "../hooks.ts";
 import { fileIdBeside, isFileId, isSymId, nameOfSymId } from "../ids.ts";
+import { useOverlay } from "../overlayStore.ts";
 import { useStore } from "../store.tsx";
 import { isServerNode } from "../views/drill.ts";
 import { expandedIds, withExpanded } from "../views/egoGroups.ts";
@@ -385,6 +386,7 @@ function MiddlewareRefSection({ facts }: { facts: { name: string; endpoints: Nod
 
 export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review?: ReviewData | null }) {
   const { state, selectNode, openInView, view } = useStore();
+  const overlay = useOverlay();
   const id = state.route.sel;
   const known = id !== null && isServerNode(id);
   const { data: detail, loading, error } = useNodeDetail(known ? id : null);
@@ -410,7 +412,7 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
     graphNode?.label ??
     shortLabel(id);
   // A person-set label replaces the name; the name it replaced stays visible under it.
-  const labelText = state.overlay?.labels.find((l) => l.nodeId === id)?.text ?? null;
+  const labelText = overlay?.labels.find((l) => l.nodeId === id)?.text ?? null;
   const name = labelText ?? plainName;
   const labelOriginal = labelText === null ? null : (graphNode?.labelOriginal ?? plainName);
   const path = body?.path ?? hit?.path ?? graphNode?.path ?? null;

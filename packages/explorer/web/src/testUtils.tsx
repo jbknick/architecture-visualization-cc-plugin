@@ -4,6 +4,7 @@ import { afterEach, vi } from "vitest";
 import { handleMockApi, handleMockWrite, type MockResponse } from "../mock/fixture.ts";
 import { resetMockOverlay } from "../mock/overlay.ts";
 import { App } from "./App.tsx";
+import { overlayStore } from "./overlayStore.ts";
 import { StoreProvider } from "./store.tsx";
 
 // jsdom has no ResizeObserver; the UI kit's tab indicator measures with one.
@@ -18,6 +19,7 @@ if (typeof globalThis.ResizeObserver === "undefined") {
 afterEach(() => {
   cleanup();
   resetMockOverlay();
+  overlayStore.clear();
   vi.unstubAllGlobals();
   window.location.hash = "";
 });
