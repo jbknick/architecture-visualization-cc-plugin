@@ -89,11 +89,14 @@ test("page -> API: a dashed low-confidence line, and the via count on hover", as
   const p = await probe(page);
   expect(p.lanes).toEqual(["Pages (routes)", "Endpoints"]);
   const cart = p.edges.find(
-    (e) => e.id === "route:pnpm-turbo:@shop/web:/orders/$orderId|requests|ep:@shop/server:POST /api/cart",
+    (e) =>
+      e.id ===
+      "route:pnpm-turbo:@shop/web:/orders/$orderId|requests|ep:pnpm-turbo:@shop/server:POST /api/cart",
   );
   expect(cart?.dashed).toBe(true);
   const get = p.edges.find(
-    (e) => e.id === "route:pnpm-turbo:@shop/web:/orders/$orderId|requests|ep:@shop/api:rpc orders.get",
+    (e) =>
+      e.id === "route:pnpm-turbo:@shop/web:/orders/$orderId|requests|ep:pnpm-turbo:@shop/api:rpc orders.get",
   );
   expect(get?.dashed).toBe(false);
   const pt = await at(page, get?.x ?? 0, get?.y ?? 0);
@@ -115,7 +118,9 @@ test("API -> tables: reads are blue, writes orange; services expand on request",
   for (const e of reads) expect(e.color).toBe("#1d5fd6");
   for (const e of writes) expect(e.color).toBe("#c2510c");
   expect(
-    p.edges.find((e) => e.id === "sym:pnpm-turbo:packages/db/src/cart.ts#addItem|reads|table:orders")?.dashed,
+    p.edges.find(
+      (e) => e.id === "sym:pnpm-turbo:packages/db/src/cart.ts#addItem|reads|table:pnpm-turbo:orders",
+    )?.dashed,
   ).toBe(true);
   await expect(page.locator(".flow-key")).toContainText("writes");
   expect(p.edges.some((e) => e.kind === "handles")).toBe(false);
@@ -143,7 +148,7 @@ test("feature path: asks for a focus, then lays the feature out in five swimlane
 });
 
 test("table usage: writers above readers, and the inspector of a table and an endpoint", async ({ page }) => {
-  await open(page, "table-usage?focus=table%3Aorders&sel=");
+  await open(page, "table-usage?focus=table%3Apnpm-turbo%3Aorders&sel=");
   const p = await probe(page);
   const table = p.nodes.find((n) => n.id === "table:pnpm-turbo:orders");
   expect(table?.lane).toBe(Math.max(...p.nodes.map((n) => n.lane ?? 0)));
@@ -186,7 +191,7 @@ test("a deep link to a tab off the strip scrolls it into sight, and hidden tabs 
   page,
 }) => {
   await page.setViewportSize({ width: 1000, height: 800 });
-  await open(page, "table-usage?focus=table%3Aorders&sel=");
+  await open(page, "table-usage?focus=table%3Apnpm-turbo%3Aorders&sel=");
   const strip = page.locator(".tab-strip > nav");
   const nav = await strip.boundingBox();
   const active = await page.getByRole("tab", { name: "Table usage" }).boundingBox();
