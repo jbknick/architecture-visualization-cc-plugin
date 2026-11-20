@@ -1,8 +1,11 @@
 import {
   type AdapterNodeRecord,
-  dirGlobMatcher,
+  DEFAULT_GROUP_PREFIX,
   type EdgeRecord,
+  effectiveGroups,
   type FileRecord,
+  type Group,
+  matchAny,
   type SymbolKind,
   type SymbolRecord,
 } from "@gantry/core";
@@ -12,8 +15,6 @@ import { buildBadgeIndex, symbolBadges } from "./badges.js";
 import { shortWorkspaceLabels } from "./labels.js";
 import { cmp, getOrInit, isTestPath, optBool, optList } from "./options.js";
 
-/** Spec section 5 default for `views.slices`; used when the server runs without a loaded config. */
-export const DEFAULT_SLICE_GLOBS = ["apps/*/src/features/*", "apps/*/src/modules/*", "packages/*"];
 const FUNCTION_LIKE: SymbolKind[] = ["function", "method", "component", "hook"];
 const SYMBOL_KINDS = new Set<string>([...FUNCTION_LIKE, "class", "type", "interface", "enum", "const"]);
 const SOURCE_RE = /\.(?:tsx?|mts|cts)$/;
@@ -34,7 +35,7 @@ export interface SharedSymbol {
 
 export interface SlicesResult extends ViewResult {
   shared: SharedSymbol[];
-  /** Apps (workspace ids) that had no file in any `views.slices` glob and so use first-level route segments as slices. */
+  /** Apps (workspace ids) that had no file in any group and so use first-level route segments as slices. */
   routeFallback: string[];
 }
 
@@ -48,9 +49,10 @@ interface SliceDef {
 
 /**
  * View 5. Feature slices: slice -> file -> function via `parent`, laid out as nested boxes (hint `nested-elk`).
- * Slices are the directories matching the `views.slices` globs (config; default `apps/*\/src/features/*`,
- * `apps/*\/src/modules/*`, `packages/*`); a file belongs to its deepest matching directory. An app with no file in
- * any slice falls back to one slice per first-level route segment (`/posts` holds `posts.$postId.tsx`; `/` holds
+ * Slices are the effective groups (`effectiveGroups`): a person's own groups, then default groups for the
+ * directories matching `apps/*\/src/features/*`, `apps/*\/src/modules/*`, `packages/*`. A file belongs to the first
+ * user group that matches it, else to its deepest default directory. A user group's slice is `group:<id>` named
+ * after the group; a default slice is `slice:<dir>`. An app with no file in any group falls back to one slice per first-level route segment (`/posts` holds `posts.$postId.tsx`; `/` holds
  * the index and root routes), so the view still has slices for it. Files outside every slice are left out.
  *
  * Edges: file-level `imports` edges whose ends are in different slices (`cross: true`; weight = distinct file
@@ -65,41 +67,54 @@ export const slicesView: ViewModule = {
   id: "slices",
   title: "Feature slices",
   enabled: true,
-  build({ store, config }, params): SlicesResult {
+  build({ store }, params): SlicesResult {
     const hideTests = optBool(params, "hideTests", true);
     const intra = optBool(params, "intra", false);
     const kindList = optList(params, "kinds");
     const kinds = new Set<string>(kindList?.filter((k) => SYMBOL_KINDS.has(k)) ?? FUNCTION_LIKE);
     const maxTier = LEVEL_TIER[params.level ?? "files"] ?? 1;
-    const globs = config.views?.slices ?? DEFAULT_SLICE_GLOBS;
-    const match = dirGlobMatcher(globs);
+    const groups = effectiveGroups(store);
+    const userGroups = groups.filter((g) => !g.id.startsWith(DEFAULT_GROUP_PREFIX));
+    const defaults = groups.filter((g) => g.id.startsWith(DEFAULT_GROUP_PREFIX));
 
     const workspaces = store.listWorkspaces();
     const files = store
       .effectiveFiles()
       .filter((f) => SOURCE_RE.test(f.path) && !(hideTests && isTestPath(f.path)));
-    const dirsOf = (p: string): string[] => {
-      const segs = p.split("/").slice(0, -1);
-      const out: string[] = [];
-      for (let i = segs.length; i >= 1; i--) out.push(segs.slice(0, i).join("/"));
-      return out;
+    const groupOf = (f: FileRecord): Group | undefined => {
+      const node = {
+        id: f.id,
+        kind: "file",
+        path: f.path,
+        ...(f.workspaceId ? { workspace: f.workspaceId } : {}),
+      };
+      const user = userGroups.find((g) => matchAny(g.selectors, node));
+      if (user) return user;
+      let deepest: Group | undefined;
+      for (const g of defaults) {
+        if (matchAny(g.selectors, node) && (!deepest || g.id.length > deepest.id.length)) deepest = g;
+      }
+      return deepest;
     };
 
-    // 1. Glob slices: a file belongs to its deepest matching directory.
+    // 1. Group slices: a file belongs to the first user group that matches it, else to its deepest default directory.
     const slices = new Map<string, SliceDef>();
     const sliceOfFile = new Map<string, string>();
     const withMatch = new Set<string>();
     for (const f of files) {
-      const dir = dirsOf(f.path).find(match);
-      if (dir === undefined) continue;
-      const id = `slice:${dir}`;
+      const g = groupOf(f);
+      if (g === undefined) continue;
+      const isDefault = g.id.startsWith(DEFAULT_GROUP_PREFIX);
+      const dir = g.id.slice(DEFAULT_GROUP_PREFIX.length);
+      const id = isDefault ? `slice:${dir}` : `group:${g.id}`;
       const s = getOrInit(slices, id, () => ({
         id,
-        label: dir,
-        path: dir,
+        label: g.name,
+        ...(isDefault ? { path: dir } : {}),
         ...(f.workspaceId ? { workspace: f.workspaceId } : {}),
         files: [] as FileRecord[],
       }));
+      if (!isDefault && s.workspace !== undefined && s.workspace !== f.workspaceId) delete s.workspace;
       s.files.push(f);
       sliceOfFile.set(f.id, id);
       if (f.workspaceId) withMatch.add(f.workspaceId);

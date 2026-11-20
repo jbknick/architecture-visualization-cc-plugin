@@ -1,5 +1,12 @@
 import { rmSync } from "node:fs";
-import type { GantryConfig, GantryPaths, Store } from "@gantry/core";
+import {
+  deleteGroup,
+  type GantryConfig,
+  type GantryPaths,
+  readOverlay,
+  type Store,
+  saveGroup,
+} from "@gantry/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { HttpError, handleApi } from "../api.js";
 import { fixtureStore } from "../testkit.js";
@@ -145,21 +152,34 @@ describe("slices view", () => {
     expect(run<SlicesResult>("slices").nodes.some((n) => n.id === BUTTON)).toBe(false);
   });
 
-  it("follows the views.slices config: a matching glob replaces the route fallback for that app", () => {
-    const c: ApiContext = {
-      ...ctx,
-      config: { views: { slices: ["apps/*/src/*", "packages/*"] } } as GantryConfig,
-    };
-    const r = run<SlicesResult>("slices", "", c);
-    expect(r.routeFallback).toEqual([]);
-    const ids = r.nodes.filter((n) => n.kind === "slice").map((n) => n.id);
-    expect(ids).toContain("slice:apps/web/src/routes");
-    expect(ids).toContain("slice:apps/web/src/components");
-    expect(ids).toContain("slice:apps/web/src/hooks");
-    // components -> hooks and lib are cross-slice imports now.
-    expect(
-      r.edges.some((e) => e.src === "slice:apps/web/src/components" && e.dst === "slice:apps/web/src/hooks"),
-    ).toBe(true);
+  it("a user group becomes a slice named after it and takes its files out of the default slice", () => {
+    saveGroup(store, {
+      id: "dates",
+      name: "Dates",
+      selectors: [{ type: "glob", glob: "packages/utils/src/{date,time}.ts" }],
+      mayUse: null,
+    });
+    try {
+      const r = run<SlicesResult>("slices");
+      const slice = r.nodes.find((n) => n.id === "group:dates");
+      expect(slice?.kind).toBe("slice");
+      expect(slice?.label).toBe("Dates");
+      const filesOf = (id: string) =>
+        r.nodes
+          .filter((n) => n.kind === "file" && n.parent === id)
+          .map((n) => n.path)
+          .sort();
+      expect(filesOf("group:dates")).toEqual(["packages/utils/src/date.ts", "packages/utils/src/time.ts"]);
+      expect(filesOf("slice:packages/utils")).toEqual([
+        "packages/utils/src/index.ts",
+        "packages/utils/src/slug.ts",
+      ]);
+      // Default groups are never written to overlay.db.
+      expect(readOverlay(store).groups.map((g) => g.id)).toEqual(["dates"]);
+    } finally {
+      deleteGroup(store, "dates");
+    }
+    expect(run<SlicesResult>("slices").nodes.some((n) => n.id === "group:dates")).toBe(false);
   });
 
   it("is deterministic", () => {

@@ -30,12 +30,12 @@ export function SlicesPanel({
         <h3>What you see</h3>
         <p className="muted">
           {slices.length === 0
-            ? "No slices found. Set views.slices in the config, or index an app that uses TanStack Router."
+            ? "No slices found. Group some files on the map, or index an app that uses TanStack Router."
             : `${slices.length} ${slices.length === 1 ? "slice" : "slices"}; ${crossEdges.length} ${crossEdges.length === 1 ? "link" : "links"} between them. A link counts the files that import across the boundary.`}
         </p>
         {fallback.length > 0 && (
           <p className="muted">
-            Some apps match no slice pattern, so their first-level route segments are used as slices.
+            Some apps have no file in any group, so their first-level route segments are used as slices.
           </p>
         )}
       </section>

@@ -78,13 +78,6 @@ test("defaults match spec section 5", () => {
           "model": "sonnet",
         },
       },
-      "views": {
-        "slices": [
-          "apps/*/src/features/*",
-          "apps/*/src/modules/*",
-          "packages/*",
-        ],
-      },
       "workspaces": {
         "overrides": {},
       },
