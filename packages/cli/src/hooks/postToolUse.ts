@@ -12,6 +12,7 @@ import {
   parseFile,
   type Store,
 } from "@gantry/core";
+import { crossingFindings } from "./boundaries.js";
 import {
   changedSymbols,
   diskCheck,
@@ -226,7 +227,7 @@ export interface SettleResult {
  *    (PostToolUse already indexed the others).
  * 4. Each source file is checked, then its row is deleted in the same transaction, by the (path, created_at) that was
  *    read, so a file edited again meanwhile stays in the batch. No file is started after `deadline`.
- * Findings are per file in path order: duplicates (lowest in the file first), then imports.
+ * Findings are per file in path order: duplicates (lowest in the file first), then imports, then group-boundary crossings.
  */
 export async function settle(
   paths: GantryPaths,
@@ -306,14 +307,8 @@ export async function settle(
         baseline = {};
       }
       const current = store.effectiveSymbols({ fileId: fileId(store.repo(), r.path) });
-      found.push(
-        ...(await duplicateFindings(
-          store,
-          changedSymbols(current, new Map(Object.entries(baseline))),
-          config,
-          check,
-        )),
-      );
+      const changed = changedSymbols(current, new Map(Object.entries(baseline)));
+      found.push(...(await duplicateFindings(store, changed, config, check)));
       let text: string | undefined;
       try {
         text = fs.readFileSync(path.join(paths.root, r.path), "utf8");
@@ -327,6 +322,8 @@ export async function settle(
           ...importFindings(store, r.path, parseFile(store.repo(), r.path, text), before).filter(check),
         );
       }
+      // Group boundaries (spec section 14): reads overlay.db, never writes it; same disk double-check.
+      found.push(...crossingFindings(store, changed, [r.path]).filter(check));
       del.run(session, r.path, r.created_at);
     });
     if (!ok) break;

@@ -1,0 +1,1 @@
+[{"id":"orders","name":"Orders","selectors":[{"type":"glob","glob":"src/orders/**"}],"mayUse":[]},{"id":"catalog","name":"Catalog","selectors":[{"type":"glob","glob":"src/catalog/**"}],"mayUse":["orders"]}]
