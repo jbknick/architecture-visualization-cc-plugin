@@ -82,6 +82,10 @@ afterAll(async () => {
 const FRESH_NOTE = (repoDir: string): string =>
   `gantry: no index for this repository in ${resolvePaths(repoDir, { HOME: join(dataDir, "home"), CLAUDE_PLUGIN_DATA: dataDir }).dataDir}; building a fresh one\n`;
 
+/** The stderr line a repo without `.gantry/recipe.json` gets from `init` and `index` (spec section 5). */
+const NO_RECIPE_NOTE =
+  "Gantry: no .gantry/recipe.json; routes, endpoints and tables are not mapped. Run /gantry:init to write one.\n";
+
 function run(cwd: string, args: string[], extraEnv: Record<string, string> = {}) {
   const r = spawnSync("node", [cli, ...args], {
     cwd,
@@ -243,11 +247,11 @@ describe("bundled CLI: vector tables and embeddings", () => {
   it("opens the store with its vec tables (sqlite-vec resolves from the bundle)", async () => {
     const fx = await fixture("single-pkg");
     const r = run(fx.dir, ["init"]);
-    expect(r.err).toBe(FRESH_NOTE(fx.dir));
+    expect(r.err).toBe(`${FRESH_NOTE(fx.dir)}${NO_RECIPE_NOTE}`);
     expect(r.code).toBe(0);
     const db = openBundleDb();
     try {
-      expect(db.getMeta("schema_version")).toBe("11");
+      expect(db.getMeta("schema_version")).toBe("12");
       expect(db.getMeta("vec_available")).toBe("1");
       expect(db.getMeta("embed_model")).toBe("jinaai/jina-embeddings-v2-base-code");
       expect(db.getMeta("embed_dim")).toBe("768");
@@ -274,7 +278,7 @@ describe("bundled CLI: vector tables and embeddings", () => {
     const t0 = Date.now();
     const r = run(fx.dir, ["init"], { GANTRY_MODELS_DIR: join(dataDir, "no-models-here") });
     const ms = Date.now() - t0;
-    expect(r.err).toBe(FRESH_NOTE(fx.dir));
+    expect(r.err).toBe(`${FRESH_NOTE(fx.dir)}${NO_RECIPE_NOTE}`);
     expect(r.code).toBe(0);
     expect(ms).toBeLessThan(15_000);
     const db = openBundleDb();
@@ -940,5 +944,81 @@ describe("gantry backlog", () => {
     }
     expect(JSON.parse(run(fx.dir, ["backlog", "--json"]).out).fallback).toBe(1);
     expect(run(fx.dir, ["backlog"]).out).toContain("Fallback descriptions (written without a model): 1");
+  });
+});
+
+describe("gantry recipe check and the recipe on index", () => {
+  const commit = (fx: MaterializedFixture, msg: string) => {
+    fx.git(["add", "-A", "-f"]);
+    fx.git(["commit", "-q", "-m", msg]);
+  };
+  const endpoints = (dump: string): number =>
+    (JSON.parse(dump).adapterNodes as { kind: string }[]).filter((n) => n.kind === "endpoint").length;
+
+  it("checks the committed recipe of fixtures/adapters: every rule ok, exit 0", async () => {
+    const fx = await fixture("adapters");
+    const r = run(fx.dir, ["recipe", "check"]);
+    expect(r.code).toBe(0);
+    const lines = r.out.split("\n").filter((l) => l.startsWith("hono-") || l.startsWith("tanstack-"));
+    expect(lines.length).toBe(11);
+    for (const l of lines) expect(l).toContain("schema ok, examples ok");
+    expect(r.out).toContain("recipe ok");
+    const j = JSON.parse(run(fx.dir, ["recipe", "check", "--json"]).out);
+    expect(j.errors).toEqual([]);
+    expect(j.rules.find((x: { id: string }) => x.id === "hono-route").matches).toBeGreaterThan(0);
+  });
+
+  it("a rule that fails its schema is one error naming it, exit 1; the rest of the recipe still runs", async () => {
+    const fx = await fixture("adapters");
+    const file = join(fx.dir, ".gantry/recipe.json");
+    const recipe = JSON.parse(readFileSync(file, "utf8"));
+    recipe.rules.find((x: { id: string }) => x.id === "hono-mount").rule = { pattern: 42 };
+    writeFileSync(file, JSON.stringify(recipe, null, 2));
+    const r = run(fx.dir, ["recipe", "check", "--json"]);
+    expect(r.code).toBe(1);
+    const j = JSON.parse(r.out);
+    expect(j.errors).toHaveLength(1);
+    expect(j.errors[0]).toContain("hono-mount");
+    expect(j.rules.find((x: { id: string }) => x.id === "hono-mount").valid).toBe(false);
+    commit(fx, "broken rule");
+    const idx = run(fx.dir, ["index", "--dump"]);
+    expect(idx.code).toBe(0);
+    expect(idx.err).toContain("Gantry: recipe rule hono-mount skipped:");
+    expect(endpoints(idx.out)).toBeGreaterThan(0);
+  });
+
+  it("a rule whose example does not match is reported and exits 1; zero matches is only a warning", async () => {
+    const fx = await fixture("adapters");
+    const file = join(fx.dir, ".gantry/recipe.json");
+    const recipe = JSON.parse(readFileSync(file, "utf8"));
+    const rule = recipe.rules.find((x: { id: string }) => x.id === "hono-app");
+    rule.examples.match.push("const nothing = 1;");
+    recipe.rules.push({
+      id: "never",
+      language: "typescript",
+      rule: { pattern: "neverCalledAnywhere($A)" },
+      emit: { kind: "router" },
+      examples: { match: ["neverCalledAnywhere(1)"], noMatch: [] },
+    });
+    writeFileSync(file, JSON.stringify(recipe, null, 2));
+    const r = run(fx.dir, ["recipe", "check", "--json"]);
+    expect(r.code).toBe(1);
+    const j = JSON.parse(r.out);
+    expect(j.rules.find((x: { id: string }) => x.id === "hono-app").examples.failed).toHaveLength(1);
+    const never = j.rules.find((x: { id: string }) => x.id === "never");
+    expect(never.matches).toBe(0);
+    expect(never.warning).toBeDefined();
+    expect(never.examples.failed).toEqual([]);
+  });
+
+  it("index prints one stderr line when there is no recipe, and exits 0", async () => {
+    const fx = await fixture("adapters");
+    fx.git(["rm", "-q", "-r", ".gantry"]);
+    fx.git(["commit", "-q", "-m", "norecipe"]);
+    const r = run(fx.dir, ["index", "--dump"]);
+    expect(r.code).toBe(0);
+    expect(r.err.split("\n").filter((l) => l.includes("no .gantry/recipe.json"))).toHaveLength(1);
+    expect(r.err).toContain("Run /gantry:init to write one.");
+    expect(run(fx.dir, ["recipe", "check"]).code).toBe(1);
   });
 });

@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "express", "role": "framework", "note": "HTTP framework: express(), Router(), app.use, router.get/post" },
+    { "name": "express-rate-limit", "role": "neither", "note": "middleware, mounted but registers no route" },
+    { "name": "mongodb", "role": "data-access", "note": "document store driver" },
+    { "name": "zod", "role": "neither", "note": "request schemas" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return"],
+  "passthrough": ["use", "get", "post", "put", "patch", "delete", "all", "options", "head", "route"],
+  "rules": [
+    {
+      "id": "express-app",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "rule": { "pattern": "express()" },
+      "emit": { "kind": "router", "data": { "adapter": "express" } },
+      "examples": {
+        "match": ["const app = express();"],
+        "noMatch": ["const app = fastify();", "const router = express.Router();"]
+      }
+    },
+    {
+      "id": "express-router",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "rule": { "any": [{ "pattern": "Router($$$A)" }, { "pattern": "express.Router($$$A)" }] },
+      "emit": { "kind": "router", "data": { "adapter": "express" } },
+      "examples": {
+        "match": ["const router = Router();", "const router = express.Router({ mergeParams: true });"],
+        "noMatch": ["const route = new Route();"]
+      }
+    },
+    {
+      "id": "express-mount-at",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "rule": { "pattern": "$P.use($X, $$$C)" },
+      "constraints": { "X": { "any": [{ "kind": "string" }, { "kind": "template_string" }] } },
+      "emit": { "kind": "mount", "parent": "$P", "prefix": "$X", "child": "$$$C", "data": { "adapter": "express" } },
+      "examples": {
+        "match": ["app.use(\"/api\", apiRouter);"],
+        "noMatch": ["app.use(apiRouter);"]
+      }
+    },
+    {
+      "id": "express-mount",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "rule": { "pattern": "$P.use($$$C)" },
+      "emit": { "kind": "mount", "parent": "$P", "child": "$$$C", "data": { "adapter": "express" } },
+      "examples": {
+        "match": ["router.use(createAuthRouter(limit), createUserRouter());"],
+        "noMatch": ["router.get(\"/x\", handler);"]
+      }
+    },
+    {
+      "id": "express-route-of",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "rule": { "pattern": "$R.route($P).$M($$$H)" },
+      "constraints": { "M": { "regex": "^(get|post|put|patch|delete|all|options|head)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "$M",
+        "path": "$P",
+        "handler": "$$$H",
+        "data": { "adapter": "express" }
+      },
+      "examples": {
+        "match": ["router.route(\"/sign-out\").post(guard, signOut);"],
+        "noMatch": ["router.post(\"/sign-out\", signOut);"]
+      }
+    },
+    {
+      "id": "express-route-of-next",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "rule": { "pattern": "$R.$M($$$H)" },
+      "constraints": { "M": { "regex": "^(get|post|put|patch|delete|all|options|head)$" } },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "$M",
+        "handler": "$$$H",
+        "pathFromChain": true,
+        "data": { "adapter": "express" }
+      },
+      "examples": {
+        "match": ["router.route(\"/sign-out\").post(guard, signOut).get(guard, signOut);"],
+        "noMatch": ["router.use(guard);"]
+      }
+    },
+    {
+      "id": "express-route",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "rule": { "pattern": "$R.$M($P, $$$H)" },
+      "constraints": {
+        "M": { "regex": "^(get|post|put|patch|delete|all|options|head)$" },
+        "P": { "any": [{ "kind": "string" }, { "kind": "template_string" }, { "kind": "identifier" }] }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "$M",
+        "path": "$P",
+        "handler": "$$$H",
+        "data": { "adapter": "express" }
+      },
+      "examples": {
+        "match": ["router.post(\"/auth/sign-in\", guard, validate(schema), signIn);", "app.get(\"/health\", (req, res) => res.send(\"ok\"));"],
+        "noMatch": ["app.use(\"/health\", handler);", "map.has(\"k\");"]
+      }
+    }
+  ]
+}

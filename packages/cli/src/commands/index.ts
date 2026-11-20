@@ -10,7 +10,7 @@ import {
 } from "@gantry/core";
 import type { Command } from "commander";
 import { noteFreshIndex } from "./init.js";
-import { EXIT_ERROR, EXIT_OK, fail, summaryLines, writeStdout } from "./shared.js";
+import { EXIT_ERROR, EXIT_OK, fail, recipeLines, summaryLines, writeStdout } from "./shared.js";
 
 export function registerIndex(program: Command): void {
   program
@@ -34,6 +34,7 @@ export function registerIndex(program: Command): void {
         try {
           const r = await indexRepo(paths, { layer: opts.layer as Layer, files: opts.files, store });
           reattachOverlay(store);
+          if (!opts.files) for (const line of recipeLines(r)) process.stderr.write(`${line}\n`);
           if (opts.dump) {
             for (const line of summaryLines(r, paths.dataDir)) process.stderr.write(`${line}\n`);
             writeStdout(`${JSON.stringify(dumpGraph(store), null, 2)}\n`);

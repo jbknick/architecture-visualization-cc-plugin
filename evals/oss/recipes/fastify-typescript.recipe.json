@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "fastify", "role": "framework", "note": "HTTP framework: fastify(), register(plugin, { prefix }), server.get/post" },
+    { "name": "@fastify/cors", "role": "neither", "note": "plugin, registers no route" },
+    { "name": "@fastify/formbody", "role": "neither", "note": "plugin, registers no route" },
+    { "name": "@fastify/helmet", "role": "neither", "note": "plugin, registers no route" },
+    { "name": "@prisma/client", "role": "data-access", "note": "ORM client" },
+    { "name": "pino", "role": "neither", "note": "logger" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "param-flow"],
+  "passthrough": ["get", "post", "put", "patch", "delete", "options", "head", "register"],
+  "rules": [
+    {
+      "id": "fastify-app",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "any": [{ "pattern": "fastify($$$A)" }, { "pattern": "Fastify($$$A)" }] },
+      "emit": { "kind": "router", "data": { "adapter": "fastify" } },
+      "examples": {
+        "match": ["const server = fastify({ logger: true });", "const app = Fastify();"],
+        "noMatch": ["const server = express();"]
+      }
+    },
+    {
+      "id": "fastify-register-with-prefix",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "pattern": "$PARENT.register($C, { prefix: $P })" },
+      "emit": {
+        "kind": "mount",
+        "parent": "$PARENT",
+        "prefix": "$P",
+        "child": "$C",
+        "childIsScope": true,
+        "data": { "adapter": "fastify" }
+      },
+      "examples": {
+        "match": ["server.register(userRouter, { prefix: \"/api/user\" });"],
+        "noMatch": ["server.register(cors);"]
+      }
+    },
+    {
+      "id": "fastify-register",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "pattern": "$PARENT.register($C)" },
+      "emit": { "kind": "mount", "parent": "$PARENT", "child": "$C", "childIsScope": true, "data": { "adapter": "fastify" } },
+      "examples": {
+        "match": ["server.register(userRouter);"],
+        "noMatch": ["server.get(\"/\", handler);"]
+      }
+    },
+    {
+      "id": "fastify-route",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "pattern": "$R.$M($P, $$$H)" },
+      "constraints": {
+        "M": { "regex": "^(get|post|put|patch|delete|options|head)$" },
+        "P": { "any": [{ "kind": "string" }, { "kind": "template_string" }] }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "$M",
+        "path": "$P",
+        "handler": "$$$H",
+        "data": { "adapter": "fastify" }
+      },
+      "examples": {
+        "match": ["server.get(\"/health\", async (request, reply) => reply.send({}));", "fastify.post(\"/login\", { schema }, controllers.login);"],
+        "noMatch": ["server.register(plugin, { prefix: \"/x\" });", "cache.has(\"k\");"]
+      }
+    }
+  ]
+}

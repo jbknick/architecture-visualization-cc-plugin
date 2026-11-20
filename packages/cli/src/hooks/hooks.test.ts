@@ -666,7 +666,7 @@ describe("entry points", () => {
         st.close();
       }
     };
-    expect(versionOf()).toBe("11");
+    expect(versionOf()).toBe("12");
     setVersion("6");
     const input = JSON.stringify({
       session_id: "s",
@@ -714,7 +714,7 @@ describe("entry points", () => {
     expect(
       init.err.split("built by an older version of Gantry (schema 6, now 11); rebuilding it").length - 1,
     ).toBe(1);
-    expect(versionOf()).toBe("11");
+    expect(versionOf()).toBe("12");
   });
 
   it("session-start and the git hooks create no data dir for a repository without an index (#147)", async () => {
