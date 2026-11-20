@@ -76,7 +76,8 @@ export function LeftPanel({
           ) : (
             <p className="muted">This view has no filters.</p>
           )}
-          <CurationPanel data={data} />
+          {/* The 3D map's panel is sized to fit its own list without scrolling (e2e/map3d.spec.ts), so it has no room. */}
+          {viewId !== "map-3d" && <CurationPanel data={data} />}
           {showKindLegend && (
             <>
               <h2 className="panel-title legend-title">Legend</h2>
