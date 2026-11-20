@@ -22,6 +22,7 @@ import {
   syncBacklog,
   writeCatalogDebounced,
 } from "@gantry/core";
+import { crossingFindings } from "./boundaries.js";
 import { changedSymbols, duplicateFindings, type Finding, formatLines, importFindings } from "./findings.js";
 
 const GIT_MAX_BUFFER = 512 * 1024 * 1024;
@@ -98,7 +99,7 @@ async function withStaged<T>(
 }
 
 /**
- * Duplicate and import findings for the staged function-like symbols that are new or changed against the
+ * Duplicate, import and group-boundary findings for the staged function-like symbols that are new or changed against the
  * index (spec sections 11 and 14), as printable lines (same formatter as the PostToolUse hook, at most 10).
  */
 async function stagedFindings(paths: GantryPaths, c: StagedContext): Promise<string[]> {
@@ -110,13 +111,21 @@ async function stagedFindings(paths: GantryPaths, c: StagedContext): Promise<str
     exact_hash: string;
   }[];
   const previous = new Map(rows.map((r) => [r.id, r.exact_hash]));
-  const findings: Finding[] = await duplicateFindings(c.scratch, changedSymbols(c.staged, previous), config);
+  const changed = changedSymbols(c.staged, previous);
+  const findings: Finding[] = await duplicateFindings(c.scratch, changed, config);
   for (const [p, text] of [...c.sources].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const head = git(paths.root, ["show", `HEAD:${p}`]);
     const before = head.ok ? parseFile(c.scratch.repo(), p, head.out.toString("utf8")) : undefined;
     for (const f of importFindings(c.scratch, p, parseFile(c.scratch.repo(), p, text), before)) {
       findings.push({ ...f, action: `${p}: ${f.action}` });
     }
+    findings.push(
+      ...crossingFindings(
+        c.scratch,
+        changed.filter((x) => x.fileId === fileId(c.scratch.repo(), p)),
+        [p],
+      ),
+    );
   }
   return formatLines(findings, 10);
 }

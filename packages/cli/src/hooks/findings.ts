@@ -47,7 +47,23 @@ export interface ImportLine {
   pkg: string;
   manifests: string[];
 }
-export type Finding = DupFinding | ImportLine;
+/**
+ * An edit that adds an edge from a member of a boundary group to a member of a group it does not list (spec section
+ * 14). For a file-level `imports` crossing `srcName`/`dstName` are the file paths and both lines are 0.
+ * `srcGroup` and `dstGroup` are the groups' display names, as printed.
+ */
+export interface CrossingFinding {
+  kind: "crossing";
+  srcName: string;
+  srcPath: string;
+  srcLine: number;
+  srcGroup: string;
+  dstName: string;
+  dstPath: string;
+  dstLine: number;
+  dstGroup: string;
+}
+export type Finding = DupFinding | ImportLine | CrossingFinding;
 
 /** Matches listed per symbol (spec section 14). */
 const PER_SYMBOL = 2;
@@ -182,6 +198,7 @@ export function diskCheck(root: string, store: Store, config: GantryConfig): (f:
     return manifests.get(m);
   };
   return (f) => {
+    if (f.kind === "crossing") return stillImports(read(f.srcPath), f.srcPath, f.dstPath);
     if (f.kind === "import") return !f.manifests.some((m) => declared(m)?.includes(f.pkg));
     const disk = read(f.existingPath);
     const range = disk?.parsed.bodies.get(f.existingId);
@@ -204,11 +221,37 @@ export function diskCheck(root: string, store: Store, config: GantryConfig): (f:
   };
 }
 
+const SOURCE_EXT = /\.(?:[cm]?[jt]sx?)$/;
+
+/**
+ * Double-check of a crossing: the source file on disk still holds an import of the target. A relative specifier is
+ * resolved against the source file; any other specifier (a package or alias) cannot be resolved here, so it keeps
+ * the crossing. A file that cannot be read, or that has no such import, drops it.
+ */
+function stillImports(disk: { parsed: ParsedFile } | null, srcPath: string, dstPath: string): boolean {
+  if (!disk) return false;
+  const target = dstPath.replace(SOURCE_EXT, "");
+  for (const imp of disk.parsed.imports) {
+    const spec = imp.specifier;
+    if (spec === "") continue;
+    if (!spec.startsWith(".")) return true;
+    const resolved = path.posix.join(path.posix.dirname(srcPath), spec).replace(SOURCE_EXT, "");
+    if (resolved === target || `${resolved}/index` === target) return true;
+  }
+  return false;
+}
+
 const score = (n: number): string => n.toFixed(2);
 
 /** One finding as one line. */
 export function formatFinding(f: Finding): string {
   if (f.kind === "import") return `Gantry: ${f.action} (line ${f.line})`;
+  if (f.kind === "crossing") {
+    const tail = `in group ${f.dstGroup}, which ${f.srcGroup} does not list. Warn only.`;
+    return f.srcLine === 0 && f.dstLine === 0 && f.srcName === f.srcPath
+      ? `Gantry: ${f.srcPath} in group ${f.srcGroup} imports ${f.dstPath} ${tail}`
+      : `Gantry: ${f.srcName} (${f.srcPath}:${f.srcLine}) in group ${f.srcGroup} uses ${f.dstName} (${f.dstPath}:${f.dstLine}) ${tail}`;
+  }
   return (
     `Gantry: ${f.name} (${f.path}:${f.line}) looks like ${f.existing} in ${f.existingPath}:${f.existingLine} ` +
     `[${f.tier} ${score(f.score)}]. ${f.action}`

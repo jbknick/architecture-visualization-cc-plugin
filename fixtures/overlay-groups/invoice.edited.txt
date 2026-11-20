@@ -1,0 +1,5 @@
+import { formatPrice } from "../catalog/price";
+
+export function totalDue(items: number[]): string {
+  return formatPrice(items.reduce((a, b) => a + b, 0));
+}
