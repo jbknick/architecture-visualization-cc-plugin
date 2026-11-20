@@ -49,7 +49,6 @@ export const GantryConfigSchema = z.object({
   }),
   backlogReminderThreshold: z.number().int().nonnegative(),
   renameSuggestions: z.boolean(),
-  views: z.object({ slices: z.array(z.string()) }),
   worker: z.object({ binary: z.string().min(1).optional() }).optional(),
 });
 
@@ -115,7 +114,6 @@ function defaults(): GantryConfig {
     },
     backlogReminderThreshold: 100,
     renameSuggestions: false,
-    views: { slices: ["apps/*/src/features/*", "apps/*/src/modules/*", "packages/*"] },
   };
 }
 

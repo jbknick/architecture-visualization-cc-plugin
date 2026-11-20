@@ -1,5 +1,6 @@
 import type { Store } from "../store/index.js";
 import { syncAnchors } from "./anchors.js";
+import { defaultGroups } from "./defaults.js";
 import {
   FilterSpecSchema,
   type Group,
@@ -48,6 +49,14 @@ export function readOverlay(store: Store): OverlayState {
     "SELECT id, name, spec FROM overlay.views ORDER BY id",
   ).map((r): SavedView => SavedViewSchema.parse({ id: r.id, name: r.name, spec: JSON.parse(r.spec) }));
   return { labels, hidden, groups, views };
+}
+
+/**
+ * The groups a view reads: the user groups (by id), then the default groups computed from the index (never stored).
+ * A file belongs to the first group that matches it, user groups first, then the deepest default directory.
+ */
+export function effectiveGroups(store: Store): Group[] {
+  return [...readOverlay(store).groups, ...defaultGroups(store.effectiveFiles())];
 }
 
 /** Sets a node's label; empty text removes it. */
