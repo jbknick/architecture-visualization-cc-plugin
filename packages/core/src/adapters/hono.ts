@@ -9,6 +9,7 @@ import {
   symKeyOfId,
 } from "../ids.js";
 import { chainName, isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
+import { mergePaths, patternMatches } from "../recipe/helpers/mount-graph.js";
 import type { EdgeRecord } from "../types.js";
 import {
   type Adapter,
@@ -45,6 +46,8 @@ import {
  * holds it, or the file for module-level code, which is where the call graph puts its calls), and middleware
  * `serves` every endpoint of its app (and the apps mounted below it) whose path its pattern matches.
  */
+
+export { mergePaths, patternMatches };
 
 const HONO_MODULES = new Set(["hono", "hono/tiny", "hono/quick"]);
 const METHODS = new Set(["get", "post", "put", "patch", "delete", "options", "all"]);
@@ -369,31 +372,6 @@ class FileReader {
   private visitArgs(calls: ChainCall[], cb: (n: Node) => boolean | undefined): void {
     for (const c of calls) visit(c.args, cb);
   }
-}
-
-/** Joins path pieces the way Hono merges a base path, a mount prefix and a route path. */
-export function mergePaths(pieces: readonly string[]): string {
-  let out = "";
-  for (const raw of pieces) {
-    if (raw === "" || raw === "/") continue;
-    const p = raw.startsWith("/") ? raw : `/${raw}`;
-    out = out.replace(/\/+$/, "") + p;
-  }
-  return out === "" ? "/" : out.replace(/(.)\/+$/, "$1");
-}
-
-/** Does a middleware path pattern (`*`, `/api/*`, `/posts/:id`) cover an endpoint path? */
-export function patternMatches(pattern: string, path: string): boolean {
-  if (pattern === "*" || pattern === "/*") return true;
-  let re = "";
-  const p = pattern.endsWith("/*") ? pattern.slice(0, -2) : pattern;
-  for (const seg of p.split("/").filter(Boolean)) {
-    if (seg === "*") re += "/[^/]*";
-    else if (seg.startsWith(":")) re += "/[^/]+";
-    else re += `/${seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\\\*/g, ".*")}`;
-  }
-  const tail = pattern.endsWith("/*") ? "(?:/.*)?" : "/?";
-  return new RegExp(`^${re}${tail}$`).test(path);
 }
 
 export const honoAdapter: Adapter<HonoFacts> = {

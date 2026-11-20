@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import type { Adapter } from "./adapters/framework.js";
 import { runAdapters } from "./adapters/index.js";
 import { loadConfig } from "./config/index.js";
 import { discoverFiles, isIndexable } from "./discover/index.js";
@@ -11,6 +12,7 @@ import { createLangResolver, detectAllWorkspaces, langOfPath, parseFile } from "
 import { encodeParsed, LazyParsedMap, ParseCache } from "./parse/cache.js";
 import type { ParsedFile } from "./parse/index.js";
 import { ensureDataDir, type GantryPaths } from "./paths/index.js";
+import { loadRecipe, recipeNotes } from "./recipe/load.js";
 import type { SpecifierClass } from "./resolve/index.js";
 import { openStore, type Store, splitIdentifier } from "./store/index.js";
 import type {
@@ -33,6 +35,8 @@ export interface IndexResult {
   /** Distinct (file, specifier) pairs by resolution class, for the whole run (used by the M1 benchmark). */
   specifierCounts: Record<SpecifierClass, number>;
   parseErrors: { file: string; errors: string[] }[];
+  /** Notes on the repo's recipe (spec section 5), for stderr: no recipe, or a rule that was skipped. */
+  recipeNotes: string[];
   ms: number;
 }
 
@@ -44,6 +48,8 @@ export interface IndexOptions {
   sources?: Map<string, string>;
   /** Use an already open store (the caller keeps ownership and closes it). Default: open `paths.dbPath`. */
   store?: Store;
+  /** The adapters to run; default `ADAPTERS`. Tests use it to run one adapter alone. */
+  adapters?: readonly Adapter<unknown>[];
 }
 
 const READ_CONCURRENCY = 16;
@@ -230,22 +236,28 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     // Framework adapters (routes, server functions, Hono endpoints). Their results depend on other files (route
     // parents, mounts across imports, loader calls), so they run over the full read set on every run; each node and
     // edge is then stored with the file it names, replaced per file like symbols.
-    const routes = runAdapters({
-      root,
-      repo,
-      workspaces,
-      // The framework adapters read TypeScript; other languages have none yet.
-      files: present
-        .filter((e) => langOfPath(e.path) === "typescript")
-        .map((e) => ({
-          path: e.path,
-          id: e.id,
-          workspaceId: e.workspaceId,
-          source: e.source as string,
-        })),
-      parsed,
-      resolver,
-    });
+    // The recipe of the tree being indexed: the main layer reads it from HEAD, the working layer from disk.
+    const recipe = loadRecipe(root, { layer });
+    const routes = runAdapters(
+      {
+        root,
+        repo,
+        workspaces,
+        recipe,
+        // The framework adapters read TypeScript; other languages have none yet.
+        files: present
+          .filter((e) => langOfPath(e.path) === "typescript")
+          .map((e) => ({
+            path: e.path,
+            id: e.id,
+            workspaceId: e.workspaceId,
+            source: e.source as string,
+          })),
+        parsed,
+        resolver,
+      },
+      opts.adapters,
+    );
     const routeEdges = groupByFile(routes.edges);
     const routeNodes = groupByFile(routes.nodes);
 
@@ -307,6 +319,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
         unresolved: 0,
       },
       parseErrors: [],
+      recipeNotes: recipeNotes(recipe),
       ms: 0,
     };
     // fts_symbols has no index on symbol_id (UNINDEXED column), so a per-symbol delete scans the whole

@@ -1,0 +1,184 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "@demo/api", "workspace": "@demo/server", "role": "neither", "note": "workspace package" },
+    { "name": "@demo/posts", "workspace": "@demo/server", "role": "neither", "note": "workspace package: its Hono app is mounted at /api" },
+    { "name": "@orpc/server", "workspace": "@demo/server", "role": "neither", "note": "oRPC handler; read by the built-in oRPC adapter" },
+    { "name": "hono", "workspace": "@demo/server", "role": "framework", "note": "HTTP framework: new Hono(), route, basePath, use" },
+    { "name": "@demo/api", "workspace": "@demo/web", "role": "neither", "note": "workspace package" },
+    { "name": "@orpc/client", "workspace": "@demo/web", "role": "neither", "note": "oRPC client" },
+    { "name": "@orpc/tanstack-query", "workspace": "@demo/web", "role": "neither", "note": "oRPC query utilities" },
+    { "name": "@tanstack/react-query", "workspace": "@demo/web", "role": "neither", "note": "data fetching hooks, no routes" },
+    { "name": "@tanstack/react-router", "workspace": "@demo/web", "role": "framework", "note": "file-based page routes under src/routes" },
+    { "name": "@tanstack/react-start", "workspace": "@demo/web", "role": "framework", "note": "server functions; routes come from the router" },
+    { "name": "hono", "workspace": "@demo/web", "role": "framework", "note": "Hono client types only, no app declared" },
+    { "name": "react", "workspace": "@demo/web", "role": "neither", "note": "UI library" },
+    { "name": "@demo/db", "workspace": "@demo/api", "role": "neither", "note": "workspace package" },
+    { "name": "@orpc/contract", "workspace": "@demo/api", "role": "neither", "note": "oRPC contract" },
+    { "name": "@orpc/server", "workspace": "@demo/api", "role": "neither", "note": "oRPC routers" },
+    { "name": "drizzle-orm", "workspace": "@demo/db", "role": "data-access", "note": "tables in src/schema.ts" },
+    { "name": "hono", "workspace": "@demo/posts", "role": "framework", "note": "sub-app mounted by @demo/server" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "fs-routes"],
+  "passthrough": ["basePath", "get", "post", "put", "patch", "delete", "options", "all", "on", "use", "route"],
+  "rules": [
+    {
+      "id": "hono-app",
+      "language": "typescript",
+      "when": { "dependency": ["hono"] },
+      "rule": { "pattern": "new Hono($$$A)" },
+      "emit": { "kind": "router", "data": { "adapter": "hono" } },
+      "examples": {
+        "match": ["const app = new Hono();", "export const users = new Hono().basePath(\"/v1\");"],
+        "noMatch": ["const app = new Elysia();", "const m = new Map();"]
+      }
+    },
+    {
+      "id": "hono-base-path",
+      "language": "typescript",
+      "when": { "dependency": ["hono"] },
+      "rule": { "pattern": "$X.basePath($B)" },
+      "emit": { "kind": "router", "base": "$B", "data": { "adapter": "hono" } },
+      "examples": {
+        "match": ["const users = new Hono().basePath(\"/v1\");"],
+        "noMatch": ["app.get(\"/v1\", handler);"]
+      }
+    },
+    {
+      "id": "hono-route",
+      "language": "typescript",
+      "when": { "dependency": ["hono"] },
+      "rule": { "pattern": "$APP.$M($P, $$$H)" },
+      "constraints": {
+        "M": { "regex": "^(get|post|put|patch|delete|options|all)$" },
+        "P": { "any": [{ "kind": "string" }, { "kind": "template_string" }, { "kind": "identifier" }] }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$APP",
+        "method": "$M",
+        "path": "$P",
+        "handler": "$$$H",
+        "pathFromChain": true,
+        "data": { "adapter": "hono" }
+      },
+      "examples": {
+        "match": ["app.get(\"/health\", (c) => c.text(\"ok\"));", "app.post(HEALTH_PATH, auth, handler);"],
+        "noMatch": ["app.use(\"/x\", mw);", "cache.has(\"k\");"]
+      }
+    },
+    {
+      "id": "hono-route-chained",
+      "language": "typescript",
+      "when": { "dependency": ["hono"] },
+      "rule": { "pattern": "$APP.$M($H)" },
+      "constraints": {
+        "M": { "regex": "^(get|post|put|patch|delete|options|all)$" },
+        "H": { "not": { "any": [{ "kind": "string" }, { "kind": "template_string" }] } }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$APP",
+        "method": "$M",
+        "handler": "$H",
+        "pathFromChain": true,
+        "data": { "adapter": "hono" }
+      },
+      "examples": {
+        "match": ["new Hono().get(\"/\", list).post(create);"],
+        "noMatch": ["app.use(logger());"]
+      }
+    },
+    {
+      "id": "hono-route-on",
+      "language": "typescript",
+      "when": { "dependency": ["hono"] },
+      "rule": { "pattern": "$APP.on($MS, $P, $$$H)" },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$APP",
+        "method": "$MS",
+        "path": "$P",
+        "handler": "$$$H",
+        "data": { "adapter": "hono" }
+      },
+      "examples": {
+        "match": ["posts.on([\"PUT\", \"PATCH\"], \"/posts/:id\", async (c) => c.json({}));"],
+        "noMatch": ["posts.get(\"/posts/:id\", showPost);"]
+      }
+    },
+    {
+      "id": "hono-mount",
+      "language": "typescript",
+      "when": { "dependency": ["hono"] },
+      "rule": { "pattern": "$PARENT.route($P, $CHILD)" },
+      "emit": {
+        "kind": "mount",
+        "parent": "$PARENT",
+        "prefix": "$P",
+        "child": "$CHILD",
+        "data": { "adapter": "hono" }
+      },
+      "examples": {
+        "match": ["app.route(\"/api\", posts);"],
+        "noMatch": ["app.get(\"/api\", posts);"]
+      }
+    },
+    {
+      "id": "hono-middleware",
+      "language": "typescript",
+      "when": { "dependency": ["hono"] },
+      "rule": { "pattern": "$APP.use($P, $$$H)" },
+      "constraints": { "P": { "any": [{ "kind": "string" }, { "kind": "template_string" }] } },
+      "emit": { "kind": "middleware", "receiver": "$APP", "path": "$P", "handler": "$$$H", "data": { "adapter": "hono" } },
+      "examples": {
+        "match": ["app.use(\"*\", cors());"],
+        "noMatch": ["app.use(cors());"]
+      }
+    },
+    {
+      "id": "hono-middleware-any-path",
+      "language": "typescript",
+      "when": { "dependency": ["hono"] },
+      "rule": { "pattern": "$APP.use($H)" },
+      "emit": { "kind": "middleware", "receiver": "$APP", "handler": "$H", "data": { "adapter": "hono" } },
+      "examples": {
+        "match": ["app.use(cors());"],
+        "noMatch": ["app.use(\"*\", cors());"]
+      }
+    },
+    {
+      "id": "tanstack-file-route",
+      "language": "typescript",
+      "when": { "dependency": ["@tanstack/react-router", "@tanstack/react-start"] },
+      "rule": { "pattern": "createFileRoute($ID)($OPTS)" },
+      "emit": { "kind": "fileRoute", "convention": "tanstack-router", "id": "$ID", "options": "$OPTS" },
+      "examples": {
+        "match": ["export const Route = createFileRoute(\"/posts/$postId\")({ component: PostPage });"],
+        "noMatch": ["const r = createRootRoute({ component: Root });"]
+      }
+    },
+    {
+      "id": "tanstack-root-route",
+      "language": "typescript",
+      "when": { "dependency": ["@tanstack/react-router", "@tanstack/react-start"] },
+      "rule": { "pattern": "createRootRoute($OPTS)" },
+      "emit": { "kind": "fileRoute", "convention": "tanstack-router", "options": "$OPTS", "root": true },
+      "examples": {
+        "match": ["export const Route = createRootRoute({ component: RootLayout });"],
+        "noMatch": ["export const Route = createFileRoute(\"/\")({});"]
+      }
+    },
+    {
+      "id": "tanstack-root-route-with-context",
+      "language": "typescript",
+      "when": { "dependency": ["@tanstack/react-router", "@tanstack/react-start"] },
+      "rule": { "pattern": "createRootRouteWithContext<$T>()($OPTS)" },
+      "emit": { "kind": "fileRoute", "convention": "tanstack-router", "options": "$OPTS", "root": true },
+      "examples": {
+        "match": ["export const Route = createRootRouteWithContext<Ctx>()({ component: RootLayout });"],
+        "noMatch": ["export const Route = createRootRoute({ component: RootLayout });"]
+      }
+    }
+  ]
+}

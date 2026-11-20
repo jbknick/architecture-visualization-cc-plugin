@@ -31,6 +31,7 @@ export * from "./overlay/index.js";
 export * from "./overview/index.js";
 export * from "./parse/index.js";
 export * from "./paths/index.js";
+export * from "./recipe/index.js";
 export * from "./resolve/index.js";
 export * from "./review/index.js";
 export * from "./search/index.js";

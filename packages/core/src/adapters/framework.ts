@@ -2,6 +2,7 @@ import { parseSync } from "oxc-parser";
 import { isTestPath } from "../dup/filters.js";
 import { isNode, type Node, nodeArray, unwrap } from "../parse/ast.js";
 import type { ParsedFile } from "../parse/index.js";
+import type { LoadedRecipe } from "../recipe/load.js";
 import type { Resolver } from "../resolve/index.js";
 import type { AdapterNodeRecord, EdgeRecord, WorkspaceRecord } from "../types.js";
 
@@ -55,6 +56,8 @@ export interface AdapterFileContext {
   source: string;
   parsed: ParsedFile | undefined;
   resolver: AdapterResolver;
+  /** The recipe of the tree being indexed (spec section 5); null when there is none. */
+  recipe: LoadedRecipe | null;
   /** The file's top-level statements (oxc ESTree), parsed once per run and shared by all adapters; null on a parse failure. */
   program(): Node[] | null;
 }
@@ -68,6 +71,8 @@ export interface AdapterLinkContext<F> {
   root: string;
   repo: string;
   workspaces: WorkspaceRecord[];
+  /** The recipe of the tree being indexed; null when there is none. */
+  recipe: LoadedRecipe | null;
   /** Every file this adapter extracted, in path order, with its facts (files without facts included). */
   files: { file: AdapterFileContext; facts: F | undefined }[];
   /** Nodes returned so far by every adapter (extract stage of all adapters, then earlier links), sorted by id. */
@@ -80,7 +85,7 @@ export interface AdapterLinkContext<F> {
 
 export interface Adapter<F = unknown> {
   id: string;
-  appliesTo(ws: WorkspaceRecord): boolean;
+  appliesTo(ws: WorkspaceRecord, run: AdapterRunContext): boolean;
   /** Cheap check before `extract` (text or imports, never the AST; for example the framework's import name). Default: every file. */
   mayMatch?(file: AdapterFileContext): boolean;
   /** Test files (`*.test.*`, `*.spec.*`, `__tests__/`) are skipped unless this is true: test harness apps are not endpoints. */
@@ -96,6 +101,8 @@ export interface AdapterRunContext {
   files: AdapterFile[];
   parsed: { get(fileId: string): ParsedFile | undefined };
   resolver: AdapterResolver;
+  /** The recipe of the tree being indexed (loaded by the indexer for the layer it indexes); null when there is none. */
+  recipe?: LoadedRecipe | null;
 }
 
 export const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -259,6 +266,7 @@ export function runAdapterList(ctx: AdapterRunContext, adapters: readonly Adapte
         source: f.source,
         parsed: ctx.parsed.get(f.id),
         resolver: ctx.resolver,
+        recipe: ctx.recipe ?? null,
         program: () => {
           if (!programs.has(f.id)) programs.set(f.id, parseProgram(f.path, f.source));
           return programs.get(f.id) ?? null;
@@ -276,7 +284,7 @@ export function runAdapterList(ctx: AdapterRunContext, adapters: readonly Adapte
     [];
   for (const raw of adapters) {
     const adapter = raw as Adapter<unknown>;
-    const wsIds = new Set(ctx.workspaces.filter((w) => adapter.appliesTo(w)).map((w) => w.id));
+    const wsIds = new Set(ctx.workspaces.filter((w) => adapter.appliesTo(w, ctx)).map((w) => w.id));
     const mine: { file: AdapterFileContext; facts: unknown }[] = [];
     if (wsIds.size > 0) {
       for (const f of files) {
@@ -295,12 +303,17 @@ export function runAdapterList(ctx: AdapterRunContext, adapters: readonly Adapte
   }
   for (const { adapter, files: mine } of perAdapter) {
     if (!adapter.link) continue;
-    if (!ctx.workspaces.some((w) => adapter.appliesTo(w))) continue;
-    const sorted = [...nodes].sort((a, b) => cmp(a.id, b.id));
+    if (!ctx.workspaces.some((w) => adapter.appliesTo(w, ctx))) continue;
+    // Sorted, and a node two adapters both found (the recipe and a built-in adapter) is seen once, as it is stored.
+    const sorted: AdapterNode[] = [];
+    for (const n of [...nodes].sort((a, b) => cmp(a.id, b.id) || cmp(a.fileId, b.fileId))) {
+      if (sorted[sorted.length - 1]?.id !== n.id) sorted.push(n);
+    }
     const out = adapter.link({
       root: ctx.root,
       repo: ctx.repo,
       workspaces: ctx.workspaces,
+      recipe: ctx.recipe ?? null,
       files: mine,
       nodes: sorted,
       resolver: ctx.resolver,
