@@ -4,6 +4,7 @@ import type { Filters, GraphEdge, GraphNode, ViewData } from "../api.ts";
 import type { Route } from "../route.ts";
 import { getFilterPanel } from "../slots.ts";
 import { KINDS } from "../theme.ts";
+import { CurationPanel } from "./CurationPanel.tsx";
 import { Button } from "./ui/button.tsx";
 
 interface Props {
@@ -75,6 +76,7 @@ export function LeftPanel({
           ) : (
             <p className="muted">This view has no filters.</p>
           )}
+          <CurationPanel data={data} />
           {showKindLegend && (
             <>
               <h2 className="panel-title legend-title">Legend</h2>

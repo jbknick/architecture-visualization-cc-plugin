@@ -46,6 +46,22 @@ const server = createServer(async (req, res) => {
     );
     return;
   }
+  if (req.method !== "GET" && url.pathname.startsWith("/api/overlay/")) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+    let parsed: unknown = null;
+    try {
+      const text = Buffer.concat(chunks).toString("utf8");
+      parsed = text === "" ? null : JSON.parse(text);
+    } catch {
+      res.writeHead(400).end();
+      return;
+    }
+    const out = handleMockWrite(url, parsed, req.method) ?? { status: 404, body: { error: "Unknown route" } };
+    res.writeHead(out.status, { "content-type": "application/json" });
+    res.end(JSON.stringify(out.body));
+    return;
+  }
   if (req.method === "PUT" && url.pathname === "/api/dismiss") {
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk as Buffer);

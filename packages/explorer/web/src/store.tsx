@@ -7,7 +7,8 @@ import {
   useMemo,
   useReducer,
 } from "react";
-import { api, type Meta, type SearchHit } from "./api.ts";
+import { api, type Meta, type OverlayResponse, type SearchHit } from "./api.ts";
+import { RELOAD_VIEW_EVENT } from "./hooks.ts";
 import { refreshStore, useRefresh } from "./refresh.ts";
 import { emptyRoute, formatHash, parseHash, parseInitialHash, type Route } from "./route.ts";
 
@@ -19,9 +20,12 @@ export interface State {
   hoverId: string | null;
   /** Last search hit the user picked; gives the inspector a path:line before /api/node answers. */
   pickedHit: SearchHit | null;
+  /** The curation overlay: labels, hidden parts, groups and saved views. Null until the first load. */
+  overlay: OverlayResponse | null;
 }
 
 type Action =
+  | { type: "overlay"; overlay: OverlayResponse }
   | { type: "route"; route: Route }
   | { type: "meta"; meta: Meta }
   | { type: "metaError"; message: string }
@@ -31,6 +35,8 @@ type Action =
 
 export function reducer(state: State, action: Action): State {
   switch (action.type) {
+    case "overlay":
+      return { ...state, overlay: action.overlay };
     case "route":
       return { ...state, route: action.route };
     case "meta":
@@ -62,6 +68,11 @@ export interface Store {
   openInView: (view: string, id: string, selectId?: string | null) => void;
   toggleLeft: () => void;
   setHover: (id: string | null) => void;
+  /**
+   * Runs an overlay write, then loads the overlay again and asks the open view to fetch itself again (labels,
+   * hidden parts and groups are applied when a view is built). Rejects with the server's message when the write fails.
+   */
+  writeOverlay: (write: () => Promise<unknown>) => Promise<void>;
 }
 
 const StoreContext = createContext<Store | null>(null);
@@ -88,6 +99,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     leftOpen: true,
     hoverId: null,
     pickedHit: null,
+    overlay: null,
   }));
 
   useEffect(() => {
@@ -131,6 +143,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, [scenario, scenarioView, generation, focusTick]);
 
+  // The overlay is loaded at start and again after every write (`writeOverlay`) and every Refresh. A server without
+  // overlay routes (the in-repo mock before this feature) leaves it null and the curation controls hidden.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `generation` only triggers a new request
+  useEffect(() => {
+    const controller = new AbortController();
+    api.getOverlay(controller.signal).then(
+      (overlay) => dispatch({ type: "overlay", overlay }),
+      () => {},
+    );
+    return () => controller.abort();
+  }, [generation]);
+
+  const writeOverlay = useCallback(async (write: () => Promise<unknown>) => {
+    await write();
+    dispatch({ type: "overlay", overlay: await api.getOverlay() });
+    window.dispatchEvent(new Event(RELOAD_VIEW_EVENT));
+  }, []);
+
   // With no view in the hash, land on the project map when the server has it, else the first enabled view.
   const enabledViews = state.meta?.views.filter((v) => v.enabled) ?? [];
   const view =
@@ -173,8 +203,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         navigate({ ...emptyRoute, view: id, focus: nodeId, sel: selectId }),
       toggleLeft: () => dispatch({ type: "toggleLeft" }),
       setHover: (id) => dispatch({ type: "hover", id }),
+      writeOverlay,
     }),
-    [state, view, navigate],
+    [state, view, navigate, writeOverlay],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

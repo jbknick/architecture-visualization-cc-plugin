@@ -4,6 +4,7 @@ import type { Filters, ViewLevel } from "./api.ts";
  * Hash route: `#/<view>?focus=<id>&level=<level>&hops=<n>&sel=<id>&<filters>`.
  *
  * - `focus`, `level`, `hops` go to `/api/view/:id` as the query params of the same name.
+ * - `saved` is the id of a saved view; it goes to `/api/view/:id` as the query param `saved`.
  * - `sel` is the node open in the inspector. It never reaches the server.
  * - Every other key is a filter. They are sent as one JSON `filters` param (see `encodeFilters`).
  */
@@ -15,10 +16,20 @@ export interface Route {
   sel: string | null;
   level: ViewLevel | null;
   hops: number | null;
+  /** Id of the saved view the map was opened from. Sent to `/api/view/:id` as `saved`. */
+  saved: string | null;
   filters: Filters;
 }
 
-export const emptyRoute: Route = { view: null, focus: null, sel: null, level: null, hops: null, filters: {} };
+export const emptyRoute: Route = {
+  view: null,
+  focus: null,
+  sel: null,
+  level: null,
+  hops: null,
+  saved: null,
+  filters: {},
+};
 
 export const VIEW_LEVELS: readonly ViewLevel[] = ["workspaces", "dirs", "files", "symbols"];
 
@@ -38,6 +49,7 @@ export function parseHash(hash: string): Route {
   for (const [key, value] of params) {
     if (key === "focus") route.focus = value || null;
     else if (key === "sel") route.sel = value || null;
+    else if (key === "saved") route.saved = value || null;
     else if (key === "level") route.level = isLevel(value) ? value : null;
     else if (key === "hops") {
       const n = Number.parseInt(value, 10);
@@ -51,6 +63,7 @@ export function parseHash(hash: string): Route {
 export function formatHash(route: Route): string {
   const params = new URLSearchParams();
   if (route.focus) params.set("focus", route.focus);
+  if (route.saved) params.set("saved", route.saved);
   if (route.level) params.set("level", route.level);
   if (route.hops !== null) params.set("hops", String(route.hops));
   // With a focus, an empty `sel=` records "nothing selected", so a reload does not select the focus again.

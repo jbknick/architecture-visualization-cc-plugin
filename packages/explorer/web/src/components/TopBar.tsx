@@ -11,6 +11,7 @@ import type { ViewInfo } from "../api.ts";
 import { debugEnabled } from "../debug.ts";
 import { refreshStore, useRefresh } from "../refresh.ts";
 import { useStore } from "../store.tsx";
+import { SavedViews } from "./SavedViews.tsx";
 import { SearchBox } from "./SearchBox.tsx";
 import { TabsIndicator, TabsList, TabsRoot, TabsTab } from "./smoothui/tabs/index.tsx";
 import { Badge } from "./ui/badge.tsx";
@@ -221,6 +222,7 @@ export function TopBar() {
         )}
       </div>
       <TabStrip tabs={tabs} view={view} onPick={setView} />
+      <SavedViews />
       <RefreshButton />
       <SearchBox />
     </header>

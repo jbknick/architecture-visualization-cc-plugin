@@ -22,6 +22,7 @@ import { expandedIds, withExpanded } from "../views/egoGroups.ts";
 import { ConsumerTiers } from "../views/ReviewConsumers.tsx";
 import { reviewFocus } from "../views/reviewFocus.ts";
 import { CHANGE_WORDS, markKindOf } from "../views/reviewModel.ts";
+import { CurationActions } from "./CurationActions.tsx";
 import { KindBadge } from "./KindBadge.tsx";
 import { SourcePreview } from "./SourcePreview.tsx";
 import { Button } from "./ui/button.tsx";
@@ -403,11 +404,15 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
   const body = current?.node;
 
   const kind = body?.kind ?? hit?.kind ?? graphNode?.kind ?? null;
-  const name =
+  const plainName =
     (body ? (body.kind === "file" ? baseName(body.name) : body.name) : undefined) ??
     hit?.name ??
     graphNode?.label ??
     shortLabel(id);
+  // A person-set label replaces the name; the name it replaced stays visible under it.
+  const labelText = state.overlay?.labels.find((l) => l.nodeId === id)?.text ?? null;
+  const name = labelText ?? plainName;
+  const labelOriginal = labelText === null ? null : (graphNode?.labelOriginal ?? plainName);
   const path = body?.path ?? hit?.path ?? graphNode?.path ?? null;
   const line = body?.line ?? hit?.line ?? null;
   const endLine = body?.endLine ?? (line !== null ? line + SOURCE_LINES - 1 : null);
@@ -455,6 +460,11 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
             <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
           </Button>
         </div>
+        {labelOriginal !== null && (
+          <p className="muted label-original">
+            Original name: <code>{labelOriginal}</code>
+          </p>
+        )}
         {kind && <KindBadge kind={kind} />}
         {isSymbol && current && m2Of(graphNode?.badges).length > 0 && (
           <ul className="badges" aria-label="Function badges">
@@ -527,6 +537,7 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
             </Button>
           )}
         </div>
+        <CurationActions id={id} />
       </div>
 
       {error && !current && known && !reviewChange && (

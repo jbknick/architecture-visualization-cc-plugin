@@ -18,6 +18,7 @@ import { duplicatesDismiss, duplicatesSource, duplicatesView, rememberScenario }
 import { buildHierarchy } from "./hierarchy.ts";
 import { egoHub, hubCounts, hubNode } from "./hubEgo.ts";
 import { type Counts, largeMapCounts, largeMapNode, projectMapLarge } from "./largeMap.ts";
+import { handleMockOverlayWrite, isMockOverlayRoute, mockOverlay } from "./overlay.ts";
 import { checkRange, reviewData, ringsView } from "./review.ts";
 
 export const meta: Meta = {
@@ -1245,8 +1246,9 @@ let hierarchy: ReturnType<typeof buildHierarchy> | undefined;
 let synthetic: ReturnType<typeof generateSynthetic> | undefined;
 
 /** Mock of the write routes (`PUT /api/dismiss`); null for any other path. */
-export function handleMockWrite(url: URL, body: unknown): MockResponse | null {
+export function handleMockWrite(url: URL, body: unknown, method = "PUT"): MockResponse | null {
   if (url.pathname === "/api/dismiss") return duplicatesDismiss(body);
+  if (isMockOverlayRoute(url.pathname)) return handleMockOverlayWrite(method, url.pathname, body);
   return null;
 }
 
@@ -1288,6 +1290,8 @@ export function handleMockApi(url: URL): MockResponse | null {
   const path = url.pathname;
   if (path === "/api/meta")
     return { status: 200, body: metaFor(url.searchParams.get("scenario"), url.searchParams.get("view")) };
+
+  if (path === "/api/overlay") return { status: 200, body: mockOverlay() };
 
   if (path.startsWith("/api/layout/")) {
     const view = decodeURIComponent(path.slice("/api/layout/".length));

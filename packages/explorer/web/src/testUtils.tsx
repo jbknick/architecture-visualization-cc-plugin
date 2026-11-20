@@ -2,6 +2,7 @@
 import { cleanup, type RenderResult, render } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 import { handleMockApi, handleMockWrite, type MockResponse } from "../mock/fixture.ts";
+import { resetMockOverlay } from "../mock/overlay.ts";
 import { App } from "./App.tsx";
 import { StoreProvider } from "./store.tsx";
 
@@ -16,6 +17,7 @@ if (typeof globalThis.ResizeObserver === "undefined") {
 
 afterEach(() => {
   cleanup();
+  resetMockOverlay();
   vi.unstubAllGlobals();
   window.location.hash = "";
 });
@@ -28,9 +30,12 @@ export function installMockFetch(override?: Override) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), "http://127.0.0.1");
     calls.push(url.pathname + url.search);
+    const method = init?.method ?? "GET";
     const write =
-      init?.method === "PUT" ? handleMockWrite(url, JSON.parse(String(init.body ?? "null"))) : null;
-    if (init?.method === "PUT") calls.push(`PUT ${url.pathname} ${String(init.body ?? "")}`);
+      method === "GET"
+        ? null
+        : handleMockWrite(url, init?.body ? JSON.parse(String(init.body)) : null, method);
+    if (method !== "GET") calls.push(`${method} ${url.pathname} ${String(init?.body ?? "")}`.trimEnd());
     const res = write ?? override?.(url) ?? handleMockApi(url) ?? { status: 404, body: {} };
     return new Response(JSON.stringify(res.body), {
       status: res.status,
