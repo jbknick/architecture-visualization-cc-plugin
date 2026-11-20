@@ -53,6 +53,8 @@ export interface IndexOptions {
 }
 
 const READ_CONCURRENCY = 16;
+/** Files parsed between two turns of the event loop (see `eventLoopTurn`). */
+const TURN_EVERY = 100;
 const TX_BATCH = 200;
 const FUNCTION_LIKE: ReadonlySet<SymbolKind> = new Set(["function", "method", "component", "hook"]);
 
@@ -95,6 +97,14 @@ function importNeedles(paths: string[], workspaces: WorkspaceRecord[]): string[]
   for (const n of quoted) out.push(`"${n}"`, `'${n}'`);
   return out;
 }
+
+/**
+ * Lets the event loop run once. The tree-sitter trees behind the Go parser (`@ast-grep/napi`) are freed by finalizers
+ * that Node queues for the next turn of the loop, so a loop that never yields keeps every tree it has dropped. On
+ * grafana (7,200 Go files) the parse loop alone held 3.9 GiB of native memory, against 1.7 GiB with a turn every
+ * `TURN_EVERY` files (#358). Call it inside any long loop that parses Go.
+ */
+const eventLoopTurn = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
 async function mapPool<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out = new Array<R>(items.length);
@@ -241,7 +251,9 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     try {
       const cached = cache?.loadAll();
       const fresh: { path: string; hash: string; data: string }[] = [];
+      let parsedCount = 0;
       for (const e of present) {
+        if (++parsedCount % TURN_EVERY === 0) await eventLoopTurn();
         const hit = cached?.get(e.path);
         if (hit && hit.hash === `${repo}\n${e.contentHash}`) {
           parsed.setRaw(e.id, hit.data);
@@ -465,6 +477,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
         for (const e of batch) writeOne(e);
       });
       ftsRowids = null;
+      await eventLoopTurn();
     }
 
     store.tx(() => {
