@@ -1,7 +1,11 @@
 {
   "version": 1,
   "dependencies": [
-    { "name": "express", "role": "framework", "note": "HTTP framework: express(), Router(), app.use, router.get/post" },
+    {
+      "name": "express",
+      "role": "framework",
+      "note": "HTTP framework: express(), Router(), app.use, router.get/post"
+    },
     { "name": "express-rate-limit", "role": "neither", "note": "middleware, mounted but registers no route" },
     { "name": "mongodb", "role": "data-access", "note": "document store driver" },
     { "name": "zod", "role": "neither", "note": "request schemas" }
@@ -37,7 +41,13 @@
       "when": { "dependency": ["express"] },
       "rule": { "pattern": "$P.use($X, $$$C)" },
       "constraints": { "X": { "any": [{ "kind": "string" }, { "kind": "template_string" }] } },
-      "emit": { "kind": "mount", "parent": "$P", "prefix": "$X", "child": "$$$C", "data": { "adapter": "express" } },
+      "emit": {
+        "kind": "mount",
+        "parent": "$P",
+        "prefix": "$X",
+        "child": "$$$C",
+        "data": { "adapter": "express" }
+      },
       "examples": {
         "match": ["app.use(\"/api\", apiRouter);"],
         "noMatch": ["app.use(apiRouter);"]
@@ -110,7 +120,10 @@
         "data": { "adapter": "express" }
       },
       "examples": {
-        "match": ["router.post(\"/auth/sign-in\", guard, validate(schema), signIn);", "app.get(\"/health\", (req, res) => res.send(\"ok\"));"],
+        "match": [
+          "router.post(\"/auth/sign-in\", guard, validate(schema), signIn);",
+          "app.get(\"/health\", (req, res) => res.send(\"ok\"));"
+        ],
         "noMatch": ["app.use(\"/health\", handler);", "map.has(\"k\");"]
       }
     }

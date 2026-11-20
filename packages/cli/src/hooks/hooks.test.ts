@@ -706,13 +706,13 @@ describe("entry points", () => {
       err: "",
     });
     expect(versionOf()).toBe("6");
-    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 11)");
+    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 12)");
 
     // The next non-hook command rebuilds from scratch, with one message naming the reason.
     const init = gantry(fx.dir, ["init"]);
     expect(init.code).toBe(0);
     expect(
-      init.err.split("built by an older version of Gantry (schema 6, now 11); rebuilding it").length - 1,
+      init.err.split("built by an older version of Gantry (schema 6, now 12); rebuilding it").length - 1,
     ).toBe(1);
     expect(versionOf()).toBe("12");
   });

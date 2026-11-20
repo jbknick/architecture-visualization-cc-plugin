@@ -52,7 +52,7 @@ describe("a store from another version of Gantry", () => {
       caught = err;
     }
     expect(caught).toBeInstanceOf(StaleStoreError);
-    expect(caught).toMatchObject({ found: 6, expected: 11, dbPath });
+    expect(caught).toMatchObject({ found: 6, expected: 12, dbPath });
     // Refusing it changes nothing.
     const raw = new Database(dbPath, { readonly: true });
     expect(raw.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get()).toEqual({ value: "6" });

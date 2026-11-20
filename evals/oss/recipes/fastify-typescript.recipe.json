@@ -1,7 +1,11 @@
 {
   "version": 1,
   "dependencies": [
-    { "name": "fastify", "role": "framework", "note": "HTTP framework: fastify(), register(plugin, { prefix }), server.get/post" },
+    {
+      "name": "fastify",
+      "role": "framework",
+      "note": "HTTP framework: fastify(), register(plugin, { prefix }), server.get/post"
+    },
     { "name": "@fastify/cors", "role": "neither", "note": "plugin, registers no route" },
     { "name": "@fastify/formbody", "role": "neither", "note": "plugin, registers no route" },
     { "name": "@fastify/helmet", "role": "neither", "note": "plugin, registers no route" },
@@ -45,7 +49,13 @@
       "language": "typescript",
       "when": { "dependency": ["fastify"] },
       "rule": { "pattern": "$PARENT.register($C)" },
-      "emit": { "kind": "mount", "parent": "$PARENT", "child": "$C", "childIsScope": true, "data": { "adapter": "fastify" } },
+      "emit": {
+        "kind": "mount",
+        "parent": "$PARENT",
+        "child": "$C",
+        "childIsScope": true,
+        "data": { "adapter": "fastify" }
+      },
       "examples": {
         "match": ["server.register(userRouter);"],
         "noMatch": ["server.get(\"/\", handler);"]
@@ -69,7 +79,10 @@
         "data": { "adapter": "fastify" }
       },
       "examples": {
-        "match": ["server.get(\"/health\", async (request, reply) => reply.send({}));", "fastify.post(\"/login\", { schema }, controllers.login);"],
+        "match": [
+          "server.get(\"/health\", async (request, reply) => reply.send({}));",
+          "fastify.post(\"/login\", { schema }, controllers.login);"
+        ],
         "noMatch": ["server.register(plugin, { prefix: \"/x\" });", "cache.has(\"k\");"]
       }
     }

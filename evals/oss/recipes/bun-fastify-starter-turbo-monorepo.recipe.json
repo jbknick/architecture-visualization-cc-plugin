@@ -1,11 +1,36 @@
 {
   "version": 1,
   "dependencies": [
-    { "name": "fastify", "workspace": "backend", "role": "framework", "note": "HTTP framework: Fastify(), register(plugin, { prefix }), fastify.get/post" },
-    { "name": "fastify-plugin", "workspace": "backend", "role": "neither", "note": "fp(plugin) wraps a plugin function; the wrapped function is the scope" },
-    { "name": "@fastify/cors", "workspace": "backend", "role": "neither", "note": "plugin, registers no route" },
-    { "name": "@fastify/swagger", "workspace": "backend", "role": "neither", "note": "plugin, registers no route of the app" },
-    { "name": "@fastify/swagger-ui", "workspace": "backend", "role": "neither", "note": "plugin serving /docs, not a route of the app's own" },
+    {
+      "name": "fastify",
+      "workspace": "backend",
+      "role": "framework",
+      "note": "HTTP framework: Fastify(), register(plugin, { prefix }), fastify.get/post"
+    },
+    {
+      "name": "fastify-plugin",
+      "workspace": "backend",
+      "role": "neither",
+      "note": "fp(plugin) wraps a plugin function; the wrapped function is the scope"
+    },
+    {
+      "name": "@fastify/cors",
+      "workspace": "backend",
+      "role": "neither",
+      "note": "plugin, registers no route"
+    },
+    {
+      "name": "@fastify/swagger",
+      "workspace": "backend",
+      "role": "neither",
+      "note": "plugin, registers no route of the app"
+    },
+    {
+      "name": "@fastify/swagger-ui",
+      "workspace": "backend",
+      "role": "neither",
+      "note": "plugin serving /docs, not a route of the app's own"
+    },
     { "name": "kysely", "workspace": "backend", "role": "data-access", "note": "query builder" }
   ],
   "helpers": ["resolve-names", "const-strings", "mount-graph", "param-flow"],
@@ -45,7 +70,13 @@
       "language": "typescript",
       "when": { "dependency": ["fastify"] },
       "rule": { "pattern": "$PARENT.register(fp($C))" },
-      "emit": { "kind": "mount", "parent": "$PARENT", "child": "$C", "childIsScope": true, "data": { "adapter": "fastify" } },
+      "emit": {
+        "kind": "mount",
+        "parent": "$PARENT",
+        "child": "$C",
+        "childIsScope": true,
+        "data": { "adapter": "fastify" }
+      },
       "examples": {
         "match": ["fastify.register(fp(registerResourceRoutes));"],
         "noMatch": ["fastify.register(registerResourceRoutes);"]
@@ -74,7 +105,13 @@
       "language": "typescript",
       "when": { "dependency": ["fastify"] },
       "rule": { "pattern": "$PARENT.register($C)" },
-      "emit": { "kind": "mount", "parent": "$PARENT", "child": "$C", "childIsScope": true, "data": { "adapter": "fastify" } },
+      "emit": {
+        "kind": "mount",
+        "parent": "$PARENT",
+        "child": "$C",
+        "childIsScope": true,
+        "data": { "adapter": "fastify" }
+      },
       "examples": {
         "match": ["fastify.register(createEMailUserRoute);"],
         "noMatch": ["fastify.get(\"/\", handler);"]
@@ -98,7 +135,10 @@
         "data": { "adapter": "fastify" }
       },
       "examples": {
-        "match": ["fastify.get(\"/\", async (_, reply) => { reply.send(\"OK\"); });", "fastify.post(\"/email\", { schema }, handler);"],
+        "match": [
+          "fastify.get(\"/\", async (_, reply) => { reply.send(\"OK\"); });",
+          "fastify.post(\"/email\", { schema }, handler);"
+        ],
         "noMatch": ["fastify.register(plugin, { prefix: \"/x\" });", "cache.has(\"k\");"]
       }
     }
