@@ -49,3 +49,9 @@ Two Go modules, no TypeScript (`go.work` uses `.` and `./tools`). Used by the `g
 - `internal/gen/zz_generated.go`: generated header, indexed with the `generated` directive.
 - `vendor/example.com/dep/dep.go`: skipped.
 - `tools/go.mod` (`example.com/gobasic/tools`, requires the first module): a second workspace and a `depends_on` edge.
+
+## overlay-groups
+One package, `@demo/shop`, for the group boundary warnings (#289).
+- `src/orders/invoice.ts` (`totalDue`), `src/catalog/price.ts` (`formatPrice`) and `src/catalog/cart.ts` (`cartTotal`, which imports and calls `totalDue`).
+- `groups.json` is test data, not read by Gantry: group `orders` (`src/orders/**`, `mayUse: []`) and group `catalog` (`src/catalog/**`, `mayUse: ["orders"]`). `cart.ts` uses orders, which catalog lists, so it is not a crossing.
+- `invoice.edited.txt` is the edit the tests apply to `src/orders/invoice.ts`: it imports and calls `formatPrice`, which Orders does not list.
