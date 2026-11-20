@@ -16,6 +16,10 @@ Set `MOCK_PORT` if 4173 is taken. The mock's `scenario=large|hub|hub-thin|dups` 
 
 Top bar (repo, short sha, view tabs, search, Cmd/Ctrl+K), left slot (filters, collapsible), center slot (canvas), right inspector (opens when `focus` is set), status bar.
 
+## UI kit
+
+The chrome is built from SmoothUI components (`src/components/smoothui/`, listed with their registry URLs in `SOURCES.md` there) and shadcn primitives on the Base UI `base-nova` style (`src/components/ui/`), with Hugeicons (`HugeiconsIcon` from `@hugeicons/react`, icons from `@hugeicons/core-free-icons`) for every icon. Add a SmoothUI component with `pnpm dlx shadcn@latest add @smoothui/<name>` (the CLI is not a dependency; `components.json` carries the registry), then move the files from `src/` to `web/src/components/smoothui/`, replace any icon import the component brings with a Hugeicons icon, keep the MIT notice at the top and add a row to `SOURCES.md`. Tailwind CSS 4 loads the theme scale and the utilities only (no preflight); the shadcn colour names point at the explorer's own tokens in `styles.css`, so light and dark follow `prefers-color-scheme`. Every animation is off under `prefers-reduced-motion: reduce`; the Playwright specs and `pnpm readme:media` force it. `e2e/ui-kit.spec.ts` opens every view in light and dark against the built CLI.
+
 ## Files
 
 - `src/api.ts`: the only module that calls the server. Types for `GraphNode`, `GraphEdge`, `Meta`, `NodeDetail`, `SearchHit`.

@@ -1,7 +1,10 @@
+import { Search01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useSearchHits } from "../hooks.ts";
 import { useStore } from "../store.tsx";
 import { KindBadge } from "./KindBadge.tsx";
+import { Input } from "./ui/input.tsx";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
@@ -45,8 +48,15 @@ export function SearchBox() {
 
   return (
     <div className="search">
-      <input
+      <HugeiconsIcon
+        icon={Search01Icon}
+        size={16}
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
+      />
+      <Input
         ref={inputRef}
+        className="h-9 bg-background pr-14 pl-8"
         type="search"
         role="combobox"
         aria-label="Search symbols"

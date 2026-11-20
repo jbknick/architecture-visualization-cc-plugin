@@ -1,5 +1,8 @@
+import { Loading03Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useMemo, useState } from "react";
 import { api, type FocusChoice } from "../api.ts";
+import { Input } from "../components/ui/input.tsx";
 import { useStore } from "../store.tsx";
 
 /** Choices listed per group before "and n more". */
@@ -60,12 +63,21 @@ export function FlowFocusPrompt({ viewId, notice }: { viewId: string; notice?: s
         </p>
       )}
       {error && <p role="alert">{error}</p>}
-      {choices === null && !error && <p className="muted">Loading…</p>}
+      {choices === null && !error && (
+        <p className="muted inline-flex items-center gap-1.5">
+          <HugeiconsIcon
+            icon={Loading03Icon}
+            size={14}
+            aria-hidden="true"
+            className="animate-spin motion-reduce:animate-none"
+          />
+          Loading…
+        </p>
+      )}
       {choices && (
         <>
-          <input
+          <Input
             type="search"
-            className="text-input"
             aria-label={text.search}
             placeholder={text.search}
             value={q}

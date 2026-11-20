@@ -1,3 +1,5 @@
+import { Alert02Icon, Loading03Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useMemo } from "react";
 import { tokenizeLines } from "../highlight.ts";
 import { useSource } from "../hooks.ts";
@@ -12,8 +14,27 @@ export function SourcePreview({ path, start, end }: Props) {
   const { data, loading, error } = useSource(path, start, end);
   const lines = useMemo(() => (data ? tokenizeLines(data.lines) : []), [data]);
 
-  if (error && !data) return <p className="muted">Source is not available for this file.</p>;
-  if (!data) return <p className="muted">{loading ? "Loading source…" : ""}</p>;
+  if (error && !data)
+    return (
+      <p className="muted inline-flex items-center gap-1.5">
+        <HugeiconsIcon icon={Alert02Icon} size={14} aria-hidden="true" />
+        Source is not available for this file.
+      </p>
+    );
+  if (!data)
+    return (
+      <p className="muted inline-flex items-center gap-1.5">
+        {loading && (
+          <HugeiconsIcon
+            icon={Loading03Icon}
+            size={14}
+            aria-hidden="true"
+            className="animate-spin motion-reduce:animate-none"
+          />
+        )}
+        {loading ? "Loading source…" : ""}
+      </p>
+    );
 
   return (
     // biome-ignore lint/a11y/noNoninteractiveTabindex lint/a11y/useAriaPropsSupportedByRole: scrollable code needs keyboard focus and a name

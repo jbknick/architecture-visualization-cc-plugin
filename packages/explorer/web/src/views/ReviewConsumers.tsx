@@ -1,3 +1,5 @@
+import { Layers01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import type { ReviewConsumer, ReviewConsumers } from "../api.ts";
 import {
   CROSSING_WORDS,
@@ -35,6 +37,7 @@ function Tier({
   return (
     <div className={`rv-consumer-${tier}`} data-tier={tier}>
       <h4>
+        <HugeiconsIcon icon={Layers01Icon} size={12} aria-hidden="true" className="mr-1 inline-block" />
         {title} ({total})
       </h4>
       {list.length === 0 ? (

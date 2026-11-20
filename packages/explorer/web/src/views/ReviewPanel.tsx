@@ -1,5 +1,10 @@
+import { GitCompareIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import type { Filters, ViewLevel } from "../api.ts";
+import { Segment } from "../components/Segment.tsx";
+import { Button } from "../components/ui/button.tsx";
+import { Input } from "../components/ui/input.tsx";
 import type { FilterPanelProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { ConsumerTiers } from "./ReviewConsumers.tsx";
@@ -109,7 +114,7 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
         <h3>Range</h3>
         <label className="rv-range">
           <span className="muted">Base...head (git refs)</span>
-          <input
+          <Input
             type="text"
             value={range}
             placeholder="main...HEAD"
@@ -118,9 +123,10 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
             onChange={(e) => setRange(e.target.value)}
           />
         </label>
-        <button type="submit" className="btn">
+        <Button variant="outline" type="submit">
+          <HugeiconsIcon icon={GitCompareIcon} size={14} aria-hidden="true" />
           Review
-        </button>
+        </Button>
         {filters.pr && !filters.range && <p className="muted">Pull request #{filters.pr}</p>}
       </form>
 
@@ -128,20 +134,16 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
         <h3>View</h3>
         <div className="segmented" role="radiogroup" aria-label="View">
           {MODES.map((m) => (
-            // biome-ignore lint/a11y/useSemanticElements: a segmented control is a radio group of buttons
-            <button
+            <Segment
+              checked={mode === m.id}
               key={m.id}
-              type="button"
-              role="radio"
-              aria-checked={mode === m.id}
               title={m.hint}
-              className="segment"
               onClick={() =>
                 onFiltersChange(m.id === "map" ? without(filters, "mode") : { ...filters, mode: m.id })
               }
             >
               {m.label}
-            </button>
+            </Segment>
           ))}
         </div>
       </section>
@@ -151,37 +153,29 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
           <h3>Map</h3>
           <div className="segmented" role="radiogroup" aria-label="Map">
             {MAPS.map((m) => (
-              // biome-ignore lint/a11y/useSemanticElements: a segmented control is a radio group of buttons
-              <button
+              <Segment
+                checked={map === m.id}
                 key={m.id}
-                type="button"
-                role="radio"
-                aria-checked={map === m.id}
                 title={m.hint}
-                className="segment"
                 onClick={() =>
                   onFiltersChange(m.id === "2d" ? without(filters, "map") : { ...filters, map: m.id })
                 }
               >
                 {m.label}
-              </button>
+              </Segment>
             ))}
           </div>
           {map === "2d" ? (
             <div className="segmented rv-levels" role="radiogroup" aria-label="Detail level">
               {LEVELS.map((l) => (
-                // biome-ignore lint/a11y/useSemanticElements: a segmented control is a radio group of buttons
-                <button
+                <Segment
+                  checked={level === l.id}
                   key={l.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={level === l.id}
                   title={l.hint}
-                  className="segment"
                   onClick={() => onRouteChange?.({ level: l.id })}
                 >
                   {l.label}
-                </button>
+                </Segment>
               ))}
             </div>
           ) : (
@@ -195,14 +189,10 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
           <h3>Show</h3>
           <div className="segmented rv-show" role="radiogroup" aria-label="Show">
             {SHOW_CHOICES.map((c) => (
-              // biome-ignore lint/a11y/useSemanticElements: a segmented control is a radio group of buttons
-              <button
+              <Segment
+                checked={show === c.id}
                 key={c.id}
-                type="button"
-                role="radio"
-                aria-checked={show === c.id}
                 title={c.hint}
-                className="segment"
                 onClick={() =>
                   onFiltersChange(
                     c.id === "potential" ? without(filters, SHOW_KEY) : { ...filters, [SHOW_KEY]: c.id },
@@ -210,7 +200,7 @@ export function ReviewPanel({ data, filters, onFiltersChange, route, onRouteChan
                 }
               >
                 {c.label}
-              </button>
+              </Segment>
             ))}
           </div>
         </section>

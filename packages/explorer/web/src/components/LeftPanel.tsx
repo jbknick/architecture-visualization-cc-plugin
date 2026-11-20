@@ -1,7 +1,10 @@
+import { ArrowLeft01Icon, ArrowRight01Icon, FilterIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import type { Filters, GraphEdge, GraphNode, ViewData } from "../api.ts";
 import type { Route } from "../route.ts";
 import { getFilterPanel } from "../slots.ts";
 import { KINDS } from "../theme.ts";
+import { Button } from "./ui/button.tsx";
 
 interface Props {
   open: boolean;
@@ -41,19 +44,23 @@ export function LeftPanel({
     ((viewId !== "project-map" && viewId !== "slices") || route?.level === "symbols");
   return (
     <aside className={`left ${open ? "" : "is-collapsed"}`} aria-label="Filters">
-      <button
-        type="button"
-        className="icon-btn left-toggle"
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="left-toggle"
         onClick={onToggle}
         aria-expanded={open}
         aria-label={open ? "Collapse filters" : "Expand filters"}
         title={open ? "Collapse filters" : "Expand filters"}
       >
-        {open ? "‹" : "›"}
-      </button>
+        <HugeiconsIcon icon={open ? ArrowLeft01Icon : ArrowRight01Icon} size={16} aria-hidden="true" />
+      </Button>
       {open && (
         <div className="left-body">
-          <h2 className="panel-title">Filters</h2>
+          <h2 className="panel-title">
+            <HugeiconsIcon icon={FilterIcon} size={14} aria-hidden="true" />
+            Filters
+          </h2>
           {Panel && viewId ? (
             <Panel
               viewId={viewId}

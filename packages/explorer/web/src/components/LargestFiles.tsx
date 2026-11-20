@@ -1,4 +1,7 @@
+import { FileSearchIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { type RankedFile, whereLine } from "../rankedFiles/rank.ts";
+import { NativeSelect } from "./ui/native-select.tsx";
 
 export interface LargestFilesProps {
   files: RankedFile[];
@@ -34,10 +37,14 @@ export function LargestFiles({
 }: LargestFilesProps) {
   return (
     <section className="largest-files" aria-label="Largest files" data-testid="largest-files">
-      <h3 className="panel-title">Largest files</h3>
+      <h3 className="panel-title">
+        <HugeiconsIcon icon={FileSearchIcon} size={14} aria-hidden="true" />
+        Largest files
+      </h3>
       <label className="largest-scope">
         <span>Top files in:</span>
-        <select
+        <NativeSelect
+          size="sm"
           aria-label="Top files in"
           value={scope ?? ""}
           onChange={(e) => onScope(e.target.value === "" ? null : e.target.value)}
@@ -48,7 +55,7 @@ export function LargestFiles({
               {s.label}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </label>
       {files.length === 0 ? (
         <p className="muted">No files to rank.</p>

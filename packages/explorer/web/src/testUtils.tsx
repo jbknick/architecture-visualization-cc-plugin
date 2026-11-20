@@ -5,6 +5,15 @@ import { handleMockApi, handleMockWrite, type MockResponse } from "../mock/fixtu
 import { App } from "./App.tsx";
 import { StoreProvider } from "./store.tsx";
 
+// jsdom has no ResizeObserver; the UI kit's tab indicator measures with one.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();

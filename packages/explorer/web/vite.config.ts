@@ -1,5 +1,6 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -10,7 +11,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   root: here,
   base: "./",
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: { alias: { "@": resolve(here, "src") } },
   worker: { format: "es" },
   build: {
     outDir: resolve(here, "../../../plugin/dist/explorer"),

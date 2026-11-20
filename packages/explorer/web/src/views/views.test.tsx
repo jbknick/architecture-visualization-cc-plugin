@@ -8,6 +8,9 @@ import { orderNodes } from "../components/ListCanvas.tsx";
 import { installMockFetch, renderApp } from "../testUtils.tsx";
 import { breadcrumbTrail } from "./ProjectMapPanel.tsx";
 
+/** The kit's checkbox is a `role="checkbox"` element, not an `<input>`: its state is `aria-checked`. */
+const isChecked = (el: HTMLElement) => el.getAttribute("aria-checked") === "true";
+
 /** The `/api/view/<id>` requests made so far, with their query parsed. */
 function viewCalls(calls: string[], view: string) {
   return calls
@@ -97,7 +100,7 @@ describe("project map filter panel", () => {
     const section = await screen.findByRole("region", { name: "Workspaces" });
     // Rows show the short name (the server strips the shared `@acme/` scope) and the workspace's own counts.
     const web = await within(section).findByRole("checkbox", { name: /^web/ });
-    expect((web as HTMLInputElement).checked).toBe(true);
+    expect(isChecked(web)).toBe(true);
     expect(within(section).getAllByRole("checkbox")).toHaveLength(5);
     expect(section.querySelectorAll(".kind-dot")).toHaveLength(5);
     expect(section.querySelectorAll(".check-note")).toHaveLength(5);
@@ -112,8 +115,8 @@ describe("project map filter panel", () => {
     );
     await waitFor(() => expect(screen.queryByRole("option", { name: /@acme\/web/ })).toBeNull());
     // Still listed, now unticked, so it can be switched back on.
-    const again = within(section).getByRole("checkbox", { name: /^web/ }) as HTMLInputElement;
-    expect(again.checked).toBe(false);
+    const again = within(section).getByRole("checkbox", { name: /^web/ });
+    expect(isChecked(again)).toBe(false);
     fireEvent.click(within(section).getByRole("button", { name: "Show all workspaces" }));
     await waitFor(() => expect(hashParams().has("workspaces")).toBe(false));
   });
@@ -122,12 +125,10 @@ describe("project map filter panel", () => {
     installMockFetch();
     // The kind colours matter only once functions are drawn, so the checkboxes appear at that level.
     renderApp("#/project-map?level=symbols");
-    const hideTests = (await screen.findByRole("checkbox", { name: "Hide tests" })) as HTMLInputElement;
-    expect(hideTests.checked).toBe(true);
-    expect((screen.getByRole("checkbox", { name: "Exported only" }) as HTMLInputElement).checked).toBe(false);
-    expect((screen.getByRole("checkbox", { name: "Show npm packages" }) as HTMLInputElement).checked).toBe(
-      false,
-    );
+    const hideTests = await screen.findByRole("checkbox", { name: "Hide tests" });
+    expect(isChecked(hideTests)).toBe(true);
+    expect(isChecked(screen.getByRole("checkbox", { name: "Exported only" }))).toBe(false);
+    expect(isChecked(screen.getByRole("checkbox", { name: "Show npm packages" }))).toBe(false);
 
     fireEvent.click(hideTests);
     await waitFor(() => expect(hashParams().get("hideTests")).toBe("false"));
@@ -140,9 +141,9 @@ describe("project map filter panel", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Hide tests" }));
     await waitFor(() => expect(hashParams().has("hideTests")).toBe(false));
 
-    const hooks = screen.getByRole("checkbox", { name: "Hooks" }) as HTMLInputElement;
-    expect(hooks.checked).toBe(true);
-    expect((screen.getByRole("checkbox", { name: "Classes" }) as HTMLInputElement).checked).toBe(false);
+    const hooks = screen.getByRole("checkbox", { name: "Hooks" });
+    expect(isChecked(hooks)).toBe(true);
+    expect(isChecked(screen.getByRole("checkbox", { name: "Classes" }))).toBe(false);
     fireEvent.click(hooks);
     await waitFor(() => expect(hashParams().get("kinds")).toBe("function|method|component"));
   });
@@ -166,7 +167,9 @@ describe("going into a node", () => {
     await waitFor(() => expect(lastMain(calls, "project-map")?.get("focus")).toBe(ids.uiWs));
 
     const trail = await screen.findByRole("navigation", { name: "Breadcrumb" });
-    expect(within(trail).getByText("@acme/ui").getAttribute("aria-current")).toBe("location");
+    expect(within(trail).getByText("@acme/ui").closest("[aria-current]")?.getAttribute("aria-current")).toBe(
+      "location",
+    );
     expect(screen.getByText(/Showing what is directly inside @acme\/ui/)).toBeTruthy();
     // Only that workspace's subtree: no other workspace is a row.
     expect(screen.queryByRole("option", { name: /@acme\/web/ })).toBeNull();
@@ -176,7 +179,9 @@ describe("going into a node", () => {
     await waitFor(() => expect(hashParams().get("focus")).toBe(ids.uiSrcDir));
     const deeper = await screen.findByRole("navigation", { name: "Breadcrumb" });
     await waitFor(() =>
-      expect(within(deeper).getByText("src").getAttribute("aria-current")).toBe("location"),
+      expect(within(deeper).getByText("src").closest("[aria-current]")?.getAttribute("aria-current")).toBe(
+        "location",
+      ),
     );
 
     // A link back up.
@@ -274,8 +279,8 @@ describe("ego view", () => {
     await waitFor(() => expect(hashParams().has("hops")).toBe(false));
 
     // Defaults: calls, renders and hooks on; imports off.
-    expect((screen.getByRole("checkbox", { name: "Calls" }) as HTMLInputElement).checked).toBe(true);
-    expect((screen.getByRole("checkbox", { name: "Imports" }) as HTMLInputElement).checked).toBe(false);
+    expect(isChecked(screen.getByRole("checkbox", { name: "Calls" }))).toBe(true);
+    expect(isChecked(screen.getByRole("checkbox", { name: "Imports" }))).toBe(false);
     fireEvent.click(screen.getByRole("checkbox", { name: "Renders" }));
     await waitFor(() => expect(hashParams().get("edgeKinds")).toBe("calls|uses_hook"));
     await waitFor(() => expect(screen.queryByRole("option", { name: /Button/ })).toBeNull());
@@ -293,8 +298,8 @@ describe("ego view", () => {
   it("never lets the last connection type be switched off", async () => {
     installMockFetch();
     renderApp(`#/ego?focus=${encodeURIComponent(ids.postList)}&edgeKinds=calls`);
-    const calls = (await screen.findByRole("checkbox", { name: "Calls" })) as HTMLInputElement;
-    expect(calls.disabled).toBe(true);
+    const calls = await screen.findByRole("checkbox", { name: "Calls" });
+    expect(calls.getAttribute("aria-disabled") === "true").toBe(true);
   });
 
   it("says so when nothing is connected", async () => {

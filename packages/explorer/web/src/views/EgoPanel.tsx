@@ -1,6 +1,10 @@
+import { UnfoldLessIcon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useId, useMemo } from "react";
 import type { GraphNode } from "../api.ts";
 import { weightOf, workspaceRanks } from "../canvas/bowtieLayout.ts";
+import { Button } from "../components/ui/button.tsx";
+import { Checkbox } from "../components/ui/checkbox.tsx";
 import { isFileId } from "../ids.ts";
 import type { FilterPanelProps } from "../slots.ts";
 import { currentScheme } from "../theme.ts";
@@ -64,9 +68,8 @@ function GroupsSection({
         Large sides are grouped by workspace, then folder, then file. Click a group to open it.
       </p>
       <div className="group-actions">
-        <button
-          type="button"
-          className="btn"
+        <Button
+          variant="outline"
           disabled={collapsed.length === 0 || tooMany}
           title={
             tooMany
@@ -75,16 +78,17 @@ function GroupsSection({
           }
           onClick={() => onFiltersChange(withExpanded(filters, [...expanded, ...collapsed.map((g) => g.id)]))}
         >
+          <HugeiconsIcon icon={UnfoldMoreIcon} size={14} aria-hidden="true" />
           Expand all
-        </button>
-        <button
-          type="button"
-          className="btn"
+        </Button>
+        <Button
+          variant="outline"
           disabled={expanded.length === 0}
           onClick={() => onFiltersChange(withExpanded(filters, []))}
         >
+          <HugeiconsIcon icon={UnfoldLessIcon} size={14} aria-hidden="true" />
           Collapse all
-        </button>
+        </Button>
       </div>
       {tooMany && collapsed.length > 0 && (
         <p className="muted" role="note">
@@ -226,11 +230,10 @@ export function EgoPanel({ nodes, filters, onFiltersChange, route, onRouteChange
         <h3>Connection types</h3>
         {EDGE_KINDS.map((k) => (
           <label className="check" key={k.id} title={k.hint}>
-            <input
-              type="checkbox"
+            <Checkbox
               checked={kinds.includes(k.id)}
               disabled={kinds.length === 1 && kinds.includes(k.id)}
-              onChange={(e) => setKind(k.id, e.target.checked)}
+              onCheckedChange={(checked) => setKind(k.id, checked)}
             />
             <span className="check-label">{k.label}</span>
           </label>
@@ -240,10 +243,9 @@ export function EgoPanel({ nodes, filters, onFiltersChange, route, onRouteChange
       <section className="filter-group" aria-label="Certainty">
         <h3>Certainty</h3>
         <label className="check" title="Hide links that Gantry could only guess at">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={getBool(filters, "highConfidence", false)}
-            onChange={(e) => onFiltersChange(setBool(filters, "highConfidence", e.target.checked, false))}
+            onCheckedChange={(checked) => onFiltersChange(setBool(filters, "highConfidence", checked, false))}
           />
           <span className="check-label">High confidence only</span>
         </label>

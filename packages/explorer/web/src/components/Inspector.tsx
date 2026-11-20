@@ -1,3 +1,5 @@
+import { Cancel01Icon, Copy01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useState } from "react";
 import type {
   EndpointFacts,
@@ -22,6 +24,7 @@ import { reviewFocus } from "../views/reviewFocus.ts";
 import { CHANGE_WORDS, markKindOf } from "../views/reviewModel.ts";
 import { KindBadge } from "./KindBadge.tsx";
 import { SourcePreview } from "./SourcePreview.tsx";
+import { Button } from "./ui/button.tsx";
 
 const SOURCE_LINES = 40;
 
@@ -443,14 +446,14 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
       <div className="inspector-head">
         <div className="inspector-title">
           <h2 title={id}>{name}</h2>
-          <button
-            type="button"
-            className="icon-btn"
+          <Button
+            variant="ghost"
+            size="icon-sm"
             aria-label="Close inspector"
             onClick={() => selectNode(null)}
           >
-            ×
-          </button>
+            <HugeiconsIcon icon={Cancel01Icon} size={16} aria-hidden="true" />
+          </Button>
         </div>
         {kind && <KindBadge kind={kind} />}
         {isSymbol && current && m2Of(graphNode?.badges).length > 0 && (
@@ -469,23 +472,26 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
               {line !== null && isSymbol ? `:${line}` : ""}
             </code>
             <span className="copy-state" role="status">
+              <HugeiconsIcon icon={copied ? Tick02Icon : Copy01Icon} size={14} aria-hidden="true" />
               {copied ? "Copied" : "Copy"}
             </span>
           </button>
         )}
         <div className="inspector-actions">
-          <button
+          <Button
             type="button"
-            className="btn"
+            variant="outline"
+            size="sm"
             disabled={!canMap || !mapReady}
             title={canMap ? "Show this in the project map" : "The project map cannot centre on this"}
             onClick={() => openInView("project-map", mapTarget, id)}
           >
             Open in project map
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="btn"
+            variant="outline"
+            size="sm"
             disabled={!(isSymbol || isFile) || !egoReady}
             title={
               isSymbol || isFile
@@ -495,28 +501,30 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
             onClick={() => openInView("ego", id, id)}
           >
             Show callers &amp; callees
-          </button>
+          </Button>
           {(kindOfNode === "route" || kindOfNode === "endpoint") && (
-            <button
+            <Button
               type="button"
-              className="btn"
+              variant="outline"
+              size="sm"
               disabled={!flowReady("feature-path")}
               title="Follow this from the page to the tables"
               onClick={() => openInView("feature-path", id, id)}
             >
               Show feature path
-            </button>
+            </Button>
           )}
           {kindOfNode === "table" && (
-            <button
+            <Button
               type="button"
-              className="btn"
+              variant="outline"
+              size="sm"
               disabled={!flowReady("table-usage")}
               title="Who writes and reads this table"
               onClick={() => openInView("table-usage", id, id)}
             >
               Show table usage
-            </button>
+            </Button>
           )}
         </div>
       </div>
