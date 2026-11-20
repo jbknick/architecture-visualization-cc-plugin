@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type Recipe, RecipeShellSchema, ruleSchemaFor, zodMessage } from "./schema.js";
+import { MAX_TEXT_RULES, type Recipe, RecipeShellSchema, ruleSchemaFor, zodMessage } from "./schema.js";
 
 export const RECIPE_PATH = ".gantry/recipe.json";
 
@@ -64,6 +64,7 @@ export function parseRecipe(text: string): LoadedRecipe {
   const skipped: string[] = [];
   const rules: Recipe["rules"] = [];
   const seen = new Set<string>();
+  let textRules = 0;
   shell.data.rules.forEach((r, i) => {
     const rule = ruleSchemaFor(r).safeParse(r);
     const id =
@@ -75,6 +76,11 @@ export function parseRecipe(text: string): LoadedRecipe {
     }
     if (seen.has(rule.data.id)) {
       errors.push(`recipe rule ${id} skipped: duplicate rule id`);
+      skipped.push(id);
+      return;
+    }
+    if (rule.data.language === "text" && ++textRules > MAX_TEXT_RULES) {
+      errors.push(`recipe rule ${id} skipped: more than ${MAX_TEXT_RULES} text rules`);
       skipped.push(id);
       return;
     }

@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { lstatSync, readFileSync, realpathSync } from "node:fs";
+import { join, sep } from "node:path";
 import type { SgNode } from "@ast-grep/napi";
 import picomatch from "picomatch";
 import {
@@ -18,6 +18,7 @@ import { isNode, nodeArray, unwrap } from "../parse/ast.js";
 import type { EdgeRecord, WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
 import { captureNode, captureNodes, type FileFacts, type RuleMatch, rootOf, whenApplies } from "./engine.js";
+import { RegexRunner } from "./helpers/bounded-regex.js";
 import { findFunction, returnedExpressions } from "./helpers/call-return.js";
 import { classifyMethod } from "./helpers/method-classes.js";
 import { type ModelNaming, normalizeModel, tableCandidates } from "./helpers/model-naming.js";
@@ -32,13 +33,14 @@ import {
   scanSql,
 } from "./helpers/sql-text.js";
 import {
-  compileTextRule,
   groupValue,
   matchText,
+  runFailure,
   type TextMatch,
+  type TextRun,
   textRuleMatches,
 } from "./helpers/text-rules.js";
-import { isTextRule, type Recipe, type RecipeRule, type TextRecipeRule } from "./schema.js";
+import { isTextRule, MAX_TEXT_FILES, type Recipe, type RecipeRule, type TextRecipeRule } from "./schema.js";
 
 /**
  * Tables, and the code that reads and writes them, from a recipe (spec sections 5 and 9). The rules, the four
@@ -88,11 +90,23 @@ export function listTextFiles(root: string, globs: readonly string[]): { path: s
   } catch {
     return [];
   }
+  let realRoot: string;
+  try {
+    realRoot = realpathSync(root);
+  } catch {
+    return [];
+  }
   const out: { path: string; text: string }[] = [];
   for (const p of [...new Set(listed)].sort(cmp)) {
+    if (out.length >= MAX_TEXT_FILES) break;
     if (!picomatch.isMatch(p, [...globs], { dot: true })) continue;
     try {
-      const text = readFileSync(join(root, p), "utf8");
+      const abs = join(root, p);
+      // A symbolic link, or a path that resolves outside the repo (a linked directory), is never read.
+      if (lstatSync(abs).isSymbolicLink()) continue;
+      const real = realpathSync(abs);
+      if (!real.startsWith(realRoot + sep)) continue;
+      const text = readFileSync(real, "utf8");
       if (text.length <= MAX_TEXT_BYTES) out.push({ path: p, text });
     } catch {
       // deleted since it was listed
@@ -171,6 +185,9 @@ class DataAccess {
   private readonly alloc = new IdAllocator();
   private readonly accesses: Access[] = [];
   private readonly consts = new Map<string, Map<string, string>>();
+  private readonly runner = new RegexRunner();
+  /** Rules skipped for the rest of the run (a recipe regex that timed out or did not compile). */
+  private readonly skipped = new Set<string>();
   private readonly naming: ModelNaming | undefined;
   private readonly passthrough: ReadonlySet<string>;
 
@@ -183,14 +200,18 @@ class DataAccess {
   }
 
   run(): { nodes: AdapterNode[]; edges: EdgeRecord[] } {
-    const sqlRefs = this.sqlCandidates();
-    this.tablesFromRules();
-    this.tablesFromText();
-    this.tablesFromSqlFiles();
-    for (const c of sqlRefs) for (const r of c.refs) if (r.kind === "create") this.tableFromSql(c, r);
-    this.accessesFromRules();
-    for (const c of sqlRefs) for (const r of c.refs) if (r.kind !== "create") this.accessFromSql(c, r);
-    return { nodes: this.buildNodes(), edges: this.buildEdges() };
+    try {
+      const sqlRefs = this.sqlCandidates();
+      this.tablesFromRules();
+      this.tablesFromText();
+      this.tablesFromSqlFiles();
+      for (const c of sqlRefs) for (const r of c.refs) if (r.kind === "create") this.tableFromSql(c, r);
+      this.accessesFromRules();
+      for (const c of sqlRefs) for (const r of c.refs) if (r.kind !== "create") this.accessFromSql(c, r);
+      return { nodes: this.buildNodes(), edges: this.buildEdges() };
+    } finally {
+      this.runner.close();
+    }
   }
 
   // ------------------------------------------------------------------------------------------------------
@@ -310,17 +331,29 @@ class DataAccess {
     const files = listTextFiles(this.a.root, [...new Set(rules.flatMap((r) => r.files))]);
     const anchors = this.anchors();
     for (const rule of rules) {
-      const rx = compileTextRule(rule);
-      if (!rx) continue;
       for (const f of files) {
+        if (this.skipped.has(rule.id)) break;
         if (!textRuleMatches(rule, f.path)) continue;
         const ws = workspaceForPath([...this.a.workspaces], f.path);
         if (!whenApplies(rule.when, ws, this.a.workspaces)) continue;
         const anchor = anchors.get(ws.id);
         if (!anchor) continue;
-        for (const m of matchText(rx, f.text)) this.tableFromText(anchor, rule, f.path, m);
+        // The regex is the recipe's: it runs in the runner's worker under a time budget.
+        const r = matchText(this.runner, rule, f.text);
+        if (!r.ok) {
+          this.skipRule(rule.id, r);
+          break;
+        }
+        for (const m of r.matches) this.tableFromText(anchor, rule, f.path, m);
       }
     }
+  }
+
+  /** Skips a rule for the rest of the run, with one stderr line (never stdout: hooks print JSON there). */
+  private skipRule(id: string, r: Extract<TextRun, { ok: false }>): void {
+    if (this.skipped.has(id)) return;
+    this.skipped.add(id);
+    process.stderr.write(`Gantry: recipe rule ${id} skipped: ${runFailure(r, this.runner)}\n`);
   }
 
   /** The first extracted file of each workspace: a table declared in a text file belongs to it. */
@@ -556,6 +589,7 @@ class DataAccess {
   private accessFromMatch(file: AdapterFileContext, m: RuleMatch): void {
     const emit = m.rule.emit;
     if (emit.kind !== "read" && emit.kind !== "write") return;
+    if (this.skipped.has(m.rule.id)) return;
     if (emit.method) {
       const method = this.textOf(file, m, emit.method, true);
       if (!method || classifyMethod(method, this.recipe.methods) !== emit.kind) return;
@@ -571,13 +605,13 @@ class DataAccess {
       const decl = recv ? this.receiverDecl(file, recv) : null;
       if (decl) {
         for (const tpl of emit.receiverDecl) {
-          let rx: RegExp;
-          try {
-            rx = new RegExp(tpl.replaceAll("{prop}", escapeRe(decl.prop)), "s");
-          } catch {
-            continue;
+          // The pattern is the recipe's: it runs in the runner's worker under a time budget.
+          const r = this.runner.run(tpl.replaceAll("{prop}", escapeRe(decl.prop)), "s", decl.text, true);
+          if (!r.ok) {
+            this.skipRule(m.rule.id, r);
+            return;
           }
-          const model = rx.exec(decl.text)?.[1];
+          const model = r.matches[0]?.groups[1];
           const tables = model ? this.resolveModel(model) : [];
           if (tables.length > 0) {
             hits.push(...this.hitsOf(tables));

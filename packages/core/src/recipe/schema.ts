@@ -25,6 +25,16 @@ export type HelperName = (typeof HELPER_NAMES)[number];
 export const FS_CONVENTIONS = ["tanstack-router"] as const;
 export type FsConvention = (typeof FS_CONVENTIONS)[number];
 
+/**
+ * Limits on what a recipe may ask the indexer to do (a recipe is untrusted input, spec section 5). The regular
+ * expressions of text rules and `receiverDecl` are JavaScript ones and run under a time budget; these caps bound
+ * their size and number. Over a cap is an error for that rule, which is skipped.
+ */
+export const MAX_PATTERN_LENGTH = 500;
+export const MAX_TEXT_RULES = 50;
+/** The most text files one run reads for text rules and `sql.sqlFiles`. */
+export const MAX_TEXT_FILES = 200;
+
 type AstRule = Record<string, unknown>;
 
 const strictness = z.enum(["cst", "smart", "ast", "relaxed", "signature"]);
@@ -119,7 +129,7 @@ const accessShape = {
   table: capture.optional(),
   model: capture.optional(),
   receiver: capture.optional(),
-  receiverDecl: z.array(z.string().min(1)).min(1).optional(),
+  receiverDecl: z.array(z.string().min(1).max(MAX_PATTERN_LENGTH)).min(1).optional(),
   method: capture.optional(),
   data: emitData,
 };
@@ -235,7 +245,7 @@ export const TextRuleSchema = z.strictObject({
   when: whenSchema,
   files: z.array(z.string().min(1)).min(1),
   rule: z.strictObject({
-    regex: z.string().min(1),
+    regex: z.string().min(1).max(MAX_PATTERN_LENGTH),
     flags: z
       .string()
       .regex(/^[gimsuy]*$/, "flags are letters of gimsuy")

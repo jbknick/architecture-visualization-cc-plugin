@@ -1,4 +1,5 @@
 import picomatch from "picomatch";
+import type { RegexRunner } from "./bounded-regex.js";
 
 /**
  * Helper `text-rules`: line and regex rules over files that have no syntax tree in the index (a schema file, SQL
@@ -22,45 +23,52 @@ export interface TextMatch {
 export const textRuleMatches = (rule: TextRuleLike, path: string): boolean =>
   picomatch.isMatch(path, [...rule.files], { dot: true });
 
-/** Compiles the regex of a rule; null when it is not a valid regular expression. */
-export function compileTextRule(rule: TextRuleLike): RegExp | null {
-  const flags = rule.rule.flags ?? "gm";
-  try {
-    return new RegExp(rule.rule.regex, flags.includes("g") ? flags : `${flags}g`);
-  } catch {
-    return null;
-  }
+export type TextRun =
+  | { ok: true; matches: TextMatch[] }
+  | { ok: false; reason: "timeout" | "invalid" | "unavailable"; error?: string };
+
+/**
+ * Every match of a rule in a file's text. The regex is the recipe's, so it runs in the runner's worker under a time
+ * budget (`bounded-regex.ts`), never on the calling thread. Flags default to `gm`.
+ */
+export function matchText(runner: RegexRunner, rule: TextRuleLike, text: string): TextRun {
+  const r = runner.run(rule.rule.regex, rule.rule.flags ?? "gm", text);
+  if (!r.ok) return r;
+  return {
+    ok: true,
+    matches: r.matches.map((m) => {
+      let line = 1;
+      for (let i = 0; i < m.index; i++) if (text.charCodeAt(i) === 10) line++;
+      return { groups: m.groups, line };
+    }),
+  };
 }
 
-/** Every match of a rule in a file's text. */
-export function matchText(rx: RegExp, text: string): TextMatch[] {
-  const out: TextMatch[] = [];
-  for (const m of text.matchAll(rx)) {
-    let line = 1;
-    const end = m.index ?? 0;
-    for (let i = 0; i < end; i++) if (text.charCodeAt(i) === 10) line++;
-    out.push({ groups: [...m].map((g) => g ?? ""), line });
-  }
-  return out;
-}
+/** The reason a run did not finish, as the text of `gantry recipe check` and of the skip note. */
+export const runFailure = (r: Extract<TextRun, { ok: false }>, runner: RegexRunner): string =>
+  r.reason === "invalid" ? `invalid regex: ${r.error ?? ""}` : `regex exceeded ${runner.jobBudgetMs} ms`;
 
 /** Checks a rule's examples: each `match` snippet gives at least one match, each `noMatch` snippet none. */
-export function runTextExamples(rule: TextRuleLike & { examples: { match: string[]; noMatch: string[] } }): {
-  passed: number;
-  failed: string[];
-  error?: string;
-} {
+export function runTextExamples(
+  runner: RegexRunner,
+  rule: TextRuleLike & { examples: { match: string[]; noMatch: string[] } },
+): { passed: number; failed: string[]; error?: string } {
   const res: { passed: number; failed: string[]; error?: string } = { passed: 0, failed: [] };
-  const rx = compileTextRule(rule);
-  if (!rx) return { ...res, error: "the regex does not compile" };
-  for (const s of rule.examples.match) {
-    if (matchText(rx, s).length > 0) res.passed++;
-    else res.failed.push(`match: no match in ${JSON.stringify(s)}`);
-  }
-  for (const s of rule.examples.noMatch) {
-    if (matchText(rx, s).length === 0) res.passed++;
-    else res.failed.push(`noMatch: matched ${JSON.stringify(s)}`);
-  }
+  const check = (s: string, want: boolean, label: string): boolean => {
+    const r = matchText(runner, rule, s);
+    if (!r.ok) {
+      res.error ??= runFailure(r, runner);
+      return false;
+    }
+    if (r.matches.length > 0 === want) res.passed++;
+    else
+      res.failed.push(
+        want ? `match: no match in ${JSON.stringify(s)}` : `${label}: matched ${JSON.stringify(s)}`,
+      );
+    return true;
+  };
+  for (const s of rule.examples.match) if (!check(s, true, "match")) return res;
+  for (const s of rule.examples.noMatch) if (!check(s, false, "noMatch")) return res;
   return res;
 }
 
