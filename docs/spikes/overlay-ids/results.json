@@ -27,8 +27,7 @@
     "stillExist": 967,
     "survived": {
       "exactHash": 966,
-      "id": 960,
-      "renamedHash": 966
+      "id": 960
     },
     "unresolvedByCause": {
       "exactHash": {
@@ -46,20 +45,9 @@
         "moved": 6,
         "other": 0,
         "renamed": 0
-      },
-      "renamedHash": {
-        "ambiguous_hash": 0,
-        "modified_and_moved": 1,
-        "modified_and_renamed": 0,
-        "moved": 0,
-        "other": 0,
-        "renamed": 0
       }
     },
-    "wrongReattaches": {
-      "exactHash": 0,
-      "renamedHash": 0
-    }
+    "wrongReattaches": 0
   },
   "trpc": {
     "baseSha": "2f40ba935ad7f7d29eec3f9c45d353450b43e852",
