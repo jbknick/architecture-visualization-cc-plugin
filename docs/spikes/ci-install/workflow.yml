@@ -1,0 +1,145 @@
+# Timing workflow for the CI install spike. A copy kept here for the record; it runs only in the public sandbox
+# repo (jbknick/gantry-ci-sandbox) as .github/workflows/time-install.yml, never in this repo.
+name: time-install
+
+on:
+  workflow_dispatch:
+    inputs:
+      files:
+        description: "Size of the repo to index (TypeScript files)"
+        required: true
+        type: choice
+        options: ["1000", "5000", "10000"]
+
+permissions:
+  contents: read
+
+jobs:
+  time:
+    name: ${{ inputs.files }} files, run ${{ matrix.run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [1, 2, 3]
+    env:
+      VERSION: "0.1.0"
+      RELEASE_BASE: https://github.com/jbknick/gantry-ci-sandbox/releases/download/v0.1.0-sandbox.1
+      TARBALL_SHA256: 7da512528e0579422ee968f1f7a237b281f86838c052b3a5c72d8d481d083b49
+    steps:
+      - name: Pick the pinned repo for this size
+        id: pick
+        run: |
+          case "${{ inputs.files }}" in
+            1000)  repo=trpc/trpc;                sha=596d03d93295f8b4876909cfce86f94a1e6afe51 ;;
+            5000)  repo=formbricks/formbricks;    sha=b52ebf833e92c1205d95492dc43567760ef56706 ;;
+            10000) repo=grafana/grafana;          sha=42c9c62eb2dd6b6f1f01265ef946b0eeef9c9c6d ;;
+            *) echo "unknown size" >&2; exit 1 ;;
+          esac
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+
+      - name: Check out the pinned repo with full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.pick.outputs.repo }}
+          ref: ${{ steps.pick.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          path: target
+
+      - name: Time install, index, review, duplicates and comments
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIZE: ${{ inputs.files }}
+          RUN: ${{ matrix.run }}
+          REPO: ${{ steps.pick.outputs.repo }}
+          SHA: ${{ steps.pick.outputs.sha }}
+        run: |
+          set +e   # a failing step is recorded in times.tsv, not fatal
+          set -u
+          W="$RUNNER_TEMP/work"; mkdir -p "$W/install" "$W/out"
+          export CLAUDE_PLUGIN_DATA="$W/data"
+          T="$W/out/times.tsv"; : > "$T"
+
+          # step <name> <command...>: wall time in ms, exit code and peak RSS (KiB) into times.tsv
+          step() {
+            local name=$1; shift
+            local s e rc rss
+            s=$(date +%s%N)
+            /usr/bin/time -f %M -o "$W/out/$name.rss" "$@" > "$W/out/$name.out" 2> "$W/out/$name.err"
+            rc=$?
+            e=$(date +%s%N)
+            rss=$(tail -n 1 "$W/out/$name.rss" 2>/dev/null || echo 0)
+            printf '%s\t%s\t%s\t%s\n' "$name" "$(( (e - s) / 1000000 ))" "$rc" "$rss" >> "$T"
+            echo "step $name: $(( (e - s) / 1000000 )) ms, exit $rc, peak RSS $rss KiB"
+          }
+
+          # Memory and disk every 10 s, so a runner that is killed leaves a trace in the log.
+          ( while true; do echo "monitor: used/total MiB $(free -m | awk '/^Mem/{print $3"/"$2}'), disk used $(df -h / | awk 'NR==2{print $5}')"; sleep 10; done ) &
+          MON=$!
+
+          do_install() {
+            cd "$W/install" || return 1
+            curl -fsSLO "$RELEASE_BASE/gantry-$VERSION.tgz" || return 1
+            curl -fsSLO "$RELEASE_BASE/gantry-$VERSION.tgz.sha256" || return 1
+            echo "$TARBALL_SHA256  gantry-$VERSION.tgz" | sha256sum -c - || return 1
+            sha256sum -c "gantry-$VERSION.tgz.sha256" || return 1
+            tar -xzf "gantry-$VERSION.tgz" || return 1
+            (cd gantry && npm ci --omit=dev --no-audit --no-fund) || return 1
+            ./gantry/bin/gantry --version
+          }
+
+          export W
+          export -f do_install
+          step install bash -c do_install
+          G="$W/install/gantry/bin/gantry"
+          cd "$GITHUB_WORKSPACE/target"
+          ts_files=$(git ls-files | grep -c -E '\.(ts|tsx)$')
+          base=$(git rev-parse "$SHA^")
+
+          step init "$G" init
+          step review "$G" review "$base...$SHA" --json
+          step duplicates "$G" duplicates --json
+          # Extra, outside the bar: the same review over the last 100 first-parent commits, to see how large a review
+          # JSON gets against the 65,536-character comment limit.
+          step review_wide "$G" review "$SHA~100...$SHA" --json
+
+          # Comment cost. The body is the wide review JSON cut to 60,000 characters in a code fence, so it is close to
+          # the largest body a comment takes (65,536). The target is a commit comment on this sandbox's own commit:
+          # the sandbox has no pull request, and a read-only token is what is being asked about.
+          { echo '```json'; head -c 60000 "$W/out/review_wide.out"; echo; echo '```'; } > "$W/out/body.md"
+          api="repos/$GITHUB_REPOSITORY"
+          step comment_create gh api -X POST "$api/commits/$GITHUB_SHA/comments" -F "body=@$W/out/body.md" --jq .id
+          cid=$(tr -d '\n' < "$W/out/comment_create.out")
+          if [ "$(awk -F'\t' '$1=="comment_create"{print $3}' "$T")" = "0" ] && [ -n "$cid" ]; then
+            step comment_update gh api -X PATCH "$api/comments/$cid" -F "body=@$W/out/body.md" --jq .id
+          fi
+
+          kill "$MON"
+          cd "$W/out"
+          jq -R -s --arg size "$SIZE" --arg run "$RUN" --arg repo "$REPO" --arg sha "$SHA" \
+            --arg image "${ImageOS:-}/${ImageVersion:-}" --arg node "$(node --version)" --arg cpus "$(nproc)" \
+            --arg tsfiles "$ts_files" --arg reviewbytes "$(wc -c < review.out)" \
+            --arg dupbytes "$(wc -c < duplicates.out)" --arg widebytes "$(wc -c < review_wide.out)" --arg cerr "$(head -c 300 comment_create.err 2>/dev/null | tr '\n' ' ')" '
+            { size: $size, run: ($run|tonumber), repo: $repo, sha: $sha, runner_image: $image, node: $node,
+              cpus: ($cpus|tonumber), ts_files: ($tsfiles|tonumber), review_json_bytes: ($reviewbytes|tonumber),
+              duplicates_json_bytes: ($dupbytes|tonumber), review_wide_json_bytes: ($widebytes|tonumber), comment_create_error: $cerr,
+              steps: ( split("\n") | map(select(length>0) | split("\t")
+                | {name: .[0], ms: (.[1]|tonumber), exit: (.[2]|tonumber), peak_rss_kib: (.[3]|tonumber? // 0)}) ) }
+            ' times.tsv > results.json
+          cat results.json
+          echo "--- init stdout"; cat init.out
+          echo "--- init stderr (tail)"; tail -n 5 init.err
+          echo "--- review stderr (tail)"; tail -n 5 review.err
+          echo "--- duplicates stderr (tail)"; tail -n 5 duplicates.err
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: timing-${{ inputs.files }}-run${{ matrix.run }}
+          path: ${{ runner.temp }}/work/out/results.json
