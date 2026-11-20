@@ -17,21 +17,21 @@ Issue #279. Question: does the release tarball install on a GitHub Actions `ubun
 - The workflow ([`ci-install/workflow.yml`](ci-install/workflow.yml), copied here for the record; it runs only in the sandbox) checks out the pinned repo at its SHA with full history, then times with `date +%s%N`: install (download, both checksum checks, `tar`, `npm ci --omit=dev`, `gantry --version`), `gantry init` (fresh `CLAUDE_PLUGIN_DATA`), `gantry review <parent>...<sha> --json`, `gantry duplicates --json`, then a comment create and update. It verifies the tarball sha256 against a value pinned in the file before installing, pins every action by full commit SHA, asks for `contents: read` only and uses no secrets.
 - Repos (pinned in `evals/oss/repos.json`):
 
-| Size | Repo | SHA | `.ts`/`.tsx` files at the SHA |
-| --- | --- | --- | --- |
-| 1,000 | trpc/trpc (already pinned) | `596d03d93295f8b4876909cfce86f94a1e6afe51` | 1,465 |
-| 5,000 | formbricks/formbricks (already pinned) | `b52ebf833e92c1205d95492dc43567760ef56706` | 6,021 |
-| 10,000 | grafana/grafana (added) | `42c9c62eb2dd6b6f1f01265ef946b0eeef9c9c6d` | 10,109 |
+| Size   | Repo                                   | SHA                                        | `.ts`/`.tsx` files at the SHA |
+| ------ | -------------------------------------- | ------------------------------------------ | ----------------------------- |
+| 1,000  | trpc/trpc (already pinned)             | `596d03d93295f8b4876909cfce86f94a1e6afe51` | 1,465                         |
+| 5,000  | formbricks/formbricks (already pinned) | `b52ebf833e92c1205d95492dc43567760ef56706` | 6,021                         |
+| 10,000 | grafana/grafana (added)                | `42c9c62eb2dd6b6f1f01265ef946b0eeef9c9c6d` | 10,109                        |
 
 ## Results (medians of 3, seconds)
 
 Total = install + cold index + review + duplicates (the comment steps are excluded, see above). Peak RSS is that of `gantry init`, the largest of the steps.
 
-| Files | Install | Cold index | Review | Duplicates | Comment create | Comment update | Total | Peak RSS (init) | Bar (total ≤ 300 s) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1,000 (trpc, 1,465 ts files) | 11.0 | 8.4 | 0.17 | 0.68 | not measured (403) | not measured | 20.3 | 406 MiB | pass |
-| 5,000 (formbricks, 6,021 ts files) | 11.0 | 48.4 | 0.18 | 1.1 | not measured (403) | not measured | 60.7 | 1.25 GiB | pass |
-| 10,000 (grafana, 10,109 ts files) | n/a | killed, out of memory | n/a | n/a | n/a | n/a | n/a | 15.6 GiB of 15.6 GiB in use when killed | fail (no result) |
+| Files                              | Install | Cold index            | Review | Duplicates | Comment create     | Comment update | Total | Peak RSS (init)                         | Bar (total ≤ 300 s) |
+| ---------------------------------- | ------- | --------------------- | ------ | ---------- | ------------------ | -------------- | ----- | --------------------------------------- | ------------------- |
+| 1,000 (trpc, 1,465 ts files)       | 11.0    | 8.4                   | 0.17   | 0.68       | not measured (403) | not measured   | 20.3  | 406 MiB                                 | pass                |
+| 5,000 (formbricks, 6,021 ts files) | 11.0    | 48.4                  | 0.18   | 1.1        | not measured (403) | not measured   | 60.7  | 1.25 GiB                                | pass                |
+| 10,000 (grafana, 10,109 ts files)  | n/a     | killed, out of memory | n/a    | n/a        | n/a                | n/a            | n/a   | 15.6 GiB of 15.6 GiB in use when killed | fail (no result)    |
 
 Individual runs (install / init / review / duplicates, seconds):
 
