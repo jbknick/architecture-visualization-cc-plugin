@@ -51,7 +51,7 @@ describe("overlay routes", () => {
     await reset();
     const r = await fetch(url("/api/overlay"), { headers: headers() });
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ labels: [], hidden: [], groups: [], views: [] });
+    expect(await r.json()).toEqual({ labels: [], hidden: [], groups: [], views: [], unresolved: [] });
   });
 
   it("PUT labels: 200, 400 on a bad body, 404 for an unknown node, and empty text removes", async () => {

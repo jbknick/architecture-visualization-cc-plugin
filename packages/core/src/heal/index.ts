@@ -8,6 +8,7 @@ import { isIndexable } from "../discover/index.js";
 import { rebuildSimilarEdges } from "../dup/index.js";
 import { fileId } from "../ids.js";
 import { indexRepo } from "../indexer.js";
+import { reattachOverlay } from "../overlay/reattach.js";
 import type { GantryPaths } from "../paths/index.js";
 import { refreshDescriptionFts } from "../search/descfts.js";
 import { openStore, type Store } from "../store/index.js";
@@ -173,11 +174,12 @@ function indexedFileCount(store: Store): number {
 
 /**
  * Brings the main layer to `HEAD` (spec section 11). Incremental from `meta.head_sha` (or `opts.from`)
- * when the diff is small, a full main re-index otherwise. Never calls a model.
+ * when the diff is small, a full main re-index otherwise. Never calls a model. With `opts.reattach` it also
+ * re-attaches hand-picked overlay entries to moved functions (#288); a Claude Code hook never sets it (budget).
  */
 export async function heal(
   paths: GantryPaths,
-  opts?: { from?: string },
+  opts?: { from?: string; reattach?: boolean },
 ): Promise<{ changed: number; full: boolean; ms: number }> {
   const t0 = performance.now();
   const done = (changed: number, full: boolean) => ({
@@ -192,7 +194,11 @@ export async function heal(
     const oldSha = opts?.from ?? store.getMeta("head_sha");
     const newSha = revParseHead(root);
     if (!newSha) return done(0, false);
-    if (oldSha === newSha) return done(0, false);
+    if (oldSha === newSha) {
+      // Nothing to heal, but a hook may have healed this commit without re-attaching (hooks never do).
+      if (opts?.reattach) reattachOverlay(store);
+      return done(0, false);
+    }
 
     const reachable = oldSha !== undefined && git(root, ["cat-file", "-e", `${oldSha}^{commit}`]).ok;
     const config = loadConfig(paths);
@@ -249,6 +255,9 @@ export async function heal(
         // the catalog is a convenience; a failed write must not fail a heal
       }
     }
+    // Hand-picked overlay entries follow their function to its new id (spec section 11). It runs even when this
+    // heal changed nothing: it writes only when an id changes.
+    if (opts?.reattach) reattachOverlay(store);
     return done(changed, full);
   });
 }
@@ -277,6 +286,7 @@ function statusPaths(root: string): string[] {
  */
 export async function refreshWorking(
   paths: GantryPaths,
+  opts?: { reattach?: boolean },
 ): Promise<{ reindexed: number; cleared: number; ms: number }> {
   const t0 = performance.now();
   const root = paths.root;
@@ -337,6 +347,7 @@ export async function refreshWorking(
     const after = layerRows(store, "working");
     let cleared = 0;
     for (const id of before) if (!after.has(id)) cleared++;
+    if (opts?.reattach) reattachOverlay(store);
     return { reindexed: reindex.length, cleared, ms: Math.round(performance.now() - t0) };
   });
 }
@@ -362,7 +373,7 @@ function hasMainIndex(paths: GantryPaths): boolean {
  * because the new store has no `head_sha`; outside a commit (no `HEAD`) it is a plain full main index.
  */
 export async function rebuildIndex(paths: GantryPaths): Promise<void> {
-  await heal(paths);
+  await heal(paths, { reattach: true });
   if (!hasMainIndex(paths)) await indexRepo(paths, { layer: "main" });
 }
 
