@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "sequelize", "role": "data-access", "note": "ORM" },
+    {
+      "name": "sequelize-typescript",
+      "role": "data-access",
+      "note": "decorators: @Table classes extending Model"
+    },
+    { "name": "@nestjs/sequelize", "role": "data-access", "note": "Nest integration: @InjectModel(Model)" },
+    {
+      "name": "@nestjs/common",
+      "role": "framework",
+      "note": "Nest framework; routes are not read by this recipe"
+    }
+  ],
+  "helpers": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+  "methods": {
+    "read": [
+      "findAll",
+      "findOne",
+      "findByPk",
+      "findAndCountAll",
+      "findOrCreate",
+      "count",
+      "max",
+      "min",
+      "sum"
+    ],
+    "write": [
+      "create",
+      "bulkCreate",
+      "update",
+      "destroy",
+      "upsert",
+      "save",
+      "restore",
+      "increment",
+      "decrement"
+    ]
+  },
+  "rules": [
+    {
+      "id": "table-name",
+      "language": "typescript",
+      "when": { "dependency": ["sequelize-typescript", "sequelize"] },
+      "rule": { "kind": "decorator", "pattern": "@Table({ tableName: $N })" },
+      "emit": { "kind": "table", "name": "$N", "model": "@class" },
+      "examples": {
+        "match": ["@Table({ tableName: 'user' })\nexport class User extends Model<User> {}"],
+        "noMatch": ["@Table({ timestamps: false })\nexport class User extends Model<User> {}"]
+      }
+    },
+    {
+      "id": "model-read",
+      "language": "typescript",
+      "when": { "dependency": ["sequelize-typescript", "sequelize"] },
+      "rule": {
+        "any": [
+          { "pattern": "$R.$M($$$A)" },
+          { "pattern": "$R.$M<$T>($$$A)" },
+          { "pattern": "await $R.$M<$T>($$$A)" }
+        ]
+      },
+      "emit": {
+        "kind": "read",
+        "receiver": "$R",
+        "method": "$M",
+        "receiverDecl": [
+          "\\b{prop}\\s*:\\s*typeof\\s+(\\w+)",
+          "\\b{prop}\\s*=\\s*(?:await\\s+)?new\\s+(\\w+)\\(",
+          "\\b{prop}\\s*=\\s*(?:await\\s+)?[\\w.]+<(\\w+)>\\("
+        ]
+      },
+      "examples": {
+        "match": ["this.postsRepository.findAll<Post>({});", "this.postsRepository.findByPk(id);"],
+        "noMatch": ["findAll({});", "new Post();"]
+      }
+    },
+    {
+      "id": "model-write",
+      "language": "typescript",
+      "when": { "dependency": ["sequelize-typescript", "sequelize"] },
+      "rule": {
+        "any": [
+          { "pattern": "$R.$M($$$A)" },
+          { "pattern": "$R.$M<$T>($$$A)" },
+          { "pattern": "await $R.$M<$T>($$$A)" }
+        ]
+      },
+      "emit": {
+        "kind": "write",
+        "receiver": "$R",
+        "method": "$M",
+        "receiverDecl": [
+          "\\b{prop}\\s*:\\s*typeof\\s+(\\w+)",
+          "\\b{prop}\\s*=\\s*(?:await\\s+)?new\\s+(\\w+)\\(",
+          "\\b{prop}\\s*=\\s*(?:await\\s+)?[\\w.]+<(\\w+)>\\("
+        ]
+      },
+      "examples": {
+        "match": ["this.postsRepository.create(row);", "post.save();"],
+        "noMatch": ["create(row);", "new Post();"]
+      }
+    },
+    {
+      "id": "include-read",
+      "language": "typescript",
+      "when": { "dependency": ["sequelize-typescript", "sequelize"] },
+      "rule": { "pattern": "{ include: [$$$M] }" },
+      "emit": { "kind": "read", "model": "$$$M" },
+      "examples": {
+        "match": ["findAll({ include: [User] });"],
+        "noMatch": ["findAll({ where: {} });"]
+      }
+    }
+  ]
+}

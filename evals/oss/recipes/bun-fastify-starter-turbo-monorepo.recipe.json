@@ -33,7 +33,8 @@
     },
     { "name": "kysely", "workspace": "backend", "role": "data-access", "note": "query builder" }
   ],
-  "helpers": ["resolve-names", "const-strings", "mount-graph", "param-flow"],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "param-flow", "model-naming"],
+  "models": { "snakeCase": true },
   "passthrough": ["get", "post", "put", "patch", "delete", "options", "head", "register", "withTypeProvider"],
   "rules": [
     {
@@ -140,6 +141,76 @@
           "fastify.post(\"/email\", { schema }, handler);"
         ],
         "noMatch": ["fastify.register(plugin, { prefix: \"/x\" });", "cache.has(\"k\");"]
+      }
+    },
+    {
+      "id": "kysely-create-table",
+      "language": "typescript",
+      "when": { "dependency": ["kysely"] },
+      "rule": { "pattern": "$S.createTable($N)" },
+      "constraints": { "N": { "kind": "string" } },
+      "emit": { "kind": "table", "name": "$N" },
+      "examples": {
+        "match": ["await db.schema.createTable(\"users\").execute();"],
+        "noMatch": ["db.schema.dropTable(\"users\");"]
+      }
+    },
+    {
+      "id": "kysely-select-from",
+      "language": "typescript",
+      "when": { "dependency": ["kysely"] },
+      "rule": { "pattern": "$D.selectFrom($T)" },
+      "emit": { "kind": "read", "table": "$T" },
+      "examples": {
+        "match": ["db.selectFrom(\"users\").selectAll();"],
+        "noMatch": ["db.insertInto(\"users\");"]
+      }
+    },
+    {
+      "id": "kysely-join",
+      "language": "typescript",
+      "when": { "dependency": ["kysely"] },
+      "rule": { "pattern": "$D.$J($T, $$$A)" },
+      "constraints": {
+        "J": { "regex": "^(innerJoin|leftJoin|rightJoin|fullJoin|innerJoinLateral|leftJoinLateral)$" }
+      },
+      "emit": { "kind": "read", "table": "$T" },
+      "examples": {
+        "match": ["db.selectFrom(\"a\").innerJoin(\"b\", \"b.id\", \"a.b_id\");"],
+        "noMatch": ["db.selectFrom(\"a\").where(\"id\", \"=\", 1);"]
+      }
+    },
+    {
+      "id": "kysely-insert-into",
+      "language": "typescript",
+      "when": { "dependency": ["kysely"] },
+      "rule": { "pattern": "$D.insertInto($T)" },
+      "emit": { "kind": "write", "table": "$T" },
+      "examples": {
+        "match": ["db.insertInto(\"users\").values(user);"],
+        "noMatch": ["db.selectFrom(\"users\");"]
+      }
+    },
+    {
+      "id": "kysely-update-table",
+      "language": "typescript",
+      "when": { "dependency": ["kysely"] },
+      "rule": { "pattern": "$D.updateTable($T)" },
+      "emit": { "kind": "write", "table": "$T" },
+      "examples": {
+        "match": ["db.updateTable(\"users\").set(user);"],
+        "noMatch": ["db.selectFrom(\"users\");"]
+      }
+    },
+    {
+      "id": "kysely-delete-from",
+      "language": "typescript",
+      "when": { "dependency": ["kysely"] },
+      "rule": { "pattern": "$D.deleteFrom($T)" },
+      "emit": { "kind": "write", "table": "$T" },
+      "examples": {
+        "match": ["db.deleteFrom(\"users\").where(\"id\", \"=\", 1);"],
+        "noMatch": ["db.selectFrom(\"users\");"]
       }
     }
   ]
