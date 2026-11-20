@@ -12,12 +12,22 @@ describe("hash route", () => {
       sel: "sym:a#B",
       level: "dirs",
       hops: 3,
+      saved: null,
       filters: { kinds: "hook", q: "a b" },
     });
   });
 
+  it("round-trips the saved view id and keeps it out of the filters", () => {
+    const route = parseHash("#/project-map?saved=curated&level=files");
+    expect(route.saved).toBe("curated");
+    expect(route.filters).toEqual({});
+    expect(formatHash(route)).toBe("#/project-map?saved=curated&level=files");
+    expect(parseHash(formatHash(route))).toEqual(route);
+    expect(parseHash("#/project-map?saved=").saved).toBeNull();
+  });
+
   it("treats an empty hash as no view", () => {
-    const empty = { view: null, focus: null, sel: null, level: null, hops: null, filters: {} };
+    const empty = { view: null, focus: null, sel: null, level: null, hops: null, saved: null, filters: {} };
     expect(parseHash("")).toEqual(empty);
     expect(parseHash("#/")).toEqual(empty);
   });
@@ -35,6 +45,7 @@ describe("hash route", () => {
       sel: "sym:a b#c&d",
       level: null,
       hops: 1,
+      saved: null,
       filters: { edgeKinds: "calls|renders" },
     };
     expect(parseHash(formatHash(route))).toEqual(route);
@@ -48,6 +59,7 @@ describe("hash route", () => {
         sel: null,
         level: "workspaces",
         hops: null,
+        saved: null,
         filters: { hideTests: "false" },
       }),
     ).toBe("#/project-map?level=workspaces&hideTests=false");

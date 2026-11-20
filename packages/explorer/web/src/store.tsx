@@ -8,6 +8,8 @@ import {
   useReducer,
 } from "react";
 import { api, type Meta, type SearchHit } from "./api.ts";
+import { RELOAD_VIEW_EVENT } from "./hooks.ts";
+import { overlayStore } from "./overlayStore.ts";
 import { refreshStore, useRefresh } from "./refresh.ts";
 import { emptyRoute, formatHash, parseHash, parseInitialHash, type Route } from "./route.ts";
 
@@ -62,6 +64,11 @@ export interface Store {
   openInView: (view: string, id: string, selectId?: string | null) => void;
   toggleLeft: () => void;
   setHover: (id: string | null) => void;
+  /**
+   * Runs an overlay write, then loads the overlay again and asks the open view to fetch itself again (labels,
+   * hidden parts and groups are applied when a view is built). Rejects with the server's message when the write fails.
+   */
+  writeOverlay: (write: () => Promise<unknown>) => Promise<void>;
 }
 
 const StoreContext = createContext<Store | null>(null);
@@ -131,6 +138,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, [scenario, scenarioView, generation, focusTick]);
 
+  // The overlay is loaded at start and again after every write (`writeOverlay`) and every Refresh. A server without
+  // overlay routes (the in-repo mock before this feature) leaves it null and the curation controls hidden.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `generation` only triggers a new request
+  useEffect(() => {
+    const controller = new AbortController();
+    void overlayStore.load(controller.signal);
+    return () => controller.abort();
+  }, [generation]);
+
+  const writeOverlay = useCallback(async (write: () => Promise<unknown>) => {
+    await write();
+    await overlayStore.load();
+    window.dispatchEvent(new Event(RELOAD_VIEW_EVENT));
+  }, []);
+
   // With no view in the hash, land on the project map when the server has it, else the first enabled view.
   const enabledViews = state.meta?.views.filter((v) => v.enabled) ?? [];
   const view =
@@ -173,8 +195,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         navigate({ ...emptyRoute, view: id, focus: nodeId, sel: selectId }),
       toggleLeft: () => dispatch({ type: "toggleLeft" }),
       setHover: (id) => dispatch({ type: "hover", id }),
+      writeOverlay,
     }),
-    [state, view, navigate],
+    [state, view, navigate, writeOverlay],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

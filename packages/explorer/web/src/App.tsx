@@ -53,6 +53,7 @@ export function App() {
     focus: route.focus,
     level: route.level,
     hops: route.hops,
+    saved: route.saved,
     filters,
   });
 

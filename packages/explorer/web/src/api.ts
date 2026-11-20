@@ -408,6 +408,86 @@ export interface ViewData extends Partial<DuplicatesData>, Partial<CrossStackDat
   edges: GraphEdge[];
   layoutHint: string;
   stale?: Stale;
+  /** What the curation overlay did to this view (spec section 11). */
+  overlay?: OverlayInfo;
+}
+
+// ---- Curation overlay (mirrors packages/core/src/overlay/types.ts and packages/explorer/server/overlay.ts) ----
+
+export type SelectorKind =
+  | "workspace"
+  | "dir"
+  | "file"
+  | "function"
+  | "method"
+  | "component"
+  | "hook"
+  | "class"
+  | "type"
+  | "interface"
+  | "enum"
+  | "const"
+  | "route"
+  | "endpoint"
+  | "middleware"
+  | "table";
+
+export type Selector =
+  | { type: "glob"; glob: string }
+  | { type: "kind"; kind: SelectorKind }
+  | { type: "workspace"; workspace: string }
+  | { type: "ids"; ids: string[] };
+
+export interface FilterSpec {
+  view: string;
+  level?: ViewLevel;
+  focus?: string;
+  hidden: Selector[];
+  groups: string[];
+  filters: Record<string, string>;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  selectors: Selector[];
+  mayUse: string[] | null;
+}
+
+export interface SavedView {
+  id: string;
+  name: string;
+  spec: FilterSpec;
+}
+
+export interface Label {
+  nodeId: string;
+  text: string;
+}
+
+export interface OverlayState {
+  labels: Label[];
+  hidden: Selector[];
+  groups: Group[];
+  views: SavedView[];
+}
+
+/** `GET /api/overlay`: the state plus the hand-picked entries that no longer name anything. */
+export interface OverlayResponse extends OverlayState {
+  unresolved: {
+    entry: "label" | "hidden" | "group" | "view";
+    id: string;
+    groupId?: string;
+    viewId?: string;
+    text?: string;
+    reason: "gone" | "ambiguous";
+  }[];
+}
+
+/** The `overlay` object of a view response. */
+export interface OverlayInfo {
+  hidden: number;
+  groups: { id: string; name: string; members: string[] }[];
 }
 
 export interface DismissResult {
@@ -539,6 +619,8 @@ export interface ViewOptions {
   focus?: string;
   level?: ViewLevel;
   hops?: number;
+  /** Id of a saved view: its level, focus and filters are the defaults. */
+  saved?: string;
   filters?: Filters;
 }
 
@@ -575,6 +657,28 @@ async function getJson<T>(
   return (await res.json()) as T;
 }
 
+/** A write to the overlay routes: JSON in, JSON out, the server's message in the error. */
+async function writeJson<T>(method: "PUT" | "POST" | "DELETE", path: string, body?: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method,
+    credentials: "same-origin",
+    ...(body === undefined
+      ? {}
+      : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+  });
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const parsed = (await res.json()) as { error?: unknown };
+      if (typeof parsed.error === "string") detail = parsed.error;
+    } catch {
+      // not JSON
+    }
+    throw new ApiError(res.status, detail || `${method} ${path} failed with ${res.status}`);
+  }
+  return (await res.json()) as T;
+}
+
 /**
  * Filters travel as one `filters` query param holding a JSON object, which the server's `parseOptions`
  * accepts. List values stay `|`-separated strings (`optList` splits them) and "true"/"false" strings read as booleans.
@@ -596,6 +700,7 @@ export const api = {
         focus: opts.focus,
         level: opts.level,
         hops: opts.hops,
+        saved: opts.saved,
         filters: opts.filters ? encodeFilters(opts.filters) : undefined,
       },
       signal,
@@ -662,6 +767,34 @@ export const api = {
     }
     return (await res.json()) as DismissResult;
   },
+
+  getOverlay: (signal?: AbortSignal) => getJson<OverlayResponse>("/api/overlay", {}, signal),
+
+  /** An empty `text` removes the label. */
+  putLabel: (nodeId: string, text: string) =>
+    writeJson<{ labels: Label[] }>("PUT", "/api/overlay/labels", { nodeId, text }),
+
+  putHidden: (selectors: Selector[]) =>
+    writeJson<{ hidden: Selector[] }>("PUT", "/api/overlay/hidden", { selectors }),
+
+  putGroup: (group: Group) => {
+    const { id, ...body } = group;
+    return writeJson<{ group: Group }>("PUT", `/api/overlay/groups/${encodeURIComponent(id)}`, body);
+  },
+
+  deleteGroup: (id: string) =>
+    writeJson<{ deleted: string }>("DELETE", `/api/overlay/groups/${encodeURIComponent(id)}`),
+
+  putView: (view: SavedView) =>
+    writeJson<{ view: SavedView }>("PUT", `/api/overlay/views/${encodeURIComponent(view.id)}`, {
+      name: view.name,
+      spec: view.spec,
+    }),
+
+  deleteView: (id: string) =>
+    writeJson<{ deleted: string }>("DELETE", `/api/overlay/views/${encodeURIComponent(id)}`),
+
+  resetOverlay: () => writeJson<OverlayState>("POST", "/api/overlay/reset", {}),
 
   node: (id: string, signal?: AbortSignal) =>
     getJson<NodeDetail>(`/api/node/${encodeURIComponent(id)}`, {}, signal),

@@ -3,6 +3,8 @@ export interface ExplorerUrlOptions {
   token: string;
   view?: string;
   focus?: string;
+  /** Id of a saved view (`saved=<id>` in the hash). */
+  saved?: string;
   filters?: Record<string, string> | string;
 }
 
@@ -12,6 +14,7 @@ export function buildExplorerUrl(o: ExplorerUrlOptions): string {
   if (o.view) {
     const q: string[] = [];
     if (o.focus) q.push(`focus=${encodeURIComponent(o.focus)}`);
+    if (o.saved) q.push(`saved=${encodeURIComponent(o.saved)}`);
     if (typeof o.filters === "string") {
       if (o.filters) q.push(o.filters);
     } else if (o.filters) {

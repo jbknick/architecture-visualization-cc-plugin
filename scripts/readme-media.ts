@@ -278,6 +278,9 @@ async function samePicture(page: Page, current: Buffer, next: Buffer): Promise<b
 async function save(page: Page, name: string) {
   mkdirSync(out, { recursive: true });
   const file = join(out, `${name}.png`);
+  // The curation overlay loads after the first paint: the top bar's `Saved view` control (and the inspector's
+  // Rename / Hide / Group row) appear with it, so a shot waits for it.
+  await page.getByRole("combobox", { name: "Saved view" }).waitFor({ timeout: 30_000 });
   let png = await page.screenshot({ animations: "disabled" });
   let note = "";
   if (png.length > 400 * 1024) {
