@@ -23,6 +23,7 @@ cd architecture-visualization-cc-plugin
 pnpm install
 pnpm build    # writes plugin/dist/ (CLI, MCP server, explorer)
 pnpm check    # biome + tsc + vitest
+pnpm build && pnpm --filter @gantry/explorer e2e    # only for explorer changes: the browser tests
 ```
 
 To try the plugin in Claude Code from your clone, follow [`docs/INSTALL.md`](docs/INSTALL.md). The explorer has its own notes, including how to run it against the mock API, in [`packages/explorer/web/README.md`](packages/explorer/web/README.md).
@@ -32,7 +33,7 @@ To try the plugin in Claude Code from your clone, follow [`docs/INSTALL.md`](doc
 These come from [`CLAUDE.md`](CLAUDE.md), which the coding agents that work on this repo also follow.
 
 1. Follow the spec. [`docs/SPEC.md`](docs/SPEC.md) defines the contracts. If an issue conflicts with it, follow the spec and say so in the PR. To change a contract, edit the spec in the same PR and say so.
-2. Run `pnpm check` before you open or update a PR, and make sure it passes. There is no hosted CI to run it for you. `pnpm fmt` applies Biome fixes. Several checkouts or worktrees may run `pnpm check` at the same time, and files that git ignores do not fail it.
+2. Run `pnpm check` before you open or update a PR, and make sure it passes. There is no hosted CI to run it for you. If the PR touches `packages/explorer` or the mock data it serves, also run `pnpm build && pnpm --filter @gantry/explorer e2e` and make sure it reports 0 failed. `pnpm check` does not run the e2e suite and there is no hosted CI, so a red e2e test is only noticed if the PR author runs it. Paste the summary line in the PR. Playwright rewrites some tracked images under `docs/milestones/screenshots/`; revert the ones you did not mean to change. `pnpm fmt` applies Biome fixes. Several checkouts or worktrees may run `pnpm check` at the same time, and files that git ignores do not fail it.
 3. Keep private code and data out. This repo is public, so never commit code, descriptions, graph dumps or screenshots from a private repository. Tests and screenshots use `fixtures/` and the explorer mock's synthetic scenarios only. Private eval data goes in the git-ignored `evals/private/`.
 4. Add only dependencies listed in section 2 of the spec. If you need another one, propose it in the issue first.
 5. Keep each PR to one issue and put `Closes #<n>` in the description. A branch name like `gantry/<issue-number>-<slug>` is welcome but not required on forks.

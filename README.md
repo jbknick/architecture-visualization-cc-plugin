@@ -219,6 +219,7 @@ Descriptions are text written by a model about code that may be untrusted, and t
 pnpm install
 pnpm build    # tsc -b && tsup && the explorer web build; writes plugin/dist/
 pnpm check    # biome + tsc + vitest, the local quality gate
+pnpm --filter @gantry/explorer e2e    # explorer browser tests (run pnpm build first); not part of check, run for explorer changes
 pnpm fmt      # apply Biome fixes
 pnpm release patch   # bump every version file, write CHANGELOG.md, commit and tag v<version>, build and pack dist/gantry-<version>.tgz (never pushes or uploads)
 pnpm release:pack    # only the pack step, for the current version (run pnpm build first)
