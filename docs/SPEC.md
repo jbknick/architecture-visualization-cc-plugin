@@ -199,8 +199,8 @@ export type EdgeKind =
   | "serves"
   | "handles"
   | "requests"
-  | "reads"   // function or file to table; written by the Drizzle adapter and by recipe data-access rules (#247, no new kinds)
-  | "writes"  // function or file to table; as `reads`
+  | "reads" // function or file to table; written by the Drizzle adapter and by recipe data-access rules (#247, no new kinds)
+  | "writes" // function or file to table; as `reads`
   | "similar_to";
 export interface EdgeRecord {
   src: string;
