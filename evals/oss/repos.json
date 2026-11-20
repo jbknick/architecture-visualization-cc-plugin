@@ -145,6 +145,14 @@
       "role": "tuning"
     },
     {
+      "name": "grafana",
+      "url": "https://github.com/grafana/grafana.git",
+      "sha": "42c9c62eb2dd6b6f1f01265ef946b0eeef9c9c6d",
+      "stack": ["react", "go"],
+      "lang": ["ts"],
+      "role": "tuning"
+    },
+    {
       "name": "hono",
       "url": "https://github.com/honojs/hono.git",
       "sha": "75ff8e3ea18485589816881c6278bc9783e56602",
