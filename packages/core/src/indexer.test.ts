@@ -18,7 +18,7 @@ const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as 
   materializeFixture: (name: string) => Promise<MaterializedFixture>;
 };
 
-type Name = "single-pkg" | "pnpm-turbo" | "nx" | "react-router-fastify" | "go-basic";
+type Name = "single-pkg" | "pnpm-turbo" | "adapters" | "nx" | "react-router-fastify" | "go-basic";
 const fixtures: MaterializedFixture[] = [];
 const dataDirs: string[] = [];
 afterEach(async () => {
@@ -46,7 +46,7 @@ function dump(paths: GantryPaths) {
 }
 
 describe("indexRepo + dumpGraph snapshots", () => {
-  it.each(["single-pkg", "pnpm-turbo", "nx", "react-router-fastify", "go-basic"] as const)(
+  it.each(["single-pkg", "pnpm-turbo", "adapters", "nx", "react-router-fastify", "go-basic"] as const)(
     "%s dump matches the committed snapshot",
     async (name) => {
       const { paths } = await setup(name);
