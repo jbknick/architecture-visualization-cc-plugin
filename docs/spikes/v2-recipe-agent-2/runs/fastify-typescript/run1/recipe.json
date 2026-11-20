@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "dependencies": [{ "name": "fastify", "role": "framework", "note": "http" }],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "param-flow", "text-rules"],
+  "passthrough": ["register"],
+  "rules": [
+    {
+      "id": "fastify-instance",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "pattern": "fastify($$$A)" },
+      "emit": { "kind": "router" },
+      "examples": { "match": ["const server = fastify({})"], "noMatch": ["const x = foo({})"] }
+    },
+    {
+      "id": "fastify-plugin-mount",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "pattern": "$R.register($C, { prefix: $P })" },
+      "emit": {
+        "kind": "mount",
+        "parent": "$R",
+        "child": "$C",
+        "prefix": "$P",
+        "childIsScope": true,
+        "data": { "adapter": "fastify" }
+      },
+      "examples": {
+        "match": ["server.register(userRouter, { prefix: '/api/user' })"],
+        "noMatch": ["server.register(cors)"]
+      }
+    },
+    {
+      "id": "fastify-routes",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "pattern": "$R.$M($P, $$$H)" },
+      "constraints": { "M": { "regex": "^(get|post|put|patch|delete)$" }, "P": { "kind": "string" } },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "$M",
+        "path": "$P",
+        "handler": "$$$H",
+        "data": { "adapter": "fastify" }
+      },
+      "examples": { "match": ["fastify.post('/x', {}, h)"], "noMatch": ["map.get(k)"] }
+    },
+    {
+      "id": "prisma-model",
+      "language": "text",
+      "files": ["prisma/schema.prisma"],
+      "rule": {
+        "regex": "^model\\s+(\\w+)\\s*\\{(?:(?!^\\})[\\s\\S])*?@@map\\(\"(\\w+)\"\\)",
+        "flags": "gm"
+      },
+      "emit": { "kind": "table", "name": ["$2", "$1"], "model": "$1" },
+      "examples": {
+        "match": ["model User {\n  id Int\n  @@map(\"users\")\n}"],
+        "noMatch": ["enum X {\n A\n}"]
+      }
+    },
+    {
+      "id": "prisma-model-plain",
+      "language": "text",
+      "files": ["prisma/schema.prisma"],
+      "rule": { "regex": "^model\\s+(\\w+)\\s*\\{(?:(?!@@map)[^}])*\\}", "flags": "gm" },
+      "emit": { "kind": "table", "name": "$1", "model": "$1" },
+      "examples": {
+        "match": ["model Post {\n  id Int\n}"],
+        "noMatch": ["model User {\n  @@map(\"users\")\n}"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+I wrote the recipe to `.gantry/recipe.json`, and the check passes. All four rules' examples pass.
+
+- **Stack:** Express with Mongoose. All routers mount at the root with no prefix.
+- **Rules:**
+  - `express-router` finds `Router()` instances (7 matches).
+  - `express-endpoint` finds `.get/.post/.put/.patch/.delete` calls with a string path (22 matches).
+  - `express-mount` finds `.use(...)` mounts (16 matches).
+  - `mongoose-model` finds `model('Name', …)` calls (7 matches).
+- **Expected output:**
+  - **Routes:** 0. This is a backend API only.
+  - **Endpoints:** about 17. I counted 13 in the auth, verification, media, users and notifications routers. Add 2 for the chained `/auth/sign-out` (POST and GET), and I'd expect the remaining 2 or so to be in the users and notifications routers, but I didn't count those precisely. The check's 22 matches are higher than my count, and I didn't investigate why.
+  - **Tables:** 7: ResetPassword, Verification, Media, User, EmailBudget, EmailOutbox, EmailWorker.
+- **Not expressed:** the `/auth/sign-out` registration is chained as `router.route('/auth/sign-out').post(...).get(...)`. My rules only match calls that have a string path argument, so they will probably miss those two endpoints. I didn't try `pathFromChain` or add a rule for `.route()`.

@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "express", "role": "framework", "note": "HTTP" },
+    { "name": "mongoose", "role": "data-access", "note": "ODM" }
+  ],
+  "helpers": ["call-return", "param-flow", "model-naming"],
+  "passthrough": ["get", "post", "put", "patch", "delete", "route", "use"],
+  "rules": [
+    {
+      "id": "express-router",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "rule": { "pattern": "Router()" },
+      "emit": { "kind": "router", "data": { "adapter": "express" } },
+      "examples": { "match": ["const r = Router()"], "noMatch": ["const r = Foo()"] }
+    },
+    {
+      "id": "express-endpoint",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "files": ["src/**"],
+      "rule": { "pattern": "$R.$M($P, $$$H)" },
+      "constraints": {
+        "M": { "regex": "^(get|post|put|patch|delete)$" },
+        "P": { "kind": "string" }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "$M",
+        "path": "$P",
+        "handler": "$$$H",
+        "data": { "adapter": "express" }
+      },
+      "examples": {
+        "match": ["const r = Router(); r.get('/a', h)"],
+        "noMatch": ["m.set(k, v)"]
+      }
+    },
+    {
+      "id": "express-mount",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "files": ["src/**"],
+      "rule": { "pattern": "$R.use($$$C)" },
+      "constraints": { "R": { "kind": "identifier" } },
+      "emit": { "kind": "mount", "parent": "$R", "child": "$$$C", "data": { "adapter": "express" } },
+      "examples": {
+        "match": ["r.use(createX())"],
+        "noMatch": ["foo(createX())"]
+      }
+    },
+    {
+      "id": "mongoose-model",
+      "language": "typescript",
+      "when": { "dependency": ["mongoose"] },
+      "files": ["src/**"],
+      "rule": { "pattern": "model($N, $$$A)" },
+      "constraints": { "N": { "kind": "string" } },
+      "emit": { "kind": "table", "name": "$N" },
+      "examples": {
+        "match": ["export const User = model('User', schema)"],
+        "noMatch": ["foo('User', schema)"]
+      }
+    }
+  ]
+}

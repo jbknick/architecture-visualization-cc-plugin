@@ -1,0 +1,155 @@
+{
+  "repos": [
+    {
+      "name": "express-mongodb-rest-api-boilerplate",
+      "runs": [
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.0712812,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "db0e022909257dc856ea7d8b22ed28338f8a93a8176130811e5ad5ed6ad74125",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "express-mongodb-rest-api-boilerplate",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 12,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 7,
+                "matched": 7,
+                "pass": true,
+                "precision": 1,
+                "predicted": 7,
+                "recall": 1
+              },
+              "write": {
+                "labelled": 11,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": [
+                "src/app/runtime/commands/database/indexes.ts|media",
+                "src/app/runtime/commands/database/indexes.ts|resetpassword",
+                "src/app/runtime/commands/database/indexes.ts|user",
+                "src/app/runtime/commands/database/indexes.ts|verification",
+                "src/app/runtime/commands/database/migrate.ts|media",
+                "src/app/runtime/commands/database/migrate.ts|resetpassword",
+                "src/app/runtime/commands/database/migrate.ts|verification",
+                "src/domains/media/repository.ts|media",
+                "src/domains/notifications/delivery/operations.ts|emailoutbox",
+                "src/domains/notifications/delivery/operations.ts|emailworker",
+                "src/domains/notifications/delivery/repository.ts|emailoutbox",
+                "src/domains/users/repository.ts|user"
+              ],
+              "write": [
+                "src/app/runtime/commands/database/migrate.ts|media",
+                "src/app/runtime/commands/database/migrate.ts|resetpassword",
+                "src/app/runtime/commands/database/migrate.ts|user",
+                "src/app/runtime/commands/database/migrate.ts|verification",
+                "src/domains/auth/repository.ts|resetpassword",
+                "src/domains/auth/verification/repository.ts|verification",
+                "src/domains/media/repository.ts|media",
+                "src/domains/notifications/delivery/budget.ts|emailbudget",
+                "src/domains/notifications/delivery/operations.ts|emailworker",
+                "src/domains/notifications/delivery/repository.ts|emailoutbox",
+                "src/domains/users/repository.ts|user"
+              ]
+            },
+            "pass": false,
+            "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 8936,
+            "cacheRead": 109092,
+            "input": 14,
+            "output": 2460
+          },
+          "turns": 8,
+          "wallMs": 26219
+        }
+      ],
+      "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7",
+      "stack": ["express", "mongoose"]
+    },
+    {
+      "name": "fastify-typescript",
+      "runs": [
+        {
+          "checkRuns": 4,
+          "costUsdReported": 0.12432469999999998,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "cb6c4bb48bce27d6a2a166853a973fb05722bc787b9285dae3aa607cce5ac84b",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "fastify-typescript",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 2,
+                "matched": 2,
+                "pass": true,
+                "precision": 1,
+                "predicted": 2,
+                "recall": 1
+              },
+              "write": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": ["src/controllers/user.controller.ts|users", "src/helpers/auth.helper.ts|users"],
+              "write": ["src/controllers/post.controller.ts|post", "src/controllers/user.controller.ts|users"]
+            },
+            "pass": false,
+            "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 19260,
+            "cacheRead": 91467,
+            "input": 14,
+            "output": 3811
+          },
+          "turns": 10,
+          "wallMs": 30964
+        }
+      ],
+      "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783",
+      "stack": ["fastify", "prisma"]
+    }
+  ]
+}
