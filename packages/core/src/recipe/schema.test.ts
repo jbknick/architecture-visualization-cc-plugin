@@ -43,6 +43,52 @@ describe("RecipeSchema", () => {
     for (const emit of emits) expect(RuleSchema.safeParse({ ...rule, emit }).success).toBe(true);
   });
 
+  it("accepts the data-access emits, the helpers' recipe fields and a text rule", () => {
+    const emits = [
+      {
+        kind: "table",
+        name: "$N",
+        model: "@class",
+        binding: true,
+        data: { adapter: "x", columns: { keysOf: "$$$A" } },
+      },
+      { kind: "table", name: ["$N", "@class"] },
+      { kind: "read", table: "$T" },
+      { kind: "write", model: "$$$M", method: "$M" },
+      { kind: "read", receiver: "$R", receiverDecl: ["\\bx\\s*:\\s*Repo<(\\w+)>"], method: "$M" },
+    ];
+    for (const emit of emits) expect(RuleSchema.safeParse({ ...rule, emit }).success).toBe(true);
+    expect(
+      RecipeSchema.safeParse(
+        recipe({
+          helpers: ["sql-text", "text-rules", "model-naming", "method-classes"],
+          models: { explicit: { User: "users" }, snakeCase: true, plural: true },
+          methods: { read: ["find"], write: ["save"] },
+          tablePassthrough: ["alias"],
+          sql: { tags: ["sql"], files: ["src/**"], exclude: ["test/**"], sqlFiles: ["db/**/*.sql"] },
+        }),
+      ).success,
+    ).toBe(true);
+    const text = {
+      id: "model",
+      language: "text",
+      files: ["**/*.schema"],
+      rule: { regex: "^model\\s+(\\w+)", flags: "gm" },
+      emit: { kind: "table", name: "$1", model: "$1" },
+      examples: { match: ["model A"], noMatch: [] },
+    };
+    expect(RuleSchema.safeParse(text).success).toBe(true);
+    expect(RuleSchema.safeParse({ ...text, files: [] }).success).toBe(false);
+    expect(RuleSchema.safeParse({ ...text, emit: { kind: "read", table: "$1" } }).success).toBe(false);
+    expect(RuleSchema.safeParse({ ...text, emit: { ...text.emit, name: "$N" } }).success).toBe(false);
+  });
+
+  it("rejects a read or write that names no table source, and a text rule with no files", () => {
+    expect(RuleSchema.safeParse({ ...rule, emit: { kind: "read", method: "$M" } }).success).toBe(false);
+    expect(RuleSchema.safeParse({ ...rule, emit: { kind: "write", receiver: "$R" } }).success).toBe(false);
+    expect(RuleSchema.safeParse({ ...rule, emit: { kind: "table", name: "plain" } }).success).toBe(false);
+  });
+
   it("rejects an unknown key at the top, in a rule, in an emit and in a dependency", () => {
     expect(RecipeSchema.safeParse(recipe({ extra: 1 })).success).toBe(false);
     expect(RuleSchema.safeParse({ ...rule, extra: 1 }).success).toBe(false);

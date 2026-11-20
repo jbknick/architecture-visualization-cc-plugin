@@ -205,15 +205,20 @@ export function endpointKeyOfNode(n: Dump["adapterNodes"][number]): string | und
   return name && `fn ${name}`;
 }
 
-/** Predictions from the dump's own records: node `data` and edge `fileId`, never id strings. */
+/**
+ * Predictions from the dump's own records: node `data` and edge `fileId`, never id strings. A node that carries
+ * `data.reason` (a path or a table name known only at run time, spec section 9) is visible in the index but not
+ * scored, whatever its kind, and neither are the edges that end at it.
+ */
 export function predictionsOf(dump: Dump): Predictions {
-  const nodes = new Map(dump.adapterNodes.map((n) => [n.id, n]));
+  const scored = dump.adapterNodes.filter((n) => n.data.reason === undefined);
+  const nodes = new Map(scored.map((n) => [n.id, n]));
   const filePath = new Map(dump.files.map((f) => [f.id, f.path]));
 
   const route: string[] = [];
   const endpoint: string[] = [];
   const table: string[] = [];
-  for (const n of dump.adapterNodes) {
+  for (const n of scored) {
     if (n.kind === "route") {
       const p = str(n.data.urlPath);
       if (p) route.push(routeKey(p));

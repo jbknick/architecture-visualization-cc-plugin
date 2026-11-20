@@ -53,6 +53,8 @@ export interface AdapterFileContext {
   fileId: string;
   path: string;
   ws: WorkspaceRecord;
+  /** Every workspace of the repository (a rule may apply through the workspaces its own depends on). */
+  workspaces: readonly WorkspaceRecord[];
   source: string;
   parsed: ParsedFile | undefined;
   resolver: AdapterResolver;
@@ -263,6 +265,7 @@ export function runAdapterList(ctx: AdapterRunContext, adapters: readonly Adapte
         fileId: f.id,
         path: f.path,
         ws,
+        workspaces: ctx.workspaces,
         source: f.source,
         parsed: ctx.parsed.get(f.id),
         resolver: ctx.resolver,

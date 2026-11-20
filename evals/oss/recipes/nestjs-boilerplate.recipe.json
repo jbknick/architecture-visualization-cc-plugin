@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "typeorm", "role": "data-access", "note": "ORM: @Entity classes and Repository<T>" },
+    {
+      "name": "@nestjs/typeorm",
+      "role": "data-access",
+      "note": "Nest integration: @InjectRepository(Entity)"
+    },
+    {
+      "name": "@nestjs/common",
+      "role": "framework",
+      "note": "Nest framework; routes are not read by this recipe"
+    }
+  ],
+  "helpers": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+  "methods": {
+    "read": [
+      "find",
+      "findOne",
+      "findBy",
+      "findOneBy",
+      "findOneOrFail",
+      "findOneByOrFail",
+      "findAndCount",
+      "count",
+      "countBy",
+      "exist",
+      "exists"
+    ],
+    "write": [
+      "save",
+      "insert",
+      "update",
+      "upsert",
+      "delete",
+      "softDelete",
+      "remove",
+      "softRemove",
+      "restore",
+      "increment",
+      "decrement"
+    ]
+  },
+  "rules": [
+    {
+      "id": "entity-named",
+      "language": "typescript",
+      "when": { "dependency": ["typeorm"] },
+      "rule": { "kind": "decorator", "pattern": "@Entity({ name: $N })" },
+      "emit": { "kind": "table", "name": "$N", "model": "@class" },
+      "examples": {
+        "match": ["@Entity({ name: 'user' })\nexport class UserEntity {}"],
+        "noMatch": ["@Entity()\nexport class UserEntity {}"]
+      }
+    },
+    {
+      "id": "entity-string",
+      "language": "typescript",
+      "when": { "dependency": ["typeorm"] },
+      "rule": { "kind": "decorator", "pattern": "@Entity($N)" },
+      "constraints": { "N": { "kind": "string" } },
+      "emit": { "kind": "table", "name": "$N", "model": "@class" },
+      "examples": {
+        "match": ["@Entity('user')\nexport class UserEntity {}"],
+        "noMatch": ["@Entity({ name: 'user' })\nexport class UserEntity {}"]
+      }
+    },
+    {
+      "id": "entity-default",
+      "language": "typescript",
+      "when": { "dependency": ["typeorm"] },
+      "rule": { "kind": "decorator", "pattern": "@Entity()" },
+      "emit": { "kind": "table", "name": "@class", "model": "@class" },
+      "examples": {
+        "match": ["@Entity()\nexport class UserEntity {}"],
+        "noMatch": ["@Entity('user')\nexport class UserEntity {}"]
+      }
+    },
+    {
+      "id": "repository-read",
+      "language": "typescript",
+      "when": { "dependency": ["typeorm"] },
+      "rule": { "pattern": "$R.$M($$$A)" },
+      "constraints": { "R": { "kind": "member_expression" } },
+      "emit": {
+        "kind": "read",
+        "receiver": "$R",
+        "method": "$M",
+        "receiverDecl": ["\\b{prop}\\s*:\\s*Repository<(\\w+)>"]
+      },
+      "examples": {
+        "match": ["this.repository.find({});"],
+        "noMatch": ["repository.find({});", "find({});"]
+      }
+    },
+    {
+      "id": "repository-write",
+      "language": "typescript",
+      "when": { "dependency": ["typeorm"] },
+      "rule": { "pattern": "$R.$M($$$A)" },
+      "constraints": { "R": { "kind": "member_expression" } },
+      "emit": {
+        "kind": "write",
+        "receiver": "$R",
+        "method": "$M",
+        "receiverDecl": ["\\b{prop}\\s*:\\s*Repository<(\\w+)>"]
+      },
+      "examples": {
+        "match": ["this.repository.save(row);"],
+        "noMatch": ["repository.save(row);", "save(row);"]
+      }
+    }
+  ]
+}

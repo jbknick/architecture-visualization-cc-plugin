@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "dependencies": [
+    {
+      "name": "drizzle-orm",
+      "role": "data-access",
+      "note": "ORM: pgTable declarations in src/models/Schema.ts"
+    },
+    { "name": "next", "role": "framework", "note": "Next.js app router; routes are not read by this recipe" },
+    { "name": "react", "role": "neither", "note": "UI library" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+  "tablePassthrough": ["alias"],
+  "rules": [
+    {
+      "id": "drizzle-table-pg",
+      "language": "typescript",
+      "when": { "dependency": ["drizzle-orm"] },
+      "rule": {
+        "all": [
+          { "pattern": "pgTable($N, $$$A)" },
+          {
+            "inside": {
+              "kind": "variable_declarator",
+              "inside": {
+                "kind": "lexical_declaration",
+                "inside": {
+                  "any": [
+                    { "kind": "program" },
+                    { "kind": "export_statement", "inside": { "kind": "program" } }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "constraints": { "N": { "kind": "string" } },
+      "emit": {
+        "kind": "table",
+        "name": "$N",
+        "binding": true,
+        "data": {
+          "adapter": "drizzle",
+          "name": "@name",
+          "exportName": "@exportName",
+          "symbol": "@symbol",
+          "dialect": "pg",
+          "columns": { "keysOf": "$$$A" },
+          "file": "@file",
+          "line": "@line"
+        }
+      },
+      "examples": {
+        "match": ["export const users = pgTable(\"users\", { id: text(\"id\") });"],
+        "noMatch": [
+          "function f() { const t = pgTable(\"users\", {}); }",
+          "export const t = sqliteTable(\"t\", {});"
+        ]
+      }
+    },
+    {
+      "id": "drizzle-select-from",
+      "language": "typescript",
+      "when": { "dependency": ["drizzle-orm"], "viaWorkspaces": true },
+      "rule": { "pattern": "$S.from($T)" },
+      "constraints": { "S": { "kind": "call_expression" } },
+      "emit": { "kind": "read", "table": "$T" },
+      "examples": {
+        "match": ["db.select().from(posts);"],
+        "noMatch": ["Array.from(posts);"]
+      }
+    },
+    {
+      "id": "drizzle-join",
+      "language": "typescript",
+      "when": { "dependency": ["drizzle-orm"], "viaWorkspaces": true },
+      "rule": { "pattern": "$S.$J($T, $$$A)" },
+      "constraints": {
+        "J": { "regex": "^(leftJoin|rightJoin|innerJoin|fullJoin)$" },
+        "S": { "kind": "call_expression" }
+      },
+      "emit": { "kind": "read", "table": "$T" },
+      "examples": {
+        "match": ["db.select().from(posts).innerJoin(users, eq(posts.authorId, users.id));"],
+        "noMatch": ["db.select().from(posts).where(eq(posts.id, 1));"]
+      }
+    },
+    {
+      "id": "drizzle-count",
+      "language": "typescript",
+      "when": { "dependency": ["drizzle-orm"], "viaWorkspaces": true },
+      "rule": { "any": [{ "pattern": "$D.$count($T)" }, { "pattern": "$D.$count($T, $$$A)" }] },
+      "emit": { "kind": "read", "table": "$T" },
+      "examples": {
+        "match": ["db.$count(users);", "db.$count(users, eq(users.id, 1));"],
+        "noMatch": ["db.count(users);"]
+      }
+    },
+    {
+      "id": "drizzle-relational-query",
+      "language": "typescript",
+      "when": { "dependency": ["drizzle-orm"], "viaWorkspaces": true },
+      "rule": { "pattern": "$D.$Q.$K.$M($$$A)" },
+      "constraints": {
+        "Q": { "regex": "^(query|_query)$" },
+        "M": { "regex": "^(findMany|findFirst)$" }
+      },
+      "emit": { "kind": "read", "model": "$K" },
+      "examples": {
+        "match": ["db.query.posts.findMany({ limit: 20 });"],
+        "noMatch": ["db.query.posts.count();", "db.posts.findMany();"]
+      }
+    },
+    {
+      "id": "drizzle-write",
+      "language": "typescript",
+      "when": { "dependency": ["drizzle-orm"], "viaWorkspaces": true },
+      "rule": { "any": [{ "pattern": "$D.$M($T)" }, { "pattern": "$D.$M($T, $$$A)" }] },
+      "constraints": { "M": { "regex": "^(insert|update|delete)$" } },
+      "emit": { "kind": "write", "table": "$T" },
+      "examples": {
+        "match": ["db.insert(posts);", "tx.update(schema.users);", "db.delete(posts);"],
+        "noMatch": ["db.select(posts);"]
+      }
+    }
+  ]
+}

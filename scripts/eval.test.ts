@@ -116,6 +116,41 @@ describe("predictions and score", () => {
     expect(p.link).toEqual([{ key: "src/app.ts|GET /posts/:param", confidence: "high" }]);
   });
 
+  it("does not predict a node that carries data.reason, nor an edge that ends at one", () => {
+    const withReason: Dump = {
+      ...dump,
+      adapterNodes: [
+        ...dump.adapterNodes,
+        {
+          id: "table:r:{table}",
+          kind: "table",
+          data: { name: "{table}", reason: "table name is a function parameter" },
+        },
+        {
+          id: "ep:r:x",
+          kind: "endpoint",
+          data: { method: "GET", path: "/{id}", reason: "path is a function parameter" },
+        },
+        {
+          id: "route:r:x",
+          kind: "route",
+          data: { urlPath: "/{x}", reason: "path is not a literal or const string" },
+        },
+      ],
+      edges: [
+        ...dump.edges,
+        ...dump.files.slice(0, 1).map((f) => ({
+          src: "x",
+          dst: "table:r:{table}",
+          kind: "reads",
+          confidence: "low",
+          fileId: f.id,
+        })),
+      ],
+    };
+    expect(predictionsOf(withReason)).toEqual(predictionsOf(dump));
+  });
+
   it("scores the fixture: endpoint recall below the bar, the rest pass", () => {
     const s = score("tiny", labels, dump);
     expect(s.kinds.endpoint).toEqual({

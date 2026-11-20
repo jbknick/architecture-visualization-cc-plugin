@@ -5,8 +5,12 @@ import { loadConfig } from "../config/index.js";
 import { discoverFiles } from "../discover/index.js";
 import { detectAllWorkspaces } from "../lang/index.js";
 import type { GantryPaths } from "../paths/index.js";
+import { listTextFiles } from "./data-access.js";
 import { astLang, findRule, rulesFor, runExamples } from "./engine.js";
+import { RegexRunner } from "./helpers/bounded-regex.js";
+import { matchText, runFailure, runTextExamples } from "./helpers/text-rules.js";
 import { parseRecipe, RECIPE_PATH } from "./load.js";
+import { isTextRule } from "./schema.js";
 
 /** What `gantry recipe check` reports for one rule. */
 export interface RuleCheck {
@@ -48,7 +52,7 @@ export function checkRecipeText(paths: GantryPaths, text: string): RecipeCheck {
   for (const f of files) {
     const ws = f.workspaceId ? wsById.get(f.workspaceId) : undefined;
     if (!ws) continue;
-    const rules = rulesFor(recipe, ws, f.path);
+    const rules = rulesFor(recipe, ws, f.path, workspaces);
     if (rules.length === 0) continue;
     let root: ReturnType<ReturnType<typeof parse>["root"]>;
     try {
@@ -64,9 +68,53 @@ export function checkRecipeText(paths: GantryPaths, text: string): RecipeCheck {
   }
 
   for (const rule of recipe.rules) {
-    const ex = runExamples(rule);
-    const error = ex.error ?? broken.get(rule.id);
-    if (error) out.errors.push(`recipe rule ${rule.id}: ast-grep rejects the rule: ${error}`);
+    const text = isTextRule(rule);
+    // A recipe's own regular expressions run in a worker under a time budget, here as in the index.
+    const runner = new RegexRunner();
+    let error: string | undefined;
+    let ex: { passed: number; failed: string[] };
+    try {
+      if (text) {
+        const r = runTextExamples(runner, rule);
+        ex = r;
+        error = r.error ? `${r.error}` : undefined;
+        if (!error) {
+          let n = 0;
+          for (const f of listTextFiles(paths.root, rule.files)) {
+            const m = matchText(runner, rule, f.text);
+            if (!m.ok) {
+              error = runFailure(m, runner);
+              break;
+            }
+            n += m.matches.length;
+          }
+          counts.set(rule.id, n);
+        }
+        if (error) out.errors.push(`recipe rule ${rule.id} skipped: ${error}`);
+      } else {
+        const r = runExamples(rule);
+        ex = r;
+        error = r.error ?? broken.get(rule.id);
+        if (error) out.errors.push(`recipe rule ${rule.id}: ast-grep rejects the rule: ${error}`);
+        const decls = "receiverDecl" in rule.emit ? (rule.emit.receiverDecl ?? []) : [];
+        for (const tpl of decls) {
+          for (const snippet of rule.examples.match) {
+            const m = runner.run(tpl.replaceAll("{prop}", "x"), "s", snippet, true);
+            if (!m.ok) {
+              error ??=
+                m.reason === "invalid"
+                  ? `invalid regex: ${m.error ?? ""}`
+                  : `regex exceeded ${runner.jobBudgetMs} ms`;
+              out.errors.push(`recipe rule ${rule.id} skipped: ${error}`);
+            }
+            if (!m.ok) break;
+          }
+          if (error) break;
+        }
+      }
+    } finally {
+      runner.close();
+    }
     const matches = counts.get(rule.id) ?? 0;
     out.rules.push({
       id: rule.id,

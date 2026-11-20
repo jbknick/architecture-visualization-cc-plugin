@@ -40,8 +40,8 @@ export async function postRouter(fastify: FastifyInstance) {
     const repo = await makeRepo({
       "package.json": JSON.stringify({ name: "api", version: "0.0.0", dependencies: { express: "^5.0.0" } }),
       ".gantry/recipe.json": recipe("express-mongodb-rest-api-boilerplate").replace(
-        '"helpers": ["resolve-names", "const-strings", "mount-graph", "call-return"]',
-        '"helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"]',
+        '"helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "method-classes"]',
+        '"helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "method-classes", "param-flow"]',
       ),
       "src/app.ts": `import express, { Router } from "express";
 import { addUserRoutes } from "./users";
