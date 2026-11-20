@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { openStore, saveView } from "@gantry/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { type Connected, call, connect, indexAndSync, makeRepo, type Repo, silentLog } from "../testkit.js";
 import { TOOLS } from "./index.js";
@@ -42,7 +43,7 @@ describe("gantry_open_view registration", () => {
     expect(TOOLS).toContain(openViewTool);
     expect(openViewTool.name).toBe("gantry_open_view");
     expect(openViewTool.description).toContain("untrusted_description");
-    expect(Object.keys(openViewTool.inputSchema).sort()).toEqual(["filters", "focus", "view"]);
+    expect(Object.keys(openViewTool.inputSchema).sort()).toEqual(["filters", "focus", "saved_view", "view"]);
   });
 });
 
@@ -71,9 +72,51 @@ describe("gantry_open_view", () => {
     15000,
   );
 
-  it("rejects focus, t and view as filter keys", async () => {
+  it("rejects an unknown saved view and a saved view of another view, without starting a server", async () => {
     const { repo, client } = await setup();
-    for (const key of ["focus", "t", "view"]) {
+    const store = openStore(repo.paths.dbPath);
+    try {
+      saveView(store, {
+        id: "curated",
+        name: "Curated",
+        spec: { view: "project-map", hidden: [], groups: [], filters: {} },
+      });
+    } finally {
+      store.close();
+    }
+    const unknown = await call(client, "gantry_open_view", { view: "project-map", saved_view: "nope" });
+    expect(unknown.json.error).toBe("unknown_saved_view");
+    expect(unknown.json.views).toEqual(["curated"]);
+    const mismatch = await call(client, "gantry_open_view", { view: "ego", saved_view: "curated" });
+    expect(mismatch.json.error).toBe("saved_view_mismatch");
+    expect(mismatch.json.view).toBe("project-map");
+    expect(existsSync(join(repo.paths.dataDir, "explorer.json"))).toBe(false);
+  });
+
+  it.skipIf(!built)(
+    "puts saved=<id> in the hash for a known saved view",
+    async () => {
+      const { repo, client } = await setup();
+      const store = openStore(repo.paths.dbPath);
+      try {
+        saveView(store, {
+          id: "curated",
+          name: "Curated",
+          spec: { view: "project-map", hidden: [], groups: [], filters: {} },
+        });
+      } finally {
+        store.close();
+      }
+      const r = await call(client, "gantry_open_view", { view: "project-map", saved_view: "curated" });
+      expect(r.isError).toBe(false);
+      expect(new URL(r.json.url as string).hash).toBe("#/project-map?saved=curated");
+    },
+    15000,
+  );
+
+  it("rejects focus, saved, t and view as filter keys", async () => {
+    const { repo, client } = await setup();
+    for (const key of ["focus", "saved", "t", "view"]) {
       const r = await call(client, "gantry_open_view", { view: "ego", filters: { [key]: "x" } });
       expect(r.json.error).toBe("reserved_filter_key");
     }

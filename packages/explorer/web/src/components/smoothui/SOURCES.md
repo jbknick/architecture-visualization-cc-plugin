@@ -13,10 +13,14 @@ One row per copied file.
 | tabs                       | `tabs/index.tsx`                   | https://smoothui.dev/r/tabs.json       | 2026-11-20 |
 | tabs                       | `tabs/use-active-tab-indicator.ts` | https://smoothui.dev/r/tabs.json       | 2026-11-20 |
 | breadcrumb                 | `breadcrumb/index.tsx`             | https://smoothui.dev/r/breadcrumb.json | 2026-11-20 |
+| dialog                     | `dialog/index.tsx`                 | https://smoothui.dev/r/dialog.json     | 2026-11-20 |
 | lib (breadcrumb's helpers) | `lib/animation.ts`                 | https://smoothui.dev/r/lib.json        | 2026-11-20 |
 | lib (breadcrumb's helpers) | `lib/springs.ts`                   | https://smoothui.dev/r/lib.json        | 2026-11-20 |
 
-Edits after copying: `breadcrumb/index.tsx` uses a Hugeicons icon instead of the registry's default icon package and lets an item set the
+Edits after copying: `dialog/index.tsx` uses a Hugeicons icon for its close button instead of the registry's default icon package (the
+curation controls use its `Dialog`; the close button is switched off there and Cancel closes it). SmoothUI's `combobox`
+is not used: it needs `cmdk` and `radix-ui`, which docs/SPEC.md section 2 does not list, so the `Saved view` and `Group`
+comboboxes are the kit's `native-select` (role `combobox`). `breadcrumb/index.tsx` uses a Hugeicons icon instead of the registry's default icon package and lets an item set the
 `aria-current` token of the last item (the explorer's breadcrumb marks it `location`). `lib/use-fluid-hover.ts`, which
 `lib` also ships, is not copied: nothing uses it.
 

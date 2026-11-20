@@ -986,3 +986,104 @@ kbd {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+/* Curation (rename, hide, group; the saved-view switcher; the Curation section of the left panel) */
+.saved-views {
+  flex: none;
+  margin-left: auto;
+  width: 148px;
+}
+.saved-views + .refresh-btn {
+  margin-left: 0;
+}
+@media (max-width: 1100px) {
+  /* With the saved-view switcher the bar is too full for the brand text at this width: the repo name and the tabs keep
+     the room, and the brand is still the page title. */
+  .topbar {
+    gap: 10px;
+    padding: 0 12px;
+  }
+  .brand {
+    display: none;
+  }
+  /* The repo name and the short sha keep their own width; the tab strip (it scrolls) gives up room instead. */
+  .topbar-id,
+  .topbar.many-tabs .topbar-id {
+    flex-shrink: 0;
+  }
+  .saved-views {
+    width: 124px;
+  }
+}
+.name-dialog {
+  max-width: 24rem;
+}
+.inspector .curate {
+  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.curate-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.curate-group {
+  flex: 1 1 9rem;
+  min-width: 0;
+  width: auto;
+}
+.curate-in {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.label-original {
+  font-size: 12px;
+}
+.curation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.curation h3 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.curation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.curation-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.curation-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 12px;
+}
+.curation-text code {
+  /* A path is shown whole: it wraps instead of being cut. */
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+.curation-buttons {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+}

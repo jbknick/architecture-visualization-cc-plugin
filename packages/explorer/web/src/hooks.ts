@@ -50,7 +50,13 @@ function useLoad<T>(key: string | null, load: (signal: AbortSignal) => Promise<T
 /** Fetches a view with its hash-route params. Pass `view: null` to skip the request. */
 export function useViewData(
   view: string | null,
-  params: { focus: string | null; level: ViewLevel | null; hops: number | null; filters: Filters },
+  params: {
+    focus: string | null;
+    level: ViewLevel | null;
+    hops: number | null;
+    saved?: string | null;
+    filters: Filters;
+  },
 ): Loadable<ViewData> {
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -67,6 +73,7 @@ export function useViewData(
         focus: params.focus ?? undefined,
         level: params.level ?? undefined,
         hops: params.hops ?? undefined,
+        saved: params.saved ?? undefined,
         filters: params.filters,
       },
       signal,
