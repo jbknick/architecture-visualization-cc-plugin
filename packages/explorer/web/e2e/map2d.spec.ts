@@ -305,7 +305,7 @@ test("large scenario: hover shows a tooltip, click selects a cell, double-click 
   await page.mouse.move(x, y);
   await expect(page.getByRole("tooltip")).toContainText(/functions|src/);
   await page.mouse.click(x, y);
-  await expect(page).toHaveURL(/sel=(dir|file)%3Aapps%2Fapi/);
+  await expect(page).toHaveURL(/sel=(dir|file)%3Apnpm-turbo%3Aapps%2Fapi/);
   // The inspector opened, so the canvas was resized and laid out again: find the box again.
   await page.waitForTimeout(900);
   const moved = (await probe(page)).regions.find((r) => r.id === "ws:@acme-platform-monorepo/api");
