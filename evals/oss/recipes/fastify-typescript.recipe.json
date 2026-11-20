@@ -12,8 +12,44 @@
     { "name": "@prisma/client", "role": "data-access", "note": "ORM client" },
     { "name": "pino", "role": "neither", "note": "logger" }
   ],
-  "helpers": ["resolve-names", "const-strings", "mount-graph", "param-flow"],
+  "helpers": [
+    "resolve-names",
+    "const-strings",
+    "mount-graph",
+    "param-flow",
+    "text-rules",
+    "model-naming",
+    "method-classes",
+    "sql-text"
+  ],
   "passthrough": ["get", "post", "put", "patch", "delete", "options", "head", "register"],
+  "methods": {
+    "read": [
+      "findUnique",
+      "findUniqueOrThrow",
+      "findFirst",
+      "findFirstOrThrow",
+      "findMany",
+      "count",
+      "aggregate",
+      "groupBy"
+    ],
+    "write": [
+      "create",
+      "createMany",
+      "createManyAndReturn",
+      "update",
+      "updateMany",
+      "updateManyAndReturn",
+      "upsert",
+      "delete",
+      "deleteMany"
+    ]
+  },
+  "sql": {
+    "tags": ["$queryRaw", "$executeRaw", "$queryRawUnsafe", "$executeRawUnsafe"],
+    "exclude": ["prisma/migrations/**"]
+  },
   "rules": [
     {
       "id": "fastify-app",
@@ -84,6 +120,53 @@
           "fastify.post(\"/login\", { schema }, controllers.login);"
         ],
         "noMatch": ["server.register(plugin, { prefix: \"/x\" });", "cache.has(\"k\");"]
+      }
+    },
+    {
+      "id": "schema-model-mapped",
+      "language": "text",
+      "files": ["**/*.prisma"],
+      "rule": {
+        "regex": "^model\\s+(\\w+)\\s*\\{(?:(?!^\\})[\\s\\S])*?^\\s*@@map\\(\"([^\"]+)\"\\)",
+        "flags": "gm"
+      },
+      "emit": { "kind": "table", "name": "$2", "model": "$1" },
+      "examples": {
+        "match": ["model User {\n  id Int\n  @@map(\"users\")\n}"],
+        "noMatch": ["model Post {\n  id Int\n}"]
+      }
+    },
+    {
+      "id": "schema-model-plain",
+      "language": "text",
+      "files": ["**/*.prisma"],
+      "rule": { "regex": "^model\\s+(\\w+)\\s*\\{(?:(?!@@map)(?!^\\})[\\s\\S])*^\\}", "flags": "gm" },
+      "emit": { "kind": "table", "name": "$1", "model": "$1" },
+      "examples": {
+        "match": ["model Post {\n  id Int\n}"],
+        "noMatch": ["model User {\n  id Int\n  @@map(\"users\")\n}"]
+      }
+    },
+    {
+      "id": "client-read",
+      "language": "typescript",
+      "rule": { "pattern": "$C.$MODEL.$M($$$A)" },
+      "constraints": { "C": { "regex": "^(prisma|db|tx|client)$" } },
+      "emit": { "kind": "read", "model": "$MODEL", "method": "$M" },
+      "examples": {
+        "match": ["prisma.user.findUnique({ where: { email } });"],
+        "noMatch": ["cache.user.findUnique(1);", "prisma.findUnique(1);"]
+      }
+    },
+    {
+      "id": "client-write",
+      "language": "typescript",
+      "rule": { "pattern": "$C.$MODEL.$M($$$A)" },
+      "constraints": { "C": { "regex": "^(prisma|db|tx|client)$" } },
+      "emit": { "kind": "write", "model": "$MODEL", "method": "$M" },
+      "examples": {
+        "match": ["prisma.post.create({ data });"],
+        "noMatch": ["cache.post.create(1);", "prisma.create(1);"]
       }
     }
   ]

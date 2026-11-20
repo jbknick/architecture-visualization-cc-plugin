@@ -43,7 +43,7 @@ import {
 } from "./helpers/resolve-names.js";
 import { handlerLabel, isFnNode, parseExpr } from "./helpers/snippet.js";
 import type { LoadedRecipe } from "./load.js";
-import type { Recipe, RecipeRule } from "./schema.js";
+import { isTsRule, type Recipe, type RecipeRule } from "./schema.js";
 
 /**
  * The recipe engine (spec section 5). Rules are ast-grep rules, passed to `findAll` unchanged; each match is turned
@@ -75,11 +75,32 @@ export interface RuleMatch {
   node: SgNode;
 }
 
-/** The rules that apply to a file: its workspace declares a `when` dependency (or the rule has none) and `files` match. */
-export function rulesFor(recipe: Recipe, ws: WorkspaceRecord, path: string): RecipeRule[] {
-  return recipe.rules.filter((r) => {
-    const deps = r.when?.dependency;
-    if (deps && !hasDependency(ws, deps)) return false;
+/**
+ * A workspace passes a rule's `when`: it declares one of the dependencies, or (`viaWorkspaces`) depends on a
+ * workspace of the repository that does.
+ */
+export function whenApplies(
+  when: RecipeRule["when"],
+  ws: WorkspaceRecord,
+  workspaces: readonly WorkspaceRecord[],
+): boolean {
+  const deps = when?.dependency;
+  if (!deps) return true;
+  if (hasDependency(ws, deps)) return true;
+  return (
+    when.viaWorkspaces === true && workspaces.some((w) => ws.deps.includes(w.name) && hasDependency(w, deps))
+  );
+}
+
+/** The rules that apply to a file: its workspace passes the rule's `when` (or the rule has none) and `files` match. */
+export function rulesFor(
+  recipe: Recipe,
+  ws: WorkspaceRecord,
+  path: string,
+  workspaces: readonly WorkspaceRecord[] = [ws],
+): RecipeRule[] {
+  return recipe.rules.filter(isTsRule).filter((r) => {
+    if (!whenApplies(r.when, ws, workspaces)) return false;
     return !r.files || picomatch.isMatch(path, r.files, { dot: true });
   });
 }
@@ -142,7 +163,7 @@ export interface FileFacts extends ModelLike {
 
 export function matchFile(file: AdapterFileContext, recipe: LoadedRecipe | null): FileFacts | undefined {
   if (!recipe?.recipe) return undefined;
-  const rules = rulesFor(recipe.recipe, file.ws, file.path);
+  const rules = rulesFor(recipe.recipe, file.ws, file.path, file.workspaces);
   if (rules.length === 0) return undefined;
   const root = rootOf(file);
   if (!root) return undefined;
@@ -208,14 +229,14 @@ interface Env {
   fileOf: (fileId: string) => AdapterFileContext | undefined;
 }
 
-const captureNodes = (m: RuleMatch, c: string | undefined): SgNode[] => {
+export const captureNodes = (m: RuleMatch, c: string | undefined): SgNode[] => {
   if (!c || c.startsWith("=")) return [];
   if (c.startsWith("$$$"))
     return m.node.getMultipleMatches(c.slice(3)).filter((x) => x.isNamed() && kindOf(x) !== "comment");
   const x = m.node.getMatch(c.slice(1));
   return x ? [x] : [];
 };
-const captureNode = (m: RuleMatch, c: string | undefined): SgNode | undefined => captureNodes(m, c)[0];
+export const captureNode = (m: RuleMatch, c: string | undefined): SgNode | undefined => captureNodes(m, c)[0];
 
 function pathCtx(model: FileFacts, node: SgNode): PathContext {
   return pathContext(model.file, parameterNames(node));

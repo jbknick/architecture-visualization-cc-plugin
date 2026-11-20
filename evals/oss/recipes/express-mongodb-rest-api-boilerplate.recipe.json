@@ -10,7 +10,35 @@
     { "name": "mongodb", "role": "data-access", "note": "document store driver" },
     { "name": "zod", "role": "neither", "note": "request schemas" }
   ],
-  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return"],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "method-classes"],
+  "methods": {
+    "read": [
+      "find",
+      "findOne",
+      "findById",
+      "countDocuments",
+      "estimatedDocumentCount",
+      "exists",
+      "aggregate",
+      "distinct"
+    ],
+    "write": [
+      "create",
+      "insertMany",
+      "updateOne",
+      "updateMany",
+      "replaceOne",
+      "findOneAndUpdate",
+      "findByIdAndUpdate",
+      "findOneAndDelete",
+      "findByIdAndDelete",
+      "findOneAndReplace",
+      "deleteOne",
+      "deleteMany",
+      "bulkWrite",
+      "save"
+    ]
+  },
   "passthrough": ["use", "get", "post", "put", "patch", "delete", "all", "options", "head", "route"],
   "rules": [
     {
@@ -125,6 +153,77 @@
           "app.get(\"/health\", (req, res) => res.send(\"ok\"));"
         ],
         "noMatch": ["app.use(\"/health\", handler);", "map.has(\"k\");"]
+      }
+    },
+    {
+      "id": "mongoose-model",
+      "language": "typescript",
+      "when": { "dependency": ["mongoose"] },
+      "rule": { "pattern": "model($N, $$$A)" },
+      "constraints": { "N": { "kind": "string" } },
+      "emit": { "kind": "table", "name": "$N", "binding": true },
+      "examples": {
+        "match": ["export const User = model('User', schema);"],
+        "noMatch": ["const x = models.get('User');"]
+      }
+    },
+    {
+      "id": "mongoose-static-read",
+      "language": "typescript",
+      "when": { "dependency": ["mongoose"] },
+      "rule": { "pattern": "$M.$METHOD($$$A)" },
+      "constraints": { "M": { "kind": "identifier" } },
+      "emit": { "kind": "read", "table": "$M", "method": "$METHOD" },
+      "examples": {
+        "match": ["User.findById(id).lean();"],
+        "noMatch": ["a.b.findById(id);", "findById(id);"]
+      }
+    },
+    {
+      "id": "mongoose-static-write",
+      "language": "typescript",
+      "when": { "dependency": ["mongoose"] },
+      "rule": { "pattern": "$M.$METHOD($$$A)" },
+      "constraints": { "M": { "kind": "identifier" } },
+      "emit": { "kind": "write", "table": "$M", "method": "$METHOD" },
+      "examples": {
+        "match": ["User.create(data);"],
+        "noMatch": ["a.b.create(data);", "create(data);"]
+      }
+    },
+    {
+      "id": "mongoose-collection-read",
+      "language": "typescript",
+      "when": { "dependency": ["mongoose"] },
+      "rule": { "pattern": "$M.collection.$METHOD($$$A)" },
+      "constraints": { "M": { "kind": "identifier" } },
+      "emit": { "kind": "read", "table": "$M", "method": "$METHOD" },
+      "examples": {
+        "match": ["Media.collection.countDocuments({});"],
+        "noMatch": ["Media.docs.countDocuments({});", "a.b.collection.countDocuments({});"]
+      }
+    },
+    {
+      "id": "mongoose-collection-write",
+      "language": "typescript",
+      "when": { "dependency": ["mongoose"] },
+      "rule": { "pattern": "$M.collection.$METHOD($$$A)" },
+      "constraints": { "M": { "kind": "identifier" } },
+      "emit": { "kind": "write", "table": "$M", "method": "$METHOD" },
+      "examples": {
+        "match": ["Media.collection.updateMany({}, {});"],
+        "noMatch": ["Media.docs.updateMany({}, {});", "a.b.collection.updateMany({}, {});"]
+      }
+    },
+    {
+      "id": "mongoose-new-save",
+      "language": "typescript",
+      "when": { "dependency": ["mongoose"] },
+      "rule": { "pattern": "new $M($$$A).save($$$B)" },
+      "emit": { "kind": "write", "table": "$M" },
+      "examples": {
+        "match": ["await new User({ email }).save({ session });"],
+        "noMatch": ["user.save();"]
       }
     }
   ]

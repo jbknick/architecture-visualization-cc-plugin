@@ -5,8 +5,11 @@ import { loadConfig } from "../config/index.js";
 import { discoverFiles } from "../discover/index.js";
 import { detectAllWorkspaces } from "../lang/index.js";
 import type { GantryPaths } from "../paths/index.js";
+import { listTextFiles } from "./data-access.js";
 import { astLang, findRule, rulesFor, runExamples } from "./engine.js";
+import { compileTextRule, matchText, runTextExamples } from "./helpers/text-rules.js";
 import { parseRecipe, RECIPE_PATH } from "./load.js";
+import { isTextRule } from "./schema.js";
 
 /** What `gantry recipe check` reports for one rule. */
 export interface RuleCheck {
@@ -48,7 +51,7 @@ export function checkRecipeText(paths: GantryPaths, text: string): RecipeCheck {
   for (const f of files) {
     const ws = f.workspaceId ? wsById.get(f.workspaceId) : undefined;
     if (!ws) continue;
-    const rules = rulesFor(recipe, ws, f.path);
+    const rules = rulesFor(recipe, ws, f.path, workspaces);
     if (rules.length === 0) continue;
     let root: ReturnType<ReturnType<typeof parse>["root"]>;
     try {
@@ -64,9 +67,17 @@ export function checkRecipeText(paths: GantryPaths, text: string): RecipeCheck {
   }
 
   for (const rule of recipe.rules) {
-    const ex = runExamples(rule);
+    const text = isTextRule(rule);
+    const ex = text ? runTextExamples(rule) : runExamples(rule);
     const error = ex.error ?? broken.get(rule.id);
-    if (error) out.errors.push(`recipe rule ${rule.id}: ast-grep rejects the rule: ${error}`);
+    if (error)
+      out.errors.push(`recipe rule ${rule.id}: ${text ? "invalid" : "ast-grep rejects the rule"}: ${error}`);
+    if (text) {
+      const rx = compileTextRule(rule);
+      let n = 0;
+      if (rx) for (const f of listTextFiles(paths.root, rule.files)) n += matchText(rx, f.text).length;
+      counts.set(rule.id, n);
+    }
     const matches = counts.get(rule.id) ?? 0;
     out.rules.push({
       id: rule.id,

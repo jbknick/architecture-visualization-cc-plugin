@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type Recipe, RecipeShellSchema, RuleSchema, zodMessage } from "./schema.js";
+import { type Recipe, RecipeShellSchema, ruleSchemaFor, zodMessage } from "./schema.js";
 
 export const RECIPE_PATH = ".gantry/recipe.json";
 
@@ -65,7 +65,7 @@ export function parseRecipe(text: string): LoadedRecipe {
   const rules: Recipe["rules"] = [];
   const seen = new Set<string>();
   shell.data.rules.forEach((r, i) => {
-    const rule = RuleSchema.safeParse(r);
+    const rule = ruleSchemaFor(r).safeParse(r);
     const id =
       typeof (r as { id?: unknown } | null)?.id === "string" ? (r as { id: string }).id : `#${i + 1}`;
     if (!rule.success) {

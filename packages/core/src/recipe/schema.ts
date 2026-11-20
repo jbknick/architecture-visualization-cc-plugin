@@ -14,6 +14,10 @@ export const HELPER_NAMES = [
   "call-return",
   "param-flow",
   "fs-routes",
+  "sql-text",
+  "text-rules",
+  "model-naming",
+  "method-classes",
 ] as const;
 export type HelperName = (typeof HELPER_NAMES)[number];
 
@@ -90,6 +94,38 @@ const capture = z.string().regex(/^(\$\$\$[A-Z_][A-Z0-9_]*|\$[A-Z_][A-Z0-9_]*|=.
 /** The label written into the node's `data.adapter`. Optional because file routes carry none. */
 const emitData = z.strictObject({ adapter: z.string().min(1).optional() }).optional();
 
+/** A capture that reads as text: a capture, a literal, or `@class` (the name of the class a matched decorator decorates). */
+const textCapture = z
+  .string()
+  .regex(/^(\$[A-Z_][A-Z0-9_]*|=.+|@class)$/, "not a text capture ($NAME, =text or @class)");
+
+/**
+ * A field of a table node's `data`. `$X` is the capture's text (a string literal's value); `@exportName`, `@symbol`,
+ * `@file`, `@line` and `@name` are what the engine knows about the declaration; `{ "keysOf": "$X" }` is the property
+ * names of the object literal a capture holds (or that a function it holds returns); any other string is a literal
+ * (a leading `=` is dropped).
+ */
+const dataValue = z.union([z.string(), z.strictObject({ keysOf: capture })]);
+const tableData = z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "not a field name"), dataValue);
+
+/**
+ * A read or a write of a table by the code around the match. The table comes from `table` (an expression bound to a
+ * table: a string, an identifier, `ns.member`, or a call named in `tablePassthrough`), from `model` (a model name,
+ * `$$$` for several) or from `receiver`: its declaration text is matched against the `receiverDecl` regexes, whose
+ * first group is the model (`{prop}` stands for the member name). With `method`, the match counts only when the
+ * recipe's `methods` list puts that method in this emit's class.
+ */
+const accessShape = {
+  table: capture.optional(),
+  model: capture.optional(),
+  receiver: capture.optional(),
+  receiverDecl: z.array(z.string().min(1)).min(1).optional(),
+  method: capture.optional(),
+  data: emitData,
+};
+const hasTableSource = (e: { table?: string; model?: string; receiver?: string; receiverDecl?: string[] }) =>
+  Boolean(e.table || e.model || (e.receiver && e.receiverDecl));
+
 export const EmitSchema = z.discriminatedUnion("kind", [
   /** A router instance (the match is its constructor); `base` is a base path of its own. */
   z.strictObject({ kind: z.literal("router"), base: capture.optional(), data: emitData }),
@@ -136,14 +172,44 @@ export const EmitSchema = z.discriminatedUnion("kind", [
     root: z.boolean().optional(),
     data: emitData,
   }),
+  /**
+   * A table (a collection counts as a table). `name` is the first capture that reads as text; one that cannot be read
+   * makes a table named `{<expression>}` with `data.reason`. `model` is the name the code uses for the table (an
+   * entity, class or export name). `binding`: the identifier the match is assigned to stands for the table in later
+   * code. `data` is carried into the node's data.
+   */
+  z.strictObject({
+    kind: z.literal("table"),
+    name: z.union([textCapture, z.array(textCapture).min(1)]),
+    model: textCapture.optional(),
+    binding: z.boolean().optional(),
+    data: tableData.optional(),
+  }),
+  z
+    .strictObject({ kind: z.literal("read"), ...accessShape })
+    .refine(hasTableSource, "needs table, model, or receiver with receiverDecl"),
+  z
+    .strictObject({ kind: z.literal("write"), ...accessShape })
+    .refine(hasTableSource, "needs table, model, or receiver with receiverDecl"),
 ]);
 export type Emit = z.infer<typeof EmitSchema>;
 
-export const RuleSchema = z.strictObject({
-  id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/, "id must match [A-Za-z0-9._-]+"),
+const ruleId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/, "id must match [A-Za-z0-9._-]+");
+/**
+ * The rule runs only in workspaces that declare one of these packages. `viaWorkspaces` widens that to workspaces
+ * that depend on a workspace of the repository that declares one (a package using a schema defined in another).
+ */
+const whenSchema = z
+  .strictObject({
+    dependency: z.array(z.string().min(1)).min(1).optional(),
+    viaWorkspaces: z.boolean().optional(),
+  })
+  .optional();
+
+export const TsRuleSchema = z.strictObject({
+  id: ruleId,
   language: z.literal("typescript"),
-  /** The rule runs only in workspaces that declare one of these packages. */
-  when: z.strictObject({ dependency: z.array(z.string().min(1)).min(1).optional() }).optional(),
+  when: whenSchema,
   /** Repo-relative picomatch globs; default every file of the workspace. */
   files: z.array(z.string().min(1)).optional(),
   rule: astRule,
@@ -152,7 +218,47 @@ export const RuleSchema = z.strictObject({
   /** Snippets that must match (each at least once) and snippets that must not, checked by `gantry recipe check`. */
   examples: z.strictObject({ match: z.array(z.string()), noMatch: z.array(z.string()) }),
 });
-export type RecipeRule = z.infer<typeof RuleSchema>;
+export type RecipeRule = z.infer<typeof TsRuleSchema>;
+
+/** A regex group of a text rule (`$1`) or a literal (`=text`). */
+const groupRef = z.string().regex(/^(\$\d+|=.+)$/, "not a group reference ($1) or a literal (=text)");
+
+/**
+ * A rule over files that have no syntax tree in the index (a schema file, SQL migrations): `files` globs are
+ * required, `rule.regex` is matched against the whole text (flags default `gm`), `$1`, `$2` ... are its groups.
+ * A text rule emits tables; the table node belongs to the first TypeScript file of the text file's workspace,
+ * because only files with a syntax tree are rows of the index.
+ */
+export const TextRuleSchema = z.strictObject({
+  id: ruleId,
+  language: z.literal("text"),
+  when: whenSchema,
+  files: z.array(z.string().min(1)).min(1),
+  rule: z.strictObject({
+    regex: z.string().min(1),
+    flags: z
+      .string()
+      .regex(/^[gimsuy]*$/, "flags are letters of gimsuy")
+      .optional(),
+  }),
+  emit: z.strictObject({
+    kind: z.literal("table"),
+    name: z.union([groupRef, z.array(groupRef).min(1)]),
+    model: groupRef.optional(),
+    data: tableData.optional(),
+  }),
+  examples: z.strictObject({ match: z.array(z.string()), noMatch: z.array(z.string()) }),
+});
+export type TextRecipeRule = z.infer<typeof TextRuleSchema>;
+
+export const RuleSchema = z.union([TsRuleSchema, TextRuleSchema]);
+export type AnyRecipeRule = RecipeRule | TextRecipeRule;
+export const isTextRule = (r: AnyRecipeRule): r is TextRecipeRule => r.language === "text";
+export const isTsRule = (r: AnyRecipeRule): r is RecipeRule => r.language === "typescript";
+
+/** The schema a raw rule is checked against: its `language` picks one, so an error names that schema's problem. */
+export const ruleSchemaFor = (raw: unknown) =>
+  (raw as { language?: unknown } | null)?.language === "text" ? TextRuleSchema : TsRuleSchema;
 
 export const DependencySchema = z.strictObject({
   name: z.string().min(1),
@@ -169,6 +275,36 @@ export const RecipeShellSchema = z.strictObject({
   rules: z.array(z.unknown()),
   /** Chain methods that return the same router (`r.With(mw).Get`, `new Hono().basePath(..).get(..)`). */
   passthrough: z.array(z.string().min(1)).optional(),
+  /** `model-naming`: how a model name maps to a table name (an explicit map, `snake_case`, plural, or both). */
+  models: z
+    .strictObject({
+      explicit: z.record(z.string(), z.string().min(1)).optional(),
+      snakeCase: z.boolean().optional(),
+      plural: z.boolean().optional(),
+    })
+    .optional(),
+  /** `method-classes`: the methods that read and the methods that write (see the `method` of a read or write emit). */
+  methods: z
+    .strictObject({
+      read: z.array(z.string().min(1)).optional(),
+      write: z.array(z.string().min(1)).optional(),
+    })
+    .optional(),
+  /** Calls that stand for their first argument when read as a table (`alias(users, "a")`). */
+  tablePassthrough: z.array(z.string().min(1)).optional(),
+  /**
+   * `sql-text`: scan the strings, template literals and tagged templates of TypeScript files (`files`, default all;
+   * `exclude` globs are left out) and the text files `sqlFiles` names. `tags`: tagged templates that are SQL whatever
+   * they start with.
+   */
+  sql: z
+    .strictObject({
+      tags: z.array(z.string().min(1)).optional(),
+      files: z.array(z.string().min(1)).optional(),
+      exclude: z.array(z.string().min(1)).optional(),
+      sqlFiles: z.array(z.string().min(1)).optional(),
+    })
+    .optional(),
 });
 
 export const RecipeSchema = RecipeShellSchema.extend({ rules: z.array(RuleSchema) });
