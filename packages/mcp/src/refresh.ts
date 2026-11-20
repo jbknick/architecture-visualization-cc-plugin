@@ -30,10 +30,10 @@ export async function lazyRefresh(paths: GantryPaths, log: Logger): Promise<{ he
   try {
     const head = headOf(paths.root);
     if (head !== undefined && head !== storedHead(paths)) {
-      await heal(paths);
+      await heal(paths, { reattach: true });
       healed = true;
     }
-    await refreshWorking(paths);
+    await refreshWorking(paths, { reattach: true });
   } catch (err) {
     log.error("lazy refresh failed; continuing with the current index", err);
   }

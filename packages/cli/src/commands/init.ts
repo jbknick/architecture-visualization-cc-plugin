@@ -9,6 +9,7 @@ import {
   indexCounts,
   indexRepo,
   openStore,
+  reattachOverlay,
   rebuildSimilarEdges,
   resetStaleStore,
   resolvePaths,
@@ -66,6 +67,7 @@ export function registerInit(program: Command): void {
         await heal(paths);
         const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
         try {
+          reattachOverlay(store);
           syncBacklog(store, { root: paths.root });
           writeCatalog(store, paths);
           await rebuildSimilarEdges(store);

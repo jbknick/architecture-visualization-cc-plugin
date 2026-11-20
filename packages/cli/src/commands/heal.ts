@@ -21,7 +21,7 @@ export function registerHeal(program: Command): void {
           process.exitCode = EXIT_OK;
           return;
         }
-        const r = await heal(paths, { from: opts.from });
+        const r = await heal(paths, { from: opts.from, reattach: true });
         process.stdout.write(
           `Healed ${r.changed} file${r.changed === 1 ? "" : "s"} (${r.full ? "full re-index" : "incremental"}) in ${r.ms} ms\n`,
         );
