@@ -1,4 +1,6 @@
 import { useId, useState } from "react";
+import { Checkbox } from "../components/ui/checkbox.tsx";
+import { Input } from "../components/ui/input.tsx";
 import type { FilterPanelProps } from "../slots.ts";
 import { getList, setList } from "./filterUtils.ts";
 
@@ -95,10 +97,9 @@ export function PagesPanel({
         <label htmlFor={prefixId} className="slider-label">
           <span>Only routes under</span>
         </label>
-        <input
+        <Input
           id={prefixId}
           type="text"
-          className="text-input"
           placeholder="/settings"
           value={draft ?? prefix}
           spellCheck={false}
@@ -116,7 +117,7 @@ export function PagesPanel({
           <h3>Apps</h3>
           {apps.map((a) => (
             <label className="check" key={a.id} title={a.name}>
-              <input type="checkbox" checked={isOn(a.id)} onChange={(e) => setApp(a.id, e.target.checked)} />
+              <Checkbox checked={isOn(a.id)} onCheckedChange={(checked) => setApp(a.id, checked)} />
               <span className="check-text">
                 <span className="check-label">{a.shortLabel}</span>
                 <span className="check-note">

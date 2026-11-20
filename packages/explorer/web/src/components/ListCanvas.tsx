@@ -1,3 +1,5 @@
+import { FileSearchIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { GraphNode } from "../api.ts";
 import { useRefresh } from "../refresh.ts";
@@ -122,7 +124,10 @@ export function ListCanvas({ nodes: rawNodes, edges, focus, onSelect, onHover, o
         Placeholder list renderer. {nodes.length} nodes, {edges.length} edges.
       </div>
       {nodes.length === 0 ? (
-        <p className="empty">This view has no nodes yet.</p>
+        <p className="empty inline-flex items-center gap-2 p-4 text-muted-foreground">
+          <HugeiconsIcon icon={FileSearchIcon} size={18} aria-hidden="true" />
+          This view has no nodes yet.
+        </p>
       ) : (
         <div
           ref={scroller}

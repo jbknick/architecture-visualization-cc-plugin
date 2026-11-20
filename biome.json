@@ -17,5 +17,17 @@
   },
   "formatter": { "indentStyle": "space", "lineWidth": 110 },
   "javascript": { "formatter": { "quoteStyle": "double" } },
-  "linter": { "enabled": true, "rules": { "preset": "recommended" } }
+  "css": { "parser": { "tailwindDirectives": true } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "a11y": {
+        "noLabelWithoutControl": {
+          "level": "error",
+          "options": { "inputComponents": ["Checkbox", "Input", "NativeSelect"] }
+        }
+      }
+    }
+  }
 }

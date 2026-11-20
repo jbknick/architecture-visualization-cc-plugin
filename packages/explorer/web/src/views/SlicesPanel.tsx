@@ -1,4 +1,6 @@
 import type { ViewLevel } from "../api.ts";
+import { Segment } from "../components/Segment.tsx";
+import { Checkbox } from "../components/ui/checkbox.tsx";
 import type { FilterPanelProps } from "../slots.ts";
 import { getBool, setBool } from "./filterUtils.ts";
 
@@ -43,18 +45,14 @@ export function SlicesPanel({
           <h3>How much detail</h3>
           <div className="segmented" role="radiogroup" aria-label="Detail level">
             {LEVELS.map((l) => (
-              // biome-ignore lint/a11y/useSemanticElements: a segmented control is a radio group of buttons
-              <button
+              <Segment
+                checked={level === l.id}
                 key={l.id}
-                type="button"
-                role="radio"
-                aria-checked={level === l.id}
                 title={l.hint}
-                className="segment"
                 onClick={() => onRouteChange({ level: l.id === "files" ? null : l.id })}
               >
                 {l.label}
-              </button>
+              </Segment>
             ))}
           </div>
         </section>
@@ -90,18 +88,16 @@ export function SlicesPanel({
       <section className="filter-group" aria-label="Show or hide">
         <h3>Show or hide</h3>
         <label className="check" title="Also draw imports between files of the same slice">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={getBool(filters, "intra", false)}
-            onChange={(e) => onFiltersChange(setBool(filters, "intra", e.target.checked, false))}
+            onCheckedChange={(checked) => onFiltersChange(setBool(filters, "intra", checked, false))}
           />
           <span className="check-label">Imports inside a slice</span>
         </label>
         <label className="check" title="Leave out test and spec files">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={getBool(filters, "hideTests", true)}
-            onChange={(e) => onFiltersChange(setBool(filters, "hideTests", e.target.checked, true))}
+            onCheckedChange={(checked) => onFiltersChange(setBool(filters, "hideTests", checked, true))}
           />
           <span className="check-label">Hide tests</span>
         </label>

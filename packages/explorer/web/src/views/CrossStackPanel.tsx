@@ -1,5 +1,7 @@
 import { useId, useState } from "react";
 import type { Filters, WsCount } from "../api.ts";
+import { Checkbox } from "../components/ui/checkbox.tsx";
+import { Input } from "../components/ui/input.tsx";
 import type { FilterPanelProps } from "../slots.ts";
 import { getBool, getList, setBool, setList } from "./filterUtils.ts";
 
@@ -37,7 +39,7 @@ function CheckList({
       <h3>{title}</h3>
       {options.map((o) => (
         <label className="check" key={o.id} title={o.id}>
-          <input type="checkbox" checked={isOn(o.id)} onChange={(e) => set(o.id, e.target.checked)} />
+          <Checkbox checked={isOn(o.id)} onCheckedChange={(checked) => set(o.id, checked)} />
           <span className="check-text">
             <span className="check-label">{o.label}</span>
             {o.note && <span className="check-note">{o.note}</span>}
@@ -74,10 +76,9 @@ function PrefixInput({
   return (
     <section className="filter-group" aria-label={title}>
       <h3>{title}</h3>
-      <input
+      <Input
         id={id}
         type="text"
-        className="text-input"
         aria-label={title}
         placeholder={placeholder}
         value={draft ?? filters.prefix ?? ""}
@@ -109,14 +110,13 @@ function Toggle({
   const checked = on === "true" ? getBool(filters, keyName, false) : filters[keyName] === on;
   return (
     <label className="check">
-      <input
-        type="checkbox"
+      <Checkbox
         checked={checked}
-        onChange={(e) => {
-          if (on === "true") onFiltersChange(setBool(filters, keyName, e.target.checked, false));
+        onCheckedChange={(checked) => {
+          if (on === "true") onFiltersChange(setBool(filters, keyName, checked, false));
           else {
             const next = { ...filters };
-            if (e.target.checked) next[keyName] = on;
+            if (checked) next[keyName] = on;
             else delete next[keyName];
             onFiltersChange(next);
           }

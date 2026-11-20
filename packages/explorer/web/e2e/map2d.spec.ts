@@ -283,11 +283,11 @@ test("large scenario: declared-only dependencies are hidden until the toggle is 
   await openLarge(page, "dirs");
   const before = (await probe(page)).edges.length;
   expect(before).toBe(23); // the real import links only (api -> core and back are two arrows)
-  await page.getByLabel("Show declared dependencies").check();
+  await page.getByRole("checkbox", { name: "Show declared dependencies" }).check();
   await page.waitForTimeout(300);
   const after = (await probe(page)).edges.length;
   expect(after).toBe(54); // plus the 31 declared-only ones
-  await page.getByLabel("Show declared dependencies").uncheck();
+  await page.getByRole("checkbox", { name: "Show declared dependencies" }).uncheck();
 });
 
 test("large scenario: hover shows a tooltip, click selects a cell, double-click drills into a workspace", async ({
@@ -331,7 +331,7 @@ test("large scenario: every count pill shows the import weight of its pair, neve
   expect(both.length).toBeGreaterThan(0);
 
   await openLarge(page, "dirs");
-  await page.getByLabel("Show declared dependencies").check();
+  await page.getByRole("checkbox", { name: "Show declared dependencies" }).check();
   await page.waitForTimeout(300);
   const check = async (label: string) => {
     const p = await probe(page);
@@ -355,7 +355,7 @@ test("large scenario: every count pill shows the import weight of its pair, neve
   await page.getByRole("checkbox", { name: /^core/ }).locator("xpath=ancestor::label").hover();
   await page.waitForTimeout(300);
   await check("core highlighted");
-  await page.getByLabel("Show declared dependencies").uncheck();
+  await page.getByRole("checkbox", { name: "Show declared dependencies" }).uncheck();
 });
 
 test("large scenario: the key says what boxes, arrows and numbers mean, and can be collapsed", async ({
@@ -379,9 +379,9 @@ test("large scenario: the key says what boxes, arrows and numbers mean, and can 
   expect(kb.x - sb.x).toBeLessThan(20);
   expect(sb.y + sb.height - (kb.y + kb.height)).toBeLessThan(20);
   expect(kb.height).toBeLessThan(48);
-  await page.getByLabel("Hide tests").click();
+  await page.getByRole("checkbox", { name: "Hide tests" }).click();
   await expect(key).not.toContainText("Tests hidden");
-  await page.getByLabel("Hide tests").click();
+  await page.getByRole("checkbox", { name: "Hide tests" }).click();
   await expect(key).toContainText("Tests hidden");
   await page.getByRole("radio", { name: "Folders" }).click();
   await expect(key).toContainText("Tiles = folders / files (area = functions)");

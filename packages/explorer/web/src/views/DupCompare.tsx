@@ -1,3 +1,5 @@
+import { Alert02Icon, Loading03Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useMemo } from "react";
 import type { DupMember } from "../api.ts";
 import { type Token, tokenizeLines } from "../highlight.ts";
@@ -65,9 +67,20 @@ export function DupCompare({ keep, other }: Props) {
         </h3>
       </div>
       {failed ? (
-        <p className="muted">Source is not available for one of these files.</p>
+        <p className="muted inline-flex items-center gap-1.5">
+          <HugeiconsIcon icon={Alert02Icon} size={14} aria-hidden="true" />
+          Source is not available for one of these files.
+        </p>
       ) : !leftLines || !rightLines ? (
-        <p className="muted">Loading source…</p>
+        <p className="muted inline-flex items-center gap-1.5">
+          <HugeiconsIcon
+            icon={Loading03Icon}
+            size={14}
+            aria-hidden="true"
+            className="animate-spin motion-reduce:animate-none"
+          />
+          Loading source…
+        </p>
       ) : (
         <div className="dup-diff">
           <div className="dup-diff-row dup-diff-title">

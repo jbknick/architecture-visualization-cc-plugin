@@ -1,6 +1,12 @@
+import { Home01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import type { GraphNode, ViewLevel } from "../api.ts";
 import { mapView, useMapView } from "../canvas/mapView.ts";
 import { LargestFiles } from "../components/LargestFiles.tsx";
+import { Segment } from "../components/Segment.tsx";
+import Breadcrumb from "../components/smoothui/breadcrumb/index.tsx";
+import { Button } from "../components/ui/button.tsx";
+import { Checkbox } from "../components/ui/checkbox.tsx";
 import { useViewData } from "../hooks.ts";
 import { rankView } from "../rankedFiles/store.ts";
 import { useRanked } from "../rankedFiles/useRanked.ts";
@@ -71,10 +77,9 @@ function Check({
       onMouseEnter={onHover ? () => onHover(true) : undefined}
       onMouseLeave={onHover ? () => onHover(false) : undefined}
     >
-      <input
-        type="checkbox"
+      <Checkbox
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
+        onCheckedChange={(checked) => onChange(checked)}
         onFocus={onHover ? () => onHover(true) : undefined}
         onBlur={onHover ? () => onHover(false) : undefined}
       />
@@ -152,45 +157,46 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
             <h3>Where you are</h3>
             {focus ? (
               <>
-                <nav aria-label="Breadcrumb">
-                  <ol className="breadcrumb">
-                    <li>
-                      <button
-                        type="button"
-                        className="link-btn"
-                        onClick={() => onRouteChange({ focus: null, level: null })}
-                      >
-                        Whole repo
-                      </button>
-                    </li>
-                    {trail.map((n, i) => (
-                      <li key={n.id}>
-                        {i === trail.length - 1 ? (
-                          <span aria-current="location" title={n.path ?? n.id}>
-                            {n.label}
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            className="link-btn"
-                            title={n.path ?? n.id}
-                            onClick={() => onRouteChange({ focus: n.id, level: null })}
-                          >
-                            {n.label}
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                    {trail.length === 0 && <li className="muted">{focus}</li>}
-                  </ol>
-                </nav>
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => onRouteChange({ focus: null, level: null })}
-                >
+                <Breadcrumb
+                  className="breadcrumb"
+                  items={[
+                    {
+                      label: (
+                        <button
+                          type="button"
+                          className="link-btn"
+                          onClick={() => onRouteChange({ focus: null, level: null })}
+                        >
+                          Whole repo
+                        </button>
+                      ),
+                    },
+                    ...trail.map((n, i) =>
+                      i === trail.length - 1
+                        ? {
+                            label: <span title={n.path ?? n.id}>{n.label}</span>,
+                            current: "location" as const,
+                          }
+                        : {
+                            label: (
+                              <button
+                                type="button"
+                                className="link-btn"
+                                title={n.path ?? n.id}
+                                onClick={() => onRouteChange({ focus: n.id, level: null })}
+                              >
+                                {n.label}
+                              </button>
+                            ),
+                          },
+                    ),
+                    ...(trail.length === 0 ? [{ label: <span className="muted">{focus}</span> }] : []),
+                  ]}
+                />
+                <Button variant="outline" onClick={() => onRouteChange({ focus: null, level: null })}>
+                  <HugeiconsIcon icon={Home01Icon} size={14} aria-hidden="true" />
                   Show whole repo
-                </button>
+                </Button>
               </>
             ) : (
               <p className="muted">
@@ -209,18 +215,14 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
             <h3>How much detail</h3>
             <div className="segmented" role="radiogroup" aria-label="Detail level">
               {LEVELS.map((l) => (
-                // biome-ignore lint/a11y/useSemanticElements: a segmented control is a radio group of buttons
-                <button
+                <Segment
                   key={l.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={level === l.id}
+                  checked={level === l.id}
                   title={l.hint}
-                  className="segment"
                   onClick={() => onRouteChange({ level: l.id })}
                 >
                   {l.label}
-                </button>
+                </Segment>
               ))}
             </div>
             {focus && !route.level && focusNode && (

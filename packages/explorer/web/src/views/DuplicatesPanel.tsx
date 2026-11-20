@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import type { DupTier } from "../api.ts";
+import { Checkbox } from "../components/ui/checkbox.tsx";
+import { NativeSelect } from "../components/ui/native-select.tsx";
 import type { FilterPanelProps } from "../slots.ts";
 import { currentScheme } from "../theme.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
@@ -27,15 +29,14 @@ export function DuplicatesPanel({ data, filters, onFiltersChange }: FilterPanelP
           const skipped = data?.skipped?.some((s) => s.tier === t);
           return (
             <label className="check" key={t} title={TIER_WORDS[t].hint}>
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={tiers.includes(t)}
-                onChange={(e) =>
+                onCheckedChange={(checked) =>
                   onFiltersChange(
                     setList(
                       filters,
                       "tiers",
-                      e.target.checked ? [...tiers, t] : tiers.filter((x) => x !== t),
+                      checked ? [...tiers, t] : tiers.filter((x) => x !== t),
                       DEFAULT_TIERS,
                     ),
                   )
@@ -54,7 +55,8 @@ export function DuplicatesPanel({ data, filters, onFiltersChange }: FilterPanelP
         <h3>Group size</h3>
         <label className="largest-scope">
           <span>At least</span>
-          <select
+          <NativeSelect
+            size="sm"
             aria-label="Smallest group"
             value={minSize}
             onChange={(e) => {
@@ -69,7 +71,7 @@ export function DuplicatesPanel({ data, filters, onFiltersChange }: FilterPanelP
                 {n} copies
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </label>
       </section>
 
@@ -79,15 +81,14 @@ export function DuplicatesPanel({ data, filters, onFiltersChange }: FilterPanelP
         {workspaces.length === 0 && <p className="muted">No workspaces.</p>}
         {workspaces.map((w, i) => (
           <label className="check" key={w.id}>
-            <input
-              type="checkbox"
+            <Checkbox
               checked={chosen.includes(w.id)}
-              onChange={(e) =>
+              onCheckedChange={(checked) =>
                 onFiltersChange(
                   setList(
                     filters,
                     "workspaces",
-                    e.target.checked ? [...chosen, w.id] : chosen.filter((x) => x !== w.id),
+                    checked ? [...chosen, w.id] : chosen.filter((x) => x !== w.id),
                     allIds,
                   ),
                 )
@@ -108,10 +109,9 @@ export function DuplicatesPanel({ data, filters, onFiltersChange }: FilterPanelP
       <section className="filter-group" aria-label="Files">
         <h3>Files</h3>
         <label className="check">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={getBool(filters, "hideTests", true)}
-            onChange={(e) => onFiltersChange(setBool(filters, "hideTests", e.target.checked, true))}
+            onCheckedChange={(checked) => onFiltersChange(setBool(filters, "hideTests", checked, true))}
           />
           <span>Hide tests</span>
         </label>

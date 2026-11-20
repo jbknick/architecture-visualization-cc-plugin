@@ -1,9 +1,12 @@
+import { Loading03Icon, RefreshIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { ApiError, api } from "./api.ts";
 import { Inspector } from "./components/Inspector.tsx";
 import { LeftPanel } from "./components/LeftPanel.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
 import { TopBar } from "./components/TopBar.tsx";
+import { Button } from "./components/ui/button.tsx";
 import { useViewData } from "./hooks.ts";
 import { useRefresh } from "./refresh.ts";
 import { focusPromptOnError, getCanvas, getFocusPrompt } from "./slots.ts";
@@ -104,13 +107,25 @@ export function App() {
         <h2>This view could not be loaded</h2>
         <p>{error}</p>
         {view && (
-          <button type="button" className="btn" onClick={() => setView(view)}>
+          <Button variant="outline" onClick={() => setView(view)}>
+            <HugeiconsIcon icon={RefreshIcon} size={14} aria-hidden="true" />
             Reset this view
-          </button>
+          </Button>
         )}
       </div>
     );
-  else if (!data) center = <p className="empty">Loading view…</p>;
+  else if (!data)
+    center = (
+      <p className="empty inline-flex items-center gap-2 p-4 text-muted-foreground">
+        <HugeiconsIcon
+          icon={Loading03Icon}
+          size={16}
+          aria-hidden="true"
+          className="animate-spin motion-reduce:animate-none"
+        />
+        Loading view…
+      </p>
+    );
   else
     center = (
       <Canvas

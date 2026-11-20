@@ -1,9 +1,20 @@
+import {
+  Alert02Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  Loading03Icon,
+  RefreshIcon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ViewInfo } from "../api.ts";
 import { debugEnabled } from "../debug.ts";
 import { refreshStore, useRefresh } from "../refresh.ts";
 import { useStore } from "../store.tsx";
 import { SearchBox } from "./SearchBox.tsx";
+import { TabsIndicator, TabsList, TabsRoot, TabsTab } from "./smoothui/tabs/index.tsx";
+import { Badge } from "./ui/badge.tsx";
+import { Button } from "./ui/button.tsx";
 
 /**
  * The Refresh button (spec section 11 (c)): the explorer refreshes on request only. It turns primary while files are
@@ -19,16 +30,23 @@ export function RefreshButton() {
         ? `Up to date. Last refresh: ${last.changed.files} files, ${last.changed.functions} functions, ${last.ms} ms.`
         : "Re-index files changed since the map was built";
   return (
-    <button
-      type="button"
-      className={`btn refresh-btn${stale > 0 ? " primary" : ""}`}
+    <Button
+      variant={stale > 0 ? "default" : "outline"}
+      size="sm"
+      className="refresh-btn"
       onClick={() => void refreshStore.run()}
       disabled={running}
       aria-busy={running}
       title={error ? `${title} Last error: ${error}` : title}
     >
+      <HugeiconsIcon
+        icon={running ? Loading03Icon : RefreshIcon}
+        size={16}
+        aria-hidden="true"
+        className={running ? "animate-spin motion-reduce:animate-none" : undefined}
+      />
       {running ? "Refreshing…" : "Refresh"}
-    </button>
+    </Button>
   );
 }
 
@@ -38,15 +56,21 @@ export function StaleMarker() {
   if (running) return null;
   if (error)
     return (
-      <span className="refresh-error" role="alert">
+      <Badge variant="destructive" className="refresh-error h-auto" role="alert">
+        <HugeiconsIcon icon={Alert02Icon} size={14} aria-hidden="true" />
         Refresh failed: {error}
-      </span>
+      </Badge>
     );
   if (stale <= 0) return null;
   return (
-    <span className="stale-marker" role="status" data-testid="stale-marker">
+    <Badge
+      variant="outline"
+      className="stale-marker border-[var(--warn-border)] bg-[var(--warn-bg)] text-[var(--warn-text)]"
+      role="status"
+      data-testid="stale-marker"
+    >
       Out of date ({stale} {stale === 1 ? "file" : "files"})
-    </span>
+    </Badge>
   );
 }
 
@@ -131,42 +155,50 @@ function TabStrip({
   return (
     <div className="tab-strip">
       {edges.left && (
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="icon-sm"
           className="tab-scroll left"
           aria-label="Show earlier views"
           onClick={() => scrollBy(-1)}
         >
-          ‹
-        </button>
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={16} aria-hidden="true" />
+        </Button>
       )}
       <nav aria-label="Views" ref={navRef}>
-        <div className="tabs" role="tablist">
-          {tabs.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              role="tab"
-              className="tab"
-              aria-selected={v.id === view}
-              aria-disabled={!v.enabled}
-              title={v.enabled ? undefined : (v.reason ?? `${v.title} is not available yet`)}
-              onClick={() => v.enabled && onPick(v.id)}
-            >
-              {v.title}
-            </button>
-          ))}
-        </div>
+        <TabsRoot
+          value={view ?? ""}
+          onValueChange={(id) => {
+            const picked = tabs.find((v) => v.id === id);
+            if (picked?.enabled) onPick(picked.id);
+          }}
+        >
+          <TabsList variant="underline" className="tabs w-max gap-1 border-b-0">
+            {tabs.map((v) => (
+              <TabsTab
+                key={v.id}
+                value={v.id}
+                className="tab px-2.5 py-1.5 whitespace-nowrap aria-disabled:cursor-not-allowed aria-disabled:opacity-55"
+                aria-disabled={!v.enabled}
+                title={v.enabled ? undefined : (v.reason ?? `${v.title} is not available yet`)}
+              >
+                {v.title}
+              </TabsTab>
+            ))}
+            <TabsIndicator className="h-0.5" />
+          </TabsList>
+        </TabsRoot>
       </nav>
       {edges.right && (
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="icon-sm"
           className="tab-scroll right"
           aria-label="Show more views"
           onClick={() => scrollBy(1)}
         >
-          ›
-        </button>
+          <HugeiconsIcon icon={ArrowRight01Icon} size={16} aria-hidden="true" />
+        </Button>
       )}
     </div>
   );

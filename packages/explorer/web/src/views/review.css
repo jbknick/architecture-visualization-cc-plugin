@@ -140,13 +140,7 @@
   grid-template-columns: 1fr;
 }
 .rv-show .segment {
-  text-align: left;
-}
-.rv-show .segment:nth-child(even) {
-  border-left: 0;
-}
-.rv-show .segment:nth-child(n + 2) {
-  border-top: 1px solid var(--border);
+  justify-content: flex-start;
 }
 .rv-totals {
   margin: 4px 0 0;
@@ -325,15 +319,7 @@
   font-size: 12px;
 }
 .rv-range input {
-  font: inherit;
   font-family: var(--mono);
-  font-size: 13px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  min-width: 0;
 }
 .rv-risk {
   display: flex;
