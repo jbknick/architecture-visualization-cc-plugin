@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "dependencies": [
+    {
+      "name": "fastify",
+      "workspace": "backend",
+      "role": "framework",
+      "note": "HTTP framework: Fastify(), register(plugin, { prefix }), fastify.get/post"
+    },
+    {
+      "name": "fastify-plugin",
+      "workspace": "backend",
+      "role": "neither",
+      "note": "fp(plugin) wraps a plugin function; the wrapped function is the scope"
+    },
+    {
+      "name": "@fastify/cors",
+      "workspace": "backend",
+      "role": "neither",
+      "note": "plugin, registers no route"
+    },
+    {
+      "name": "@fastify/swagger",
+      "workspace": "backend",
+      "role": "neither",
+      "note": "plugin, registers no route of the app"
+    },
+    {
+      "name": "@fastify/swagger-ui",
+      "workspace": "backend",
+      "role": "neither",
+      "note": "plugin serving /docs, not a route of the app's own"
+    },
+    { "name": "kysely", "workspace": "backend", "role": "data-access", "note": "query builder" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "param-flow"],
+  "passthrough": ["get", "post", "put", "patch", "delete", "options", "head", "register", "withTypeProvider"],
+  "rules": [
+    {
+      "id": "fastify-app",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "any": [{ "pattern": "fastify($$$A)" }, { "pattern": "Fastify($$$A)" }] },
+      "emit": { "kind": "router", "data": { "adapter": "fastify" } },
+      "examples": {
+        "match": ["const server = fastify({ logger: true });", "const app = Fastify();"],
+        "noMatch": ["const server = express();"]
+      }
+    },
+    {
+      "id": "fastify-register-wrapped-with-prefix",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "pattern": "$PARENT.register(fp($C), { prefix: $P })" },
+      "emit": {
+        "kind": "mount",
+        "parent": "$PARENT",
+        "prefix": "$P",
+        "child": "$C",
+        "childIsScope": true,
+        "data": { "adapter": "fastify" }
+      },
+      "examples": {
+        "match": ["fastify.register(fp(routes), { prefix: \"/v1\" });"],
+        "noMatch": ["fastify.register(routes, { prefix: \"/v1\" });"]
+      }
+    },
+    {
+      "id": "fastify-register-wrapped",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "pattern": "$PARENT.register(fp($C))" },
+      "emit": {
+        "kind": "mount",
+        "parent": "$PARENT",
+        "child": "$C",
+        "childIsScope": true,
+        "data": { "adapter": "fastify" }
+      },
+      "examples": {
+        "match": ["fastify.register(fp(registerResourceRoutes));"],
+        "noMatch": ["fastify.register(registerResourceRoutes);"]
+      }
+    },
+    {
+      "id": "fastify-register-with-prefix",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "pattern": "$PARENT.register($C, { prefix: $P })" },
+      "emit": {
+        "kind": "mount",
+        "parent": "$PARENT",
+        "prefix": "$P",
+        "child": "$C",
+        "childIsScope": true,
+        "data": { "adapter": "fastify" }
+      },
+      "examples": {
+        "match": ["fastify.register(userRoutes, { prefix: \"/users\" });"],
+        "noMatch": ["fastify.register(cors);"]
+      }
+    },
+    {
+      "id": "fastify-register",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "pattern": "$PARENT.register($C)" },
+      "emit": {
+        "kind": "mount",
+        "parent": "$PARENT",
+        "child": "$C",
+        "childIsScope": true,
+        "data": { "adapter": "fastify" }
+      },
+      "examples": {
+        "match": ["fastify.register(createEMailUserRoute);"],
+        "noMatch": ["fastify.get(\"/\", handler);"]
+      }
+    },
+    {
+      "id": "fastify-route",
+      "language": "typescript",
+      "when": { "dependency": ["fastify"] },
+      "rule": { "pattern": "$R.$M($P, $$$H)" },
+      "constraints": {
+        "M": { "regex": "^(get|post|put|patch|delete|options|head)$" },
+        "P": { "any": [{ "kind": "string" }, { "kind": "template_string" }] }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$R",
+        "method": "$M",
+        "path": "$P",
+        "handler": "$$$H",
+        "data": { "adapter": "fastify" }
+      },
+      "examples": {
+        "match": [
+          "fastify.get(\"/\", async (_, reply) => { reply.send(\"OK\"); });",
+          "fastify.post(\"/email\", { schema }, handler);"
+        ],
+        "noMatch": ["fastify.register(plugin, { prefix: \"/x\" });", "cache.has(\"k\");"]
+      }
+    }
+  ]
+}

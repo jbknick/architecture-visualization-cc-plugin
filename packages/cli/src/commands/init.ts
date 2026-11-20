@@ -19,7 +19,7 @@ import {
 } from "@gantry/core";
 import type { Command } from "commander";
 import { runEmbed, summaryOf } from "./embed.js";
-import { EXIT_OK, fail, summaryLines } from "./shared.js";
+import { EXIT_OK, fail, recipeLines, summaryLines } from "./shared.js";
 
 const nf = new Intl.NumberFormat("en-US");
 
@@ -64,6 +64,7 @@ export function registerInit(program: Command): void {
         resetStaleStore(paths);
         noteFreshIndex(paths);
         const r = await indexRepo(paths, { layer: "main" });
+        for (const line of recipeLines(r)) process.stderr.write(`${line}\n`);
         await heal(paths);
         const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
         try {

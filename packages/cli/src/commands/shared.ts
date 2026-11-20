@@ -26,6 +26,11 @@ export function summaryLines(r: IndexResult, dataDir: string): string[] {
   ];
 }
 
+/** The stderr lines about the repo's recipe that `init` and `index` print (spec section 5). */
+export function recipeLines(r: IndexResult): string[] {
+  return r.recipeNotes;
+}
+
 /** Writes to stdout, ignoring EPIPE so `| head` does not crash the process. */
 export function writeStdout(text: string): void {
   process.stdout.on("error", (e: NodeJS.ErrnoException) => {
