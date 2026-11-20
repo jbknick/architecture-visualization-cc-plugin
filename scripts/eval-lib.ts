@@ -357,6 +357,11 @@ export function runDump(clone: string, recipe?: string): string {
       execFileSync("cp", ["-R", clone, cwd], { stdio: "ignore" });
       mkdirSync(join(cwd, ".gantry"), { recursive: true });
       copyFileSync(recipe, join(cwd, ".gantry", "recipe.json"));
+      // The main layer reads the recipe from HEAD (spec section 5), so the copy commits it. The copy is a temp
+      // directory; the clone itself is never touched.
+      const git = (args: string[]) => execFileSync("git", args, { cwd, stdio: "ignore" });
+      git(["add", "-f", ".gantry/recipe.json"]);
+      git(["-c", "user.email=eval@example.invalid", "-c", "user.name=eval", "commit", "-q", "-m", "recipe"]);
     }
     const data = join(tmp, "data");
     const home = join(tmp, "home");
