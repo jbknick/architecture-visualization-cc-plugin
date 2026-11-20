@@ -194,7 +194,11 @@ export async function heal(
     const oldSha = opts?.from ?? store.getMeta("head_sha");
     const newSha = revParseHead(root);
     if (!newSha) return done(0, false);
-    if (oldSha === newSha) return done(0, false);
+    if (oldSha === newSha) {
+      // Nothing to heal, but a hook may have healed this commit without re-attaching (hooks never do).
+      if (opts?.reattach) reattachOverlay(store);
+      return done(0, false);
+    }
 
     const reachable = oldSha !== undefined && git(root, ["cat-file", "-e", `${oldSha}^{commit}`]).ok;
     const config = loadConfig(paths);
@@ -250,9 +254,10 @@ export async function heal(
       } catch {
         // the catalog is a convenience; a failed write must not fail a heal
       }
-      // Hand-picked overlay entries follow their function to its new id (spec section 11).
-      if (opts?.reattach) reattachOverlay(store);
     }
+    // Hand-picked overlay entries follow their function to its new id (spec section 11). It runs even when this
+    // heal changed nothing: it writes only when an id changes.
+    if (opts?.reattach) reattachOverlay(store);
     return done(changed, full);
   });
 }
@@ -342,7 +347,7 @@ export async function refreshWorking(
     const after = layerRows(store, "working");
     let cleared = 0;
     for (const id of before) if (!after.has(id)) cleared++;
-    if (opts?.reattach && (targets.size > 0 || cleared > 0)) reattachOverlay(store);
+    if (opts?.reattach) reattachOverlay(store);
     return { reindexed: reindex.length, cleared, ms: Math.round(performance.now() - t0) };
   });
 }
