@@ -69,6 +69,33 @@ interface Entry {
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 const sha256 = (b: Buffer | string): string => createHash("sha256").update(b).digest("hex");
 
+/**
+ * Text that an import of one of `paths` contains at its end: `/name"`, `/name'`, a template quote or `/name.` for the
+ * file name without its extension (and, for an `index` file, for the folder name), and the quoted package name of the
+ * workspace for an `index` file. A file whose text has none of these cannot be importing one of the paths, which is
+ * how a file that was waiting for one (a missing file that now exists, a deleted one that is back) is found without
+ * resolving every file.
+ */
+function importNeedles(paths: string[], workspaces: WorkspaceRecord[]): string[] {
+  const names = new Set<string>();
+  const quoted = new Set<string>();
+  for (const p of paths) {
+    const parts = p.split("/");
+    const stem = (parts[parts.length - 1] ?? "").replace(/\.[^.]*$/, "");
+    names.add(stem);
+    if (stem === "index") {
+      names.add(parts[parts.length - 2] ?? "");
+      quoted.add(workspaceForPath(workspaces, p).name);
+    }
+  }
+  names.delete("");
+  quoted.delete("");
+  const out: string[] = [];
+  for (const n of names) out.push(`/${n}"`, `/${n}'`, `/${n}\``, `/${n}.`, `"${n}"`, `'${n}'`);
+  for (const n of quoted) out.push(`"${n}"`, `'${n}'`);
+  return out;
+}
+
 async function mapPool<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out = new Array<R>(items.length);
   let next = 0;
@@ -448,7 +475,8 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       }
 
       // Importers: files we did not write whose resolved edges differ from the effective ones.
-      if (!full || layer === "working") {
+      if (full && layer === "working") {
+        // A whole-tree working run has no edited set to start from: every file is checked.
         const eff = new Map<string, EdgeRecord[]>();
         for (const ed of store.effectiveEdges()) {
           if (ed.kind === "depends_on") continue;
@@ -469,6 +497,53 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
           store.replaceFile(layer, file, store.effectiveSymbols({ fileId: e.id }), fresh, freshNodes);
           written.add(e.id);
           result.edges += fresh.length;
+        }
+      } else if (!full) {
+        // A targeted run re-resolves only the files whose edges can have changed: the importers of what was
+        // written or deleted (walked on through the ones that changed, which is how a barrel passes a change on),
+        // the files that carry adapter output (adapters look across files), and the files whose text names a
+        // written file (an import that was waiting for it). Cost follows the edit, not the repository (#360).
+        const presentById = new Map(present.map((e) => [e.id, e]));
+        const checked = new Set<string>();
+        const queue = new Set<string>();
+        const enqueue = (id: string): void => {
+          if (!checked.has(id) && !written.has(id) && presentById.has(id)) queue.add(id);
+        };
+        // A file whose working row was just dropped (its content is main's again) changed back, so its importers did too.
+        const changedIds = [...written, ...markDeleted, ...clearWorking];
+        for (const id of store.effectiveImporters(changedIds)) enqueue(id);
+        for (const id of store.filesWithAdapterOutput()) enqueue(id);
+        for (const id of [...routeEdges.keys(), ...routeNodes.keys()]) enqueue(id);
+        const needles = importNeedles([...written, ...clearWorking].map(pathOfFileId), workspaces);
+        if (needles.length > 0) {
+          for (const e of present) if (needles.some((n) => (e.source as string).includes(n))) enqueue(e.id);
+        }
+        while (queue.size > 0) {
+          const round = [...queue];
+          queue.clear();
+          for (const id of round) checked.add(id);
+          const eff = new Map<string, EdgeRecord[]>();
+          for (const ed of store.effectiveEdgesOfFiles(round)) {
+            if (ed.kind === "depends_on") continue;
+            const a = eff.get(ed.fileId) ?? [];
+            a.push(ed);
+            eff.set(ed.fileId, a);
+          }
+          const effNodes = groupByFile(store.effectiveAdapterNodesOfFiles(round));
+          const changed: string[] = [];
+          for (const id of round) {
+            const file = store.effectiveFile(id);
+            if (!file) continue;
+            const fresh = [...resolver.edgesForFile(id), ...(routeEdges.get(id) ?? [])];
+            const freshNodes = routeNodes.get(id) ?? [];
+            if (sameEdges(fresh, eff.get(id) ?? []) && sameNodes(freshNodes, effNodes.get(id) ?? []))
+              continue;
+            store.replaceFile(layer, file, store.effectiveSymbols({ fileId: id }), fresh, freshNodes);
+            written.add(id);
+            changed.push(id);
+            result.edges += fresh.length;
+          }
+          for (const id of store.effectiveImporters(changed)) enqueue(id);
         }
       }
 

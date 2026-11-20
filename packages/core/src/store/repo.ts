@@ -54,6 +54,14 @@ export interface Store {
   effectiveEdges(filter?: { src?: string; dst?: string; kind?: EdgeKind[] }): EdgeRecord[];
   /** Adapter nodes of the effective view (working rows win per file, like symbols), ordered by id. */
   effectiveAdapterNodes(filter?: { kind?: string; ws?: string; fileId?: string }): AdapterNodeRecord[];
+  /** Effective edges stored on the given files (all kinds), ordered like `effectiveEdges`. One query for the lot. */
+  effectiveEdgesOfFiles(fileIds: readonly string[]): EdgeRecord[];
+  /** Effective adapter nodes stored on the given files, ordered by id. */
+  effectiveAdapterNodesOfFiles(fileIds: readonly string[]): AdapterNodeRecord[];
+  /** Ids of the files that have an effective `imports` edge into one of `fileIds` (an import or a re-export source). */
+  effectiveImporters(fileIds: readonly string[]): string[];
+  /** Ids of the files that carry adapter output (a node or an edge of the adapter kinds) in either layer. */
+  filesWithAdapterOutput(): string[];
   getSymbol(id: string): SymbolRecord | undefined;
   fts: { upsert(symbolId: string, row: FtsRow): void; remove(symbolId: string): void };
   /**
@@ -508,6 +516,36 @@ export function createStore(db: Database): Store {
         WHERE f.deleted = 0${where.map((w) => ` AND ${w}`).join("")}
         ORDER BY n.id`;
       return (stmt(sql).all(...args) as AdapterNodeRow[]).map(toAdapterNode);
+    },
+    effectiveEdgesOfFiles(fileIds) {
+      if (fileIds.length === 0) return [];
+      const sql = `WITH ${EFF_FILES}
+        SELECT e.* FROM edges e JOIN eff_files f ON f.id = e.file_id AND f.layer = e.layer
+        WHERE f.deleted = 0 AND e.file_id IN (SELECT value FROM json_each(?))
+        ORDER BY e.src, e.dst, e.kind`;
+      return (stmt(sql).all(JSON.stringify(fileIds)) as EdgeRow[]).map(toEdge);
+    },
+    effectiveAdapterNodesOfFiles(fileIds) {
+      if (fileIds.length === 0) return [];
+      const sql = `WITH ${EFF_FILES}
+        SELECT n.* FROM adapter_nodes n JOIN eff_files f ON f.id = n.file_id AND f.layer = n.layer
+        WHERE f.deleted = 0 AND n.file_id IN (SELECT value FROM json_each(?))
+        ORDER BY n.id`;
+      return (stmt(sql).all(JSON.stringify(fileIds)) as AdapterNodeRow[]).map(toAdapterNode);
+    },
+    effectiveImporters(fileIds) {
+      if (fileIds.length === 0) return [];
+      const sql = `WITH ${EFF_FILES}
+        SELECT DISTINCT e.file_id AS id FROM edges e JOIN eff_files f ON f.id = e.file_id AND f.layer = e.layer
+        WHERE f.deleted = 0 AND e.kind = 'imports' AND e.dst IN (SELECT value FROM json_each(?))`;
+      return (stmt(sql).all(JSON.stringify(fileIds)) as { id: string }[]).map((r) => r.id);
+    },
+    filesWithAdapterOutput() {
+      const rows = stmt(
+        `SELECT file_id AS id FROM adapter_nodes
+         UNION SELECT file_id AS id FROM edges WHERE kind IN ('serves','handles','requests','reads','writes')`,
+      ).all() as { id: string }[];
+      return rows.map((r) => r.id);
     },
     getSymbol(id) {
       const r = stmt(
