@@ -89,11 +89,14 @@ test("page -> API: a dashed low-confidence line, and the via count on hover", as
   const p = await probe(page);
   expect(p.lanes).toEqual(["Pages (routes)", "Endpoints"]);
   const cart = p.edges.find(
-    (e) => e.id === "route:pnpm-turbo:@shop/web:/orders/$orderId|requests|ep:pnpm-turbo:@shop/server:POST /api/cart",
+    (e) =>
+      e.id ===
+      "route:pnpm-turbo:@shop/web:/orders/$orderId|requests|ep:pnpm-turbo:@shop/server:POST /api/cart",
   );
   expect(cart?.dashed).toBe(true);
   const get = p.edges.find(
-    (e) => e.id === "route:pnpm-turbo:@shop/web:/orders/$orderId|requests|ep:pnpm-turbo:@shop/api:rpc orders.get",
+    (e) =>
+      e.id === "route:pnpm-turbo:@shop/web:/orders/$orderId|requests|ep:pnpm-turbo:@shop/api:rpc orders.get",
   );
   expect(get?.dashed).toBe(false);
   const pt = await at(page, get?.x ?? 0, get?.y ?? 0);
@@ -115,7 +118,9 @@ test("API -> tables: reads are blue, writes orange; services expand on request",
   for (const e of reads) expect(e.color).toBe("#1d5fd6");
   for (const e of writes) expect(e.color).toBe("#c2510c");
   expect(
-    p.edges.find((e) => e.id === "sym:pnpm-turbo:packages/db/src/cart.ts#addItem|reads|table:pnpm-turbo:orders")?.dashed,
+    p.edges.find(
+      (e) => e.id === "sym:pnpm-turbo:packages/db/src/cart.ts#addItem|reads|table:pnpm-turbo:orders",
+    )?.dashed,
   ).toBe(true);
   await expect(page.locator(".flow-key")).toContainText("writes");
   expect(p.edges.some((e) => e.kind === "handles")).toBe(false);
