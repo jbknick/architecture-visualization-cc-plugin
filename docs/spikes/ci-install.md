@@ -12,7 +12,7 @@ Issue #279. Question: does the release tarball install on a GitHub Actions `ubun
 ## Setup
 
 - Sandbox repo (public): https://github.com/jbknick/gantry-ci-sandbox, release `v0.1.0-sandbox.1` with `gantry-0.1.0.tgz` (sha256 `7da512528e0579422ee968f1f7a237b281f86838c052b3a5c72d8d481d083b49`) and its `.sha256`, built from this repo at 3f86b0f.
-- Runner: `ubuntu-latest` = Ubuntu 26.04.1 LTS, runner image `ubuntu-26.04` version 20261116.202.1 (the `ImageVersion` variable inside the job reported `ubuntu26/20261111.196.1`), 4 CPUs, 15,983 MiB RAM, Node v26.13.1, npm 11.20.0. GitHub-hosted standard runner on a public repo.
+- Runner: `ubuntu-latest` = Ubuntu 26.04.1 LTS, runner image `ubuntu-26.04` version 20261116.202.1 (the `ImageVersion` variable inside the job reported `ubuntu26/20261111.196.1`), 4 CPUs, 15,983 MiB RAM, Node v26.13.1, npm 11.20.0. Standard GitHub runner on a public repo.
 - Each size was dispatched once; one dispatch runs 3 jobs on separate fresh runners (matrix), so each cell is a median of 3 runs.
 - The workflow ([`ci-install/workflow.yml`](ci-install/workflow.yml), copied here for the record; it runs only in the sandbox) checks out the pinned repo at its SHA with full history, then times with `date +%s%N`: install (download, both checksum checks, `tar`, `npm ci --omit=dev`, `gantry --version`), `gantry init` (fresh `CLAUDE_PLUGIN_DATA`), `gantry review <parent>...<sha> --json`, `gantry duplicates --json`, then a comment create and update. It verifies the tarball sha256 against a value pinned in the file before installing, pins every action by full commit SHA, asks for `contents: read` only and uses no secrets.
 - Repos (pinned in `evals/oss/repos.json`):
