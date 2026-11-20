@@ -84,12 +84,11 @@ export function parseRecipe(text: string): LoadedRecipe {
   return { recipe: { ...shell.data, rules }, errors, skipped };
 }
 
-/** The stderr lines `gantry init` and `gantry index` print for a loaded recipe (spec section 5). */
+/**
+ * The stderr lines `gantry init` and `gantry index` print for a loaded recipe (spec section 5): one per problem
+ * with a recipe that is present. A repo with no recipe file gets none: it is not an error, and the built-in adapters
+ * still map what they know.
+ */
 export function recipeNotes(loaded: LoadedRecipe): string[] {
-  if (loaded.recipe === null && loaded.errors.length === 0) {
-    return [
-      `Gantry: no ${RECIPE_PATH}; routes, endpoints and tables are not mapped. Run /gantry:init to write one.`,
-    ];
-  }
   return loaded.errors.map((e) => `Gantry: ${e}`);
 }

@@ -82,10 +82,6 @@ afterAll(async () => {
 const FRESH_NOTE = (repoDir: string): string =>
   `gantry: no index for this repository in ${resolvePaths(repoDir, { HOME: join(dataDir, "home"), CLAUDE_PLUGIN_DATA: dataDir }).dataDir}; building a fresh one\n`;
 
-/** The stderr line a repo without `.gantry/recipe.json` gets from `init` and `index` (spec section 5). */
-const NO_RECIPE_NOTE =
-  "Gantry: no .gantry/recipe.json; routes, endpoints and tables are not mapped. Run /gantry:init to write one.\n";
-
 function run(cwd: string, args: string[], extraEnv: Record<string, string> = {}) {
   const r = spawnSync("node", [cli, ...args], {
     cwd,
@@ -247,7 +243,7 @@ describe("bundled CLI: vector tables and embeddings", () => {
   it("opens the store with its vec tables (sqlite-vec resolves from the bundle)", async () => {
     const fx = await fixture("single-pkg");
     const r = run(fx.dir, ["init"]);
-    expect(r.err).toBe(`${FRESH_NOTE(fx.dir)}${NO_RECIPE_NOTE}`);
+    expect(r.err).toBe(FRESH_NOTE(fx.dir));
     expect(r.code).toBe(0);
     const db = openBundleDb();
     try {
@@ -278,7 +274,7 @@ describe("bundled CLI: vector tables and embeddings", () => {
     const t0 = Date.now();
     const r = run(fx.dir, ["init"], { GANTRY_MODELS_DIR: join(dataDir, "no-models-here") });
     const ms = Date.now() - t0;
-    expect(r.err).toBe(`${FRESH_NOTE(fx.dir)}${NO_RECIPE_NOTE}`);
+    expect(r.err).toBe(FRESH_NOTE(fx.dir));
     expect(r.code).toBe(0);
     expect(ms).toBeLessThan(15_000);
     const db = openBundleDb();
@@ -1011,14 +1007,13 @@ describe("gantry recipe check and the recipe on index", () => {
     expect(never.examples.failed).toEqual([]);
   });
 
-  it("index prints one stderr line when there is no recipe, and exits 0", async () => {
+  it("index prints no recipe line at all when there is no recipe, and exits 0", async () => {
     const fx = await fixture("adapters");
     fx.git(["rm", "-q", "-r", ".gantry"]);
     fx.git(["commit", "-q", "-m", "norecipe"]);
     const r = run(fx.dir, ["index", "--dump"]);
     expect(r.code).toBe(0);
-    expect(r.err.split("\n").filter((l) => l.includes("no .gantry/recipe.json"))).toHaveLength(1);
-    expect(r.err).toContain("Run /gantry:init to write one.");
+    expect(r.err).not.toMatch(/recipe/i);
     expect(run(fx.dir, ["recipe", "check"]).code).toBe(1);
   });
 });

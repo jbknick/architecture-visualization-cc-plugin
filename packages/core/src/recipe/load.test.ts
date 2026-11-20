@@ -57,9 +57,10 @@ describe("parseRecipe", () => {
 });
 
 describe("recipeNotes", () => {
-  it("says there is no recipe once, and prints each load error", () => {
-    expect(recipeNotes({ recipe: null, errors: [] })).toEqual([
-      "Gantry: no .gantry/recipe.json; routes, endpoints and tables are not mapped. Run /gantry:init to write one.",
+  it("says nothing when there is no recipe file, and prints each load error of a recipe that is present", () => {
+    expect(recipeNotes({ recipe: null, errors: [] })).toEqual([]);
+    expect(recipeNotes(parseRecipe("{ not json"))).toEqual([
+      expect.stringMatching(/^Gantry: recipe .*not JSON/),
     ]);
     expect(recipeNotes(parseRecipe(text([rule("bad", { rule: {} })])))).toEqual([
       expect.stringMatching(/^Gantry: recipe rule bad skipped: /),
