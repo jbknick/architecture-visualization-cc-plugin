@@ -264,6 +264,8 @@ kbd {
   display: flex;
   align-items: center;
   min-width: 0;
+  /* A gutter for each scroll button, so no tab label ever touches or sits under one. */
+  padding: 0 34px;
 }
 .tab-strip > nav {
   min-width: 0;
@@ -302,10 +304,10 @@ kbd {
   position: relative;
   /* The Refresh button before it takes the free space (margin-left: auto). */
   margin-left: 0;
-  width: min(420px, 22vw);
-  /* When the bar is full the search box gives up room first (shrink 1000), so the repo name stays readable. */
-  flex: 0 1000 auto;
-  min-width: 160px;
+  /* Wide enough for the whole placeholder, the search icon and the shortcut badge. The tab strip scrolls, so it gives up
+     room instead. */
+  width: 300px;
+  flex: none;
 }
 .search-hint {
   position: absolute;
@@ -757,6 +759,7 @@ kbd {
 }
 .group-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin: 6px 0;
 }

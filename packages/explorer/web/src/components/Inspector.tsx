@@ -1,10 +1,4 @@
-import {
-  ArrowUpRight01Icon,
-  Cancel01Icon,
-  Copy01Icon,
-  GitBranchIcon,
-  Tick02Icon,
-} from "@hugeicons/core-free-icons";
+import { Cancel01Icon, Copy01Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useState } from "react";
 import type {
@@ -492,7 +486,6 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
             title={canMap ? "Show this in the project map" : "The project map cannot centre on this"}
             onClick={() => openInView("project-map", mapTarget, id)}
           >
-            <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} aria-hidden="true" />
             Open in project map
           </Button>
           <Button
@@ -507,7 +500,6 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
             }
             onClick={() => openInView("ego", id, id)}
           >
-            <HugeiconsIcon icon={GitBranchIcon} size={14} aria-hidden="true" />
             Show callers &amp; callees
           </Button>
           {(kindOfNode === "route" || kindOfNode === "endpoint") && (
