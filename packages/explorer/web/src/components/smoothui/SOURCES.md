@@ -16,7 +16,7 @@ One row per copied file.
 | lib (breadcrumb's helpers) | `lib/animation.ts`                 | https://smoothui.dev/r/lib.json        | 2026-11-20 |
 | lib (breadcrumb's helpers) | `lib/springs.ts`                   | https://smoothui.dev/r/lib.json        | 2026-11-20 |
 
-Edits after copying: `breadcrumb/index.tsx` uses a Hugeicons icon instead of `lucide-react` and lets an item set the
+Edits after copying: `breadcrumb/index.tsx` uses a Hugeicons icon instead of the registry's default icon package and lets an item set the
 `aria-current` token of the last item (the explorer's breadcrumb marks it `location`). `lib/use-fluid-hover.ts`, which
 `lib` also ships, is not copied: nothing uses it.
 

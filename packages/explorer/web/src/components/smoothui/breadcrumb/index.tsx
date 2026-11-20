@@ -1,6 +1,6 @@
 // SmoothUI (https://smoothui.dev). MIT License. Copyright (c) 2024 Eduardo Calvo.
 // Copied from the SmoothUI registry on 2026-11-20 with `shadcn add @smoothui/breadcrumb`; see SOURCES.md.
-// Changes: the lucide-react chevron is a Hugeicons icon, and an item may set the aria-current token of the last item.
+// Changes: the chevron is a Hugeicons icon, and an item may set the aria-current token of the last item.
 "use client";
 
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
