@@ -310,7 +310,7 @@ function potentialFrom(
   direct: string[],
   exclude: Set<string>,
   maxHops: number,
-): { rows: { id: string; hop: number; next: string; via: string; uses: Set<UseKind> }[]; stopped: boolean } {
+): { id: string; hop: number; next: string; via: string; uses: Set<UseKind> }[] {
   const via = new Map<string, string>(direct.map((d) => [d, d]));
   const seen = new Set<string>([...exclude, ...direct]);
   const out: { id: string; hop: number; next: string; via: string; uses: Set<UseKind> }[] = [];
@@ -326,8 +326,7 @@ function potentialFrom(
           continue;
         }
         if (seen.has(n.src)) continue;
-        if (seen.size >= MAX_CONSUMER_WALK + exclude.size + direct.length)
-          return { rows: out, stopped: true };
+        if (seen.size >= MAX_CONSUMER_WALK + exclude.size + direct.length) return out;
         seen.add(n.src);
         const entry = { id: n.src, hop, next: node, via: via.get(node) ?? node, uses: new Set([n.kind]) };
         via.set(n.src, entry.via);
@@ -338,7 +337,7 @@ function potentialFrom(
     }
     frontier = found.sort(cmp);
   }
-  return { rows: out, stopped: false };
+  return out;
 }
 
 function tierOf(
@@ -420,11 +419,10 @@ function build(
     changedPath,
     directIds.map((x) => ({ id: x, hop: 1, uses: direct.get(x) ?? new Set() })),
   );
-  const pot = potentialFrom(g, directIds, new Set(own), maxHops);
-  const p = tierOf(g, changedPath, pot.rows);
-  // Past hop 3 the walk goes on unless the 500-node stop of the potential tier was hit.
+  const p = tierOf(g, changedPath, potentialFrom(g, directIds, new Set(own), maxHops));
+  // Past hop 3 the walk goes on to the node cap, whether or not the potential tier hit its own 500-node stop.
   const r =
-    reachableCap !== null && !pot.stopped
+    reachableCap !== null
       ? reachableTier(g, changedPath, walkToEnd(g, detail, new Set(own), reachableCap).rows)
       : { list: [], total: 0 };
   return {

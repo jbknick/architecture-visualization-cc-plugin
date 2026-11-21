@@ -19,7 +19,6 @@ import {
   ConsumerGraph,
   computeImpact,
   directConsumerUses,
-  MAX_IMPACT_NODES,
   modifiedChanges,
   openStore,
   REACHABLE_NODE_CAP,
@@ -100,10 +99,12 @@ async function main(): Promise<void> {
         const walks: number[] = [];
         let inTiers = 0;
         let reached = 0;
+        let deep = 0;
         for (let i = 0; i < 3; i++) {
           const t0 = performance.now();
           const impact = computeImpact(store, changes);
           runs.push(performance.now() - t0);
+          deep = impact.reachable.total;
           inTiers = impact.callersByHop.reduce((n, h) => n + h.ids.length, 0);
           // The walk to the end on its own, whatever the 500-node stop of the first tiers did: a fresh graph, the one
           // query that loads every edge, the walk and the ranked tier.
@@ -120,7 +121,7 @@ async function main(): Promise<void> {
         medians.push(median(runs));
         walkMedians.push(median(walks));
         process.stdout.write(
-          `${seed}  first tiers ${inTiers}  walk reached ${reached}  computeImpact ${runs.map((r) => r.toFixed(0)).join("/")} ms (median ${median(runs).toFixed(0)})  walk to the end ${walks.map((r) => r.toFixed(0)).join("/")} ms (median ${median(walks).toFixed(0)})\n`,
+          `${seed}  first tiers ${inTiers}  reachable via computeImpact ${deep}  walk reached ${reached}  computeImpact ${runs.map((r) => r.toFixed(0)).join("/")} ms (median ${median(runs).toFixed(0)})  walk to the end ${walks.map((r) => r.toFixed(0)).join("/")} ms (median ${median(walks).toFixed(0)})\n`,
         );
         continue;
       }
@@ -140,11 +141,8 @@ async function main(): Promise<void> {
       // And the whole of computeImpact agrees with the reference on the reachable counts.
       const impact = computeImpact(store, changes);
       const deep = [...expected].filter(([, hop]) => hop >= 4);
-      // computeImpact walks past hop 3 only when the first tiers did not hit their 500-node stop.
-      const stopped = impact.callersByHop.reduce((n, h) => n + h.ids.length, 0) >= MAX_IMPACT_NODES;
-      const sameImpact = stopped
-        ? impact.reachable.total === 0
-        : impact.reachable.total === deep.length && impact.consumers[0]?.reachableTotal === deep.length;
+      const sameImpact =
+        impact.reachable.total === deep.length && impact.consumers[0]?.reachableTotal === deep.length;
       if (same && sameImpact) equal++;
       process.stdout.write(
         `${seed}  nodes ${expected.size}  hops ${Math.max(0, ...expected.values())}  reachable ${deep.length}  capped ${mine.capped}  reference ${(refMs / 1000).toFixed(0)} s  ${same && sameImpact ? "EQUAL" : "DIFFERENT"}\n`,

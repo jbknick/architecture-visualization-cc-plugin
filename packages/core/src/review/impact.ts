@@ -149,9 +149,9 @@ export function computeImpact(store: Store, changes: SymbolChange[], opts: Impac
   }
   if (capped)
     notes.push(`The caller walk stopped at ${MAX_IMPACT_NODES} nodes; deeper callers are not listed.`);
-  // Past hop 3 the walk goes on unless the stop above was hit.
+  // Past hop 3 the walk goes on to the node cap, whether or not the stop above was hit.
   const reachable: Reachable = { total: 0, byHop: [] };
-  if (reachableOn && !capped) {
+  if (reachableOn) {
     const walk = walkToEnd(g, directUse, seedSet, cap);
     const perHop = new Map<number, number>();
     for (const r of walk.rows)

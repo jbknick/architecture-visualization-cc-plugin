@@ -224,6 +224,52 @@ function referenceWalk(store: Store, seed: string, direct: string[], cap: number
   return hops;
 }
 
+describe("the reachable tier when the first tiers hit their 500-node stop", () => {
+  it("still lists everything from hop 4 on, and leaves the first tiers, their note and the risk as they are", async () => {
+    // 520 functions call `seed` (hop 1, more than the 500-node stop), and a chain of four more starts at one of them.
+    const callers = Array.from(
+      { length: 520 },
+      (_, i) => `export function c${i}(): number { return seed(${i}); }`,
+    ).join("\n");
+    const fx = await materializeFiles(
+      {
+        "package.json": '{ "name": "wide", "private": true }\n',
+        "src/seed.ts": "export function seed(x: number): number {\n  return x;\n}\n",
+        "src/callers.ts": `import { seed } from "./seed";\n${callers}\n`,
+        "src/chain.ts":
+          'import { c0 } from "./callers";\nexport function d1(): number { return c0(); }\nexport function d2(): number { return d1(); }\nexport function d3(): number { return d2(); }\nexport function d4(): number { return d3(); }\n',
+      },
+      "wide",
+    );
+    const { store } = await indexed(fx);
+    const changes = modifiedChanges(store, ["sym:wide:src/seed.ts#seed"]);
+    const on = computeImpact(store, changes);
+    const off = computeImpact(store, changes, { reachable: false });
+
+    expect(on.callersByHop.reduce((n, h) => n + h.ids.length, 0)).toBe(500);
+    expect(on.notes).toEqual(["The caller walk stopped at 500 nodes; deeper callers are not listed."]);
+    // c0 is hop 1, d1 hop 2, d2 hop 3, d3 hop 4, d4 hop 5.
+    expect(on.reachable).toEqual({
+      total: 2,
+      byHop: [
+        { hop: 4, count: 1 },
+        { hop: 5, count: 1 },
+      ],
+    });
+    expect(on.consumers[0]?.reachable.map((c) => [c.name, c.hop])).toEqual([
+      ["d3", 4],
+      ["d4", 5],
+    ]);
+    expect(on.consumers[0]?.reachableTotal).toBe(2);
+    const strip = (i: typeof on) => ({
+      ...i,
+      reachable: undefined,
+      consumers: i.consumers.map((c) => ({ ...c, reachable: undefined, reachableTotal: undefined })),
+    });
+    expect(JSON.stringify(strip(on))).toBe(JSON.stringify(strip(off)));
+  }, 60_000);
+});
+
 describe("the in-memory walk gives the output of a per-node reference walk", () => {
   it("on 9 seeds, the largest radius among them, at the default cap and at small caps", async () => {
     const fx = await materializeFiles(syntheticFiles(), "synthetic");
