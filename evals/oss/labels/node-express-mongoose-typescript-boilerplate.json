@@ -15,17 +15,5 @@
     { "file": "src/modules/auth/auth.service.ts", "table": "tokens" },
     { "file": "src/modules/token/token.service.ts", "table": "tokens" },
     { "file": "src/modules/user/user.service.ts", "table": "users" }
-  ],
-  "unresolved": [
-    {
-      "file": "src/modules/paginate/paginate.ts",
-      "line": 69,
-      "reason": "the paginate plugin counts documents of whichever model it is attached to; the model is `this`"
-    },
-    {
-      "file": "src/modules/paginate/paginate.ts",
-      "line": 70,
-      "reason": "the paginate plugin finds documents of whichever model it is attached to; the model is `this`"
-    }
   ]
 }

@@ -18,27 +18,5 @@
     { "file": "lib/routes/actors.ts", "table": "Actors" },
     { "file": "lib/routes/actors.ts", "table": "MovieActors" },
     { "file": "lib/routes/movies.ts", "table": "Movies" }
-  ],
-  "unresolved": [
-    {
-      "file": "lib/routes/actors.ts",
-      "line": 29,
-      "reason": "the scope comes from the query string; the scopes include the movies and genres tables"
-    },
-    {
-      "file": "lib/routes/actors.ts",
-      "line": 37,
-      "reason": "the scope comes from the query string; the scopes include the movies and genres tables"
-    },
-    {
-      "file": "lib/routes/movies.ts",
-      "line": 17,
-      "reason": "the scope comes from the query string; the scopes include the actors and genres tables"
-    },
-    {
-      "file": "lib/routes/movies.ts",
-      "line": 25,
-      "reason": "the scope comes from the query string; the scopes include the actors and genres tables"
-    }
   ]
 }

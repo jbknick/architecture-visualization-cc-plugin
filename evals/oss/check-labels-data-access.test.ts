@@ -2,14 +2,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  holdsTable,
-  sameTable,
-  sampleLabels,
-  unlabelledCandidates,
-} from "../../scripts/eval-label-candidates.js";
-import { checkLabels } from "../../scripts/eval-label-check.js";
-import { labelsSchema } from "../../scripts/eval-lib.js";
+import { checkLabels, holdsTable, sameTable } from "../../scripts/eval-label-check.js";
+import { dataHits, sample, staleListed, unlabelled } from "../../scripts/eval-label-scan.js";
+import { labelsSchema, type Repo } from "../../scripts/eval-lib.js";
+
+// Data-access cases (#269): table, read and write labels covered by the same scan as the framework cases.
 
 const SHA = "c".repeat(40);
 const dirs: string[] = [];
@@ -36,6 +33,11 @@ const labelsOf = (over: Record<string, unknown>) =>
     ...over,
   });
 
+const repoOf = (stack: string[]) => ({ name: "app", stack }) as Repo;
+/** The scan's unlabelled data-access candidates as `file:line text`. */
+const missing = (labels: ReturnType<typeof labelsOf>, dir: string, stack: string[], readme = "") =>
+  unlabelled(dir, repoOf(stack), labels, readme).map((c) => `${c.file}:${c.line} ${c.text}`);
+
 const prisma = {
   "prisma/schema.prisma":
     'model User {\n  id String @id\n  @@map(name: "users")\n}\nmodel Post {\n  id String @id\n}\n',
@@ -57,19 +59,19 @@ describe("table name matching", () => {
   });
 });
 
-describe("unlabelledCandidates", () => {
+describe("data-access candidates", () => {
   const stack = ["nextjs", "prisma"];
+  const full = {
+    table: [{ name: "users" }, { name: "Post" }],
+    read: [
+      { file: "lib/posts.ts", table: "Post" },
+      { file: "lib/users.ts", table: "users" },
+    ],
+    write: [{ file: "lib/posts.ts", table: "Post" }],
+  };
 
   it("reports nothing when every definition and access is labelled", () => {
-    const labels = labelsOf({
-      table: [{ name: "users" }, { name: "Post" }],
-      read: [
-        { file: "lib/posts.ts", table: "Post" },
-        { file: "lib/users.ts", table: "users" },
-      ],
-      write: [{ file: "lib/posts.ts", table: "Post" }],
-    });
-    expect(unlabelledCandidates(labels, clone(prisma), stack)).toEqual([]);
+    expect(missing(labelsOf(full), clone(prisma), stack)).toEqual([]);
   });
 
   it("reports an unlabelled table, read and write, and leaves tests out", () => {
@@ -78,58 +80,45 @@ describe("unlabelledCandidates", () => {
       table: [{ name: "users" }],
       read: [{ file: "lib/users.ts", table: "users" }],
     });
-    expect(unlabelledCandidates(noTable, dir, stack)).toEqual([
-      "table Post defined at prisma/schema.prisma:5 has no table label",
-    ]);
-    const labels = labelsOf({
-      table: [{ name: "users" }, { name: "Post" }],
-      read: [{ file: "lib/users.ts", table: "users" }],
-    });
-    expect(unlabelledCandidates(labels, dir, stack)).toEqual([
-      expect.stringContaining("read lib/posts.ts:1 Post"),
-      expect.stringContaining("write lib/posts.ts:2 Post"),
+    expect(missing(noTable, dir, stack)).toEqual(["prisma/schema.prisma:5 table Post has no table label"]);
+    const labels = labelsOf({ ...full, read: [{ file: "lib/users.ts", table: "users" }], write: [] });
+    expect(missing(labels, dir, stack)).toEqual([
+      expect.stringContaining("lib/posts.ts:1 read Post"),
+      expect.stringContaining("lib/posts.ts:2 write Post"),
     ]);
   });
 
-  it("accepts an unresolved entry for a call that names no table, and scans only known stacks", () => {
-    const files = { ...prisma, "lib/raw.ts": "await db.$queryRaw`select 1`;\n" };
-    const base = {
-      table: [{ name: "users" }, { name: "Post" }],
-      read: [
-        { file: "lib/posts.ts", table: "Post" },
-        { file: "lib/users.ts", table: "users" },
-      ],
-      write: [{ file: "lib/posts.ts", table: "Post" }],
-    };
-    const dir = clone(files);
-    expect(unlabelledCandidates(labelsOf(base), dir, stack)).toEqual([
-      expect.stringContaining("lib/raw.ts:1"),
+  it("takes a README entry for a call that names no table, flags a stale one, and scans only known stacks", () => {
+    const dir = clone({ ...prisma, "lib/raw.ts": "await db.$queryRaw`select 1`;\n" });
+    const labels = labelsOf(full);
+    expect(missing(labels, dir, stack)).toEqual([expect.stringContaining("lib/raw.ts:1")]);
+    const readme = "- `app` `lib/raw.ts:1`: raw query\n";
+    expect(missing(labels, dir, stack, readme)).toEqual([]);
+    expect(staleListed(dir, repoOf(stack), readme)).toEqual([]);
+    expect(staleListed(dir, repoOf(stack), `${readme}- \`app\` \`lib/raw.ts:9\`: gone\n`)).toEqual([
+      "lib/raw.ts:9",
     ]);
-    const withReason = labelsOf({
-      ...base,
-      unresolved: [{ file: "lib/raw.ts", line: 1, reason: "raw query" }],
-    });
-    expect(unlabelledCandidates(withReason, dir, stack)).toEqual([]);
-    expect(unlabelledCandidates(labelsOf(base), dir, ["sqlc"])).toEqual([]);
+    expect(missing(labels, dir, ["sqlc"])).toEqual([]);
   });
 
   it("finds Kysely, repository and raw SQL sites", () => {
-    const files = {
+    const dir = clone({
       "db.ts": "export interface Database {\n  users: UserTable;\n  teams: TeamTable;\n}\n",
       "a.ts": "await db.selectFrom('users').execute();\nawait db.deleteFrom('teams').execute();\n",
       "b.ts": "await this.userRepository.save(x);\nawait client.query(`update app.users set a = 1`);\n",
-    };
-    const dir = clone(files);
+    });
     const labels = labelsOf({ table: [{ name: "users" }, { name: "teams" }] });
-    expect(unlabelledCandidates(labels, dir, ["kysely"])).toEqual([
-      expect.stringContaining("read a.ts:1 users"),
-      expect.stringContaining("write a.ts:2 teams"),
+    expect(missing(labels, dir, ["kysely"])).toEqual([
+      expect.stringContaining("a.ts:1 read users"),
+      expect.stringContaining("a.ts:2 write teams"),
     ]);
-    expect(unlabelledCandidates(labels, dir, ["typeorm"])).toEqual([
-      expect.stringContaining("write b.ts:1 users"),
-    ]);
-    expect(unlabelledCandidates(labels, dir, ["pg"])).toEqual([
-      expect.stringContaining("write b.ts:2 users"),
+    expect(missing(labels, dir, ["typeorm"])).toEqual([expect.stringContaining("b.ts:1 write users")]);
+    expect(missing(labels, dir, ["pg"])).toEqual([expect.stringContaining("b.ts:2 write users")]);
+    expect(dataHits(dir, ["kysely"], null).map((h) => `${h.file}:${h.line}`)).toEqual([
+      "db.ts:2",
+      "db.ts:3",
+      "a.ts:1",
+      "a.ts:2",
     ]);
   });
 });
@@ -141,14 +130,33 @@ describe("check-labels on table names", () => {
   });
 });
 
-describe("sampleLabels", () => {
-  it("takes every n-th label in sorted order", () => {
-    const labels = labelsOf({
-      table: [{ name: "b" }, { name: "a" }, { name: "c" }],
-      read: [{ file: "x.ts", table: "a" }],
-    });
-    expect(sampleLabels(labels, 2)).toEqual(["table a", "table c"]);
-    expect(sampleLabels(labels, 1)).toEqual(["read x.ts|a", "table a", "table b", "table c"]);
-    expect(sampleLabels(labels, 10)).toEqual([]);
+describe("sample of table, read and write labels", () => {
+  it("shows a table at its definition and a read at its call", () => {
+    const dir = clone(prisma);
+    const labels = labelsOf(full());
+    const lines = sample(labels, dir, 1, ["prisma"]).map((s) => `${s.id} -> ${s.file}:${s.line}`);
+    expect(lines).toEqual([
+      "read lib/posts.ts|Post -> lib/posts.ts:1",
+      "read lib/users.ts|users -> lib/users.ts:1",
+      "table Post -> prisma/schema.prisma:5",
+      "table users -> prisma/schema.prisma:1",
+      "write lib/posts.ts|Post -> lib/posts.ts:2",
+    ]);
+    expect(sample(labels, dir, 2, ["prisma"]).map((s) => s.id)).toEqual([
+      "read lib/posts.ts|Post",
+      "table Post",
+      "write lib/posts.ts|Post",
+    ]);
   });
 });
+
+function full() {
+  return {
+    table: [{ name: "users" }, { name: "Post" }],
+    read: [
+      { file: "lib/posts.ts", table: "Post" },
+      { file: "lib/users.ts", table: "users" },
+    ],
+    write: [{ file: "lib/posts.ts", table: "Post" }],
+  };
+}

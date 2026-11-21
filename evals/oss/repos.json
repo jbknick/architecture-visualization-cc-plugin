@@ -68,7 +68,7 @@
       "name": "conduit-redux-web",
       "url": "https://github.com/angelguzmaning/ts-redux-react-realworld-example-app.git",
       "sha": "cb397562724ea7f53758d5511c220690b99fe2f5",
-      "stack": ["react", "axios"],
+      "stack": ["react", "react-router", "axios"],
       "lang": ["ts"],
       "role": "held-out"
     },
@@ -113,10 +113,26 @@
       "role": "tuning"
     },
     {
+      "name": "express-typescript",
+      "url": "https://github.com/edwinhern/express-typescript.git",
+      "sha": "983fa0413659cd921c5754b00f7817903eb91364",
+      "stack": ["express"],
+      "lang": ["ts"],
+      "role": "held-out"
+    },
+    {
       "name": "fastify-api-boilerplate-jwt",
       "url": "https://github.com/Tony133/fastify-api-boilerplate-jwt.git",
       "sha": "a081ab3dc687e1cd8f75ed4f4bb131f5181aa60d",
       "stack": ["fastify", "kysely"],
+      "lang": ["ts"],
+      "role": "held-out"
+    },
+    {
+      "name": "fastify-demo",
+      "url": "https://github.com/fastify/demo.git",
+      "sha": "895908e4e706b896aa3991f3f6507617edddb1dd",
+      "stack": ["fastify"],
       "lang": ["ts"],
       "role": "held-out"
     },
@@ -191,6 +207,14 @@
       "stack": ["typescript"],
       "lang": ["ts"],
       "role": "tuning"
+    },
+    {
+      "name": "hono-open-api-starter",
+      "url": "https://github.com/w3cj/hono-open-api-starter.git",
+      "sha": "0d5f3bf523f525667d58edb38011e377e5898fc4",
+      "stack": ["hono"],
+      "lang": ["ts"],
+      "role": "held-out"
     },
     {
       "name": "hotel-bookings",
@@ -329,6 +353,14 @@
       "role": "tuning"
     },
     {
+      "name": "react-router-templates",
+      "url": "https://github.com/remix-run/react-router-templates.git",
+      "sha": "338a991a4c4d2474ea8d3699cfcd5a77a27c9424",
+      "stack": ["react-router"],
+      "lang": ["ts"],
+      "role": "held-out"
+    },
+    {
       "name": "react-tanstarter",
       "url": "https://github.com/dotnize/react-tanstarter.git",
       "sha": "7faa622c492fc3f699dc959afc69a76205bb1774",
@@ -375,6 +407,14 @@
       "stack": ["sqlc"],
       "lang": ["go"],
       "role": "tuning"
+    },
+    {
+      "name": "start-ui-web",
+      "url": "https://github.com/BearStudio/start-ui-web.git",
+      "sha": "368718acf5fcdd8bbee2776e5eb473647ea50950",
+      "stack": ["orpc", "tanstack-start"],
+      "lang": ["ts"],
+      "role": "held-out"
     },
     {
       "name": "taxonomy",

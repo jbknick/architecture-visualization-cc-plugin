@@ -1,16 +1,30 @@
 {
   "repo": "react-tanstarter",
   "sha": "7faa622c492fc3f699dc959afc69a76205bb1774",
-  "labelledBy": "agent claude-sonnet-5-5, read from the code at each site before any scoring run; maintainer spot check pending",
-  "kinds": ["table", "read", "write"],
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each route file, handler and server function before any scoring run; maintainer spot check pending",
+  "kinds": ["route", "endpoint", "table", "read", "write"],
   "table": [{ "name": "user" }, { "name": "session" }, { "name": "account" }, { "name": "verification" }],
   "read": [],
   "write": [],
-  "unresolved": [
+  "route": [
+    { "path": "/", "file": "src/routes/index.tsx" },
+    { "path": "/app", "file": "src/routes/_auth/app/index.tsx" },
+    { "path": "/login", "file": "src/routes/_guest/login.tsx" },
+    { "path": "/signup", "file": "src/routes/_guest/signup.tsx" }
+  ],
+  "endpoint": [
+    { "fn": "$getUser", "file": "src/lib/auth/functions.ts" },
     {
-      "file": "src/lib/auth/auth.ts",
-      "line": 15,
-      "reason": "the better-auth Drizzle adapter reads and writes user, session, account and verification inside the library"
+      "method": "GET",
+      "path": "/api/auth/$",
+      "file": "src/routes/api/auth/$.ts",
+      "registration": "src/routes/api/auth/$.ts:8"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/$",
+      "file": "src/routes/api/auth/$.ts",
+      "registration": "src/routes/api/auth/$.ts:11"
     }
   ]
 }

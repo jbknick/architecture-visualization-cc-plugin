@@ -36,37 +36,5 @@
     { "file": "src/sql/returnJobs.ts", "table": "_private_job_queues" },
     { "file": "src/sql/returnJobs.ts", "table": "_private_jobs" },
     { "file": "src/taskIdentifiers.ts", "table": "_private_tasks" }
-  ],
-  "unresolved": [
-    {
-      "file": "src/helpers.ts",
-      "line": 35,
-      "reason": "calls the stored function add_job; the tables it writes are named in the migrations, not here"
-    },
-    {
-      "file": "src/helpers.ts",
-      "line": 101,
-      "reason": "calls the stored function add_jobs; the tables it writes are named in the migrations, not here"
-    },
-    {
-      "file": "src/workerUtils.ts",
-      "line": 41,
-      "reason": "calls the stored function complete_jobs; the tables it writes are named in the migrations, not here"
-    },
-    {
-      "file": "src/workerUtils.ts",
-      "line": 51,
-      "reason": "calls the stored function permanently_fail_jobs; the tables it writes are named in the migrations, not here"
-    },
-    {
-      "file": "src/workerUtils.ts",
-      "line": 61,
-      "reason": "calls the stored function reschedule_jobs; the tables it writes are named in the migrations, not here"
-    },
-    {
-      "file": "src/workerUtils.ts",
-      "line": 83,
-      "reason": "calls the stored function force_unlock_workers; the tables it writes are named in the migrations, not here"
-    }
   ]
 }
