@@ -1,0 +1,32 @@
+{
+  "repo": "express-typescript",
+  "sha": "983fa0413659cd921c5754b00f7817903eb91364",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each registration site before any scoring run; maintainer spot check pending",
+  "kinds": ["endpoint"],
+  "endpoint": [
+    {
+      "method": "GET",
+      "path": "/health-check",
+      "file": "src/api/healthCheck/healthCheckRouter.ts",
+      "registration": "src/api/healthCheck/healthCheckRouter.ts:18"
+    },
+    {
+      "method": "GET",
+      "path": "/swagger.json",
+      "file": "src/api-docs/openAPIRouter.ts",
+      "registration": "src/api-docs/openAPIRouter.ts:9"
+    },
+    {
+      "method": "GET",
+      "path": "/users",
+      "file": "src/api/user/userRouter.ts",
+      "registration": "src/api/user/userRouter.ts:21"
+    },
+    {
+      "method": "GET",
+      "path": "/users/:id",
+      "file": "src/api/user/userRouter.ts",
+      "registration": "src/api/user/userRouter.ts:31"
+    }
+  ]
+}
