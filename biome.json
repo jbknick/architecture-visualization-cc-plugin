@@ -5,6 +5,7 @@
     "includes": [
       "**",
       "!**/fixtures",
+      "!action/testdata",
       "!**/evals/private",
       "!docs/spikes/v2-recipe-agent-2/runs",
       "!**/dist",

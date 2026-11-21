@@ -40,6 +40,17 @@ describe("comment body", () => {
     expect(body).toContain("exact, near and code-vector");
   });
 
+  it("lists the top 10 direct and top 10 potential consumers of a change, with path:line, and counts the rest", () => {
+    const body = buildComment(input({ review: sampleReview({ symbols: 1, consumersPer: 14 }) }));
+    const direct = body.split("Potentially affected")[0] ?? "";
+    expect(direct.match(/^- `caller/gm)).toHaveLength(10);
+    expect(direct).toContain("- and 4 more");
+    const potential = body.split("Potentially affected")[1] ?? "";
+    expect(potential.match(/^- `caller/gm)).toHaveLength(10);
+    expect(potential).toContain("- and 4 more");
+    expect(body).toMatch(/- `caller0 \(function, apps\/web\/src\/use0-0-1\.ts:1\)/);
+  });
+
   it("is the same text every time", () => {
     expect(buildComment(input())).toBe(buildComment(input()));
   });

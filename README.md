@@ -165,7 +165,7 @@ jobs:
           sha256: "<the checksum in gantry-<version>.tgz.sha256>"
 ```
 
-The comment is a summary, capped well below GitHub's 65,536-character limit, never the raw review JSON. Without a committed `.gantry/recipe.json` the comment says the radius is structural only. A pull request from a fork gets no comment (its token is read-only); the same text goes to the job summary and the job stays green, and so does any run whose token is refused. A cold index takes about a minute per 1,000 files on a standard runner (about 5 to 6 minutes at 10,000 files). Inputs, behaviour and limits are in [`action/README.md`](action/README.md).
+The comment is a summary, capped well below GitHub's 65,536-character limit, never the raw review JSON. Without a committed `.gantry/recipe.json` the comment says the radius is structural only. A pull request from a fork gets no comment (its token is read-only); the same text goes to the job summary and the job stays green, and so does any run whose token is refused. The Action fails open: if the install, the checksum check, the index or the review goes wrong, the step logs a warning and exits 0, and the pull request's one comment is updated to say the analysis failed and why (a checksum mismatch is logged as an error and the tarball is never run). A cold index takes about a minute per 1,000 files on a standard runner (about 5 to 6 minutes at 10,000 files). Inputs, behaviour and limits are in [`action/README.md`](action/README.md).
 
 ## Commands
 

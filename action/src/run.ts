@@ -1,10 +1,12 @@
 // The Action's script (issue #282), bundled into the release tarball as dist/action.js. It runs after the install and
 // index steps of action.yml: it asks the installed CLI for the review and the duplicates of the pull request, builds
-// the comment and posts it. No model calls. A comment that cannot be posted never fails the job; the body goes to the
-// job summary instead.
+// the comment and posts it. No model calls. It fails open: a Gantry error (a failed install, index, embed or review,
+// or a review that is not JSON) is logged as a warning and the comment says that the analysis failed and why; a comment
+// that cannot be posted never fails the job either, the body goes to the job summary instead. Only a misconfigured
+// workflow (no base and head to review) fails the job.
 import { spawn } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
-import { buildComment, type DuplicatesJson, type ReviewJson } from "./comment.js";
+import { buildComment, buildFailureComment, type DuplicatesJson, type ReviewJson } from "./comment.js";
 import { type CommentResult, GithubComments } from "./github.js";
 
 export interface ExecResult {
@@ -96,19 +98,22 @@ export async function run(env: NodeJS.ProcessEnv, deps: RunDeps = {}): Promise<R
   const log = deps.log ?? ((line: string) => console.log(line));
   const now = deps.now ?? (() => Date.now());
   const cwd = deps.cwd ?? process.cwd();
-  const gantry = env.GANTRY_BIN;
-  if (!gantry) throw new Error("GANTRY_BIN is not set: the install step of action.yml sets it");
+  const gantryBin = env.GANTRY_BIN;
+  if (!gantryBin) throw new Error("GANTRY_BIN is not set: the install step of action.yml sets it");
+  const gantry: string = gantryBin;
 
   const event = readEvent(env.GITHUB_EVENT_PATH);
   const pr = event.pull_request;
   const prNumber = pr?.number ?? event.number;
-  const base = env.GANTRY_BASE || pr?.base?.sha;
-  const head = env.GANTRY_HEAD || pr?.head?.sha;
-  if (!base || !head) {
+  const baseRef = env.GANTRY_BASE || pr?.base?.sha;
+  const headRef = env.GANTRY_HEAD || pr?.head?.sha;
+  if (!baseRef || !headRef) {
     throw new Error(
       "no base and head to review: run on a pull_request event, or set the base and head inputs",
     );
   }
+  const base: string = baseRef;
+  const head: string = headRef;
 
   const timed = async <T>(label: string, f: () => Promise<T>): Promise<T> => {
     const t0 = now();
@@ -119,40 +124,61 @@ export async function run(env: NodeJS.ProcessEnv, deps: RunDeps = {}): Promise<R
     }
   };
 
-  const reviewRun = await timed("review", () => exec(gantry, ["review", `${base}...${head}`, "--json"], cwd));
-  if (reviewRun.code !== 0) throw failure("gantry review", reviewRun);
-  let review: ReviewJson;
+  let body: string;
   try {
-    review = JSON.parse(reviewRun.stdout) as ReviewJson;
-  } catch {
-    throw new Error("gantry review did not print JSON");
+    const earlier = (env.GANTRY_FAILURE ?? "").trim();
+    // An earlier step of action.yml (install, index, embed) already failed and said why.
+    if (earlier !== "") throw new Error(earlier);
+    body = await analyse();
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    log(
+      `::warning title=Gantry::The analysis failed, the comment says so: ${reason.replace(/[\r\n]+/g, " ")}`,
+    );
+    body = buildFailureComment(reason);
   }
 
-  let duplicates: DuplicatesJson | null = null;
-  let duplicatesError: string | undefined;
-  const dupRun = await timed("duplicates", () =>
-    exec(gantry, ["duplicates", "--since", base, "--json"], cwd),
-  );
-  if (dupRun.code !== 0) {
-    duplicatesError = failure("gantry duplicates", dupRun).message;
-  } else {
+  async function analyse(): Promise<string> {
+    const reviewRun = await timed("review", () =>
+      exec(gantry, ["review", `${base}...${head}`, "--json"], cwd),
+    );
+    if (reviewRun.code !== 0) throw failure("gantry review", reviewRun);
+    let review: ReviewJson;
     try {
-      duplicates = JSON.parse(dupRun.stdout) as DuplicatesJson;
+      review = JSON.parse(reviewRun.stdout) as ReviewJson;
     } catch {
-      duplicatesError = "gantry duplicates did not print JSON";
+      throw new Error("gantry review did not print JSON");
     }
-  }
 
-  // The recipe of the head commit decides whether the radius is structural only (read from git, never from disk).
-  const recipe = await exec("git", ["cat-file", "-e", `${head}:.gantry/recipe.json`], cwd);
-  const body = buildComment({
-    review,
-    duplicates,
-    duplicatesError,
-    hasRecipe: recipe.code === 0,
-    embed: /^(1|true|yes)$/i.test(env.GANTRY_EMBED ?? ""),
-    version: env.GANTRY_VERSION,
-  });
+    let duplicates: DuplicatesJson | null = null;
+    let duplicatesError: string | undefined;
+    const dupRun = await timed("duplicates", () =>
+      exec(gantry, ["duplicates", "--since", base, "--json"], cwd),
+    );
+    if (dupRun.code !== 0) {
+      duplicatesError = failure("gantry duplicates", dupRun).message;
+    } else {
+      try {
+        duplicates = JSON.parse(dupRun.stdout) as DuplicatesJson;
+      } catch {
+        duplicatesError = "gantry duplicates did not print JSON";
+      }
+    }
+    if (duplicatesError !== undefined) {
+      log(`::warning title=Gantry::${duplicatesError.replace(/[\r\n]+/g, " ")}`);
+    }
+
+    // The recipe of the head commit decides whether the radius is structural only (read from git, never from disk).
+    const recipe = await exec("git", ["cat-file", "-e", `${head}:.gantry/recipe.json`], cwd);
+    return buildComment({
+      review,
+      duplicates,
+      duplicatesError,
+      hasRecipe: recipe.code === 0,
+      embed: /^(1|true|yes)$/i.test(env.GANTRY_EMBED ?? ""),
+      version: env.GANTRY_VERSION,
+    });
+  }
 
   let result: CommentResult;
   if (prNumber === undefined || !PR_RE.test(String(prNumber))) {

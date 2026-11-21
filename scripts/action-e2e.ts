@@ -2,6 +2,9 @@
 // a copy of fixtures/pnpm-turbo gets a branch that adds a copy of `slugify`, the built CLI indexes it, and the built
 // Action script (plugin/dist/action.js) runs twice against a fake GitHub API on node:http.
 // Expected output: `created`, `updated`, `comments: 1`. Run `pnpm build` first; `pnpm action:e2e [--body]` runs this.
+// `pnpm action:e2e --write-pair <dir>` also writes the review and duplicates JSON of that branch (review.json,
+// duplicates.json) into <dir>; the commits have fixed dates, so the two files are the same bytes on every run. The
+// pair committed under action/testdata/ is made this way and is what the snapshot test renders.
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -18,10 +21,16 @@ for (const f of [cli, action]) {
   }
 }
 
+const FIXED_DATE = "2026-01-01T00:00:00Z";
 const work = mkdtempSync(join(tmpdir(), "gantry-action-e2e-"));
 const repo = join(work, "pnpm-turbo");
 const git = (...args: string[]): string =>
-  execFileSync("git", args, { cwd: repo, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  execFileSync("git", args, {
+    cwd: repo,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, GIT_AUTHOR_DATE: FIXED_DATE, GIT_COMMITTER_DATE: FIXED_DATE },
+  }).trim();
 
 function runAction(
   cwd: string,
@@ -62,6 +71,21 @@ try {
   const env = { ...process.env, CLAUDE_PLUGIN_DATA: dataDir };
   const init = spawnSync("node", [cli, "init"], { cwd: repo, env, encoding: "utf8" });
   if (init.status !== 0) throw new Error(`gantry init failed: ${init.stderr}`);
+
+  const pairFlag = process.argv.indexOf("--write-pair");
+  if (pairFlag !== -1) {
+    const outDir = process.argv[pairFlag + 1];
+    if (!outDir) throw new Error("--write-pair needs a directory");
+    mkdirSync(outDir, { recursive: true });
+    const json = (args: string[]): string => {
+      const r = spawnSync("node", [cli, ...args], { cwd: repo, env, encoding: "utf8", maxBuffer: 1 << 28 });
+      if (r.status !== 0) throw new Error(`gantry ${args[0]} failed: ${r.stderr}`);
+      return r.stdout;
+    };
+    writeFileSync(join(outDir, "review.json"), json(["review", `${base}...${head}`, "--json"]));
+    writeFileSync(join(outDir, "duplicates.json"), json(["duplicates", "--since", base, "--json"]));
+    console.log(`wrote review.json and duplicates.json to ${outDir}`);
+  }
 
   const eventPath = join(work, "event.json");
   const sameRepo = { full_name: "octo/fixture" };
