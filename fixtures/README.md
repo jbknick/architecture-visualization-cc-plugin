@@ -64,6 +64,7 @@ One package, `@demo/shop`, for the group boundary warnings (#289).
 - `invoice.edited.txt` is the edit the tests apply to `src/orders/invoice.ts`: it imports and calls `formatPrice`, which Orders does not list.
 
 ## deep-radius
+Since #294 the 610 users of `hub` are one hub entry (`hubs` of the `base` change, `consumersTotal` 610, 305 per app workspace) and not rows of `reachable`; `reachableTotal` still counts them.
 Workspace (`apps/*`, `packages/*`) for the reachable tier of the blast radius (#293), with a feature overlay in `fixtures/deep-radius.feature/` (files copied over the tree on branch `feature`). `fixtures/deep-radius.review.json` is `gantry review main...feature --json` on it, indexed at `main`, in a directory named `repo`. Build the repo with `pnpm exec tsx scripts/fixture-repo.ts deep-radius <dest>`.
 - Workspaces: `packages/core` (`@deep/core`, a package), `apps/web` and `apps/api` (apps).
 - The feature branch changes the body of `packages/core/src/base.ts#base` and nothing else. Every edge in the chain below is `high` except `Runner.alphaLow` to `Runner.helper` (a `this.helper()` call), which is `low`.
