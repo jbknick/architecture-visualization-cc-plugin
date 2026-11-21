@@ -27,6 +27,58 @@ each one. A repo's file lists only the kinds it has (`kinds`).
 - Path keys: the scorer treats `:param`, `[param]` and `{param}` as the same segment, a catch-all as `*`, and a
   path with and without a trailing slash as one key, so such variants are labelled once.
 
+## Go cases (#277)
+
+Four held-out Go repos, one per stack slot of the Go milestone. They replace the four Go repos that were used
+for tuning (`go-base`, `golang-gin-realworld-example-app`, `nethttp`, `simplebank`) when a score has to be
+read as unseen. All four were chosen and labelled before any scoring run, by reading the registration and
+query sites with `rg` and then the code at each one; no label comes from Gantry's output and none was changed
+after a run. Nothing from the repos is committed: only labels, counts and SHAs.
+
+| Case                       | Repo and licence                                                                             | Stack                           | Labelled           | Counts                                   |
+| -------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------- | ------------------ | ---------------------------------------- |
+| `hotel-bookings`           | `raihan2bd/hotel-bookings`, MIT, `56e92cfb8e3fed52804f4d6e62b78ee9edadfc58`                  | chi                             | endpoint           | 26 endpoints                             |
+| `go-realworld-example-app` | `uptrace/go-realworld-example-app`, BSD-2-Clause, `94fc6d26f3206208de8f3c1d20799aa733fdb3c3` | gin                             | endpoint           | 19 endpoints                             |
+| `realworld.go`             | `raeperd/realworld.go`, MIT, `c109ab8a966aa532287e8749994771a4d116ad7b`                      | net/http (1.22 method patterns) | endpoint           | 27 endpoints                             |
+| `gopodder`                 | `cbrgm/gopodder`, Apache-2.0, `65c265576465c63cf7ee276ac956f63642196c9d`                     | sqlc                            | table, read, write | 7 tables, 7 reads, 7 writes (59 queries) |
+
+Labeller: agent `claude-fable-5-2`, 2026-11-21. Maintainer spot check (every tenth label in sorted order): see
+the pull request of #277.
+
+Conventions added for these cases, on top of the ones above:
+
+- **handler** is `<path>:<line>` of the `func` that declares the handler, also when the registration wraps it
+  (`authenticate(handleGetUser(db, ...))` names `handleGetUser`). A handler that is a standard-library function
+  (`pprof.Index`) or an inline expression (`http.StripPrefix(...)`) has no `handler`.
+- A handler registered as a method value (`handlers.Repo.Home`) is labelled with the method's declaration.
+- `Handle` / `HandleFunc` with a pattern that has no method (`"/debug/vars"`) and chi `Handle` are `ALL`. A
+  pattern with a method (`"GET /health"`) is that method.
+- A handler that returns another `http.ServeMux` is a mount: the outer registration (`mux.Handle("/debug/", handleGetDebug())`)
+  is not an endpoint, and the patterns registered on the inner mux are, each with the path as written (the inner
+  patterns already hold the full path).
+- Group and `Route` prefixes are joined (`rwe.API.Group("/api")`, then `Group("")` in each package, then
+  `g.GET("/users")` is `POST /api/users`). Middleware registrations (`Use`) are not endpoints.
+- For sqlc, the query file is the read/write file (as for `simplebank`): the generated `queries.sql.go` is
+  generated code and the Go store only calls it. `fns` lists the query names with the line of their
+  `-- name:` comment. A query that reads a second table in a subquery or join (`ListAccounts` reads `users`)
+  is listed under both tables. A soft delete written as `UPDATE ... SET deleted` is a write. `db.Exec(schema)`
+  only creates tables and is not a read or a write.
+- `unresolved` is empty in all four cases: every path and table name could be read from the code.
+
+Registration and query greps, run over the repo without tests, vendored and generated code. Every hit was
+read; the ones that are not a registration (session `Get`, form `Get`) are not labelled.
+
+| Case                       | Grep                                                                                                                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hotel-bookings`           | `rg -n "\.(Get\|Post\|Put\|Delete\|Patch\|Route\|Mount\|Group\|Handle\|HandleFunc)\(" cmd internal`                                                                                   |
+| `go-realworld-example-app` | `rg -n "\.(GET\|POST\|PUT\|DELETE\|PATCH\|Group\|Any\|Handle\|Static)\(" .`                                                                                                           |
+| `realworld.go`             | `rg -n "HandleFunc\(\|\.Handle\(" --glob '!vendor/**' --glob '!*_test.go' .`                                                                                                          |
+| `gopodder`                 | `rg -n "^-- name:" gopodder/pggen/queries.sql` and `rg -n -i "SELECT \|INSERT INTO\|UPDATE \w+ SET\|DELETE FROM\|\.Exec\(\|\.Query\(" --glob '*.go' .` outside `pggen/queries.sql.go` |
+
+`pnpm tsx evals/oss/check-labels.ts <case>...` checks these files against the clones (spec section 13): every
+file exists, and every handler and function line is inside its file and holds a `func` or the function's name.
+It does not check that the label is right; that is the maintainer's spot check.
+
 ## Call-linking labels
 
 A `linking-<case>.json` file lists every request call site of a case's frontend, with the endpoint it reaches in

@@ -1,0 +1,159 @@
+{
+  "repo": "hotel-bookings",
+  "sha": "56e92cfb8e3fed52804f4d6e62b78ee9edadfc58",
+  "labelledBy": "agent claude-fable-5-2, read from the code at each registration site before any scoring run; maintainer spot check pending",
+  "kinds": ["endpoint"],
+  "endpoint": [
+    {
+      "method": "GET",
+      "path": "/",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:55"
+    },
+    {
+      "method": "GET",
+      "path": "/about",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:60"
+    },
+    {
+      "method": "GET",
+      "path": "/generals-quarters",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:199"
+    },
+    {
+      "method": "GET",
+      "path": "/majors-suite",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:204"
+    },
+    {
+      "method": "GET",
+      "path": "/search-availability",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:209"
+    },
+    {
+      "method": "POST",
+      "path": "/search-availability",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:214"
+    },
+    {
+      "method": "POST",
+      "path": "/search-availability-json",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:277"
+    },
+    {
+      "method": "GET",
+      "path": "/choose-room/{id}",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:364"
+    },
+    {
+      "method": "GET",
+      "path": "/book-room",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:400"
+    },
+    {
+      "method": "GET",
+      "path": "/contact",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:333"
+    },
+    {
+      "method": "GET",
+      "path": "/make-reservation",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:66"
+    },
+    {
+      "method": "POST",
+      "path": "/make-reservation",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:103"
+    },
+    {
+      "method": "GET",
+      "path": "/reservation-summary",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:338"
+    },
+    {
+      "method": "GET",
+      "path": "/user/login",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:428"
+    },
+    {
+      "method": "POST",
+      "path": "/user/login",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:435"
+    },
+    {
+      "method": "GET",
+      "path": "/user/logout",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:470"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/dashboard",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:476"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/reservations-new",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:481"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/reservations-all",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:496"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/reservations-calendar",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:594"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/reservations-calendar",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:719"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/process-reservation/{src}/{id}/do",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:684"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/delete-reservation/{src}/{id}/do",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:701"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/reservations/{src}/{id}/show",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:511"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/reservations/{src}/{id}",
+      "file": "cmd/web/routes.go",
+      "handler": "internal/handlers/handlers.go:545"
+    },
+    { "method": "ALL", "path": "/static/*", "file": "cmd/web/routes.go" }
+  ]
+}
