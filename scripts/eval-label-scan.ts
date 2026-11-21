@@ -545,7 +545,9 @@ export function sample(labels: Labels, dir: string, every = 10, stack: string[] 
       const hit = hits.find(
         (h) =>
           sameTable(h.table ?? "", table) &&
-          (kind === "table" ? h.kind === "table" : h.file === l.file && h.kind !== "table"),
+          (kind === "table"
+            ? h.kind === "table"
+            : h.file === l.file && (h.kind === kind || h.kind === "any")),
       );
       const file = hit?.file ?? l.file;
       const lines = existsSync(join(dir, file)) ? readFileSync(join(dir, file), "utf8").split("\n") : [];

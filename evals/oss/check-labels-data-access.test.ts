@@ -95,8 +95,8 @@ describe("data-access candidates", () => {
     const readme = "- `app` `lib/raw.ts:1`: raw query\n";
     expect(missing(labels, dir, stack, readme)).toEqual([]);
     expect(staleListed(dir, repoOf(stack), readme)).toEqual([]);
-    expect(staleListed(dir, repoOf(stack), `${readme}- \`app\` \`lib/raw.ts:9\`: gone\n`)).toEqual([
-      "lib/raw.ts:9",
+    expect(staleListed(dir, repoOf(stack), `${readme}- \`app\` \`lib/gone.ts:9\`: gone\n`)).toEqual([
+      "lib/gone.ts:9",
     ]);
     expect(missing(labels, dir, ["sqlc"])).toEqual([]);
   });
@@ -115,10 +115,10 @@ describe("data-access candidates", () => {
     expect(missing(labels, dir, ["typeorm"])).toEqual([expect.stringContaining("b.ts:1 write users")]);
     expect(missing(labels, dir, ["pg"])).toEqual([expect.stringContaining("b.ts:2 write users")]);
     expect(dataHits(dir, ["kysely"], null).map((h) => `${h.file}:${h.line}`)).toEqual([
-      "db.ts:2",
-      "db.ts:3",
       "a.ts:1",
       "a.ts:2",
+      "db.ts:2",
+      "db.ts:3",
     ]);
   });
 });
