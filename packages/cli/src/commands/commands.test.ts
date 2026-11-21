@@ -1027,6 +1027,38 @@ describe("gantry recipe check and the recipe on index", () => {
     expect(never.examples.failed).toEqual([]);
   });
 
+  it("--nodes lists what the index makes with file and line, bounded by --limit; counts stay the default (#367)", async () => {
+    const fx = await fixture("adapters");
+    const plain = run(fx.dir, ["recipe", "check"]);
+    expect(plain.out).not.toContain("nodes the index makes");
+    const r = run(fx.dir, ["recipe", "check", "--nodes"]);
+    expect(r.code).toBe(0);
+    expect(r.out).toContain("4 routes, 7 endpoints, 3 middleware, 2 tables, 5 reads, 3 writes");
+    expect(r.out).toContain("endpoint GET /health  apps/server/src/app.ts:15");
+    expect(r.out).toMatch(/^ {2}read posts {2}packages\/db\/src\/queries\.ts:8 {2}in listPosts$/m);
+    const small = run(fx.dir, ["recipe", "check", "--nodes", "--limit", "2"]);
+    expect(small.out).toContain("... 5 more endpoints (raise --limit to see them)");
+    expect(small.out.split("\n").filter((l) => l.startsWith("  endpoint "))).toHaveLength(2);
+    const j = JSON.parse(run(fx.dir, ["recipe", "check", "--nodes", "--json"]).out);
+    expect(j.nodes.totals.endpoint).toBe(7);
+    expect(
+      j.nodes.entries.some(
+        (e: { kind: string; file: string; line: number }) => e.kind === "endpoint" && e.line > 0,
+      ),
+    ).toBe(true);
+    expect(run(fx.dir, ["recipe", "check", "--limit", "0", "--nodes"]).code).toBe(1);
+  });
+
+  it("an extra path argument gets a usage hint, not a bare 'too many arguments' (#367)", async () => {
+    const fx = await fixture("adapters");
+    const r = run(fx.dir, ["recipe", "check", ".gantry/recipe.json", "."]);
+    expect(r.code).toBe(1);
+    expect(r.err).not.toContain("too many arguments");
+    expect(r.err).toContain('unexpected extra argument "."');
+    expect(r.err).toContain("gantry recipe check [<file>]");
+    expect(r.err).toContain("current directory");
+  });
+
   it("index prints no recipe line at all when there is no recipe, and exits 0", async () => {
     const fx = await fixture("adapters");
     fx.git(["rm", "-q", "-r", ".gantry"]);
