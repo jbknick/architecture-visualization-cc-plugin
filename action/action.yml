@@ -1,0 +1,119 @@
+# Gantry pull request comment (issue #282; spec sections 1, 3, 10 and 14). A composite Action for the workflows of
+# users' own repositories: it installs the release tarball by version and checksum, indexes the checkout, and posts one
+# comment on the pull request with its blast radius and the duplicates it adds, updated in place on each push. No model
+# calls. The script that builds the comment is bundled into the tarball (dist/action.js); no JavaScript is committed
+# here. This is not CI for the Gantry repository, which has no workflow of its own.
+name: Gantry pull request comment
+description: Comment on each pull request with the symbols it changes, what consumes them and the duplicates it adds.
+
+inputs:
+  version:
+    description: "Gantry release to install, for example 0.1.0. The tarball of the release tagged v<version> is downloaded."
+    required: true
+  sha256:
+    description: "SHA-256 of gantry-<version>.tgz, from the release's .sha256 file. The install stops if the download differs."
+    required: true
+  github-token:
+    description: "Token that posts the comment. The workflow needs `pull-requests: write` for it."
+    required: false
+    default: ${{ github.token }}
+  embed:
+    description: "Set to true to also run `gantry embed`, which adds the code-vector tier to the duplicate check (slow on a large repository). Exact and near tiers always run."
+    required: false
+    default: "false"
+  base:
+    description: "Base of the range to review. Default: the pull request's base commit."
+    required: false
+    default: ""
+  head:
+    description: "Head of the range to review. Default: the pull request's head commit."
+    required: false
+    default: ""
+
+outputs:
+  comment:
+    description: "created or updated when a comment was posted, summary when the review went to the job summary instead."
+    value: ${{ steps.comment.outputs.comment }}
+  comment-url:
+    description: "Link to the comment, empty when none was posted."
+    value: ${{ steps.comment.outputs.comment-url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node 26
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: "26"
+
+    - name: Install Gantry
+      id: install
+      shell: bash
+      env:
+        GANTRY_VERSION: ${{ inputs.version }}
+        GANTRY_SHA256: ${{ inputs.sha256 }}
+        # Where the tarball is downloaded from; set it in the workflow's env only to try a build from another place.
+        GANTRY_RELEASE_BASE: ${{ env.GANTRY_RELEASE_BASE }}
+      run: |
+        set -euo pipefail
+        case "$GANTRY_VERSION" in
+          [0-9]*.[0-9]*.[0-9]*) ;;
+          *) echo "::error title=Gantry::version must look like 0.1.0 (got '$GANTRY_VERSION')"; exit 1 ;;
+        esac
+        case "$GANTRY_SHA256" in
+          *[!0-9a-fA-F]*|"") echo "::error title=Gantry::sha256 must be 64 hex digits"; exit 1 ;;
+        esac
+        [ "${#GANTRY_SHA256}" -eq 64 ] || { echo "::error title=Gantry::sha256 must be 64 hex digits"; exit 1; }
+        sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1; else shasum -a 256 "$1" | cut -d' ' -f1; fi; }
+        base="${GANTRY_RELEASE_BASE:-https://github.com/jbknick/architecture-visualization-cc-plugin/releases/download/v${GANTRY_VERSION}}"
+        dir="$RUNNER_TEMP/gantry-install"
+        rm -rf "$dir"; mkdir -p "$dir"; cd "$dir"
+        tarball="gantry-${GANTRY_VERSION}.tgz"
+        curl -fsSLO "$base/$tarball"
+        curl -fsSLO "$base/$tarball.sha256"
+        actual=$(sha "$tarball")
+        expected_file=$(cut -d' ' -f1 "$tarball.sha256")
+        want=$(printf '%s' "$GANTRY_SHA256" | tr 'A-F' 'a-f')
+        if [ "$actual" != "$want" ] || [ "$actual" != "$expected_file" ]; then
+          echo "::error title=Gantry::checksum mismatch for $tarball (downloaded $actual, input $want, release file $expected_file)"
+          exit 1
+        fi
+        tar -xzf "$tarball"
+        (cd gantry && npm ci --omit=dev --no-audit --no-fund)
+        ./gantry/bin/gantry --version
+        echo "home=$dir/gantry" >> "$GITHUB_OUTPUT"
+
+    - name: Index the checkout
+      shell: bash
+      env:
+        GANTRY_HOME: ${{ steps.install.outputs.home }}
+        CLAUDE_PLUGIN_DATA: ${{ runner.temp }}/gantry-data
+      run: |
+        set -euo pipefail
+        "$GANTRY_HOME/bin/gantry" init
+
+    - name: Embed code vectors
+      if: inputs.embed == 'true'
+      shell: bash
+      env:
+        GANTRY_HOME: ${{ steps.install.outputs.home }}
+        CLAUDE_PLUGIN_DATA: ${{ runner.temp }}/gantry-data
+      run: |
+        set -euo pipefail
+        "$GANTRY_HOME/bin/gantry" embed
+
+    - name: Comment on the pull request
+      id: comment
+      shell: bash
+      env:
+        GANTRY_HOME: ${{ steps.install.outputs.home }}
+        CLAUDE_PLUGIN_DATA: ${{ runner.temp }}/gantry-data
+        GANTRY_TOKEN: ${{ inputs.github-token }}
+        GANTRY_BASE: ${{ inputs.base }}
+        GANTRY_HEAD: ${{ inputs.head }}
+        GANTRY_EMBED: ${{ inputs.embed }}
+        GANTRY_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        export GANTRY_BIN="$GANTRY_HOME/bin/gantry"
+        node "$GANTRY_HOME/dist/action.js"
