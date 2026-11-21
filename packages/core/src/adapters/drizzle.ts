@@ -109,7 +109,11 @@ export const drizzleAdapter: Adapter<DrizzleFacts> = {
   id: "drizzle",
   // Usage can sit in a workspace that only depends on the package defining the schema; `link` keeps usage only
   // in workspaces that depend on drizzle-orm or on such a workspace, and tables only where drizzle-orm is a dependency.
-  appliesTo: () => true,
+  // Only those workspaces: `link` drops tables and usage everywhere else, so parsing their files finds nothing it keeps.
+  appliesTo: (ws, run) => {
+    const drizzleWs = new Set(run.workspaces.filter((w) => hasDependency(w, [DRIZZLE])).map((w) => w.name));
+    return drizzleWs.has(ws.name) || ws.deps.some((d) => drizzleWs.has(d));
+  },
   mayMatch: (file) => MAY_MATCH.test(file.source),
   extract(ctx) {
     const program = ctx.program();

@@ -1,17 +1,21 @@
 // Spike: how many id-keyed overlay entries still point at the right function after hundreds of commits of
-// renames and moves, with and without re-attaching by exactHash (or renamedHash).
+// renames and moves, by id alone and with the shipped re-attachment (heal with `reattach`, which runs reattachOverlay).
+// Each entry is a real label in an overlay.db; the script has no copy of the re-attach rule.
 // Usage: pnpm tsx docs/spikes/overlay-ids/run.ts --repo <name in evals/oss/repos.json> [--commits 500]
 //        [--sample 1000] [--seed 1] [--write-results]
 // Prints the repo's section of results.json (sorted keys, no timing) to stdout; timing goes to stderr.
 // --write-results also merges the section into docs/spikes/overlay-ids/results.json.
+
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { heal } from "../../../packages/core/src/heal/index.js";
 import { indexRepo } from "../../../packages/core/src/indexer.js";
-import { ensureDataDir, resolvePaths } from "../../../packages/core/src/paths/index.js";
+import { listUnresolved, readOverlay, setLabel } from "../../../packages/core/src/overlay/index.js";
+import { ensureDataDir, type GantryPaths, resolvePaths } from "../../../packages/core/src/paths/index.js";
 import { reviewDiff } from "../../../packages/core/src/review/diff.js";
 import { openStore } from "../../../packages/core/src/store/index.js";
 
@@ -61,84 +65,66 @@ function stable(v: unknown): unknown {
   return v;
 }
 
-interface Sym {
-  id: string;
-  exact: string;
-  renamed: string;
-}
-
-interface Graph {
-  byId: Map<string, Sym>;
-  byExact: Map<string, string[]>;
-  byRenamed: Map<string, string[]>;
-}
-
-function loadGraph(dbPath: string, kinds?: string[]): { graph: Graph; kinds: Map<string, string> } {
+/** Function-like symbols of the main layer (id to exactHash), read from the index. */
+function loadFunctionLike(dbPath: string): Map<string, string> {
   const store = openStore(dbPath);
   try {
     const rows = store.db
       .prepare(
-        `SELECT s.id AS id, s.kind AS kind, s.exact_hash AS exact, s.renamed_hash AS renamed
+        `SELECT s.id AS id, s.kind AS kind, s.exact_hash AS exact
          FROM symbols s JOIN files f ON f.id = s.file_id AND f.layer = s.layer
          WHERE s.layer = 'main' AND f.deleted = 0 ORDER BY s.id`,
       )
-      .all() as { id: string; kind: string; exact: string | null; renamed: string | null }[];
-    const graph: Graph = { byId: new Map(), byExact: new Map(), byRenamed: new Map() };
-    const kindOf = new Map<string, string>();
-    for (const r of rows) {
-      if (kinds && !kinds.includes(r.kind)) continue;
-      const s = { id: r.id, exact: r.exact ?? "", renamed: r.renamed ?? "" };
-      graph.byId.set(s.id, s);
-      kindOf.set(s.id, r.kind);
-      if (s.exact !== "") graph.byExact.set(s.exact, [...(graph.byExact.get(s.exact) ?? []), s.id]);
-      if (s.renamed !== "") graph.byRenamed.set(s.renamed, [...(graph.byRenamed.get(s.renamed) ?? []), s.id]);
-    }
-    return { graph, kinds: kindOf };
+      .all() as { id: string; kind: string; exact: string | null }[];
+    return new Map(rows.filter((r) => FUNCTION_LIKE.includes(r.kind)).map((r) => [r.id, r.exact ?? ""]));
   } finally {
     store.close();
   }
 }
 
-type Method = "exactHash" | "renamedHash";
-
 interface Entry {
   id0: string;
   exact0: string;
-  renamed0: string;
   alive: boolean;
   truthId: string;
   truthExact: string;
   pathChanged: boolean;
   nameChanged: boolean;
-  /** Where each re-attaching method currently points. */
-  cur: Record<Method, string>;
-  wrong: Record<Method, boolean>;
-  ambiguous: Record<Method, boolean>;
-  /** First commit at which the method pointed away from the truth (cleared when it points right again). */
-  missAt: Record<Method, string | undefined>;
+  /** The id the entry's label holds now, as the shipped re-attachment left it. */
+  cur: string;
+  wrong: boolean;
+  ambiguous: boolean;
+  /** First commit at which the label pointed away from the truth (cleared when it points right again). */
+  missAt: string | undefined;
 }
 
-const METHODS: Method[] = ["exactHash", "renamedHash"];
+/** A label's text is capped at 80 characters, so the entry is keyed by a hash of its first id. */
+const labelText = (id: string): string => createHash("sha1").update(id).digest("hex");
 const pathOf = (id: string): string => id.slice(4, id.indexOf("#"));
 
-function attach(e: Entry, m: Method, g: Graph, sha: string): void {
-  if (!g.byId.has(e.cur[m])) {
-    const exact = e.exact0 === "" ? [] : (g.byExact.get(e.exact0) ?? []);
-    let target: string | undefined;
-    if (exact.length === 1) target = exact[0];
-    else if (exact.length > 1) e.ambiguous[m] = true;
-    else if (m === "renamedHash" && e.renamed0 !== "") {
-      const r = g.byRenamed.get(e.renamed0) ?? [];
-      if (r.length === 1) target = r[0];
-      else if (r.length > 1) e.ambiguous[m] = true;
+/** Reads where each label points and which ids the shipped code reports as ambiguous, from the overlay the heal wrote. */
+function readLabels(paths: GantryPaths): {
+  at: Map<string, string>;
+  exists: Set<string>;
+  ambiguous: Set<string>;
+} {
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  try {
+    const at = new Map<string, string>();
+    const exists = new Set<string>();
+    for (const l of readOverlay(store).labels) {
+      at.set(l.text, l.nodeId);
+      if (store.getSymbol(l.nodeId) !== undefined) exists.add(l.nodeId);
     }
-    if (target !== undefined) {
-      e.cur[m] = target;
-      if (target !== e.truthId) e.wrong[m] = true;
-    }
+    const ambiguous = new Set(
+      listUnresolved(store)
+        .filter((u) => u.reason === "ambiguous")
+        .map((u) => u.id),
+    );
+    return { at, exists, ambiguous };
+  } finally {
+    store.close();
   }
-  if (e.cur[m] !== e.truthId) e.missAt[m] ??= sha;
-  else e.missAt[m] = undefined;
 }
 
 function workCopy(repo: RepoPin, commits: number): string {
@@ -193,8 +179,8 @@ async function main(): Promise<void> {
   await indexRepo(paths, { layer: "main" });
 
   // Sample: function-like symbols sorted by id, a seeded partial Fisher-Yates shuffle, the first sampleN.
-  const first = loadGraph(paths.dbPath, FUNCTION_LIKE).graph;
-  const pool = [...first.byId.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const first = loadFunctionLike(paths.dbPath);
+  const pool = [...first.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   const rnd = mulberry32(seed);
   const take = Math.min(sampleN, pool.length);
   for (let i = 0; i < take; i++) {
@@ -203,28 +189,37 @@ async function main(): Promise<void> {
   }
   const picked = pool.slice(0, take).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   const entries: Entry[] = picked.map((id) => {
-    const s = first.byId.get(id) as Sym;
+    const exact = first.get(id) as string;
     return {
       id0: id,
-      exact0: s.exact,
-      renamed0: s.renamed,
+      exact0: exact,
       alive: true,
       truthId: id,
-      truthExact: s.exact,
+      truthExact: exact,
       pathChanged: false,
       nameChanged: false,
-      cur: { exactHash: id, renamedHash: id },
-      wrong: { exactHash: false, renamedHash: false },
-      ambiguous: { exactHash: false, renamedHash: false },
-      missAt: { exactHash: undefined, renamedHash: undefined },
+      cur: id,
+      wrong: false,
+      ambiguous: false,
+      missAt: undefined,
     };
   });
+  // Each entry is a real label in overlay.db (text = a hash of its first id), written with the shipped setLabel, which also
+  // anchors it at the symbol's exactHash. Re-attachment is then only what heal's `reattach` option does.
+  {
+    const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+    try {
+      for (const e of entries) setLabel(store, { nodeId: e.id0, text: labelText(e.id0) });
+    } finally {
+      store.close();
+    }
+  }
   const functionLikeAtBase = pool.length;
   console.error(
     `${name}: base ${base.slice(0, 7)}, ${pool.length} function-like symbols, ${entries.length} sampled`,
   );
 
-  let graph = loadGraph(paths.dbPath).graph;
+  let labels = readLabels(paths);
   const counts = { renamed: 0, moved: 0, modified: 0, removed: 0, fullReindexes: 0 };
   for (let k = 1; k < chain.length; k++) {
     const prev = chain[k - 1] as string;
@@ -253,12 +248,17 @@ async function main(): Promise<void> {
       }
     }
     git(dir, "checkout", "-q", "--force", "--detach", next);
-    const h = await heal(paths, { from: prev });
+    const h = await heal(paths, { from: prev, reattach: true });
     if (h.full) counts.fullReindexes++;
-    graph = loadGraph(paths.dbPath).graph;
+    labels = readLabels(paths);
     for (const e of entries) {
       if (!e.alive) continue;
-      for (const m of METHODS) attach(e, m, graph, next);
+      const now = labels.at.get(labelText(e.id0)) ?? e.cur;
+      if (now !== e.cur && now !== e.truthId) e.wrong = true;
+      e.cur = now;
+      if (!labels.exists.has(now) && labels.ambiguous.has(now)) e.ambiguous = true;
+      if (e.cur !== e.truthId) e.missAt ??= next;
+      else e.missAt = undefined;
     }
     if (k % 25 === 0)
       console.error(`${name}: ${k}/${commits} commits, ${((Date.now() - t0) / 1000).toFixed(0)}s`);
@@ -266,18 +266,18 @@ async function main(): Promise<void> {
 
   const alive = entries.filter((e) => e.alive);
   const survives = {
-    id: (e: Entry) => e.id0 === e.truthId && graph.byId.has(e.id0),
-    exactHash: (e: Entry) => e.cur.exactHash === e.truthId && graph.byId.has(e.truthId),
-    renamedHash: (e: Entry) => e.cur.renamedHash === e.truthId && graph.byId.has(e.truthId),
+    id: (e: Entry) => e.id0 === e.truthId && labels.exists.has(e.id0),
+    exactHash: (e: Entry) => e.cur === e.truthId && labels.exists.has(e.truthId),
   };
-  const cause = (e: Entry, m: Method | "id"): string => {
-    if (m !== "id" && e.ambiguous[m]) return "ambiguous_hash";
+  type Scoring = keyof typeof survives;
+  const cause = (e: Entry, m: Scoring): string => {
+    if (m !== "id" && e.ambiguous) return "ambiguous_hash";
     const modified = e.truthExact !== e.exact0;
     if (e.pathChanged) return modified ? "modified_and_moved" : "moved";
     if (e.nameChanged) return modified ? "modified_and_renamed" : "renamed";
     return "other";
   };
-  const causesFor = (m: Method | "id"): Record<string, number> => {
+  const causesFor = (m: Scoring): Record<string, number> => {
     const out: Record<string, number> = {
       ambiguous_hash: 0,
       modified_and_moved: 0,
@@ -295,10 +295,10 @@ async function main(): Promise<void> {
     .map((e) => ({
       cause: cause(e, "exactHash"),
       entry: e.id0,
-      firstMissAtCommit: e.missAt.exactHash ?? null,
-      pointsTo: e.cur.exactHash,
+      firstMissAtCommit: e.missAt ?? null,
+      pointsTo: e.cur,
       truth: e.truthId,
-      wrongReattach: e.wrong.exactHash,
+      wrongReattach: e.wrong,
     }));
 
   const section = {
@@ -315,17 +315,12 @@ async function main(): Promise<void> {
     survived: {
       exactHash: alive.filter(survives.exactHash).length,
       id: alive.filter(survives.id).length,
-      renamedHash: alive.filter(survives.renamedHash).length,
     },
     unresolvedByCause: {
       exactHash: causesFor("exactHash"),
       id: causesFor("id"),
-      renamedHash: causesFor("renamedHash"),
     },
-    wrongReattaches: {
-      exactHash: entries.filter((e) => e.wrong.exactHash).length,
-      renamedHash: entries.filter((e) => e.wrong.renamedHash).length,
-    },
+    wrongReattaches: entries.filter((e) => e.wrong).length,
   };
   const text = `${JSON.stringify(stable(section), null, 2)}\n`;
   process.stdout.write(text);

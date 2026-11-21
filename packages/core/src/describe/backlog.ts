@@ -132,7 +132,10 @@ function computeTemplates(
   const root = rootOf(store, ctx);
   const byPath = new Map<string, [string, Candidate][]>();
   for (const item of todo) {
-    if (item[1].sym.stmtCount !== 1) continue; // only one-statement functions can have a template
+    // Only one-statement functions can have a template, and only TypeScript has templates (`templateFor`). A Go file
+    // is not parsed here: its tree-sitter trees are freed only when the event loop turns, and this loop is synchronous,
+    // so parsing every Go file held several GiB of native memory on a large repository (#358).
+    if (item[1].sym.stmtCount !== 1 || item[1].sym.lang !== "typescript") continue;
     const a = byPath.get(item[1].path) ?? [];
     a.push(item);
     byPath.set(item[1].path, a);

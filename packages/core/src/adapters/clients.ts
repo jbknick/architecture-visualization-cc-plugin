@@ -446,6 +446,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
       return { dsts: use.map((c) => c.id).sort(cmp), confidence: "low" };
     };
 
+    const hasServerFns = fnBySym.size > 0 || fnByName.size > 0 || fnByLocal.size > 0;
     const routeFiles = new Set(ctx.nodes.filter((n) => n.kind === "route").map((n) => n.fileId));
     const hits: { file: AdapterFileContext; hit: Hit }[] = [];
     for (const { file, facts } of ctx.files) {
@@ -455,7 +456,8 @@ export const clientsAdapter: Adapter<ClientFacts> = {
       const isRouteDef = (from: string): boolean => from.endsWith("#Route") && routeFiles.has(file.fileId);
 
       // Rule 1: a call of a server function (resolved through imports, or one of this file).
-      for (const c of facts.idCalls) {
+      // Without a server function in the repository no such call can name one, so none is resolved.
+      for (const c of hasServerFns ? facts.idCalls : []) {
         const sym = symbolForName(pf, file.fileId, c.name, ctx.resolver);
         let dst = sym ? fnBySym.get(sym) : undefined;
         let confidence: "high" | "low" = "high";
