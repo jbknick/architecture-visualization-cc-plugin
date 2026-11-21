@@ -1,0 +1,21 @@
+{
+  "repo": "fastify-api-boilerplate-jwt",
+  "sha": "a081ab3dc687e1cd8f75ed4f4bb131f5181aa60d",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each site before any scoring run; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [{ "name": "users" }],
+  "read": [
+    { "file": "src/modules/authentication/authentication.service.ts", "table": "users" },
+    { "file": "src/modules/change-password/change-password.service.ts", "table": "users" },
+    { "file": "src/modules/forgot-password/forgot-password.service.ts", "table": "users" },
+    { "file": "src/modules/register/register.service.ts", "table": "users" },
+    { "file": "src/modules/users/users.service.ts", "table": "users" }
+  ],
+  "write": [
+    { "file": "src/modules/authentication/authentication.service.ts", "table": "users" },
+    { "file": "src/modules/change-password/change-password.service.ts", "table": "users" },
+    { "file": "src/modules/forgot-password/forgot-password.service.ts", "table": "users" },
+    { "file": "src/modules/register/register.service.ts", "table": "users" },
+    { "file": "src/modules/users/users.service.ts", "table": "users" }
+  ]
+}

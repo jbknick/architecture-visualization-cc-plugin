@@ -1,8 +1,11 @@
 {
   "repo": "react-tanstarter",
   "sha": "7faa622c492fc3f699dc959afc69a76205bb1774",
-  "labelledBy": "agent claude-sonnet-5-5, read from the code at each route file, handler and server function before any scoring run; maintainer spot check pending",
-  "kinds": ["route", "endpoint"],
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each route file, handler and server function, and the tables, reads and writes from the schema and query sites, before any scoring run; maintainer spot check pending",
+  "kinds": ["route", "endpoint", "table", "read", "write"],
+  "table": [{ "name": "user" }, { "name": "session" }, { "name": "account" }, { "name": "verification" }],
+  "read": [],
+  "write": [],
   "route": [
     { "path": "/", "file": "src/routes/index.tsx" },
     { "path": "/app", "file": "src/routes/_auth/app/index.tsx" },

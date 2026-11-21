@@ -15,6 +15,43 @@ export function lastLiteralSegment(path: string): string | undefined {
   return segs.at(-1);
 }
 
+/** Lowercase, drop everything but letters and digits, drop a role suffix (`Repository`, `Entity`, ...). */
+export function normName(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .replace(/(repository|repo|entity|model)$/, "");
+}
+
+/** The name and its possible singular forms (`movies` is `movie`, `categories` is `category`). */
+function forms(s: string): string[] {
+  const n = normName(s);
+  const out = new Set([n]);
+  if (/ies$/.test(n)) out.add(`${n.slice(0, -3)}y`);
+  if (/es$/.test(n)) out.add(n.slice(0, -2));
+  if (/s$/.test(n) && !/ss$/.test(n)) out.add(n.slice(0, -1));
+  out.delete("");
+  return [...out];
+}
+
+/** Whether a table name and a name found in code (a model, a variable, a table in SQL) are the same table. */
+export function sameTable(a: string, b: string): boolean {
+  const xs = forms(a);
+  const ys = forms(b);
+  return xs.some((x) =>
+    ys.some((y) => x === y || (Math.min(x.length, y.length) >= 3 && (x.endsWith(y) || y.endsWith(x)))),
+  );
+}
+
+/** Whether `text` mentions the table by its name, a plural or singular form, or with underscores dropped. */
+export function holdsTable(text: string | undefined, table: string): boolean {
+  if (text === undefined) return false;
+  const lower = text.toLowerCase();
+  if (lower.includes(table.toLowerCase())) return true;
+  const flat = lower.replace(/[^a-z0-9]/g, "");
+  return forms(table).some((f) => flat.includes(f));
+}
+
 /** The text of the call that starts at `line` (1-based): the line, and the next ones while its parentheses are open. */
 export function callText(lines: string[], line: number): string {
   let depth = 0;
@@ -110,8 +147,7 @@ export function checkLabels(labels: Labels, cloneDir: string): string[] {
     for (const p of labels[kind]) {
       const what = `${kind} ${p.file} ${p.table}`;
       if (!linesOf(p.file)) out.push(`${what}: ${p.file} does not exist`);
-      else if (!textOf(p.file)?.includes(p.table.toLowerCase()))
-        out.push(`${what}: ${p.file} does not hold ${p.table}`);
+      else if (!holdsTable(textOf(p.file), p.table)) out.push(`${what}: ${p.file} does not hold ${p.table}`);
       for (const f of p.fns ?? [])
         add(at(p.file, f.line, `${what} fn ${f.name}`), f.name, `${what} fn ${f.name}`);
     }
