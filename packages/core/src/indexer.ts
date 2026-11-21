@@ -14,6 +14,7 @@ import type { ParsedFile } from "./parse/index.js";
 import { ensureDataDir, type GantryPaths } from "./paths/index.js";
 import { type LoadedRecipe, loadRecipe, recipeNotes } from "./recipe/load.js";
 import type { SpecifierClass } from "./resolve/index.js";
+import { refreshDescriptionFts } from "./search/descfts.js";
 import { openStore, type Store, splitIdentifier } from "./store/index.js";
 import type {
   AdapterNodeRecord,
@@ -215,6 +216,8 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
       }
       // Cache entries of files that no longer exist are only pruned when this run saw the whole tree of every repo.
       if (whole) cache?.prune(seen);
+      // A repo that left the workspace and came back has no search rows: put its stored descriptions back into them.
+      if (whole && opts.layer === "main") refreshDescriptionFts(store);
     } finally {
       cache?.close();
     }

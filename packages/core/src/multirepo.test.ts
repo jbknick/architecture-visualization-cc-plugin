@@ -3,7 +3,9 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { contentKey } from "./describe/factsheet.js";
 import { dumpGraph, indexRepo } from "./indexer.js";
+import { setLabel } from "./overlay/repo.js";
 import { type GantryPaths, resolvePaths } from "./paths/index.js";
 import { openStore } from "./store/index.js";
 
@@ -197,6 +199,59 @@ describe("a workspace of two repos", () => {
     } finally {
       s.close();
     }
+  });
+
+  it("a repo that leaves the workspace file and comes back keeps its descriptions and the overlay; index alone puts the descriptions back into search", async () => {
+    const { mr, env, web } = await setup();
+    await indexRepo(web, { layer: "main" });
+    const symId = "sym:acme/api:apps/server/src/slug.ts#toSlug";
+    const sym = (() => {
+      const s = openStore(web.dbPath, { repo: web.repo });
+      try {
+        return s.getSymbol(symId);
+      } finally {
+        s.close();
+      }
+    })();
+    expect(sym).toBeDefined();
+    const key = contentKey(sym?.exactHash as string);
+    const fileLabelId = "file:acme/api:apps/server/src/slug.ts";
+    const seed = openStore(web.dbPath, { repo: web.repo });
+    try {
+      seed.db
+        .prepare(
+          `INSERT INTO descriptions(content_key, behavior, search_terms, name_fits, suggested_name, provenance, model, prompt_version, created_at)
+           VALUES (?, 'Turns text into a url slug.', '[]', 1, NULL, 'model', 'haiku', 'p1', 'now')`,
+        )
+        .run(key);
+      setLabel(seed, { nodeId: fileLabelId, text: "Slug helper" });
+    } finally {
+      seed.close();
+    }
+    const state = (): { behavior: string | undefined; label: string | undefined; described: number } => {
+      const s = openStore(web.dbPath, { repo: web.repo });
+      try {
+        const fts = s.db.prepare("SELECT behavior FROM fts_symbols WHERE symbol_id = ?").get(symId) as
+          | { behavior: string }
+          | undefined;
+        const label = s.db.prepare("SELECT text FROM overlay.labels WHERE node_id = ?").get(fileLabelId) as
+          | { text: string }
+          | undefined;
+        const described = (s.db.prepare("SELECT COUNT(*) AS n FROM descriptions").get() as { n: number }).n;
+        return { behavior: fts?.behavior, label: label?.text, described };
+      } finally {
+        s.close();
+      }
+    };
+    const file = join(mr.root, "gantry-workspace.json");
+    writeFileSync(file, JSON.stringify({ repos: [{ path: "./web" }] }));
+    await indexRepo(resolvePaths(mr.repos.web, env), { layer: "main" });
+    // Gone from the index, but the description and the overlay label are still stored.
+    expect(state()).toEqual({ behavior: undefined, label: "Slug helper", described: 1 });
+    writeFileSync(file, JSON.stringify({ repos: [{ path: "./web" }, { path: "./api", repo: "acme/api" }] }));
+    await indexRepo(resolvePaths(mr.repos.web, env), { layer: "main" });
+    // `index` alone restores the description text in the search rows (it is read back from `descriptions`).
+    expect(state()).toEqual({ behavior: "Turns text into a url slug.", label: "Slug helper", described: 1 });
   });
 
   it("a targeted run for one repo leaves the other repo's rows alone", async () => {
