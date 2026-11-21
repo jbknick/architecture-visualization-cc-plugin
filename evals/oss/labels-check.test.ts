@@ -148,6 +148,19 @@ describe("checks of a TypeScript registration", () => {
     });
     expect(checkLabels(l, d)).toEqual([]);
   });
+
+  it("does not take the folder's name for the segment in a Go label without a registration", () => {
+    const go = labels({
+      endpoint: [{ method: "GET", path: "/api/tasks", file: "internal/tasks/handler.go" }],
+    });
+    expect(checkLabels(go, clone({ "internal/tasks/handler.go": "package handler" }))).toEqual([
+      "endpoint GET /api/tasks: internal/tasks/handler.go does not hold tasks",
+    ]);
+    const ts = labels({
+      endpoint: [{ method: "GET", path: "/api/tasks", file: "src/tasks/handler.ts" }],
+    });
+    expect(checkLabels(ts, clone({ "src/tasks/handler.ts": "export const a = 1;" }))).toEqual([]);
+  });
 });
 
 describe("sample", () => {
