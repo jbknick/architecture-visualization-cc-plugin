@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GraphNode } from "../api.ts";
 import { badgeTipLines, drawBadgeMarks, m2Of } from "../badges.ts";
 import { BadgeKey } from "../components/BadgeKey.tsx";
+import { displayOfId } from "../ids.ts";
 import type { CanvasProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { kindColor, type Scheme } from "../theme.ts";
@@ -1055,6 +1056,6 @@ function describe(n: GraphNode): string[] {
   else lines.push(n.kind);
   lines.push(...badgeTipLines(n.badges));
   if (n.path && n.kind !== "group") lines.push(n.path);
-  if (n.workspace) lines.push(n.workspace.replace(/^ws:/, ""));
+  if (n.workspace) lines.push(displayOfId(n.workspace));
   return lines;
 }

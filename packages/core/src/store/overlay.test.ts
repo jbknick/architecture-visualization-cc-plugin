@@ -35,7 +35,8 @@ async function setup(): Promise<GantryPaths> {
 }
 
 const sha = (f: string): string => createHash("sha256").update(readFileSync(f)).digest("hex");
-const open = (paths: GantryPaths): Store => openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+const open = (paths: GantryPaths): Store =>
+  openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
 
 /** The rebuild of a store from another version (spec section 9): drop the version, then `resetStaleStore`. */
 function rebuild(paths: GantryPaths): void {

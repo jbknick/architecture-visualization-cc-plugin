@@ -1,5 +1,6 @@
 import type { Filters, GraphNode } from "../api.ts";
 import { weightOf } from "../canvas/bowtieLayout.ts";
+import { displayOfId } from "../ids.ts";
 
 /** The server's node cap for the ego view (server/views/ego.ts `EGO_MAX_NODES`). */
 export const EGO_MAX_NODES = 400;
@@ -85,7 +86,7 @@ export function describeSide(s: SideSummary, one: string, many: string): string 
  * Mirrors server/views/labels.ts so the panel and the group labels agree.
  */
 export function workspaceShortNames(ids: readonly string[]): Map<string, string> {
-  const names = ids.map((id) => id.replace(/^ws:/, ""));
+  const names = ids.map((id) => displayOfId(id));
   const scopeOf = (n: string): string | null => /^(@[^/]+)\//.exec(n)?.[1] ?? null;
   const counts = new Map<string, number>();
   let scoped = 0;

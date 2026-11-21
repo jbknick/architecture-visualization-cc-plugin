@@ -16,10 +16,10 @@ interface Caller {
 }
 
 const WS = [
-  { id: "ws:@acme/ui", name: "@acme/ui", dir: "packages/ui" },
-  { id: "ws:@acme/web", name: "@acme/web", dir: "apps/web" },
-  { id: "ws:@acme/admin", name: "@acme/admin", dir: "apps/admin" },
-  { id: "ws:@acme/docs", name: "@acme/docs", dir: "apps/docs" },
+  { id: "ws:repo:@acme/ui", name: "@acme/ui", dir: "packages/ui" },
+  { id: "ws:repo:@acme/web", name: "@acme/web", dir: "apps/web" },
+  { id: "ws:repo:@acme/admin", name: "@acme/admin", dir: "apps/admin" },
+  { id: "ws:repo:@acme/docs", name: "@acme/docs", dir: "apps/docs" },
 ];
 const FOCUS_PATH = "packages/ui/src/card.tsx";
 const FOCUS = `sym:repo:${FOCUS_PATH}#Card`;
@@ -51,7 +51,7 @@ const sym = (path: string, name: string, fileId: string): SymbolRecord => ({
 function hub(callers: Caller[], callees: Caller[] = []): { ctx: ApiContext; store: Store } {
   const dir = mkdtempSync(join(tmpdir(), "gantry-ego-"));
   const store = openStore(join(dir, "gantry.db"));
-  store.setMeta("repo", "repo");
+  store.upsertRepo("repo");
   cleanup.push(() => {
     store.close();
     rmSync(dir, { recursive: true, force: true });
@@ -86,7 +86,7 @@ function hub(callers: Caller[], callees: Caller[] = []): { ctx: ApiContext; stor
     }
     return s;
   };
-  const focusSlot = slot(FOCUS_PATH, "ws:@acme/ui");
+  const focusSlot = slot(FOCUS_PATH, "ws:repo:@acme/ui");
   focusSlot.syms.push(sym(FOCUS_PATH, "Card", `file:repo:${FOCUS_PATH}`));
   for (const c of callers) {
     const s = slot(c.path, c.ws);
@@ -114,7 +114,7 @@ const run = (ctx: ApiContext, qs = "", filters?: Record<string, string>): ViewRe
 /** n callers in one workspace, spread over `files` files of one folder. */
 const spread = (ws: string, dir: string, n: number, files: number, tag = "c"): Caller[] =>
   Array.from({ length: n }, (_, i) => ({
-    ws: `ws:@acme/${ws}`,
+    ws: `ws:repo:@acme/${ws}`,
     path: `apps/${ws}/${dir}/file${i % files}.tsx`,
     name: `${tag}${i}`,
   }));
@@ -146,7 +146,7 @@ describe("ego grouping", () => {
     const callers: Caller[] = [];
     for (let i = 0; i < 150; i++)
       callers.push({
-        ws: "ws:@acme/web",
+        ws: "ws:repo:@acme/web",
         path: `apps/web/src/area${i % 40}/file${i % 100}.tsx`,
         name: `c${i}`,
       });
@@ -180,7 +180,7 @@ describe("ego grouping", () => {
     const into = r.edges.filter((e) => e.dst === FOCUS);
     const weightOf = (ws: string) =>
       into
-        .filter((e) => (r.nodes.find((n) => n.id === e.src)?.workspace ?? "") === `ws:@acme/${ws}`)
+        .filter((e) => (r.nodes.find((n) => n.id === e.src)?.workspace ?? "") === `ws:repo:@acme/${ws}`)
         .reduce((n, e) => n + e.weight, 0);
     expect(weightOf("web")).toBe(18);
     expect(weightOf("admin")).toBe(12);
@@ -259,7 +259,7 @@ describe("ego expand", () => {
       ...spread("web", "src", 30, 3, "u").map((c) => ({
         ...c,
         path: c.path.replace("apps/web", "packages/ui"),
-        ws: "ws:@acme/ui",
+        ws: "ws:repo:@acme/ui",
       })),
       ...spread("admin", "src", 9, 3, "v"),
       ...spread("docs", "src", 4, 1, "w"),

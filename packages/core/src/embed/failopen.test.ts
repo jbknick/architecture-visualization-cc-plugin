@@ -27,7 +27,7 @@ afterEach(() => {
 describe("sqlite-vec unavailable (fail open)", () => {
   it("opens the store, records meta.vec_available = 0 and creates no vec tables", () => {
     expect(store.getMeta("vec_available")).toBe("0");
-    expect(store.getMeta("schema_version")).toBe("12");
+    expect(store.getMeta("schema_version")).toBe("13");
     expect(vecAvailable(store)).toBe(false);
     const names = (store.db.prepare("SELECT name FROM sqlite_master").all() as { name: string }[]).map(
       (r) => r.name,
@@ -37,8 +37,8 @@ describe("sqlite-vec unavailable (fail open)", () => {
   });
 
   it("the rest of the store keeps working", () => {
-    store.setMeta("head_sha", "abc");
-    expect(store.getMeta("head_sha")).toBe("abc");
+    store.setMeta("k", "abc");
+    expect(store.getMeta("k")).toBe("abc");
     expect(store.effectiveSymbols()).toEqual([]);
   });
 

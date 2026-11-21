@@ -1,5 +1,5 @@
 import type BetterSqlite3 from "better-sqlite3";
-import { pathOfFileId } from "../ids.js";
+import { parseWorkspaceId, pathOfFileId, repoOfId } from "../ids.js";
 import { langOfPath } from "../lang/index.js";
 import { restoreMainFts } from "../search/descfts.js";
 import type {
@@ -17,6 +17,22 @@ import type {
 
 export type Database = BetterSqlite3.Database;
 
+/** The repo a store was opened for (see `Store.repo`), or undefined when it was not told and does not hold exactly one. */
+export function safeRepo(store: Store): string | undefined {
+  try {
+    return store.repo();
+  } catch {
+    return undefined;
+  }
+}
+
+/** One row of `repos` (spec section 9). */
+export interface RepoRow {
+  name: string;
+  root: string | null;
+  headSha: string | null;
+}
+
 export interface Store {
   db: Database;
   close(): void;
@@ -24,8 +40,26 @@ export interface Store {
   tx<T>(fn: () => T): T;
   getMeta(k: string): string | undefined;
   setMeta(k: string, v: string): void;
-  /** The repo name in every id of this store (`meta.repo`, written by the indexer); throws when nothing was indexed yet. */
+  /**
+   * The repo this connection works in: the `repo` given to `openStore` (the repo the command runs in), else the only
+   * repo in the `repos` table. Throws when neither exists (nothing was indexed yet, or several repos and no `repo`).
+   */
   repo(): string;
+  /** The repos of the store, ordered by name. */
+  listRepos(): RepoRow[];
+  /** Records a repo of the workspace, with the root it is indexed from (kept when `root` is left out). */
+  upsertRepo(name: string, root?: string): void;
+  /** The commit a repo's main layer was indexed at (`repos.head_sha`); undefined when none; default repo: `repo()`. */
+  headSha(repo?: string): string | undefined;
+  setHeadSha(repo: string, sha: string): void;
+  /** The root a repo was indexed from (`repos.root`); undefined for an unknown repo. */
+  repoRoot(repo: string): string | undefined;
+  /**
+   * Deletes every row of the repos not named in `keep` (files and their symbols, edges and adapter nodes in both
+   * layers, workspaces, search rows, derived `similar_to` edges that end in them, the `repos` row). Returns the names
+   * removed, in order.
+   */
+  removeReposExcept(keep: readonly string[]): string[];
   upsertWorkspaces(ws: WorkspaceRecord[]): void;
   /** All workspaces ordered by id. */
   listWorkspaces(): WorkspaceRecord[];
@@ -86,6 +120,7 @@ const EFF_FILES = `eff_files AS (
 
 interface FileRow {
   id: string;
+  repo: string;
   path: string;
   workspace_id: string | null;
   content_hash: string;
@@ -188,6 +223,7 @@ const toEdge = (r: EdgeRow): EdgeRecord => ({
 
 interface WorkspaceRow {
   id: string;
+  repo: string;
   name: string;
   dir: string;
   kind: WorkspaceRecord["kind"];
@@ -229,7 +265,7 @@ const toFile = (r: FileRow): FileRecord => ({
   ...parseDirectives(r.directives),
 });
 
-export function createStore(db: Database): Store {
+export function createStore(db: Database, entryRepo?: string): Store {
   const cache = new Map<string, BetterSqlite3.Statement>();
   const stmt = (sql: string): BetterSqlite3.Statement => {
     let s = cache.get(sql);
@@ -243,16 +279,25 @@ export function createStore(db: Database): Store {
   const tx = <T>(fn: () => T): T => db.transaction(fn).immediate();
   let localWrites = 0;
 
+  /** The repo column of a file row: the repo part of its id. */
+  const repoOfFile = (id: string): string => {
+    const repo = repoOfId(id);
+    if (repo === undefined) throw new Error(`Not a file id: ${id}`);
+    return repo;
+  };
+
   const putFile = (layer: Layer, f: FileRecord): void => {
     stmt(
-      `INSERT INTO files(id, layer, path, workspace_id, content_hash, mtime_ms, deleted, directives, lang)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id, layer) DO UPDATE SET path = excluded.path, workspace_id = excluded.workspace_id,
+      `INSERT INTO files(id, layer, repo, path, workspace_id, content_hash, mtime_ms, deleted, directives, lang)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id, layer) DO UPDATE SET repo = excluded.repo, path = excluded.path,
+         workspace_id = excluded.workspace_id,
          content_hash = excluded.content_hash, mtime_ms = excluded.mtime_ms, deleted = excluded.deleted,
          directives = excluded.directives, lang = excluded.lang`,
     ).run(
       f.id,
       layer,
+      repoOfFile(f.id),
       f.path,
       f.workspaceId,
       f.contentHash,
@@ -308,21 +353,89 @@ export function createStore(db: Database): Store {
       ).run(k, v);
     },
     repo() {
-      const r = store.getMeta("repo");
-      if (r === undefined) throw new Error("The store has no repo name: it was not indexed");
-      return r;
+      if (entryRepo !== undefined) return entryRepo;
+      const rows = stmt("SELECT name FROM repos ORDER BY name").all() as { name: string }[];
+      if (rows.length === 1) return (rows[0] as { name: string }).name;
+      throw new Error(
+        rows.length === 0
+          ? "The store has no repo name: it was not indexed"
+          : "The store holds several repos: open it with the repo to work in",
+      );
+    },
+    listRepos() {
+      return (
+        stmt("SELECT name, root, head_sha FROM repos ORDER BY name").all() as {
+          name: string;
+          root: string | null;
+          head_sha: string | null;
+        }[]
+      ).map((r) => ({ name: r.name, root: r.root, headSha: r.head_sha }));
+    },
+    upsertRepo(name, root) {
+      stmt(
+        "INSERT INTO repos(name, root) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET root = COALESCE(excluded.root, root)",
+      ).run(name, root ?? null);
+    },
+    headSha(repo) {
+      const r = stmt("SELECT head_sha FROM repos WHERE name = ?").get(repo ?? store.repo()) as
+        | { head_sha: string | null }
+        | undefined;
+      return r?.head_sha ?? undefined;
+    },
+    setHeadSha(repo, sha) {
+      stmt("UPDATE repos SET head_sha = ? WHERE name = ?").run(sha, repo);
+    },
+    repoRoot(repo) {
+      return (
+        (stmt("SELECT root FROM repos WHERE name = ?").get(repo) as { root: string | null } | undefined)
+          ?.root ?? undefined
+      );
+    },
+    removeReposExcept(keep) {
+      const known = (stmt("SELECT name FROM repos ORDER BY name").all() as { name: string }[]).map(
+        (r) => r.name,
+      );
+      const withFiles = (stmt("SELECT DISTINCT repo FROM files").all() as { repo: string }[]).map(
+        (r) => r.repo,
+      );
+      const all = [...new Set([...known, ...withFiles])].filter((n) => !keep.includes(n)).sort();
+      if (all.length === 0) return [];
+      localWrites++;
+      tx(() => {
+        for (const name of all) {
+          const symPrefix = `sym:${name}:`;
+          stmt(
+            `DELETE FROM fts_symbols WHERE symbol_id IN (
+               SELECT s.id FROM symbols s JOIN files f ON f.id = s.file_id AND f.layer = s.layer WHERE f.repo = ?)`,
+          ).run(name);
+          for (const t of ["symbols", "edges", "adapter_nodes"]) {
+            stmt(`DELETE FROM ${t} WHERE file_id IN (SELECT id FROM files WHERE repo = ?)`).run(name);
+          }
+          stmt(
+            "DELETE FROM edges WHERE kind = 'similar_to' AND (substr(src, 1, ?) = ? OR substr(dst, 1, ?) = ?)",
+          ).run(symPrefix.length, symPrefix, symPrefix.length, symPrefix);
+          stmt("DELETE FROM files WHERE repo = ?").run(name);
+          stmt("DELETE FROM workspaces WHERE repo = ?").run(name);
+          stmt("DELETE FROM repos WHERE name = ?").run(name);
+        }
+      });
+      return all;
     },
     upsertWorkspaces(ws) {
       tx(() => {
         const s = stmt(
-          `INSERT INTO workspaces(id, name, dir, kind, frameworks, deps, exports_map)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
-           ON CONFLICT(id) DO UPDATE SET name = excluded.name, dir = excluded.dir, kind = excluded.kind,
+          `INSERT INTO workspaces(id, repo, name, dir, kind, frameworks, deps, exports_map)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET repo = excluded.repo, name = excluded.name, dir = excluded.dir,
+             kind = excluded.kind,
              frameworks = excluded.frameworks, deps = excluded.deps, exports_map = excluded.exports_map`,
         );
         for (const w of ws) {
+          const repo = parseWorkspaceId(w.id)?.repo;
+          if (repo === undefined) throw new Error(`Not a workspace id: ${w.id}`);
           s.run(
             w.id,
+            repo,
             w.name,
             w.dir,
             w.kind,

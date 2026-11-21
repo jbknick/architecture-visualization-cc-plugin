@@ -12,7 +12,7 @@ import {
 import { folderTitle, nodeTitle, type Scene, subtitleParts } from "../../canvas/scene.ts";
 import { isTinyWorkspace, TINY_STRIP } from "../../canvas/tiny.ts";
 import type { MapGeometry, Rect } from "../../canvas/types.ts";
-import { pathOfFileId } from "../../ids.ts";
+import { isRootWorkspaceId, pathOfFileId } from "../../ids.ts";
 
 export type CityLevel = "workspaces" | "dirs" | "files";
 
@@ -480,7 +480,7 @@ export function buildCity(scene: Scene, geo: MapGeometry, opts: CityOptions): Ci
       files: scene.files[r] ?? 0,
       title: nodeTitle(scene, r),
       detail: parts.join(" · "),
-      kind: node.id === "ws:." ? "(repo root)" : (node.badges?.[0] ?? "package"),
+      kind: isRootWorkspaceId(node.id) ? "(repo root)" : (node.badges?.[0] ?? "package"),
       tiny: scene.roots.length > 1 && isTinyWorkspace(fns, maxFns),
     };
     byId.set(d.id, { type: "district", i: districts.length });

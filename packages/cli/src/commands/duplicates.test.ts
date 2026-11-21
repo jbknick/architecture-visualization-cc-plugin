@@ -130,10 +130,10 @@ describe("gantry duplicates", () => {
       run(fx.dir, data, ["duplicates", "--json", "--workspace", "@acme/web"]).out,
     ) as Json;
     expect(byName.clusters.length).toBe(1);
-    for (const c of byName.clusters) expect(c.workspaces).toContain("ws:@acme/web");
+    for (const c of byName.clusters) expect(c.workspaces).toContain("ws:pnpm-turbo:@acme/web");
     expect(byName.summary.clusters).toBe(1);
     const byId = JSON.parse(
-      run(fx.dir, data, ["duplicates", "--json", "--workspace", "ws:@acme/web"]).out,
+      run(fx.dir, data, ["duplicates", "--json", "--workspace", "ws:pnpm-turbo:@acme/web"]).out,
     ) as Json;
     expect(byId).toEqual(byName);
     const both = JSON.parse(

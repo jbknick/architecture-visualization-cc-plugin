@@ -106,7 +106,7 @@ export function registerEmbed(program: Command): void {
         const paths = resolvePaths(process.cwd());
         resetStaleStore(paths);
         ensureDataDir(paths);
-        const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+        const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
         try {
           const r = await runEmbed(store, paths.root, { limit, budgetMs });
           if (opts.json) writeStdout(`${JSON.stringify(r, null, 2)}\n`);

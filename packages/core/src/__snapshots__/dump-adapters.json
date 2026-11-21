@@ -1,7 +1,13 @@
 {
+  "repos": [
+    {
+      "name": "adapters"
+    }
+  ],
   "workspaces": [
     {
-      "id": "ws:.",
+      "id": "ws:adapters:.",
+      "repo": "adapters",
       "name": "adapters-root",
       "dir": ".",
       "kind": "unknown",
@@ -10,7 +16,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:@demo/api",
+      "id": "ws:adapters:@demo/api",
+      "repo": "adapters",
       "name": "@demo/api",
       "dir": "packages/api",
       "kind": "package",
@@ -25,7 +32,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:@demo/db",
+      "id": "ws:adapters:@demo/db",
+      "repo": "adapters",
       "name": "@demo/db",
       "dir": "packages/db",
       "kind": "package",
@@ -38,7 +46,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:@demo/legacy",
+      "id": "ws:adapters:@demo/legacy",
+      "repo": "adapters",
       "name": "@demo/legacy",
       "dir": "packages/legacy",
       "kind": "package",
@@ -47,7 +56,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:@demo/posts",
+      "id": "ws:adapters:@demo/posts",
+      "repo": "adapters",
       "name": "@demo/posts",
       "dir": "packages/posts",
       "kind": "package",
@@ -60,7 +70,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:@demo/server",
+      "id": "ws:adapters:@demo/server",
+      "repo": "adapters",
       "name": "@demo/server",
       "dir": "apps/server",
       "kind": "app",
@@ -77,7 +88,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:@demo/web",
+      "id": "ws:adapters:@demo/web",
+      "repo": "adapters",
       "name": "@demo/web",
       "dir": "apps/web",
       "kind": "app",
@@ -103,233 +115,266 @@
   "files": [
     {
       "id": "file:adapters:apps/server/package.json",
+      "repo": "adapters",
       "path": "apps/server/package.json",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/server",
+      "workspaceId": "ws:adapters:@demo/server",
       "contentHash": "ee10d8214ac5cba9386ae41128d0198788ae2e83939471104d9c229374458596"
     },
     {
       "id": "file:adapters:apps/server/src/app.ts",
+      "repo": "adapters",
       "path": "apps/server/src/app.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/server",
+      "workspaceId": "ws:adapters:@demo/server",
       "contentHash": "f89a81b8ad3681a50aeac2bc4d127a4ac6b3be115ba16794848700db69b28176"
     },
     {
       "id": "file:adapters:apps/server/src/paths.ts",
+      "repo": "adapters",
       "path": "apps/server/src/paths.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/server",
+      "workspaceId": "ws:adapters:@demo/server",
       "contentHash": "530bf72e196e5a455b9007160b88143761d1fcbec80d5cf2dd644eb24868f94d"
     },
     {
       "id": "file:adapters:apps/server/src/users.ts",
+      "repo": "adapters",
       "path": "apps/server/src/users.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/server",
+      "workspaceId": "ws:adapters:@demo/server",
       "contentHash": "312cddbc968f1921dff2cd35573b2a35866a314e143c736709acb737ea07c2eb"
     },
     {
       "id": "file:adapters:apps/web/package.json",
+      "repo": "adapters",
       "path": "apps/web/package.json",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/web",
+      "workspaceId": "ws:adapters:@demo/web",
       "contentHash": "98b827f10c6be65d1f4b8629fee2a6d868456fda51349f0538b8bb901bc87666"
     },
     {
       "id": "file:adapters:apps/web/src/components/PostActions.tsx",
+      "repo": "adapters",
       "path": "apps/web/src/components/PostActions.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/web",
+      "workspaceId": "ws:adapters:@demo/web",
       "contentHash": "99645e1a4aefb5dff51933461f0ee83dd42c30177ee3a8585d5e6da170ccfc1a"
     },
     {
       "id": "file:adapters:apps/web/src/hooks/usePostActions.ts",
+      "repo": "adapters",
       "path": "apps/web/src/hooks/usePostActions.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/web",
+      "workspaceId": "ws:adapters:@demo/web",
       "contentHash": "967d0f39940007b221bc81835321c5fb24ccdc13e055f26dabe6a2d373877e8a"
     },
     {
       "id": "file:adapters:apps/web/src/lib/api.ts",
+      "repo": "adapters",
       "path": "apps/web/src/lib/api.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/web",
+      "workspaceId": "ws:adapters:@demo/web",
       "contentHash": "49556b55965316edcc2c75cbe568084017f93e4c0a815f48926feadf6a05aee9"
     },
     {
       "id": "file:adapters:apps/web/src/lib/clients.ts",
+      "repo": "adapters",
       "path": "apps/web/src/lib/clients.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/web",
+      "workspaceId": "ws:adapters:@demo/web",
       "contentHash": "c7d1a9f6c3289ff4fb5f3810220716a9064070e4d81240e6d3c5819c2f9bfc0b"
     },
     {
       "id": "file:adapters:apps/web/src/lib/orpc.ts",
+      "repo": "adapters",
       "path": "apps/web/src/lib/orpc.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/web",
+      "workspaceId": "ws:adapters:@demo/web",
       "contentHash": "7f779a2bfdcf5e55bc6dbbc738c9be439db46d448c090b96881183dff41a8762"
     },
     {
       "id": "file:adapters:apps/web/src/routes/__root.tsx",
+      "repo": "adapters",
       "path": "apps/web/src/routes/__root.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/web",
+      "workspaceId": "ws:adapters:@demo/web",
       "contentHash": "f669ef25c943c3d7ed0e4d5b33d01d8d053d0bf436402151718f892a513b58db"
     },
     {
       "id": "file:adapters:apps/web/src/routes/index.tsx",
+      "repo": "adapters",
       "path": "apps/web/src/routes/index.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/web",
+      "workspaceId": "ws:adapters:@demo/web",
       "contentHash": "56f86206d8516aecdc6f5f50f6dad1bd5273c6731ad7773171905d98dbe97c6c"
     },
     {
       "id": "file:adapters:apps/web/src/routes/posts.$postId.tsx",
+      "repo": "adapters",
       "path": "apps/web/src/routes/posts.$postId.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/web",
+      "workspaceId": "ws:adapters:@demo/web",
       "contentHash": "7b1831da9f67eb110084450edac079705e45a31b441eab6e939219568e63664e"
     },
     {
       "id": "file:adapters:apps/web/src/routes/users.tsx",
+      "repo": "adapters",
       "path": "apps/web/src/routes/users.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/web",
+      "workspaceId": "ws:adapters:@demo/web",
       "contentHash": "5786c4586ac12c2ec30aeefd353d63721b9e75809f06effa4f7417b7affef1fb"
     },
     {
       "id": "file:adapters:apps/web/src/server/posts.ts",
+      "repo": "adapters",
       "path": "apps/web/src/server/posts.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/web",
+      "workspaceId": "ws:adapters:@demo/web",
       "contentHash": "179cf45ed794035a4c0e7a575f227e54fb2a9f705dadef1c7f036ef9d77f32f9"
     },
     {
       "id": "file:adapters:packages/api/package.json",
+      "repo": "adapters",
       "path": "packages/api/package.json",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/api",
+      "workspaceId": "ws:adapters:@demo/api",
       "contentHash": "d9ce6e9603868132428963f2a2ad1ed1d332a9940ace788b52dc907db00941b4"
     },
     {
       "id": "file:adapters:packages/api/src/base.ts",
+      "repo": "adapters",
       "path": "packages/api/src/base.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/api",
+      "workspaceId": "ws:adapters:@demo/api",
       "contentHash": "4d0892e9e8a052f1587b36c776db205665452cd7c9210771b910593b83dac199"
     },
     {
       "id": "file:adapters:packages/api/src/index.ts",
+      "repo": "adapters",
       "path": "packages/api/src/index.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/api",
+      "workspaceId": "ws:adapters:@demo/api",
       "contentHash": "dc5ea361438bf5323ee7cae746991b840de19da0c1786167979a25404862d29d"
     },
     {
       "id": "file:adapters:packages/api/src/report.ts",
+      "repo": "adapters",
       "path": "packages/api/src/report.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/api",
+      "workspaceId": "ws:adapters:@demo/api",
       "contentHash": "57b130800f4f6ec54ef66ea2b823f5d4a60cc61bec7837d6009c45d791d294cd"
     },
     {
       "id": "file:adapters:packages/api/src/router.ts",
+      "repo": "adapters",
       "path": "packages/api/src/router.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/api",
+      "workspaceId": "ws:adapters:@demo/api",
       "contentHash": "95b37d65a4bf0b9e7a019cf9fb045829f0b1cc07080540942d8bdc3c8a65fbd3"
     },
     {
       "id": "file:adapters:packages/api/src/routers/admin.ts",
+      "repo": "adapters",
       "path": "packages/api/src/routers/admin.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/api",
+      "workspaceId": "ws:adapters:@demo/api",
       "contentHash": "4ef7c5f41b4f9cd1f1d4821e27c327d99bbd1420b1e394db1bcb0d37df8417dc"
     },
     {
       "id": "file:adapters:packages/api/src/routers/posts.ts",
+      "repo": "adapters",
       "path": "packages/api/src/routers/posts.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/api",
+      "workspaceId": "ws:adapters:@demo/api",
       "contentHash": "7848ac7ba9096a9f25d38f9196c269b6826202fca26bb5c95d6c6a1137725065"
     },
     {
       "id": "file:adapters:packages/api/src/routers/stats.ts",
+      "repo": "adapters",
       "path": "packages/api/src/routers/stats.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/api",
+      "workspaceId": "ws:adapters:@demo/api",
       "contentHash": "b0384bf940b33f385da9556a349ff869cf4ba26635b0424e4e81ddf302538d8e"
     },
     {
       "id": "file:adapters:packages/api/src/routers/users.ts",
+      "repo": "adapters",
       "path": "packages/api/src/routers/users.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/api",
+      "workspaceId": "ws:adapters:@demo/api",
       "contentHash": "bec0859d25656362f025880b127ad5116e09f99a2f6cf1582c110d6554c774d5"
     },
     {
       "id": "file:adapters:packages/db/src/client.ts",
+      "repo": "adapters",
       "path": "packages/db/src/client.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/db",
+      "workspaceId": "ws:adapters:@demo/db",
       "contentHash": "68242cf76ead671bf89daa3fab78ac85342eed326006458ee37ff662537a6c11"
     },
     {
       "id": "file:adapters:packages/db/src/index.ts",
+      "repo": "adapters",
       "path": "packages/db/src/index.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/db",
+      "workspaceId": "ws:adapters:@demo/db",
       "contentHash": "75602bae53e0092bc82c0492770a58ec1306e37204804aa8aea7da93057da1c9"
     },
     {
       "id": "file:adapters:packages/db/src/queries.ts",
+      "repo": "adapters",
       "path": "packages/db/src/queries.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/db",
+      "workspaceId": "ws:adapters:@demo/db",
       "contentHash": "41b24333576ddd7f2e0a91a61f1b79d8c2be6b994a70516dac2f7dca4798c633"
     },
     {
       "id": "file:adapters:packages/db/src/schema.ts",
+      "repo": "adapters",
       "path": "packages/db/src/schema.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/db",
+      "workspaceId": "ws:adapters:@demo/db",
       "contentHash": "ac0e2150b79ca3b1079e4d138c0b7b0bc56524d62a96621deb68302bf4dbfef3"
     },
     {
       "id": "file:adapters:packages/legacy/src/index.ts",
+      "repo": "adapters",
       "path": "packages/legacy/src/index.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/legacy",
+      "workspaceId": "ws:adapters:@demo/legacy",
       "contentHash": "b9c3286a019ae2a9c822cd8a872f8b58e7c97a16144d6572630537d98f560576"
     },
     {
       "id": "file:adapters:packages/posts/src/handlers.ts",
+      "repo": "adapters",
       "path": "packages/posts/src/handlers.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/posts",
+      "workspaceId": "ws:adapters:@demo/posts",
       "contentHash": "521085fcb656f1d3712086cfbdfd7af226fa82965a1d75c853b16444e1869bef"
     },
     {
       "id": "file:adapters:packages/posts/src/index.ts",
+      "repo": "adapters",
       "path": "packages/posts/src/index.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/posts",
+      "workspaceId": "ws:adapters:@demo/posts",
       "contentHash": "c36ff570f9dc39a7cdfa8cf6dc7777699e110365b0c8da760c251a7eb87e3fc0"
     },
     {
       "id": "file:adapters:packages/posts/src/routes.test.ts",
+      "repo": "adapters",
       "path": "packages/posts/src/routes.test.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/posts",
+      "workspaceId": "ws:adapters:@demo/posts",
       "contentHash": "306fdb9a63e47633c75b3aa239ab8cd11f4f73448116d998c94f8f3fcfd1541b"
     },
     {
       "id": "file:adapters:packages/posts/src/routes.ts",
+      "repo": "adapters",
       "path": "packages/posts/src/routes.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@demo/posts",
+      "workspaceId": "ws:adapters:@demo/posts",
       "contentHash": "ffd2edcc179ff9852a2dc9e1b595d5edaf41e41251650c2de5ac778f013edf2d"
     }
   ],
@@ -4353,7 +4398,7 @@
       "fileId": "file:adapters:packages/posts/src/handlers.ts"
     },
     {
-      "src": "ws:@demo/api",
+      "src": "ws:adapters:@demo/api",
       "dst": "file:adapters:packages/api/src/base.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4362,7 +4407,7 @@
       "fileId": "file:adapters:packages/api/src/base.ts"
     },
     {
-      "src": "ws:@demo/api",
+      "src": "ws:adapters:@demo/api",
       "dst": "file:adapters:packages/api/src/index.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4371,7 +4416,7 @@
       "fileId": "file:adapters:packages/api/src/index.ts"
     },
     {
-      "src": "ws:@demo/api",
+      "src": "ws:adapters:@demo/api",
       "dst": "file:adapters:packages/api/src/report.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4380,7 +4425,7 @@
       "fileId": "file:adapters:packages/api/src/report.ts"
     },
     {
-      "src": "ws:@demo/api",
+      "src": "ws:adapters:@demo/api",
       "dst": "file:adapters:packages/api/src/router.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4389,7 +4434,7 @@
       "fileId": "file:adapters:packages/api/src/router.ts"
     },
     {
-      "src": "ws:@demo/api",
+      "src": "ws:adapters:@demo/api",
       "dst": "file:adapters:packages/api/src/routers/admin.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4398,7 +4443,7 @@
       "fileId": "file:adapters:packages/api/src/routers/admin.ts"
     },
     {
-      "src": "ws:@demo/api",
+      "src": "ws:adapters:@demo/api",
       "dst": "file:adapters:packages/api/src/routers/posts.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4407,7 +4452,7 @@
       "fileId": "file:adapters:packages/api/src/routers/posts.ts"
     },
     {
-      "src": "ws:@demo/api",
+      "src": "ws:adapters:@demo/api",
       "dst": "file:adapters:packages/api/src/routers/stats.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4416,7 +4461,7 @@
       "fileId": "file:adapters:packages/api/src/routers/stats.ts"
     },
     {
-      "src": "ws:@demo/api",
+      "src": "ws:adapters:@demo/api",
       "dst": "file:adapters:packages/api/src/routers/users.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4425,8 +4470,8 @@
       "fileId": "file:adapters:packages/api/src/routers/users.ts"
     },
     {
-      "src": "ws:@demo/api",
-      "dst": "ws:@demo/db",
+      "src": "ws:adapters:@demo/api",
+      "dst": "ws:adapters:@demo/db",
       "kind": "depends_on",
       "confidence": "high",
       "count": 1,
@@ -4434,7 +4479,7 @@
       "fileId": "file:adapters:packages/api/package.json"
     },
     {
-      "src": "ws:@demo/db",
+      "src": "ws:adapters:@demo/db",
       "dst": "file:adapters:packages/db/src/client.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4443,7 +4488,7 @@
       "fileId": "file:adapters:packages/db/src/client.ts"
     },
     {
-      "src": "ws:@demo/db",
+      "src": "ws:adapters:@demo/db",
       "dst": "file:adapters:packages/db/src/index.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4452,7 +4497,7 @@
       "fileId": "file:adapters:packages/db/src/index.ts"
     },
     {
-      "src": "ws:@demo/db",
+      "src": "ws:adapters:@demo/db",
       "dst": "file:adapters:packages/db/src/queries.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4461,7 +4506,7 @@
       "fileId": "file:adapters:packages/db/src/queries.ts"
     },
     {
-      "src": "ws:@demo/db",
+      "src": "ws:adapters:@demo/db",
       "dst": "file:adapters:packages/db/src/schema.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4470,7 +4515,7 @@
       "fileId": "file:adapters:packages/db/src/schema.ts"
     },
     {
-      "src": "ws:@demo/legacy",
+      "src": "ws:adapters:@demo/legacy",
       "dst": "file:adapters:packages/legacy/src/index.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4479,7 +4524,7 @@
       "fileId": "file:adapters:packages/legacy/src/index.ts"
     },
     {
-      "src": "ws:@demo/posts",
+      "src": "ws:adapters:@demo/posts",
       "dst": "file:adapters:packages/posts/src/handlers.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4488,7 +4533,7 @@
       "fileId": "file:adapters:packages/posts/src/handlers.ts"
     },
     {
-      "src": "ws:@demo/posts",
+      "src": "ws:adapters:@demo/posts",
       "dst": "file:adapters:packages/posts/src/index.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4497,7 +4542,7 @@
       "fileId": "file:adapters:packages/posts/src/index.ts"
     },
     {
-      "src": "ws:@demo/posts",
+      "src": "ws:adapters:@demo/posts",
       "dst": "file:adapters:packages/posts/src/routes.test.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4506,7 +4551,7 @@
       "fileId": "file:adapters:packages/posts/src/routes.test.ts"
     },
     {
-      "src": "ws:@demo/posts",
+      "src": "ws:adapters:@demo/posts",
       "dst": "file:adapters:packages/posts/src/routes.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4515,7 +4560,7 @@
       "fileId": "file:adapters:packages/posts/src/routes.ts"
     },
     {
-      "src": "ws:@demo/server",
+      "src": "ws:adapters:@demo/server",
       "dst": "file:adapters:apps/server/src/app.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4524,7 +4569,7 @@
       "fileId": "file:adapters:apps/server/src/app.ts"
     },
     {
-      "src": "ws:@demo/server",
+      "src": "ws:adapters:@demo/server",
       "dst": "file:adapters:apps/server/src/paths.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4533,7 +4578,7 @@
       "fileId": "file:adapters:apps/server/src/paths.ts"
     },
     {
-      "src": "ws:@demo/server",
+      "src": "ws:adapters:@demo/server",
       "dst": "file:adapters:apps/server/src/users.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4542,8 +4587,8 @@
       "fileId": "file:adapters:apps/server/src/users.ts"
     },
     {
-      "src": "ws:@demo/server",
-      "dst": "ws:@demo/api",
+      "src": "ws:adapters:@demo/server",
+      "dst": "ws:adapters:@demo/api",
       "kind": "depends_on",
       "confidence": "high",
       "count": 1,
@@ -4551,8 +4596,8 @@
       "fileId": "file:adapters:apps/server/package.json"
     },
     {
-      "src": "ws:@demo/server",
-      "dst": "ws:@demo/posts",
+      "src": "ws:adapters:@demo/server",
+      "dst": "ws:adapters:@demo/posts",
       "kind": "depends_on",
       "confidence": "high",
       "count": 1,
@@ -4560,7 +4605,7 @@
       "fileId": "file:adapters:apps/server/package.json"
     },
     {
-      "src": "ws:@demo/web",
+      "src": "ws:adapters:@demo/web",
       "dst": "file:adapters:apps/web/src/components/PostActions.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -4569,7 +4614,7 @@
       "fileId": "file:adapters:apps/web/src/components/PostActions.tsx"
     },
     {
-      "src": "ws:@demo/web",
+      "src": "ws:adapters:@demo/web",
       "dst": "file:adapters:apps/web/src/hooks/usePostActions.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4578,7 +4623,7 @@
       "fileId": "file:adapters:apps/web/src/hooks/usePostActions.ts"
     },
     {
-      "src": "ws:@demo/web",
+      "src": "ws:adapters:@demo/web",
       "dst": "file:adapters:apps/web/src/lib/api.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4587,7 +4632,7 @@
       "fileId": "file:adapters:apps/web/src/lib/api.ts"
     },
     {
-      "src": "ws:@demo/web",
+      "src": "ws:adapters:@demo/web",
       "dst": "file:adapters:apps/web/src/lib/clients.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4596,7 +4641,7 @@
       "fileId": "file:adapters:apps/web/src/lib/clients.ts"
     },
     {
-      "src": "ws:@demo/web",
+      "src": "ws:adapters:@demo/web",
       "dst": "file:adapters:apps/web/src/lib/orpc.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4605,7 +4650,7 @@
       "fileId": "file:adapters:apps/web/src/lib/orpc.ts"
     },
     {
-      "src": "ws:@demo/web",
+      "src": "ws:adapters:@demo/web",
       "dst": "file:adapters:apps/web/src/routes/__root.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -4614,7 +4659,7 @@
       "fileId": "file:adapters:apps/web/src/routes/__root.tsx"
     },
     {
-      "src": "ws:@demo/web",
+      "src": "ws:adapters:@demo/web",
       "dst": "file:adapters:apps/web/src/routes/index.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -4623,7 +4668,7 @@
       "fileId": "file:adapters:apps/web/src/routes/index.tsx"
     },
     {
-      "src": "ws:@demo/web",
+      "src": "ws:adapters:@demo/web",
       "dst": "file:adapters:apps/web/src/routes/posts.$postId.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -4632,7 +4677,7 @@
       "fileId": "file:adapters:apps/web/src/routes/posts.$postId.tsx"
     },
     {
-      "src": "ws:@demo/web",
+      "src": "ws:adapters:@demo/web",
       "dst": "file:adapters:apps/web/src/routes/users.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -4641,7 +4686,7 @@
       "fileId": "file:adapters:apps/web/src/routes/users.tsx"
     },
     {
-      "src": "ws:@demo/web",
+      "src": "ws:adapters:@demo/web",
       "dst": "file:adapters:apps/web/src/server/posts.ts",
       "kind": "contains",
       "confidence": "high",
@@ -4650,8 +4695,8 @@
       "fileId": "file:adapters:apps/web/src/server/posts.ts"
     },
     {
-      "src": "ws:@demo/web",
-      "dst": "ws:@demo/api",
+      "src": "ws:adapters:@demo/web",
+      "dst": "ws:adapters:@demo/api",
       "kind": "depends_on",
       "confidence": "high",
       "count": 1,
@@ -4663,7 +4708,7 @@
     {
       "id": "call:adapters:@demo/web:GET https://status.example.com/ping",
       "kind": "client_call",
-      "ws": "ws:@demo/web",
+      "ws": "ws:adapters:@demo/web",
       "label": "GET https://status.example.com/ping",
       "fileId": "file:adapters:apps/web/src/hooks/usePostActions.ts",
       "data": {
@@ -4679,7 +4724,7 @@
     {
       "id": "call:adapters:@demo/web:rpc posts.archive",
       "kind": "client_call",
-      "ws": "ws:@demo/web",
+      "ws": "ws:adapters:@demo/web",
       "label": "rpc posts.archive",
       "fileId": "file:adapters:apps/web/src/hooks/usePostActions.ts",
       "data": {
@@ -4695,7 +4740,7 @@
     {
       "id": "call:adapters:@demo/web:rpc users.*",
       "kind": "client_call",
-      "ws": "ws:@demo/web",
+      "ws": "ws:adapters:@demo/web",
       "label": "rpc users.*",
       "fileId": "file:adapters:apps/web/src/lib/clients.ts",
       "data": {
@@ -4711,7 +4756,7 @@
     {
       "id": "ep:adapters:@demo/api:rpc admin.purgePost",
       "kind": "endpoint",
-      "ws": "ws:@demo/api",
+      "ws": "ws:adapters:@demo/api",
       "label": "rpc admin.purgePost",
       "fileId": "file:adapters:packages/api/src/routers/admin.ts",
       "data": {
@@ -4736,7 +4781,7 @@
     {
       "id": "ep:adapters:@demo/api:rpc health",
       "kind": "endpoint",
-      "ws": "ws:@demo/api",
+      "ws": "ws:adapters:@demo/api",
       "label": "rpc health",
       "fileId": "file:adapters:packages/api/src/router.ts",
       "data": {
@@ -4761,7 +4806,7 @@
     {
       "id": "ep:adapters:@demo/api:rpc posts.authors",
       "kind": "endpoint",
-      "ws": "ws:@demo/api",
+      "ws": "ws:adapters:@demo/api",
       "label": "rpc posts.authors",
       "fileId": "file:adapters:packages/api/src/routers/posts.ts",
       "data": {
@@ -4786,7 +4831,7 @@
     {
       "id": "ep:adapters:@demo/api:rpc posts.create",
       "kind": "endpoint",
-      "ws": "ws:@demo/api",
+      "ws": "ws:adapters:@demo/api",
       "label": "rpc posts.create",
       "fileId": "file:adapters:packages/api/src/routers/posts.ts",
       "data": {
@@ -4811,7 +4856,7 @@
     {
       "id": "ep:adapters:@demo/api:rpc posts.get",
       "kind": "endpoint",
-      "ws": "ws:@demo/api",
+      "ws": "ws:adapters:@demo/api",
       "label": "rpc posts.get",
       "fileId": "file:adapters:packages/api/src/routers/posts.ts",
       "data": {
@@ -4836,7 +4881,7 @@
     {
       "id": "ep:adapters:@demo/api:rpc posts.list",
       "kind": "endpoint",
-      "ws": "ws:@demo/api",
+      "ws": "ws:adapters:@demo/api",
       "label": "rpc posts.list",
       "fileId": "file:adapters:packages/api/src/routers/posts.ts",
       "data": {
@@ -4865,7 +4910,7 @@
     {
       "id": "ep:adapters:@demo/api:rpc posts.remove",
       "kind": "endpoint",
-      "ws": "ws:@demo/api",
+      "ws": "ws:adapters:@demo/api",
       "label": "rpc posts.remove",
       "fileId": "file:adapters:packages/api/src/routers/posts.ts",
       "data": {
@@ -4886,7 +4931,7 @@
     {
       "id": "ep:adapters:@demo/api:rpc stats.summary",
       "kind": "endpoint",
-      "ws": "ws:@demo/api",
+      "ws": "ws:adapters:@demo/api",
       "label": "rpc stats.summary",
       "fileId": "file:adapters:packages/api/src/routers/stats.ts",
       "data": {
@@ -4911,7 +4956,7 @@
     {
       "id": "ep:adapters:@demo/api:rpc users.count",
       "kind": "endpoint",
-      "ws": "ws:@demo/api",
+      "ws": "ws:adapters:@demo/api",
       "label": "rpc users.count",
       "fileId": "file:adapters:packages/api/src/routers/users.ts",
       "data": {
@@ -4936,7 +4981,7 @@
     {
       "id": "ep:adapters:@demo/api:rpc users.rename",
       "kind": "endpoint",
-      "ws": "ws:@demo/api",
+      "ws": "ws:adapters:@demo/api",
       "label": "rpc users.rename",
       "fileId": "file:adapters:packages/api/src/routers/users.ts",
       "data": {
@@ -4961,7 +5006,7 @@
     {
       "id": "ep:adapters:@demo/server:GET /api/posts/:id",
       "kind": "endpoint",
-      "ws": "ws:@demo/server",
+      "ws": "ws:adapters:@demo/server",
       "label": "GET /api/posts/:id",
       "fileId": "file:adapters:packages/posts/src/routes.ts",
       "data": {
@@ -4978,7 +5023,7 @@
     {
       "id": "ep:adapters:@demo/server:GET /api/users/v1",
       "kind": "endpoint",
-      "ws": "ws:@demo/server",
+      "ws": "ws:adapters:@demo/server",
       "label": "GET /api/users/v1",
       "fileId": "file:adapters:apps/server/src/users.ts",
       "data": {
@@ -4995,7 +5040,7 @@
     {
       "id": "ep:adapters:@demo/server:GET /health",
       "kind": "endpoint",
-      "ws": "ws:@demo/server",
+      "ws": "ws:adapters:@demo/server",
       "label": "GET /health",
       "fileId": "file:adapters:apps/server/src/app.ts",
       "data": {
@@ -5016,7 +5061,7 @@
     {
       "id": "ep:adapters:@demo/server:PATCH /api/posts/:id",
       "kind": "endpoint",
-      "ws": "ws:@demo/server",
+      "ws": "ws:adapters:@demo/server",
       "label": "PATCH /api/posts/:id",
       "fileId": "file:adapters:packages/posts/src/routes.ts",
       "data": {
@@ -5037,7 +5082,7 @@
     {
       "id": "ep:adapters:@demo/server:POST /api/posts",
       "kind": "endpoint",
-      "ws": "ws:@demo/server",
+      "ws": "ws:adapters:@demo/server",
       "label": "POST /api/posts",
       "fileId": "file:adapters:packages/posts/src/routes.ts",
       "data": {
@@ -5058,7 +5103,7 @@
     {
       "id": "ep:adapters:@demo/server:POST /api/users/v1",
       "kind": "endpoint",
-      "ws": "ws:@demo/server",
+      "ws": "ws:adapters:@demo/server",
       "label": "POST /api/users/v1",
       "fileId": "file:adapters:apps/server/src/users.ts",
       "data": {
@@ -5075,7 +5120,7 @@
     {
       "id": "ep:adapters:@demo/server:PUT /api/posts/:id",
       "kind": "endpoint",
-      "ws": "ws:@demo/server",
+      "ws": "ws:adapters:@demo/server",
       "label": "PUT /api/posts/:id",
       "fileId": "file:adapters:packages/posts/src/routes.ts",
       "data": {
@@ -5096,7 +5141,7 @@
     {
       "id": "ep:adapters:@demo/web:fn countPosts",
       "kind": "endpoint",
-      "ws": "ws:@demo/web",
+      "ws": "ws:adapters:@demo/web",
       "label": "fn countPosts",
       "fileId": "file:adapters:apps/web/src/routes/index.tsx",
       "data": {
@@ -5118,7 +5163,7 @@
     {
       "id": "ep:adapters:@demo/web:fn fetchPost",
       "kind": "endpoint",
-      "ws": "ws:@demo/web",
+      "ws": "ws:adapters:@demo/web",
       "label": "fn fetchPost",
       "fileId": "file:adapters:apps/web/src/server/posts.ts",
       "data": {
@@ -5140,7 +5185,7 @@
     {
       "id": "ep:adapters:@demo/web:fn savePost",
       "kind": "endpoint",
-      "ws": "ws:@demo/web",
+      "ws": "ws:adapters:@demo/web",
       "label": "fn savePost",
       "fileId": "file:adapters:apps/web/src/server/posts.ts",
       "data": {
@@ -5160,7 +5205,7 @@
     {
       "id": "mw:adapters:@demo/server:/* cors",
       "kind": "middleware",
-      "ws": "ws:@demo/server",
+      "ws": "ws:adapters:@demo/server",
       "label": "cors /*",
       "fileId": "file:adapters:apps/server/src/app.ts",
       "data": {
@@ -5175,7 +5220,7 @@
     {
       "id": "mw:adapters:@demo/server:/api/* inline",
       "kind": "middleware",
-      "ws": "ws:@demo/server",
+      "ws": "ws:adapters:@demo/server",
       "label": "inline /api/*",
       "fileId": "file:adapters:apps/server/src/app.ts",
       "data": {
@@ -5190,7 +5235,7 @@
     {
       "id": "mw:adapters:@demo/server:/rpc/* inline",
       "kind": "middleware",
-      "ws": "ws:@demo/server",
+      "ws": "ws:adapters:@demo/server",
       "label": "inline /rpc/*",
       "fileId": "file:adapters:apps/server/src/app.ts",
       "data": {
@@ -5205,7 +5250,7 @@
     {
       "id": "route:adapters:@demo/web:/",
       "kind": "route",
-      "ws": "ws:@demo/web",
+      "ws": "ws:adapters:@demo/web",
       "label": "/",
       "fileId": "file:adapters:apps/web/src/routes/index.tsx",
       "data": {
@@ -5224,7 +5269,7 @@
     {
       "id": "route:adapters:@demo/web:/posts/$postId",
       "kind": "route",
-      "ws": "ws:@demo/web",
+      "ws": "ws:adapters:@demo/web",
       "label": "/posts/$postId",
       "fileId": "file:adapters:apps/web/src/routes/posts.$postId.tsx",
       "data": {
@@ -5242,7 +5287,7 @@
     {
       "id": "route:adapters:@demo/web:/users",
       "kind": "route",
-      "ws": "ws:@demo/web",
+      "ws": "ws:adapters:@demo/web",
       "label": "/users",
       "fileId": "file:adapters:apps/web/src/routes/users.tsx",
       "data": {
@@ -5258,7 +5303,7 @@
     {
       "id": "route:adapters:@demo/web:__root__",
       "kind": "route",
-      "ws": "ws:@demo/web",
+      "ws": "ws:adapters:@demo/web",
       "label": "__root",
       "fileId": "file:adapters:apps/web/src/routes/__root.tsx",
       "data": {
@@ -5275,7 +5320,7 @@
     {
       "id": "table:adapters:posts",
       "kind": "table",
-      "ws": "ws:@demo/db",
+      "ws": "ws:adapters:@demo/db",
       "label": "posts",
       "fileId": "file:adapters:packages/db/src/schema.ts",
       "data": {
@@ -5297,7 +5342,7 @@
     {
       "id": "table:adapters:users",
       "kind": "table",
-      "ws": "ws:@demo/db",
+      "ws": "ws:adapters:@demo/db",
       "label": "users",
       "fileId": "file:adapters:packages/db/src/schema.ts",
       "data": {

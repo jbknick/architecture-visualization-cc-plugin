@@ -85,7 +85,7 @@ function head(fx: MaterializedFixture): string {
 function metaHead(paths: GantryPaths): string | undefined {
   const s = openStore(paths.dbPath);
   try {
-    return s.getMeta("head_sha");
+    return s.headSha();
   } finally {
     s.close();
   }
@@ -265,7 +265,7 @@ describe("heal: fallbacks and no-ops", () => {
     featureCommit(fx, "alpha");
     // Pretend the recorded head is somewhere else entirely; --from says where main really was.
     const s = openStore(paths.dbPath);
-    s.setMeta("head_sha", "0".repeat(40));
+    s.setHeadSha(paths.repo, "0".repeat(40));
     s.close();
     const r = await heal(paths, { from: first });
     expect(r.full).toBe(false);

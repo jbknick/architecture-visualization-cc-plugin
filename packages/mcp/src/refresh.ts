@@ -12,9 +12,9 @@ function headOf(root: string): string | undefined {
 }
 
 function storedHead(paths: GantryPaths): string | undefined {
-  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   try {
-    return store.getMeta("head_sha");
+    return store.headSha(paths.repo);
   } finally {
     store.close();
   }

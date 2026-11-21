@@ -112,7 +112,7 @@ describe("diskCheck: the exact tier on a renamed copy (#151)", () => {
       minhash: opts.noShape ? new Uint32Array(64) : h.minhash,
       nearMinhash: h.nearMinhash,
     };
-    store.setMeta("repo", "repo");
+    store.upsertRepo("repo");
     store.replaceFile(
       "main",
       {

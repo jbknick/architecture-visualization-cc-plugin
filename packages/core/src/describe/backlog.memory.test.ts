@@ -71,7 +71,7 @@ async function indexed(files: Record<string, string>): Promise<GantryPaths> {
 describe("syncBacklog and Go files (#358)", () => {
   it("does not parse Go files to look for description templates", async () => {
     const paths = await indexed(goRepo(3, 4, 5));
-    const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+    const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
     try {
       const before = goParses.n;
       const r = syncBacklog(store, { root: paths.root });
@@ -84,7 +84,7 @@ describe("syncBacklog and Go files (#358)", () => {
 
   it("holds less than 150 MiB of native memory for 1,200 Go files", async () => {
     const paths = await indexed(goRepo(40, 30, 12));
-    const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+    const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
     try {
       // Let the finalizers of the index run, so the baseline holds no trees from the index.
       for (let i = 0; i < 5; i++) await new Promise<void>((r) => setImmediate(r));

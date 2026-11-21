@@ -79,7 +79,7 @@ export function registerReview(program: Command): void {
           // The index as it is: never created, healed or re-indexed here, so `--json` stays fast and read-only.
           let impact: Impact | null = null;
           if (existsSync(paths.dbPath)) {
-            const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+            const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
             try {
               impact = await reviewImpact(paths, store, diff);
             } finally {

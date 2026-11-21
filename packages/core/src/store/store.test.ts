@@ -14,18 +14,18 @@ import { SCHEMA } from "./schema.js";
 const here = dirname(fileURLToPath(import.meta.url));
 
 const file = (id: string, extra: Partial<FileRecord> = {}): FileRecord => ({
-  id: `file:${id}`,
+  id: `file:repo:${id}`,
   path: id,
   lang: "typescript",
-  workspaceId: "ws:.",
+  workspaceId: "ws:repo:.",
   contentHash: `h-${id}`,
   mtimeMs: 1,
   deleted: false,
   ...extra,
 });
 const sym = (path: string, name: string, extra: Partial<SymbolRecord> = {}): SymbolRecord => ({
-  id: `sym:${path}#${name}`,
-  fileId: `file:${path}`,
+  id: `sym:repo:${path}#${name}`,
+  fileId: `file:repo:${path}`,
   name,
   kind: "function",
   lang: "typescript",
@@ -48,7 +48,7 @@ const edge = (path: string, src: string, dst: string): EdgeRecord => ({
   confidence: "high",
   count: 2,
   evidence: ["a.ts:1"],
-  fileId: `file:${path}`,
+  fileId: `file:repo:${path}`,
 });
 
 let dir: string;
@@ -111,26 +111,88 @@ describe("openStore", () => {
     expect(cols).toContain("directives");
     store.replaceFile("main", file("a.tsx", { directives: ["use client"] }), [], []);
     store.replaceFile("main", file("b.ts"), [], []);
-    expect(store.effectiveFile("file:a.tsx")?.directives).toEqual(["use client"]);
-    expect(store.effectiveFile("file:b.ts")?.directives).toBeUndefined();
-    expect(store.effectiveFile("file:missing.ts")).toBeUndefined();
+    expect(store.effectiveFile("file:repo:a.tsx")?.directives).toEqual(["use client"]);
+    expect(store.effectiveFile("file:repo:b.ts")?.directives).toBeUndefined();
+    expect(store.effectiveFile("file:repo:missing.ts")).toBeUndefined();
     // A working row overrides main, and a deleted working row hides the file.
     store.replaceFile("working", file("a.tsx"), [], []);
-    expect(store.effectiveFile("file:a.tsx")?.directives).toBeUndefined();
-    store.markDeleted("working", "file:a.tsx");
-    expect(store.effectiveFile("file:a.tsx")).toBeUndefined();
+    expect(store.effectiveFile("file:repo:a.tsx")?.directives).toBeUndefined();
+    store.markDeleted("working", "file:repo:a.tsx");
+    expect(store.effectiveFile("file:repo:a.tsx")).toBeUndefined();
   });
 
   it("meta round-trips and overwrites", () => {
-    expect(store.getMeta("head_sha")).toBeUndefined();
-    store.setMeta("head_sha", "abc");
-    store.setMeta("head_sha", "def");
-    expect(store.getMeta("head_sha")).toBe("def");
+    expect(store.getMeta("k")).toBeUndefined();
+    store.setMeta("k", "abc");
+    store.setMeta("k", "def");
+    expect(store.getMeta("k")).toBe("def");
+  });
+
+  it("keeps a root and a head per repo; repo() is the only repo, or the one the store was opened for", () => {
+    expect(() => store.repo()).toThrow(/not indexed/);
+    store.upsertRepo("a/api", "/w/api");
+    expect(store.repo()).toBe("a/api");
+    store.upsertRepo("web", "/w/web");
+    expect(() => store.repo()).toThrow(/several repos/);
+    store.setHeadSha("web", "abc");
+    store.setHeadSha("web", "def");
+    expect(store.headSha("web")).toBe("def");
+    expect(store.headSha("a/api")).toBeUndefined();
+    expect(store.repoRoot("web")).toBe("/w/web");
+    store.upsertRepo("web"); // keeps the root it has
+    expect(store.listRepos()).toEqual([
+      { name: "a/api", root: "/w/api", headSha: null },
+      { name: "web", root: "/w/web", headSha: "def" },
+    ]);
+    const second = openStore(join(dir, "nested", "gantry.db"), { repo: "web" });
+    expect(second.repo()).toBe("web");
+    expect(second.headSha()).toBe("def");
+    second.close();
+  });
+
+  it("removeReposExcept deletes every row of the repos it is not given and nothing else", () => {
+    const put = (repo: string, path: string): void => {
+      store.upsertRepo(repo, `/w/${repo}`);
+      const f: FileRecord = {
+        id: `file:${repo}:${path}`,
+        path,
+        lang: "typescript",
+        workspaceId: `ws:${repo}:.`,
+        contentHash: "h",
+        mtimeMs: 1,
+        deleted: false,
+      };
+      const s = { ...sym(path, "f"), id: `sym:${repo}:${path}#f`, fileId: f.id };
+      store.upsertWorkspaces([
+        {
+          id: `ws:${repo}:.`,
+          name: repo,
+          dir: ".",
+          kind: "unknown",
+          frameworks: [],
+          deps: [],
+          exportsMap: null,
+        },
+      ]);
+      store.replaceFile("main", f, [s], [{ ...edge(path, s.id, s.id), fileId: f.id }]);
+      store.fts.upsert(s.id, { nameTokens: "f", suggestedName: "", path, behavior: "", searchTerms: "" });
+    };
+    put("api", "a.ts");
+    put("web", "a.ts");
+    expect(store.removeReposExcept(["web"])).toEqual(["api"]);
+    expect(store.listRepos().map((r) => r.name)).toEqual(["web"]);
+    expect(store.listWorkspaces().map((w) => w.id)).toEqual(["ws:web:."]);
+    expect(store.effectiveFiles().map((f) => f.id)).toEqual(["file:web:a.ts"]);
+    expect(store.effectiveSymbols().map((x) => x.id)).toEqual(["sym:web:a.ts#f"]);
+    expect(store.effectiveEdges()).toHaveLength(1);
+    const fts = store.db.prepare("SELECT symbol_id FROM fts_symbols").all();
+    expect(fts).toEqual([{ symbol_id: "sym:web:a.ts#f" }]);
+    expect(store.removeReposExcept(["web"])).toEqual([]);
   });
 
   it("upserts workspaces with JSON columns", () => {
     const w = {
-      id: "ws:.",
+      id: "ws:repo:.",
       name: "root",
       dir: ".",
       kind: "app" as const,
@@ -150,11 +212,11 @@ describe("openStore", () => {
   it("listWorkspaces returns records ordered by id", () => {
     const base = { dir: ".", kind: "package" as const, frameworks: [], deps: [], exportsMap: null };
     store.upsertWorkspaces([
-      { ...base, id: "ws:b", name: "b", deps: ["a"] },
-      { ...base, id: "ws:a", name: "a", exportsMap: [{ subpath: ".", target: "./x.js" }] },
+      { ...base, id: "ws:repo:b", name: "b", deps: ["a"] },
+      { ...base, id: "ws:repo:a", name: "a", exportsMap: [{ subpath: ".", target: "./x.js" }] },
     ]);
     const list = store.listWorkspaces();
-    expect(list.map((w) => w.id)).toEqual(["ws:a", "ws:b"]);
+    expect(list.map((w) => w.id)).toEqual(["ws:repo:a", "ws:repo:b"]);
     expect(list[0]?.exportsMap).toEqual([{ subpath: ".", target: "./x.js" }]);
     expect(list[1]?.deps).toEqual(["a"]);
   });
@@ -166,21 +228,21 @@ describe("effective view", () => {
       "main",
       file("a.ts"),
       [sym("a.ts", "foo"), sym("a.ts", "bar", { exported: false, kind: "const" })],
-      [edge("a.ts", "sym:a.ts#foo", "sym:a.ts#bar")],
+      [edge("a.ts", "sym:repo:a.ts#foo", "sym:repo:a.ts#bar")],
     );
     store.replaceFile("main", file("b.ts"), [sym("b.ts", "baz")], []);
   };
 
   it("main only, sorted by id, with round-tripped fields", () => {
     seedMain();
-    expect(store.effectiveFiles().map((f) => f.id)).toEqual(["file:a.ts", "file:b.ts"]);
+    expect(store.effectiveFiles().map((f) => f.id)).toEqual(["file:repo:a.ts", "file:repo:b.ts"]);
     const syms = store.effectiveSymbols();
-    expect(syms.map((s) => s.id)).toEqual(["sym:a.ts#bar", "sym:a.ts#foo", "sym:b.ts#baz"]);
-    const foo = store.getSymbol("sym:a.ts#foo");
+    expect(syms.map((s) => s.id)).toEqual(["sym:repo:a.ts#bar", "sym:repo:a.ts#foo", "sym:repo:b.ts#baz"]);
+    const foo = store.getSymbol("sym:repo:a.ts#foo");
     expect(foo).toEqual(sym("a.ts", "foo"));
     expect(foo?.minhash).toBeInstanceOf(Uint32Array);
     expect(foo?.minhash.length).toBe(64);
-    expect(store.effectiveEdges()).toEqual([edge("a.ts", "sym:a.ts#foo", "sym:a.ts#bar")]);
+    expect(store.effectiveEdges()).toEqual([edge("a.ts", "sym:repo:a.ts#foo", "sym:repo:a.ts#bar")]);
     const blob = store.db.prepare("SELECT minhash FROM symbols LIMIT 1").get() as {
       minhash: Buffer;
     };
@@ -189,12 +251,12 @@ describe("effective view", () => {
 
   it("filters", () => {
     seedMain();
-    expect(store.effectiveSymbols({ fileId: "file:b.ts" }).map((s) => s.name)).toEqual(["baz"]);
+    expect(store.effectiveSymbols({ fileId: "file:repo:b.ts" }).map((s) => s.name)).toEqual(["baz"]);
     expect(store.effectiveSymbols({ kind: ["const"] }).map((s) => s.name)).toEqual(["bar"]);
     expect(store.effectiveSymbols({ exported: false }).map((s) => s.name)).toEqual(["bar"]);
     expect(store.effectiveSymbols({ exported: true })).toHaveLength(2);
-    expect(store.effectiveEdges({ src: "sym:a.ts#foo" })).toHaveLength(1);
-    expect(store.effectiveEdges({ dst: "sym:nope" })).toHaveLength(0);
+    expect(store.effectiveEdges({ src: "sym:repo:a.ts#foo" })).toHaveLength(1);
+    expect(store.effectiveEdges({ dst: "sym:repo:nope" })).toHaveLength(0);
     expect(store.effectiveEdges({ kind: ["imports"] })).toHaveLength(0);
     expect(store.effectiveEdges({ kind: ["calls", "imports"] })).toHaveLength(1);
   });
@@ -207,25 +269,25 @@ describe("effective view", () => {
       [sym("a.ts", "foo", { signature: "function foo(x)" })],
       [],
     );
-    expect(store.effectiveFiles().find((f) => f.id === "file:a.ts")?.contentHash).toBe("new");
-    expect(store.effectiveSymbols().map((s) => s.id)).toEqual(["sym:a.ts#foo", "sym:b.ts#baz"]);
-    expect(store.getSymbol("sym:a.ts#foo")?.signature).toBe("function foo(x)");
-    expect(store.getSymbol("sym:a.ts#bar")).toBeUndefined();
+    expect(store.effectiveFiles().find((f) => f.id === "file:repo:a.ts")?.contentHash).toBe("new");
+    expect(store.effectiveSymbols().map((s) => s.id)).toEqual(["sym:repo:a.ts#foo", "sym:repo:b.ts#baz"]);
+    expect(store.getSymbol("sym:repo:a.ts#foo")?.signature).toBe("function foo(x)");
+    expect(store.getSymbol("sym:repo:a.ts#bar")).toBeUndefined();
     expect(store.effectiveEdges()).toEqual([]);
   });
 
   it("working delete hides main rows; clearWorking restores main", () => {
     seedMain();
-    store.markDeleted("working", "file:a.ts");
-    expect(store.effectiveFiles().map((f) => f.id)).toEqual(["file:b.ts"]);
-    expect(store.effectiveSymbols().map((s) => s.id)).toEqual(["sym:b.ts#baz"]);
+    store.markDeleted("working", "file:repo:a.ts");
+    expect(store.effectiveFiles().map((f) => f.id)).toEqual(["file:repo:b.ts"]);
+    expect(store.effectiveSymbols().map((s) => s.id)).toEqual(["sym:repo:b.ts#baz"]);
     expect(store.effectiveEdges()).toEqual([]);
-    expect(store.getSymbol("sym:a.ts#foo")).toBeUndefined();
+    expect(store.getSymbol("sym:repo:a.ts#foo")).toBeUndefined();
     // main rows physically remain
     expect(store.db.prepare("SELECT count(*) c FROM symbols WHERE layer='main'").get()).toEqual({
       c: 3,
     });
-    store.clearWorking("file:a.ts");
+    store.clearWorking("file:repo:a.ts");
     expect(store.effectiveFiles()).toHaveLength(2);
     expect(store.effectiveSymbols()).toHaveLength(3);
     expect(store.effectiveEdges()).toHaveLength(1);
@@ -234,10 +296,10 @@ describe("effective view", () => {
   it("clearWorking() with no argument clears all working rows", () => {
     seedMain();
     store.replaceFile("working", file("a.ts"), [sym("a.ts", "other")], []);
-    store.markDeleted("working", "file:b.ts");
+    store.markDeleted("working", "file:repo:b.ts");
     store.replaceFile("working", file("c.ts"), [sym("c.ts", "only")], []);
     store.clearWorking();
-    expect(store.effectiveFiles().map((f) => f.id)).toEqual(["file:a.ts", "file:b.ts"]);
+    expect(store.effectiveFiles().map((f) => f.id)).toEqual(["file:repo:a.ts", "file:repo:b.ts"]);
     expect(store.effectiveSymbols()).toHaveLength(3);
     expect(store.db.prepare("SELECT count(*) c FROM files WHERE layer='working'").get()).toEqual({
       c: 0,
@@ -246,11 +308,11 @@ describe("effective view", () => {
 
   it("markDeleted on main removes the file from the view", () => {
     seedMain();
-    store.markDeleted("main", "file:a.ts");
-    expect(store.effectiveFiles().map((f) => f.id)).toEqual(["file:b.ts"]);
+    store.markDeleted("main", "file:repo:a.ts");
+    expect(store.effectiveFiles().map((f) => f.id)).toEqual(["file:repo:b.ts"]);
     expect(store.effectiveSymbols()).toHaveLength(1);
-    store.markDeleted("working", "file:never-seen.ts");
-    expect(store.effectiveFiles().map((f) => f.id)).toEqual(["file:b.ts"]);
+    store.markDeleted("working", "file:repo:never-seen.ts");
+    expect(store.effectiveFiles().map((f) => f.id)).toEqual(["file:repo:b.ts"]);
   });
 
   it("replaceFile is idempotent and removes stale rows", () => {
@@ -261,9 +323,9 @@ describe("effective view", () => {
     seedMain();
     expect(snap()).toEqual(before);
     store.replaceFile("main", file("a.ts"), [sym("a.ts", "foo")], []);
-    expect(store.effectiveSymbols({ fileId: "file:a.ts" }).map((s) => s.name)).toEqual(["foo"]);
+    expect(store.effectiveSymbols({ fileId: "file:repo:a.ts" }).map((s) => s.name)).toEqual(["foo"]);
     expect(store.effectiveEdges()).toEqual([]);
-    expect(store.effectiveSymbols({ fileId: "file:b.ts" })).toHaveLength(1);
+    expect(store.effectiveSymbols({ fileId: "file:repo:b.ts" })).toHaveLength(1);
   });
 
   it("tx rolls back on throw and nests", () => {
@@ -287,15 +349,15 @@ describe("fts", () => {
       behavior: "parses",
       searchTerms: "parser",
     };
-    store.fts.upsert("sym:a.ts#x", row);
-    store.fts.upsert("sym:a.ts#x", { ...row, behavior: "changed" });
+    store.fts.upsert("sym:repo:a.ts#x", row);
+    store.fts.upsert("sym:repo:a.ts#x", { ...row, behavior: "changed" });
     const count = () =>
-      store.db.prepare("SELECT count(*) c FROM fts_symbols WHERE symbol_id = 'sym:a.ts#x'").get();
+      store.db.prepare("SELECT count(*) c FROM fts_symbols WHERE symbol_id = 'sym:repo:a.ts#x'").get();
     expect(count()).toEqual({ c: 1 });
     expect(
       store.db.prepare("SELECT behavior FROM fts_symbols WHERE fts_symbols MATCH 'changed'").get(),
     ).toEqual({ behavior: "changed" });
-    store.fts.remove("sym:a.ts#x");
+    store.fts.remove("sym:repo:a.ts#x");
     expect(count()).toEqual({ c: 0 });
   });
 });
@@ -327,9 +389,9 @@ describe("adapter nodes", () => {
     const node = (id: string, label: string) => ({
       id,
       kind: "route",
-      ws: "ws:a",
+      ws: "ws:repo:a",
       label,
-      fileId: "file:r.tsx",
+      fileId: "file:repo:r.tsx",
       data: { urlPath: label },
     });
     s.replaceFile("main", file("r.tsx"), [], [], [node("route:a:/", "/")]);
@@ -338,10 +400,10 @@ describe("adapter nodes", () => {
     s.replaceFile("working", file("r.tsx"), [], [], [node("route:a:/x", "/x")]);
     expect(s.effectiveAdapterNodes().map((n) => n.id)).toEqual(["route:a:/x"]);
     expect(s.effectiveAdapterNodes({ kind: "other" })).toEqual([]);
-    s.clearWorking("file:r.tsx");
+    s.clearWorking("file:repo:r.tsx");
     expect(s.effectiveAdapterNodes().map((n) => n.id)).toEqual(["route:a:/"]);
     // A working delete hides the main file and so its nodes.
-    s.markDeleted("working", "file:r.tsx");
+    s.markDeleted("working", "file:repo:r.tsx");
     expect(s.effectiveAdapterNodes()).toEqual([]);
     s.clearWorking();
     // Replacing a file without nodes drops its old ones.
@@ -390,8 +452,8 @@ const s = openStore(workerData.db);
 const mh = new Uint32Array(64);
 for (let i = 0; i < workerData.n; i++) {
   const path = workerData.tag + i + ".ts";
-  s.replaceFile("main", { id: "file:" + path, path, lang: "typescript", workspaceId: null, contentHash: "h", mtimeMs: 1, deleted: false },
-    [{ id: "sym:" + path + "#f", fileId: "file:" + path, name: "f", kind: "function", lang: "typescript", exported: true, signature: "",
+  s.replaceFile("main", { id: "file:repo:" + path, path, lang: "typescript", workspaceId: null, contentHash: "h", mtimeMs: 1, deleted: false },
+    [{ id: "sym:repo:" + path + "#f", fileId: "file:repo:" + path, name: "f", kind: "function", lang: "typescript", exported: true, signature: "",
        startLine: 1, endLine: 1, loc: 1, complexity: 1, stmtCount: 1, exactHash: "e", shapeHash: "s", minhash: mh }], []);
   s.setMeta("last_" + workerData.tag, String(i));
 }

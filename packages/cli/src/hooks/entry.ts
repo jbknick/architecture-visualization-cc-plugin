@@ -58,7 +58,7 @@ export function logHook(paths: GantryPaths, name: string, message: string): void
 /** Number of pending/claimed backlog items, restricted to files changed on the way to the upstream when known. */
 function pushBacklog(paths: GantryPaths): number {
   if (!fs.existsSync(paths.dbPath)) return 0;
-  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   try {
     const rows = store.db
       .prepare("SELECT symbol_id FROM backlog WHERE status IN ('pending','claimed')")

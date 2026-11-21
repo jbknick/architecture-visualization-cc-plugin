@@ -12,14 +12,13 @@ import {
   reattachOverlay,
   rebuildSimilarEdges,
   resetStaleStore,
-  resolvePaths,
   SECONDS_PER_FUNCTION_SEQUENTIAL,
   syncBacklog,
   writeCatalog,
 } from "@gantry/core";
 import type { Command } from "commander";
 import { runEmbed, summaryOf } from "./embed.js";
-import { EXIT_OK, fail, recipeLines, summaryLines } from "./shared.js";
+import { EXIT_OK, fail, recipeLines, resolveCliPaths, summaryLines, WORKSPACE_FLAG } from "./shared.js";
 
 const nf = new Intl.NumberFormat("en-US");
 
@@ -58,46 +57,49 @@ export function registerInit(program: Command): void {
       "--embed",
       "after indexing, also embed code and descriptions (slow on a large repo; see `gantry embed`)",
     )
-    .action(async (opts: { estimate?: boolean; exportsFirst?: boolean; embed?: boolean }) => {
-      try {
-        const paths = resolvePaths(process.cwd());
-        resetStaleStore(paths);
-        noteFreshIndex(paths);
-        const r = await indexRepo(paths, { layer: "main" });
-        for (const line of recipeLines(r)) process.stderr.write(`${line}\n`);
-        await heal(paths);
-        const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+    .option(...WORKSPACE_FLAG)
+    .action(
+      async (opts: { estimate?: boolean; exportsFirst?: boolean; embed?: boolean; workspace?: string }) => {
         try {
-          reattachOverlay(store);
-          syncBacklog(store, { root: paths.root });
-          writeCatalog(store, paths);
-          await rebuildSimilarEdges(store);
-          // Totals of the finished index, read the way `/api/meta` and the estimate read them (spec section 10).
-          const totals = { ...r, ...indexCounts(store) };
-          for (const line of summaryLines(totals, paths.dataDir)) process.stdout.write(`${line}\n`);
-          if (opts.estimate) {
-            const exportsFirst = opts.exportsFirst === true;
-            for (const line of estimateLines(estimate(store, { exportsFirst }), exportsFirst)) {
-              process.stdout.write(`${line}\n`);
+          const paths = resolveCliPaths(opts);
+          resetStaleStore(paths);
+          noteFreshIndex(paths);
+          const r = await indexRepo(paths, { layer: "main" });
+          for (const line of recipeLines(r)) process.stderr.write(`${line}\n`);
+          await heal(paths);
+          const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
+          try {
+            reattachOverlay(store);
+            syncBacklog(store, { root: paths.root });
+            writeCatalog(store, paths);
+            await rebuildSimilarEdges(store);
+            // Totals of the finished index, read the way `/api/meta` and the estimate read them (spec section 10).
+            const totals = { ...r, ...indexCounts(store) };
+            for (const line of summaryLines(totals, paths.dataDir)) process.stdout.write(`${line}\n`);
+            if (opts.estimate) {
+              const exportsFirst = opts.exportsFirst === true;
+              for (const line of estimateLines(estimate(store, { exportsFirst }), exportsFirst)) {
+                process.stdout.write(`${line}\n`);
+              }
+            } else if (opts.embed) {
+              // Explicit opt-in: init never embeds on its own (it is deterministic and fast; spec section 11).
+              // Never fatal: a missing model leaves the index as it is.
+              try {
+                const e = await runEmbed(store, paths.root);
+                for (const line of summaryOf(e)) process.stdout.write(`${line}\n`);
+              } catch (e) {
+                process.stderr.write(
+                  `gantry: embedding skipped: ${e instanceof Error ? e.message : String(e)}\n`,
+                );
+              }
             }
-          } else if (opts.embed) {
-            // Explicit opt-in: init never embeds on its own (it is deterministic and fast; spec section 11).
-            // Never fatal: a missing model leaves the index as it is.
-            try {
-              const e = await runEmbed(store, paths.root);
-              for (const line of summaryOf(e)) process.stdout.write(`${line}\n`);
-            } catch (e) {
-              process.stderr.write(
-                `gantry: embedding skipped: ${e instanceof Error ? e.message : String(e)}\n`,
-              );
-            }
+          } finally {
+            store.close();
           }
-        } finally {
-          store.close();
+          process.exitCode = EXIT_OK;
+        } catch (err) {
+          process.exitCode = fail(err);
         }
-        process.exitCode = EXIT_OK;
-      } catch (err) {
-        process.exitCode = fail(err);
-      }
-    });
+      },
+    );
 }

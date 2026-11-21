@@ -206,13 +206,16 @@ export function clearReviewCache(): void {
 }
 
 /**
- * Changes whenever the index changes: `head_sha` (heal) plus `store.generation()`, which counts graph writes made
+ * Changes whenever the index changes: `repos.head_sha` (heal) plus `store.generation()`, which counts graph writes made
  * through this store and moves with SQLite's `data_version` on every commit by another connection (the hooks and the
  * MCP server re-index working edits from other processes). A write that does not touch the graph only costs a
  * recompute.
  */
 function indexMarker(store: ApiContext["store"]): string {
-  return `${store.getMeta("head_sha") ?? ""}\0${store.generation()}`;
+  return `${store
+    .listRepos()
+    .map((r) => r.headSha ?? "")
+    .join(",")}\0${store.generation()}`;
 }
 
 /**

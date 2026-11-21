@@ -1,6 +1,6 @@
 /**
- * The only place stable ids are built or parsed (spec section 6). Every id except the workspace id carries the repo
- * name right after its prefix: `file:<repo>:<path>`, `sym:<repo>:<path>#<name>`, `route:<repo>:<ws>:<id>`,
+ * The only place stable ids are built or parsed (spec section 6). Every id carries the repo name right after its
+ * prefix: `ws:<repo>:<package name>`, `file:<repo>:<path>`, `sym:<repo>:<path>#<name>`, `route:<repo>:<ws>:<id>`,
  * `ep:<repo>:<ws>:<...>`, `mw:<repo>:<ws>:<...>`, `table:<repo>:<name>`, `call:<repo>:<ws>:<label>`. The repo name never
  * contains `:` (`repoName` replaces it) and neither does a workspace name, so each id splits on its first colons.
  */
@@ -29,6 +29,24 @@ export const endpointId = (repo: string, ws: string, label: string): string => `
 export const middlewareId = (repo: string, ws: string, label: string): string => `mw:${repo}:${ws}:${label}`;
 export const callId = (repo: string, ws: string, label: string): string => `call:${repo}:${ws}:${label}`;
 export const tableId = (repo: string, name: string): string => `table:${repo}:${name}`;
+
+/** A workspace id: `ws:<repo>:<name>`, where `<name>` is the package name, the module path or `.` for a repo's root. */
+export const workspaceId = (repo: string, name: string): string => `ws:${repo}:${name}`;
+
+/** Splits a workspace id; undefined when it is not `ws:<repo>:<name>`. */
+export function parseWorkspaceId(id: string): { repo: string; name: string } | undefined {
+  if (!id.startsWith("ws:")) return undefined;
+  const rest = id.slice(3);
+  const c = rest.indexOf(":");
+  if (c <= 0 || c === rest.length - 1) return undefined;
+  return { repo: rest.slice(0, c), name: rest.slice(c + 1) };
+}
+
+/** The `<name>` of a workspace id (`ws:<repo>:<name>`), the package name that route, endpoint and middleware ids carry. */
+export const workspaceNameOfId = (id: string): string => parseWorkspaceId(id)?.name ?? id;
+
+/** True for a repo's root workspace (`ws:<repo>:.`). */
+export const isRootWorkspaceId = (id: string): boolean => parseWorkspaceId(id)?.name === ".";
 
 /** A symbol key without the repo (`<path>#<name>`): what adapters keep in node data and compare within one run. */
 export const symKey = (path: string, name: string): string => `${path}#${name}`;
@@ -115,7 +133,7 @@ export function qualifyId(repo: string, target: string): string | undefined {
 /** An id without its kind and repo parts, for labels: a path, `path#name`, a table name, `ws:rest`; `ws:` and `dir:` ids lose their prefix. */
 export function displayOfId(id: string): string {
   const p = parseId(id);
-  if (p === undefined) return id.replace(/^(ws|dir):/, "");
+  if (p === undefined) return parseWorkspaceId(id)?.name ?? id.replace(/^(ws|dir):/, "");
   if (p.kind === "file") return p.path as string;
   if (p.kind === "sym") return `${p.path}#${p.name}`;
   if (p.kind === "table") return p.name as string;

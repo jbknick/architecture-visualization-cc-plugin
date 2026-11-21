@@ -2,9 +2,10 @@
 // store.test.ts asserts it equals schema.sql and spec section 9. The vec tables are not part of it: `vec.ts` creates
 // them when sqlite-vec loads.
 export const SCHEMA = `CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);
-CREATE TABLE workspaces(id TEXT PRIMARY KEY, name TEXT, dir TEXT, kind TEXT CHECK(kind IN ('app','package','unknown')),
+CREATE TABLE repos(name TEXT PRIMARY KEY, root TEXT, head_sha TEXT);
+CREATE TABLE workspaces(id TEXT PRIMARY KEY, repo TEXT NOT NULL, name TEXT, dir TEXT, kind TEXT CHECK(kind IN ('app','package','unknown')),
   frameworks TEXT, deps TEXT, exports_map TEXT);
-CREATE TABLE files(id TEXT, layer TEXT CHECK(layer IN ('main','working')), path TEXT, workspace_id TEXT,
+CREATE TABLE files(id TEXT, layer TEXT CHECK(layer IN ('main','working')), repo TEXT NOT NULL, path TEXT, workspace_id TEXT,
   content_hash TEXT, mtime_ms INTEGER, deleted INTEGER DEFAULT 0, directives TEXT, lang TEXT NOT NULL, PRIMARY KEY(id, layer));
 CREATE TABLE symbols(id TEXT, layer TEXT, file_id TEXT, name TEXT, kind TEXT, exported INTEGER, signature TEXT,
   start_line INTEGER, end_line INTEGER, loc INTEGER, complexity INTEGER, stmt_count INTEGER,

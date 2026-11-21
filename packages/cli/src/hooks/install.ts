@@ -150,7 +150,7 @@ function wrapperDirOf(paths: GantryPaths): string {
 }
 
 function withStore<T>(paths: GantryPaths, fn: (db: ReturnType<typeof openStore>) => T): T {
-  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   try {
     return fn(store);
   } finally {

@@ -1,7 +1,13 @@
 {
+  "repos": [
+    {
+      "name": "react-router-fastify"
+    }
+  ],
   "workspaces": [
     {
-      "id": "ws:.",
+      "id": "ws:react-router-fastify:.",
+      "repo": "react-router-fastify",
       "name": "react-router-fastify-root",
       "dir": ".",
       "kind": "unknown",
@@ -10,7 +16,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:@acme-rrf/api",
+      "id": "ws:react-router-fastify:@acme-rrf/api",
+      "repo": "react-router-fastify",
       "name": "@acme-rrf/api",
       "dir": "apps/api",
       "kind": "app",
@@ -24,7 +31,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:@acme-rrf/db",
+      "id": "ws:react-router-fastify:@acme-rrf/db",
+      "repo": "react-router-fastify",
       "name": "@acme-rrf/db",
       "dir": "packages/db",
       "kind": "package",
@@ -37,7 +45,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:@acme-rrf/web-data",
+      "id": "ws:react-router-fastify:@acme-rrf/web-data",
+      "repo": "react-router-fastify",
       "name": "@acme-rrf/web-data",
       "dir": "apps/web-data",
       "kind": "app",
@@ -51,7 +60,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:@acme-rrf/web-declarative",
+      "id": "ws:react-router-fastify:@acme-rrf/web-declarative",
+      "repo": "react-router-fastify",
       "name": "@acme-rrf/web-declarative",
       "dir": "apps/web-declarative",
       "kind": "app",
@@ -65,7 +75,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:@acme-rrf/web-framework",
+      "id": "ws:react-router-fastify:@acme-rrf/web-framework",
+      "repo": "react-router-fastify",
       "name": "@acme-rrf/web-framework",
       "dir": "apps/web-framework",
       "kind": "app",
@@ -81,436 +92,498 @@
   "files": [
     {
       "id": "file:react-router-fastify:apps/api/package.json",
+      "repo": "react-router-fastify",
       "path": "apps/api/package.json",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "e836838975fc9ab1e738f51719d05e72d2c64433d9cbf395710f0001b004000f"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/autoroutes/health.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/autoroutes/health.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "70fcb7770b0ec0e554dd1a3e4586d91671337699699325c729f983544e768c10"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/autoroutes/users/index.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/autoroutes/users/index.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "caf2aa47857c6b62f6b0de3f80aa76a4a4ed29ddb333a7c54c2b4b1bdc7cb473"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/controllers/comments.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/controllers/comments.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "ad5dffd26c1023fa6d8068e16f192e34d6873ee02cfd65bf260bac497e9d483b"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/controllers/posts.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/controllers/posts.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "0c29be2adbf08d04a2e75704b5e816905238150672172d23f8aa7bafdbffcb76"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/controllers/stats.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/controllers/stats.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "02259a5fb89586ab225531159f2a9d24a75a724ac5fa9c2bb03c107a5ead72ba"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/controllers/users.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/controllers/users.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "168d8bee3727eff92510fcb60bb98833529ab3bbad0844d9b08955839f84155b"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/controllers/version.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/controllers/version.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "1fd4bea7b1f90af549c99d52f5eb417df23a118e79ce3a19ecec766a5cc08f10"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/paths.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/paths.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "a839b78b24a83460e21f8829803f0d9a84a26942a401434344e3a4238b873494"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/plugins/db.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/plugins/db.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "31197ec1350801301cd5192c7981d7f911a391371cdb7d60236c852b15ace5c5"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/routes/comments.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/routes/comments.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "0375da3b54ded67d14ffc25f6be547dae8f201689ad029d5c07ba47cfa9e3647"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/routes/posts.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/routes/posts.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "f88ca154e097f57b7c33ee9ad3237596a49f8c5852995b09bb77595475ec7fab"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/schemas.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/schemas.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "7c59d6f248d74950b5a96f67b7e5c98876504745de39c301dbf9b68471dd1e9b"
     },
     {
       "id": "file:react-router-fastify:apps/api/src/server.ts",
+      "repo": "react-router-fastify",
       "path": "apps/api/src/server.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/api",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/api",
       "contentHash": "49571ba777bc7c36c72df9ea88381d0cbdcd03714a881b076c0e4749fa9be67a"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/layouts.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/layouts.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "e06fd24b3714841faab2944f3c49f5e7eec0206d78584f701e04e0d1cc00a7d0"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/memory.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/memory.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "d79140f455e5ae0a05a517045d485e3010219f3a2585dc824ad4b71a46cf7923"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/pages/Comments.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/pages/Comments.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "c150c6cbad1c33034106c35bc5865ae480dc752c47bad7b2ebdeac76b12bcadc"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/pages/Home.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/pages/Home.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "0dbc05f176ab5d6c8e78477853a4303e7f22ceffe39503687e6859bca109dce7"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/pages/Login.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/pages/Login.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "6eaefcffc8ef64d4ef88bcf85678f7af3c658cbbb925849cfe0a02e7a81a0e4a"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/pages/NewPost.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/pages/NewPost.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "c5881ff5434b788b92d853b15af776bdadeb62ea54a4b7c94970f57e5754a2e0"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/pages/NotFound.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/pages/NotFound.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "b87ebe26c9d2c29ed5f92ff730090289c1cac9621b5e756fbbc74fd263ebda80"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/pages/PostDetail.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/pages/PostDetail.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "6d685461210d97569ebd7193d0117cef1439875944c06df0f6ea75db4694653c"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/pages/PostList.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/pages/PostList.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "9be23b1a11298c66a02813e098f1d45f493b6310e2722f15a1fe139ba65463f2"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/pages/PostsLayout.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/pages/PostsLayout.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "582b574d4bf08031823cc05fc2635306bb8af85d3e7411875c7266c1aeb874cf"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/pages/Register.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/pages/Register.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "e647ecf2a9a964c11daad3d09976ef7473399626c56086c8a2cadb020cf0a01a"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/router.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/router.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "6d410423bdd68da81678c50f4c0c5bf062ef8ed74258c783406aa54b3fe6021a"
     },
     {
       "id": "file:react-router-fastify:apps/web-data/src/routes/settings.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-data/src/routes/settings.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-data",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-data",
       "contentHash": "062003a88bcf90d410a28c78f300772d558deecacd2c94491d960808a10c1a9f"
     },
     {
       "id": "file:react-router-fastify:apps/web-declarative/src/App.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-declarative/src/App.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-declarative",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "contentHash": "a81b126314702f807f077c36e3d80d823585a887ea02f64eafb1bd917c484bea"
     },
     {
       "id": "file:react-router-fastify:apps/web-declarative/src/pages/About.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-declarative/src/pages/About.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-declarative",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "contentHash": "c79714c52b73cf137039c395d75be573b0a6eb391ca6da9d54c9981d94fb6874"
     },
     {
       "id": "file:react-router-fastify:apps/web-declarative/src/pages/Home.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-declarative/src/pages/Home.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-declarative",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "contentHash": "0dbc05f176ab5d6c8e78477853a4303e7f22ceffe39503687e6859bca109dce7"
     },
     {
       "id": "file:react-router-fastify:apps/web-declarative/src/pages/Layout.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-declarative/src/pages/Layout.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-declarative",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "contentHash": "3c04ccb7999a32f244d722e3a36dae4af4a7ce4bfff3334c84ec9e385fc8a8c2"
     },
     {
       "id": "file:react-router-fastify:apps/web-declarative/src/pages/NewPost.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-declarative/src/pages/NewPost.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-declarative",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "contentHash": "c5881ff5434b788b92d853b15af776bdadeb62ea54a4b7c94970f57e5754a2e0"
     },
     {
       "id": "file:react-router-fastify:apps/web-declarative/src/pages/NotFound.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-declarative/src/pages/NotFound.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-declarative",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "contentHash": "18b29d41e08c9b3e512205e32f031f245a456c8c529013aab41d7444f260009f"
     },
     {
       "id": "file:react-router-fastify:apps/web-declarative/src/pages/PostDetail.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-declarative/src/pages/PostDetail.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-declarative",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "contentHash": "41b0cf938a178320c938ba419be1e1d3f11b8f0f6ef381f5c34ea472ede1a981"
     },
     {
       "id": "file:react-router-fastify:apps/web-declarative/src/pages/PostList.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-declarative/src/pages/PostList.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-declarative",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "contentHash": "9be23b1a11298c66a02813e098f1d45f493b6310e2722f15a1fe139ba65463f2"
     },
     {
       "id": "file:react-router-fastify:apps/web-declarative/src/pages/PostsSection.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-declarative/src/pages/PostsSection.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-declarative",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "contentHash": "7df43b3061715b41d88e39ebee02e1ed321778c38979ad50c630dd2c615b203f"
     },
     {
       "id": "file:react-router-fastify:apps/web-declarative/src/pages/UserProfile.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-declarative/src/pages/UserProfile.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-declarative",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "contentHash": "002b788c4c34f89bbdfdbba6e8eda21d99e50fb2be077a412b616a7295d293f0"
     },
     {
       "id": "file:react-router-fastify:apps/web-declarative/src/pages/Users.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-declarative/src/pages/Users.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-declarative",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "contentHash": "c9c9f9a2d22fd2350a758b1c290b605e9368a77ca3c32b6d7cd6bee8321523e4"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/admin/index.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/admin/index.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "8efa464d33b15065018fe5dbf4290cb5517cd90c6661e89ba6bf5f4e75afc732"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/admin/user.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/admin/user.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "ef61b8606b6dfee4a11b3535b37cca60e14e017cad10f7f141799543e10f7932"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/admin/users.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/admin/users.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "d48f14e579d4e295ee624f12f0414155907658b6a4ce9cf409c25a0a4b31ad3d"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/contact.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/contact.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "c34a32017332271d2151315c98c0130438c74d3b4274a26adc43ed3e69e7c943"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/dashboard/index.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/dashboard/index.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "dd5079539cac20db82d058af99be33c0228aaa17f30bdf884fd3b0723532a9aa"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/dashboard/settings.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/dashboard/settings.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "17a8ae18cf6cafd0af5e9a0cb9b63d927a530959a529f82d0b22214afb94897e"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/layouts/dashboard.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/layouts/dashboard.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "675e99f33bab819a0fb6f85dca4ba2ed2a4a449280e0a5b054d517fbc3cb59fb"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/root.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/root.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "4e8e707698e40e2b4841f62e6bb471993a1e0cf110602e197f8850a408dc7846"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/routes.ts",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/routes.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "4554388931d05a8efe3ddc3d81767344da5c8171604e3b5488610e4b7555c82b"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/routes/flat/($lang).about.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/routes/flat/($lang).about.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "9d4a82452b62c0fb919d3f4521f8ce0731e0090797ff09d1c7423705c53f2a68"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/routes/flat/_auth.login.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/routes/flat/_auth.login.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "54f5acee4657960b9742da007bdb7c3316167a2e95d4b9031e71e3a0f1cffbe0"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/routes/flat/_auth.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/routes/flat/_auth.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "d048ffbe634d5239cbee95bc9f11934b8ae932422d9161fe07a023bce4601647"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/routes/flat/_index.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/routes/flat/_index.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "3f70a311d296d5c3c6ede808ff0f20ab53b32feb87c32370ad482445945b4f77"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles.$articleId.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/routes/flat/articles.$articleId.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "0522b40c12172e55b12be7e46f3456570e54e258e8e54b9630a3a58d31a29c90"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles._index.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/routes/flat/articles._index.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "368aa11bb0751acf3b40238ae8cb65cd83cc13217a0eedce889276fb31b0d37c"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/routes/flat/articles.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "2c95d8eb2b7fd18f80102f43eda3e8d5c1c2837a2610de7dfad0d90f51dd3e98"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles_.new.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/routes/flat/articles_.new.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "c151aa2dd2a54832ea871e2655bce4e613c269ccc812ce3ed1ebacd17454c788"
     },
     {
       "id": "file:react-router-fastify:apps/web-framework/app/routes/flat/files.$.tsx",
+      "repo": "react-router-fastify",
       "path": "apps/web-framework/app/routes/flat/files.$.tsx",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/web-framework",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/web-framework",
       "contentHash": "e35833bb618307fbffa0bdf69ab87d5c4cbcd6248cfb9cc75c80f464cf9b9d83"
     },
     {
       "id": "file:react-router-fastify:packages/db/src/client.ts",
+      "repo": "react-router-fastify",
       "path": "packages/db/src/client.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/db",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/db",
       "contentHash": "53c4aaa53a0cfbce8f8c69c741559694057d9b675710ca2f1721878134d3f19d"
     },
     {
       "id": "file:react-router-fastify:packages/db/src/index.ts",
+      "repo": "react-router-fastify",
       "path": "packages/db/src/index.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/db",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/db",
       "contentHash": "963960c66b10b21986b615b05a1140bb322798f8e52a3af40fcb47af3443bf57"
     },
     {
       "id": "file:react-router-fastify:packages/db/src/queries/comments.ts",
+      "repo": "react-router-fastify",
       "path": "packages/db/src/queries/comments.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/db",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/db",
       "contentHash": "fcc9eb61f595c4fe2f0639219f98f9bd82ebf85c26aacf38ab94c71672b84b21"
     },
     {
       "id": "file:react-router-fastify:packages/db/src/queries/posts.ts",
+      "repo": "react-router-fastify",
       "path": "packages/db/src/queries/posts.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/db",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/db",
       "contentHash": "da37066b361e6a168393fbc03ee3407ea6290f0465bb567357860d3a67107fb2"
     },
     {
       "id": "file:react-router-fastify:packages/db/src/queries/users.ts",
+      "repo": "react-router-fastify",
       "path": "packages/db/src/queries/users.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/db",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/db",
       "contentHash": "2c95ca5bc3b0915b74104cdf411a3c5d7b62aa55179bdd87082af2b6e05a659d"
     },
     {
       "id": "file:react-router-fastify:packages/db/src/schema.ts",
+      "repo": "react-router-fastify",
       "path": "packages/db/src/schema.ts",
       "lang": "typescript",
-      "workspaceId": "ws:@acme-rrf/db",
+      "workspaceId": "ws:react-router-fastify:@acme-rrf/db",
       "contentHash": "1eb1b0ee5a30343bdd1721cfb142dcb1bfe67a585ba1c97812d25b17057e8290"
     }
   ],
@@ -5237,7 +5310,7 @@
       "fileId": "file:react-router-fastify:packages/db/src/queries/users.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/autoroutes/health.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5246,7 +5319,7 @@
       "fileId": "file:react-router-fastify:apps/api/src/autoroutes/health.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/autoroutes/users/index.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5255,7 +5328,7 @@
       "fileId": "file:react-router-fastify:apps/api/src/autoroutes/users/index.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/controllers/comments.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5264,7 +5337,7 @@
       "fileId": "file:react-router-fastify:apps/api/src/controllers/comments.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/controllers/posts.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5273,7 +5346,7 @@
       "fileId": "file:react-router-fastify:apps/api/src/controllers/posts.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/controllers/stats.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5282,7 +5355,7 @@
       "fileId": "file:react-router-fastify:apps/api/src/controllers/stats.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/controllers/users.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5291,7 +5364,7 @@
       "fileId": "file:react-router-fastify:apps/api/src/controllers/users.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/controllers/version.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5300,7 +5373,7 @@
       "fileId": "file:react-router-fastify:apps/api/src/controllers/version.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/paths.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5309,7 +5382,7 @@
       "fileId": "file:react-router-fastify:apps/api/src/paths.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/plugins/db.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5318,7 +5391,7 @@
       "fileId": "file:react-router-fastify:apps/api/src/plugins/db.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/routes/comments.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5327,7 +5400,7 @@
       "fileId": "file:react-router-fastify:apps/api/src/routes/comments.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/routes/posts.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5336,7 +5409,7 @@
       "fileId": "file:react-router-fastify:apps/api/src/routes/posts.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/schemas.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5345,7 +5418,7 @@
       "fileId": "file:react-router-fastify:apps/api/src/schemas.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
       "dst": "file:react-router-fastify:apps/api/src/server.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5354,8 +5427,8 @@
       "fileId": "file:react-router-fastify:apps/api/src/server.ts"
     },
     {
-      "src": "ws:@acme-rrf/api",
-      "dst": "ws:@acme-rrf/db",
+      "src": "ws:react-router-fastify:@acme-rrf/api",
+      "dst": "ws:react-router-fastify:@acme-rrf/db",
       "kind": "depends_on",
       "confidence": "high",
       "count": 1,
@@ -5363,7 +5436,7 @@
       "fileId": "file:react-router-fastify:apps/api/package.json"
     },
     {
-      "src": "ws:@acme-rrf/db",
+      "src": "ws:react-router-fastify:@acme-rrf/db",
       "dst": "file:react-router-fastify:packages/db/src/client.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5372,7 +5445,7 @@
       "fileId": "file:react-router-fastify:packages/db/src/client.ts"
     },
     {
-      "src": "ws:@acme-rrf/db",
+      "src": "ws:react-router-fastify:@acme-rrf/db",
       "dst": "file:react-router-fastify:packages/db/src/index.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5381,7 +5454,7 @@
       "fileId": "file:react-router-fastify:packages/db/src/index.ts"
     },
     {
-      "src": "ws:@acme-rrf/db",
+      "src": "ws:react-router-fastify:@acme-rrf/db",
       "dst": "file:react-router-fastify:packages/db/src/queries/comments.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5390,7 +5463,7 @@
       "fileId": "file:react-router-fastify:packages/db/src/queries/comments.ts"
     },
     {
-      "src": "ws:@acme-rrf/db",
+      "src": "ws:react-router-fastify:@acme-rrf/db",
       "dst": "file:react-router-fastify:packages/db/src/queries/posts.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5399,7 +5472,7 @@
       "fileId": "file:react-router-fastify:packages/db/src/queries/posts.ts"
     },
     {
-      "src": "ws:@acme-rrf/db",
+      "src": "ws:react-router-fastify:@acme-rrf/db",
       "dst": "file:react-router-fastify:packages/db/src/queries/users.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5408,7 +5481,7 @@
       "fileId": "file:react-router-fastify:packages/db/src/queries/users.ts"
     },
     {
-      "src": "ws:@acme-rrf/db",
+      "src": "ws:react-router-fastify:@acme-rrf/db",
       "dst": "file:react-router-fastify:packages/db/src/schema.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5417,7 +5490,7 @@
       "fileId": "file:react-router-fastify:packages/db/src/schema.ts"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/layouts.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5426,7 +5499,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/layouts.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/memory.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5435,7 +5508,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/memory.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/pages/Comments.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5444,7 +5517,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/Comments.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/pages/Home.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5453,7 +5526,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/Home.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/pages/Login.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5462,7 +5535,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/Login.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/pages/NewPost.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5471,7 +5544,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/NewPost.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/pages/NotFound.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5480,7 +5553,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/NotFound.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/pages/PostDetail.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5489,7 +5562,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/PostDetail.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/pages/PostList.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5498,7 +5571,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/PostList.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/pages/PostsLayout.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5507,7 +5580,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/PostsLayout.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/pages/Register.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5516,7 +5589,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/Register.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/router.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5525,7 +5598,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/router.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-data",
+      "src": "ws:react-router-fastify:@acme-rrf/web-data",
       "dst": "file:react-router-fastify:apps/web-data/src/routes/settings.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5534,7 +5607,7 @@
       "fileId": "file:react-router-fastify:apps/web-data/src/routes/settings.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-declarative",
+      "src": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "dst": "file:react-router-fastify:apps/web-declarative/src/App.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5543,7 +5616,7 @@
       "fileId": "file:react-router-fastify:apps/web-declarative/src/App.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-declarative",
+      "src": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "dst": "file:react-router-fastify:apps/web-declarative/src/pages/About.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5552,7 +5625,7 @@
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/About.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-declarative",
+      "src": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "dst": "file:react-router-fastify:apps/web-declarative/src/pages/Home.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5561,7 +5634,7 @@
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/Home.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-declarative",
+      "src": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "dst": "file:react-router-fastify:apps/web-declarative/src/pages/Layout.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5570,7 +5643,7 @@
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/Layout.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-declarative",
+      "src": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "dst": "file:react-router-fastify:apps/web-declarative/src/pages/NewPost.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5579,7 +5652,7 @@
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/NewPost.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-declarative",
+      "src": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "dst": "file:react-router-fastify:apps/web-declarative/src/pages/NotFound.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5588,7 +5661,7 @@
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/NotFound.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-declarative",
+      "src": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "dst": "file:react-router-fastify:apps/web-declarative/src/pages/PostDetail.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5597,7 +5670,7 @@
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/PostDetail.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-declarative",
+      "src": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "dst": "file:react-router-fastify:apps/web-declarative/src/pages/PostList.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5606,7 +5679,7 @@
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/PostList.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-declarative",
+      "src": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "dst": "file:react-router-fastify:apps/web-declarative/src/pages/PostsSection.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5615,7 +5688,7 @@
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/PostsSection.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-declarative",
+      "src": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "dst": "file:react-router-fastify:apps/web-declarative/src/pages/UserProfile.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5624,7 +5697,7 @@
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/UserProfile.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-declarative",
+      "src": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "dst": "file:react-router-fastify:apps/web-declarative/src/pages/Users.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5633,7 +5706,7 @@
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/Users.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/admin/index.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5642,7 +5715,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/admin/index.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/admin/user.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5651,7 +5724,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/admin/user.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/admin/users.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5660,7 +5733,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/admin/users.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/contact.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5669,7 +5742,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/contact.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/dashboard/index.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5678,7 +5751,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/dashboard/index.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/dashboard/settings.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5687,7 +5760,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/dashboard/settings.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/layouts/dashboard.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5696,7 +5769,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/layouts/dashboard.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/root.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5705,7 +5778,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/root.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/routes.ts",
       "kind": "contains",
       "confidence": "high",
@@ -5714,7 +5787,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes.ts"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/routes/flat/($lang).about.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5723,7 +5796,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes/flat/($lang).about.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/routes/flat/_auth.login.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5732,7 +5805,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes/flat/_auth.login.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/routes/flat/_auth.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5741,7 +5814,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes/flat/_auth.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/routes/flat/_index.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5750,7 +5823,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes/flat/_index.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles.$articleId.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5759,7 +5832,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles.$articleId.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles._index.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5768,7 +5841,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles._index.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5777,7 +5850,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles_.new.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5786,7 +5859,7 @@
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles_.new.tsx"
     },
     {
-      "src": "ws:@acme-rrf/web-framework",
+      "src": "ws:react-router-fastify:@acme-rrf/web-framework",
       "dst": "file:react-router-fastify:apps/web-framework/app/routes/flat/files.$.tsx",
       "kind": "contains",
       "confidence": "high",
@@ -5799,7 +5872,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-data:GET /api/posts",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-data",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-data",
       "label": "GET /api/posts",
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/PostList.tsx",
       "data": {
@@ -5815,7 +5888,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-data:GET /api/posts/:param",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-data",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-data",
       "label": "GET /api/posts/:param",
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/PostDetail.tsx",
       "data": {
@@ -5831,7 +5904,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-data:GET /api/posts/:param/comments",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-data",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-data",
       "label": "GET /api/posts/:param/comments",
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/Comments.tsx",
       "data": {
@@ -5847,7 +5920,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-data:POST /api/posts",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-data",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-data",
       "label": "POST /api/posts",
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/NewPost.tsx",
       "data": {
@@ -5863,7 +5936,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-data:POST /api/users",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-data",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-data",
       "label": "POST /api/users",
       "fileId": "file:react-router-fastify:apps/web-data/src/pages/Register.tsx",
       "data": {
@@ -5879,7 +5952,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-declarative:GET /api/posts",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-declarative",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "label": "GET /api/posts",
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/PostList.tsx",
       "data": {
@@ -5895,7 +5968,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-declarative:GET /api/posts/:param",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-declarative",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "label": "GET /api/posts/:param",
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/PostDetail.tsx",
       "data": {
@@ -5911,7 +5984,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-declarative:GET /api/users",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-declarative",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "label": "GET /api/users",
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/Users.tsx",
       "data": {
@@ -5927,7 +6000,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-declarative:GET /api/users/:param",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-declarative",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "label": "GET /api/users/:param",
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/UserProfile.tsx",
       "data": {
@@ -5943,7 +6016,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-declarative:POST /api/posts",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-declarative",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "label": "POST /api/posts",
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/NewPost.tsx",
       "data": {
@@ -5959,7 +6032,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-declarative:POST /api/users",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-declarative",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-declarative",
       "label": "POST /api/users",
       "fileId": "file:react-router-fastify:apps/web-declarative/src/pages/Users.tsx",
       "data": {
@@ -5975,7 +6048,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-framework:GET /api/posts",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-framework",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-framework",
       "label": "GET /api/posts",
       "fileId": "file:react-router-fastify:apps/web-framework/app/dashboard/index.tsx",
       "data": {
@@ -5991,7 +6064,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-framework:GET /api/posts/:param",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-framework",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-framework",
       "label": "GET /api/posts/:param",
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles.$articleId.tsx",
       "data": {
@@ -6007,7 +6080,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-framework:GET /api/posts~2",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-framework",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-framework",
       "label": "GET /api/posts",
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles._index.tsx",
       "data": {
@@ -6023,7 +6096,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-framework:GET /api/users",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-framework",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-framework",
       "label": "GET /api/users",
       "fileId": "file:react-router-fastify:apps/web-framework/app/admin/users.tsx",
       "data": {
@@ -6039,7 +6112,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-framework:GET /api/users/:param",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-framework",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-framework",
       "label": "GET /api/users/:param",
       "fileId": "file:react-router-fastify:apps/web-framework/app/admin/user.tsx",
       "data": {
@@ -6055,7 +6128,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-framework:POST /api/posts",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-framework",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-framework",
       "label": "POST /api/posts",
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes/flat/articles_.new.tsx",
       "data": {
@@ -6071,7 +6144,7 @@
     {
       "id": "call:react-router-fastify:@acme-rrf/web-framework:POST /api/users",
       "kind": "client_call",
-      "ws": "ws:@acme-rrf/web-framework",
+      "ws": "ws:react-router-fastify:@acme-rrf/web-framework",
       "label": "POST /api/users",
       "fileId": "file:react-router-fastify:apps/web-framework/app/routes/flat/_auth.login.tsx",
       "data": {
@@ -6087,7 +6160,7 @@
     {
       "id": "table:react-router-fastify:comments",
       "kind": "table",
-      "ws": "ws:@acme-rrf/db",
+      "ws": "ws:react-router-fastify:@acme-rrf/db",
       "label": "comments",
       "fileId": "file:react-router-fastify:packages/db/src/schema.ts",
       "data": {
@@ -6109,7 +6182,7 @@
     {
       "id": "table:react-router-fastify:posts",
       "kind": "table",
-      "ws": "ws:@acme-rrf/db",
+      "ws": "ws:react-router-fastify:@acme-rrf/db",
       "label": "posts",
       "fileId": "file:react-router-fastify:packages/db/src/schema.ts",
       "data": {
@@ -6131,7 +6204,7 @@
     {
       "id": "table:react-router-fastify:users",
       "kind": "table",
-      "ws": "ws:@acme-rrf/db",
+      "ws": "ws:react-router-fastify:@acme-rrf/db",
       "label": "users",
       "fileId": "file:react-router-fastify:packages/db/src/schema.ts",
       "data": {

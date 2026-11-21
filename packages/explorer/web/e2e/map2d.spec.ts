@@ -228,9 +228,9 @@ test("large scenario: the whole diagram fits the canvas and every workspace titl
       level,
     ).toEqual([]);
     expect(p.hiddenTitles, level).toEqual([]);
-    // The repo-root workspace (id `ws:.`, a 31-character unscoped name) always shows a title, at every level.
-    expect(p.titles["ws:."], level).not.toBe("hidden");
-    expect(p.titleTexts["ws:."], level).toMatch(
+    // The repo-root workspace (id `ws:mock:.`, a 31-character unscoped name) always shows a title, at every level.
+    expect(p.titles["ws:mock:."], level).not.toBe("hidden");
+    expect(p.titleTexts["ws:mock:."], level).toMatch(
       /\(repo root\)|acme-platform-monorepo-root-app|acme-platform/,
     );
     expect(p.scale).toBeCloseTo(p.fitScale, 5);

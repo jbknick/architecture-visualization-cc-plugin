@@ -1,7 +1,13 @@
 {
+  "repos": [
+    {
+      "name": "go-basic"
+    }
+  ],
   "workspaces": [
     {
-      "id": "ws:example.com/gobasic",
+      "id": "ws:go-basic:example.com/gobasic",
+      "repo": "go-basic",
       "name": "example.com/gobasic",
       "dir": ".",
       "kind": "app",
@@ -12,7 +18,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:example.com/gobasic/tools",
+      "id": "ws:go-basic:example.com/gobasic/tools",
+      "repo": "go-basic",
       "name": "example.com/gobasic/tools",
       "dir": "tools",
       "kind": "app",
@@ -26,23 +33,26 @@
   "files": [
     {
       "id": "file:go-basic:cmd/server/main.go",
+      "repo": "go-basic",
       "path": "cmd/server/main.go",
       "lang": "go",
-      "workspaceId": "ws:example.com/gobasic",
+      "workspaceId": "ws:go-basic:example.com/gobasic",
       "contentHash": "d6d44bb21f5bc8ecf4c8246fb947aee5c6f86957bdde378d39a8d4ee491d0b47"
     },
     {
       "id": "file:go-basic:internal/app/app.go",
+      "repo": "go-basic",
       "path": "internal/app/app.go",
       "lang": "go",
-      "workspaceId": "ws:example.com/gobasic",
+      "workspaceId": "ws:go-basic:example.com/gobasic",
       "contentHash": "fb4741eef6bd517d860d9fecee9e6a0054999dda8a8f1a6b924c6eaddcb72a2f"
     },
     {
       "id": "file:go-basic:internal/gen/zz_generated.go",
+      "repo": "go-basic",
       "path": "internal/gen/zz_generated.go",
       "lang": "go",
-      "workspaceId": "ws:example.com/gobasic",
+      "workspaceId": "ws:go-basic:example.com/gobasic",
       "contentHash": "3e85f63975dc45967fb14a4c7a2158eaec12e04c9d95f48b30606cef503c8e36",
       "directives": [
         "generated"
@@ -50,65 +60,74 @@
     },
     {
       "id": "file:go-basic:internal/net/listen.go",
+      "repo": "go-basic",
       "path": "internal/net/listen.go",
       "lang": "go",
-      "workspaceId": "ws:example.com/gobasic",
+      "workspaceId": "ws:go-basic:example.com/gobasic",
       "contentHash": "bff05f399774ca31d93435a05b2df9efac14ac3b429b0290a2e7c12848bc497d"
     },
     {
       "id": "file:go-basic:internal/net/listen_unix.go",
+      "repo": "go-basic",
       "path": "internal/net/listen_unix.go",
       "lang": "go",
-      "workspaceId": "ws:example.com/gobasic",
+      "workspaceId": "ws:go-basic:example.com/gobasic",
       "contentHash": "9d88ed1e87e926ec065c8cc1211bc088279c9966bf339c650e353bbeb24f7f84"
     },
     {
       "id": "file:go-basic:internal/store/store.go",
+      "repo": "go-basic",
       "path": "internal/store/store.go",
       "lang": "go",
-      "workspaceId": "ws:example.com/gobasic",
+      "workspaceId": "ws:go-basic:example.com/gobasic",
       "contentHash": "ea8cf5375c3438e2fb525437a6195dfdcae5182e327b28ac62fc7373eb646637"
     },
     {
       "id": "file:go-basic:internal/store/store_test.go",
+      "repo": "go-basic",
       "path": "internal/store/store_test.go",
       "lang": "go",
-      "workspaceId": "ws:example.com/gobasic",
+      "workspaceId": "ws:go-basic:example.com/gobasic",
       "contentHash": "f0bacc7d5bdfed0659a2efdb3a48a43f0707ffe1af3a6413afae952706a014b3"
     },
     {
       "id": "file:go-basic:internal/text/format.go",
+      "repo": "go-basic",
       "path": "internal/text/format.go",
       "lang": "go",
-      "workspaceId": "ws:example.com/gobasic",
+      "workspaceId": "ws:go-basic:example.com/gobasic",
       "contentHash": "3d917d6a4e3133a7216890518f0f72af950a66a92c059c7cdea3bd65f6ced573"
     },
     {
       "id": "file:go-basic:internal/text/init.go",
+      "repo": "go-basic",
       "path": "internal/text/init.go",
       "lang": "go",
-      "workspaceId": "ws:example.com/gobasic",
+      "workspaceId": "ws:go-basic:example.com/gobasic",
       "contentHash": "fbcc84b6c03397c088cf291b3a82dbbfebf9d3c46019741dbdaf84fce84d70ca"
     },
     {
       "id": "file:go-basic:internal/text/slug.go",
+      "repo": "go-basic",
       "path": "internal/text/slug.go",
       "lang": "go",
-      "workspaceId": "ws:example.com/gobasic",
+      "workspaceId": "ws:go-basic:example.com/gobasic",
       "contentHash": "66c4728ec8c3be6be5e0e71475d91ff44fff5cb3ffbe59acc4cc24d5fdc0fbc4"
     },
     {
       "id": "file:go-basic:tools/go.mod",
+      "repo": "go-basic",
       "path": "tools/go.mod",
       "lang": "go",
-      "workspaceId": "ws:example.com/gobasic/tools",
+      "workspaceId": "ws:go-basic:example.com/gobasic/tools",
       "contentHash": "edf15bcbac7b600ad95e93e5213127382045d8764dd544ffaf94f44ecb6f3366"
     },
     {
       "id": "file:go-basic:tools/main.go",
+      "repo": "go-basic",
       "path": "tools/main.go",
       "lang": "go",
-      "workspaceId": "ws:example.com/gobasic/tools",
+      "workspaceId": "ws:go-basic:example.com/gobasic/tools",
       "contentHash": "a408b37f8dd6022b6059a492c5b6158d213425b963b8a38cf7e8ffce686ff24b"
     }
   ],
@@ -1247,7 +1266,7 @@
       "fileId": "file:go-basic:internal/text/slug.go"
     },
     {
-      "src": "ws:example.com/gobasic",
+      "src": "ws:go-basic:example.com/gobasic",
       "dst": "file:go-basic:cmd/server/main.go",
       "kind": "contains",
       "confidence": "high",
@@ -1256,7 +1275,7 @@
       "fileId": "file:go-basic:cmd/server/main.go"
     },
     {
-      "src": "ws:example.com/gobasic",
+      "src": "ws:go-basic:example.com/gobasic",
       "dst": "file:go-basic:internal/app/app.go",
       "kind": "contains",
       "confidence": "high",
@@ -1265,7 +1284,7 @@
       "fileId": "file:go-basic:internal/app/app.go"
     },
     {
-      "src": "ws:example.com/gobasic",
+      "src": "ws:go-basic:example.com/gobasic",
       "dst": "file:go-basic:internal/gen/zz_generated.go",
       "kind": "contains",
       "confidence": "high",
@@ -1274,7 +1293,7 @@
       "fileId": "file:go-basic:internal/gen/zz_generated.go"
     },
     {
-      "src": "ws:example.com/gobasic",
+      "src": "ws:go-basic:example.com/gobasic",
       "dst": "file:go-basic:internal/net/listen.go",
       "kind": "contains",
       "confidence": "high",
@@ -1283,7 +1302,7 @@
       "fileId": "file:go-basic:internal/net/listen.go"
     },
     {
-      "src": "ws:example.com/gobasic",
+      "src": "ws:go-basic:example.com/gobasic",
       "dst": "file:go-basic:internal/net/listen_unix.go",
       "kind": "contains",
       "confidence": "high",
@@ -1292,7 +1311,7 @@
       "fileId": "file:go-basic:internal/net/listen_unix.go"
     },
     {
-      "src": "ws:example.com/gobasic",
+      "src": "ws:go-basic:example.com/gobasic",
       "dst": "file:go-basic:internal/store/store.go",
       "kind": "contains",
       "confidence": "high",
@@ -1301,7 +1320,7 @@
       "fileId": "file:go-basic:internal/store/store.go"
     },
     {
-      "src": "ws:example.com/gobasic",
+      "src": "ws:go-basic:example.com/gobasic",
       "dst": "file:go-basic:internal/store/store_test.go",
       "kind": "contains",
       "confidence": "high",
@@ -1310,7 +1329,7 @@
       "fileId": "file:go-basic:internal/store/store_test.go"
     },
     {
-      "src": "ws:example.com/gobasic",
+      "src": "ws:go-basic:example.com/gobasic",
       "dst": "file:go-basic:internal/text/format.go",
       "kind": "contains",
       "confidence": "high",
@@ -1319,7 +1338,7 @@
       "fileId": "file:go-basic:internal/text/format.go"
     },
     {
-      "src": "ws:example.com/gobasic",
+      "src": "ws:go-basic:example.com/gobasic",
       "dst": "file:go-basic:internal/text/init.go",
       "kind": "contains",
       "confidence": "high",
@@ -1328,7 +1347,7 @@
       "fileId": "file:go-basic:internal/text/init.go"
     },
     {
-      "src": "ws:example.com/gobasic",
+      "src": "ws:go-basic:example.com/gobasic",
       "dst": "file:go-basic:internal/text/slug.go",
       "kind": "contains",
       "confidence": "high",
@@ -1337,7 +1356,7 @@
       "fileId": "file:go-basic:internal/text/slug.go"
     },
     {
-      "src": "ws:example.com/gobasic/tools",
+      "src": "ws:go-basic:example.com/gobasic/tools",
       "dst": "file:go-basic:tools/main.go",
       "kind": "contains",
       "confidence": "high",
@@ -1346,8 +1365,8 @@
       "fileId": "file:go-basic:tools/main.go"
     },
     {
-      "src": "ws:example.com/gobasic/tools",
-      "dst": "ws:example.com/gobasic",
+      "src": "ws:go-basic:example.com/gobasic/tools",
+      "dst": "ws:go-basic:example.com/gobasic",
       "kind": "depends_on",
       "confidence": "high",
       "count": 1,

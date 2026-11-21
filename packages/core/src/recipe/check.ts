@@ -43,7 +43,7 @@ export function checkRecipeText(paths: GantryPaths, text: string): RecipeCheck {
   if (!recipe) return out;
 
   const config = loadConfig(paths);
-  const workspaces = detectAllWorkspaces(paths.root, config);
+  const workspaces = detectAllWorkspaces(paths.root, config, paths.repo);
   const wsById = new Map(workspaces.map((w) => [w.id, w]));
   const files = discoverFiles(paths, config, workspaces).filter((f) => /\.(?:ts|tsx|mts|cts)$/.test(f.path));
 

@@ -39,9 +39,9 @@ interface Spec {
   rootFiles?: { names: string[]; fns: number };
 }
 
-/** The repo-root workspace (`ws:.`) is named like the repository: 31 characters, no npm scope. */
+/** The repo-root workspace (`ws:mock:.`) is named like the repository: 31 characters, no npm scope. */
 const ROOT_NAME = "acme-platform-monorepo-root-app";
-const wsId = (name: string): string => (name === ROOT_NAME ? "ws:." : `ws:${name}`);
+const wsId = (name: string): string => (name === ROOT_NAME ? "ws:mock:." : `ws:${name}`);
 
 const SPECS: Spec[] = [
   {

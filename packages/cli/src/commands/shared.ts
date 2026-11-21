@@ -1,8 +1,19 @@
-import { type IndexResult, NotAGitRepoError } from "@gantry/core";
+import { type GantryPaths, type IndexResult, NotAGitRepoError, resolvePaths } from "@gantry/core";
 
 export const EXIT_OK = 0;
 export const EXIT_ERROR = 1;
 export const EXIT_NOT_A_REPO = 2;
+
+/** The `--workspace` option text shared by `init`, `index`, `heal` and `map` (spec section 10). */
+export const WORKSPACE_FLAG: [string, string] = [
+  "--workspace <file>",
+  "use this gantry-workspace.json instead of looking for one above the repo",
+];
+
+/** `resolvePaths` for the current directory, with the workspace file given by `--workspace` (else discovered). */
+export function resolveCliPaths(opts: { workspace?: string }): GantryPaths {
+  return resolvePaths(process.cwd(), process.env, { workspaceFile: opts.workspace });
+}
 
 /** Maps a thrown error to a message on stderr and an exit code (2 = not a git repo, 1 = anything else). */
 export function fail(err: unknown): number {

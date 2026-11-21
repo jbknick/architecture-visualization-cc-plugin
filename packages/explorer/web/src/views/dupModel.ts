@@ -1,5 +1,6 @@
 // Pure helpers for the duplicates view: wording, percentages, the side-by-side line alignment.
 import type { DupCluster, DupMember, DupSkipInfo, DupSplit, DupTier, DupWorkspace } from "../api.ts";
+import { displayOfId } from "../ids.ts";
 
 /** Plain words for each tier, with one line saying what it means. */
 export const TIER_WORDS: Record<DupTier, { label: string; hint: string }> = {
@@ -60,7 +61,7 @@ export function nameLine(c: DupCluster): string {
 
 export function workspaceName(id: string | null, byId: ReadonlyMap<string, DupWorkspace>): string {
   if (id === null) return "(no workspace)";
-  return byId.get(id)?.shortLabel ?? id.replace(/^ws:/, "");
+  return byId.get(id)?.shortLabel ?? displayOfId(id);
 }
 
 /** "utils only" or "utils ↔ web". */

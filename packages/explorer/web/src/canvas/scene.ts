@@ -1,5 +1,6 @@
 // Everything derived from (nodes, edges) that does not depend on positions or the camera.
 import type { GraphEdge, GraphNode } from "../api.ts";
+import { isRootWorkspaceId } from "../ids.ts";
 import {
   buildTree,
   collapseChains,
@@ -299,7 +300,7 @@ export function subtitleParts(scene: Scene, i: number): string[] {
   const files = scene.files[i] ?? 0;
   const parts: string[] = [];
   // The repo-root workspace shows "(repo root)" where the others show their type ("app", "package").
-  const badge = node?.id === "ws:." ? "(repo root)" : node?.badges?.[0];
+  const badge = isRootWorkspaceId(node?.id ?? "") ? "(repo root)" : node?.badges?.[0];
   if (badge) parts.push(badge);
   parts.push(`${fn.toLocaleString("en-US")} ${fn === 1 ? "function" : "functions"}`);
   if (files > 0 || node?.stats?.files !== undefined)

@@ -96,7 +96,9 @@ describe("duplicates view", () => {
     expect(dups("filters=tiers=near").clusters.some((c) => c.members.some((m) => m.id === SLUG_UTILS))).toBe(
       false,
     );
-    const web = dups(`filters=${encodeURIComponent(JSON.stringify({ workspaces: "ws:@acme/db" }))}`);
+    const web = dups(
+      `filters=${encodeURIComponent(JSON.stringify({ workspaces: "ws:pnpm-turbo:@acme/db" }))}`,
+    );
     expect(web.clusters).toEqual([]);
     expect(dups("filters=minSize=3").clusters.every((c) => c.size >= 3)).toBe(true);
     expect(dups(`filters=${encodeURIComponent(JSON.stringify({ tiers: "code_vector" }))}`).clusters).toEqual(
