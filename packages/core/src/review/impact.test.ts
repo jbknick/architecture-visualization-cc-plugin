@@ -15,7 +15,10 @@ interface MaterializedFixture {
 }
 const helperPath = "../../test/helpers/fixture.js";
 const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as {
-  materializeFixture: (name: string) => Promise<MaterializedFixture>;
+  materializeFixture: (
+    name: string,
+    opts?: { feature?: boolean; dirName?: string },
+  ) => Promise<MaterializedFixture>;
 };
 
 const fixtures: MaterializedFixture[] = [];
@@ -262,5 +265,69 @@ describe("impact on fixtures/pnpm-turbo", () => {
     const impact = computeImpact(store, [ghost]);
     expect(impact.notes[0]).toContain("not in the index");
     expect(impact.callersByHop).toEqual([]);
+  });
+});
+
+describe("text summary of the reachable tier and hubs", () => {
+  it("on deep-radius prints the reachable line, the reachable block and the hub line", async () => {
+    const fx = await materializeFixture("deep-radius", { feature: true, dirName: "repo" });
+    fixtures.push(fx);
+    const data = mkdtempSync(join(tmpdir(), "gantry-impact-data-"));
+    dataDirs.push(data);
+    const paths: GantryPaths = resolvePaths(fx.dir, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
+    await indexRepo(paths, { layer: "main" });
+    const store = openStore(paths.dbPath);
+    stores.push(store);
+    const diff = await reviewDiff(paths, "main", "feature");
+    const impact = await reviewImpact(paths, store, diff);
+    const lines = formatImpact(diff, impact).split("\n");
+    const base = impact.consumers.find((c) => c.id.endsWith("#base"));
+    expect(base?.reachableTotal).toBeGreaterThan(0);
+    expect(lines).toContain(`  reachable (hop 4+): ${impact.reachable.total}`);
+    expect(lines).toContain(`  Reachable (${base?.reachableTotal}):`);
+    expect(lines.filter((l) => l.startsWith("  Hubs ("))).toEqual(["  Hubs (1):"]);
+    expect(lines).toContain(
+      `    hub (function, packages/core/src/hub.ts): ${base?.hubs[0]?.consumersTotal} consumers at hop 4 in 2 workspace(s)`,
+    );
+  });
+
+  it("on pnpm-turbo adds no line when the tier is empty", async () => {
+    const { fx, paths, store } = await setup();
+    changeButtonSignature(fx);
+    const diff = await reviewDiff(paths, "main", "feature");
+    const impact = await reviewImpact(paths, store, diff);
+    expect(impact.reachable.total).toBe(0);
+    expect(formatImpact(diff, impact)).toBe(
+      [
+        "Review main...feature: 1 file(s), 1 symbol change(s) (1 modified)",
+        "Risk: medium (56/100)",
+        "  +30 signature changed on an exported symbol",
+        "  +6 3 direct callers",
+        "  +10 2 boundary crossings",
+        "  +10 changed function in a file no test imports",
+        "Callers by hop:",
+        "  hop 1: 3 (file:pnpm-turbo:packages/ui/src/index.ts, sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage, sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage)",
+        "  hop 2: 3",
+        "Crossings: 2",
+        "  app: sym:pnpm-turbo:packages/ui/src/button.tsx#Button <- sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
+        "  app: sym:pnpm-turbo:packages/ui/src/button.tsx#Button <- sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+        "Consumers of sym:pnpm-turbo:packages/ui/src/button.tsx#Button:",
+        "  Directly affected (3):",
+        "    index.ts (file, packages/ui/src/index.ts) imports",
+        "    HomePage (component, apps/web/src/routes/index.tsx:7) renders; crosses app",
+        "    ProfilePage (component, apps/web/src/routes/settings/profile.tsx:7) renders; crosses app",
+        "  Potentially affected (3):",
+        "    / (route, apps/web/src/routes/index.tsx) serves hop 2 via HomePage; crosses app",
+        "    /settings/profile (route, apps/web/src/routes/settings/profile.tsx) serves hop 2 via ProfilePage; crosses app",
+        "    profile.tsx (file, apps/web/src/routes/settings/profile.tsx) imports hop 2 via index.ts; crosses app",
+        "Consumers of file:pnpm-turbo:packages/ui/src/button.tsx:",
+        "  Directly affected (3):",
+        "    index.ts (file, packages/ui/src/index.ts) imports",
+        "    index.tsx (file, apps/web/src/routes/index.tsx) imports; crosses app",
+        "    profile.tsx (file, apps/web/src/routes/settings/profile.tsx) imports; crosses app",
+        "  Potentially affected (0):",
+        "",
+      ].join("\n"),
+    );
   });
 });

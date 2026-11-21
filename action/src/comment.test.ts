@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildComment,
@@ -7,6 +9,7 @@ import {
   MARKER,
   MAX_BODY,
   nameOfId,
+  type ReviewJson,
 } from "./comment.js";
 import { sampleDuplicates, sampleReview } from "./sample.js";
 
@@ -49,6 +52,18 @@ describe("comment body", () => {
     expect(potential.match(/^- `caller/gm)).toHaveLength(10);
     expect(potential).toContain("- and 4 more");
     expect(body).toMatch(/- `caller0 \(function, apps\/web\/src\/use0-0-1\.ts:1\)/);
+  });
+
+  it("shows the reachable total and the hubs on deep-radius, and neither when the tier is empty", () => {
+    const deep = JSON.parse(
+      readFileSync(join(import.meta.dirname, "../../fixtures/deep-radius.review.json"), "utf8"),
+    ) as ReviewJson;
+    const body = buildComment(input({ review: deep }));
+    expect(body).toContain("Reachable (4+ hops): 615");
+    expect(body).toContain("Hubs: `hub` (610)");
+    const plain = buildComment(input());
+    expect(plain).not.toContain("Reachable (4+ hops)");
+    expect(plain).not.toContain("Hubs:");
   });
 
   it("is the same text every time", () => {
