@@ -1,0 +1,104 @@
+{
+  "summary": {
+    "clusters": 1,
+    "functions": 3,
+    "duplicateLines": 16,
+    "crossWorkspace": 1
+  },
+  "clusters": [
+    {
+      "id": "cluster:sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+      "tier": "exact",
+      "tiers": {
+        "exact": 3,
+        "near": 0,
+        "code_vector": 0,
+        "semantic": 0
+      },
+      "size": 3,
+      "loc": 24,
+      "rank": 72,
+      "keep": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#slugify",
+      "keepReason": "In the shared package @acme/ui, not exported yet, called by 1 function; the other 2 copies can use it.",
+      "workspaces": [
+        "ws:@acme/ui",
+        "ws:@acme/utils",
+        "ws:@acme/web"
+      ],
+      "members": [
+        {
+          "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#slugify",
+          "name": "slugify",
+          "kind": "function",
+          "path": "packages/ui/src/slug-copy.ts",
+          "line": 2,
+          "endLine": 9,
+          "loc": 8,
+          "workspaceId": "ws:@acme/ui",
+          "exported": false,
+          "fanIn": 1,
+          "tier": null,
+          "score": 1,
+          "keep": true
+        },
+        {
+          "id": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+          "name": "slugify",
+          "kind": "function",
+          "path": "apps/web/src/lib/slug.ts",
+          "line": 1,
+          "endLine": 8,
+          "loc": 8,
+          "workspaceId": "ws:@acme/web",
+          "exported": true,
+          "fanIn": 1,
+          "tier": "exact",
+          "score": 1,
+          "keep": false,
+          "advice": {
+            "situation": 3,
+            "action": "Export it from @acme/ui (add to exports map) or move it to a shared package",
+            "inline": false
+          }
+        },
+        {
+          "id": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
+          "name": "slugify",
+          "kind": "function",
+          "path": "packages/utils/src/slug.ts",
+          "line": 2,
+          "endLine": 9,
+          "loc": 8,
+          "workspaceId": "ws:@acme/utils",
+          "exported": false,
+          "fanIn": 1,
+          "tier": "exact",
+          "score": 1,
+          "keep": false,
+          "advice": {
+            "situation": 3,
+            "action": "Export it from @acme/ui (add to exports map) or move it to a shared package",
+            "inline": false
+          }
+        }
+      ],
+      "links": [
+        {
+          "a": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+          "b": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#slugify",
+          "tier": "exact"
+        },
+        {
+          "a": "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+          "b": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
+          "tier": "exact"
+        },
+        {
+          "a": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#slugify",
+          "b": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
+          "tier": "exact"
+        }
+      ]
+    }
+  ]
+}

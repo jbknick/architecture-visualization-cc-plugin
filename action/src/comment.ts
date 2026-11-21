@@ -38,8 +38,8 @@ export const CAPS = {
   riskReasons: 8,
   changedRows: 30,
   consumerChanges: 15,
-  directPerChange: 5,
-  potentialPerChange: 3,
+  directPerChange: 10,
+  potentialPerChange: 10,
   crossings: 10,
   clusters: 15,
   membersPerCluster: 6,
@@ -258,6 +258,25 @@ function footerSection(input: CommentInput): string {
   const v = input.version ? `Gantry ${sanitize(input.version, 20)} · ` : "Gantry · ";
   return `<sub>${v}duplicate tiers: ${tiers} · no model calls · updated for ${shortRef(sanitize(input.review.head, 60))}</sub>\n`;
 }
+
+/**
+ * The comment when the analysis could not run (issue #282, fail open): the same marker as the full comment, so the
+ * earlier comment is updated in place, and one bounded line saying why. `reason` is untrusted text. The same text is
+ * built by `action/post-failure.sh` when the install failed and this script is not there; a test keeps them equal.
+ */
+export function buildFailureComment(reason: string): string {
+  return [
+    MARKER,
+    "## Gantry: the analysis failed",
+    "",
+    `Gantry could not analyse this pull request: ${code(reason, FAILURE_MAX)}`,
+    "",
+    "<sub>The pull request itself is not affected. The job log of the Gantry step has the details.</sub>",
+    "",
+  ].join("\n");
+}
+/** Longest reason in the failure comment, in characters. */
+export const FAILURE_MAX = 200;
 
 const OMITTED = "\n_Part of this comment was left out to stay under GitHub's comment size limit._\n";
 
