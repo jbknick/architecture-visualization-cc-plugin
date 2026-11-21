@@ -5,7 +5,7 @@ import { recipeAdapter } from "../adapters/recipe.js";
 import { indexRepo } from "../indexer.js";
 import { openStore } from "../store/index.js";
 import { checkRecipeText, listRecipeNodes, recipeCheckOk } from "./index.js";
-import { type Graph, indexGraph, pathsFor } from "./testkit.js";
+import { type Graph, indexGraph, makeRepo, pathsFor } from "./testkit.js";
 
 const helperPath = "../../test/helpers/fixture.js";
 interface MaterializedFixture {
@@ -163,6 +163,27 @@ describe("gantry recipe check on the Go fixtures", () => {
 
       const nodes = await listRecipeNodes(paths, recipe, { limit: 1000 });
       const count = (kind: string): number => graph.nodes.filter((n) => n.kind === kind).length;
+      const byLabel = (xs: { label: string }[]): string[] => xs.map((x) => x.label).sort();
+      for (const kind of ["table", "middleware"] as const)
+        expect(byLabel(nodes.entries.filter((e) => e.kind === kind))).toEqual(
+          byLabel(graph.nodes.filter((n) => n.kind === kind)),
+        );
+      const nodeLabel = new Map(graph.nodes.map((n) => [n.id, n.label]));
+      const accessOf = (edge: string): string[] =>
+        graph.edges
+          .filter((e) => e.kind === edge)
+          .map((e) => `${nodeLabel.get(e.dst)} ${symName(e.src)}`)
+          .sort();
+      for (const [kind, edge] of [
+        ["read", "reads"],
+        ["write", "writes"],
+      ] as const)
+        expect(
+          nodes.entries
+            .filter((e) => e.kind === kind)
+            .map((e) => `${e.label} ${e.in}`)
+            .sort(),
+        ).toEqual(accessOf(edge));
       expect(nodes.totals.endpoint).toBe(count("endpoint"));
       expect(nodes.totals.middleware).toBe(count("middleware"));
       expect(nodes.totals.table).toBe(count("table"));
@@ -217,5 +238,88 @@ describe("Go recipes are read from the working tree and the index", () => {
     } finally {
       store.close();
     }
+  });
+});
+
+describe("uncalled: a function that takes a router and is called nowhere", () => {
+  const recipeFor = (uncalled: boolean): string =>
+    JSON.stringify({
+      version: 1,
+      dependencies: [],
+      helpers: ["resolve-names", "const-strings", "mount-graph", "param-flow"],
+      rules: [
+        {
+          id: "mux",
+          language: "go",
+          rule: { pattern: "http.NewServeMux()" },
+          emit: { kind: "router" },
+          examples: { match: ["m := http.NewServeMux()"], noMatch: [] },
+        },
+        {
+          id: "handle",
+          language: "go",
+          ...(uncalled ? { uncalled: true } : {}),
+          rule: { pattern: "$R.HandleFunc($P, $H)" },
+          emit: { kind: "endpoint", receiver: "$R", methodInPath: true, path: "$P", handler: "$H" },
+          examples: { match: ['m.HandleFunc("GET /a", h)'], noMatch: [] },
+        },
+      ],
+    });
+  const files = (recipe: string): Record<string, string> => ({
+    "go.mod": "module example.com/dead\n\ngo 1.22\n",
+    "main.go": `package main
+
+import "net/http"
+
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /live", live)
+	used(mux)
+	var s server
+	s.unresolved(mux)
+}
+
+func live(w http.ResponseWriter, r *http.Request) {}
+
+func used(m *http.ServeMux) { m.HandleFunc("GET /used", live) }
+
+func neverCalled(m *http.ServeMux) { m.HandleFunc("GET /dead", live) }
+
+func onlyTested(m *http.ServeMux) { m.HandleFunc("GET /tested", live) }
+
+type server struct{}
+
+func (s server) unresolved(m *http.ServeMux) {}
+`,
+    "main_test.go": 'package main\n\nimport "net/http"\n\nfunc init() { onlyTested(http.NewServeMux()) }\n',
+    "other.go": `package main
+
+import "net/http"
+
+type other struct{}
+
+// The call below names calledButUnresolved, but its receiver has no known type, so the call resolves to nothing.
+func (o other) run(x unknownType, m *http.ServeMux) { x.calledButUnresolved(m) }
+
+func (o other) calledButUnresolved(m *http.ServeMux) { m.HandleFunc("GET /unresolved", live) }
+`,
+    ".gantry/recipe.json": recipe,
+  });
+  const labels = async (uncalled: boolean): Promise<string[]> => {
+    const repo = await makeRepo(files(recipeFor(uncalled)));
+    const g = await indexGraph(repo.dir);
+    return g.nodes
+      .filter((n) => n.kind === "endpoint")
+      .map((n) => n.label)
+      .sort();
+  };
+
+  it("registers nothing for dead code or a test-only helper by default", async () => {
+    expect(await labels(false)).toEqual(["GET /live", "GET /used"]);
+  });
+
+  it("with the option on, dead code and a caller outside the read set count as called nowhere", async () => {
+    // `calledButUnresolved` is named by a call whose target does not resolve: it registers nothing either way.
+    expect(await labels(true)).toEqual(["GET /dead", "GET /live", "GET /tested", "GET /used"]);
   });
 });

@@ -304,6 +304,12 @@ export const GoRuleSchema = z.strictObject({
   rule: astRule,
   constraints: z.record(z.string(), astRule).optional(),
   emit: GoEmitSchema,
+  /**
+   * Off by default. On: a function that takes a router, and that no call in the read files names, registers the
+   * routes this rule finds in it at the paths it writes. Dead code and callers outside the read set (tests) count as
+   * "called nowhere", so the rule can list endpoints that never run.
+   */
+  uncalled: z.boolean().optional(),
   examples: z.strictObject({ match: z.array(z.string()), noMatch: z.array(z.string()) }),
 });
 export type GoRecipeRule = z.infer<typeof GoRuleSchema>;

@@ -16,6 +16,7 @@
     {
       "id": "mux-handle-func",
       "language": "go",
+      "uncalled": true,
       "rule": { "pattern": "$R.HandleFunc($P, $H)" },
       "constraints": { "P": { "regex": "^\"(?:[A-Z]+ )?/" } },
       "emit": { "kind": "endpoint", "receiver": "$R", "methodInPath": true, "path": "$P", "handler": "$H" },
@@ -27,6 +28,7 @@
     {
       "id": "mux-handle",
       "language": "go",
+      "uncalled": true,
       "rule": { "pattern": "$R.Handle($P, $H)" },
       "constraints": { "P": { "regex": "^\"(?:[A-Z]+ )?/" } },
       "emit": { "kind": "endpoint", "receiver": "$R", "methodInPath": true, "path": "$P", "handler": "$H" },

@@ -102,6 +102,8 @@ class GoRoutes {
   private readonly scopeUses = new Map<string, ScopeUse>();
   /** Names of the functions with a router parameter that some call in the read files names. */
   private readonly calledNames = new Set<string>();
+  /** Router keys that a rule with `uncalled` registered on, mounted on or put middleware on. */
+  private readonly uncalledKeys = new Set<string>();
   private readonly consts = new Map<string, Map<string, SgNode>>();
   private readonly byDir = new Map<string, AdapterFileContext[]>();
   private readonly apps = new Map<string, AppDecl>();
@@ -411,6 +413,7 @@ class GoRoutes {
           const parentNode = this.captureNode(m, emit.parent);
           const p = parentNode ? this.receiver(file, parentNode) : null;
           if (!p) continue;
+          if (m.rule.uncalled) this.uncalledKeys.add(p.key);
           let prefix: PathExpr | null = null;
           if (emit.prefix) {
             prefix = this.pathOf(file, this.captureNode(m, emit.prefix), true);
@@ -454,6 +457,7 @@ class GoRoutes {
           const recvNode = this.captureNode(m, emit.receiver);
           const recv = recvNode ? this.receiver(file, recvNode) : null;
           if (!recv) continue;
+          if (m.rule.uncalled) this.uncalledKeys.add(recv.key);
           const handlers = this.captureNodes(m, emit.handler);
           let path = this.pathOf(file, this.captureNode(m, emit.path), true);
           if (!path || handlers.length === 0) continue;
@@ -487,6 +491,7 @@ class GoRoutes {
           const recvNode = this.captureNode(m, emit.receiver);
           const recv = recvNode ? this.receiver(file, recvNode) : null;
           if (!recv) continue;
+          if (m.rule.uncalled) this.uncalledKeys.add(recv.key);
           const handlers = this.captureNodes(m, emit.handler);
           const pathNode = this.captureNode(m, emit.path);
           const path: PathExpr | null = pathNode ? this.pathOf(file, pathNode, handlers.length > 0) : ["*"];
@@ -508,12 +513,18 @@ class GoRoutes {
     }
 
     // 4. A router passed as an argument flows into the parameter of the function that takes it (`param-flow`). A
-    // function that takes a router and is called nowhere in the read files registers at the paths it writes.
+    // function that takes a router and is called nowhere in the read files registers at the paths it writes only
+    // when a rule that matches inside it sets `uncalled`.
     if (this.paramFlow) {
       this.flows(mounts);
       for (const u of this.scopeUses.values()) {
         const name = (nameOfSymId(u.fnSym) ?? "").replace(/^.*\./, "").replace(/~\d+$/, "");
-        if (this.calledNames.has(name) || mounts.some((m) => m.child === u.key)) continue;
+        if (
+          !this.uncalledKeys.has(u.key) ||
+          this.calledNames.has(name) ||
+          mounts.some((m) => m.child === u.key)
+        )
+          continue;
         const home = this.a.fileOf(u.fileId);
         if (home) this.apps.set(u.key, { key: u.key, base: [], file: home });
       }
