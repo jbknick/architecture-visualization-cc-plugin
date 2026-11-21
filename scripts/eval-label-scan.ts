@@ -275,7 +275,10 @@ const dataStacks: DataStack[] = [
     accessExt: ["ts", "tsx", "js", "mjs"],
     tables: (_f, lines) =>
       lines.flatMap((l, i): [number, string][] => {
-        const m = /(?:pgTable|sqliteTable|mysqlTable)\(\s*['"`](\w+)['"`]/.exec(l);
+        // the name may be on the next line: `pgTable(\n "session",`
+        const m = /(?:pgTable|sqliteTable|mysqlTable)\(\s*['"`](\w+)['"`]/.exec(
+          /(?:pg|sqlite|mysql)Table\(/.test(l) ? `${l} ${lines[i + 1] ?? ""}` : "",
+        );
         return m ? [[i + 1, m[1] as string]] : [];
       }),
     access: [
@@ -550,7 +553,8 @@ export function sample(labels: Labels, dir: string, every = 10, stack: string[] 
             : h.file === l.file && (h.kind === kind || h.kind === "any")),
       );
       const file = hit?.file ?? l.file;
-      const lines = existsSync(join(dir, file)) ? readFileSync(join(dir, file), "utf8").split("\n") : [];
+      const p = join(dir, file);
+      const lines = file && existsSync(p) ? readFileSync(p, "utf8").split("\n") : [];
       const line = hit?.line ?? 1;
       out.push({ id: l.id, file, line, text: (lines[line - 1] ?? "").trim().slice(0, 160) });
       return;

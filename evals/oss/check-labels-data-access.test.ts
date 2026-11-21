@@ -121,6 +121,16 @@ describe("data-access candidates", () => {
       "db.ts:3",
     ]);
   });
+
+  it("finds a Drizzle table whose name is on the line after pgTable(", () => {
+    const dir = clone({
+      "schema.ts": 'export const a = pgTable("one", {});\nexport const b = pgTable(\n  "two",\n  {},\n);\n',
+    });
+    expect(dataHits(dir, ["drizzle"], null).map((h) => `${h.line} ${h.text}`)).toEqual([
+      "1 table one has no table label",
+      "2 table two has no table label",
+    ]);
+  });
 });
 
 describe("check-labels on table names", () => {
