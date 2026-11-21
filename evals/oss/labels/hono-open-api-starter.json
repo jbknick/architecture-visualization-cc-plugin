@@ -1,0 +1,51 @@
+{
+  "repo": "hono-open-api-starter",
+  "sha": "0d5f3bf523f525667d58edb38011e377e5898fc4",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each registration site before any scoring run; maintainer spot check pending",
+  "kinds": ["endpoint"],
+  "endpoint": [
+    {
+      "method": "GET",
+      "path": "/",
+      "file": "src/routes/index.route.ts",
+      "registration": "src/routes/index.route.ts:10"
+    },
+    { "method": "GET", "path": "/doc", "file": "src/lib/configure-open-api.ts" },
+    {
+      "method": "GET",
+      "path": "/reference",
+      "file": "src/lib/configure-open-api.ts",
+      "registration": "src/lib/configure-open-api.ts:16"
+    },
+    {
+      "method": "GET",
+      "path": "/tasks",
+      "file": "src/routes/tasks/tasks.routes.ts",
+      "registration": "src/routes/tasks/tasks.routes.ts:11"
+    },
+    {
+      "method": "POST",
+      "path": "/tasks",
+      "file": "src/routes/tasks/tasks.routes.ts",
+      "registration": "src/routes/tasks/tasks.routes.ts:23"
+    },
+    {
+      "method": "GET",
+      "path": "/tasks/:id",
+      "file": "src/routes/tasks/tasks.routes.ts",
+      "registration": "src/routes/tasks/tasks.routes.ts:45"
+    },
+    {
+      "method": "PATCH",
+      "path": "/tasks/:id",
+      "file": "src/routes/tasks/tasks.routes.ts",
+      "registration": "src/routes/tasks/tasks.routes.ts:68"
+    },
+    {
+      "method": "DELETE",
+      "path": "/tasks/:id",
+      "file": "src/routes/tasks/tasks.routes.ts",
+      "registration": "src/routes/tasks/tasks.routes.ts:96"
+    }
+  ]
+}
