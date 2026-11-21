@@ -1,0 +1,78 @@
+{
+  "repo": "taxonomy",
+  "sha": "298a8857c7128a0d121e7f699dfd729f23b3966d",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each page and route handler before any scoring run; maintainer spot check pending",
+  "kinds": ["route", "endpoint"],
+  "route": [
+    { "path": "/", "file": "app/(marketing)/page.tsx" },
+    { "path": "/[...slug]", "file": "app/(marketing)/[...slug]/page.tsx" },
+    { "path": "/blog", "file": "app/(marketing)/blog/page.tsx" },
+    { "path": "/blog/[...slug]", "file": "app/(marketing)/blog/[...slug]/page.tsx" },
+    { "path": "/dashboard", "file": "app/(dashboard)/dashboard/page.tsx" },
+    { "path": "/dashboard/billing", "file": "app/(dashboard)/dashboard/billing/page.tsx" },
+    { "path": "/dashboard/settings", "file": "app/(dashboard)/dashboard/settings/page.tsx" },
+    { "path": "/docs/[[...slug]]", "file": "app/(docs)/docs/[[...slug]]/page.tsx" },
+    { "path": "/editor/[postId]", "file": "app/(editor)/editor/[postId]/page.tsx" },
+    { "path": "/guides", "file": "app/(docs)/guides/page.tsx" },
+    { "path": "/guides/[...slug]", "file": "app/(docs)/guides/[...slug]/page.tsx" },
+    { "path": "/login", "file": "app/(auth)/login/page.tsx" },
+    { "path": "/pricing", "file": "app/(marketing)/pricing/page.tsx" },
+    { "path": "/register", "file": "app/(auth)/register/page.tsx" }
+  ],
+  "endpoint": [
+    {
+      "method": "ALL",
+      "path": "/api/auth/[...nextauth]",
+      "file": "pages/api/auth/[...nextauth].ts",
+      "registration": "pages/api/auth/[...nextauth].ts:6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/og",
+      "file": "app/api/og/route.tsx",
+      "registration": "app/api/og/route.tsx:15"
+    },
+    {
+      "method": "GET",
+      "path": "/api/posts",
+      "file": "app/api/posts/route.ts",
+      "registration": "app/api/posts/route.ts:14"
+    },
+    {
+      "method": "POST",
+      "path": "/api/posts",
+      "file": "app/api/posts/route.ts",
+      "registration": "app/api/posts/route.ts:41"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/posts/[postId]",
+      "file": "app/api/posts/[postId]/route.ts",
+      "registration": "app/api/posts/[postId]/route.ts:14"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/posts/[postId]",
+      "file": "app/api/posts/[postId]/route.ts",
+      "registration": "app/api/posts/[postId]/route.ts:44"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/users/[userId]",
+      "file": "app/api/users/[userId]/route.ts",
+      "registration": "app/api/users/[userId]/route.ts:14"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/stripe",
+      "file": "app/api/users/stripe/route.ts",
+      "registration": "app/api/users/stripe/route.ts:12"
+    },
+    {
+      "method": "POST",
+      "path": "/api/webhooks/stripe",
+      "file": "app/api/webhooks/stripe/route.ts",
+      "registration": "app/api/webhooks/stripe/route.ts:8"
+    }
+  ]
+}
