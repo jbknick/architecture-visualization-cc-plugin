@@ -42,7 +42,7 @@ let ctx: ApiContext;
 /** Indexes a fixture repo into the store with core's parser, hasher and resolver (indexRepo is not merged yet). */
 function indexFixture(root: string, extra: Record<string, string> = {}): void {
   const config = loadConfig(ctx.paths);
-  const workspaces = detectWorkspaces(root, { workspaces: { overrides: {} } });
+  const workspaces = detectWorkspaces(root, { workspaces: { overrides: {} } }, "pnpm-turbo");
   store.upsertWorkspaces(workspaces);
   const sources = new Map<string, string>();
   for (const rel of walk(root)) {
@@ -151,7 +151,10 @@ describe("map-3d view", () => {
   it("lifts imports to workspace nodes and keeps depends_on", () => {
     const r = view("level=workspaces");
     expect(
-      r.edges.some((e) => e.src === "ws:@acme/web" && e.dst === "ws:@acme/ui" && e.kind === "imports"),
+      r.edges.some(
+        (e) =>
+          e.src === "ws:pnpm-turbo:@acme/web" && e.dst === "ws:pnpm-turbo:@acme/ui" && e.kind === "imports",
+      ),
     ).toBe(true);
     expect(r.edges.some((e) => e.kind === "depends_on")).toBe(true);
     expect(r.nodes.every((n) => n.kind === "workspace")).toBe(true);

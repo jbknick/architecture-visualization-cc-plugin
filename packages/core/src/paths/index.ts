@@ -3,11 +3,30 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import {
+  findWorkspaceFile,
+  type LoadedWorkspace,
+  loadWorkspaceFile,
+  WorkspaceFileError,
+} from "../workspace/file.js";
+import { repoName } from "./repo-name.js";
+
+export { repoName };
+
+/** The repos one data dir holds (spec section 4). A repo with no workspace file is a workspace of one. */
+export interface WorkspaceInfo {
+  /** The workspace file (absolute); null for a workspace of one. */
+  file: string | null;
+  /** Every repo of the workspace, sorted by name. */
+  repos: { name: string; root: string }[];
+}
 
 export interface GantryPaths {
+  /** The work tree root of the repo the command runs in (the other repos of a workspace are in `workspace.repos`). */
   root: string;
   /** The repo name carried in every stable id (`repoName`, spec section 6); the same on every machine. */
   repo: string;
+  workspace: WorkspaceInfo;
   worktreeHash: string;
   dataDir: string;
   dbPath: string;
@@ -42,36 +61,38 @@ export function pluginDataFromRoot(pluginRoot: string): string | undefined {
   return path.join(parts.slice(0, n - 4).join(path.sep) || path.sep, "data", id);
 }
 
-/** The last two path segments of a remote URL (`a/b`), trailing slashes and any `.git` suffix removed. */
-function ownerAndName(url: string): string | undefined {
-  const parts = url
-    .trim()
-    .replace(/\/+$/, "")
-    .replace(/\.git$/, "")
-    .split(/[/:]/)
-    .filter((p) => p !== "");
-  if (parts.length < 2) return undefined;
-  return `${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
+/** The directory above `root` as the user reaches it: the first ancestor of `cwd` whose real path is `root`. */
+function logicalRootOf(cwd: string, root: string): string {
+  let dir = path.resolve(cwd);
+  for (;;) {
+    try {
+      if (fs.realpathSync(dir) === root) return dir;
+    } catch {
+      return root;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) return root;
+    dir = parent;
+  }
+}
+
+export interface ResolveOptions {
+  /** A workspace file that replaces discovery (`--workspace <file>`). */
+  workspaceFile?: string;
 }
 
 /**
- * The repo name carried in every stable id (spec section 6): the last two path segments of the `origin` remote URL with
- * any `.git` suffix removed (`https://github.com/a/b.git`, `git@github.com:a/b.git` and `ssh://git@host/a/b` all give
- * `a/b`); with no `origin`, the basename of the worktree root. Never a local path. A `:` in the name becomes `_`
- * because ids split on it. `root` is any directory of the repo (a linked worktree gives the name of its `origin`).
+ * Resolve the data locations (spec section 4). Never touches the repo working tree. With a workspace file that lists
+ * the repo (found by walking up, or given in `opts.workspaceFile`) the data dir is
+ * `<base>/workspaces/<first 16 hex of sha256(real path of the file's directory)>/` and holds every repo of the file;
+ * otherwise it is `<base>/repos/<worktreeHash>/` and the repo is a workspace of one. A workspace file that is invalid
+ * throws `WorkspaceFileError`.
  */
-export function repoName(root: string): string {
-  const res = spawnSync("git", ["remote", "get-url", "origin"], {
-    cwd: root,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
-  });
-  const fromRemote = res.status === 0 ? ownerAndName(res.stdout) : undefined;
-  return (fromRemote ?? path.basename(path.resolve(root))).replace(/:/g, "_");
-}
-
-/** Resolve the per-worktree data locations (spec section 4). Never touches the repo working tree. */
-export function resolvePaths(cwd: string, env: NodeJS.ProcessEnv = process.env): GantryPaths {
+export function resolvePaths(
+  cwd: string,
+  env: NodeJS.ProcessEnv = process.env,
+  opts: ResolveOptions = {},
+): GantryPaths {
   const res = spawnSync("git", ["rev-parse", "--show-toplevel"], {
     cwd,
     encoding: "utf8",
@@ -88,11 +109,30 @@ export function resolvePaths(cwd: string, env: NodeJS.ProcessEnv = process.env):
   const pluginBase =
     env.CLAUDE_PLUGIN_DATA ||
     (env.CLAUDE_PLUGIN_ROOT ? pluginDataFromRoot(env.CLAUDE_PLUGIN_ROOT) : undefined);
-  const dataDir = path.join(pluginBase ?? terminalBase, "repos", worktreeHash);
+  const base = pluginBase ?? terminalBase;
+
+  let ws: LoadedWorkspace | undefined;
+  if (opts.workspaceFile !== undefined) {
+    ws = loadWorkspaceFile(path.resolve(cwd, opts.workspaceFile));
+    if (!ws.repos.some((r) => r.root === root)) {
+      throw new WorkspaceFileError(`workspace file ${ws.file}: does not list this repository (${root})`);
+    }
+  } else {
+    ws = findWorkspaceFile(root, { startAbove: logicalRootOf(cwd, root), home });
+  }
+
+  const dataDir = ws
+    ? path.join(base, "workspaces", createHash("sha256").update(ws.dir).digest("hex").slice(0, 16))
+    : path.join(base, "repos", worktreeHash);
+  const repo = ws ? (ws.repos.find((r) => r.root === root)?.name as string) : repoName(root);
+  const workspace: WorkspaceInfo = ws
+    ? { file: ws.file, repos: ws.repos }
+    : { file: null, repos: [{ name: repo, root }] };
 
   return {
     root,
-    repo: repoName(root),
+    repo,
+    workspace,
     worktreeHash,
     dataDir,
     dbPath: path.join(dataDir, "gantry.db"),

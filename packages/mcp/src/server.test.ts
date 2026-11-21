@@ -181,7 +181,7 @@ describe("lazy refresh", () => {
     repo.write("src/committed.ts", fn("fromHead"));
     repo.commit("add committed");
     expect((await call(client, "names")).json.names).toEqual(["clamp", "fromHead", "slugify", "working"]);
-    expect(repo.withStore((s) => s.getMeta("head_sha"))).toBe(repo.git("rev-parse", "HEAD").trim());
+    expect(repo.withStore((s) => s.headSha())).toBe(repo.git("rev-parse", "HEAD").trim());
   });
 
   it("indexes a repository that was never indexed on the first call", async () => {

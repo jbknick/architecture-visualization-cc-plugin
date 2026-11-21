@@ -250,7 +250,7 @@ describe("bundled CLI: vector tables and embeddings", () => {
     expect(r.code).toBe(0);
     const db = openBundleDb();
     try {
-      expect(db.getMeta("schema_version")).toBe("12");
+      expect(db.getMeta("schema_version")).toBe("13");
       expect(db.getMeta("vec_available")).toBe("1");
       expect(db.getMeta("embed_model")).toBe("jinaai/jina-embeddings-v2-base-code");
       expect(db.getMeta("embed_dim")).toBe("768");
@@ -535,7 +535,7 @@ describe("gantry review", () => {
     fx.git(["add", "-A"]);
     fx.git(["commit", "-m", "button"]);
     const before = openStore(db);
-    const indexedAt = before.getMeta("head_sha");
+    const indexedAt = before.headSha();
     before.close();
     const r = run(fx.dir, ["review", "main...feature", "--json"], env);
     expect(r.err).toBe("");
@@ -576,7 +576,7 @@ describe("gantry review", () => {
     expect(j.impact?.callersByHop[0]?.ids).toContain("sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage");
     // The index was not brought to the new HEAD: --json never heals.
     const after = openStore(db);
-    expect(after.getMeta("head_sha")).toBe(indexedAt);
+    expect(after.headSha()).toBe(indexedAt);
     after.close();
   });
 

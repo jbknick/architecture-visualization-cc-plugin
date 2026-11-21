@@ -85,7 +85,7 @@ describe("pages view", () => {
     const none = run<PagesResult>("pages", "filters=app=@acme/api");
     expect(none.nodes).toEqual([]);
     // The app list does not depend on the filter.
-    expect(none.apps.map((a) => a.id)).toEqual(["ws:@acme/web"]);
+    expect(none.apps.map((a) => a.id)).toEqual(["ws:pnpm-turbo:@acme/web"]);
     expect(run<PagesResult>("pages", "filters=app=@acme/web").nodes.length).toBeGreaterThan(0);
   });
 
@@ -98,7 +98,7 @@ describe("slices view", () => {
   it("uses the packages/* glob and falls back to first-level route segments for the app", () => {
     const r = run<SlicesResult>("slices");
     expect(r.layoutHint).toBe("nested-elk");
-    expect(r.routeFallback).toEqual(["ws:@acme/web"]);
+    expect(r.routeFallback).toEqual(["ws:pnpm-turbo:@acme/web"]);
     expect(r.nodes.filter((n) => n.kind === "slice").map((n) => n.id)).toEqual([
       "slice:apps/web#/",
       "slice:apps/web#/posts",

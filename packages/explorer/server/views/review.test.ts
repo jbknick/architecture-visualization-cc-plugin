@@ -407,7 +407,7 @@ describe("review view", () => {
     const counts = () => ({
       files: ctx.store.effectiveFiles().length,
       symbols: ctx.store.effectiveSymbols().length,
-      head: ctx.store.getMeta("head_sha"),
+      head: ctx.store.headSha(),
     });
     const before = counts();
     const a = await buildReview(ctx, opts({ range: "main...feature" }));

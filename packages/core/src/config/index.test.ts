@@ -13,6 +13,7 @@ beforeEach(() => {
   p = {
     root: tmp,
     repo: "repo",
+    workspace: { file: null, repos: [{ name: "repo", root: tmp }] },
     worktreeHash: "0".repeat(16),
     dataDir: path.join(tmp, "data"),
     dbPath: path.join(tmp, "data", "gantry.db"),

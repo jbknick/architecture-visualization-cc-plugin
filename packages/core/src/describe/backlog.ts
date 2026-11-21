@@ -7,7 +7,7 @@ import { pathOfFileId, repoOfId } from "../ids.js";
 import { parseFile } from "../lang/index.js";
 import type { ParsedFile } from "../parse/index.js";
 import { refreshDescriptionFts } from "../search/descfts.js";
-import type { Store } from "../store/index.js";
+import { type Store, safeRepo } from "../store/index.js";
 import type { Description, FactSheet, SymbolRecord } from "../types.js";
 import {
   buildFactSheet,
@@ -59,7 +59,7 @@ export function backlogPriority(kind: string, exported: boolean, filePath: strin
 
 /** Where to read file text from. `sources` (repo-relative path -> text) wins over `root`. */
 export interface SourceContext {
-  /** Repo root. Default: `meta.repo_root`, which the indexer records. */
+  /** Root of the repo the command runs in. Default: the root the indexer recorded for the repo (`repos.root`). */
   root?: string;
   sources?: Map<string, string>;
 }
@@ -87,13 +87,21 @@ export interface Estimate {
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
-function rootOf(store: Store, ctx: SourceContext): string | undefined {
-  return ctx.root ?? store.getMeta("repo_root");
-}
-
-function readSource(root: string | undefined, rel: string, ctx: SourceContext): string | undefined {
-  const mem = ctx.sources?.get(rel);
-  if (mem !== undefined) return mem;
+/**
+ * The text of the file a `file:` id names. `ctx.sources` (in-memory text by repo-relative path) and `ctx.root` belong to
+ * the repo the command runs in; any other repo of the workspace is read from the root the indexer recorded for it.
+ */
+export function readFileSource(store: Store, fileId: string, ctx: SourceContext): string | undefined {
+  const repo = repoOfId(fileId);
+  if (repo === undefined) return undefined;
+  const rel = pathOfFileId(fileId);
+  const entry = safeRepo(store);
+  const own = entry === undefined || entry === repo;
+  if (own) {
+    const mem = ctx.sources?.get(rel);
+    if (mem !== undefined) return mem;
+  }
+  const root = (own ? ctx.root : undefined) ?? store.repoRoot(repo);
   if (root === undefined) return undefined;
   try {
     return fs.readFileSync(path.join(root, rel), "utf8");
@@ -129,20 +137,20 @@ function computeTemplates(
   todo: [string, Candidate][],
   ctx: SourceContext,
 ): Map<string, Description> {
-  const root = rootOf(store, ctx);
   const byPath = new Map<string, [string, Candidate][]>();
   for (const item of todo) {
     // Only one-statement functions can have a template, and only TypeScript has templates (`templateFor`). A Go file
     // is not parsed here: its tree-sitter trees are freed only when the event loop turns, and this loop is synchronous,
     // so parsing every Go file held several GiB of native memory on a large repository (#358).
     if (item[1].sym.stmtCount !== 1 || item[1].sym.lang !== "typescript") continue;
-    const a = byPath.get(item[1].path) ?? [];
+    const a = byPath.get(item[1].sym.fileId) ?? [];
     a.push(item);
-    byPath.set(item[1].path, a);
+    byPath.set(item[1].sym.fileId, a);
   }
   const out = new Map<string, Description>();
-  for (const [p, items] of [...byPath].sort((a, b) => cmp(a[0], b[0]))) {
-    const source = readSource(root, p, ctx);
+  for (const [fileId, items] of [...byPath].sort((a, b) => cmp(a[0], b[0]))) {
+    const p = pathOfFileId(fileId);
+    const source = readFileSource(store, fileId, ctx);
     if (source === undefined) continue;
     let parsed: ParsedFile;
     try {
@@ -285,7 +293,6 @@ export function claimBatch(
   const batchId = randomUUID();
   const items: FactSheet[] = [];
   if (size <= 0) return { batchId, items };
-  const root = rootOf(store, ctx);
   store.tx(() => {
     releaseExpiredClaims(store);
     const page = Math.max(size * 3, 50);
@@ -309,8 +316,8 @@ export function claimBatch(
           drop.run(row.content_key);
           continue;
         }
-        const rel = pathOfFileId(sym.fileId);
-        if (!files.has(rel)) files.set(rel, readSource(root, rel, ctx));
+        const rel = sym.fileId;
+        if (!files.has(rel)) files.set(rel, readFileSource(store, rel, ctx));
         const source = files.get(rel);
         if (source === undefined) {
           kept++;

@@ -1,5 +1,6 @@
 import { parseSync } from "oxc-parser";
 import { isTestPath } from "../dup/filters.js";
+import { workspaceNameOfId } from "../ids.js";
 import { isNode, type Node, nodeArray, unwrap } from "../parse/ast.js";
 import type { ParsedFile } from "../parse/index.js";
 import type { LoadedRecipe } from "../recipe/load.js";
@@ -27,7 +28,7 @@ export type AdapterNodeKind = "route" | "endpoint" | "middleware" | "table" | "p
 
 export interface AdapterNode extends AdapterNodeRecord {
   kind: AdapterNodeKind;
-  /** Workspace id (`ws:<package name>`). */
+  /** Workspace id (`ws:<repo>:<package name>`). */
   ws: string;
 }
 
@@ -114,8 +115,8 @@ export interface AdapterRunContext {
 
 export const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
-/** Workspace package name used inside node ids (spec section 6): the workspace id without `ws:`. */
-export const wsName = (wsId: string): string => (wsId.startsWith("ws:") ? wsId.slice(3) : wsId);
+/** Workspace package name used inside node ids (spec section 6): the part of the workspace id after `ws:<repo>:`. */
+export const wsName = workspaceNameOfId;
 
 export function hasDependency(ws: WorkspaceRecord, names: readonly string[]): boolean {
   return names.some((n) => ws.deps.includes(n) || ws.frameworks.includes(n));

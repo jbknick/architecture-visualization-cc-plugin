@@ -58,7 +58,7 @@ async function setup(name: "overlay-groups" | "files", groups: Group[], files?: 
   fx = name === "files" ? await materializeFiles(files ?? {}) : await materializeFixture(name);
   const paths = resolvePaths(fx.dir, env);
   await indexRepo(paths, { layer: "main" });
-  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   for (const g of groups) saveGroup(store, g);
   store.close();
   return paths;

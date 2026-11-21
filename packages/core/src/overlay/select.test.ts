@@ -24,7 +24,7 @@ beforeAll(async () => {
   const paths = resolvePaths(fx.dir, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
   mkdirSync(paths.dataDir, { recursive: true });
   await indexRepo(paths, { layer: "main" });
-  store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   nodes = [
     ...store
       .listWorkspaces()

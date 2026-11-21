@@ -6,7 +6,7 @@ import { isSensitive } from "../discover/index.js";
 import { normalizeForEmbedding } from "../hash/index.js";
 import { pathOfFileId, repoOfId } from "../ids.js";
 import { parseFile } from "../lang/index.js";
-import type { Store } from "../store/index.js";
+import { type Store, safeRepo } from "../store/index.js";
 import type { SymbolRecord } from "../types.js";
 import { EMBED_BATCH_SIZE, type Embedder, getEmbedder } from "./model.js";
 import {
@@ -168,15 +168,19 @@ export function missingCode(store: Store, have: Set<string>): { list: CodeCandid
 }
 
 /** Normalized, truncated source of a candidate. Reads and parses one file at a time (candidates are grouped by path). */
-function makeCodeText(root: string): (c: CodeCandidate) => string | null {
-  let cached: { path: string; source: string; parsed: ReturnType<typeof parseFile> } | null = null;
+function makeCodeText(store: Store, root: string): (c: CodeCandidate) => string | null {
+  let cached: { fileId: string; source: string; parsed: ReturnType<typeof parseFile> } | null = null;
+  const own = safeRepo(store);
   return (c) => {
-    if (cached?.path !== c.path) {
+    if (cached?.fileId !== c.symbol.fileId) {
       cached = null;
       try {
-        const source = readFileSync(join(root, c.path), "utf8");
+        // `root` is the root of the repo the command runs in; the other repos of a workspace have their own.
+        const repo = repoOfId(c.symbol.id) as string;
+        const repoRoot = own === undefined || own === repo ? root : (store.repoRoot(repo) ?? root);
+        const source = readFileSync(join(repoRoot, c.path), "utf8");
         cached = {
-          path: c.path,
+          fileId: c.symbol.fileId,
           source,
           parsed: parseFile(repoOfId(c.symbol.id) as string, c.path, source),
         };
@@ -246,7 +250,7 @@ export async function embedPending(
     const m = missingCode(store, storedKeys(store, "vec_code"));
     codeList = m.list;
     result.belowFloor = m.belowFloor;
-    codeText = makeCodeText(opts.root);
+    codeText = makeCodeText(store, opts.root);
   }
   result.remainingDescriptions = descRows.length;
   result.remainingCode = codeList.length;

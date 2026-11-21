@@ -134,9 +134,13 @@ function hasTypeScriptFiles(root: string): boolean {
  * Workspaces of every language module. A repository with Go modules and no TypeScript has no `ws:.` fallback
  * workspace: that record exists to hold the files of a TypeScript repo that declares no packages.
  */
-export function detectAllWorkspaces(root: string, config: WorkspaceDetectionConfig): WorkspaceRecord[] {
-  const ts = typescript.detectWorkspaces(root, config);
-  const goWs = go.detectWorkspaces(root, config);
+export function detectAllWorkspaces(
+  root: string,
+  config: WorkspaceDetectionConfig,
+  repo: string,
+): WorkspaceRecord[] {
+  const ts = typescript.detectWorkspaces(root, config, repo);
+  const goWs = go.detectWorkspaces(root, config, repo);
   if (goWs.length === 0) return ts;
   const tsKept = ts.length > 1 || existsSync(join(root, "package.json")) || hasTypeScriptFiles(root);
   return [...(tsKept ? ts : []), ...goWs].sort((a, b) => cmp(a.dir, b.dir) || cmp(a.id, b.id));

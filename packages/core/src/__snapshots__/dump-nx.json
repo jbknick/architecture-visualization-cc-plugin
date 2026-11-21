@@ -1,7 +1,13 @@
 {
+  "repos": [
+    {
+      "name": "nx"
+    }
+  ],
   "workspaces": [
     {
-      "id": "ws:.",
+      "id": "ws:nx:.",
+      "repo": "nx",
       "name": "nx-fixture",
       "dir": ".",
       "kind": "unknown",
@@ -12,7 +18,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:cart",
+      "id": "ws:nx:cart",
+      "repo": "nx",
       "name": "cart",
       "dir": "libs/cart",
       "kind": "package",
@@ -21,7 +28,8 @@
       "exportsMap": null
     },
     {
-      "id": "ws:shop",
+      "id": "ws:nx:shop",
+      "repo": "nx",
       "name": "shop",
       "dir": "apps/shop",
       "kind": "app",
@@ -33,23 +41,26 @@
   "files": [
     {
       "id": "file:nx:apps/shop/src/main.ts",
+      "repo": "nx",
       "path": "apps/shop/src/main.ts",
       "lang": "typescript",
-      "workspaceId": "ws:shop",
+      "workspaceId": "ws:nx:shop",
       "contentHash": "f9d107c8bd3f53540cf5085ce35c6e1208f3195904db743860cf2f96091c8abf"
     },
     {
       "id": "file:nx:libs/cart/src/cart.ts",
+      "repo": "nx",
       "path": "libs/cart/src/cart.ts",
       "lang": "typescript",
-      "workspaceId": "ws:cart",
+      "workspaceId": "ws:nx:cart",
       "contentHash": "59176bf4268fc2bf09c6dd1c3f1bfb3fc115bc91710687ca07491bdc26309271"
     },
     {
       "id": "file:nx:libs/cart/src/index.ts",
+      "repo": "nx",
       "path": "libs/cart/src/index.ts",
       "lang": "typescript",
-      "workspaceId": "ws:cart",
+      "workspaceId": "ws:nx:cart",
       "contentHash": "593945827ab6acd3725bebf4fb4d12e01db119de19a5ca77f8740e9d6921b4ab"
     }
   ],
@@ -250,7 +261,7 @@
       "fileId": "file:nx:libs/cart/src/cart.ts"
     },
     {
-      "src": "ws:cart",
+      "src": "ws:nx:cart",
       "dst": "file:nx:libs/cart/src/cart.ts",
       "kind": "contains",
       "confidence": "high",
@@ -259,7 +270,7 @@
       "fileId": "file:nx:libs/cart/src/cart.ts"
     },
     {
-      "src": "ws:cart",
+      "src": "ws:nx:cart",
       "dst": "file:nx:libs/cart/src/index.ts",
       "kind": "contains",
       "confidence": "high",
@@ -268,7 +279,7 @@
       "fileId": "file:nx:libs/cart/src/index.ts"
     },
     {
-      "src": "ws:shop",
+      "src": "ws:nx:shop",
       "dst": "file:nx:apps/shop/src/main.ts",
       "kind": "contains",
       "confidence": "high",

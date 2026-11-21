@@ -3,6 +3,7 @@
 // cells outside the viewport are skipped, which keeps 30k-function maps smooth.
 
 import { drawBadgeMarks, m2Spec } from "../badges.ts";
+import { isRootWorkspaceId } from "../ids.ts";
 import { decollideMarkers } from "../rankedFiles/markers.ts";
 import type { LayerPaint } from "../views/reviewModel.ts";
 import { GROUP_KIND, kindTier, type TreeNode } from "./hierarchy.ts";
@@ -885,7 +886,7 @@ function drawTitle(
   const { ctx, scene, theme, cam, geo } = env;
   const realName = nodeTitle(scene, i);
   const baseSub = subtitleParts(scene, i);
-  const isRepoRoot = scene.nodes[i]?.id === "ws:.";
+  const isRepoRoot = isRootWorkspaceId(scene.nodes[i]?.id ?? "");
   // The title block is at most `WS_HEAD_MAX` px tall whatever the zoom: it fills the header the cells leave free,
   // or the whole box when there is nothing inside to leave room for.
   // A tiny box (no tiles drawn) keeps its title and counts and uses the whole box for them.

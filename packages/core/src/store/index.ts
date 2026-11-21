@@ -6,6 +6,7 @@ export {
   StaleStoreError,
   splitIdentifier,
 } from "./db.js";
-export type { Database, Store } from "./repo.js";
+export type { Database, RepoRow, Store } from "./repo.js";
+export { safeRepo } from "./repo.js";
 export { snapshotOf, snapshotStore } from "./snapshot.js";
 export { resetStaleStore } from "./stale.js";

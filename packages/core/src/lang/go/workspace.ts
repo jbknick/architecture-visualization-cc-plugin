@@ -1,6 +1,6 @@
 import { type Dirent, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileId as makeFileId } from "../../ids.js";
+import { fileId as makeFileId, workspaceId } from "../../ids.js";
 import type { EdgeRecord, WorkspaceRecord } from "../../types.js";
 import type { WorkspaceDetectionConfig } from "../../workspace/index.js";
 import { goAvailable, warnGoSkipped } from "./grammar.js";
@@ -121,11 +121,15 @@ function hasMainPackage(root: string, dir: string, nested: ReadonlySet<string>):
 }
 
 /**
- * Go modules as workspaces (spec section 5): every directory with a `go.mod` is `ws:<module path>`, kind `app` when
+ * Go modules as workspaces (spec section 5): every directory with a `go.mod` is `ws:<repo>:<module path>`, kind `app` when
  * it holds a `package main` and `package` otherwise; `require` lines are the workspace's `deps`.
  * Empty when the Go grammar is unavailable on this platform (the skip line is printed once).
  */
-export function detectGoWorkspaces(root: string, config: WorkspaceDetectionConfig): WorkspaceRecord[] {
+export function detectGoWorkspaces(
+  root: string,
+  config: WorkspaceDetectionConfig,
+  repo: string,
+): WorkspaceRecord[] {
   const dirs = moduleDirs(root);
   if (dirs.length === 0) return [];
   if (!goAvailable()) {
@@ -141,7 +145,7 @@ export function detectGoWorkspaces(root: string, config: WorkspaceDetectionConfi
     if (text === null || path === null) continue;
     const nested = new Set([...dirSet].filter((d) => d !== dir && (dir === "." || d.startsWith(`${dir}/`))));
     const record: WorkspaceRecord = {
-      id: `ws:${path}`,
+      id: workspaceId(repo, path),
       name: path,
       dir,
       kind: hasMainPackage(root, dir, nested) ? "app" : "package",
@@ -160,7 +164,7 @@ export function detectGoWorkspaces(root: string, config: WorkspaceDetectionConfi
   // Keep ids unique: a module path declared twice falls back to the directory.
   const seen = new Set<string>();
   for (const r of records) {
-    if (seen.has(r.id)) r.id = `ws:${r.dir}`;
+    if (seen.has(r.id)) r.id = workspaceId(repo, r.dir);
     seen.add(r.id);
   }
   return records;

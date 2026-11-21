@@ -49,7 +49,7 @@ describe("readRouteCall", () => {
 
 describe("detectTanstackRoutes", () => {
   const web: WorkspaceRecord = {
-    id: "ws:@a/web",
+    id: "ws:repo:@a/web",
     name: "@a/web",
     dir: "apps/web",
     kind: "app",
@@ -59,7 +59,7 @@ describe("detectTanstackRoutes", () => {
   };
   const lib: WorkspaceRecord = {
     ...web,
-    id: "ws:@a/lib",
+    id: "ws:repo:@a/lib",
     name: "@a/lib",
     dir: "packages/lib",
     kind: "package",
@@ -122,7 +122,7 @@ describe("detectTanstackRoutes", () => {
   });
 
   it("a root-level file in a root workspace maps relative to the routes directory", () => {
-    const rootWs: WorkspaceRecord = { ...web, id: "ws:.", name: "root", dir: "." };
+    const rootWs: WorkspaceRecord = { ...web, id: "ws:repo:.", name: "root", dir: "." };
     const r = detectTanstackRoutes({
       root: "/nonexistent",
       repo: "repo",
@@ -131,7 +131,7 @@ describe("detectTanstackRoutes", () => {
         {
           path: "src/routes/index.tsx",
           id: "file:repo:src/routes/index.tsx",
-          workspaceId: "ws:.",
+          workspaceId: "ws:repo:.",
           source: 'export const Route = createFileRoute("/")({});',
         },
       ],

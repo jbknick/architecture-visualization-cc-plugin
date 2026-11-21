@@ -1,0 +1,10 @@
+{
+  "name": "mr-web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@mr/contracts": "^1.0.0",
+    "react": "^19.0.0"
+  }
+}

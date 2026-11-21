@@ -82,10 +82,10 @@ interface FileRow {
   deleted: number;
 }
 
-function layerRows(store: Store, layer: "main" | "working"): Map<string, FileRow> {
+function layerRows(store: Store, layer: "main" | "working", repo: string): Map<string, FileRow> {
   const rows = store.db
-    .prepare("SELECT id, path, content_hash, mtime_ms, deleted FROM files WHERE layer = ?")
-    .all(layer) as FileRow[];
+    .prepare("SELECT id, path, content_hash, mtime_ms, deleted FROM files WHERE layer = ? AND repo = ?")
+    .all(layer, repo) as FileRow[];
   return new Map(rows.map((r) => [r.id, r]));
 }
 
@@ -101,9 +101,9 @@ function diskHash(root: string, rel: string): string | undefined {
  * Drops working rows that the working tree no longer differs from main on: same bytes as main's row,
  * or an orphan row for a file that is gone on both sides.
  */
-function pruneWorking(store: Store, root: string, ids: Iterable<string>): void {
-  const working = layerRows(store, "working");
-  const main = layerRows(store, "main");
+function pruneWorking(store: Store, root: string, repo: string, ids: Iterable<string>): void {
+  const working = layerRows(store, "working", repo);
+  const main = layerRows(store, "main", repo);
   for (const id of ids) {
     const w = working.get(id);
     if (!w) continue;
@@ -147,7 +147,7 @@ function dropRedundantWorking(store: Store): void {
  * the indexer's own transactions nest inside it as savepoints. A failure rolls everything back.
  */
 async function withWriteLock<T>(paths: GantryPaths, fn: (store: Store) => Promise<T>): Promise<T> {
-  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   try {
     store.db.exec("BEGIN IMMEDIATE");
     try {
@@ -163,17 +163,17 @@ async function withWriteLock<T>(paths: GantryPaths, fn: (store: Store) => Promis
   }
 }
 
-function indexedFileCount(store: Store): number {
+function indexedFileCount(store: Store, repo: string): number {
   const r = store.db
     .prepare(
-      "SELECT COUNT(*) AS n FROM files WHERE layer = 'main' AND deleted = 0 AND path NOT LIKE '%package.json'",
+      "SELECT COUNT(*) AS n FROM files WHERE layer = 'main' AND deleted = 0 AND repo = ? AND path NOT LIKE '%package.json'",
     )
-    .get() as { n: number };
+    .get(repo) as { n: number };
   return r.n;
 }
 
 /**
- * Brings the main layer to `HEAD` (spec section 11). Incremental from `meta.head_sha` (or `opts.from`)
+ * Brings the main layer to `HEAD` (spec section 11). Incremental from `repos.head_sha` of this repo (or `opts.from`)
  * when the diff is small, a full main re-index otherwise. Never calls a model. With `opts.reattach` it also
  * re-attaches hand-picked overlay entries to moved functions (#288); a Claude Code hook never sets it (budget).
  */
@@ -191,7 +191,7 @@ export async function heal(
 
   return withWriteLock(paths, async (store) => {
     // Read after taking the lock: a concurrent heal that finished first leaves head_sha == HEAD.
-    const oldSha = opts?.from ?? store.getMeta("head_sha");
+    const oldSha = opts?.from ?? store.headSha(paths.repo);
     const newSha = revParseHead(root);
     if (!newSha) return done(0, false);
     if (oldSha === newSha) {
@@ -203,7 +203,7 @@ export async function heal(
     const reachable = oldSha !== undefined && git(root, ["cat-file", "-e", `${oldSha}^{commit}`]).ok;
     const config = loadConfig(paths);
     const diff = reachable ? diffNameStatus(root, oldSha as string, newSha) : undefined;
-    const total = indexedFileCount(store);
+    const total = indexedFileCount(store, paths.repo);
 
     const changedPaths = diff?.filter(([, p]) => isIndexable(p, config)) ?? [];
     const structural = diff?.some(([, p]) => STRUCTURAL.test(p)) ?? false;
@@ -213,8 +213,8 @@ export async function heal(
     if (full) {
       const r = await indexRepo(paths, { layer: "main", store });
       changed = r.files;
-      store.setMeta("head_sha", newSha);
-      pruneWorking(store, root, layerRows(store, "working").keys());
+      store.setHeadSha(paths.repo, newSha);
+      pruneWorking(store, root, paths.repo, layerRows(store, "working", paths.repo).keys());
     } else {
       const live = changedPaths.filter(([s]) => s !== "D").map(([, p]) => p);
       const gone = changedPaths.filter(([s]) => s === "D").map(([, p]) => p);
@@ -233,16 +233,17 @@ export async function heal(
         pruneWorking(
           store,
           root,
+          paths.repo,
           changedPaths.map(([, p]) => fileId(paths.repo, p)),
         );
         // Edges of the files still modified in the tree may point into what just changed.
-        const keep = [...layerRows(store, "working").values()]
+        const keep = [...layerRows(store, "working", paths.repo).values()]
           .filter((w) => !w.deleted && isIndexable(w.path, config))
           .map((w) => w.path);
         if (keep.length > 0) await indexRepo(paths, { layer: "working", files: keep, store });
         dropRedundantWorking(store);
       }
-      store.setMeta("head_sha", newSha);
+      store.setHeadSha(paths.repo, newSha);
     }
     // Derived edges follow the main layer; exact and near only (vector edges are rebuilt by `gantry embed`).
     if (changed > 0) await rebuildSimilarEdges(store, { tiers: ["exact", "near"] });
@@ -294,8 +295,8 @@ export async function refreshWorking(
 
   return withWriteLock(paths, async (store) => {
     const dirty = new Set(statusPaths(root).filter((p) => isIndexable(p, config)));
-    const working = layerRows(store, "working");
-    const main = layerRows(store, "main");
+    const working = layerRows(store, "working", paths.repo);
+    const main = layerRows(store, "main", paths.repo);
     const before = new Set(working.keys());
 
     const reindex: string[] = [];
@@ -344,7 +345,7 @@ export async function refreshWorking(
     dropRedundantWorking(store);
     store.setMeta("last_refresh_at", new Date().toISOString());
 
-    const after = layerRows(store, "working");
+    const after = layerRows(store, "working", paths.repo);
     let cleared = 0;
     for (const id of before) if (!after.has(id)) cleared++;
     if (opts?.reattach) reattachOverlay(store);
@@ -360,7 +361,7 @@ export interface StaleFiles {
 }
 
 function hasMainIndex(paths: GantryPaths): boolean {
-  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   try {
     return store.getMeta("indexed_at") !== undefined;
   } finally {
@@ -380,7 +381,7 @@ export async function rebuildIndex(paths: GantryPaths): Promise<void> {
 /** True when `HEAD` is not the commit the main layer was built for, so a heal is due. One `git rev-parse`. */
 export function healPending(paths: GantryPaths, store: Store): boolean {
   const headSha = revParseHead(paths.root);
-  return headSha !== undefined && store.getMeta("head_sha") !== headSha;
+  return headSha !== undefined && store.headSha(paths.repo) !== headSha;
 }
 
 /**
@@ -392,7 +393,7 @@ export function staleFiles(paths: GantryPaths, store: Store): StaleFiles {
   const root = paths.root;
   const config = loadConfig(paths);
   const out = new Set<string>();
-  const stored = store.getMeta("head_sha");
+  const stored = store.headSha(paths.repo);
   const headSha = revParseHead(root);
   const head = headSha !== undefined && stored !== headSha;
   if (head && stored !== undefined && git(root, ["cat-file", "-e", `${stored}^{commit}`]).ok) {
@@ -401,8 +402,8 @@ export function staleFiles(paths: GantryPaths, store: Store): StaleFiles {
   }
 
   const dirty = new Set(statusPaths(root).filter((p) => isIndexable(p, config)));
-  const working = layerRows(store, "working");
-  const main = layerRows(store, "main");
+  const working = layerRows(store, "working", paths.repo);
+  const main = layerRows(store, "main", paths.repo);
   for (const p of dirty) {
     const id = fileId(paths.repo, p);
     const w = working.get(id);

@@ -39,5 +39,6 @@ export * from "./store/index.js";
 export * from "./trace.js";
 export * from "./types.js";
 export * from "./usage/index.js";
+export * from "./workspace/file.js";
 export * from "./workspace/globs.js";
 export * from "./workspace/index.js";

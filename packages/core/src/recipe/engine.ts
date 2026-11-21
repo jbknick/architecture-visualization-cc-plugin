@@ -10,7 +10,7 @@ import {
   stringValue,
   symbolForName,
 } from "../adapters/framework.js";
-import { fileIdOfSymId, routeId as makeRouteId, nameOfSymId, symKey } from "../ids.js";
+import { fileIdOfSymId, routeId as makeRouteId, nameOfSymId, symKey, workspaceNameOfId } from "../ids.js";
 import { isNode, type Node, nodeArray } from "../parse/ast.js";
 import type { ParsedFile } from "../parse/index.js";
 import type { WorkspaceRecord } from "../types.js";
@@ -672,7 +672,7 @@ export function applyRecipe(args: {
     edges.push(...r.edges);
   }
   for (const { fact, routeId } of genericRoutes) {
-    const wsn = fact.file.ws.id.startsWith("ws:") ? fact.file.ws.id.slice(3) : fact.file.ws.id;
+    const wsn = workspaceNameOfId(fact.file.ws.id);
     nodes.push({
       id: makeRouteId(args.repo, wsn, routeId),
       kind: "route",

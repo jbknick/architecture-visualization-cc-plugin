@@ -1,7 +1,7 @@
 import { fileIdOfSymId, isFileId, isSymId, pathOfFileId, qualifyId, symIdOfFileId, tableId } from "./ids.js";
 import { EVIDENCE_CAP } from "./resolve/index.js";
 import { nodeInfo } from "./search/node.js";
-import type { Store } from "./store/index.js";
+import { type Store, safeRepo } from "./store/index.js";
 import type { AdapterNodeRecord, EdgeKind, EdgeRecord } from "./types.js";
 
 /**
@@ -122,7 +122,7 @@ export function resolveTraceTarget(store: Store, target: string): string | null 
   const t = target.trim();
   if (t === "") return null;
   const adapters = store.effectiveAdapterNodes();
-  const repo = store.getMeta("repo");
+  const repo = safeRepo(store);
   const long = repo === undefined ? undefined : qualifyId(repo, t);
   if (adapters.some((n) => n.id === t)) return t;
   if (long !== undefined && adapters.some((n) => n.id === long)) return long;

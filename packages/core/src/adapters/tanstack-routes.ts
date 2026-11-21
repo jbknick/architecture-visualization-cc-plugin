@@ -1,5 +1,5 @@
 import { parseSync } from "oxc-parser";
-import { routeId as makeRouteId } from "../ids.js";
+import { routeId as makeRouteId, workspaceNameOfId } from "../ids.js";
 import { isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
 import type { ParsedFile } from "../parse/index.js";
 import {
@@ -163,7 +163,7 @@ export function detectTanstackRoutes(input: DetectRoutesInput): DetectedRoutes {
   for (const ws of [...input.workspaces].sort((a, b) => cmp(a.id, b.id))) {
     if (!isRouterWorkspace(ws)) continue;
     const dir = `${routesDirectoryFor(input.root, ws)}/`;
-    const wsName = ws.id.startsWith("ws:") ? ws.id.slice(3) : ws.id;
+    const wsName = workspaceNameOfId(ws.id);
     const byId = new Map<string, Found>();
     const files = input.files
       .filter((f) => f.workspaceId === ws.id && f.path.startsWith(dir))

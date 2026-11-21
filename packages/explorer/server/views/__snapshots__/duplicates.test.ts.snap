@@ -29,7 +29,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
           "path": "packages/utils/src/date.ts",
           "score": 1,
           "tier": null,
-          "workspaceId": "ws:@acme/utils",
+          "workspaceId": "ws:pnpm-turbo:@acme/utils",
         },
         {
           "advice": {
@@ -49,7 +49,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
           "path": "packages/utils/src/time.ts",
           "score": 1,
           "tier": "exact",
-          "workspaceId": "ws:@acme/utils",
+          "workspaceId": "ws:pnpm-turbo:@acme/utils",
         },
       ],
       "rank": 44,
@@ -62,7 +62,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
         "semantic": 0,
       },
       "workspaces": [
-        "ws:@acme/utils",
+        "ws:pnpm-turbo:@acme/utils",
       ],
     },
     {
@@ -91,7 +91,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
           "path": "packages/utils/src/slug.ts",
           "score": 1,
           "tier": null,
-          "workspaceId": "ws:@acme/utils",
+          "workspaceId": "ws:pnpm-turbo:@acme/utils",
         },
         {
           "advice": {
@@ -111,7 +111,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
           "path": "apps/web/src/lib/slug.ts",
           "score": 1,
           "tier": "exact",
-          "workspaceId": "ws:@acme/web",
+          "workspaceId": "ws:pnpm-turbo:@acme/web",
         },
       ],
       "rank": 32,
@@ -124,8 +124,8 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
         "semantic": 0,
       },
       "workspaces": [
-        "ws:@acme/utils",
-        "ws:@acme/web",
+        "ws:pnpm-turbo:@acme/utils",
+        "ws:pnpm-turbo:@acme/web",
       ],
     },
   ],
@@ -159,7 +159,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
         "functions": 1,
         "loc": 8,
       },
-      "workspace": "ws:@acme/web",
+      "workspace": "ws:pnpm-turbo:@acme/web",
     },
     {
       "badges": [
@@ -174,7 +174,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
         "functions": 1,
         "loc": 11,
       },
-      "workspace": "ws:@acme/utils",
+      "workspace": "ws:pnpm-turbo:@acme/utils",
     },
     {
       "badges": [
@@ -189,7 +189,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
         "functions": 1,
         "loc": 8,
       },
-      "workspace": "ws:@acme/utils",
+      "workspace": "ws:pnpm-turbo:@acme/utils",
     },
     {
       "id": "sym:pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
@@ -201,7 +201,7 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
         "functions": 1,
         "loc": 11,
       },
-      "workspace": "ws:@acme/utils",
+      "workspace": "ws:pnpm-turbo:@acme/utils",
     },
   ],
   "overlay": {
@@ -225,15 +225,15 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
       "clusters": 1,
       "functions": 2,
       "workspaces": [
-        "ws:@acme/utils",
+        "ws:pnpm-turbo:@acme/utils",
       ],
     },
     {
       "clusters": 1,
       "functions": 2,
       "workspaces": [
-        "ws:@acme/utils",
-        "ws:@acme/web",
+        "ws:pnpm-turbo:@acme/utils",
+        "ws:pnpm-turbo:@acme/web",
       ],
     },
   ],
@@ -245,37 +245,37 @@ exports[`duplicates view > snapshot: fixture clusters 1`] = `
   },
   "workspaces": [
     {
-      "id": "ws:.",
+      "id": "ws:pnpm-turbo:.",
       "kind": "unknown",
       "name": "pnpm-turbo-root",
       "shortLabel": "pnpm-turbo-root",
     },
     {
-      "id": "ws:@acme/api",
+      "id": "ws:pnpm-turbo:@acme/api",
       "kind": "app",
       "name": "@acme/api",
       "shortLabel": "api",
     },
     {
-      "id": "ws:@acme/db",
+      "id": "ws:pnpm-turbo:@acme/db",
       "kind": "package",
       "name": "@acme/db",
       "shortLabel": "db",
     },
     {
-      "id": "ws:@acme/ui",
+      "id": "ws:pnpm-turbo:@acme/ui",
       "kind": "package",
       "name": "@acme/ui",
       "shortLabel": "ui",
     },
     {
-      "id": "ws:@acme/utils",
+      "id": "ws:pnpm-turbo:@acme/utils",
       "kind": "package",
       "name": "@acme/utils",
       "shortLabel": "utils",
     },
     {
-      "id": "ws:@acme/web",
+      "id": "ws:pnpm-turbo:@acme/web",
       "kind": "app",
       "name": "@acme/web",
       "shortLabel": "web",

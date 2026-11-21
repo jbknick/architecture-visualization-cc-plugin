@@ -91,7 +91,7 @@ describe("adapters on fixtures/pnpm-turbo", () => {
     const post = node(g, "ep:pnpm-turbo:@acme/api:POST /posts");
     expect(get).toMatchObject({
       kind: "endpoint",
-      ws: "ws:@acme/api",
+      ws: "ws:pnpm-turbo:@acme/api",
       fileId: "file:pnpm-turbo:apps/api/src/app.ts",
     });
     expect(get?.data).toMatchObject({
@@ -112,9 +112,11 @@ describe("adapters on fixtures/pnpm-turbo", () => {
 
   it("skips workspaces without the framework dependency", () => {
     // apps/web has TanStack Router but neither hono nor TanStack Start; packages have neither.
-    const kinds = new Set(g.nodes.filter((n) => n.ws === "ws:@acme/web").map((n) => n.kind));
+    const kinds = new Set(g.nodes.filter((n) => n.ws === "ws:pnpm-turbo:@acme/web").map((n) => n.kind));
     expect([...kinds]).toEqual(["route"]);
-    expect(g.nodes.filter((n) => n.kind === "endpoint").every((n) => n.ws === "ws:@acme/api")).toBe(true);
+    expect(
+      g.nodes.filter((n) => n.kind === "endpoint").every((n) => n.ws === "ws:pnpm-turbo:@acme/api"),
+    ).toBe(true);
   });
 
   it("finds the oRPC procedures posts.list and posts.create with their handlers", () => {
@@ -125,7 +127,7 @@ describe("adapters on fixtures/pnpm-turbo", () => {
     ]);
     expect(node(g, "ep:pnpm-turbo:@acme/api:rpc posts.list")).toMatchObject({
       kind: "endpoint",
-      ws: "ws:@acme/api",
+      ws: "ws:pnpm-turbo:@acme/api",
       fileId: "file:pnpm-turbo:apps/api/src/router.ts",
       data: { path: "posts.list", router: "apps/api/src/router.ts#router", handler: "inline" },
     });
@@ -142,7 +144,7 @@ describe("adapters on fixtures/pnpm-turbo", () => {
     const tables = g.nodes.filter((n) => n.kind === "table");
     expect(tables.map((n) => n.id)).toEqual(["table:pnpm-turbo:posts", "table:pnpm-turbo:users"]);
     expect(node(g, "table:pnpm-turbo:posts")).toMatchObject({
-      ws: "ws:@acme/db",
+      ws: "ws:pnpm-turbo:@acme/db",
       fileId: "file:pnpm-turbo:packages/db/src/schema.ts",
       data: {
         adapter: "drizzle",
@@ -272,7 +274,7 @@ describe("adapters on fixtures/adapters", () => {
   it("skips test files and workspaces without the framework dependency", () => {
     const ids = g.nodes.map((n) => n.id);
     expect(ids.some((id) => id.includes("only-in-tests"))).toBe(false);
-    expect(g.nodes.some((n) => n.ws === "ws:@demo/legacy")).toBe(false);
+    expect(g.nodes.some((n) => n.ws === "ws:adapters:@demo/legacy")).toBe(false);
     expect(ids.some((id) => id.includes("legacy"))).toBe(false);
     expect(g.edges.some((e) => e.fileId.startsWith("file:adapters:packages/legacy/"))).toBe(false);
   });
@@ -338,8 +340,8 @@ describe("adapters on fixtures/adapters", () => {
   it("finds Drizzle tables with columns (object and callback forms)", () => {
     const tables = g.nodes.filter((n) => n.kind === "table");
     expect(tables.map((n) => [n.id, n.ws, n.data.columns])).toEqual([
-      ["table:adapters:posts", "ws:@demo/db", ["id", "title", "authorId", "views"]],
-      ["table:adapters:users", "ws:@demo/db", ["id", "name"]],
+      ["table:adapters:posts", "ws:adapters:@demo/db", ["id", "title", "authorId", "views"]],
+      ["table:adapters:users", "ws:adapters:@demo/db", ["id", "name"]],
     ]);
   });
 

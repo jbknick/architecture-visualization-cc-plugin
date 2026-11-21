@@ -1,7 +1,13 @@
 {
+  "repos": [
+    {
+      "name": "single-pkg"
+    }
+  ],
   "workspaces": [
     {
-      "id": "ws:.",
+      "id": "ws:single-pkg:.",
+      "repo": "single-pkg",
       "name": "single-pkg",
       "dir": ".",
       "kind": "unknown",
@@ -15,79 +21,90 @@
   "files": [
     {
       "id": "file:single-pkg:src/config.ts",
+      "repo": "single-pkg",
       "path": "src/config.ts",
       "lang": "typescript",
-      "workspaceId": "ws:.",
+      "workspaceId": "ws:single-pkg:.",
       "contentHash": "2ed33a9a1f460e7d056a5646965b181f7bcf5100a786281b61d00aca84b193d7"
     },
     {
       "id": "file:single-pkg:src/counter.ts",
+      "repo": "single-pkg",
       "path": "src/counter.ts",
       "lang": "typescript",
-      "workspaceId": "ws:.",
+      "workspaceId": "ws:single-pkg:.",
       "contentHash": "ccfcd225204f6e59db165327f0157a5fad6445460722afeecfe5b2b385896f2a"
     },
     {
       "id": "file:single-pkg:src/greet.ts",
+      "repo": "single-pkg",
       "path": "src/greet.ts",
       "lang": "typescript",
-      "workspaceId": "ws:.",
+      "workspaceId": "ws:single-pkg:.",
       "contentHash": "4558d07c049d6592fa810ddaed3f91ffb2555b2a29faedb60f5e054ce03e3788"
     },
     {
       "id": "file:single-pkg:src/index.ts",
+      "repo": "single-pkg",
       "path": "src/index.ts",
       "lang": "typescript",
-      "workspaceId": "ws:.",
+      "workspaceId": "ws:single-pkg:.",
       "contentHash": "6e5bd325174542573070bdb29343d3dff507dfcc57cf218eb8f81331c0d73295"
     },
     {
       "id": "file:single-pkg:src/main.ts",
+      "repo": "single-pkg",
       "path": "src/main.ts",
       "lang": "typescript",
-      "workspaceId": "ws:.",
+      "workspaceId": "ws:single-pkg:.",
       "contentHash": "4cb32f750f05f10e907bef730ec84a373bc3828d9360a148fc677997962628ec"
     },
     {
       "id": "file:single-pkg:src/math.ts",
+      "repo": "single-pkg",
       "path": "src/math.ts",
       "lang": "typescript",
-      "workspaceId": "ws:.",
+      "workspaceId": "ws:single-pkg:.",
       "contentHash": "00d6297a00733079f4846e86744df6da6a7cbfd443922c97125d2b8a5e92d5f9"
     },
     {
       "id": "file:single-pkg:src/types.ts",
+      "repo": "single-pkg",
       "path": "src/types.ts",
       "lang": "typescript",
-      "workspaceId": "ws:.",
+      "workspaceId": "ws:single-pkg:.",
       "contentHash": "18cfd3070ddb27ba287157587ef78a2fb8de2ce7881391c5b5166bf8106fa075"
     },
     {
       "id": "file:single-pkg:src/users.ts",
+      "repo": "single-pkg",
       "path": "src/users.ts",
       "lang": "typescript",
-      "workspaceId": "ws:.",
+      "workspaceId": "ws:single-pkg:.",
       "contentHash": "588cbd7666fb82481760f5efd3e7cc4ad911f69af047fe05615a157a4e74cccb"
     },
     {
       "id": "file:single-pkg:src/util/format.ts",
+      "repo": "single-pkg",
       "path": "src/util/format.ts",
       "lang": "typescript",
-      "workspaceId": "ws:.",
+      "workspaceId": "ws:single-pkg:.",
       "contentHash": "6f868ada7f2b16e99f6ea742b1c89b9d966a62572894a9f896163663d7dd4c29"
     },
     {
       "id": "file:single-pkg:src/util/strings.ts",
+      "repo": "single-pkg",
       "path": "src/util/strings.ts",
       "lang": "typescript",
-      "workspaceId": "ws:.",
+      "workspaceId": "ws:single-pkg:.",
       "contentHash": "f4ce90fc1f86df178e4b39c83015972caff5bc2d33afe841ef94b55b0101daa7"
     },
     {
       "id": "file:single-pkg:test/greet.test.ts",
+      "repo": "single-pkg",
       "path": "test/greet.test.ts",
       "lang": "typescript",
-      "workspaceId": "ws:.",
+      "workspaceId": "ws:single-pkg:.",
       "contentHash": "804544193ec430ca98a80798955382ebb92e9e426597bb1cf9a7096abfca167b"
     }
   ],
@@ -757,7 +774,7 @@
       "fileId": "file:single-pkg:test/greet.test.ts"
     },
     {
-      "src": "ws:.",
+      "src": "ws:single-pkg:.",
       "dst": "file:single-pkg:src/config.ts",
       "kind": "contains",
       "confidence": "high",
@@ -766,7 +783,7 @@
       "fileId": "file:single-pkg:src/config.ts"
     },
     {
-      "src": "ws:.",
+      "src": "ws:single-pkg:.",
       "dst": "file:single-pkg:src/counter.ts",
       "kind": "contains",
       "confidence": "high",
@@ -775,7 +792,7 @@
       "fileId": "file:single-pkg:src/counter.ts"
     },
     {
-      "src": "ws:.",
+      "src": "ws:single-pkg:.",
       "dst": "file:single-pkg:src/greet.ts",
       "kind": "contains",
       "confidence": "high",
@@ -784,7 +801,7 @@
       "fileId": "file:single-pkg:src/greet.ts"
     },
     {
-      "src": "ws:.",
+      "src": "ws:single-pkg:.",
       "dst": "file:single-pkg:src/index.ts",
       "kind": "contains",
       "confidence": "high",
@@ -793,7 +810,7 @@
       "fileId": "file:single-pkg:src/index.ts"
     },
     {
-      "src": "ws:.",
+      "src": "ws:single-pkg:.",
       "dst": "file:single-pkg:src/main.ts",
       "kind": "contains",
       "confidence": "high",
@@ -802,7 +819,7 @@
       "fileId": "file:single-pkg:src/main.ts"
     },
     {
-      "src": "ws:.",
+      "src": "ws:single-pkg:.",
       "dst": "file:single-pkg:src/math.ts",
       "kind": "contains",
       "confidence": "high",
@@ -811,7 +828,7 @@
       "fileId": "file:single-pkg:src/math.ts"
     },
     {
-      "src": "ws:.",
+      "src": "ws:single-pkg:.",
       "dst": "file:single-pkg:src/types.ts",
       "kind": "contains",
       "confidence": "high",
@@ -820,7 +837,7 @@
       "fileId": "file:single-pkg:src/types.ts"
     },
     {
-      "src": "ws:.",
+      "src": "ws:single-pkg:.",
       "dst": "file:single-pkg:src/users.ts",
       "kind": "contains",
       "confidence": "high",
@@ -829,7 +846,7 @@
       "fileId": "file:single-pkg:src/users.ts"
     },
     {
-      "src": "ws:.",
+      "src": "ws:single-pkg:.",
       "dst": "file:single-pkg:src/util/format.ts",
       "kind": "contains",
       "confidence": "high",
@@ -838,7 +855,7 @@
       "fileId": "file:single-pkg:src/util/format.ts"
     },
     {
-      "src": "ws:.",
+      "src": "ws:single-pkg:.",
       "dst": "file:single-pkg:src/util/strings.ts",
       "kind": "contains",
       "confidence": "high",
@@ -847,7 +864,7 @@
       "fileId": "file:single-pkg:src/util/strings.ts"
     },
     {
-      "src": "ws:.",
+      "src": "ws:single-pkg:.",
       "dst": "file:single-pkg:test/greet.test.ts",
       "kind": "contains",
       "confidence": "high",

@@ -2,7 +2,7 @@
 // project map draws (files level), so every count shown comes from the API's own numbers.
 import { kindTier, TIER_FILE, type TreeNode } from "../../canvas/hierarchy.ts";
 import { nodeTitle, type Scene } from "../../canvas/scene.ts";
-import { pathOfFileId } from "../../ids.ts";
+import { isRootWorkspaceId, pathOfFileId } from "../../ids.ts";
 import { placeSettlements } from "./placement.ts";
 import { PLAN_PARAMS, type Plan, planSettlement } from "./plan.ts";
 import { hash01 } from "./rng.ts";
@@ -323,7 +323,7 @@ export function buildLandscape(scene: Scene, opts: LandscapeOptions = {}): Lands
       idx: r,
       title: nodeTitle(scene, r),
       fullTitle: node.label,
-      kind: id === "ws:." ? "(repo root)" : (node.badges?.[0] ?? "package"),
+      kind: isRootWorkspaceId(id) ? "(repo root)" : (node.badges?.[0] ?? "package"),
       tier,
       fns: scene.functions[r] ?? 0,
       files: scene.files[r] ?? 0,

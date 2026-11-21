@@ -117,7 +117,7 @@ export async function postToolUse(
   const source = isIndexable(rel, config);
   if (!source && !MANIFEST_RE.test(rel)) return undefined;
 
-  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   try {
     const session = input.sessionId ?? `once:${randomUUID()}`;
     const recorded = recordEdit(store, session, rel, source);
@@ -154,7 +154,7 @@ export async function settleBatch(
   opts: SettleOptions = {},
 ): Promise<string | undefined> {
   if (!fs.existsSync(paths.dbPath)) return undefined;
-  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   try {
     const r = await settle(paths, store, input.sessionId, loadConfig(paths), opts);
     const text = formatCapped(r.findings, 600);

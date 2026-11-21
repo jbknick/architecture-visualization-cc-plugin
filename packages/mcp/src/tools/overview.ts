@@ -6,11 +6,11 @@ const NODE_ID = z
   .string()
   .min(1)
   .max(500)
-  .describe("ws:<workspace name> or dir:<repo-relative folder path> (dir:. is the whole repository)");
+  .describe("ws:<repo>:<workspace name> or dir:<repo-relative folder path> (dir:. is the whole repository)");
 
 const NOT_FOUND = {
   error: "not_found",
-  message: "No workspace or folder has that id. Use ws:<name> or dir:<repo-relative path>.",
+  message: "No workspace or folder has that id. Use ws:<repo>:<name> or dir:<repo-relative path>.",
 };
 
 export const getOverviewTool = defineTool({

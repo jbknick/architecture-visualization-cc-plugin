@@ -38,7 +38,7 @@ describe("hooks never re-attach overlay entries", () => {
       const env: NodeJS.ProcessEnv = { ...process.env, HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data };
       const paths = resolvePaths(fx.dir, env);
       await indexRepo(paths, { layer: "main" });
-      const open = () => openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+      const open = () => openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
       let store = open();
       setLabel(store, { nodeId: OLD, text: "Relative date" });
       store.close();

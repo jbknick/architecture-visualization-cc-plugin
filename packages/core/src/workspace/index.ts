@@ -1,6 +1,7 @@
 import { type Dirent, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import picomatch from "picomatch";
+import { workspaceId } from "../ids.js";
 import type { ExportsEntry, WorkspaceRecord } from "../types.js";
 
 /** The slice of GantryConfig (spec section 5) that workspace detection reads. */
@@ -186,14 +187,19 @@ function classify(abs: string, dir: string, pkg: Json | null, deps: string[]): W
   return "unknown";
 }
 
-function buildRecord(root: string, dir: string, config: WorkspaceDetectionConfig): WorkspaceRecord {
+function buildRecord(
+  root: string,
+  repo: string,
+  dir: string,
+  config: WorkspaceDetectionConfig,
+): WorkspaceRecord {
   const abs = dir === "." ? root : join(root, dir);
   const pkg = readJson(join(abs, "package.json"));
   const project = existsSync(join(abs, "project.json")) ? readJson(join(abs, "project.json")) : null;
   const name = str(pkg?.name) ?? str(project?.name) ?? (dir === "." ? basename(root) : dir);
   const deps = depNames(pkg);
   const record: WorkspaceRecord = {
-    id: dir === "." ? "ws:." : `ws:${name}`,
+    id: workspaceId(repo, dir === "." ? "." : name),
     name,
     dir,
     kind: classify(abs, dir, pkg, deps),
@@ -213,9 +219,13 @@ function buildRecord(root: string, dir: string, config: WorkspaceDetectionConfig
 
 /**
  * Detect workspaces: pnpm-workspace.yaml, then package.json `workspaces`, then Nx
- * project.json files, else a single root workspace. The root is always `ws:.`.
+ * project.json files, else a single root workspace. The root is always `ws:<repo>:.`.
  */
-export function detectWorkspaces(root: string, config: WorkspaceDetectionConfig): WorkspaceRecord[] {
+export function detectWorkspaces(
+  root: string,
+  config: WorkspaceDetectionConfig,
+  repo: string,
+): WorkspaceRecord[] {
   const rootPkg = readJson(join(root, "package.json"));
   const pnpmFile = join(root, "pnpm-workspace.yaml");
   const npmGlobs = packageJsonWorkspaces(rootPkg);
@@ -228,11 +238,11 @@ export function detectWorkspaces(root: string, config: WorkspaceDetectionConfig)
     dirs = dirsContaining(root, "project.json").filter((d) => d !== ".");
   }
   const all = [...new Set([".", ...dirs])].sort();
-  const records = all.map((d) => buildRecord(root, d, config));
+  const records = all.map((d) => buildRecord(root, repo, d, config));
   // Keep ids unique: a repeated package name falls back to the directory.
   const seen = new Set<string>();
   for (const r of records) {
-    if (seen.has(r.id)) r.id = `ws:${r.dir}`;
+    if (seen.has(r.id)) r.id = workspaceId(repo, r.dir);
     seen.add(r.id);
   }
   return records;

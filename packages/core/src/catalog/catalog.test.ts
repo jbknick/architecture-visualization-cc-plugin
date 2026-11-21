@@ -57,7 +57,7 @@ describe("writeCatalog", () => {
       /^- formatRelativeDate signature "\(date: Date.*" — .* \[packages\/utils\/src\/date\.ts:\d+\]$/m,
     );
     expect(read("INDEX.md")).toMatch(
-      /^- ws:@acme\/utils \(@acme\/utils\) — packages\/utils: \d+ functions in \d+ files/m,
+      /^- ws:pnpm-turbo:@acme\/utils \(@acme\/utils\) — packages\/utils: \d+ functions in \d+ files/m,
     );
   });
 
@@ -170,7 +170,7 @@ describe("writeCatalog", () => {
 
 describe("browse", () => {
   it("lists the files of a workspace with function counts", () => {
-    const r = browse(ix.store, "ws:@acme/utils");
+    const r = browse(ix.store, "ws:pnpm-turbo:@acme/utils");
     const byName = Object.fromEntries(r.items.map((i) => [i.name, i]));
     expect(r.items.every((i) => i.kind === "dir" || i.kind === "file")).toBe(true);
     expect(byName["src"]).toMatchObject({ kind: "dir", id: "dir:packages/utils/src" });
@@ -200,7 +200,9 @@ describe("browse", () => {
     });
     expect(r.catalogPath).toBe("packages/utils/src.md");
     expect(browse(ix.store, "file:pnpm-turbo:packages/utils/src/date.ts").items).toEqual(r.items);
-    expect(browse(ix.store, "@acme/utils").items).toEqual(browse(ix.store, "ws:@acme/utils").items);
+    expect(browse(ix.store, "@acme/utils").items).toEqual(
+      browse(ix.store, "ws:pnpm-turbo:@acme/utils").items,
+    );
     expect(browse(ix.store, "dir:packages/utils/src/").items).toEqual(
       browse(ix.store, "packages/utils/src").items,
     );

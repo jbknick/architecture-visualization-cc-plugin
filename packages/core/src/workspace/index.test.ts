@@ -42,11 +42,11 @@ describe("detectWorkspaces", () => {
       "node_modules/x/package.json": { name: "x" },
       ".claude/worktrees/a/package.json": { name: "nested" },
     });
-    const ws = detectWorkspaces(root, config);
+    const ws = detectWorkspaces(root, config, "repo");
     expect(ws.map((w) => [w.id, w.dir, w.kind])).toEqual([
-      ["ws:.", ".", "unknown"],
-      ["ws:@acme/web", "apps/web", "app"],
-      ["ws:@acme/ui", "packages/ui", "package"],
+      ["ws:repo:.", ".", "unknown"],
+      ["ws:repo:@acme/web", "apps/web", "app"],
+      ["ws:repo:@acme/ui", "packages/ui", "package"],
     ]);
     const ui = ws.find((w) => w.name === "@acme/ui");
     expect(ui?.deps).toEqual(["react", "vitest"]);
@@ -64,7 +64,7 @@ describe("detectWorkspaces", () => {
         main: "./dist/index.js",
       },
     });
-    const ui = detectWorkspaces(root, config).find((w) => w.id === "ws:@acme/ui");
+    const ui = detectWorkspaces(root, config, "repo").find((w) => w.id === "ws:repo:@acme/ui");
     expect(ui?.exportsMap).toEqual([
       { subpath: ".", target: "./dist/index.js" },
       { subpath: "./button", target: "./dist/button.js" },
@@ -80,8 +80,8 @@ describe("detectWorkspaces", () => {
         "libs/a/package.json": { name: "a" },
         "libs/b/package.json": { name: "b", main: "x.js" },
       });
-      const ws = detectWorkspaces(root, config);
-      expect(ws.map((w) => w.id)).toEqual(["ws:.", "ws:a", "ws:b"]);
+      const ws = detectWorkspaces(root, config, "repo");
+      expect(ws.map((w) => w.id)).toEqual(["ws:repo:.", "ws:repo:a", "ws:repo:b"]);
       expect(ws.map((w) => w.kind)).toEqual(["unknown", "package", "package"]);
     }
   });
@@ -95,11 +95,11 @@ describe("detectWorkspaces", () => {
       "libs/core/package.json": { name: "@acme/core" },
       "node_modules/z/project.json": { name: "z" },
     });
-    const ws = detectWorkspaces(root, config);
+    const ws = detectWorkspaces(root, config, "repo");
     expect(ws.map((w) => [w.id, w.kind])).toEqual([
-      ["ws:.", "unknown"],
-      ["ws:shop", "app"],
-      ["ws:@acme/core", "package"],
+      ["ws:repo:.", "unknown"],
+      ["ws:repo:shop", "app"],
+      ["ws:repo:@acme/core", "package"],
     ]);
   });
 
@@ -108,16 +108,16 @@ describe("detectWorkspaces", () => {
       "package.json": { name: "solo", dependencies: { hono: "1" } },
       "wrangler.toml": "",
     });
-    const ws = detectWorkspaces(root, config);
+    const ws = detectWorkspaces(root, config, "repo");
     expect(ws).toHaveLength(1);
     expect(ws[0]).toMatchObject({
-      id: "ws:.",
+      id: "ws:repo:.",
       dir: ".",
       name: "solo",
       kind: "app",
       frameworks: ["hono"],
     });
-    expect(detectWorkspaces(repo({}), config)[0]?.id).toBe("ws:.");
+    expect(detectWorkspaces(repo({}), config, "repo")[0]?.id).toBe("ws:repo:.");
   });
 
   it("detects framework apps and honours overrides", () => {
@@ -129,10 +129,11 @@ describe("detectWorkspaces", () => {
       "x/vite/index.html": "",
       "x/vitelib/package.json": { name: "vl", devDependencies: { vite: "1" } },
     });
-    const by = (c = config) => Object.fromEntries(detectWorkspaces(root, c).map((w) => [w.name, w.kind]));
+    const by = (c = config) =>
+      Object.fromEntries(detectWorkspaces(root, c, "repo").map((w) => [w.name, w.kind]));
     expect(by()).toMatchObject({ router: "app", vt: "app", vl: "unknown" });
     const over = {
-      workspaces: { overrides: { "ws:vt": { kind: "package" as const }, vl: { kind: "app" as const } } },
+      workspaces: { overrides: { "ws:repo:vt": { kind: "package" as const }, vl: { kind: "app" as const } } },
     };
     expect(by(over)).toMatchObject({ vt: "package", vl: "app" });
   });
@@ -143,9 +144,9 @@ describe("detectWorkspaces", () => {
       "z/package.json": { name: "z" },
       "a/package.json": { name: "a" },
     });
-    const a = detectWorkspaces(root, config);
+    const a = detectWorkspaces(root, config, "repo");
     expect(a.map((w) => w.dir)).toEqual([".", "a", "z"]);
-    expect(detectWorkspaces(root, config)).toEqual(a);
+    expect(detectWorkspaces(root, config, "repo")).toEqual(a);
   });
 });
 
@@ -170,10 +171,10 @@ describe("workspaceForPath", () => {
       "packages/a/inner/package.json": { name: "inner" },
       "packages/ab/package.json": { name: "ab" },
     });
-    const ws = detectWorkspaces(root, config);
+    const ws = detectWorkspaces(root, config, "repo");
     expect(workspaceForPath(ws, "packages/a/inner/x.ts").name).toBe("inner");
     expect(workspaceForPath(ws, "packages/a/src/x.ts").name).toBe("a");
     expect(workspaceForPath(ws, "packages/ab/x.ts").name).toBe("ab");
-    expect(workspaceForPath(ws, "scripts/x.ts").id).toBe("ws:.");
+    expect(workspaceForPath(ws, "scripts/x.ts").id).toBe("ws:repo:.");
   });
 });

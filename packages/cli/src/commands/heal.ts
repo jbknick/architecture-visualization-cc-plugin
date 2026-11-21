@@ -1,16 +1,17 @@
 import fs from "node:fs";
-import { heal, resetStaleStore, resolvePaths } from "@gantry/core";
+import { heal, resetStaleStore } from "@gantry/core";
 import type { Command } from "commander";
-import { EXIT_OK, fail } from "./shared.js";
+import { EXIT_OK, fail, resolveCliPaths, WORKSPACE_FLAG } from "./shared.js";
 
 export function registerHeal(program: Command): void {
   program
     .command("heal")
     .description("Reconcile the main graph to HEAD (incremental, or a full re-index for huge diffs)")
     .option("--from <sha>", "diff from this commit instead of the recorded head_sha")
-    .action(async (opts: { from?: string }) => {
+    .option(...WORKSPACE_FLAG)
+    .action(async (opts: { from?: string; workspace?: string }) => {
       try {
-        const paths = resolvePaths(process.cwd());
+        const paths = resolveCliPaths(opts);
         resetStaleStore(paths);
         // Heal keeps an index current; it never creates one, so a run before `gantry init` leaves no empty data dir
         // behind (#147).

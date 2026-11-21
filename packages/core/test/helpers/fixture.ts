@@ -106,3 +106,39 @@ function commitAll(dir: string, cleanup: () => Promise<void>, fixedDates: boolea
   git(["commit", "-q", "-m", "fixture"]);
   return { dir, git, cleanup };
 }
+
+export interface MaterializedMultirepo {
+  /** The temp directory that holds `gantry-workspace.json` and the two repos (it is not a repo itself). */
+  root: string;
+  repos: { web: string; api: string };
+  /** Runs git in one of the two repos. */
+  git: (repo: "web" | "api", args: string[]) => string;
+  cleanup(): Promise<void>;
+}
+
+/**
+ * Copies `fixtures/multirepo` to a temp dir and makes `web/` and `api/` two separate git repos on `main`, each with one
+ * commit `fixture` (fixed author and dates, so the SHAs are the same on every machine). The temp root is not a repo.
+ * The workspace file at the root lists both: `web` is named `web`, `api` is named `acme/api`.
+ */
+export async function materializeMultirepo(): Promise<MaterializedMultirepo> {
+  const root = await mkdtemp(join(tmpdir(), "gantry-fixture-multirepo-"));
+  await cp(join(fixturesRoot, "multirepo"), root, { recursive: true });
+  const dirs = { web: join(root, "web"), api: join(root, "api") };
+  const git = (repo: "web" | "api", args: string[]): string =>
+    execFileSync("git", args, {
+      cwd: dirs[repo],
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, ...FIXED_COMMIT_ENV },
+    });
+  for (const repo of ["web", "api"] as const) {
+    git(repo, ["init", "-q", "-b", "main"]);
+    git(repo, ["config", "user.name", "Gantry Fixture"]);
+    git(repo, ["config", "user.email", "fixture@example.invalid"]);
+    git(repo, ["config", "commit.gpgsign", "false"]);
+    git(repo, ["add", "-A", "-f"]);
+    git(repo, ["commit", "-q", "-m", "fixture"]);
+  }
+  return { root, repos: dirs, git, cleanup: () => rm(root, { recursive: true, force: true }) };
+}
