@@ -1,0 +1,14 @@
+I wrote `.gantry/recipe.json`, but it has no rules and will produce an empty graph. `gantry recipe check .gantry/recipe.json` passes ("recipe ok"). The check command as you gave it, with a trailing `.`, failed with "too many arguments", so I ran it without the `.`.
+
+This is a Go application using Gin and GORM v2 with SQLite. The repository has no TypeScript, SQL or Prisma files, and the recipe engine only reads TypeScript syntax trees and text-rule files. I therefore couldn't write rules for Gin route registrations, GORM models or GORM queries.
+
+Expected output:
+- **Routes:** 0
+- **Endpoints:** 0
+- **Tables:** 0
+- **Reads:** 0
+- **Writes:** 0
+
+The recipe only records the Gin and GORM dependencies, with a note that they can't be expressed. The app really has about 19 endpoints (listed in `AGENTS.md`), plus GORM models and queries, none of which the engine can capture.
+
+The missing capability is Go (ast-grep `go` language) support.

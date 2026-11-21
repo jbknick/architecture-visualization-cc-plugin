@@ -1,0 +1,19 @@
+The recipe is at `.gantry/recipe.json`, and the check passes: all examples pass and the recipe validates. I didn't run the engine to list the produced nodes, so the counts below are what I expect from reading the code.
+
+**Stack:** Fastify 4 with Prisma on PostgreSQL.
+
+**Expected output:**
+- **Routes:** 0, because there is no frontend.
+- **Endpoints:** 5.
+  - `POST /api/user/login`
+  - `POST /api/user/signup`
+  - `POST /api/post/create`
+  - `GET /health`
+  - `GET /`
+- **Tables:** 2, `users` (from `@@map`) and `Post` (no `@@map`).
+- **Reads:** 2 files, `src/controllers/user.controller.ts` and `src/helpers/auth.helper.ts`, both on `users`.
+- **Writes:** 2 files, `src/controllers/user.controller.ts` on `users` and `src/controllers/post.controller.ts` on `Post`.
+
+The endpoint rule reports 26 raw matches because its pattern is broad, but only calls on a registered Fastify router should become endpoints. I couldn't confirm that without the engine's output.
+
+**Not expressed:** `prisma.$queryRaw\`SELECT 1\`` in `src/utils.ts` is a health check with no table, so it produces nothing.

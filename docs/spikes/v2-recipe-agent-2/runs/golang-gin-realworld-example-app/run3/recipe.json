@@ -1,0 +1,1 @@
+{"version":1,"dependencies":[{"name":"github.com/gin-gonic/gin","role":"framework","note":"Go; not expressible in the TypeScript engine"},{"name":"gorm.io/gorm","role":"data-access","note":"Go ORM; not expressible"}],"helpers":[],"rules":[]}

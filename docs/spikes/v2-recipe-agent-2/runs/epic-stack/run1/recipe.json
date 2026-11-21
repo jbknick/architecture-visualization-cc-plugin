@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "dependencies": [{ "name": "@prisma/client", "role": "data-access", "note": "Prisma ORM" }],
+  "helpers": ["model-naming", "method-classes", "text-rules"],
+  "models": { "snakeCase": false, "plural": false },
+  "methods": {
+    "read": ["findUnique", "findUniqueOrThrow", "findFirst", "findFirstOrThrow", "findMany", "count", "aggregate", "groupBy"],
+    "write": ["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"]
+  },
+  "rules": [
+    {
+      "id": "prisma-models",
+      "language": "text",
+      "files": ["prisma/schema.prisma"],
+      "rule": { "regex": "^model\\s+(\\w+)\\s*\\{" },
+      "emit": { "kind": "table", "name": "$1", "model": "$1" },
+      "examples": { "match": ["model User {\n  id String\n}"], "noMatch": ["enum Role {"] }
+    },
+    {
+      "id": "prisma-read",
+      "language": "typescript",
+      "when": { "dependency": ["@prisma/client"] },
+      "rule": { "pattern": "prisma.$M.$OP($$$A)" },
+      "constraints": { "OP": { "regex": "^(findUnique|findUniqueOrThrow|findFirst|findFirstOrThrow|findMany|count|aggregate|groupBy)$" } },
+      "emit": { "kind": "read", "model": "$M", "method": "$OP" },
+      "examples": { "match": ["prisma.user.findMany({})"], "noMatch": ["prisma.user.create({})"] }
+    },
+    {
+      "id": "prisma-write",
+      "language": "typescript",
+      "when": { "dependency": ["@prisma/client"] },
+      "rule": { "pattern": "prisma.$M.$OP($$$A)" },
+      "constraints": { "OP": { "regex": "^(create|createMany|update|updateMany|upsert|delete|deleteMany)$" } },
+      "emit": { "kind": "write", "model": "$M", "method": "$OP" },
+      "examples": { "match": ["prisma.user.create({})"], "noMatch": ["prisma.user.findMany({})"] }
+    }
+  ]
+}

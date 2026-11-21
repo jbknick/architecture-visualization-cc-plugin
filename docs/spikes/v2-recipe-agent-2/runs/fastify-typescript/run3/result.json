@@ -1,0 +1,66 @@
+{
+  "checkRuns": 5,
+  "costUsdReported": 0.1262289,
+  "model": "claude-sonnet-5-5",
+  "recipeSha256": "f446137316ef90276b001be34a849b83497458a88af085a292878091ea0b4b0f",
+  "run": 3,
+  "score": {
+    "bar": {
+      "precision": 0.95,
+      "recall": 0.9
+    },
+    "case": "fastify-typescript",
+    "extra": {},
+    "kinds": {
+      "read": {
+        "labelled": 2,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      },
+      "table": {
+        "labelled": 2,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      },
+      "write": {
+        "labelled": 2,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      }
+    },
+    "missed": {
+      "read": [
+        "src/controllers/user.controller.ts|users",
+        "src/helpers/auth.helper.ts|users"
+      ],
+      "table": [
+        "post",
+        "users"
+      ],
+      "write": [
+        "src/controllers/post.controller.ts|post",
+        "src/controllers/user.controller.ts|users"
+      ]
+    },
+    "pass": false,
+    "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783"
+  },
+  "status": "ok",
+  "tokens": {
+    "cacheCreate": 11118,
+    "cacheRead": 150309,
+    "input": 18,
+    "output": 6669
+  },
+  "turns": 12,
+  "wallMs": 44202
+}

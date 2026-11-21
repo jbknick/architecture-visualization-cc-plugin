@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "dependencies": [
+    {"name": "next", "role": "framework", "note": "Next.js apps (app and pages router)"},
+    {"name": "react-router", "role": "framework", "note": "react-vite router"}
+  ],
+  "helpers": ["fs-routes", "resolve-names", "const-strings"],
+  "rules": [
+    {
+      "id": "react-router-route",
+      "language": "typescript",
+      "when": {"dependency": ["react-router"]},
+      "files": ["**/router.tsx"],
+      "rule": {"pattern": "{ path: $P, $$$R }"},
+      "emit": {"kind": "route", "id": "$P", "data": {"adapter": "react-router"}},
+      "examples": {
+        "match": ["const r = createBrowserRouter([{ path: '/x', lazy: () => 1 }]);"],
+        "noMatch": ["const a = 1;"]
+      }
+    }
+  ]
+}

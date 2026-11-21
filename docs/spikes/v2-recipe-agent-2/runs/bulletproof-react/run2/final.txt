@@ -1,0 +1,6 @@
+I wrote `.gantry/recipe.json`, but it is incomplete: the one rule in it matches nothing in this repository. `recipe check` passes, with a "matches nothing" warning.
+
+- **Stack:** this is a monorepo of three frontend apps. `react-vite` uses React Router 7 (`createBrowserRouter`), `nextjs-app` uses the Next.js App Router, and `nextjs-pages` uses the Next.js Pages Router. There is no real backend or database. The only "API" is MSW mock handlers, which I left out as instructed.
+- **The rule:** it tries to read the route objects in `apps/react-vite/src/app/router.tsx`. It passes its own examples. It found 0 matches in `router.tsx`, and I did not find out why. I suspect the route paths are written as `paths.x.path` member expressions rather than string literals.
+- **Not done:** I did not write rules for the Next.js file-based routes. I listed the `fs-routes` helper but never confirmed it picks up the `page.tsx` or `pages/*.tsx` files. I also did not check that the `react-vite` `children` routes would get the `/app` prefix.
+- **Expected output today:** 0 routes, 0 endpoints, 0 tables, 0 reads and 0 writes. If everything were captured, I'd expect about 8 routes from `react-vite`, about 8 from `nextjs-app` and about 9 from `nextjs-pages`. Those are rough counts from the file listing.

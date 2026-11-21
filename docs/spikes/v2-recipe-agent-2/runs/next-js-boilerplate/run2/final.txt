@@ -1,0 +1,16 @@
+I wrote the recipe to `.gantry/recipe.json`. The check passes: all examples pass and each rule matches once, which agrees with what I counted in the code. I haven't looked at the actual graph output, so I can't confirm the routes, endpoints and read/write edges come out as listed below.
+
+**Stack:** Next.js 16 app router with Drizzle ORM on Postgres (`pgTable`).
+
+**What the recipe should produce:**
+- **Routes:** 9 pages under `src/app/[locale]/…`. The `fs-routes` helper is meant to derive these, but no rule of mine covers them, so the check can't show whether they appear.
+- **Endpoints:** 1, `PUT /api/counter` from `src/app/api/counter/route.ts`. It also relies on `fs-routes`, with no rule of mine behind it.
+- **Tables:** 1, `counter`. The code names it with `pgTable('counter')` and binds it to `counterSchema`.
+- **Writes:** 1. `route.ts` calls `db.insert(counterSchema)`.
+- **Reads:** 1. `CurrentCount.tsx` calls `db.query.counterSchema.findFirst`.
+
+The drizzle rules only cover `db.insert/update/delete(table)` and `db.query.<table>.<method>()`. Any `db.select().from(table)` read would be missed. I found none in this repo.
+
+============================================================
+🚀 [Next.js Boilerplate Plus](https://nextjs-boilerplate.com/nextjs-saas-starter-kit) - Ship your SaaS faster with everything in this free starter, Stripe billing, oRPC, Shadcn UI, and 50+ production-ready features.
+============================================================

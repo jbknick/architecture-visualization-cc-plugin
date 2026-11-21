@@ -6,6 +6,7 @@
       "**",
       "!**/fixtures",
       "!**/evals/private",
+      "!docs/spikes/v2-recipe-agent-2/runs",
       "!**/dist",
       "!plugin/agents",
       "!plugin/skills",

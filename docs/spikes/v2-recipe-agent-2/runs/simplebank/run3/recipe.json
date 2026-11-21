@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "dependencies": [
+    {"name": "vue-router", "workspace": "frontend", "role": "framework", "note": "frontend routes"}
+  ],
+  "helpers": [],
+  "rules": [
+    {
+      "id": "schema-tables",
+      "language": "text",
+      "files": ["doc/schema.sql"],
+      "rule": {"regex": "CREATE TABLE \"(\\w+)\""},
+      "emit": {"kind": "table", "name": "$1"},
+      "examples": {
+        "match": ["CREATE TABLE \"users\" (\n  id int\n);"],
+        "noMatch": ["ALTER TABLE \"users\" ADD x int;"]
+      }
+    }
+  ]
+}

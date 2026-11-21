@@ -4,6 +4,29 @@ Hand labels for the OSS corpus (`evals/oss/repos.json`), one file per case. This
 cases (`linking-*.json`). The other files hold route, endpoint, table and read/write labels and follow the schema
 in spec section 13.
 
+## Route, endpoint, table, read and write labels: conventions
+
+Written down before the re-measurement of the recipe agent (#350) and not changed by it. The labels were written
+by labeller agents, not by the recipe agent or the engine, by listing registration sites with `rg` and reading
+each one. A repo's file lists only the kinds it has (`kinds`).
+
+- **route**: a frontend page URL, one per distinct URL. Pathless layouts have no URL. API handlers are not routes.
+- **endpoint**: method + full path after every prefix (mounts, global prefixes, controller and plugin prefixes,
+  versions, route groups). `ALL` when the registration names no method. A mount is not an endpoint. Next.js
+  `route.ts`: one endpoint per exported HTTP method function.
+- **table**: the explicit name in the code (`@@map`, `pgTable("x")`, `@Entity("x")`, a Mongoose model name string,
+  `CREATE TABLE x`, the keys of a Kysely database interface); otherwise the model or class name as written. Where
+  a model and a migration name the same table, the model (or Kysely interface key) is used, except where the repo
+  has no model (go-base and simplebank: the migrations). Once per table.
+- **read** and **write**: a (file, table) pair: a file that queries a table and does not only declare it. A
+  select, find or join reads; an insert, update, delete, create or save writes. A file that does both has one
+  entry in each list.
+- Left out: tests, e2e, storybook, docs, examples, mocks, scripts, generated and vendored code. tRPC and GraphQL
+  procedures are not method + path and are not labelled. Health checks and catch-all handlers that real code
+  registers are labelled.
+- Path keys: the scorer treats `:param`, `[param]` and `{param}` as the same segment, a catch-all as `*`, and a
+  path with and without a trailing slash as one key, so such variants are labelled once.
+
 ## Call-linking labels
 
 A `linking-<case>.json` file lists every request call site of a case's frontend, with the endpoint it reaches in

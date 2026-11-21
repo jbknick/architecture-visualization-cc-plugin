@@ -1,0 +1,16 @@
+I wrote `.gantry/recipe.json`, and the check passes. The tables, reads and writes are covered. Routes and endpoints are not expressed, and I never confirmed that `fs-routes` produces them.
+
+**Stack:** Next.js app router, Kysely, a Prisma schema, and tRPC (skipped).
+
+**What the rules match:**
+- **Tables:** 6 matches, the keys of the Kysely `DB` type in `packages/db/prisma/types.ts`: Account, Customer, K8sClusterConfig, Session, User, VerificationToken.
+- **Reads:** the `selectFrom` rule has 13 matches across the API routers, `packages/auth/nextauth.ts` and `packages/stripe/src/webhooks.ts`. That is match sites, not files, so the count of (file, table) pairs will be lower.
+- **Writes:** the `insertInto`, `updateTable` and `deleteFrom` rule has 7 matches. It is also a match count, not a count of files.
+
+**Routes and endpoints:**
+- I expect about 15 routes from the `page.tsx` files under `apps/nextjs`, and 3 `route.ts` API handlers (`/api/auth/[...nextauth]`, `/api/trpc/edge/[trpc]`, `/api/webhooks/stripe`).
+- I listed `fs-routes` in `helpers` but wrote no rule for it, and the check doesn't report routes or endpoints. I haven't confirmed it produces any.
+- Each of the three handlers re-exports one function as both methods (`export { handler as GET, handler as POST }`). Whether the engine counts that is unknown.
+- The tRPC route is not a method plus path, so it should be left out.
+
+I did not try rules for the Next.js `page.tsx` or `route.ts` files.

@@ -1,0 +1,14 @@
+I wrote `.gantry/recipe.json`. It only covers the TypeORM tables. It has no routes, no endpoints and no reads or writes, and the Mongoose tables are missing. The check passes: the one rule's examples pass and it gives 5 matches, which agrees with the five `@Entity({ name: '…' })` classes in the code (role, user, file, status, session).
+
+**Stack:** NestJS with TypeORM on PostgreSQL and Mongoose on MongoDB.
+
+**What I expect the recipe to produce:**
+- **Routes:** 0. This is a backend-only repo.
+- **Endpoints:** 0 from the recipe. The 9 controllers use `@Controller({...})`, a global prefix and URI versioning.
+- **Tables:** 5, from the TypeORM `@Entity` names.
+- **Reads and writes:** 0.
+
+**What I could not express:**
+- **Endpoints:** the emits need a router instance and a `receiver` variable. NestJS decorator controllers don't have one, and I found no way to carry the controller and global prefixes and the version.
+- **Mongoose tables:** the `@Schema` classes have no explicit name. A decorator-to-class-name table rule might cover them, but I didn't try it.
+- **Reads and writes:** the repository classes use `@InjectRepository(UserEntity)` and `@InjectModel(...)`. I found no way to resolve the table from a constructor-injected repository.

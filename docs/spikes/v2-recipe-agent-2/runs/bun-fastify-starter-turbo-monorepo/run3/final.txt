@@ -1,0 +1,15 @@
+I wrote `.gantry/recipe.json`, and the check command passes: every example passes and the recipe reports "ok".
+
+I haven't seen the graph the engine builds from it. I haven't checked that the mounts resolve to `/` and `/users/email`, or that reads and writes land on the right tables.
+
+**Stack:** Fastify v5 with Kysely on PostgreSQL, in a Bun and Turborepo monorepo. The backend is `apps/backend`.
+
+**Expected output:**
+- **Routes:** 0. There is no frontend.
+- **Endpoints:** 2, `GET /` and `POST /users/email`. The `/users` prefix comes from a `register` call with a prefix option. The recipe expresses it as a mount rule with `childIsScope`, and the endpoints match twice.
+- **Tables:** 2, `users` and `userProviders`. These are the keys of the Kysely `Database` interface, read with a text rule on `db/types/index.ts`.
+- **Reads and writes:** the read rule matches 1 call (`selectFrom`) and the write rule matches 4 (`insertInto`, `updateTable`, `deleteFrom`). I expect the engine to report about 1 read and 1 write file for `users`. I did not open `user-providers.repository.ts`, so I can't say whether it touches `userProviders` or how many calls the write rule's 4 matches cover.
+
+**Not expressed:**
+- The router rule matches any parameter typed `FastifyInstance`, so it fires on 12 sites, not only the route files.
+- The `/docs` Swagger UI route comes from a plugin option, so it isn't registered as an endpoint.

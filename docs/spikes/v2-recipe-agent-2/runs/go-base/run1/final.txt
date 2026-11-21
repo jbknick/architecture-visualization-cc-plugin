@@ -1,0 +1,15 @@
+I wrote `.gantry/recipe.json`. The check passes: the rule's examples pass and it finds 3 matches, which agrees with the 3 `CREATE TABLE` statements in `database/migrations/1_initial.go` and `3_add_profile_table.go`.
+
+**Stack:** this is a Go service (chi router, bun ORM, Postgres). The recipe engine only supports TypeScript rules and text rules, and text rules can only emit tables. So the recipe covers tables only.
+
+**Expected output:**
+- **Tables:** 3 (`accounts`, `tokens`, `profiles`). The only place they are defined is the SQL in the migration files.
+- **Routes:** 0.
+- **Endpoints:** 0.
+- **Reads and writes:** 0.
+
+**What I couldn't express:**
+- **Endpoints:** the chi registrations (`r.Get`, `r.Route`, `r.Mount`) in `api/` and `auth/` need Go-language rules and prefix mounting for Go, which the engine doesn't have.
+- **Reads and writes:** the bun queries in `database/*Store.go` need `read` and `write` emits on Go code, which the engine can't do. It also can't match text-rule SQL to the Go files that run it.
+
+I did not read the `api/` or `auth/` route files, so I can't say how many endpoints the repo has.

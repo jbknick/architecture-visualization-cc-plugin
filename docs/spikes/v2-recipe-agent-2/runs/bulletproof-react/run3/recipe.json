@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "react-router", "workspace": "apps/react-vite", "role": "framework", "note": "client routes" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "fs-routes"],
+  "rules": [
+    {
+      "id": "react-router-routes",
+      "language": "typescript",
+      "files": ["apps/react-vite/src/app/router.tsx"],
+      "rule": { "pattern": "{ path: $P, $$$REST }" },
+      "emit": { "kind": "route", "id": "$P", "options": "$$$REST" },
+      "examples": {
+        "match": ["const r = [{ path: '/', lazy: () => 1 }];"],
+        "noMatch": ["const r = { other: '/' };"]
+      }
+    }
+  ]
+}

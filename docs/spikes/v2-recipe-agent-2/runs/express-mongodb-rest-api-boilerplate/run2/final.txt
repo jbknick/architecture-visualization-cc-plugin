@@ -1,0 +1,17 @@
+The recipe is at `.gantry/recipe.json`, and the check passes with all examples green. I didn't compare the endpoint count against the code, and the `.route()` chain isn't covered (see below).
+
+**Stack:** Express with TypeScript, Mongoose on MongoDB. There is no frontend, so no routes.
+
+**Expected output:**
+- **Routes:** 0.
+- **Endpoints:** about 16 API endpoints plus the docs router.
+  - The API endpoints live under `/auth/*`, `/user/*`, `/me`, `/media/image/upload` and `/notifications/templates`.
+  - The docs endpoints are `/docs`, `/openapi.json` and the `/docs/*` sub-router. I haven't checked how many of those the rule resolves.
+  - The endpoint rule matched 22 sites in total.
+- **Tables:** 7. They are User, Media, ResetPassword, Verification, EmailBudget, EmailOutbox and EmailWorker.
+- **Reads and writes:** the read rule matched 22 sites and the write rule 30, across the repository and service files. The engine reports each file once per table and direction.
+
+**What the recipe doesn't express:**
+- **Chained `router.route('/auth/sign-out').post(...).get(...)`:** my endpoint rule needs a path argument on each call. That `.route()` chain has the path only on the first call, so I expect the sign-out POST and GET to be missed. `pathFromChain` looks like the way to cover it, but I haven't tried it.
+- **Model-based read/write rule:** it lists the seven model names by hand. A new model needs adding to that list.
+- **`router.use('/auth', authRateLimit)` and `docs.use(...)`:** these are middleware, not endpoints, and the recipe doesn't treat them as endpoints.

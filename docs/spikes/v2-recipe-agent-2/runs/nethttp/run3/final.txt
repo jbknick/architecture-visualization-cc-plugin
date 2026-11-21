@@ -1,0 +1,7 @@
+I wrote `.gantry/recipe.json`, but it is empty: no rules and no helpers. The check passes (`recipe ok`). I had to drop the trailing `.` from the command you gave me, because the CLI rejected it with "too many arguments".
+
+This repository is a Go `net/http` service (`main.go`, `router.go`, and the `handler`, `middleware`, `comment`, `monster` and `invoice` packages). The recipe format only accepts TypeScript rules (ast-grep) and text rules that emit tables. It has no way to read Go source, so it can't express Go route registrations or `net/http` mux setup.
+
+I expect it to produce 0 routes, 0 endpoints, 0 tables, 0 reads and 0 writes. I also found no database or schema files in the repository.
+
+The missing capability is a Go (or other non-TypeScript) language option for ast-grep rules.

@@ -1,0 +1,16 @@
+I wrote `.gantry/recipe.json`, and the check passes with every example green and one match per rule. I didn't verify the rules against the full graph. I only ran `gantry recipe check`, not an index.
+
+**Stack:** Next.js app router with drizzle-orm on Postgres (`pgTable`).
+
+**What the recipe covers:**
+- **Table:** one, `counter`, from the `pgTable` call in `src/models/Schema.ts`.
+- **Write:** `src/app/api/counter/route.ts` writes `counter` through `db.insert(counterSchema)`.
+- **Read:** `src/components/CurrentCount.tsx` reads `counter` through `db.query.counterSchema.findFirst`.
+
+**What I expect the engine to produce:**
+- 1 table, 1 read and 1 write.
+- 1 endpoint (`PUT /api/counter`) and 8 routes from the pages under `src/app/[locale]`. These come from the `fs-routes` helper, which I listed in `helpers` but wrote no rule for. The check doesn't count them, so I haven't seen them produced.
+
+**Open questions:**
+- I'm not sure the Next.js file-system routes and the `PUT` handler come out correctly with no rule. This includes the `[locale]` prefix, the route groups and the optional catch-all pages.
+- The write rule matches any `insert`, `update` or `delete` call on any object, so it could over-match in other code. Here it matches only the one call.

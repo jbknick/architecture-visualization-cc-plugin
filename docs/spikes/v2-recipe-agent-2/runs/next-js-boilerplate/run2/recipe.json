@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "next", "role": "framework", "note": "Next.js app router" },
+    { "name": "drizzle-orm", "role": "data-access", "note": "Drizzle ORM" }
+  ],
+  "helpers": ["fs-routes", "resolve-names", "const-strings", "model-naming", "method-classes"],
+  "methods": { "read": ["findFirst", "findMany"], "write": ["insert", "update", "delete"] },
+  "rules": [
+    {
+      "id": "drizzle-table",
+      "language": "typescript",
+      "when": { "dependency": ["drizzle-orm"] },
+      "rule": { "pattern": "const $VAR = pgTable($NAME, $$$REST)" },
+      "emit": { "kind": "table", "name": "$NAME", "model": "$VAR", "binding": true },
+      "examples": {
+        "match": ["export const a = pgTable('counter', { id: serial('id') });"],
+        "noMatch": ["const a = other('counter');"]
+      }
+    },
+    {
+      "id": "drizzle-write",
+      "language": "typescript",
+      "when": { "dependency": ["drizzle-orm"] },
+      "rule": { "pattern": "db.$M($T)" },
+      "constraints": { "M": { "regex": "^(insert|update|delete)$" } },
+      "emit": { "kind": "write", "table": "$T" },
+      "examples": {
+        "match": ["db.insert(counterSchema)"],
+        "noMatch": ["db.select(counterSchema)"]
+      }
+    },
+    {
+      "id": "drizzle-query-read",
+      "language": "typescript",
+      "when": { "dependency": ["drizzle-orm"] },
+      "rule": { "pattern": "db.query.$T.$M($$$A)" },
+      "emit": { "kind": "read", "model": "$T", "method": "$M" },
+      "examples": {
+        "match": ["db.query.counterSchema.findFirst({})"],
+        "noMatch": ["db.insert(counterSchema)"]
+      }
+    }
+  ]
+}

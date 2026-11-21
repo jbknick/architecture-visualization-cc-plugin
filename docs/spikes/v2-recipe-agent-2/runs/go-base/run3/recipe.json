@@ -1,0 +1,3 @@
+{"version":1,"dependencies":[],"helpers":["text-rules"],"rules":[
+{"id":"go-create-table","language":"text","files":["database/migrations/*.go"],"rule":{"regex":"CREATE TABLE (\\w+)"},"emit":{"kind":"table","name":"$1"},"examples":{"match":["CREATE TABLE accounts ("],"noMatch":["DROP TABLE accounts"]}}
+]}

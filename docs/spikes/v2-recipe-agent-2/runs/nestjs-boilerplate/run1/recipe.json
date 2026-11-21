@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "@nestjs/common", "role": "framework", "note": "NestJS" },
+    { "name": "typeorm", "role": "data-access", "note": "TypeORM" }
+  ],
+  "helpers": ["text-rules"],
+  "rules": [
+    {
+      "id": "typeorm-entity",
+      "language": "text",
+      "files": ["src/**/*.entity.ts"],
+      "rule": { "regex": "@Entity\\(\\{\\s*name:\\s*'(\\w+)'" },
+      "emit": { "kind": "table", "name": "$1" },
+      "examples": {
+        "match": ["@Entity({\n  name: 'role',\n})\nexport class A {}"],
+        "noMatch": ["export class A {}"]
+      }
+    }
+  ]
+}

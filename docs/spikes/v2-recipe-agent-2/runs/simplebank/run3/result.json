@@ -1,0 +1,77 @@
+{
+  "checkRuns": 3,
+  "costUsdReported": 0.0532715,
+  "model": "claude-sonnet-5-5",
+  "recipeSha256": "016d628acfdcdcc879340157e4dca8506b7f844f2e52d914d572854c9b593018",
+  "run": 3,
+  "score": {
+    "bar": {
+      "precision": 0.95,
+      "recall": 0.9
+    },
+    "case": "simplebank",
+    "extra": {},
+    "kinds": {
+      "read": {
+        "labelled": 5,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      },
+      "table": {
+        "labelled": 6,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      },
+      "write": {
+        "labelled": 6,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      }
+    },
+    "missed": {
+      "read": [
+        "db/query/account.sql|accounts",
+        "db/query/entry.sql|entries",
+        "db/query/session.sql|sessions",
+        "db/query/transfer.sql|transfers",
+        "db/query/user.sql|users"
+      ],
+      "table": [
+        "accounts",
+        "entries",
+        "sessions",
+        "transfers",
+        "users",
+        "verify_emails"
+      ],
+      "write": [
+        "db/query/account.sql|accounts",
+        "db/query/entry.sql|entries",
+        "db/query/session.sql|sessions",
+        "db/query/transfer.sql|transfers",
+        "db/query/user.sql|users",
+        "db/query/verify_email.sql|verify_emails"
+      ]
+    },
+    "pass": false,
+    "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263"
+  },
+  "status": "ok",
+  "tokens": {
+    "cacheCreate": 5154,
+    "cacheRead": 116735,
+    "input": 16,
+    "output": 2095
+  },
+  "turns": 9,
+  "wallMs": 23419
+}

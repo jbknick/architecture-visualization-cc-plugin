@@ -1,0 +1,14 @@
+{"version":1,
+"dependencies":[{"name":"fastify","role":"framework","note":"http"},{"name":"@prisma/client","role":"data-access","note":"orm"}],
+"helpers":["resolve-names","const-strings","mount-graph","call-return","param-flow","model-naming","method-classes"],
+"passthrough":["register"],
+"models":{"explicit":{"User":"users","Post":"Post"}},
+"methods":{"read":["findUnique","findFirst","findMany","count"],"write":["create","update","delete","upsert","createMany","updateMany","deleteMany"]},
+"rules":[
+{"id":"fastify-app","language":"typescript","when":{"dependency":["fastify"]},"rule":{"pattern":"fastify($$$A)"},"emit":{"kind":"router","data":{"adapter":"fastify"}},"examples":{"match":["const s = fastify({a:1});"],"noMatch":["const s = other();"]}},
+{"id":"fastify-mount","language":"typescript","when":{"dependency":["fastify"]},"rule":{"pattern":"$P.register($C, { prefix: $PRE })"},"emit":{"kind":"mount","parent":"$P","child":"$C","prefix":"$PRE","childIsScope":true},"examples":{"match":["server.register(userRouter, { prefix: '/api' });"],"noMatch":["server.register(cors);"]}},
+{"id":"fastify-endpoint","language":"typescript","when":{"dependency":["fastify"]},"rule":{"pattern":"$R.$M($PATH, $$$H)"},"emit":{"kind":"endpoint","receiver":"$R","method":"$M","path":"$PATH","handler":"$$$H","data":{"adapter":"fastify"}},"examples":{"match":["fastify.post('/a', h);"],"noMatch":["fastify.listen();"]}},
+{"id":"prisma-schema","language":"text","files":["prisma/schema.prisma"],"rule":{"regex":"^model\\s+(\\w+)\\s*\\{(?:[^}]*?@@map\\(\"(\\w+)\"\\))?"},"emit":{"kind":"table","name":["$2","$1"],"model":"$1"},"examples":{"match":["model Post {\n id Int\n}"],"noMatch":["enum Role {\n A\n}"]}},
+{"id":"prisma-read","language":"typescript","when":{"dependency":["@prisma/client"]},"rule":{"pattern":"prisma.$M.$F($$$A)"},"emit":{"kind":"read","model":"$M","method":"$F"},"examples":{"match":["prisma.user.findUnique({});"],"noMatch":["foo.bar();"]}},
+{"id":"prisma-write","language":"typescript","when":{"dependency":["@prisma/client"]},"rule":{"pattern":"prisma.$M.$F($$$A)"},"emit":{"kind":"write","model":"$M","method":"$F"},"examples":{"match":["prisma.user.create({});"],"noMatch":["foo.bar();"]}}
+]}

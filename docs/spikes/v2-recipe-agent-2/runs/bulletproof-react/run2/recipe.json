@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "dependencies": [
+    {"name": "next", "role": "framework", "note": "Next.js apps use file routing"},
+    {"name": "react-router", "role": "framework", "note": "react-vite router"}
+  ],
+  "helpers": ["resolve-names", "const-strings", "fs-routes"],
+  "rules": [
+    {
+      "id": "react-router-route",
+      "language": "typescript",
+      "when": {"dependency": ["react-router"]},
+      "files": ["apps/react-vite/src/app/router.tsx"],
+      "rule": {"pattern": {"context": "x = { path: $P, $$$OPTS }", "selector": "object"}},
+      "emit": {"kind": "route", "id": "$P", "options": "$$$OPTS"},
+      "examples": {"match": ["const r = [{ path: '/a', lazy: 1 }];"], "noMatch": ["const r = 1;"]}
+    }
+  ]
+}

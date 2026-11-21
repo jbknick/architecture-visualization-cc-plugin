@@ -1,0 +1,2516 @@
+{
+  "repos": [
+    {
+      "name": "bulletproof-react",
+      "runs": [
+        {
+          "checkRuns": 7,
+          "costUsdReported": 0.15935139999999998,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "3de617a0dc6c35cf097173eb916918a2c472c3114b3e5a13037ee665ea2fe75f",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "bulletproof-react",
+            "extra": {},
+            "kinds": {
+              "route": {
+                "labelled": 10,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "route": [
+                "/",
+                "/*",
+                "/app",
+                "/app/discussions",
+                "/app/discussions/:param",
+                "/app/profile",
+                "/app/users",
+                "/auth/login",
+                "/auth/register",
+                "/public/discussions/:param"
+              ]
+            },
+            "pass": false,
+            "sha": "9506629ed003a561c6627735480cce4994244bb4"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 23872,
+            "cacheRead": 228254,
+            "input": 24,
+            "output": 4099
+          },
+          "turns": 17,
+          "wallMs": 38250
+        },
+        {
+          "checkRuns": 6,
+          "costUsdReported": 0.1041773,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "9a0527879c6e3b38d0643c81c14c93d5092c6379ed427cb01818b077e4ecdbb3",
+          "run": 2,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "bulletproof-react",
+            "extra": {},
+            "kinds": {
+              "route": {
+                "labelled": 10,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "route": [
+                "/",
+                "/*",
+                "/app",
+                "/app/discussions",
+                "/app/discussions/:param",
+                "/app/profile",
+                "/app/users",
+                "/auth/login",
+                "/auth/register",
+                "/public/discussions/:param"
+              ]
+            },
+            "pass": false,
+            "sha": "9506629ed003a561c6627735480cce4994244bb4"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 12179,
+            "cacheRead": 196013,
+            "input": 20,
+            "output": 3582
+          },
+          "turns": 14,
+          "wallMs": 32975
+        },
+        {
+          "checkRuns": 4,
+          "costUsdReported": 0.07818309999999999,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "0a5b717461e9e9972e12ee6e7d13ee9595f9b849320a7bb709fda94410612d67",
+          "run": 3,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "bulletproof-react",
+            "extra": {},
+            "kinds": {
+              "route": {
+                "labelled": 10,
+                "matched": 1,
+                "pass": false,
+                "precision": 1,
+                "predicted": 1,
+                "recall": 0.1
+              }
+            },
+            "missed": {
+              "route": [
+                "/",
+                "/app",
+                "/app/discussions",
+                "/app/discussions/:param",
+                "/app/profile",
+                "/app/users",
+                "/auth/login",
+                "/auth/register",
+                "/public/discussions/:param"
+              ]
+            },
+            "pass": false,
+            "sha": "9506629ed003a561c6627735480cce4994244bb4"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 9796,
+            "cacheRead": 123511,
+            "input": 14,
+            "output": 2662
+          },
+          "turns": 10,
+          "wallMs": 23834
+        }
+      ],
+      "sha": "9506629ed003a561c6627735480cce4994244bb4",
+      "stack": ["react-router", "nextjs"]
+    },
+    {
+      "name": "bun-fastify-starter-turbo-monorepo",
+      "runs": [
+        {
+          "checkRuns": 6,
+          "costUsdReported": 0.1890576,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "9f60bacdff08e269058476f68428deeca84c16a8692c2eec608acbe5f3cc9dbb",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "bun-fastify-starter-turbo-monorepo",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 1,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "write": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": ["apps/backend/src/db/repositories/users.repository.ts|users"],
+              "table": ["user_providers", "users"],
+              "write": [
+                "apps/backend/src/db/repositories/user-providers.repository.ts|user_providers",
+                "apps/backend/src/db/repositories/users.repository.ts|users"
+              ]
+            },
+            "pass": false,
+            "sha": "774fcfe4c51f6e4d0190a321f42deff399852ca9"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 18854,
+            "cacheRead": 317476,
+            "input": 27,
+            "output": 8184
+          },
+          "turns": 23,
+          "wallMs": 60518
+        },
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.08142750000000001,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "5fcadcc8685fc1f74c04ba3ee7f7b61f36f032e5f2da62432fcbcc4c0cb6595d",
+          "run": 2,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "bun-fastify-starter-turbo-monorepo",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 1,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "write": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": ["apps/backend/src/db/repositories/users.repository.ts|users"],
+              "table": ["user_providers", "users"],
+              "write": [
+                "apps/backend/src/db/repositories/user-providers.repository.ts|user_providers",
+                "apps/backend/src/db/repositories/users.repository.ts|users"
+              ]
+            },
+            "pass": false,
+            "sha": "774fcfe4c51f6e4d0190a321f42deff399852ca9"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 10081,
+            "cacheRead": 93295,
+            "input": 12,
+            "output": 3175
+          },
+          "turns": 7,
+          "wallMs": 28343
+        },
+        {
+          "checkRuns": 7,
+          "costUsdReported": 0.19116720000000004,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "5702b6bb55d2ab2322293ade9b16ffb8d61fda9b2a2e47913e178738a2e9d47b",
+          "run": 3,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "bun-fastify-starter-turbo-monorepo",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 1,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "write": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": ["apps/backend/src/db/repositories/users.repository.ts|users"],
+              "table": ["user_providers", "users"],
+              "write": [
+                "apps/backend/src/db/repositories/user-providers.repository.ts|user_providers",
+                "apps/backend/src/db/repositories/users.repository.ts|users"
+              ]
+            },
+            "pass": false,
+            "sha": "774fcfe4c51f6e4d0190a321f42deff399852ca9"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 18057,
+            "cacheRead": 263372,
+            "input": 26,
+            "output": 9255
+          },
+          "turns": 16,
+          "wallMs": 66225
+        }
+      ],
+      "sha": "774fcfe4c51f6e4d0190a321f42deff399852ca9",
+      "stack": ["fastify", "kysely"]
+    },
+    {
+      "name": "epic-stack",
+      "runs": [
+        {
+          "checkRuns": 6,
+          "costUsdReported": 0.09713750000000002,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "98b0123c8a9c2bf7005bd224504c877bf6d0425e708197c89729bbae746f7a65",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "epic-stack",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 18,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "route": {
+                "labelled": 30,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 11,
+                "matched": 11,
+                "pass": true,
+                "precision": 1,
+                "predicted": 11,
+                "recall": 1
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /admin/cache/lru/:param",
+                "ALL /admin/cache/sqlite",
+                "ALL /admin/cache/sqlite/:param",
+                "ALL /auth/:param",
+                "ALL /auth/:param/callback",
+                "ALL /logout",
+                "ALL /me",
+                "ALL /resources/download-user-data",
+                "ALL /resources/healthcheck",
+                "ALL /resources/images",
+                "ALL /resources/theme-switch",
+                "ALL /robots.txt",
+                "ALL /sitemap.xml",
+                "ALL /webauthn/authentication",
+                "ALL /webauthn/registration",
+                "GET /*",
+                "GET /favicons/*",
+                "GET /img/*"
+              ],
+              "route": [
+                "/",
+                "/*",
+                "/about",
+                "/admin/cache",
+                "/forgot-password",
+                "/login",
+                "/onboarding",
+                "/onboarding/:param",
+                "/privacy",
+                "/reset-password",
+                "/settings/profile",
+                "/settings/profile/change-email",
+                "/settings/profile/connections",
+                "/settings/profile/passkeys",
+                "/settings/profile/password",
+                "/settings/profile/password/create",
+                "/settings/profile/photo",
+                "/settings/profile/two-factor",
+                "/settings/profile/two-factor/disable",
+                "/settings/profile/two-factor/verify",
+                "/signup",
+                "/support",
+                "/tos",
+                "/users",
+                "/users/:param",
+                "/users/:param/notes",
+                "/users/:param/notes/:param",
+                "/users/:param/notes/:param/edit",
+                "/users/:param/notes/new",
+                "/verify"
+              ]
+            },
+            "pass": false,
+            "sha": "893610db76127fb5a5f1ffa786bee6b050637429"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 9355,
+            "cacheRead": 161875,
+            "input": 20,
+            "output": 4349
+          },
+          "turns": 13,
+          "wallMs": 35920
+        },
+        {
+          "checkRuns": 3,
+          "costUsdReported": 0.060917500000000006,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "a01dae4203dc1696cf439501e5f530cfed860c22117daa6781e9eb3d2bc18685",
+          "run": 2,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "epic-stack",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 18,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "route": {
+                "labelled": 30,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 11,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /admin/cache/lru/:param",
+                "ALL /admin/cache/sqlite",
+                "ALL /admin/cache/sqlite/:param",
+                "ALL /auth/:param",
+                "ALL /auth/:param/callback",
+                "ALL /logout",
+                "ALL /me",
+                "ALL /resources/download-user-data",
+                "ALL /resources/healthcheck",
+                "ALL /resources/images",
+                "ALL /resources/theme-switch",
+                "ALL /robots.txt",
+                "ALL /sitemap.xml",
+                "ALL /webauthn/authentication",
+                "ALL /webauthn/registration",
+                "GET /*",
+                "GET /favicons/*",
+                "GET /img/*"
+              ],
+              "route": [
+                "/",
+                "/*",
+                "/about",
+                "/admin/cache",
+                "/forgot-password",
+                "/login",
+                "/onboarding",
+                "/onboarding/:param",
+                "/privacy",
+                "/reset-password",
+                "/settings/profile",
+                "/settings/profile/change-email",
+                "/settings/profile/connections",
+                "/settings/profile/passkeys",
+                "/settings/profile/password",
+                "/settings/profile/password/create",
+                "/settings/profile/photo",
+                "/settings/profile/two-factor",
+                "/settings/profile/two-factor/disable",
+                "/settings/profile/two-factor/verify",
+                "/signup",
+                "/support",
+                "/tos",
+                "/users",
+                "/users/:param",
+                "/users/:param/notes",
+                "/users/:param/notes/:param",
+                "/users/:param/notes/:param/edit",
+                "/users/:param/notes/new",
+                "/verify"
+              ],
+              "table": [
+                "connection",
+                "note",
+                "noteimage",
+                "passkey",
+                "password",
+                "permission",
+                "role",
+                "session",
+                "user",
+                "userimage",
+                "verification"
+              ]
+            },
+            "pass": false,
+            "sha": "893610db76127fb5a5f1ffa786bee6b050637429"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 6265,
+            "cacheRead": 104495,
+            "input": 14,
+            "output": 2538
+          },
+          "turns": 9,
+          "wallMs": 24661
+        },
+        {
+          "checkRuns": 3,
+          "costUsdReported": 0.0587125,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "b5fcb22165d7b5b3a21e576f4806b0046b9295e8fe28630cce62dc4102a9771f",
+          "run": 3,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "epic-stack",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 18,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "route": {
+                "labelled": 30,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 11,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /admin/cache/lru/:param",
+                "ALL /admin/cache/sqlite",
+                "ALL /admin/cache/sqlite/:param",
+                "ALL /auth/:param",
+                "ALL /auth/:param/callback",
+                "ALL /logout",
+                "ALL /me",
+                "ALL /resources/download-user-data",
+                "ALL /resources/healthcheck",
+                "ALL /resources/images",
+                "ALL /resources/theme-switch",
+                "ALL /robots.txt",
+                "ALL /sitemap.xml",
+                "ALL /webauthn/authentication",
+                "ALL /webauthn/registration",
+                "GET /*",
+                "GET /favicons/*",
+                "GET /img/*"
+              ],
+              "route": [
+                "/",
+                "/*",
+                "/about",
+                "/admin/cache",
+                "/forgot-password",
+                "/login",
+                "/onboarding",
+                "/onboarding/:param",
+                "/privacy",
+                "/reset-password",
+                "/settings/profile",
+                "/settings/profile/change-email",
+                "/settings/profile/connections",
+                "/settings/profile/passkeys",
+                "/settings/profile/password",
+                "/settings/profile/password/create",
+                "/settings/profile/photo",
+                "/settings/profile/two-factor",
+                "/settings/profile/two-factor/disable",
+                "/settings/profile/two-factor/verify",
+                "/signup",
+                "/support",
+                "/tos",
+                "/users",
+                "/users/:param",
+                "/users/:param/notes",
+                "/users/:param/notes/:param",
+                "/users/:param/notes/:param/edit",
+                "/users/:param/notes/new",
+                "/verify"
+              ],
+              "table": [
+                "connection",
+                "note",
+                "noteimage",
+                "passkey",
+                "password",
+                "permission",
+                "role",
+                "session",
+                "user",
+                "userimage",
+                "verification"
+              ]
+            },
+            "pass": false,
+            "sha": "893610db76127fb5a5f1ffa786bee6b050637429"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 5746,
+            "cacheRead": 86745,
+            "input": 12,
+            "output": 2703
+          },
+          "turns": 7,
+          "wallMs": 25438
+        }
+      ],
+      "sha": "893610db76127fb5a5f1ffa786bee6b050637429",
+      "stack": ["react-router", "express", "prisma"]
+    },
+    {
+      "name": "express-mongodb-rest-api-boilerplate",
+      "runs": [
+        {
+          "checkRuns": 4,
+          "costUsdReported": 0.1301752,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "999412cd4e5bf2add31b60d5e201de4fc09524dbecfd8dad23b2d7c6918631b9",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "express-mongodb-rest-api-boilerplate",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 12,
+                "matched": 5,
+                "pass": false,
+                "precision": 1,
+                "predicted": 5,
+                "recall": 0.4167
+              },
+              "table": {
+                "labelled": 7,
+                "matched": 7,
+                "pass": true,
+                "precision": 1,
+                "predicted": 7,
+                "recall": 1
+              },
+              "write": {
+                "labelled": 11,
+                "matched": 7,
+                "pass": false,
+                "precision": 1,
+                "predicted": 7,
+                "recall": 0.6364
+              }
+            },
+            "missed": {
+              "read": [
+                "src/app/runtime/commands/database/indexes.ts|media",
+                "src/app/runtime/commands/database/indexes.ts|resetpassword",
+                "src/app/runtime/commands/database/indexes.ts|user",
+                "src/app/runtime/commands/database/indexes.ts|verification",
+                "src/app/runtime/commands/database/migrate.ts|media",
+                "src/app/runtime/commands/database/migrate.ts|resetpassword",
+                "src/app/runtime/commands/database/migrate.ts|verification"
+              ],
+              "write": [
+                "src/app/runtime/commands/database/migrate.ts|media",
+                "src/app/runtime/commands/database/migrate.ts|resetpassword",
+                "src/app/runtime/commands/database/migrate.ts|user",
+                "src/app/runtime/commands/database/migrate.ts|verification"
+              ]
+            },
+            "pass": false,
+            "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 14130,
+            "cacheRead": 179852,
+            "input": 20,
+            "output": 5563
+          },
+          "turns": 12,
+          "wallMs": 40960
+        },
+        {
+          "checkRuns": 3,
+          "costUsdReported": 0.13062780000000002,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "e3ebc46bbe2fbb5f6284c025ca660c4fb50f06dc95f5c2bf5867b73ae9409e14",
+          "run": 2,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "express-mongodb-rest-api-boilerplate",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 12,
+                "matched": 5,
+                "pass": false,
+                "precision": 1,
+                "predicted": 5,
+                "recall": 0.4167
+              },
+              "table": {
+                "labelled": 7,
+                "matched": 7,
+                "pass": true,
+                "precision": 1,
+                "predicted": 7,
+                "recall": 1
+              },
+              "write": {
+                "labelled": 11,
+                "matched": 7,
+                "pass": false,
+                "precision": 1,
+                "predicted": 7,
+                "recall": 0.6364
+              }
+            },
+            "missed": {
+              "read": [
+                "src/app/runtime/commands/database/indexes.ts|media",
+                "src/app/runtime/commands/database/indexes.ts|resetpassword",
+                "src/app/runtime/commands/database/indexes.ts|user",
+                "src/app/runtime/commands/database/indexes.ts|verification",
+                "src/app/runtime/commands/database/migrate.ts|media",
+                "src/app/runtime/commands/database/migrate.ts|resetpassword",
+                "src/app/runtime/commands/database/migrate.ts|verification"
+              ],
+              "write": [
+                "src/app/runtime/commands/database/migrate.ts|media",
+                "src/app/runtime/commands/database/migrate.ts|resetpassword",
+                "src/app/runtime/commands/database/migrate.ts|user",
+                "src/app/runtime/commands/database/migrate.ts|verification"
+              ]
+            },
+            "pass": false,
+            "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 14225,
+            "cacheRead": 182578,
+            "input": 20,
+            "output": 5543
+          },
+          "turns": 12,
+          "wallMs": 42201
+        },
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.10639900000000001,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "c7ee5d4c59561b654ada16a99b14d27dc8e532f04d1fd6ebe9b370f987f162d7",
+          "run": 3,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "express-mongodb-rest-api-boilerplate",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 12,
+                "matched": 5,
+                "pass": false,
+                "precision": 1,
+                "predicted": 5,
+                "recall": 0.4167
+              },
+              "table": {
+                "labelled": 7,
+                "matched": 7,
+                "pass": true,
+                "precision": 1,
+                "predicted": 7,
+                "recall": 1
+              },
+              "write": {
+                "labelled": 11,
+                "matched": 7,
+                "pass": false,
+                "precision": 1,
+                "predicted": 7,
+                "recall": 0.6364
+              }
+            },
+            "missed": {
+              "read": [
+                "src/app/runtime/commands/database/indexes.ts|media",
+                "src/app/runtime/commands/database/indexes.ts|resetpassword",
+                "src/app/runtime/commands/database/indexes.ts|user",
+                "src/app/runtime/commands/database/indexes.ts|verification",
+                "src/app/runtime/commands/database/migrate.ts|media",
+                "src/app/runtime/commands/database/migrate.ts|resetpassword",
+                "src/app/runtime/commands/database/migrate.ts|verification"
+              ],
+              "write": [
+                "src/app/runtime/commands/database/migrate.ts|media",
+                "src/app/runtime/commands/database/migrate.ts|resetpassword",
+                "src/app/runtime/commands/database/migrate.ts|user",
+                "src/app/runtime/commands/database/migrate.ts|verification"
+              ]
+            },
+            "pass": false,
+            "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 12859,
+            "cacheRead": 160970,
+            "input": 18,
+            "output": 3883
+          },
+          "turns": 10,
+          "wallMs": 34760
+        }
+      ],
+      "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7",
+      "stack": ["express", "mongoose"]
+    },
+    {
+      "name": "fastify-typescript",
+      "runs": [
+        {
+          "checkRuns": 4,
+          "costUsdReported": 0.0917915,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "1bc6868f135e98a6334f5b0e8c67edecf44e26aa1ca11dcf01c7cb21e67e9878",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "fastify-typescript",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "write": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": ["src/controllers/user.controller.ts|users", "src/helpers/auth.helper.ts|users"],
+              "table": ["post", "users"],
+              "write": ["src/controllers/post.controller.ts|post", "src/controllers/user.controller.ts|users"]
+            },
+            "pass": false,
+            "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 8693,
+            "cacheRead": 109115,
+            "input": 14,
+            "output": 4608
+          },
+          "turns": 8,
+          "wallMs": 33507
+        },
+        {
+          "checkRuns": 3,
+          "costUsdReported": 0.07968140000000001,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "f8a3815c2d79fc206ca2d9dbe52b6fe157f3b63f2415af75037e896c3865e00f",
+          "run": 2,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "fastify-typescript",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "write": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": ["src/controllers/user.controller.ts|users", "src/helpers/auth.helper.ts|users"],
+              "table": ["post", "users"],
+              "write": ["src/controllers/post.controller.ts|post", "src/controllers/user.controller.ts|users"]
+            },
+            "pass": false,
+            "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 7740,
+            "cacheRead": 107134,
+            "input": 14,
+            "output": 3798
+          },
+          "turns": 8,
+          "wallMs": 29872
+        },
+        {
+          "checkRuns": 5,
+          "costUsdReported": 0.1262289,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "f446137316ef90276b001be34a849b83497458a88af085a292878091ea0b4b0f",
+          "run": 3,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "fastify-typescript",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "write": {
+                "labelled": 2,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": ["src/controllers/user.controller.ts|users", "src/helpers/auth.helper.ts|users"],
+              "table": ["post", "users"],
+              "write": ["src/controllers/post.controller.ts|post", "src/controllers/user.controller.ts|users"]
+            },
+            "pass": false,
+            "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 11118,
+            "cacheRead": 150309,
+            "input": 18,
+            "output": 6669
+          },
+          "turns": 12,
+          "wallMs": 44202
+        }
+      ],
+      "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783",
+      "stack": ["fastify", "prisma"]
+    },
+    {
+      "name": "go-base",
+      "runs": [
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.0325682,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "0785eac0a173315324bccc7485f358273c33303baa1309bee99ec0284479c2f6",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "go-base",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 19,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 3,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "DELETE /admin/accounts/:param",
+                "DELETE /api/account",
+                "DELETE /api/account/token/:param",
+                "GET /*",
+                "GET /admin",
+                "GET /admin/accounts",
+                "GET /admin/accounts/:param",
+                "GET /api/account",
+                "GET /api/profile",
+                "GET /healthz",
+                "POST /admin/accounts",
+                "POST /auth/login",
+                "POST /auth/logout",
+                "POST /auth/refresh",
+                "POST /auth/token",
+                "PUT /admin/accounts/:param",
+                "PUT /api/account",
+                "PUT /api/account/token/:param",
+                "PUT /api/profile"
+              ],
+              "table": ["accounts", "profiles", "tokens"]
+            },
+            "pass": false,
+            "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 3208,
+            "cacheRead": 67462,
+            "input": 10,
+            "output": 1297
+          },
+          "turns": 7,
+          "wallMs": 16324
+        },
+        {
+          "checkRuns": 3,
+          "costUsdReported": 0.037918,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "a2af195a83fbe9b53c5a6a929a8b0e2d4f245b5392cd1a6582b61fd28916d948",
+          "run": 2,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "go-base",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 19,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 3,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "DELETE /admin/accounts/:param",
+                "DELETE /api/account",
+                "DELETE /api/account/token/:param",
+                "GET /*",
+                "GET /admin",
+                "GET /admin/accounts",
+                "GET /admin/accounts/:param",
+                "GET /api/account",
+                "GET /api/profile",
+                "GET /healthz",
+                "POST /admin/accounts",
+                "POST /auth/login",
+                "POST /auth/logout",
+                "POST /auth/refresh",
+                "POST /auth/token",
+                "PUT /admin/accounts/:param",
+                "PUT /api/account",
+                "PUT /api/account/token/:param",
+                "PUT /api/profile"
+              ],
+              "table": ["accounts", "profiles", "tokens"]
+            },
+            "pass": false,
+            "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 3612,
+            "cacheRead": 82660,
+            "input": 12,
+            "output": 1518
+          },
+          "turns": 7,
+          "wallMs": 18175
+        },
+        {
+          "checkRuns": 3,
+          "costUsdReported": 0.039583400000000005,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "423596ac85608202354341d3ff3544fb70975b82974e41c950d068cdb3cd28ae",
+          "run": 3,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "go-base",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 19,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 3,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "DELETE /admin/accounts/:param",
+                "DELETE /api/account",
+                "DELETE /api/account/token/:param",
+                "GET /*",
+                "GET /admin",
+                "GET /admin/accounts",
+                "GET /admin/accounts/:param",
+                "GET /api/account",
+                "GET /api/profile",
+                "GET /healthz",
+                "POST /admin/accounts",
+                "POST /auth/login",
+                "POST /auth/logout",
+                "POST /auth/refresh",
+                "POST /auth/token",
+                "PUT /admin/accounts/:param",
+                "PUT /api/account",
+                "PUT /api/account/token/:param",
+                "PUT /api/profile"
+              ],
+              "table": ["accounts", "profiles", "tokens"]
+            },
+            "pass": false,
+            "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 4065,
+            "cacheRead": 83394,
+            "input": 12,
+            "output": 1496
+          },
+          "turns": 7,
+          "wallMs": 17996
+        }
+      ],
+      "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a",
+      "stack": ["chi"]
+    },
+    {
+      "name": "golang-gin-realworld-example-app",
+      "runs": [
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.0546789,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "57dc3d9d8f9c9ef5bdeeb914825d03b8a7d3ea52aaa2ee280fbc15e0c4cee29b",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "golang-gin-realworld-example-app",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 20,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 7,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "DELETE /api/articles/:param",
+                "DELETE /api/articles/:param/comments/:param",
+                "DELETE /api/articles/:param/favorite",
+                "DELETE /api/profiles/:param/follow",
+                "GET /api/articles",
+                "GET /api/articles/:param",
+                "GET /api/articles/:param/comments",
+                "GET /api/articles/feed",
+                "GET /api/ping",
+                "GET /api/profiles/:param",
+                "GET /api/tags",
+                "GET /api/user",
+                "POST /api/articles",
+                "POST /api/articles/:param/comments",
+                "POST /api/articles/:param/favorite",
+                "POST /api/profiles/:param/follow",
+                "POST /api/users",
+                "POST /api/users/login",
+                "PUT /api/articles/:param",
+                "PUT /api/user"
+              ],
+              "table": [
+                "articlemodel",
+                "articleusermodel",
+                "commentmodel",
+                "favoritemodel",
+                "followmodel",
+                "tagmodel",
+                "usermodel"
+              ]
+            },
+            "pass": false,
+            "sha": "a41289b2a4951e7cc09066f86742a27f85121c9b"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 7188,
+            "cacheRead": 95729,
+            "input": 12,
+            "output": 1633
+          },
+          "turns": 8,
+          "wallMs": 17277
+        },
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.0320336,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "876b559facb63f89c39d0d0beecc8d41b41989b6466f7ec8b029403335f90851",
+          "run": 2,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "golang-gin-realworld-example-app",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 20,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 7,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "DELETE /api/articles/:param",
+                "DELETE /api/articles/:param/comments/:param",
+                "DELETE /api/articles/:param/favorite",
+                "DELETE /api/profiles/:param/follow",
+                "GET /api/articles",
+                "GET /api/articles/:param",
+                "GET /api/articles/:param/comments",
+                "GET /api/articles/feed",
+                "GET /api/ping",
+                "GET /api/profiles/:param",
+                "GET /api/tags",
+                "GET /api/user",
+                "POST /api/articles",
+                "POST /api/articles/:param/comments",
+                "POST /api/articles/:param/favorite",
+                "POST /api/profiles/:param/follow",
+                "POST /api/users",
+                "POST /api/users/login",
+                "PUT /api/articles/:param",
+                "PUT /api/user"
+              ],
+              "table": [
+                "articlemodel",
+                "articleusermodel",
+                "commentmodel",
+                "favoritemodel",
+                "followmodel",
+                "tagmodel",
+                "usermodel"
+              ]
+            },
+            "pass": false,
+            "sha": "a41289b2a4951e7cc09066f86742a27f85121c9b"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 3902,
+            "cacheRead": 69456,
+            "input": 10,
+            "output": 946
+          },
+          "turns": 6,
+          "wallMs": 16357
+        },
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.0338102,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "bc75c25981eac04482f0b4aa5a42636937024b508ba83bf99094ee1bba71b918",
+          "run": 3,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "golang-gin-realworld-example-app",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 20,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 7,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "DELETE /api/articles/:param",
+                "DELETE /api/articles/:param/comments/:param",
+                "DELETE /api/articles/:param/favorite",
+                "DELETE /api/profiles/:param/follow",
+                "GET /api/articles",
+                "GET /api/articles/:param",
+                "GET /api/articles/:param/comments",
+                "GET /api/articles/feed",
+                "GET /api/ping",
+                "GET /api/profiles/:param",
+                "GET /api/tags",
+                "GET /api/user",
+                "POST /api/articles",
+                "POST /api/articles/:param/comments",
+                "POST /api/articles/:param/favorite",
+                "POST /api/profiles/:param/follow",
+                "POST /api/users",
+                "POST /api/users/login",
+                "PUT /api/articles/:param",
+                "PUT /api/user"
+              ],
+              "table": [
+                "articlemodel",
+                "articleusermodel",
+                "commentmodel",
+                "favoritemodel",
+                "followmodel",
+                "tagmodel",
+                "usermodel"
+              ]
+            },
+            "pass": false,
+            "sha": "a41289b2a4951e7cc09066f86742a27f85121c9b"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 3975,
+            "cacheRead": 69602,
+            "input": 10,
+            "output": 1093
+          },
+          "turns": 6,
+          "wallMs": 14435
+        }
+      ],
+      "sha": "a41289b2a4951e7cc09066f86742a27f85121c9b",
+      "stack": ["gin", "gorm"]
+    },
+    {
+      "name": "nestjs-boilerplate",
+      "runs": [
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.047698500000000005,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "f68c49bf687e28c4a006783c14d67050f59265e0acccf519531e91df91cc80ec",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "nestjs-boilerplate",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 6,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 5,
+                "matched": 5,
+                "pass": true,
+                "precision": 1,
+                "predicted": 5,
+                "recall": 1
+              },
+              "write": {
+                "labelled": 6,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": [
+                "src/database/seeds/relational/role/role-seed.service.ts|role",
+                "src/database/seeds/relational/status/status-seed.service.ts|status",
+                "src/database/seeds/relational/user/user-seed.service.ts|user",
+                "src/files/infrastructure/persistence/relational/repositories/file.repository.ts|file",
+                "src/session/infrastructure/persistence/relational/repositories/session.repository.ts|session",
+                "src/users/infrastructure/persistence/relational/repositories/user.repository.ts|user"
+              ],
+              "write": [
+                "src/database/seeds/relational/role/role-seed.service.ts|role",
+                "src/database/seeds/relational/status/status-seed.service.ts|status",
+                "src/database/seeds/relational/user/user-seed.service.ts|user",
+                "src/files/infrastructure/persistence/relational/repositories/file.repository.ts|file",
+                "src/session/infrastructure/persistence/relational/repositories/session.repository.ts|session",
+                "src/users/infrastructure/persistence/relational/repositories/user.repository.ts|user"
+              ]
+            },
+            "pass": false,
+            "sha": "9620f159eefe38f47747d02ab162852367c5472c"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 5732,
+            "cacheRead": 70305,
+            "input": 10,
+            "output": 1772
+          },
+          "turns": 6,
+          "wallMs": 18031
+        },
+        {
+          "checkRuns": 6,
+          "costUsdReported": 0.19824920000000001,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "bcd83769e37da1ede60e5187a164e3bb7dd31223f4cb355325af2f7337c86f26",
+          "run": 2,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "nestjs-boilerplate",
+            "extra": {
+              "read": [
+                "src/database/seeds/document/user/user-seed.service.ts|userschemaclass",
+                "src/files/infrastructure/persistence/document/repositories/file.repository.ts|fileschemaclass",
+                "src/session/infrastructure/persistence/document/repositories/session.repository.ts|sessionschemaclass",
+                "src/users/infrastructure/persistence/document/repositories/user.repository.ts|userschemaclass"
+              ],
+              "table": ["fileschemaclass", "sessionschemaclass", "userschemaclass"],
+              "write": [
+                "src/session/infrastructure/persistence/document/repositories/session.repository.ts|sessionschemaclass",
+                "src/users/infrastructure/persistence/document/repositories/user.repository.ts|userschemaclass"
+              ]
+            },
+            "kinds": {
+              "read": {
+                "labelled": 6,
+                "matched": 6,
+                "pass": false,
+                "precision": 0.6,
+                "predicted": 10,
+                "recall": 1
+              },
+              "table": {
+                "labelled": 5,
+                "matched": 5,
+                "pass": false,
+                "precision": 0.625,
+                "predicted": 8,
+                "recall": 1
+              },
+              "write": {
+                "labelled": 6,
+                "matched": 6,
+                "pass": false,
+                "precision": 0.75,
+                "predicted": 8,
+                "recall": 1
+              }
+            },
+            "missed": {},
+            "pass": false,
+            "sha": "9620f159eefe38f47747d02ab162852367c5472c"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 20588,
+            "cacheRead": 278552,
+            "input": 26,
+            "output": 8799
+          },
+          "turns": 18,
+          "wallMs": 61317
+        },
+        {
+          "checkRuns": 4,
+          "costUsdReported": 0.1310357,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "1f5e9f0d7e1e905f224d3c83c30b74c6df58d6a538eb3eda1b3a32278df69723",
+          "run": 3,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "nestjs-boilerplate",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 6,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 5,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "write": {
+                "labelled": 6,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": [
+                "src/database/seeds/relational/role/role-seed.service.ts|role",
+                "src/database/seeds/relational/status/status-seed.service.ts|status",
+                "src/database/seeds/relational/user/user-seed.service.ts|user",
+                "src/files/infrastructure/persistence/relational/repositories/file.repository.ts|file",
+                "src/session/infrastructure/persistence/relational/repositories/session.repository.ts|session",
+                "src/users/infrastructure/persistence/relational/repositories/user.repository.ts|user"
+              ],
+              "table": ["file", "role", "session", "status", "user"],
+              "write": [
+                "src/database/seeds/relational/role/role-seed.service.ts|role",
+                "src/database/seeds/relational/status/status-seed.service.ts|status",
+                "src/database/seeds/relational/user/user-seed.service.ts|user",
+                "src/files/infrastructure/persistence/relational/repositories/file.repository.ts|file",
+                "src/session/infrastructure/persistence/relational/repositories/session.repository.ts|session",
+                "src/users/infrastructure/persistence/relational/repositories/user.repository.ts|user"
+              ]
+            },
+            "pass": false,
+            "sha": "9620f159eefe38f47747d02ab162852367c5472c"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 15911,
+            "cacheRead": 156697,
+            "input": 16,
+            "output": 5169
+          },
+          "turns": 11,
+          "wallMs": 42173
+        }
+      ],
+      "sha": "9620f159eefe38f47747d02ab162852367c5472c",
+      "stack": ["nestjs", "typeorm"]
+    },
+    {
+      "name": "nethttp",
+      "runs": [
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.025292699999999998,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "876b559facb63f89c39d0d0beecc8d41b41989b6466f7ec8b029403335f90851",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "nethttp",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /",
+                "DELETE /monster/:param",
+                "GET /monster/:param",
+                "POST /monster",
+                "PUT /monster/:param"
+              ]
+            },
+            "pass": false,
+            "sha": "63ead0d466e6ece610c2bcb1b304fab435981f35"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 1720,
+            "cacheRead": 76287,
+            "input": 12,
+            "output": 1076
+          },
+          "turns": 7,
+          "wallMs": 17065
+        },
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.023320300000000002,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "876b559facb63f89c39d0d0beecc8d41b41989b6466f7ec8b029403335f90851",
+          "run": 2,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "nethttp",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /",
+                "DELETE /monster/:param",
+                "GET /monster/:param",
+                "POST /monster",
+                "PUT /monster/:param"
+              ]
+            },
+            "pass": false,
+            "sha": "63ead0d466e6ece610c2bcb1b304fab435981f35"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 1685,
+            "cacheRead": 63403,
+            "input": 10,
+            "output": 1022
+          },
+          "turns": 6,
+          "wallMs": 15604
+        },
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.020989100000000004,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "876b559facb63f89c39d0d0beecc8d41b41989b6466f7ec8b029403335f90851",
+          "run": 3,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "nethttp",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /",
+                "DELETE /monster/:param",
+                "GET /monster/:param",
+                "POST /monster",
+                "PUT /monster/:param"
+              ]
+            },
+            "pass": false,
+            "sha": "63ead0d466e6ece610c2bcb1b304fab435981f35"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 1923,
+            "cacheRead": 51111,
+            "input": 8,
+            "output": 817
+          },
+          "turns": 5,
+          "wallMs": 12714
+        }
+      ],
+      "sha": "63ead0d466e6ece610c2bcb1b304fab435981f35",
+      "stack": ["net-http"]
+    },
+    {
+      "name": "next-js-boilerplate",
+      "runs": [
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.05681839999999999,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "6dbca6fe4941e2a990340617d017b5fce6e57e6a72009768995bf1c297cfb6f1",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "next-js-boilerplate",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 1,
+                "matched": 1,
+                "pass": true,
+                "precision": 1,
+                "predicted": 1,
+                "recall": 1
+              },
+              "table": {
+                "labelled": 1,
+                "matched": 1,
+                "pass": true,
+                "precision": 1,
+                "predicted": 1,
+                "recall": 1
+              },
+              "write": {
+                "labelled": 1,
+                "matched": 1,
+                "pass": true,
+                "precision": 1,
+                "predicted": 1,
+                "recall": 1
+              }
+            },
+            "missed": {},
+            "pass": true,
+            "sha": "b83157a8018f55b926a3c25a4b7a7e14b0dfbc35"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 6515,
+            "cacheRead": 89644,
+            "input": 12,
+            "output": 2177
+          },
+          "turns": 7,
+          "wallMs": 22401
+        },
+        {
+          "checkRuns": 7,
+          "costUsdReported": 0.12895430000000002,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "18000e5ae100cada76aff3f2309b185c13dfcce3c61017aa49c239f41014f71f",
+          "run": 2,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "next-js-boilerplate",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 1,
+                "matched": 1,
+                "pass": true,
+                "precision": 1,
+                "predicted": 1,
+                "recall": 1
+              },
+              "table": {
+                "labelled": 1,
+                "matched": 1,
+                "pass": true,
+                "precision": 1,
+                "predicted": 1,
+                "recall": 1
+              },
+              "write": {
+                "labelled": 1,
+                "matched": 1,
+                "pass": true,
+                "precision": 1,
+                "predicted": 1,
+                "recall": 1
+              }
+            },
+            "missed": {},
+            "pass": true,
+            "sha": "b83157a8018f55b926a3c25a4b7a7e14b0dfbc35"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 10957,
+            "cacheRead": 223043,
+            "input": 26,
+            "output": 6277
+          },
+          "turns": 18,
+          "wallMs": 50356
+        },
+        {
+          "checkRuns": 6,
+          "costUsdReported": 0.1048043,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "9f1c8af8aff96f1f349bbaed4bab02eb9b13b67972124845a809a279397e8a6d",
+          "run": 3,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "next-js-boilerplate",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 1,
+                "matched": 1,
+                "pass": true,
+                "precision": 1,
+                "predicted": 1,
+                "recall": 1
+              },
+              "table": {
+                "labelled": 1,
+                "matched": 1,
+                "pass": true,
+                "precision": 1,
+                "predicted": 1,
+                "recall": 1
+              },
+              "write": {
+                "labelled": 1,
+                "matched": 1,
+                "pass": true,
+                "precision": 1,
+                "predicted": 1,
+                "recall": 1
+              }
+            },
+            "missed": {},
+            "pass": true,
+            "sha": "b83157a8018f55b926a3c25a4b7a7e14b0dfbc35"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 9611,
+            "cacheRead": 201923,
+            "input": 24,
+            "output": 4612
+          },
+          "turns": 17,
+          "wallMs": 42974
+        }
+      ],
+      "sha": "b83157a8018f55b926a3c25a4b7a7e14b0dfbc35",
+      "stack": ["nextjs", "drizzle"]
+    },
+    {
+      "name": "saasfly",
+      "runs": [
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.0652394,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "6c75094dd10bd199cf9c984cde019c22a5286874d8ac2db22ea40d26b3b103bd",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "saasfly",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "route": {
+                "labelled": 14,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 6,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /*",
+                "GET /api/auth/*",
+                "GET /api/webhooks/stripe",
+                "POST /api/auth/*",
+                "POST /api/webhooks/stripe"
+              ],
+              "route": [
+                "/:param",
+                "/:param/blog",
+                "/:param/blog/*",
+                "/:param/dashboard",
+                "/:param/dashboard/billing",
+                "/:param/dashboard/settings",
+                "/:param/docs/*",
+                "/:param/editor/cluster/:param",
+                "/:param/login",
+                "/:param/login-clerk/*",
+                "/:param/pricing",
+                "/:param/register",
+                "/admin/dashboard",
+                "/admin/login"
+              ],
+              "table": ["account", "customer", "k8sclusterconfig", "session", "user", "verificationtoken"]
+            },
+            "pass": false,
+            "sha": "49f7e28f69eae9cd9eed84221e13a3dbae87da67"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 6109,
+            "cacheRead": 117214,
+            "input": 16,
+            "output": 2905
+          },
+          "turns": 10,
+          "wallMs": 26494
+        },
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.0684882,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "6267fa185ba41f838f3e363580851673f2478748c8e7b4c7e1336b945f55dd55",
+          "run": 2,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "saasfly",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "route": {
+                "labelled": 14,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 6,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /*",
+                "GET /api/auth/*",
+                "GET /api/webhooks/stripe",
+                "POST /api/auth/*",
+                "POST /api/webhooks/stripe"
+              ],
+              "route": [
+                "/:param",
+                "/:param/blog",
+                "/:param/blog/*",
+                "/:param/dashboard",
+                "/:param/dashboard/billing",
+                "/:param/dashboard/settings",
+                "/:param/docs/*",
+                "/:param/editor/cluster/:param",
+                "/:param/login",
+                "/:param/login-clerk/*",
+                "/:param/pricing",
+                "/:param/register",
+                "/admin/dashboard",
+                "/admin/login"
+              ],
+              "table": ["account", "customer", "k8sclusterconfig", "session", "user", "verificationtoken"]
+            },
+            "pass": false,
+            "sha": "49f7e28f69eae9cd9eed84221e13a3dbae87da67"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 5839,
+            "cacheRead": 128362,
+            "input": 18,
+            "output": 3226
+          },
+          "turns": 11,
+          "wallMs": 29109
+        },
+        {
+          "checkRuns": 4,
+          "costUsdReported": 0.0806378,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "4537683fec4f699b2d1c200b0ae66797e3f7fc1eb9e70433946cd42adb42b2d0",
+          "run": 3,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "saasfly",
+            "extra": {},
+            "kinds": {
+              "endpoint": {
+                "labelled": 5,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "route": {
+                "labelled": 14,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 6,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "endpoint": [
+                "ALL /*",
+                "GET /api/auth/*",
+                "GET /api/webhooks/stripe",
+                "POST /api/auth/*",
+                "POST /api/webhooks/stripe"
+              ],
+              "route": [
+                "/:param",
+                "/:param/blog",
+                "/:param/blog/*",
+                "/:param/dashboard",
+                "/:param/dashboard/billing",
+                "/:param/dashboard/settings",
+                "/:param/docs/*",
+                "/:param/editor/cluster/:param",
+                "/:param/login",
+                "/:param/login-clerk/*",
+                "/:param/pricing",
+                "/:param/register",
+                "/admin/dashboard",
+                "/admin/login"
+              ],
+              "table": ["account", "customer", "k8sclusterconfig", "session", "user", "verificationtoken"]
+            },
+            "pass": false,
+            "sha": "49f7e28f69eae9cd9eed84221e13a3dbae87da67"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 7176,
+            "cacheRead": 135378,
+            "input": 18,
+            "output": 3836
+          },
+          "turns": 15,
+          "wallMs": 34113
+        }
+      ],
+      "sha": "49f7e28f69eae9cd9eed84221e13a3dbae87da67",
+      "stack": ["nextjs", "kysely", "prisma"]
+    },
+    {
+      "name": "simplebank",
+      "runs": [
+        {
+          "checkRuns": 2,
+          "costUsdReported": 0.0370907,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "5342920b1cb841014cdf70a5044ad0d675bdfb43fbe66a18ebcb92e48cac0206",
+          "run": 1,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "simplebank",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 5,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 6,
+                "matched": 6,
+                "pass": true,
+                "precision": 1,
+                "predicted": 6,
+                "recall": 1
+              },
+              "write": {
+                "labelled": 6,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": [
+                "db/query/account.sql|accounts",
+                "db/query/entry.sql|entries",
+                "db/query/session.sql|sessions",
+                "db/query/transfer.sql|transfers",
+                "db/query/user.sql|users"
+              ],
+              "write": [
+                "db/query/account.sql|accounts",
+                "db/query/entry.sql|entries",
+                "db/query/session.sql|sessions",
+                "db/query/transfer.sql|transfers",
+                "db/query/user.sql|users",
+                "db/query/verify_email.sql|verify_emails"
+              ]
+            },
+            "pass": false,
+            "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 3884,
+            "cacheRead": 83407,
+            "input": 12,
+            "output": 1319
+          },
+          "turns": 7,
+          "wallMs": 15985
+        },
+        {
+          "checkRuns": 3,
+          "costUsdReported": 0.049180100000000004,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "ce34450fba71a84bd6cfc8d7de82ace27b394b3175591f3be7947b636820b6b4",
+          "run": 2,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "simplebank",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 5,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 6,
+                "matched": 6,
+                "pass": true,
+                "precision": 1,
+                "predicted": 6,
+                "recall": 1
+              },
+              "write": {
+                "labelled": 6,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": [
+                "db/query/account.sql|accounts",
+                "db/query/entry.sql|entries",
+                "db/query/session.sql|sessions",
+                "db/query/transfer.sql|transfers",
+                "db/query/user.sql|users"
+              ],
+              "write": [
+                "db/query/account.sql|accounts",
+                "db/query/entry.sql|entries",
+                "db/query/session.sql|sessions",
+                "db/query/transfer.sql|transfers",
+                "db/query/user.sql|users",
+                "db/query/verify_email.sql|verify_emails"
+              ]
+            },
+            "pass": false,
+            "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 4736,
+            "cacheRead": 115641,
+            "input": 16,
+            "output": 1864
+          },
+          "turns": 9,
+          "wallMs": 20162
+        },
+        {
+          "checkRuns": 3,
+          "costUsdReported": 0.0532715,
+          "model": "claude-sonnet-5-5",
+          "recipeSha256": "016d628acfdcdcc879340157e4dca8506b7f844f2e52d914d572854c9b593018",
+          "run": 3,
+          "score": {
+            "bar": {
+              "precision": 0.95,
+              "recall": 0.9
+            },
+            "case": "simplebank",
+            "extra": {},
+            "kinds": {
+              "read": {
+                "labelled": 5,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "table": {
+                "labelled": 6,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              },
+              "write": {
+                "labelled": 6,
+                "matched": 0,
+                "pass": false,
+                "precision": 1,
+                "predicted": 0,
+                "recall": 0
+              }
+            },
+            "missed": {
+              "read": [
+                "db/query/account.sql|accounts",
+                "db/query/entry.sql|entries",
+                "db/query/session.sql|sessions",
+                "db/query/transfer.sql|transfers",
+                "db/query/user.sql|users"
+              ],
+              "table": ["accounts", "entries", "sessions", "transfers", "users", "verify_emails"],
+              "write": [
+                "db/query/account.sql|accounts",
+                "db/query/entry.sql|entries",
+                "db/query/session.sql|sessions",
+                "db/query/transfer.sql|transfers",
+                "db/query/user.sql|users",
+                "db/query/verify_email.sql|verify_emails"
+              ]
+            },
+            "pass": false,
+            "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263"
+          },
+          "status": "ok",
+          "tokens": {
+            "cacheCreate": 5154,
+            "cacheRead": 116735,
+            "input": 16,
+            "output": 2095
+          },
+          "turns": 9,
+          "wallMs": 23419
+        }
+      ],
+      "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263",
+      "stack": ["sqlc"]
+    }
+  ]
+}
