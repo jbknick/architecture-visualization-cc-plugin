@@ -1,0 +1,4 @@
+{
+  "compilerOptions": { "jsx": "react-jsx", "module": "esnext", "moduleResolution": "bundler", "strict": true },
+  "include": ["src"]
+}

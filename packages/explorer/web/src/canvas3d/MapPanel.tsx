@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import "./map3d.css";
 import type { GraphNode } from "../api.ts";
 import { LargestFiles } from "../components/LargestFiles.tsx";
+import { isRootWorkspaceId } from "../ids.ts";
 import { rankView } from "../rankedFiles/store.ts";
 import { useRanked } from "../rankedFiles/useRanked.ts";
 import type { FilterPanelProps } from "../slots.ts";
@@ -50,7 +51,7 @@ export function cityWorkspaces(nodes: readonly GraphNode[]): IslandSummary[] {
       index,
       label: n.shortLabel ?? n.label,
       fullLabel: n.label,
-      wsKind: n.id === "ws:." ? "(repo root)" : (n.badges?.[0] ?? "package"),
+      wsKind: isRootWorkspaceId(n.id) ? "(repo root)" : (n.badges?.[0] ?? "package"),
       functions: n.stats?.functions ?? 0,
       files: n.stats?.files ?? 0,
     }));

@@ -1,0 +1,686 @@
+{
+  "repos": [
+    {
+      "name": "acme/api"
+    },
+    {
+      "name": "web"
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "ws:acme/api:.",
+      "repo": "acme/api",
+      "name": "mr-api-root",
+      "dir": ".",
+      "kind": "unknown",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:acme/api:@mr/contracts",
+      "repo": "acme/api",
+      "name": "@mr/contracts",
+      "dir": "packages/contracts",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": [
+        {
+          "subpath": ".",
+          "target": "./src/index.ts"
+        }
+      ]
+    },
+    {
+      "id": "ws:acme/api:mr-server",
+      "repo": "acme/api",
+      "name": "mr-server",
+      "dir": "apps/server",
+      "kind": "app",
+      "frameworks": [
+        "hono"
+      ],
+      "deps": [
+        "@mr/contracts",
+        "hono"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:web:.",
+      "repo": "web",
+      "name": "mr-web",
+      "dir": ".",
+      "kind": "unknown",
+      "frameworks": [
+        "react"
+      ],
+      "deps": [
+        "@mr/contracts",
+        "react"
+      ],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:acme/api:apps/server/package.json",
+      "repo": "acme/api",
+      "path": "apps/server/package.json",
+      "lang": "typescript",
+      "workspaceId": "ws:acme/api:mr-server",
+      "contentHash": "f3864fe30948630f7275058a3e1761976d262e57c038b317348653ff9a0b9391"
+    },
+    {
+      "id": "file:acme/api:apps/server/src/index.ts",
+      "repo": "acme/api",
+      "path": "apps/server/src/index.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:acme/api:mr-server",
+      "contentHash": "cbc183d1df5c41dd3fd6e6d73f7b706984335d240147cc9ad8635df3a05bb3d0"
+    },
+    {
+      "id": "file:acme/api:apps/server/src/posts.ts",
+      "repo": "acme/api",
+      "path": "apps/server/src/posts.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:acme/api:mr-server",
+      "contentHash": "eeaf409def207fa4b36e615022078baff40fb665d7933cda73e3bc60387a0ca6"
+    },
+    {
+      "id": "file:acme/api:apps/server/src/retry.ts",
+      "repo": "acme/api",
+      "path": "apps/server/src/retry.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:acme/api:mr-server",
+      "contentHash": "e74950997fcd02cc45e88c8ea5d948c165f9db2c967ecaf158e081c0681bce25"
+    },
+    {
+      "id": "file:acme/api:apps/server/src/slug.ts",
+      "repo": "acme/api",
+      "path": "apps/server/src/slug.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:acme/api:mr-server",
+      "contentHash": "486512f1c7030e0c61bc9c0aa4a07a6a616003d028f9786049f497d17f39fe47"
+    },
+    {
+      "id": "file:acme/api:packages/contracts/src/index.ts",
+      "repo": "acme/api",
+      "path": "packages/contracts/src/index.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:acme/api:@mr/contracts",
+      "contentHash": "3953513bc9fc8c2dd3a04e4d778c60a65b2a7c916024c73571611640e98363a7"
+    },
+    {
+      "id": "file:web:src/lib/only-in-web.ts",
+      "repo": "web",
+      "path": "src/lib/only-in-web.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:web:.",
+      "contentHash": "2227a48fe3e08a670dcd363cab91788192039c9e838ca55ceb553cd091cc478f"
+    },
+    {
+      "id": "file:web:src/lib/slug.ts",
+      "repo": "web",
+      "path": "src/lib/slug.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:web:.",
+      "contentHash": "df84c44bd34bc765786098d7deaff563d828654ceb8ea8072c7628c530ee7010"
+    },
+    {
+      "id": "file:web:src/pages/posts.tsx",
+      "repo": "web",
+      "path": "src/pages/posts.tsx",
+      "lang": "typescript",
+      "workspaceId": "ws:web:.",
+      "contentHash": "081c978792784d8de5f14e34c86153f15e5442673f9588115544a83818c7c4d4"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:acme/api:apps/server/src/index.ts#app",
+      "fileId": "file:acme/api:apps/server/src/index.ts",
+      "name": "app",
+      "kind": "const",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "",
+      "startLine": 4,
+      "endLine": 4,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "06f5df2f90687e7a612ff6e584fd1fb5",
+      "shapeHash": "0ced2a1203dbf226767528f661c94b92"
+    },
+    {
+      "id": "sym:acme/api:apps/server/src/posts.ts#listPosts",
+      "fileId": "file:acme/api:apps/server/src/posts.ts",
+      "name": "listPosts",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(c: Context)",
+      "startLine": 9,
+      "endLine": 13,
+      "loc": 5,
+      "complexity": 1,
+      "stmtCount": 3,
+      "exactHash": "2ffd89edc6a330bc59ab3fe74ac23a78",
+      "shapeHash": "52c3e0244c94c51bcb4f76df1ebdac58"
+    },
+    {
+      "id": "sym:acme/api:apps/server/src/retry.ts#computeRetryDelay",
+      "fileId": "file:acme/api:apps/server/src/retry.ts",
+      "name": "computeRetryDelay",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(attempt: number, baseMs: number, capMs: number): number",
+      "startLine": 1,
+      "endLine": 7,
+      "loc": 7,
+      "complexity": 1,
+      "stmtCount": 5,
+      "exactHash": "baae9d22201d1b9861e2ed6f16b9155d",
+      "shapeHash": "058c5493fb0d3377dcd91f0d245eb47a"
+    },
+    {
+      "id": "sym:acme/api:apps/server/src/slug.ts#toSlug",
+      "fileId": "file:acme/api:apps/server/src/slug.ts",
+      "name": "toSlug",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(text: string): string",
+      "startLine": 1,
+      "endLine": 8,
+      "loc": 8,
+      "complexity": 1,
+      "stmtCount": 6,
+      "exactHash": "384acec1b3d30e6ec8a38567175265f6",
+      "shapeHash": "7807c63975879dc5e3fd5ecef8e77794"
+    },
+    {
+      "id": "sym:acme/api:packages/contracts/src/index.ts#formatDate",
+      "fileId": "file:acme/api:packages/contracts/src/index.ts",
+      "name": "formatDate",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(iso: string): string",
+      "startLine": 1,
+      "endLine": 7,
+      "loc": 7,
+      "complexity": 1,
+      "stmtCount": 5,
+      "exactHash": "f13100ded9750309b3bba02abee7c360",
+      "shapeHash": "5d8783ac582f4ccac3f8e1cc39013dd2"
+    },
+    {
+      "id": "sym:acme/api:packages/contracts/src/index.ts#parseCursor",
+      "fileId": "file:acme/api:packages/contracts/src/index.ts",
+      "name": "parseCursor",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(raw: string | undefined): number",
+      "startLine": 9,
+      "endLine": 13,
+      "loc": 5,
+      "complexity": 4,
+      "stmtCount": 4,
+      "exactHash": "d22bdf54609a10870549b1cf5eb1710c",
+      "shapeHash": "ee494d9bfe99989928f092076772ec4f"
+    },
+    {
+      "id": "sym:web:src/lib/only-in-web.ts#debounceInput",
+      "fileId": "file:web:src/lib/only-in-web.ts",
+      "name": "debounceInput",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(fn: (value: string) => void, waitMs: number): (value: string) => void",
+      "startLine": 1,
+      "endLine": 7,
+      "loc": 7,
+      "complexity": 2,
+      "stmtCount": 5,
+      "exactHash": "23cf8c399bda62869fa9e6600bacce64",
+      "shapeHash": "94f6321ce9d888b89c54fd2ca1c608ba"
+    },
+    {
+      "id": "sym:web:src/lib/slug.ts#makeSlug",
+      "fileId": "file:web:src/lib/slug.ts",
+      "name": "makeSlug",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(input: string): string",
+      "startLine": 1,
+      "endLine": 8,
+      "loc": 8,
+      "complexity": 1,
+      "stmtCount": 6,
+      "exactHash": "afdcfadf5206f5e9d3b940011530b70a",
+      "shapeHash": "7807c63975879dc5e3fd5ecef8e77794"
+    },
+    {
+      "id": "sym:web:src/pages/posts.tsx#Post",
+      "fileId": "file:web:src/pages/posts.tsx",
+      "name": "Post",
+      "kind": "interface",
+      "lang": "typescript",
+      "exported": false,
+      "signature": "",
+      "startLine": 4,
+      "endLine": 8,
+      "loc": 5,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "c2679c619e8f6bbed08e3cb98cd0c8ea",
+      "shapeHash": "40ac6f3e2084c3d1af40a02b355b3ad2"
+    },
+    {
+      "id": "sym:web:src/pages/posts.tsx#PostsPage",
+      "fileId": "file:web:src/pages/posts.tsx",
+      "name": "PostsPage",
+      "kind": "component",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "()",
+      "startLine": 10,
+      "endLine": 26,
+      "loc": 17,
+      "complexity": 1,
+      "stmtCount": 4,
+      "exactHash": "69e32559853c454b50a0f5675b128953",
+      "shapeHash": "ae3e4850cdb68feec83dd9623c5cd349"
+    }
+  ],
+  "edges": [
+    {
+      "src": "ep:acme/api:mr-server:GET /api/posts",
+      "dst": "sym:acme/api:apps/server/src/posts.ts#listPosts",
+      "kind": "handles",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/server/src/index.ts:6"
+      ],
+      "fileId": "file:acme/api:apps/server/src/index.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/index.ts",
+      "dst": "ext:hono",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/server/src/index.ts:1"
+      ],
+      "fileId": "file:acme/api:apps/server/src/index.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/index.ts",
+      "dst": "file:acme/api:apps/server/src/posts.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/server/src/index.ts:2"
+      ],
+      "fileId": "file:acme/api:apps/server/src/index.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/index.ts",
+      "dst": "sym:acme/api:apps/server/src/index.ts#app",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/server/src/index.ts:6"
+      ],
+      "fileId": "file:acme/api:apps/server/src/index.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/index.ts",
+      "dst": "sym:acme/api:apps/server/src/index.ts#app",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/src/index.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/index.ts",
+      "dst": "sym:acme/api:apps/server/src/index.ts#app",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/src/index.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/posts.ts",
+      "dst": "ext:hono",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/server/src/posts.ts:2"
+      ],
+      "fileId": "file:acme/api:apps/server/src/posts.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/posts.ts",
+      "dst": "file:acme/api:packages/contracts/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "apps/server/src/posts.ts:1"
+      ],
+      "fileId": "file:acme/api:apps/server/src/posts.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/posts.ts",
+      "dst": "sym:acme/api:apps/server/src/posts.ts#listPosts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/src/posts.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/posts.ts",
+      "dst": "sym:acme/api:apps/server/src/posts.ts#listPosts",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/src/posts.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/retry.ts",
+      "dst": "sym:acme/api:apps/server/src/retry.ts#computeRetryDelay",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/src/retry.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/retry.ts",
+      "dst": "sym:acme/api:apps/server/src/retry.ts#computeRetryDelay",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/src/retry.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/slug.ts",
+      "dst": "sym:acme/api:apps/server/src/slug.ts#toSlug",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/src/slug.ts"
+    },
+    {
+      "src": "file:acme/api:apps/server/src/slug.ts",
+      "dst": "sym:acme/api:apps/server/src/slug.ts#toSlug",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/src/slug.ts"
+    },
+    {
+      "src": "file:acme/api:packages/contracts/src/index.ts",
+      "dst": "sym:acme/api:packages/contracts/src/index.ts#formatDate",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:packages/contracts/src/index.ts"
+    },
+    {
+      "src": "file:acme/api:packages/contracts/src/index.ts",
+      "dst": "sym:acme/api:packages/contracts/src/index.ts#formatDate",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:packages/contracts/src/index.ts"
+    },
+    {
+      "src": "file:acme/api:packages/contracts/src/index.ts",
+      "dst": "sym:acme/api:packages/contracts/src/index.ts#parseCursor",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:packages/contracts/src/index.ts"
+    },
+    {
+      "src": "file:acme/api:packages/contracts/src/index.ts",
+      "dst": "sym:acme/api:packages/contracts/src/index.ts#parseCursor",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:packages/contracts/src/index.ts"
+    },
+    {
+      "src": "file:web:src/lib/only-in-web.ts",
+      "dst": "sym:web:src/lib/only-in-web.ts#debounceInput",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:web:src/lib/only-in-web.ts"
+    },
+    {
+      "src": "file:web:src/lib/only-in-web.ts",
+      "dst": "sym:web:src/lib/only-in-web.ts#debounceInput",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:web:src/lib/only-in-web.ts"
+    },
+    {
+      "src": "file:web:src/lib/slug.ts",
+      "dst": "sym:web:src/lib/slug.ts#makeSlug",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:web:src/lib/slug.ts"
+    },
+    {
+      "src": "file:web:src/lib/slug.ts",
+      "dst": "sym:web:src/lib/slug.ts#makeSlug",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:web:src/lib/slug.ts"
+    },
+    {
+      "src": "file:web:src/pages/posts.tsx",
+      "dst": "ext:@mr/contracts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/pages/posts.tsx:1"
+      ],
+      "fileId": "file:web:src/pages/posts.tsx"
+    },
+    {
+      "src": "file:web:src/pages/posts.tsx",
+      "dst": "ext:react",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "src/pages/posts.tsx:2"
+      ],
+      "fileId": "file:web:src/pages/posts.tsx"
+    },
+    {
+      "src": "file:web:src/pages/posts.tsx",
+      "dst": "sym:web:src/pages/posts.tsx#Post",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:web:src/pages/posts.tsx"
+    },
+    {
+      "src": "file:web:src/pages/posts.tsx",
+      "dst": "sym:web:src/pages/posts.tsx#PostsPage",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:web:src/pages/posts.tsx"
+    },
+    {
+      "src": "file:web:src/pages/posts.tsx",
+      "dst": "sym:web:src/pages/posts.tsx#PostsPage",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:web:src/pages/posts.tsx"
+    },
+    {
+      "src": "sym:acme/api:apps/server/src/posts.ts#listPosts",
+      "dst": "sym:acme/api:packages/contracts/src/index.ts#formatDate",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/server/src/posts.ts:11"
+      ],
+      "fileId": "file:acme/api:apps/server/src/posts.ts"
+    },
+    {
+      "src": "sym:acme/api:apps/server/src/posts.ts#listPosts",
+      "dst": "sym:acme/api:packages/contracts/src/index.ts#parseCursor",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/server/src/posts.ts:10"
+      ],
+      "fileId": "file:acme/api:apps/server/src/posts.ts"
+    },
+    {
+      "src": "ws:acme/api:@mr/contracts",
+      "dst": "file:acme/api:packages/contracts/src/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:packages/contracts/src/index.ts"
+    },
+    {
+      "src": "ws:acme/api:mr-server",
+      "dst": "file:acme/api:apps/server/src/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/src/index.ts"
+    },
+    {
+      "src": "ws:acme/api:mr-server",
+      "dst": "file:acme/api:apps/server/src/posts.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/src/posts.ts"
+    },
+    {
+      "src": "ws:acme/api:mr-server",
+      "dst": "file:acme/api:apps/server/src/retry.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/src/retry.ts"
+    },
+    {
+      "src": "ws:acme/api:mr-server",
+      "dst": "file:acme/api:apps/server/src/slug.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/src/slug.ts"
+    },
+    {
+      "src": "ws:acme/api:mr-server",
+      "dst": "ws:acme/api:@mr/contracts",
+      "kind": "depends_on",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:acme/api:apps/server/package.json"
+    },
+    {
+      "src": "ws:web:.",
+      "dst": "file:web:src/lib/only-in-web.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:web:src/lib/only-in-web.ts"
+    },
+    {
+      "src": "ws:web:.",
+      "dst": "file:web:src/lib/slug.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:web:src/lib/slug.ts"
+    },
+    {
+      "src": "ws:web:.",
+      "dst": "file:web:src/pages/posts.tsx",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:web:src/pages/posts.tsx"
+    }
+  ],
+  "adapterNodes": [
+    {
+      "id": "ep:acme/api:mr-server:GET /api/posts",
+      "kind": "endpoint",
+      "ws": "ws:acme/api:mr-server",
+      "label": "GET /api/posts",
+      "fileId": "file:acme/api:apps/server/src/index.ts",
+      "data": {
+        "adapter": "hono",
+        "method": "GET",
+        "path": "/api/posts",
+        "routePath": "/api/posts",
+        "app": "apps/server/src/index.ts#app",
+        "handler": "listPosts",
+        "file": "apps/server/src/index.ts",
+        "line": 6
+      }
+    }
+  ]
+}

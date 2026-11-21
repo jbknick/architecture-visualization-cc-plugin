@@ -131,7 +131,7 @@ describe("the city on the large mock", () => {
         "testing",
         "types",
         "ui-kit",
-        "ws:.",
+        "ws:mock:.",
         "ws:scripts",
       ]);
       for (const d of tiny) {

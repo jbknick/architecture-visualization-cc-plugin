@@ -5,6 +5,7 @@ import {
   behaviorOf,
   countEffective,
   describedByOf,
+  displayOfId,
   getOverview,
   hybridSearch,
   isFileId,
@@ -101,7 +102,7 @@ function meta(ctx: ApiContext) {
   const { store, paths } = ctx;
   return {
     repo: path.basename(paths.root),
-    headSha: store.getMeta("head_sha") ?? null,
+    headSha: store.headSha(paths.repo) ?? null,
     // Counted in SQL: meta is fetched again after every refresh and whenever the tab gets focus back.
     counts: {
       workspaces: store.listWorkspaces().length,
@@ -185,7 +186,7 @@ function makeLabeler({ store }: ApiContext): Labeler {
       if (a !== undefined) return a;
       if (isSymId(id)) return store.getSymbol(id)?.name ?? nameOfSymId(id) ?? id;
       if (isFileId(id)) return files.get(id) ?? pathOfFileId(id);
-      if (id.startsWith("ws:")) return ws.get(id) ?? id.slice(3);
+      if (id.startsWith("ws:")) return ws.get(id) ?? displayOfId(id);
       return id;
     },
   };

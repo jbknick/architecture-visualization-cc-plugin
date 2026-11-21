@@ -83,7 +83,7 @@ describe("titles and edge widths", () => {
     const scene = buildScene(
       [
         {
-          id: "ws:.",
+          id: "ws:mock:.",
           kind: "workspace",
           label: "acme-root",
           size: 1,
@@ -101,7 +101,7 @@ describe("titles and edge widths", () => {
       ],
       [],
     );
-    const root = scene.tree.index.get("ws:.") as number;
+    const root = scene.tree.index.get("ws:mock:.") as number;
     const pkg = scene.tree.index.get("ws:pkg") as number;
     expect(subtitleParts(scene, root)).toEqual(["(repo root)", "17 functions", "9 files"]);
     expect(subtitleParts(scene, pkg)[0]).toBe("package");

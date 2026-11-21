@@ -6,11 +6,19 @@ import {
   openStore,
   reattachOverlay,
   resetStaleStore,
-  resolvePaths,
 } from "@gantry/core";
 import type { Command } from "commander";
 import { noteFreshIndex } from "./init.js";
-import { EXIT_ERROR, EXIT_OK, fail, recipeLines, summaryLines, writeStdout } from "./shared.js";
+import {
+  EXIT_ERROR,
+  EXIT_OK,
+  fail,
+  recipeLines,
+  resolveCliPaths,
+  summaryLines,
+  WORKSPACE_FLAG,
+  writeStdout,
+} from "./shared.js";
 
 export function registerIndex(program: Command): void {
   program
@@ -19,18 +27,19 @@ export function registerIndex(program: Command): void {
     .option("--files <paths...>", "re-index only these repo-relative files")
     .option("--layer <layer>", "main or working", "main")
     .option("--dump", "print the sorted graph JSON on stdout (summary goes to stderr)")
-    .action(async (opts: { files?: string[]; layer: string; dump?: boolean }) => {
+    .option(...WORKSPACE_FLAG)
+    .action(async (opts: { files?: string[]; layer: string; dump?: boolean; workspace?: string }) => {
       try {
         if (opts.layer !== "main" && opts.layer !== "working") {
           process.stderr.write(`gantry: --layer must be "main" or "working"\n`);
           process.exitCode = EXIT_ERROR;
           return;
         }
-        const paths = resolvePaths(process.cwd());
+        const paths = resolveCliPaths(opts);
         resetStaleStore(paths);
         if (opts.layer === "main" && !opts.files) noteFreshIndex(paths);
         ensureDataDir(paths);
-        const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+        const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
         try {
           const r = await indexRepo(paths, { layer: opts.layer as Layer, files: opts.files, store });
           reattachOverlay(store);

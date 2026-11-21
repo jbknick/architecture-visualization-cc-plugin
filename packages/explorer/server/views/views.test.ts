@@ -52,7 +52,7 @@ describe("project-map", () => {
     // packages/ui has only `src` underneath: the workspace holds `src` directly, not nested twice.
     const dirNode = byId.get("dir:packages/ui/src");
     expect(dirNode?.label).toBe("src");
-    expect(dirNode?.parent).toBe("ws:@acme/ui");
+    expect(dirNode?.parent).toBe("ws:pnpm-turbo:@acme/ui");
     // apps/web/src has `components`, `hooks`, ... so it is not collapsed; hooks has one file but sits beside others.
     expect(byId.get("dir:apps/web/src/routes/settings")?.parent).toBe("dir:apps/web/src/routes");
     for (const n of r.nodes) if (n.parent) expect(byId.has(n.parent)).toBe(true);
@@ -74,13 +74,19 @@ describe("project-map", () => {
   it("aggregates file imports between workspaces and keeps depends_on", () => {
     const r = view("project-map", "level=workspaces");
     const e = r.edges.find(
-      (x) => x.src === "ws:@acme/web" && x.dst === "ws:@acme/ui" && x.kind === "imports",
+      (x) =>
+        x.src === "ws:pnpm-turbo:@acme/web" && x.dst === "ws:pnpm-turbo:@acme/ui" && x.kind === "imports",
     );
     expect(e?.weight).toBeGreaterThan(0);
     expect(
-      r.edges.some((x) => x.kind === "depends_on" && x.src === "ws:@acme/web" && x.dst === "ws:@acme/ui"),
+      r.edges.some(
+        (x) =>
+          x.kind === "depends_on" &&
+          x.src === "ws:pnpm-turbo:@acme/web" &&
+          x.dst === "ws:pnpm-turbo:@acme/ui",
+      ),
     ).toBe(true);
-    expect(r.nodes.find((n) => n.id === "ws:@acme/web")?.badges).toContain("app");
+    expect(r.nodes.find((n) => n.id === "ws:pnpm-turbo:@acme/web")?.badges).toContain("app");
   });
 
   it("focus returns the subtree one level deeper plus ancestors", () => {
@@ -91,7 +97,7 @@ describe("project-map", () => {
       "file:pnpm-turbo:packages/ui/src/card.tsx",
       "file:pnpm-turbo:packages/ui/src/index.ts",
       "file:pnpm-turbo:packages/ui/src/internal.ts",
-      "ws:@acme/ui",
+      "ws:pnpm-turbo:@acme/ui",
     ]);
     const deeper = view(
       "project-map",
@@ -103,11 +109,11 @@ describe("project-map", () => {
   });
 
   it("filters: workspaces, kinds, exportedOnly, hideTests, showExternal", () => {
-    const only = view("project-map", "filters=workspaces=ws:@acme/ui");
-    expect(only.nodes.every((n) => n.id.startsWith("ws:@acme/ui") || n.path?.startsWith("packages/ui"))).toBe(
-      true,
-    );
-    const json = JSON.stringify({ workspaces: ["ws:@acme/ui"], exportedOnly: true });
+    const only = view("project-map", "filters=workspaces=ws:pnpm-turbo:@acme/ui");
+    expect(
+      only.nodes.every((n) => n.id.startsWith("ws:pnpm-turbo:@acme/ui") || n.path?.startsWith("packages/ui")),
+    ).toBe(true);
+    const json = JSON.stringify({ workspaces: ["ws:pnpm-turbo:@acme/ui"], exportedOnly: true });
     expect(
       view("project-map", `level=symbols&filters=${encodeURIComponent(json)}`).nodes.some(
         (n) => n.kind === "workspace",
@@ -212,7 +218,7 @@ describe("scale", () => {
     bigDir = mkdtempSync(join(tmpdir(), "gantry-big-"));
     big = openStore(join(bigDir, "gantry.db"));
     const wss = Array.from({ length: 20 }, (_, i) => ({
-      id: `ws:w${i}`,
+      id: `ws:pnpm-turbo:w${i}`,
       name: `w${i}`,
       dir: `pkgs/w${i}`,
       kind: "package" as const,
@@ -235,7 +241,7 @@ describe("scale", () => {
         id: `file:pnpm-turbo:${p}`,
         path: p,
         lang: "typescript",
-        workspaceId: `ws:w${fi % 20}`,
+        workspaceId: `ws:pnpm-turbo:w${fi % 20}`,
         contentHash: p,
         mtimeMs: 1,
         deleted: false,

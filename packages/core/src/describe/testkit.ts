@@ -43,7 +43,7 @@ export async function indexedFixture(
   dataDirs.push(data);
   const paths = resolvePaths(fx.dir, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
   await indexRepo(paths, { layer: "main" });
-  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   return {
     fx,
     paths,
@@ -90,6 +90,6 @@ export function putFile(store: Store, path: string, symbols: SymbolRecord[], edg
     mtimeMs: 1,
     deleted: false,
   };
-  if (store.getMeta("repo") === undefined) store.setMeta("repo", TEST_REPO);
+  store.upsertRepo(TEST_REPO);
   store.replaceFile("main", file, symbols, edges);
 }

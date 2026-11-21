@@ -1,0 +1,1 @@
+{ "repos": [{ "path": "./web" }, { "path": "./api", "repo": "acme/api" }] }

@@ -8,11 +8,11 @@ import { nodeInfo } from "./node.js";
 let store: Store;
 beforeEach(() => {
   store = openStore(":memory:");
-  store.setMeta("repo", "repo");
+  store.upsertRepo("repo");
 });
 afterEach(() => store.close());
 
-const file = (path: string, workspaceId = "ws:a", extra: Partial<FileRecord> = {}): FileRecord => ({
+const file = (path: string, workspaceId = "ws:repo:a", extra: Partial<FileRecord> = {}): FileRecord => ({
   id: `file:repo:${path}`,
   path,
   lang: "typescript",
@@ -73,15 +73,31 @@ function put(f: FileRecord, symbols: SymbolRecord[], edges: [string, string, Edg
 describe("ftsSearch", () => {
   beforeEach(() => {
     store.upsertWorkspaces([
-      { id: "ws:a", name: "alpha", dir: "a", kind: "package", frameworks: [], deps: [], exportsMap: null },
-      { id: "ws:b", name: "beta", dir: "b", kind: "package", frameworks: [], deps: [], exportsMap: null },
+      {
+        id: "ws:repo:a",
+        name: "alpha",
+        dir: "a",
+        kind: "package",
+        frameworks: [],
+        deps: [],
+        exportsMap: null,
+      },
+      {
+        id: "ws:repo:b",
+        name: "beta",
+        dir: "b",
+        kind: "package",
+        frameworks: [],
+        deps: [],
+        exportsMap: null,
+      },
     ]);
     put(file("a/date.ts"), [
       sym("a/date.ts", "formatRelativeDate", { startLine: 1, endLine: 10 }),
       sym("a/date.ts", "formatDate", { startLine: 11, endLine: 14 }),
       sym("a/date.ts", "relativeHelper", { exported: false, startLine: 15, endLine: 17 }),
     ]);
-    put(file("b/other.ts", "ws:b"), [
+    put(file("b/other.ts", "ws:repo:b"), [
       sym("b/other.ts", "dateParser", { kind: "const" }),
       sym("b/other.ts", "Date", { kind: "class" }),
     ]);
@@ -121,7 +137,7 @@ describe("ftsSearch", () => {
 
   it("filters by lang and reports it on every hit", () => {
     put(file("lang/x.ts"), [sym("lang/x.ts", "zzwidget")]);
-    put(file("lang/y.go", "ws:a", { lang: "go" }), [sym("lang/y.go", "zzwidget", { lang: "go" })]);
+    put(file("lang/y.go", "ws:repo:a", { lang: "go" }), [sym("lang/y.go", "zzwidget", { lang: "go" })]);
     const all = ftsSearch(store, "zzwidget");
     expect(all.map((h) => h.lang).sort()).toEqual(["go", "typescript"]);
     expect(ftsSearch(store, "zzwidget", { lang: "typescript" }).map((h) => h.path)).toEqual(["lang/x.ts"]);
@@ -131,7 +147,9 @@ describe("ftsSearch", () => {
   it("filters by kind, workspace (id or name), exported and limit", () => {
     expect(ftsSearch(store, "date", { kind: ["class"] }).map((h) => h.name)).toEqual(["Date"]);
     expect(ftsSearch(store, "date", { workspace: "beta" }).every((h) => h.path.startsWith("b/"))).toBe(true);
-    expect(ftsSearch(store, "date", { workspace: "ws:a" }).every((h) => h.path.startsWith("a/"))).toBe(true);
+    expect(ftsSearch(store, "date", { workspace: "ws:repo:a" }).every((h) => h.path.startsWith("a/"))).toBe(
+      true,
+    );
     expect(ftsSearch(store, "date", { workspace: "nope" })).toEqual([]);
     expect(ftsSearch(store, "relative", { exported: false }).map((h) => h.name)).toEqual(["relativeHelper"]);
     expect(ftsSearch(store, "date", { limit: 2 })).toHaveLength(2);

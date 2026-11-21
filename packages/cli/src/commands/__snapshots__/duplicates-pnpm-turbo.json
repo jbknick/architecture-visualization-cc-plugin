@@ -21,7 +21,7 @@
       "keep": "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
       "keepReason": "In the shared package @acme/utils, exported, called by 1 function; the other copy can use it.",
       "workspaces": [
-        "ws:@acme/utils"
+        "ws:pnpm-turbo:@acme/utils"
       ],
       "members": [
         {
@@ -32,7 +32,7 @@
           "line": 1,
           "endLine": 11,
           "loc": 11,
-          "workspaceId": "ws:@acme/utils",
+          "workspaceId": "ws:pnpm-turbo:@acme/utils",
           "exported": true,
           "fanIn": 1,
           "tier": null,
@@ -47,7 +47,7 @@
           "line": 2,
           "endLine": 12,
           "loc": 11,
-          "workspaceId": "ws:@acme/utils",
+          "workspaceId": "ws:pnpm-turbo:@acme/utils",
           "exported": true,
           "fanIn": 0,
           "tier": "exact",
@@ -83,8 +83,8 @@
       "keep": "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify",
       "keepReason": "In the shared package @acme/utils, not exported yet, called by 1 function; the other copy can use it.",
       "workspaces": [
-        "ws:@acme/utils",
-        "ws:@acme/web"
+        "ws:pnpm-turbo:@acme/utils",
+        "ws:pnpm-turbo:@acme/web"
       ],
       "members": [
         {
@@ -95,7 +95,7 @@
           "line": 2,
           "endLine": 9,
           "loc": 8,
-          "workspaceId": "ws:@acme/utils",
+          "workspaceId": "ws:pnpm-turbo:@acme/utils",
           "exported": false,
           "fanIn": 1,
           "tier": null,
@@ -110,7 +110,7 @@
           "line": 1,
           "endLine": 8,
           "loc": 8,
-          "workspaceId": "ws:@acme/web",
+          "workspaceId": "ws:pnpm-turbo:@acme/web",
           "exported": true,
           "fanIn": 1,
           "tier": "exact",

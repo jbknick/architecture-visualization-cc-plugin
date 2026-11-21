@@ -1,5 +1,5 @@
 import { isFileId, isSymId, qualifyId } from "../ids.js";
-import type { Store } from "../store/index.js";
+import { type Store, safeRepo } from "../store/index.js";
 import type { FileRecord, SymbolRecord } from "../types.js";
 
 export interface NodeInfo {
@@ -38,7 +38,7 @@ export function nodeInfo(store: Store, target: string): NodeInfo | null {
   const byPath = new Map(files.map((f) => [f.path, f]));
   let node: SymbolRecord | FileRecord | undefined;
 
-  const repo = store.getMeta("repo");
+  const repo = safeRepo(store);
   const long = repo === undefined ? undefined : qualifyId(repo, t);
   if (isSymId(t)) node = store.getSymbol(t) ?? (long ? store.getSymbol(long) : undefined);
   else if (isFileId(t)) node = files.find((f) => f.id === t || f.id === long);

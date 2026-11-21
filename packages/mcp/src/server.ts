@@ -49,7 +49,7 @@ async function runTool(
     resetStaleStore(paths);
     ensureDataDir(paths);
     await lazyRefresh(paths, o.log);
-    const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+    const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
     try {
       const result = await tool.run(args, {
         paths,

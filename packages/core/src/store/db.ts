@@ -12,7 +12,7 @@ import { SCHEMA } from "./schema.js";
  * that makes a full re-index necessary bumps it: a schema change, or a change to what indexing writes for unchanged
  * files (the extractor, an adapter or the resolver), because incremental indexing only rewrites changed files.
  */
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 /** The store was built by a different version of Gantry (older, or newer) than this one. */
 export class StaleStoreError extends Error {
@@ -82,8 +82,10 @@ function initOrCheck(db: Database.Database, dbPath: string, vec: boolean): void 
 /**
  * Opens (creating) the store at `dbPath` and attaches the overlay (`overlay.db`, see `overlay.ts`) as `overlay`.
  * The overlay defaults to `overlay.db` beside `dbPath`; callers that have `GantryPaths` pass `paths.overlayPath`.
+ * `repo` is the repo the caller works in (`paths.repo`): `store.repo()` answers it, which a store of several repos
+ * cannot know on its own.
  */
-export function openStore(dbPath: string, opts: { overlayPath?: string } = {}): Store {
+export function openStore(dbPath: string, opts: { overlayPath?: string; repo?: string } = {}): Store {
   if (dbPath !== ":memory:") mkdirSync(dirname(dbPath), { recursive: true });
   const db = new Database(dbPath, { timeout: 5000 });
   try {
@@ -103,7 +105,7 @@ export function openStore(dbPath: string, opts: { overlayPath?: string } = {}): 
     db.close();
     throw err;
   }
-  return createStore(db);
+  return createStore(db, opts.repo);
 }
 
 const WORD = /[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+/g;

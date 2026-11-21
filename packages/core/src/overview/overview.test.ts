@@ -10,9 +10,9 @@ afterAll(async () => {
 
 describe("overviewTarget on fixtures/pnpm-turbo", () => {
   it("counts the functions of a workspace and a folder and spells one folder two ways the same", () => {
-    const ws = overviewTarget(ix.store, "ws:@acme/utils");
+    const ws = overviewTarget(ix.store, "ws:pnpm-turbo:@acme/utils");
     const dir = overviewTarget(ix.store, "dir:packages/utils/src");
-    const viaWs = overviewTarget(ix.store, "dir:ws:@acme/utils:src");
+    const viaWs = overviewTarget(ix.store, "dir:ws:pnpm-turbo:@acme/utils:src");
     expect(ws?.functions).toBeGreaterThan(0);
     expect(dir?.nodeId).toBe("dir:packages/utils/src");
     expect(viaWs).toEqual(dir);
@@ -20,9 +20,9 @@ describe("overviewTarget on fixtures/pnpm-turbo", () => {
   });
 
   it("is deterministic and differs between nodes with different contents", () => {
-    const a1 = overviewTarget(ix.store, "ws:@acme/utils");
-    const a2 = overviewTarget(ix.store, "ws:@acme/utils");
-    const b = overviewTarget(ix.store, "ws:@acme/web");
+    const a1 = overviewTarget(ix.store, "ws:pnpm-turbo:@acme/utils");
+    const a2 = overviewTarget(ix.store, "ws:pnpm-turbo:@acme/utils");
+    const b = overviewTarget(ix.store, "ws:pnpm-turbo:@acme/web");
     expect(a1).toEqual(a2);
     expect(a1?.inputKey).not.toBe(b?.inputKey);
   });
@@ -61,34 +61,38 @@ describe("validateOverviewText", () => {
 
 describe("saveOverview and getOverview", () => {
   it("round-trips and replaces an earlier overview for the same node", () => {
-    expect(getOverview(ix.store, "ws:@acme/utils").status).toBe("missing");
-    expect(saveOverview(ix.store, ix.paths, "ws:@acme/utils", "First version.").status).toBe("saved");
-    expect(saveOverview(ix.store, ix.paths, "ws:@acme/utils", "Second version.").status).toBe("saved");
-    const r = getOverview(ix.store, "ws:@acme/utils");
+    expect(getOverview(ix.store, "ws:pnpm-turbo:@acme/utils").status).toBe("missing");
+    expect(saveOverview(ix.store, ix.paths, "ws:pnpm-turbo:@acme/utils", "First version.").status).toBe(
+      "saved",
+    );
+    expect(saveOverview(ix.store, ix.paths, "ws:pnpm-turbo:@acme/utils", "Second version.").status).toBe(
+      "saved",
+    );
+    const r = getOverview(ix.store, "ws:pnpm-turbo:@acme/utils");
     expect(r.status === "fresh" && r.overview.text).toBe("Second version.");
     expect(ix.store.db.prepare("SELECT count(*) AS n FROM overviews").get()).toEqual({ n: 1 });
   });
 
   it("goes stale when a file inside is renamed, with the same code in it", () => {
-    saveOverview(ix.store, ix.paths, "ws:@acme/utils", "Before the rename.");
-    expect(getOverview(ix.store, "ws:@acme/utils").status).toBe("fresh");
+    saveOverview(ix.store, ix.paths, "ws:pnpm-turbo:@acme/utils", "Before the rename.");
+    expect(getOverview(ix.store, "ws:pnpm-turbo:@acme/utils").status).toBe("fresh");
     const row = ix.store.db
-      .prepare(
-        "SELECT id, path FROM files WHERE workspace_id = '@acme/utils' OR workspace_id = 'ws:@acme/utils' LIMIT 1",
-      )
+      .prepare("SELECT id, path FROM files WHERE workspace_id = 'ws:pnpm-turbo:@acme/utils' LIMIT 1")
       .get() as { id: number; path: string } | undefined;
     expect(row).toBeDefined();
     ix.store.db.prepare("UPDATE files SET path = ? WHERE id = ?").run(`${row?.path}.moved`, row?.id);
     try {
-      expect(getOverview(ix.store, "ws:@acme/utils").status).toBe("stale");
+      expect(getOverview(ix.store, "ws:pnpm-turbo:@acme/utils").status).toBe("stale");
     } finally {
       ix.store.db.prepare("UPDATE files SET path = ? WHERE id = ?").run(row?.path, row?.id);
     }
-    expect(getOverview(ix.store, "ws:@acme/utils").status).toBe("fresh");
+    expect(getOverview(ix.store, "ws:pnpm-turbo:@acme/utils").status).toBe("fresh");
   });
 
   it("goes stale when the stored input_key no longer matches", () => {
-    ix.store.db.prepare("UPDATE overviews SET input_key = 'old' WHERE node_id = 'ws:@acme/utils'").run();
-    expect(getOverview(ix.store, "ws:@acme/utils").status).toBe("stale");
+    ix.store.db
+      .prepare("UPDATE overviews SET input_key = 'old' WHERE node_id = 'ws:pnpm-turbo:@acme/utils'")
+      .run();
+    expect(getOverview(ix.store, "ws:pnpm-turbo:@acme/utils").status).toBe("stale");
   });
 });

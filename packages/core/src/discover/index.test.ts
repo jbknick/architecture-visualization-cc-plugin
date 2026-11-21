@@ -30,7 +30,7 @@ async function setup(name: "single-pkg" | "pnpm-turbo" | "nx") {
   const env = { HOME: join(fx.dir, ".home-none"), CLAUDE_PLUGIN_DATA: join(fx.dir, ".data-none") };
   const paths: GantryPaths = resolvePaths(fx.dir, env);
   const config = loadConfig(paths);
-  const ws = detectWorkspaces(paths.root, config);
+  const ws = detectWorkspaces(paths.root, config, paths.repo);
   const write = (rel: string, content = "export const x = 1;\n") => {
     mkdirSync(dirname(join(fx.dir, rel)), { recursive: true });
     writeFileSync(join(fx.dir, rel), content);

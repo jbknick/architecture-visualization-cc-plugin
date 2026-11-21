@@ -19,6 +19,7 @@ import {
   type Store,
   type SymbolRecord,
   type WorkspaceRecord,
+  workspaceId,
 } from "@gantry/core";
 
 /** Test helpers: load a fixture repo into a store with the core modules (stand-in until `indexRepo` lands). */
@@ -40,12 +41,12 @@ function workspaceRecordOf(workspaces: WorkspaceRecord[], rel: string): Workspac
     .filter((w) => w.dir === "." || rel.startsWith(`${w.dir}/`))
     .sort((a, b) => b.dir.length - a.dir.length)[0];
 }
-const workspaceOf = (workspaces: WorkspaceRecord[], rel: string): string =>
-  workspaceRecordOf(workspaces, rel)?.id ?? "ws:.";
+const workspaceOf = (workspaces: WorkspaceRecord[], repo: string, rel: string): string =>
+  workspaceRecordOf(workspaces, rel)?.id ?? workspaceId(repo, ".");
 
 export function fixtureStore(name: string): { store: Store; dir: string } {
   const root = join(fixturesRoot, name);
-  const workspaces = detectWorkspaces(root, { workspaces: { overrides: {} } });
+  const workspaces = detectWorkspaces(root, { workspaces: { overrides: {} } }, name);
   const sources = new Map<string, string>();
   const parsed = new Map<string, ParsedFile>();
   for (const rel of walk(root).sort()) {
@@ -57,7 +58,7 @@ export function fixtureStore(name: string): { store: Store; dir: string } {
   }
   const dir = mkdtempSync(join(tmpdir(), "gantry-views-"));
   const store = openStore(join(dir, "gantry.db"));
-  store.setMeta("repo", name);
+  store.upsertRepo(name, root);
   store.upsertWorkspaces(workspaces);
   const resolver = createResolver({ root, repo: name, workspaces, parsed });
   const wsEdges = resolver.workspaceEdges();
@@ -68,7 +69,7 @@ export function fixtureStore(name: string): { store: Store; dir: string } {
     files: [...parsed.keys()].map((id) => ({
       id,
       path: pathOfFileId(id),
-      workspaceId: workspaceOf(workspaces, pathOfFileId(id)),
+      workspaceId: workspaceOf(workspaces, name, pathOfFileId(id)),
       source: sources.get(pathOfFileId(id)) as string,
     })),
     parsed,

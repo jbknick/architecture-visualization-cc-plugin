@@ -49,7 +49,7 @@ function commit(fx: MaterializedFixture, msg: string): void {
 
 /** Runs `fn` on a fresh connection and closes it. */
 function withStore<T>(paths: GantryPaths, fn: (store: ReturnType<typeof openStore>) => T): T {
-  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   try {
     return fn(store);
   } finally {

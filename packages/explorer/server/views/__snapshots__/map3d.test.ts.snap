@@ -4,10 +4,10 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
 "{
   "nodes": [
     {
-      "id": "dir:ws:@acme/api:src",
+      "id": "dir:ws:pnpm-turbo:@acme/api:src",
       "kind": "dir",
       "label": "src",
-      "parent": "ws:@acme/api",
+      "parent": "ws:pnpm-turbo:@acme/api",
       "size": 0,
       "path": "apps/api/src",
       "stats": {
@@ -20,10 +20,10 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       ]
     },
     {
-      "id": "dir:ws:@acme/db:src",
+      "id": "dir:ws:pnpm-turbo:@acme/db:src",
       "kind": "dir",
       "label": "src",
-      "parent": "ws:@acme/db",
+      "parent": "ws:pnpm-turbo:@acme/db",
       "size": 3,
       "path": "packages/db/src",
       "stats": {
@@ -36,10 +36,10 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       ]
     },
     {
-      "id": "dir:ws:@acme/ui:src",
+      "id": "dir:ws:pnpm-turbo:@acme/ui:src",
       "kind": "dir",
       "label": "src",
-      "parent": "ws:@acme/ui",
+      "parent": "ws:pnpm-turbo:@acme/ui",
       "size": 2,
       "path": "packages/ui/src",
       "stats": {
@@ -52,10 +52,10 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       ]
     },
     {
-      "id": "dir:ws:@acme/utils:src",
+      "id": "dir:ws:pnpm-turbo:@acme/utils:src",
       "kind": "dir",
       "label": "src",
-      "parent": "ws:@acme/utils",
+      "parent": "ws:pnpm-turbo:@acme/utils",
       "size": 3,
       "path": "packages/utils/src",
       "stats": {
@@ -68,10 +68,10 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       ]
     },
     {
-      "id": "dir:ws:@acme/web:src/components",
+      "id": "dir:ws:pnpm-turbo:@acme/web:src/components",
       "kind": "dir",
       "label": "src/components",
-      "parent": "ws:@acme/web",
+      "parent": "ws:pnpm-turbo:@acme/web",
       "size": 2,
       "path": "apps/web/src/components",
       "stats": {
@@ -84,10 +84,10 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       ]
     },
     {
-      "id": "dir:ws:@acme/web:src/hooks",
+      "id": "dir:ws:pnpm-turbo:@acme/web:src/hooks",
       "kind": "dir",
       "label": "src/hooks",
-      "parent": "ws:@acme/web",
+      "parent": "ws:pnpm-turbo:@acme/web",
       "size": 1,
       "path": "apps/web/src/hooks",
       "stats": {
@@ -100,10 +100,10 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       ]
     },
     {
-      "id": "dir:ws:@acme/web:src/lib",
+      "id": "dir:ws:pnpm-turbo:@acme/web:src/lib",
       "kind": "dir",
       "label": "src/lib",
-      "parent": "ws:@acme/web",
+      "parent": "ws:pnpm-turbo:@acme/web",
       "size": 1,
       "path": "apps/web/src/lib",
       "stats": {
@@ -116,10 +116,10 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       ]
     },
     {
-      "id": "dir:ws:@acme/web:src/routes",
+      "id": "dir:ws:pnpm-turbo:@acme/web:src/routes",
       "kind": "dir",
       "label": "src/routes",
-      "parent": "ws:@acme/web",
+      "parent": "ws:pnpm-turbo:@acme/web",
       "size": 4,
       "path": "apps/web/src/routes",
       "stats": {
@@ -132,7 +132,7 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/api",
+      "id": "ws:pnpm-turbo:@acme/api",
       "kind": "workspace",
       "label": "@acme/api",
       "shortLabel": "api",
@@ -149,7 +149,7 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/db",
+      "id": "ws:pnpm-turbo:@acme/db",
       "kind": "workspace",
       "label": "@acme/db",
       "shortLabel": "db",
@@ -166,7 +166,7 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/ui",
+      "id": "ws:pnpm-turbo:@acme/ui",
       "kind": "workspace",
       "label": "@acme/ui",
       "shortLabel": "ui",
@@ -183,7 +183,7 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/utils",
+      "id": "ws:pnpm-turbo:@acme/utils",
       "kind": "workspace",
       "label": "@acme/utils",
       "shortLabel": "utils",
@@ -200,7 +200,7 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/web",
+      "id": "ws:pnpm-turbo:@acme/web",
       "kind": "workspace",
       "label": "@acme/web",
       "shortLabel": "web",
@@ -219,82 +219,82 @@ exports[`map-3d view > snapshot at level=dirs 1`] = `
   ],
   "edges": [
     {
-      "id": "dir:ws:@acme/api:src|imports|dir:ws:@acme/db:src",
-      "src": "dir:ws:@acme/api:src",
-      "dst": "dir:ws:@acme/db:src",
+      "id": "dir:ws:pnpm-turbo:@acme/api:src|imports|dir:ws:pnpm-turbo:@acme/db:src",
+      "src": "dir:ws:pnpm-turbo:@acme/api:src",
+      "dst": "dir:ws:pnpm-turbo:@acme/db:src",
       "kind": "imports",
       "weight": 2,
       "confidence": "high",
       "bindings": 4
     },
     {
-      "id": "dir:ws:@acme/web:src/components|imports|dir:ws:@acme/web:src/hooks",
-      "src": "dir:ws:@acme/web:src/components",
-      "dst": "dir:ws:@acme/web:src/hooks",
+      "id": "dir:ws:pnpm-turbo:@acme/web:src/components|imports|dir:ws:pnpm-turbo:@acme/web:src/hooks",
+      "src": "dir:ws:pnpm-turbo:@acme/web:src/components",
+      "dst": "dir:ws:pnpm-turbo:@acme/web:src/hooks",
       "kind": "imports",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "dir:ws:@acme/web:src/components|imports|dir:ws:@acme/web:src/lib",
-      "src": "dir:ws:@acme/web:src/components",
-      "dst": "dir:ws:@acme/web:src/lib",
+      "id": "dir:ws:pnpm-turbo:@acme/web:src/components|imports|dir:ws:pnpm-turbo:@acme/web:src/lib",
+      "src": "dir:ws:pnpm-turbo:@acme/web:src/components",
+      "dst": "dir:ws:pnpm-turbo:@acme/web:src/lib",
       "kind": "imports",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "dir:ws:@acme/web:src/routes|imports|dir:ws:@acme/db:src",
-      "src": "dir:ws:@acme/web:src/routes",
-      "dst": "dir:ws:@acme/db:src",
+      "id": "dir:ws:pnpm-turbo:@acme/web:src/routes|imports|dir:ws:pnpm-turbo:@acme/db:src",
+      "src": "dir:ws:pnpm-turbo:@acme/web:src/routes",
+      "dst": "dir:ws:pnpm-turbo:@acme/db:src",
       "kind": "imports",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "dir:ws:@acme/web:src/routes|imports|dir:ws:@acme/ui:src",
-      "src": "dir:ws:@acme/web:src/routes",
-      "dst": "dir:ws:@acme/ui:src",
+      "id": "dir:ws:pnpm-turbo:@acme/web:src/routes|imports|dir:ws:pnpm-turbo:@acme/ui:src",
+      "src": "dir:ws:pnpm-turbo:@acme/web:src/routes",
+      "dst": "dir:ws:pnpm-turbo:@acme/ui:src",
       "kind": "imports",
       "weight": 3,
       "confidence": "high"
     },
     {
-      "id": "dir:ws:@acme/web:src/routes|imports|dir:ws:@acme/utils:src",
-      "src": "dir:ws:@acme/web:src/routes",
-      "dst": "dir:ws:@acme/utils:src",
+      "id": "dir:ws:pnpm-turbo:@acme/web:src/routes|imports|dir:ws:pnpm-turbo:@acme/utils:src",
+      "src": "dir:ws:pnpm-turbo:@acme/web:src/routes",
+      "dst": "dir:ws:pnpm-turbo:@acme/utils:src",
       "kind": "imports",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "dir:ws:@acme/web:src/routes|imports|dir:ws:@acme/web:src/components",
-      "src": "dir:ws:@acme/web:src/routes",
-      "dst": "dir:ws:@acme/web:src/components",
+      "id": "dir:ws:pnpm-turbo:@acme/web:src/routes|imports|dir:ws:pnpm-turbo:@acme/web:src/components",
+      "src": "dir:ws:pnpm-turbo:@acme/web:src/routes",
+      "dst": "dir:ws:pnpm-turbo:@acme/web:src/components",
       "kind": "imports",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "ws:@acme/api|depends_on|ws:@acme/db",
-      "src": "ws:@acme/api",
-      "dst": "ws:@acme/db",
+      "id": "ws:pnpm-turbo:@acme/api|depends_on|ws:pnpm-turbo:@acme/db",
+      "src": "ws:pnpm-turbo:@acme/api",
+      "dst": "ws:pnpm-turbo:@acme/db",
       "kind": "depends_on",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "ws:@acme/web|depends_on|ws:@acme/ui",
-      "src": "ws:@acme/web",
-      "dst": "ws:@acme/ui",
+      "id": "ws:pnpm-turbo:@acme/web|depends_on|ws:pnpm-turbo:@acme/ui",
+      "src": "ws:pnpm-turbo:@acme/web",
+      "dst": "ws:pnpm-turbo:@acme/ui",
       "kind": "depends_on",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "ws:@acme/web|depends_on|ws:@acme/utils",
-      "src": "ws:@acme/web",
-      "dst": "ws:@acme/utils",
+      "id": "ws:pnpm-turbo:@acme/web|depends_on|ws:pnpm-turbo:@acme/utils",
+      "src": "ws:pnpm-turbo:@acme/web",
+      "dst": "ws:pnpm-turbo:@acme/utils",
       "kind": "depends_on",
       "weight": 1,
       "confidence": "high"
@@ -315,7 +315,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:apps/api/src/app.ts",
       "kind": "file",
       "label": "app.ts",
-      "parent": "ws:@acme/api",
+      "parent": "ws:pnpm-turbo:@acme/api",
       "size": 0,
       "path": "apps/api/src/app.ts",
       "stats": {
@@ -329,7 +329,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:apps/api/src/index.ts",
       "kind": "file",
       "label": "index.ts",
-      "parent": "ws:@acme/api",
+      "parent": "ws:pnpm-turbo:@acme/api",
       "size": 0,
       "path": "apps/api/src/index.ts",
       "stats": {
@@ -343,7 +343,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:apps/api/src/router.ts",
       "kind": "file",
       "label": "router.ts",
-      "parent": "ws:@acme/api",
+      "parent": "ws:pnpm-turbo:@acme/api",
       "size": 0,
       "path": "apps/api/src/router.ts",
       "stats": {
@@ -357,7 +357,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:apps/web/src/components/Header.tsx",
       "kind": "file",
       "label": "Header.tsx",
-      "parent": "ws:@acme/web",
+      "parent": "ws:pnpm-turbo:@acme/web",
       "size": 1,
       "path": "apps/web/src/components/Header.tsx",
       "stats": {
@@ -371,7 +371,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:apps/web/src/components/PostList.tsx",
       "kind": "file",
       "label": "PostList.tsx",
-      "parent": "ws:@acme/web",
+      "parent": "ws:pnpm-turbo:@acme/web",
       "size": 1,
       "path": "apps/web/src/components/PostList.tsx",
       "stats": {
@@ -385,7 +385,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
       "kind": "file",
       "label": "useDebounce.ts",
-      "parent": "ws:@acme/web",
+      "parent": "ws:pnpm-turbo:@acme/web",
       "size": 1,
       "path": "apps/web/src/hooks/useDebounce.ts",
       "stats": {
@@ -399,7 +399,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:apps/web/src/lib/slug.ts",
       "kind": "file",
       "label": "slug.ts",
-      "parent": "ws:@acme/web",
+      "parent": "ws:pnpm-turbo:@acme/web",
       "size": 1,
       "path": "apps/web/src/lib/slug.ts",
       "stats": {
@@ -413,7 +413,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:apps/web/src/routes/__root.tsx",
       "kind": "file",
       "label": "__root.tsx",
-      "parent": "ws:@acme/web",
+      "parent": "ws:pnpm-turbo:@acme/web",
       "size": 1,
       "path": "apps/web/src/routes/__root.tsx",
       "stats": {
@@ -427,7 +427,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:apps/web/src/routes/index.tsx",
       "kind": "file",
       "label": "index.tsx",
-      "parent": "ws:@acme/web",
+      "parent": "ws:pnpm-turbo:@acme/web",
       "size": 1,
       "path": "apps/web/src/routes/index.tsx",
       "stats": {
@@ -441,7 +441,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
       "kind": "file",
       "label": "posts.$postId.tsx",
-      "parent": "ws:@acme/web",
+      "parent": "ws:pnpm-turbo:@acme/web",
       "size": 1,
       "path": "apps/web/src/routes/posts.$postId.tsx",
       "stats": {
@@ -455,7 +455,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
       "kind": "file",
       "label": "profile.tsx",
-      "parent": "ws:@acme/web",
+      "parent": "ws:pnpm-turbo:@acme/web",
       "size": 1,
       "path": "apps/web/src/routes/settings/profile.tsx",
       "stats": {
@@ -469,7 +469,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:packages/db/src/index.ts",
       "kind": "file",
       "label": "index.ts",
-      "parent": "ws:@acme/db",
+      "parent": "ws:pnpm-turbo:@acme/db",
       "size": 0,
       "path": "packages/db/src/index.ts",
       "stats": {
@@ -483,7 +483,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:packages/db/src/queries.ts",
       "kind": "file",
       "label": "queries.ts",
-      "parent": "ws:@acme/db",
+      "parent": "ws:pnpm-turbo:@acme/db",
       "size": 3,
       "path": "packages/db/src/queries.ts",
       "stats": {
@@ -497,7 +497,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:packages/db/src/schema.ts",
       "kind": "file",
       "label": "schema.ts",
-      "parent": "ws:@acme/db",
+      "parent": "ws:pnpm-turbo:@acme/db",
       "size": 0,
       "path": "packages/db/src/schema.ts",
       "stats": {
@@ -511,7 +511,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:packages/ui/src/button.tsx",
       "kind": "file",
       "label": "button.tsx",
-      "parent": "ws:@acme/ui",
+      "parent": "ws:pnpm-turbo:@acme/ui",
       "size": 1,
       "path": "packages/ui/src/button.tsx",
       "stats": {
@@ -525,7 +525,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:packages/ui/src/card.tsx",
       "kind": "file",
       "label": "card.tsx",
-      "parent": "ws:@acme/ui",
+      "parent": "ws:pnpm-turbo:@acme/ui",
       "size": 1,
       "path": "packages/ui/src/card.tsx",
       "stats": {
@@ -539,7 +539,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:packages/ui/src/index.ts",
       "kind": "file",
       "label": "index.ts",
-      "parent": "ws:@acme/ui",
+      "parent": "ws:pnpm-turbo:@acme/ui",
       "size": 0,
       "path": "packages/ui/src/index.ts",
       "stats": {
@@ -553,7 +553,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:packages/ui/src/internal.ts",
       "kind": "file",
       "label": "internal.ts",
-      "parent": "ws:@acme/ui",
+      "parent": "ws:pnpm-turbo:@acme/ui",
       "size": 0,
       "path": "packages/ui/src/internal.ts",
       "stats": {
@@ -567,7 +567,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:packages/utils/src/date.ts",
       "kind": "file",
       "label": "date.ts",
-      "parent": "ws:@acme/utils",
+      "parent": "ws:pnpm-turbo:@acme/utils",
       "size": 1,
       "path": "packages/utils/src/date.ts",
       "stats": {
@@ -581,7 +581,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:packages/utils/src/index.ts",
       "kind": "file",
       "label": "index.ts",
-      "parent": "ws:@acme/utils",
+      "parent": "ws:pnpm-turbo:@acme/utils",
       "size": 0,
       "path": "packages/utils/src/index.ts",
       "stats": {
@@ -595,7 +595,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:packages/utils/src/slug.ts",
       "kind": "file",
       "label": "slug.ts",
-      "parent": "ws:@acme/utils",
+      "parent": "ws:pnpm-turbo:@acme/utils",
       "size": 1,
       "path": "packages/utils/src/slug.ts",
       "stats": {
@@ -609,7 +609,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "id": "file:pnpm-turbo:packages/utils/src/time.ts",
       "kind": "file",
       "label": "time.ts",
-      "parent": "ws:@acme/utils",
+      "parent": "ws:pnpm-turbo:@acme/utils",
       "size": 1,
       "path": "packages/utils/src/time.ts",
       "stats": {
@@ -620,7 +620,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/api",
+      "id": "ws:pnpm-turbo:@acme/api",
       "kind": "workspace",
       "label": "@acme/api",
       "shortLabel": "api",
@@ -637,7 +637,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/db",
+      "id": "ws:pnpm-turbo:@acme/db",
       "kind": "workspace",
       "label": "@acme/db",
       "shortLabel": "db",
@@ -654,7 +654,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/ui",
+      "id": "ws:pnpm-turbo:@acme/ui",
       "kind": "workspace",
       "label": "@acme/ui",
       "shortLabel": "ui",
@@ -671,7 +671,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/utils",
+      "id": "ws:pnpm-turbo:@acme/utils",
       "kind": "workspace",
       "label": "@acme/utils",
       "shortLabel": "utils",
@@ -688,7 +688,7 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/web",
+      "id": "ws:pnpm-turbo:@acme/web",
       "kind": "workspace",
       "label": "@acme/web",
       "shortLabel": "web",
@@ -861,25 +861,25 @@ exports[`map-3d view > snapshot at level=files 1`] = `
       "confidence": "high"
     },
     {
-      "id": "ws:@acme/api|depends_on|ws:@acme/db",
-      "src": "ws:@acme/api",
-      "dst": "ws:@acme/db",
+      "id": "ws:pnpm-turbo:@acme/api|depends_on|ws:pnpm-turbo:@acme/db",
+      "src": "ws:pnpm-turbo:@acme/api",
+      "dst": "ws:pnpm-turbo:@acme/db",
       "kind": "depends_on",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "ws:@acme/web|depends_on|ws:@acme/ui",
-      "src": "ws:@acme/web",
-      "dst": "ws:@acme/ui",
+      "id": "ws:pnpm-turbo:@acme/web|depends_on|ws:pnpm-turbo:@acme/ui",
+      "src": "ws:pnpm-turbo:@acme/web",
+      "dst": "ws:pnpm-turbo:@acme/ui",
       "kind": "depends_on",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "ws:@acme/web|depends_on|ws:@acme/utils",
-      "src": "ws:@acme/web",
-      "dst": "ws:@acme/utils",
+      "id": "ws:pnpm-turbo:@acme/web|depends_on|ws:pnpm-turbo:@acme/utils",
+      "src": "ws:pnpm-turbo:@acme/web",
+      "dst": "ws:pnpm-turbo:@acme/utils",
       "kind": "depends_on",
       "weight": 1,
       "confidence": "high"
@@ -897,7 +897,7 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
 "{
   "nodes": [
     {
-      "id": "ws:@acme/api",
+      "id": "ws:pnpm-turbo:@acme/api",
       "kind": "workspace",
       "label": "@acme/api",
       "shortLabel": "api",
@@ -914,7 +914,7 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/db",
+      "id": "ws:pnpm-turbo:@acme/db",
       "kind": "workspace",
       "label": "@acme/db",
       "shortLabel": "db",
@@ -931,7 +931,7 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/ui",
+      "id": "ws:pnpm-turbo:@acme/ui",
       "kind": "workspace",
       "label": "@acme/ui",
       "shortLabel": "ui",
@@ -948,7 +948,7 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/utils",
+      "id": "ws:pnpm-turbo:@acme/utils",
       "kind": "workspace",
       "label": "@acme/utils",
       "shortLabel": "utils",
@@ -965,7 +965,7 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
       ]
     },
     {
-      "id": "ws:@acme/web",
+      "id": "ws:pnpm-turbo:@acme/web",
       "kind": "workspace",
       "label": "@acme/web",
       "shortLabel": "web",
@@ -984,58 +984,58 @@ exports[`map-3d view > snapshot at level=workspaces 1`] = `
   ],
   "edges": [
     {
-      "id": "ws:@acme/api|depends_on|ws:@acme/db",
-      "src": "ws:@acme/api",
-      "dst": "ws:@acme/db",
+      "id": "ws:pnpm-turbo:@acme/api|depends_on|ws:pnpm-turbo:@acme/db",
+      "src": "ws:pnpm-turbo:@acme/api",
+      "dst": "ws:pnpm-turbo:@acme/db",
       "kind": "depends_on",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "ws:@acme/api|imports|ws:@acme/db",
-      "src": "ws:@acme/api",
-      "dst": "ws:@acme/db",
+      "id": "ws:pnpm-turbo:@acme/api|imports|ws:pnpm-turbo:@acme/db",
+      "src": "ws:pnpm-turbo:@acme/api",
+      "dst": "ws:pnpm-turbo:@acme/db",
       "kind": "imports",
       "weight": 2,
       "confidence": "high",
       "bindings": 4
     },
     {
-      "id": "ws:@acme/web|depends_on|ws:@acme/ui",
-      "src": "ws:@acme/web",
-      "dst": "ws:@acme/ui",
+      "id": "ws:pnpm-turbo:@acme/web|depends_on|ws:pnpm-turbo:@acme/ui",
+      "src": "ws:pnpm-turbo:@acme/web",
+      "dst": "ws:pnpm-turbo:@acme/ui",
       "kind": "depends_on",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "ws:@acme/web|depends_on|ws:@acme/utils",
-      "src": "ws:@acme/web",
-      "dst": "ws:@acme/utils",
+      "id": "ws:pnpm-turbo:@acme/web|depends_on|ws:pnpm-turbo:@acme/utils",
+      "src": "ws:pnpm-turbo:@acme/web",
+      "dst": "ws:pnpm-turbo:@acme/utils",
       "kind": "depends_on",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "ws:@acme/web|imports|ws:@acme/db",
-      "src": "ws:@acme/web",
-      "dst": "ws:@acme/db",
+      "id": "ws:pnpm-turbo:@acme/web|imports|ws:pnpm-turbo:@acme/db",
+      "src": "ws:pnpm-turbo:@acme/web",
+      "dst": "ws:pnpm-turbo:@acme/db",
       "kind": "imports",
       "weight": 1,
       "confidence": "high"
     },
     {
-      "id": "ws:@acme/web|imports|ws:@acme/ui",
-      "src": "ws:@acme/web",
-      "dst": "ws:@acme/ui",
+      "id": "ws:pnpm-turbo:@acme/web|imports|ws:pnpm-turbo:@acme/ui",
+      "src": "ws:pnpm-turbo:@acme/web",
+      "dst": "ws:pnpm-turbo:@acme/ui",
       "kind": "imports",
       "weight": 3,
       "confidence": "high"
     },
     {
-      "id": "ws:@acme/web|imports|ws:@acme/utils",
-      "src": "ws:@acme/web",
-      "dst": "ws:@acme/utils",
+      "id": "ws:pnpm-turbo:@acme/web|imports|ws:pnpm-turbo:@acme/utils",
+      "src": "ws:pnpm-turbo:@acme/web",
+      "dst": "ws:pnpm-turbo:@acme/utils",
       "kind": "imports",
       "weight": 1,
       "confidence": "high"

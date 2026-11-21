@@ -81,7 +81,7 @@ describe("main layer", () => {
     expect(r.symbols).toBeGreaterThanOrEqual(r.functionLike);
     expect(fx.git(["status", "--porcelain"])).toBe("");
     const s = openStore(paths.dbPath);
-    expect(s.getMeta("head_sha")).toBe(fx.git(["rev-parse", "HEAD"]).trim());
+    expect(s.headSha()).toBe(fx.git(["rev-parse", "HEAD"]).trim());
     expect(s.getMeta("indexed_at")).toMatch(/^\d{4}-\d\d-\d\dT/);
     const dep = s.effectiveEdges({ kind: ["depends_on"] });
     expect(dep.length).toBeGreaterThan(0);
@@ -89,7 +89,9 @@ describe("main layer", () => {
       expect(e.fileId).toMatch(/^file:.*package\.json$/);
       expect(s.effectiveFiles().some((f) => f.id === e.fileId)).toBe(true);
     }
-    expect(dep.some((e) => e.src === "ws:@acme/web" && e.dst === "ws:@acme/ui")).toBe(true);
+    expect(dep.some((e) => e.src === "ws:pnpm-turbo:@acme/web" && e.dst === "ws:pnpm-turbo:@acme/ui")).toBe(
+      true,
+    );
     // FTS has name tokens for symbols.
     const hit = s.db.prepare("SELECT symbol_id FROM fts_symbols WHERE fts_symbols MATCH 'debounce'").all();
     expect(hit.length).toBeGreaterThan(0);

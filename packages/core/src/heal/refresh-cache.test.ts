@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
+import { fileId } from "../ids.js";
 import { dumpGraph, indexRepo } from "../indexer.js";
 import { PARSE_CACHE_FILE } from "../parse/cache.js";
 import { type GantryPaths, resolvePaths } from "../paths/index.js";
@@ -159,7 +160,11 @@ describe("refreshWorking with a warm parse cache", () => {
     const { fx, paths } = await setup();
     const db = new Database(join(paths.dataDir, PARSE_CACHE_FILE));
     const hashOf = (p: string) =>
-      (db.prepare("SELECT hash FROM parsed WHERE path = ?").get(p) as { hash: string } | undefined)?.hash;
+      (
+        db.prepare("SELECT hash FROM parsed WHERE key = ?").get(fileId(paths.repo, p)) as
+          | { hash: string }
+          | undefined
+      )?.hash;
     const slug = "apps/web/src/lib/slug.ts";
     const date = "packages/utils/src/date.ts";
     const before = { slug: hashOf(slug), date: hashOf(date) };

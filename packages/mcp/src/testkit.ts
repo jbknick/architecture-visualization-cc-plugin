@@ -92,7 +92,7 @@ export function makeRepo(files: Record<string, string> = {}): Repo {
       git("commit", "-m", message);
     },
     withStore(f) {
-      const s = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+      const s = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
       try {
         return f(s);
       } finally {

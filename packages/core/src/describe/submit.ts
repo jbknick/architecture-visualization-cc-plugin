@@ -1,9 +1,6 @@
-import fs from "node:fs";
-import path from "node:path";
-import { pathOfFileId } from "../ids.js";
 import type { Store } from "../store/index.js";
 import type { FactSheet } from "../types.js";
-import type { SourceContext } from "./backlog.js";
+import { readFileSource, type SourceContext } from "./backlog.js";
 import { buildFactSheet, contentKey, SensitivePathError } from "./factsheet.js";
 import { fallbackDescription } from "./fallback.js";
 import { type FeedbackField, rejectionFeedback } from "./feedback.js";
@@ -98,18 +95,6 @@ function failedInBatch(store: Store, batchId: string): Set<string> {
   );
 }
 
-function readSource(store: Store, rel: string, ctx: SourceContext): string | undefined {
-  const mem = ctx.sources?.get(rel);
-  if (mem !== undefined) return mem;
-  const root = ctx.root ?? store.getMeta("repo_root");
-  if (root === undefined) return undefined;
-  try {
-    return fs.readFileSync(path.join(root, rel), "utf8");
-  } catch {
-    return undefined;
-  }
-}
-
 /**
  * The oldest batch this worker claimed and has not submitted, or `null`. Its still-claimed rows are returned as
  * fact sheets (up to `size`) under the same batch id, so a worker that lost its batch (two `claim` calls in a row,
@@ -146,8 +131,8 @@ export function reissueBatch(
       drop.run(row.content_key);
       continue;
     }
-    const rel = pathOfFileId(sym.fileId);
-    if (!files.has(rel)) files.set(rel, readSource(store, rel, ctx));
+    const rel = sym.fileId;
+    if (!files.has(rel)) files.set(rel, readFileSource(store, rel, ctx));
     const source = files.get(rel);
     if (source === undefined) continue;
     try {
@@ -236,8 +221,8 @@ export function submitDescriptions(
       reject(key, "stale");
       continue;
     }
-    const rel = pathOfFileId(sym.fileId);
-    if (!files.has(rel)) files.set(rel, readSource(store, rel, ctx));
+    const rel = sym.fileId;
+    if (!files.has(rel)) files.set(rel, readFileSource(store, rel, ctx));
     const source = files.get(rel);
     let sheet: FactSheet | undefined;
     if (source !== undefined) {

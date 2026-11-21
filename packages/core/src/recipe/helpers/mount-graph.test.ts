@@ -66,7 +66,7 @@ posts.on(["PUT", "PATCH"], "/posts/:id", (c) => c.json({}));
     ]);
     // Every endpoint belongs to the package of the app at the top of the mount chain.
     expect(new Set(g.nodes.filter((n) => n.kind === "endpoint").map((n) => n.ws))).toEqual(
-      new Set(["ws:@demo/server"]),
+      new Set(["ws:repo:@demo/server"]),
     );
   });
 });

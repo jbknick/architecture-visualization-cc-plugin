@@ -130,11 +130,11 @@ const gitStatus = () =>
 
 /** Content hash of the index: files, symbols and the indexed head. Timestamps of reads are not part of it. */
 function storeHash(): string {
-  const store = openStore(paths.dbPath);
+  const store = openStore(paths.dbPath, { repo: paths.repo });
   try {
     const files = store.effectiveFiles().map((f) => `${f.id}\0${f.contentHash}\0${f.mtimeMs}`);
     const symbols = store.effectiveSymbols().map((s) => `${s.id}\0${s.exactHash}`);
-    return sha([store.getMeta("head_sha") ?? "", ...files, ...symbols].join("\n"));
+    return sha([store.headSha() ?? "", ...files, ...symbols].join("\n"));
   } finally {
     store.close();
   }

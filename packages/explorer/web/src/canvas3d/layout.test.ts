@@ -653,10 +653,10 @@ describe("workspace type text", () => {
       size: 3,
       badges: [kind, "1 files", "3 functions"],
     });
-    const s = summarizeIslands([node("ws:.", "unknown"), node("ws:a", "app")]);
-    expect(s.find((i) => i.id === "ws:.")?.wsKind).toBe("(repo root)");
+    const s = summarizeIslands([node("ws:mock:.", "unknown"), node("ws:a", "app")]);
+    expect(s.find((i) => i.id === "ws:mock:.")?.wsKind).toBe("(repo root)");
     expect(s.find((i) => i.id === "ws:a")?.wsKind).toBe("app");
-    expect(computeLayout({ nodes: [node("ws:.", "unknown")], edges: [] }).islands[0]?.wsKind).toBe(
+    expect(computeLayout({ nodes: [node("ws:mock:.", "unknown")], edges: [] }).islands[0]?.wsKind).toBe(
       "(repo root)",
     );
   });

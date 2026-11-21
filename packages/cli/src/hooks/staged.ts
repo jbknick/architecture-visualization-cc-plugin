@@ -74,11 +74,11 @@ async function withStaged<T>(
   if (sources.size === 0) return undefined;
 
   const scratchPath = path.join(paths.dataDir, `precommit-${process.pid}.db`);
-  const real = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
+  const real = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   let scratch: Store | undefined;
   try {
     real.db.exec(`VACUUM INTO '${scratchPath.replace(/'/g, "''")}'`);
-    scratch = openStore(scratchPath, { overlayPath: paths.overlayPath });
+    scratch = openStore(scratchPath, { overlayPath: paths.overlayPath, repo: paths.repo });
     await indexRepo(paths, { layer: "working", files: [...sources.keys()], sources, store: scratch });
     const s = scratch;
     const staged = [...sources.keys()].flatMap((p) => s.effectiveSymbols({ fileId: fileId(s.repo(), p) }));

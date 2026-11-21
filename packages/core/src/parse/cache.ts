@@ -7,7 +7,7 @@ import type { ParsedFile } from "./index.js";
  * Bump when `parseSource` output changes for the same input (new fields, different symbol ids, ...):
  * every cached entry written under another version is dropped on open.
  */
-export const PARSE_CACHE_VERSION = 3;
+export const PARSE_CACHE_VERSION = 4;
 
 export const PARSE_CACHE_FILE = "parse-cache.db";
 
@@ -56,7 +56,7 @@ export class LazyParsedMap extends Map<string, ParsedFile> {
 }
 
 /**
- * Disposable parse results per file, keyed by path and validated by content hash, in a sidecar SQLite
+ * Disposable parse results per file, keyed by file id (which carries the repo, so repos of one workspace do not meet) and validated by content hash, in a sidecar SQLite
  * file in the data dir. It is a pure accelerator: any failure to open, read or write it degrades to
  * parsing, and deleting the file is always safe. It is not part of the store schema.
  */
@@ -73,7 +73,7 @@ export class ParseCache {
       if (version !== PARSE_CACHE_VERSION) {
         db.transaction(() => {
           db.exec("DROP TABLE IF EXISTS parsed");
-          db.exec("CREATE TABLE parsed(path TEXT PRIMARY KEY, hash TEXT NOT NULL, data TEXT NOT NULL)");
+          db.exec("CREATE TABLE parsed(key TEXT PRIMARY KEY, hash TEXT NOT NULL, data TEXT NOT NULL)");
           db.pragma(`user_version = ${PARSE_CACHE_VERSION}`);
         }).immediate();
       }
@@ -83,16 +83,16 @@ export class ParseCache {
     }
   }
 
-  /** path -> { hash, data } for every cached file. */
+  /** file id -> { hash, data } for every cached file. */
   loadAll(): Map<string, { hash: string; data: string }> {
     const out = new Map<string, { hash: string; data: string }>();
     try {
-      for (const r of this.db.prepare("SELECT path, hash, data FROM parsed").iterate() as Iterable<{
-        path: string;
+      for (const r of this.db.prepare("SELECT key, hash, data FROM parsed").iterate() as Iterable<{
+        key: string;
         hash: string;
         data: string;
       }>) {
-        out.set(r.path, { hash: r.hash, data: r.data });
+        out.set(r.key, { hash: r.hash, data: r.data });
       }
     } catch {
       out.clear();
@@ -100,20 +100,30 @@ export class ParseCache {
     return out;
   }
 
-  /** Upserts fresh entries and, when `keep` is given, deletes rows for every other path. */
-  save(entries: { path: string; hash: string; data: string }[], keep?: Set<string>): void {
+  /** Upserts fresh entries (`key` is a file id). */
+  save(entries: { key: string; hash: string; data: string }[]): void {
     try {
       this.db
         .transaction(() => {
           const up = this.db.prepare(
-            "INSERT INTO parsed(path, hash, data) VALUES (?, ?, ?) ON CONFLICT(path) DO UPDATE SET hash = excluded.hash, data = excluded.data",
+            "INSERT INTO parsed(key, hash, data) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET hash = excluded.hash, data = excluded.data",
           );
-          for (const e of entries) up.run(e.path, e.hash, e.data);
-          if (keep) {
-            const del = this.db.prepare("DELETE FROM parsed WHERE path = ?");
-            const rows = this.db.prepare("SELECT path FROM parsed").all() as { path: string }[];
-            for (const r of rows) if (!keep.has(r.path)) del.run(r.path);
-          }
+          for (const e of entries) up.run(e.key, e.hash, e.data);
+        })
+        .immediate();
+    } catch {
+      // The cache is best effort.
+    }
+  }
+
+  /** Deletes the rows of every file id not in `keep` (a run that saw the whole tree of every repo). */
+  prune(keep: Set<string>): void {
+    try {
+      this.db
+        .transaction(() => {
+          const del = this.db.prepare("DELETE FROM parsed WHERE key = ?");
+          const rows = this.db.prepare("SELECT key FROM parsed").all() as { key: string }[];
+          for (const r of rows) if (!keep.has(r.key)) del.run(r.key);
         })
         .immediate();
     } catch {

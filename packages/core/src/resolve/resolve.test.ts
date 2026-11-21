@@ -59,7 +59,7 @@ function load(root: string, workspaces: WorkspaceRecord[], extra: Record<string,
 function fixture(name: string, extra: Record<string, string> = {}) {
   const dir = mkTmp();
   cpSync(join(fixturesRoot, name), dir, { recursive: true });
-  const workspaces = detectWorkspaces(dir, { workspaces: { overrides: {} } });
+  const workspaces = detectWorkspaces(dir, { workspaces: { overrides: {} } }, "repo");
   return { dir, ...load(dir, workspaces, extra) };
 }
 
@@ -70,7 +70,7 @@ function repo(files: Record<string, string>) {
     mkdirSync(dirname(join(dir, p)), { recursive: true });
     writeFileSync(join(dir, p), c);
   }
-  const workspaces = detectWorkspaces(dir, { workspaces: { overrides: {} } });
+  const workspaces = detectWorkspaces(dir, { workspaces: { overrides: {} } }, "repo");
   return load(dir, workspaces);
 }
 
@@ -138,7 +138,7 @@ describe("pnpm-turbo fixture", () => {
       expect.objectContaining({ dst: "ext:@tanstack/react-router", kind: "imports" }),
     );
     expect(edges).toContainEqual(
-      expect.objectContaining({ src: "ws:@acme/web", dst: idx, kind: "contains" }),
+      expect.objectContaining({ src: "ws:repo:@acme/web", dst: idx, kind: "contains" }),
     );
   });
 
@@ -194,7 +194,7 @@ describe("pnpm-turbo fixture", () => {
     const edges = createResolver(ctx).edgesForFile("file:repo:packages/ui/src/button.tsx");
     expect(edges).toContainEqual(
       expect.objectContaining({
-        src: "ws:@acme/ui",
+        src: "ws:repo:@acme/ui",
         dst: "file:repo:packages/ui/src/button.tsx",
         kind: "contains",
       }),
@@ -446,7 +446,7 @@ describe("classification", () => {
     mkdirSync(join(dir, "node_modules/@types/scope__pkg"), { recursive: true });
     writeFileSync(join(dir, "package.json"), "{}");
     writeFileSync(join(dir, "m.ts"), "export {};");
-    const ws = detectWorkspaces(dir, { workspaces: { overrides: {} } });
+    const ws = detectWorkspaces(dir, { workspaces: { overrides: {} } }, "repo");
     const r = createResolver(load(dir, ws));
     expect(r.resolveSpecifier("file:repo:m.ts", "hast")).toEqual({ kind: "external", pkg: "hast" });
     expect(r.resolveSpecifier("file:repo:m.ts", "@scope/pkg/sub")).toEqual({
@@ -467,7 +467,7 @@ describe("classification", () => {
     writeFileSync(join(dir, "node_modules/@s/p/sub/index.js"), "");
     writeFileSync(join(dir, "package.json"), "{}");
     writeFileSync(join(dir, "m.ts"), "export {};");
-    const ws = detectWorkspaces(dir, { workspaces: { overrides: {} } });
+    const ws = detectWorkspaces(dir, { workspaces: { overrides: {} } }, "repo");
     const r = createResolver(load(dir, ws));
     expect(r.resolveSpecifier("file:repo:m.ts", "@s/p")).toEqual({ kind: "external", pkg: "@s/p" });
     expect(r.resolveSpecifier("file:repo:m.ts", "@s/p/sub")).toEqual({ kind: "external", pkg: "@s/p" });
@@ -496,7 +496,7 @@ describe("classification", () => {
     writeFileSync(join(real, "m.ts"), `import { a } from "./a";`);
     const link = join(mkTmp(), "link");
     symlinkSync(real, link);
-    const ws = detectWorkspaces(real, { workspaces: { overrides: {} } });
+    const ws = detectWorkspaces(real, { workspaces: { overrides: {} } }, "repo");
     const ctx = load(real, ws);
     const r = createResolver({ ...ctx, root: link });
     expect(r.resolveSpecifier("file:repo:m.ts", "./a")).toEqual({ kind: "file", fileId: "file:repo:a.ts" });
@@ -530,6 +530,6 @@ describe("classification", () => {
       kind: "file",
       fileId: "file:repo:packages/a/src/util.ts",
     });
-    expect(r.workspaceEdges().map((e) => `${e.src}>${e.dst}`)).toEqual(["ws:@w/b>ws:@w/a"]);
+    expect(r.workspaceEdges().map((e) => `${e.src}>${e.dst}`)).toEqual(["ws:repo:@w/b>ws:repo:@w/a"]);
   });
 });
