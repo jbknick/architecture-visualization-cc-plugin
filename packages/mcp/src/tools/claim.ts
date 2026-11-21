@@ -36,6 +36,7 @@ interface ClaimItem {
   doc: string | null;
   callees: string[];
   return_type: string | null;
+  runs_when?: string;
   body: string;
   body_truncated?: true;
 }
@@ -48,6 +49,7 @@ const toItem = (s: FactSheet): ClaimItem => ({
   doc: s.doc,
   callees: s.callees,
   return_type: s.returnType,
+  ...(s.runsWhen === undefined ? {} : { runs_when: s.runsWhen }),
   body: s.body,
 });
 

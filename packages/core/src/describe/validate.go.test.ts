@@ -1,12 +1,16 @@
 // Go-specific behaviour of the description checks (#224). The rules are the TypeScript ones; the rows below are the
 // places where a rule read a TypeScript-only token: the assignment forms of credentials (`:=`, `var x string =`).
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { buildFactSheet, GO_INIT_RUNS_WHEN } from "./factsheet.js";
 import { groundingNames, secretTokens } from "./identifiers.js";
 import { redactForFactSheet } from "./secrets.js";
+import { cleanupData, indexedFixture } from "./testkit.js";
 import { sheet as tsSheet } from "./validate.fixtures.js";
 import { validateDescription } from "./validate.js";
+
+afterEach(() => cleanupData());
 
 const goSheet = (over: Partial<ReturnType<typeof tsSheet>> = {}) =>
   tsSheet({
@@ -81,32 +85,45 @@ describe("validation of Go descriptions", () => {
     expect(r.ok).toBe(false);
   });
 
-  // #348: Haiku described both `init` functions of fixtures/go-basic as running at "startup"; the word was missing
-  // from the hand lists, so the grounding check refused it three times and left the functions undescribed.
-  it("accepts the word startup in a description of a Go init function of the go-basic fixture", () => {
-    const src = readFileSync(
-      fileURLToPath(new URL("../../../../fixtures/go-basic/internal/text/init.go", import.meta.url)),
-      "utf8",
-    );
-    const body = src.slice(src.indexOf("func init()"), src.indexOf("}", src.indexOf("func init()")) + 1);
-    const initSheet = goSheet({
-      id: "sym:gobasic:internal/text/init.go#init",
-      path: "internal/text/init.go",
-      kind: "function",
-      signature: "()",
-      doc: "",
-      returnType: null,
-      body,
-    });
-    for (const behavior of [
-      "Registers the slug entry in the package registry at startup.",
-      "Runs at startup and stores the format entry in the registry.",
-    ]) {
-      const r = validateDescription(
-        { behavior, searchTerms: ["startup registration"], nameFits: true },
-        initSheet,
-      );
-      expect(r).toEqual({ ok: true, value: expect.anything() });
+  // #348, #372: Haiku described both `init` functions of fixtures/go-basic as running at "startup". The word is in no
+  // word list and not in the code, so the grounding check refused it three times. The fact sheet of a Go init function
+  // now carries the host-written `runsWhen` field, which grounds it; the word lists are not touched.
+  it("grounds the word startup in a Go init function only through the fact-sheet field", async () => {
+    const ix = await indexedFixture("go-basic");
+    try {
+      const repo = ix.store.repo();
+      const src = readFileSync(join(ix.fx.dir, "internal/text/init.go"), "utf8");
+      for (const id of ["internal/text/init.go#init", "internal/text/init.go#init~2"]) {
+        const sheet = buildFactSheet(ix.store, `sym:${repo}:${id}`, src);
+        expect(sheet.runsWhen).toBe(GO_INIT_RUNS_WHEN);
+        const { runsWhen: _gone, ...without } = sheet;
+        for (const behavior of [
+          "Registers the slug entry in the package registry at startup.",
+          "Runs at startup and stores the format entry in the registry.",
+        ]) {
+          const d = { behavior, searchTerms: ["startup registration"], nameFits: true };
+          const bad = validateDescription(d, without);
+          expect(bad.ok).toBe(false);
+          expect(JSON.stringify(bad)).toContain("startup");
+          expect(validateDescription(d, sheet)).toEqual({ ok: true, value: expect.anything() });
+        }
+      }
+    } finally {
+      await ix.close();
+    }
+  });
+
+  it("states no runsWhen for other Go functions, and the field grounds only its own words", async () => {
+    const ix = await indexedFixture("go-basic");
+    try {
+      const repo = ix.store.repo();
+      const src = readFileSync(join(ix.fx.dir, "internal/store/store.go"), "utf8");
+      const get = buildFactSheet(ix.store, `sym:${repo}:internal/store/store.go#Store.Get`, src);
+      expect(get.runsWhen).toBeUndefined();
+      const d = { behavior: "Returns the value at startup.", searchTerms: ["lookup"], nameFits: true };
+      expect(validateDescription(d, get).ok).toBe(false);
+    } finally {
+      await ix.close();
     }
   });
 

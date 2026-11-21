@@ -30,6 +30,8 @@ jobs:
           sha256: "<the checksum from gantry-0.1.0.tgz.sha256>"
 ```
 
+The workflow needs `pull-requests: write` to comment and `contents: read` for the checkout, and `fetch-depth: 0` so the base and the head are both in the clone. Do not add `actions/setup-node`: the Action sets up Node 26 itself (step 1 below), so the job runs the same Node whatever the runner has.
+
 Pin `actions/checkout` and this Action by commit SHA if your organisation requires it.
 
 ## Inputs
@@ -54,9 +56,15 @@ Outputs: `comment` (`created`, `updated`, or `summary` when the review went to t
 
 The comment says when the blast radius is **structural only**: a repository without a committed `.gantry/recipe.json` gets a radius that follows imports, calls and renders, without routes, endpoints or tables. Once the repository commits a recipe (see `gantry recipe check` in the main README), the comment shows the same radius as the one developers see locally.
 
+## When Gantry fails
+
+The Action fails open: a Gantry error never fails your job. If the install (input check, download, checksum, extraction, `npm ci`), `gantry init`, `gantry embed` or `gantry review` fails, or the review is not JSON, the step logs a `::warning` line and exits 0, and the pull request still gets its one comment (the same one, updated in place) saying that the analysis failed and why, in one short line. A duplicate check that fails is reported inside the normal comment. If the checksum of the download does not match, the log has an `::error` line, the tarball is deleted and never run, and the comment says so.
+
+When the install fails, the release tarball (and so its comment script) is not there. The last step then runs `post-failure.sh` from this Action's own folder, which needs only `bash`, `curl` and `node`: it writes the same failure comment, or the job summary when no comment can be posted. Only a misconfigured workflow (no base and head to review) still fails the job.
+
 ## Pull requests from forks
 
-GitHub gives a `pull_request` run from a fork a read-only token, so it cannot comment. The Action detects a fork, skips the comment, writes the same text to the job summary and finishes green. The same happens whenever the token is refused for another reason (HTTP 401, 403 or 404 on the comment calls), or when the run is not for a pull request. A review that cannot be produced at all (for example an unknown ref) fails the job.
+GitHub gives a `pull_request` run from a fork a read-only token, so it cannot comment. The Action detects a fork, skips the comment, writes the same text to the job summary and finishes green. The same happens whenever the token is refused for another reason (HTTP 401, 403 or 404 on the comment calls), or when the run is not for a pull request.
 
 The Action is meant for the `pull_request` event. It checks out and indexes the code of the pull request but never runs it, yet do not switch the trigger to `pull_request_target` to get a write token for forks: that runs with the base repository's secrets.
 
