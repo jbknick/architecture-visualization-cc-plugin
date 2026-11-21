@@ -132,7 +132,7 @@ export function checkLabels(labels: Labels, cloneDir: string): string[] {
         seg &&
         !prefixed &&
         !textOf(e.file)?.includes(seg.toLowerCase()) &&
-        !e.file.toLowerCase().includes(seg.toLowerCase())
+        (e.file.endsWith(".go") || !e.file.toLowerCase().includes(seg.toLowerCase()))
       )
         out.push(`${what}: ${e.file} does not hold ${seg}`);
       if (e.handler) {

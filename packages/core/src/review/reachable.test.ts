@@ -5,7 +5,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import { indexRepo } from "../indexer.js";
 import { type GantryPaths, resolvePaths } from "../paths/index.js";
 import { openStore, type Store } from "../store/index.js";
-import { CONSUMER_KINDS, ConsumerGraph, FAN_IN_ORDER, REACHABLE_NODE_CAP } from "./consumers.js";
+import {
+  CONSUMER_KINDS,
+  ConsumerGraph,
+  FAN_IN_ORDER,
+  HUB_THRESHOLD,
+  REACHABLE_NODE_CAP,
+} from "./consumers.js";
 import { reviewDiff } from "./diff.js";
 import { computeImpact, modifiedChanges, reviewImpact } from "./impact.js";
 
@@ -43,7 +49,6 @@ async function indexed(fx: MaterializedFixture) {
   return { paths, store };
 }
 
-const HUB_THRESHOLD = 608;
 const BASE = "sym:repo:packages/core/src/base.ts#base";
 
 async function deepRadius() {
@@ -79,10 +84,9 @@ describe("the reachable tier on fixtures/deep-radius", () => {
     expect(base?.reachableTotal).toBe(HUB_THRESHOLD + 7);
     const reachable = base?.reachable ?? [];
     const hop4 = reachable.filter((c) => c.hop === 4);
-    // At most MAX_CONSUMERS per hop, so the hub's many users cannot hide hops 5 and 6.
-    expect(hop4).toHaveLength(200);
-    // Both nodes of the chain come first: fan-in 1 each, then the users (fan-in 0).
-    expect(hop4.slice(0, 2).map((c) => c.name)).toEqual(["Runner.helper", "step4"]);
+    // The hub's users are one hub entry (#294), so hop 4 lists the two chain nodes only; the total still counts them.
+    expect(hop4.map((c) => c.name)).toEqual(["Runner.helper", "step4"]);
+    expect(base?.hubs.map((h) => h.consumersTotal)).toEqual([HUB_THRESHOLD + 2]);
     expect(hop4.every((c) => c.pathConfidence === "high")).toBe(true);
     expect(
       reachable.filter((c) => c.hop >= 5).map((c) => [c.name, c.hop, c.pathConfidence, c.fanIn]),
@@ -126,10 +130,17 @@ describe("the reachable tier on fixtures/deep-radius", () => {
     const off = computeImpact(store, diff.changes, { files, reachable: false });
     expect(off.reachable).toEqual({ total: 0, byHop: [] });
     expect(off.consumers.every((c) => c.reachable.length === 0 && c.reachableTotal === 0)).toBe(true);
+    // The hubs are listed from the reachable walk here, so they go with it.
     const strip = (i: typeof on) => ({
       ...i,
       reachable: undefined,
-      consumers: i.consumers.map((c) => ({ ...c, reachable: undefined, reachableTotal: undefined })),
+      hubs: undefined,
+      consumers: i.consumers.map((c) => ({
+        ...c,
+        reachable: undefined,
+        reachableTotal: undefined,
+        hubs: undefined,
+      })),
     });
     expect(strip(off)).toEqual(strip(on));
     expect(JSON.stringify(computeImpact(store, diff.changes, { files }))).toBe(JSON.stringify(on));
