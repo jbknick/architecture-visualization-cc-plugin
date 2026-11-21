@@ -327,7 +327,8 @@ class DataAccess {
 
   private tablesFromText(): void {
     const rules = this.recipe.rules.filter(isTextRule);
-    if (rules.length === 0 || !this.recipe.helpers.includes("text-rules")) return;
+    // A text rule is its own request for the helper: listing `text-rules` is not required (#367).
+    if (rules.length === 0) return;
     const files = listTextFiles(this.a.root, [...new Set(rules.flatMap((r) => r.files))]);
     const anchors = this.anchors();
     for (const rule of rules) {

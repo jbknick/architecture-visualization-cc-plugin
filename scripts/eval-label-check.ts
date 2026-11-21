@@ -15,6 +15,19 @@ export function lastLiteralSegment(path: string): string | undefined {
   return segs.at(-1);
 }
 
+/** The text of the call that starts at `line` (1-based): the line, and the next ones while its parentheses are open. */
+export function callText(lines: string[], line: number): string {
+  let depth = 0;
+  let out = "";
+  for (let i = line - 1; i < lines.length && i < line + 14; i++) {
+    const l = lines[i] as string;
+    out += `${l}\n`;
+    depth += (l.match(/\(/g)?.length ?? 0) - (l.match(/\)/g)?.length ?? 0);
+    if (depth <= 0) break;
+  }
+  return out;
+}
+
 export function checkLabels(labels: Labels, cloneDir: string): string[] {
   const out: string[] = [];
   const cache = new Map<string, string[] | null>();
@@ -52,11 +65,16 @@ export function checkLabels(labels: Labels, cloneDir: string): string[] {
     if (file !== e.file) return void out.push(`${w}: ${reg} is not in ${e.file}`);
     const r = at(file, Number(reg.slice(cut + 1)), w);
     if ("problem" in r) return void out.push(r.problem);
-    const text = r.text.toLowerCase();
+    // A TypeScript call can span lines and its full path is built from prefixes elsewhere (#268): there the
+    // whole call (up to the closing parenthesis) must hold the method and the path segment is not checked.
+    const go = file.endsWith(".go");
+    const text = (
+      go ? r.text : callText(linesOf(file) as string[], Number(reg.slice(cut + 1)))
+    ).toLowerCase();
     if (e.method !== "ALL" && !text.includes(e.method.toLowerCase()))
       out.push(`${w}: line does not hold ${e.method}`);
     const seg = lastLiteralSegment(e.path);
-    if (seg && !text.includes(seg.toLowerCase())) out.push(`${w}: line does not hold ${seg}`);
+    if (go && seg && !text.includes(seg.toLowerCase())) out.push(`${w}: line does not hold ${seg}`);
     if (e.handler) {
       const hc = e.handler.lastIndexOf(":");
       const h = at(e.handler.slice(0, hc), Number(e.handler.slice(hc + 1)), `${what} handler`);
@@ -70,7 +88,15 @@ export function checkLabels(labels: Labels, cloneDir: string): string[] {
     if (!linesOf(e.file)) out.push(`${what}: ${e.file} does not exist`);
     else if ("path" in e) {
       const seg = lastLiteralSegment(e.path);
-      if (seg && !textOf(e.file)?.includes(seg.toLowerCase()))
+      // A prefix may come from the folder (Fastify autoload, Next.js app folders), so the path counts too.
+      // (A TypeScript label with a registration is checked at that line instead: a global prefix is nowhere in the file.)
+      const prefixed = e.registration && !e.file.endsWith(".go");
+      if (
+        seg &&
+        !prefixed &&
+        !textOf(e.file)?.includes(seg.toLowerCase()) &&
+        (e.file.endsWith(".go") || !e.file.toLowerCase().includes(seg.toLowerCase()))
+      )
         out.push(`${what}: ${e.file} does not hold ${seg}`);
       if (e.handler) {
         const cut = e.handler.lastIndexOf(":");

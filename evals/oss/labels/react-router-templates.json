@@ -1,0 +1,10 @@
+{
+  "repo": "react-router-templates",
+  "sha": "338a991a4c4d2474ea8d3699cfcd5a77a27c9424",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each route registration before any scoring run; maintainer spot check pending",
+  "kinds": ["route"],
+  "route": [
+    { "path": "/", "file": "default/app/routes.ts" },
+    { "path": "/about", "file": "unstable_rsc-data-mode-vite/src/routes/config.ts" }
+  ]
+}

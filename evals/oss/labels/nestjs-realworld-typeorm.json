@@ -1,0 +1,134 @@
+{
+  "repo": "nestjs-realworld-typeorm",
+  "sha": "c1c2cc4e448b279ff083272df1ac50d20c3304fa",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each registration site before any scoring run; maintainer spot check pending",
+  "kinds": ["endpoint"],
+  "endpoint": [
+    {
+      "method": "GET",
+      "path": "/api",
+      "file": "src/app.controller.ts",
+      "registration": "src/app.controller.ts:5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tags",
+      "file": "src/tag/tag.controller.ts",
+      "registration": "src/tag/tag.controller.ts:17"
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles",
+      "file": "src/article/article.controller.ts",
+      "registration": "src/article/article.controller.ts:24"
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles/feed",
+      "file": "src/article/article.controller.ts",
+      "registration": "src/article/article.controller.ts:33"
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles/:slug",
+      "file": "src/article/article.controller.ts",
+      "registration": "src/article/article.controller.ts:38"
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles/:slug/comments",
+      "file": "src/article/article.controller.ts",
+      "registration": "src/article/article.controller.ts:43"
+    },
+    {
+      "method": "POST",
+      "path": "/api/articles",
+      "file": "src/article/article.controller.ts",
+      "registration": "src/article/article.controller.ts:51"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/articles/:slug",
+      "file": "src/article/article.controller.ts",
+      "registration": "src/article/article.controller.ts:59"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/articles/:slug",
+      "file": "src/article/article.controller.ts",
+      "registration": "src/article/article.controller.ts:68"
+    },
+    {
+      "method": "POST",
+      "path": "/api/articles/:slug/comments",
+      "file": "src/article/article.controller.ts",
+      "registration": "src/article/article.controller.ts:76"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/articles/:slug/comments/:id",
+      "file": "src/article/article.controller.ts",
+      "registration": "src/article/article.controller.ts:84"
+    },
+    {
+      "method": "POST",
+      "path": "/api/articles/:slug/favorite",
+      "file": "src/article/article.controller.ts",
+      "registration": "src/article/article.controller.ts:93"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/articles/:slug/favorite",
+      "file": "src/article/article.controller.ts",
+      "registration": "src/article/article.controller.ts:101"
+    },
+    {
+      "method": "GET",
+      "path": "/api/profiles/:username",
+      "file": "src/profile/profile.controller.ts",
+      "registration": "src/profile/profile.controller.ts:18"
+    },
+    {
+      "method": "POST",
+      "path": "/api/profiles/:username/follow",
+      "file": "src/profile/profile.controller.ts",
+      "registration": "src/profile/profile.controller.ts:23"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/profiles/:username/follow",
+      "file": "src/profile/profile.controller.ts",
+      "registration": "src/profile/profile.controller.ts:28"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user",
+      "file": "src/user/user.controller.ts",
+      "registration": "src/user/user.controller.ts:21"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/user",
+      "file": "src/user/user.controller.ts",
+      "registration": "src/user/user.controller.ts:26"
+    },
+    {
+      "method": "POST",
+      "path": "/api/users",
+      "file": "src/user/user.controller.ts",
+      "registration": "src/user/user.controller.ts:32"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/users/:slug",
+      "file": "src/user/user.controller.ts",
+      "registration": "src/user/user.controller.ts:37"
+    },
+    {
+      "method": "POST",
+      "path": "/api/users/login",
+      "file": "src/user/user.controller.ts",
+      "registration": "src/user/user.controller.ts:43"
+    }
+  ]
+}
