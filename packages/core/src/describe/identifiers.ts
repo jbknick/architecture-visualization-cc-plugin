@@ -217,6 +217,8 @@ export function groundingNames(sheet: FactSheet): Grounding {
     names.add(cc);
     for (const part of cc.split(".")) addName(part);
   }
+  // The host-written `runsWhen` text (Go `init`, #372): plain words, no code or literal behind it.
+  addIdents((sheet.runsWhen ?? "").slice(0, GROUNDING_CAPS.doc), false);
   // Doc: identifiers and words, but a dotted chain ("evil.sh") is removed first; only the index's own dotted names count.
   const doc = (sheet.doc ?? "").slice(0, GROUNDING_CAPS.doc).replace(DOTTED, " ");
   addIdents(doc, false);

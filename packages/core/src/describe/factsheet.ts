@@ -23,6 +23,9 @@ export class SensitivePathError extends Error {
   }
 }
 
+/** Fixed text of the fact-sheet field `runsWhen` for a Go `init` function (#372); the host writes it, the code never does. */
+export const GO_INIT_RUNS_WHEN = "Runs once at startup, when its package is loaded.";
+
 /** `<exactHash>:<PROMPT_MAJOR>`; descriptions are keyed by this, never by symbol id. */
 export function contentKey(exactHash: string): string {
   return `${exactHash}:${PROMPT_MAJOR}`;
@@ -194,6 +197,9 @@ export function buildFactSheet(store: Store, symbolId: string, source: string): 
     doc: leadingDoc(lines, sym.startLine),
     callees,
     returnType: sym.lang === "go" ? goReturnTypeOf(sym.signature) : returnTypeOf(sym.signature),
+    ...(sym.lang === "go" && sym.kind === "function" && nameOfSymbolId(sym.id) === "init"
+      ? { runsWhen: GO_INIT_RUNS_WHEN }
+      : {}),
     body: trimBody(body),
   };
 }
