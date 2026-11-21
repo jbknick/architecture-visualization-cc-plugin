@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { checkLabels, labelCount, lastLiteralSegment } from "../../scripts/eval-label-check.js";
-import { labelsSchema } from "../../scripts/eval-lib.js";
+import { labelKeys, labelsSchema } from "../../scripts/eval-lib.js";
 
 const SHA = "b".repeat(40);
 const dirs: string[] = [];
@@ -69,6 +69,48 @@ describe("check-labels on endpoint, table, read and write labels", () => {
     expect(lastLiteralSegment("/static/*")).toBe("static");
     expect(lastLiteralSegment("/api/:slug")).toBe("api");
     expect(lastLiteralSegment("/")).toBeUndefined();
+  });
+
+  it("accepts a registration line that holds the method, the path and the handler's name", () => {
+    const reg = { method: "GET", path: "/orders/{id}", file: "cmd/routes.go", handler: "h/orders.go:3" };
+    const ok = labelsOf({ endpoint: [{ ...reg, registration: "cmd/routes.go:1" }] });
+    expect(checkLabels(ok, clone(files))).toEqual([]);
+  });
+
+  it("reports a registration in another file, past the end, or on a line that holds something else", () => {
+    const reg = { method: "GET", path: "/orders/{id}", file: "cmd/routes.go", handler: "h/orders.go:3" };
+    const two = {
+      ...files,
+      "cmd/routes.go": 'mux.Get("/orders/{id}", h.Order)\nmux.Post("/carts", h.Cart)\n',
+    };
+    const bad = labelsOf({
+      endpoint: [
+        { ...reg, registration: "cmd/other.go:1" },
+        { ...reg, registration: "cmd/routes.go:9" },
+        { ...reg, registration: "cmd/routes.go:2" },
+        { ...reg, path: "/", registration: "cmd/routes.go:2" },
+      ],
+    });
+    expect(checkLabels(bad, clone(two))).toEqual([
+      "endpoint GET /orders/{id} registration: cmd/other.go:1 is not in cmd/routes.go",
+      expect.stringContaining("registration: cmd/routes.go:9 is past the end"),
+      "endpoint GET /orders/{id} registration: line does not hold GET",
+      "endpoint GET /orders/{id} registration: line does not hold orders",
+      "endpoint GET /orders/{id} registration: line does not hold Order",
+      "endpoint GET / registration: line does not hold GET",
+      "endpoint GET / registration: line does not hold Order",
+    ]);
+  });
+
+  it("does not score the registration, and rejects a label field it does not know", () => {
+    const base = { method: "GET", path: "/orders/{id}", file: "cmd/routes.go" };
+    const withReg = labelsOf({ endpoint: [{ ...base, handler: "h/orders.go:3", registration: "a.go:1" }] });
+    expect(labelKeys(withReg)).toEqual(labelKeys(labelsOf({ endpoint: [base] })));
+    const unknown = { repo: "a", sha: SHA, labelledBy: "t", kinds: [], endpoint: [{ ...base, line: 1 }] };
+    expect(labelsSchema.safeParse(unknown).success).toBe(false);
+    expect(
+      labelsSchema.safeParse({ ...unknown, endpoint: [{ ...base, registration: "a.go" }] }).success,
+    ).toBe(false);
   });
 
   it("rejects a handler that is not path:line", () => {

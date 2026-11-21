@@ -47,6 +47,10 @@ export type Repo = z.infer<typeof repoSchema>;
 const file = z.string().min(1);
 /** `repo/relative/path.go:123`: where a handler is declared. Informational, checked by check-labels only. */
 const handlerRef = z.string().regex(/^[^:\s]+:[1-9]\d*$/, "handler must be <repo-relative path>:<line>");
+/** `repo/relative/path.go:123`: where an endpoint is registered. Informational, checked by check-labels only. */
+const registrationRef = z
+  .string()
+  .regex(/^[^:\s]+:[1-9]\d*$/, "registration must be <repo-relative path>:<line>");
 const line = z.number().int().positive();
 /** The functions that read or write a table in the pair's file, each with its declaration line. */
 const fns = z.array(z.strictObject({ name: z.string().min(1), line })).min(1);
@@ -56,6 +60,7 @@ const endpointLabel = z.union([
     path: z.string().min(1),
     file,
     handler: handlerRef.optional(),
+    registration: registrationRef.optional(),
   }),
   z.strictObject({ rpc: z.string().min(1), file }),
   z.strictObject({ fn: z.string().min(1), file }),

@@ -39,6 +39,32 @@ export function checkLabels(labels: Labels, cloneDir: string): string[] {
     else if (holds && !r.text.includes(holds)) out.push(`${what}: line does not hold ${holds}`);
   };
 
+  /** The registration line is in the label's `file` and holds the method, the last literal segment of the path
+   * and, when the label has a handler, the name of the function that handler line declares. */
+  const checkRegistration = (
+    e: { method: string; path: string; file: string; handler?: string; registration?: string },
+    what: string,
+  ) => {
+    const w = `${what} registration`;
+    const reg = e.registration as string;
+    const cut = reg.lastIndexOf(":");
+    const file = reg.slice(0, cut);
+    if (file !== e.file) return void out.push(`${w}: ${reg} is not in ${e.file}`);
+    const r = at(file, Number(reg.slice(cut + 1)), w);
+    if ("problem" in r) return void out.push(r.problem);
+    const text = r.text.toLowerCase();
+    if (e.method !== "ALL" && !text.includes(e.method.toLowerCase()))
+      out.push(`${w}: line does not hold ${e.method}`);
+    const seg = lastLiteralSegment(e.path);
+    if (seg && !text.includes(seg.toLowerCase())) out.push(`${w}: line does not hold ${seg}`);
+    if (e.handler) {
+      const hc = e.handler.lastIndexOf(":");
+      const h = at(e.handler.slice(0, hc), Number(e.handler.slice(hc + 1)), `${what} handler`);
+      const name = "text" in h ? /func\s+(?:\([^)]*\)\s*)?(\w+)/.exec(h.text)?.[1] : undefined;
+      if (name && !r.text.includes(name)) out.push(`${w}: line does not hold ${name}`);
+    }
+  };
+
   for (const e of labels.endpoint) {
     const what = `endpoint ${"method" in e ? `${e.method} ${e.path}` : "rpc" in e ? `rpc ${e.rpc}` : `fn ${e.fn}`}`;
     if (!linesOf(e.file)) out.push(`${what}: ${e.file} does not exist`);
@@ -51,6 +77,7 @@ export function checkLabels(labels: Labels, cloneDir: string): string[] {
         const w = `${what} handler`;
         add(at(e.handler.slice(0, cut), Number(e.handler.slice(cut + 1)), w), "func ", w);
       }
+      if (e.registration) checkRegistration(e, what);
     }
   }
   for (const kind of ["read", "write"] as const)

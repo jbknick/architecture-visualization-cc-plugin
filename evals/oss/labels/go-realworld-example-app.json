@@ -4,89 +4,138 @@
   "labelledBy": "agent claude-fable-5-2, read from the code at each registration site before any scoring run; maintainer spot check pending",
   "kinds": ["endpoint"],
   "endpoint": [
-    { "method": "POST", "path": "/api/users", "file": "org/init.go", "handler": "org/user_api.go:32" },
-    { "method": "POST", "path": "/api/users/login", "file": "org/init.go", "handler": "org/user_api.go:81" },
+    {
+      "method": "POST",
+      "path": "/api/users",
+      "file": "org/init.go",
+      "handler": "org/user_api.go:32",
+      "registration": "org/init.go:12"
+    },
+    {
+      "method": "POST",
+      "path": "/api/users/login",
+      "file": "org/init.go",
+      "handler": "org/user_api.go:81",
+      "registration": "org/init.go:13"
+    },
     {
       "method": "GET",
       "path": "/api/profiles/:username",
       "file": "org/init.go",
-      "handler": "org/user_api.go:178"
+      "handler": "org/user_api.go:178",
+      "registration": "org/init.go:14"
     },
-    { "method": "GET", "path": "/api/user/", "file": "org/init.go", "handler": "org/user_api.go:27" },
-    { "method": "PUT", "path": "/api/user/", "file": "org/init.go", "handler": "org/user_api.go:134" },
+    {
+      "method": "GET",
+      "path": "/api/user/",
+      "file": "org/init.go",
+      "handler": "org/user_api.go:27",
+      "registration": "org/init.go:18"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/user/",
+      "file": "org/init.go",
+      "handler": "org/user_api.go:134",
+      "registration": "org/init.go:19"
+    },
     {
       "method": "POST",
       "path": "/api/profiles/:username/follow",
       "file": "org/init.go",
-      "handler": "org/user_api.go:212"
+      "handler": "org/user_api.go:212",
+      "registration": "org/init.go:21"
     },
     {
       "method": "DELETE",
       "path": "/api/profiles/:username/follow",
       "file": "org/init.go",
-      "handler": "org/user_api.go:238"
+      "handler": "org/user_api.go:238",
+      "registration": "org/init.go:22"
     },
-    { "method": "GET", "path": "/api/tags/", "file": "blog/init.go", "handler": "blog/article_api.go:312" },
-    { "method": "GET", "path": "/api/articles", "file": "blog/init.go", "handler": "blog/article_api.go:21" },
+    {
+      "method": "GET",
+      "path": "/api/tags/",
+      "file": "blog/init.go",
+      "handler": "blog/article_api.go:312",
+      "registration": "blog/init.go:13"
+    },
+    {
+      "method": "GET",
+      "path": "/api/articles",
+      "file": "blog/init.go",
+      "handler": "blog/article_api.go:21",
+      "registration": "blog/init.go:14"
+    },
     {
       "method": "GET",
       "path": "/api/articles/:slug",
       "file": "blog/init.go",
-      "handler": "blog/article_api.go:47"
+      "handler": "blog/article_api.go:47",
+      "registration": "blog/init.go:15"
     },
     {
       "method": "GET",
       "path": "/api/articles/:slug/comments",
       "file": "blog/init.go",
-      "handler": "blog/comment_api.go:12"
+      "handler": "blog/comment_api.go:12",
+      "registration": "blog/init.go:16"
     },
     {
       "method": "GET",
       "path": "/api/articles/:slug/comments/:id",
       "file": "blog/init.go",
-      "handler": "blog/comment_api.go:41"
+      "handler": "blog/comment_api.go:41",
+      "registration": "blog/init.go:17"
     },
     {
       "method": "POST",
       "path": "/api/articles",
       "file": "blog/init.go",
-      "handler": "blog/article_api.go:119"
+      "handler": "blog/article_api.go:119",
+      "registration": "blog/init.go:21"
     },
     {
       "method": "PUT",
       "path": "/api/articles/:slug",
       "file": "blog/init.go",
-      "handler": "blog/article_api.go:160"
+      "handler": "blog/article_api.go:160",
+      "registration": "blog/init.go:22"
     },
     {
       "method": "DELETE",
       "path": "/api/articles/:slug",
       "file": "blog/init.go",
-      "handler": "blog/article_api.go:213"
+      "handler": "blog/article_api.go:213",
+      "registration": "blog/init.go:23"
     },
     {
       "method": "POST",
       "path": "/api/articles/:slug/favorite",
       "file": "blog/init.go",
-      "handler": "blog/article_api.go:254"
+      "handler": "blog/article_api.go:254",
+      "registration": "blog/init.go:25"
     },
     {
       "method": "DELETE",
       "path": "/api/articles/:slug/favorite",
       "file": "blog/init.go",
-      "handler": "blog/article_api.go:284"
+      "handler": "blog/article_api.go:284",
+      "registration": "blog/init.go:26"
     },
     {
       "method": "POST",
       "path": "/api/articles/:slug/comments",
       "file": "blog/init.go",
-      "handler": "blog/comment_api.go:77"
+      "handler": "blog/comment_api.go:77",
+      "registration": "blog/init.go:28"
     },
     {
       "method": "DELETE",
       "path": "/api/articles/:slug/comments/:id",
       "file": "blog/init.go",
-      "handler": "blog/comment_api.go:119"
+      "handler": "blog/comment_api.go:119",
+      "registration": "blog/init.go:29"
     }
   ]
 }
