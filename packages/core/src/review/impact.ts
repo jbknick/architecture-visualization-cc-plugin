@@ -9,10 +9,13 @@ import {
   type Consumer,
   ConsumerGraph,
   computeConsumers,
-  directConsumers,
+  directConsumerUses,
+  REACHABLE_FIRST_HOP,
+  REACHABLE_NODE_CAP,
   type UseKind,
 } from "./consumers.js";
 import { type ReviewDiff, readBlobText, type SymbolChange } from "./diff.js";
+import { type DirectUse, walkToEnd } from "./reachable.js";
 import { COMPLEXITY_THRESHOLD, computeRisk, type Risk } from "./risk.js";
 
 export interface Crossing {
@@ -27,8 +30,19 @@ export interface Impact {
   crossings: Crossing[];
   risk: Risk;
   notes: string[];
-  /** Per changed symbol (by id), then per changed file (by path): directly and potentially affected consumers. */
+  /** Per changed symbol (by id), then per changed file (by path): directly, potentially affected and reachable consumers. */
   consumers: ChangeConsumers[];
+  /** The reachable tier of the whole review (#293), counted per hop. */
+  reachable: Reachable;
+}
+
+/**
+ * The distinct nodes the impact walk first reached at hop 4 or later (hops 1 to 3 are in `callersByHop`), counted
+ * per hop. The nodes themselves are in `consumers[].reachable`.
+ */
+export interface Reachable {
+  total: number;
+  byHop: { hop: number; count: number }[];
 }
 
 export const DEFAULT_MAX_HOPS = 3;
@@ -49,6 +63,10 @@ export interface ImpactOptions {
   maxHops?: number;
   /** Changed file paths: each gets its own consumers (the files that import it, then theirs). */
   files?: string[];
+  /** Walk on past `maxHops` into the reachable tier (default true). False reads the graph per node, as before #293. */
+  reachable?: boolean;
+  /** Node cap of the walk to the end (default `REACHABLE_NODE_CAP`); a test can lower it. */
+  reachableCap?: number;
 }
 
 /**
@@ -79,7 +97,22 @@ export function computeImpact(store: Store, changes: SymbolChange[], opts: Impac
   // Hop 1: every direct consumer of a changed symbol (all consumer edge kinds, plus importers of an exported change's
   // file that no symbol of theirs already stands for; see `directConsumers`).
   const directBy = new Map<SymbolChange, Map<string, Set<UseKind>>>();
-  for (const c of sources) directBy.set(c, directConsumers(g, c));
+  const directUse = new Map<string, DirectUse>();
+  for (const c of sources) {
+    const uses = directConsumerUses(g, c);
+    directBy.set(c, new Map([...uses].map(([id, u]) => [id, u.uses])));
+    for (const [id, u] of uses) {
+      const prior = directUse.get(id);
+      if (prior) {
+        for (const k of u.uses) prior.uses.add(k);
+        prior.high = prior.high || u.high;
+      } else directUse.set(id, { uses: new Set(u.uses), high: u.high });
+    }
+  }
+  // Past the first hop the walk reads the whole graph from memory: one query instead of one per node.
+  const reachableOn = opts.reachable ?? true;
+  const cap = opts.reachableCap ?? REACHABLE_NODE_CAP;
+  if (reachableOn && directUse.size > 0) g.preload();
 
   const seen = new Set<string>(seeds);
   const callersByHop: Impact["callersByHop"] = [];
@@ -116,6 +149,18 @@ export function computeImpact(store: Store, changes: SymbolChange[], opts: Impac
   }
   if (capped)
     notes.push(`The caller walk stopped at ${MAX_IMPACT_NODES} nodes; deeper callers are not listed.`);
+  // Past hop 3 the walk goes on unless the stop above was hit.
+  const reachable: Reachable = { total: 0, byHop: [] };
+  if (reachableOn && !capped) {
+    const walk = walkToEnd(g, directUse, seedSet, cap);
+    const perHop = new Map<number, number>();
+    for (const r of walk.rows)
+      if (r.hop >= REACHABLE_FIRST_HOP) perHop.set(r.hop, (perHop.get(r.hop) ?? 0) + 1);
+    reachable.byHop = [...perHop].sort((x, y) => x[0] - y[0]).map(([hop, count]) => ({ hop, count }));
+    reachable.total = reachable.byHop.reduce((n, h) => n + h.count, 0);
+    if (walk.capped)
+      notes.push(`The reachable walk stopped at ${cap} nodes; deeper consumers are not listed.`);
+  }
 
   // Crossings, judged between a changed symbol and its direct consumers only.
   const crossingSet = new Map<string, Crossing>();
@@ -176,8 +221,8 @@ export function computeImpact(store: Store, changes: SymbolChange[], opts: Impac
     untested: functions.some((c) => !importedByTest((c.after ?? c.before)?.path ?? "")),
   });
 
-  const consumers = computeConsumers(g, changes, opts.files ?? [], maxHops);
-  return { changed: [...changes], callersByHop, crossings, risk, notes, consumers };
+  const consumers = computeConsumers(g, changes, opts.files ?? [], maxHops, reachableOn ? cap : null);
+  return { changed: [...changes], callersByHop, crossings, risk, notes, consumers, reachable };
 }
 
 /**
