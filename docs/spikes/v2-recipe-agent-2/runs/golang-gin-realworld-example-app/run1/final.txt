@@ -1,0 +1,15 @@
+Recipe written and the check passes; wrapping up now.
+
+Recipe: `.gantry/recipe.json`
+
+Stack: Go with Gin and GORM on SQLite. The engine only parses TypeScript, so most of this repo is out of its reach.
+
+Expected output:
+- **Tables:** 7, from one text rule over `models.go` (`ArticleModel`, `ArticleUserModel`, `FavoriteModel`, `TagModel`, `CommentModel`, `UserModel`, `FollowModel`). The check reports 7 matches. The engine may drop them anyway: it attaches a text-rule table to the first TypeScript file in the workspace, and this repo has none.
+- **Routes:** 0, because there is no frontend.
+- **Endpoints:** 0. I did not write any rules for them.
+- **Reads and writes:** 0, with no rules written.
+
+What I could not express:
+- **Endpoints:** about 24 Gin registrations (`router.GET(...)` under `v1.Group("/api")` and its sub-groups). Rules need a TypeScript syntax tree, and Go files have none.
+- **Reads and writes:** the GORM calls (`db.Create`, `db.Where`, and so on) need the same Go syntax support.

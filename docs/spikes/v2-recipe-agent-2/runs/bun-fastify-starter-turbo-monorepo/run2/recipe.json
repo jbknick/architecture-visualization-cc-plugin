@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "dependencies": [
+    {"name": "fastify", "role": "framework", "note": "http"},
+    {"name": "kysely", "role": "data-access", "note": "query builder"}
+  ],
+  "helpers": ["call-return", "param-flow"],
+  "passthrough": ["register"],
+  "methods": {
+    "read": ["selectFrom"],
+    "write": ["insertInto", "updateTable", "deleteFrom"]
+  },
+  "rules": [
+    {
+      "id": "fastify-router-param",
+      "language": "typescript",
+      "when": {"dependency": ["fastify"]},
+      "rule": {"pattern": "async function $F($R: FastifyInstance $$$REST) { $$$B }"},
+      "emit": {"kind": "router", "data": {"adapter": "fastify"}},
+      "examples": {
+        "match": ["async function r(fastify: FastifyInstance) { fastify.get('/', h); }"],
+        "noMatch": ["async function r(x: Foo) { }"]
+      }
+    },
+    {
+      "id": "fastify-endpoint",
+      "language": "typescript",
+      "when": {"dependency": ["fastify"]},
+      "rule": {"pattern": "$R.$M($P, $$$H)", "inside": {"kind": "function_declaration", "stopBy": "end"}},
+      "constraints": {"M": {"regex": "^(get|post|put|patch|delete)$"}},
+      "emit": {"kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$P", "handler": "$H", "data": {"adapter": "fastify"}},
+      "examples": {
+        "match": ["async function r(fastify: FastifyInstance) { fastify.post('/email', {}, h); }"],
+        "noMatch": ["const x = 1;"]
+      }
+    },
+    {
+      "id": "fastify-mount",
+      "language": "typescript",
+      "when": {"dependency": ["fastify"]},
+      "rule": {"pattern": "$R.register($C, { prefix: $P })"},
+      "emit": {"kind": "mount", "parent": "$R", "child": "$C", "prefix": "$P", "data": {"adapter": "fastify"}},
+      "examples": {
+        "match": ["async function r(fastify: FastifyInstance) { fastify.register(userRoutes, { prefix: '/users' }); }"],
+        "noMatch": ["foo.bar(1)"]
+      }
+    },
+    {
+      "id": "fastify-mount-plain",
+      "language": "typescript",
+      "when": {"dependency": ["fastify"]},
+      "rule": {"pattern": "$R.register($C)"},
+      "emit": {"kind": "mount", "parent": "$R", "child": "$C", "data": {"adapter": "fastify"}},
+      "examples": {
+        "match": ["async function r(fastify: FastifyInstance) { fastify.register(userRoutes); }"],
+        "noMatch": ["foo.bar(1)"]
+      }
+    },
+    {
+      "id": "kysely-table",
+      "language": "typescript",
+      "when": {"dependency": ["kysely"]},
+      "files": ["**/db/types/index.ts"],
+      "rule": {"kind": "property_signature", "inside": {"kind": "interface_body", "inside": {"kind": "interface_declaration", "has": {"regex": "^Database$", "kind": "type_identifier"}}}, "has": {"field": "name", "kind": "property_identifier", "pattern": "$NAME"}},
+      "emit": {"kind": "table", "name": "$NAME"},
+      "examples": {
+        "match": ["interface Database { users: UsersTable; }"],
+        "noMatch": ["interface Other { users: UsersTable; }"]
+      }
+    },
+    {
+      "id": "kysely-read",
+      "language": "typescript",
+      "when": {"dependency": ["kysely"]},
+      "rule": {"pattern": "$DB.selectFrom($T)"},
+      "emit": {"kind": "read", "table": "$T"},
+      "examples": {
+        "match": ["db.selectFrom('users')"],
+        "noMatch": ["db.insertInto('users')"]
+      }
+    },
+    {
+      "id": "kysely-write",
+      "language": "typescript",
+      "when": {"dependency": ["kysely"]},
+      "rule": {"any": [{"pattern": "$DB.insertInto($T)"}, {"pattern": "$DB.updateTable($T)"}, {"pattern": "$DB.deleteFrom($T)"}]},
+      "emit": {"kind": "write", "table": "$T"},
+      "examples": {
+        "match": ["db.insertInto('users')", "db.deleteFrom('users')"],
+        "noMatch": ["db.selectFrom('users')"]
+      }
+    }
+  ]
+}

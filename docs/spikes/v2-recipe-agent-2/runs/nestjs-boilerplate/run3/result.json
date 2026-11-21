@@ -1,0 +1,77 @@
+{
+  "checkRuns": 4,
+  "costUsdReported": 0.1310357,
+  "model": "claude-sonnet-5-5",
+  "recipeSha256": "1f5e9f0d7e1e905f224d3c83c30b74c6df58d6a538eb3eda1b3a32278df69723",
+  "run": 3,
+  "score": {
+    "bar": {
+      "precision": 0.95,
+      "recall": 0.9
+    },
+    "case": "nestjs-boilerplate",
+    "extra": {},
+    "kinds": {
+      "read": {
+        "labelled": 6,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      },
+      "table": {
+        "labelled": 5,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      },
+      "write": {
+        "labelled": 6,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      }
+    },
+    "missed": {
+      "read": [
+        "src/database/seeds/relational/role/role-seed.service.ts|role",
+        "src/database/seeds/relational/status/status-seed.service.ts|status",
+        "src/database/seeds/relational/user/user-seed.service.ts|user",
+        "src/files/infrastructure/persistence/relational/repositories/file.repository.ts|file",
+        "src/session/infrastructure/persistence/relational/repositories/session.repository.ts|session",
+        "src/users/infrastructure/persistence/relational/repositories/user.repository.ts|user"
+      ],
+      "table": [
+        "file",
+        "role",
+        "session",
+        "status",
+        "user"
+      ],
+      "write": [
+        "src/database/seeds/relational/role/role-seed.service.ts|role",
+        "src/database/seeds/relational/status/status-seed.service.ts|status",
+        "src/database/seeds/relational/user/user-seed.service.ts|user",
+        "src/files/infrastructure/persistence/relational/repositories/file.repository.ts|file",
+        "src/session/infrastructure/persistence/relational/repositories/session.repository.ts|session",
+        "src/users/infrastructure/persistence/relational/repositories/user.repository.ts|user"
+      ]
+    },
+    "pass": false,
+    "sha": "9620f159eefe38f47747d02ab162852367c5472c"
+  },
+  "status": "ok",
+  "tokens": {
+    "cacheCreate": 15911,
+    "cacheRead": 156697,
+    "input": 16,
+    "output": 5169
+  },
+  "turns": 11,
+  "wallMs": 42173
+}

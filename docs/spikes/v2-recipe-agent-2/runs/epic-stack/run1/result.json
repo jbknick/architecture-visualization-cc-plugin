@@ -1,0 +1,106 @@
+{
+  "checkRuns": 6,
+  "costUsdReported": 0.09713750000000002,
+  "model": "claude-sonnet-5-5",
+  "recipeSha256": "98b0123c8a9c2bf7005bd224504c877bf6d0425e708197c89729bbae746f7a65",
+  "run": 1,
+  "score": {
+    "bar": {
+      "precision": 0.95,
+      "recall": 0.9
+    },
+    "case": "epic-stack",
+    "extra": {},
+    "kinds": {
+      "endpoint": {
+        "labelled": 18,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      },
+      "route": {
+        "labelled": 30,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      },
+      "table": {
+        "labelled": 11,
+        "matched": 11,
+        "pass": true,
+        "precision": 1,
+        "predicted": 11,
+        "recall": 1
+      }
+    },
+    "missed": {
+      "endpoint": [
+        "ALL /admin/cache/lru/:param",
+        "ALL /admin/cache/sqlite",
+        "ALL /admin/cache/sqlite/:param",
+        "ALL /auth/:param",
+        "ALL /auth/:param/callback",
+        "ALL /logout",
+        "ALL /me",
+        "ALL /resources/download-user-data",
+        "ALL /resources/healthcheck",
+        "ALL /resources/images",
+        "ALL /resources/theme-switch",
+        "ALL /robots.txt",
+        "ALL /sitemap.xml",
+        "ALL /webauthn/authentication",
+        "ALL /webauthn/registration",
+        "GET /*",
+        "GET /favicons/*",
+        "GET /img/*"
+      ],
+      "route": [
+        "/",
+        "/*",
+        "/about",
+        "/admin/cache",
+        "/forgot-password",
+        "/login",
+        "/onboarding",
+        "/onboarding/:param",
+        "/privacy",
+        "/reset-password",
+        "/settings/profile",
+        "/settings/profile/change-email",
+        "/settings/profile/connections",
+        "/settings/profile/passkeys",
+        "/settings/profile/password",
+        "/settings/profile/password/create",
+        "/settings/profile/photo",
+        "/settings/profile/two-factor",
+        "/settings/profile/two-factor/disable",
+        "/settings/profile/two-factor/verify",
+        "/signup",
+        "/support",
+        "/tos",
+        "/users",
+        "/users/:param",
+        "/users/:param/notes",
+        "/users/:param/notes/:param",
+        "/users/:param/notes/:param/edit",
+        "/users/:param/notes/new",
+        "/verify"
+      ]
+    },
+    "pass": false,
+    "sha": "893610db76127fb5a5f1ffa786bee6b050637429"
+  },
+  "status": "ok",
+  "tokens": {
+    "cacheCreate": 9355,
+    "cacheRead": 161875,
+    "input": 20,
+    "output": 4349
+  },
+  "turns": 13,
+  "wallMs": 35920
+}

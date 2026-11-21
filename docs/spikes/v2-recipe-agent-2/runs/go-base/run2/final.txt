@@ -1,0 +1,10 @@
+I wrote `.gantry/recipe.json`, and the check passes, but it only covers the three tables. The repo is Go, and the engine's rules only handle TypeScript and text files, so routes, endpoints, reads and writes can't be expressed.
+
+- **Stack:** Go with chi for routing and bun on Postgres.
+- **Tables:** one text rule reads `CREATE TABLE` from `database/migrations/*.go`. It matched 3 tables: `accounts`, `tokens` and `profiles`.
+- **Not tested:** the three tables came from a text rule in Go files. The check only counted matches. I haven't confirmed the engine attaches the table nodes to a graph when the repo has no TypeScript files.
+- **Routes:** none. This is a backend-only repo with no frontend pages.
+- **Endpoints:** none. The chi route registrations are Go, and no rule can match them.
+- **Reads and writes:** none. The bun queries are Go too, and the SQL files in this repo hold only migration inserts, not application queries.
+
+I expect 0 routes, 0 endpoints, 3 tables, 0 reads and 0 writes.

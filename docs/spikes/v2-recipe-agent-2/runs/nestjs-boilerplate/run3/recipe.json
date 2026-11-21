@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "typeorm", "role": "data-access", "note": "relational persistence" },
+    { "name": "@nestjs/common", "role": "framework", "note": "NestJS" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+  "models": {
+    "explicit": {
+      "UserEntity": "user",
+      "FileEntity": "file",
+      "RoleEntity": "role",
+      "StatusEntity": "status",
+      "SessionEntity": "session"
+    }
+  },
+  "methods": {
+    "read": ["find", "findOne", "findOneBy", "findBy", "findAndCount", "count", "exists"],
+    "write": ["save", "create", "insert", "update", "delete", "softDelete", "remove", "upsert"]
+  },
+  "rules": [
+    {
+      "id": "typeorm-entity",
+      "language": "text",
+      "files": ["src/**/*.entity.ts"],
+      "rule": { "regex": "@Entity\\(\\{\\s*name:\\s*'(\\w+)'" },
+      "emit": { "kind": "table", "name": "$1" },
+      "examples": {
+        "match": ["@Entity({ name: 'file' })"],
+        "noMatch": ["@Column()"]
+      }
+    },
+    {
+      "id": "repo-read",
+      "language": "typescript",
+      "files": ["src/**/*.ts"],
+      "rule": { "pattern": "$R.$M($$$A)" },
+      "constraints": {
+        "R": { "regex": "^this\\.\\w+$" },
+        "M": { "regex": "^(find|findOne|findOneBy|findBy|findAndCount|count|exists)$" }
+      },
+      "emit": { "kind": "read", "receiver": "$R", "receiverDecl": ["{prop}\\s*:\\s*Repository<(\\w+)>"] },
+      "examples": {
+        "match": ["class A { constructor(private readonly r: Repository<UserEntity>) {} f() { return this.r.find({}); } }"],
+        "noMatch": ["const x = 1;"]
+      }
+    },
+    {
+      "id": "repo-write",
+      "language": "typescript",
+      "files": ["src/**/*.ts"],
+      "rule": { "pattern": "$R.$M($$$A)" },
+      "constraints": {
+        "R": { "regex": "^this\\.\\w+$" },
+        "M": { "regex": "^(save|create|insert|update|delete|softDelete|remove|upsert)$" }
+      },
+      "emit": { "kind": "write", "receiver": "$R", "receiverDecl": ["{prop}\\s*:\\s*Repository<(\\w+)>"] },
+      "examples": {
+        "match": ["class A { constructor(private readonly r: Repository<UserEntity>) {} f() { return this.r.save({}); } }"],
+        "noMatch": ["const x = 1;"]
+      }
+    }
+  ]
+}

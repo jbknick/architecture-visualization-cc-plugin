@@ -1,0 +1,72 @@
+{
+  "checkRuns": 3,
+  "costUsdReported": 0.037918,
+  "model": "claude-sonnet-5-5",
+  "recipeSha256": "a2af195a83fbe9b53c5a6a929a8b0e2d4f245b5392cd1a6582b61fd28916d948",
+  "run": 2,
+  "score": {
+    "bar": {
+      "precision": 0.95,
+      "recall": 0.9
+    },
+    "case": "go-base",
+    "extra": {},
+    "kinds": {
+      "endpoint": {
+        "labelled": 19,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      },
+      "table": {
+        "labelled": 3,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      }
+    },
+    "missed": {
+      "endpoint": [
+        "DELETE /admin/accounts/:param",
+        "DELETE /api/account",
+        "DELETE /api/account/token/:param",
+        "GET /*",
+        "GET /admin",
+        "GET /admin/accounts",
+        "GET /admin/accounts/:param",
+        "GET /api/account",
+        "GET /api/profile",
+        "GET /healthz",
+        "POST /admin/accounts",
+        "POST /auth/login",
+        "POST /auth/logout",
+        "POST /auth/refresh",
+        "POST /auth/token",
+        "PUT /admin/accounts/:param",
+        "PUT /api/account",
+        "PUT /api/account/token/:param",
+        "PUT /api/profile"
+      ],
+      "table": [
+        "accounts",
+        "profiles",
+        "tokens"
+      ]
+    },
+    "pass": false,
+    "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a"
+  },
+  "status": "ok",
+  "tokens": {
+    "cacheCreate": 3612,
+    "cacheRead": 82660,
+    "input": 12,
+    "output": 1518
+  },
+  "turns": 7,
+  "wallMs": 18175
+}

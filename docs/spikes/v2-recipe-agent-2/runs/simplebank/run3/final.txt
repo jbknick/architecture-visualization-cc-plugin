@@ -1,0 +1,13 @@
+I wrote `.gantry/recipe.json` with one rule, and it passes the check. It covers the database tables but not the endpoints, the frontend route, or any reads and writes.
+
+The check reports `schema-tables: schema ok, examples ok (2 passed), 6 matches`, then `recipe ok`. It also says it skipped one file larger than 1 MB; I didn't find out which. I ran the check with only the recipe path, because the command rejected the trailing `.`.
+
+**Stack:** the backend is Go (gin, gRPC with grpc-gateway, sqlc on Postgres, asynq). The frontend is Vue 3 with vue-router.
+
+**What the recipe produces:**
+- **Tables:** 6, from `CREATE TABLE` statements in `doc/schema.sql`: users, verify_emails, accounts, entries, transfers and sessions.
+- **Routes:** 0. The only frontend route is `/` in `frontend/src/router/index.ts`. I tried to add a `route` rule for it, but my shell command was blocked and I didn't retry. I'm also not sure how the `route` emit should read the `options`.
+- **Endpoints:** 0, because the gin and grpc-gateway handlers are in Go.
+- **Reads and writes:** 0. The queries are sqlc-generated Go in `db/sqlc`, and the `sql` option only reads TypeScript files.
+
+**What I couldn't express:** the engine's rules only run on TypeScript, so it has no way to match Go registration sites or Go query calls. That covers the 13 or so gin routes in `api/server.go`, the gateway endpoints, and the table access in `db/sqlc`.

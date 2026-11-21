@@ -1,0 +1,7 @@
+I wrote the recipe to `.gantry/recipe.json`, and the check passes with every rule's examples green.
+
+- **Stack:** Next.js app router (Next 14-style `app/` directory), tRPC, NextAuth, Stripe, and Kysely over a Prisma schema.
+- **Tables:** 6, from the Prisma models: Account, Customer, K8sClusterConfig, Session, User and VerificationToken. The rule found 6 matches.
+- **Reads and writes:** Kysely `selectFrom` is the read rule. `insertInto`, `updateTable` and `deleteFrom` are the write rules. They matched 13, 2, 4 and 1 sites. The `selectFrom` count is 13, but grep shows 15 call sites. I didn't find out why. The engine may count once per file and table, which would explain the gap, but I haven't confirmed that.
+- **Routes and endpoints:** I wrote no rules for these. I expect about 14 Next.js page routes and 5 route.ts endpoints, but that depends on the engine's built-in Next.js handling, which I didn't confirm. I listed the `fs-routes` helper but never checked what it produces.
+- **Endpoints I can't express:** the tRPC procedures are not method + path, so I skipped them. The `apps/auth-proxy/routes/[...auth].ts` handler is a catch-all in an unknown framework, and I didn't look into it.

@@ -1,0 +1,49 @@
+{
+  "checkRuns": 4,
+  "costUsdReported": 0.07818309999999999,
+  "model": "claude-sonnet-5-5",
+  "recipeSha256": "0a5b717461e9e9972e12ee6e7d13ee9595f9b849320a7bb709fda94410612d67",
+  "run": 3,
+  "score": {
+    "bar": {
+      "precision": 0.95,
+      "recall": 0.9
+    },
+    "case": "bulletproof-react",
+    "extra": {},
+    "kinds": {
+      "route": {
+        "labelled": 10,
+        "matched": 1,
+        "pass": false,
+        "precision": 1,
+        "predicted": 1,
+        "recall": 0.1
+      }
+    },
+    "missed": {
+      "route": [
+        "/",
+        "/app",
+        "/app/discussions",
+        "/app/discussions/:param",
+        "/app/profile",
+        "/app/users",
+        "/auth/login",
+        "/auth/register",
+        "/public/discussions/:param"
+      ]
+    },
+    "pass": false,
+    "sha": "9506629ed003a561c6627735480cce4994244bb4"
+  },
+  "status": "ok",
+  "tokens": {
+    "cacheCreate": 9796,
+    "cacheRead": 123511,
+    "input": 14,
+    "output": 2662
+  },
+  "turns": 10,
+  "wallMs": 23834
+}

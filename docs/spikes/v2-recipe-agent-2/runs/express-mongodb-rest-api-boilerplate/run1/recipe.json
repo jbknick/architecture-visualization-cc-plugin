@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "express", "role": "framework", "note": "HTTP routers" },
+    { "name": "mongoose", "role": "data-access", "note": "MongoDB models" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow", "model-naming", "method-classes"],
+  "passthrough": ["get", "post", "put", "patch", "delete", "route"],
+  "methods": {
+    "read": ["find", "findOne", "findById", "countDocuments", "exists", "aggregate", "distinct"],
+    "write": ["create", "insertMany", "updateOne", "updateMany", "findOneAndUpdate", "findByIdAndUpdate", "deleteOne", "deleteMany", "findOneAndDelete", "findByIdAndDelete", "bulkWrite", "replaceOne"]
+  },
+  "rules": [
+    {
+      "id": "express-router",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "rule": { "pattern": "Router($$$)" },
+      "emit": { "kind": "router", "data": { "adapter": "express" } },
+      "examples": { "match": ["const router = Router()"], "noMatch": ["const x = foo()"] }
+    },
+    {
+      "id": "express-endpoint",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "rule": { "pattern": "$R.$M($P, $$$H)" },
+      "constraints": {
+        "M": { "regex": "^(get|post|put|patch|delete)$" },
+        "P": { "kind": "string" }
+      },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$P", "handler": "$H", "data": { "adapter": "express" } },
+      "examples": {
+        "match": ["const router = Router(); router.get('/a', h)"],
+        "noMatch": ["map.get(k)"]
+      }
+    },
+    {
+      "id": "express-mount",
+      "language": "typescript",
+      "when": { "dependency": ["express"] },
+      "rule": { "pattern": "$R.use($$$C)" },
+      "emit": { "kind": "mount", "parent": "$R", "child": "$C", "data": { "adapter": "express" } },
+      "examples": {
+        "match": ["const router = Router(); router.use(createFoo())"],
+        "noMatch": ["foo(a)"]
+      }
+    },
+    {
+      "id": "mongoose-model",
+      "language": "typescript",
+      "when": { "dependency": ["mongoose"] },
+      "rule": { "pattern": "model($N, $$$)" },
+      "constraints": { "N": { "kind": "string" } },
+      "emit": { "kind": "table", "name": "$N", "model": "$N" },
+      "examples": {
+        "match": ["export const User = model('User', schema)"],
+        "noMatch": ["foo('User')"]
+      }
+    },
+    {
+      "id": "mongoose-read",
+      "language": "typescript",
+      "when": { "dependency": ["mongoose"] },
+      "rule": { "pattern": "$M.$F($$$)" },
+      "constraints": {
+        "M": { "regex": "^(User|Verification|ResetPassword|Media|EmailBudget|EmailOutbox|EmailWorker)$" },
+        "F": { "regex": "^(find|findOne|findById|countDocuments|exists|aggregate|distinct)$" }
+      },
+      "emit": { "kind": "read", "model": "$M", "method": "$F" },
+      "examples": {
+        "match": ["User.findOne({})"],
+        "noMatch": ["Foo.findOne({})"]
+      }
+    },
+    {
+      "id": "mongoose-write",
+      "language": "typescript",
+      "when": { "dependency": ["mongoose"] },
+      "rule": { "pattern": "$M.$F($$$)" },
+      "constraints": {
+        "M": { "regex": "^(User|Verification|ResetPassword|Media|EmailBudget|EmailOutbox|EmailWorker)$" },
+        "F": { "regex": "^(create|insertMany|updateOne|updateMany|findOneAndUpdate|findByIdAndUpdate|deleteOne|deleteMany|findOneAndDelete|findByIdAndDelete|bulkWrite|replaceOne)$" }
+      },
+      "emit": { "kind": "write", "model": "$M", "method": "$F" },
+      "examples": {
+        "match": ["User.create({})"],
+        "noMatch": ["Foo.create({})"]
+      }
+    }
+  ]
+}

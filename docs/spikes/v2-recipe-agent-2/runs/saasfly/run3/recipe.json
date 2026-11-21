@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "dependencies": [
+    {"name": "next", "role": "framework", "note": "Next.js app router"},
+    {"name": "kysely", "role": "data-access", "note": "Kysely query builder"}
+  ],
+  "helpers": ["fs-routes", "const-strings"],
+  "rules": [
+    {
+      "id": "db-tables",
+      "language": "text",
+      "files": ["packages/db/prisma/types.ts"],
+      "rule": {"regex": "^  (\\w+): \\1;$", "flags": "gm"},
+      "emit": {"kind": "table", "name": "$1"},
+      "examples": {"match": ["export type DB = {\n  Account: Account;\n};"], "noMatch": ["  userId: string;"]}
+    },
+    {
+      "id": "kysely-read",
+      "language": "typescript",
+      "rule": {"pattern": "$R.selectFrom($T)"},
+      "emit": {"kind": "read", "table": "$T"},
+      "examples": {"match": ["db.selectFrom(\"User\")"], "noMatch": ["db.insertInto(\"User\")"]}
+    },
+    {
+      "id": "kysely-write",
+      "language": "typescript",
+      "rule": {"any": [{"pattern": "$R.insertInto($T)"}, {"pattern": "$R.updateTable($T)"}, {"pattern": "$R.deleteFrom($T)"}]},
+      "emit": {"kind": "write", "table": "$T"},
+      "examples": {"match": ["db.insertInto(\"User\")", "db.deleteFrom(\"User\")"], "noMatch": ["db.selectFrom(\"User\")"]}
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+I wrote `.gantry/recipe.json`, and the check passes: every rule's examples pass and the recipe is valid. I didn't compare the match counts with a count from the code, and I haven't seen the graph the engine builds from these rules.
+
+**Stack:** Express 5 with TypeScript, and Mongoose models on MongoDB.
+
+**Expected output**
+- **Routes:** 0. The repository has no frontend pages.
+- **Endpoints:** about 15 to 17 real ones. The rule matched 22 registrations, so some are probably the Swagger docs routes. The `router.route('/auth/sign-out').post(...).get(...)` chain isn't covered by a rule, so those two endpoints are probably missing.
+- **Tables:** 7: `User`, `Verification`, `ResetPassword`, `Media`, `EmailBudget`, `EmailOutbox` and `EmailWorker`.
+- **Reads and writes:** one per (file, table, direction). The rules matched 22 read calls and 30 write calls. The calls are in the repository and operations files under `src/domains/`.
+
+**Not expressed**
+- I did not write a rule for the chained `.route(path).post().get()` form. The recipe format has `pathFromChain` for it, but I didn't use it.
+- `router.use('/auth', authRateLimit)` is middleware with a prefix, which the generic mount rule may misread as a mount. I didn't check this.
+- The read and write rules match the seven model names as plain identifiers. A model used through an alias would be missed.

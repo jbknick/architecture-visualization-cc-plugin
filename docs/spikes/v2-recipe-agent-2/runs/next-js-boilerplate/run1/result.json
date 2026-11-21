@@ -1,0 +1,53 @@
+{
+  "checkRuns": 2,
+  "costUsdReported": 0.05681839999999999,
+  "model": "claude-sonnet-5-5",
+  "recipeSha256": "6dbca6fe4941e2a990340617d017b5fce6e57e6a72009768995bf1c297cfb6f1",
+  "run": 1,
+  "score": {
+    "bar": {
+      "precision": 0.95,
+      "recall": 0.9
+    },
+    "case": "next-js-boilerplate",
+    "extra": {},
+    "kinds": {
+      "read": {
+        "labelled": 1,
+        "matched": 1,
+        "pass": true,
+        "precision": 1,
+        "predicted": 1,
+        "recall": 1
+      },
+      "table": {
+        "labelled": 1,
+        "matched": 1,
+        "pass": true,
+        "precision": 1,
+        "predicted": 1,
+        "recall": 1
+      },
+      "write": {
+        "labelled": 1,
+        "matched": 1,
+        "pass": true,
+        "precision": 1,
+        "predicted": 1,
+        "recall": 1
+      }
+    },
+    "missed": {},
+    "pass": true,
+    "sha": "b83157a8018f55b926a3c25a4b7a7e14b0dfbc35"
+  },
+  "status": "ok",
+  "tokens": {
+    "cacheCreate": 6515,
+    "cacheRead": 89644,
+    "input": 12,
+    "output": 2177
+  },
+  "turns": 7,
+  "wallMs": 22401
+}

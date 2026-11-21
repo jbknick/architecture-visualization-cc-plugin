@@ -1,0 +1,1 @@
+{"version":1,"dependencies":[],"helpers":[],"rules":[{"id":"sql-tables","language":"text","files":["database/migrations/*.go"],"rule":{"regex":"CREATE TABLE (\\w+)"},"emit":{"kind":"table","name":"$1"},"examples":{"match":["CREATE TABLE accounts ("],"noMatch":["SELECT 1"]}}]}

@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "fastify", "role": "framework", "note": "HTTP server" },
+    { "name": "kysely", "role": "data-access", "note": "query builder" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "param-flow"],
+  "passthrough": ["register"],
+  "rules": [
+    {
+      "id": "fastify-endpoint",
+      "language": "typescript",
+      "files": ["apps/backend/src/**/*.ts", "!**/__tests__/**", "!**/test-utils/**"],
+      "rule": { "pattern": "$R.$M($P, $$$ARGS)" },
+      "constraints": { "M": { "regex": "^(get|post|put|patch|delete|head|options)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$P", "handler": "$$$ARGS", "data": { "adapter": "fastify" } },
+      "examples": {
+        "match": ["fastify.post('/email', {}, handler)"],
+        "noMatch": ["const a = 1"]
+      }
+    },
+    {
+      "id": "fastify-mount",
+      "language": "typescript",
+      "files": ["apps/backend/src/**/*.ts", "!**/__tests__/**", "!**/test-utils/**"],
+      "rule": { "pattern": "$R.register($CHILD, { prefix: $P })" },
+      "emit": { "kind": "mount", "parent": "$R", "child": "$CHILD", "prefix": "$P", "childIsScope": true, "data": { "adapter": "fastify" } },
+      "examples": {
+        "match": ["fastify.register(userRoutes, { prefix: '/users' })"],
+        "noMatch": ["fastify.register(userRoutes)"]
+      }
+    },
+    {
+      "id": "fastify-mount-plain",
+      "language": "typescript",
+      "files": ["apps/backend/src/**/*.ts", "!**/__tests__/**", "!**/test-utils/**"],
+      "rule": { "pattern": "$R.register($CHILD)" },
+      "emit": { "kind": "mount", "parent": "$R", "child": "$CHILD", "childIsScope": true, "data": { "adapter": "fastify" } },
+      "examples": {
+        "match": ["fastify.register(userRoutes)"],
+        "noMatch": ["fastify.register(a, {})"]
+      }
+    },
+    {
+      "id": "kysely-table",
+      "language": "typescript",
+      "files": ["apps/backend/src/db/types/index.ts"],
+      "rule": {
+        "kind": "property_signature",
+        "has": { "field": "name", "pattern": "$K" },
+        "inside": { "kind": "interface_body", "inside": { "kind": "interface_declaration", "has": { "field": "name", "regex": "^Database$" } } }
+      },
+      "emit": { "kind": "table", "name": "$K" },
+      "examples": {
+        "match": ["interface Database { users: UsersTable; }"],
+        "noMatch": ["interface Other { users: UsersTable; }"]
+      }
+    },
+    {
+      "id": "kysely-read",
+      "language": "typescript",
+      "files": ["apps/backend/src/**/*.ts", "!**/__tests__/**", "!**/test-utils/**", "!**/migrations/**"],
+      "rule": { "pattern": "$DB.selectFrom($T)" },
+      "emit": { "kind": "read", "table": "$T" },
+      "examples": {
+        "match": ["db.selectFrom('users')"],
+        "noMatch": ["db.insertInto('users')"]
+      }
+    },
+    {
+      "id": "kysely-write",
+      "language": "typescript",
+      "files": ["apps/backend/src/**/*.ts", "!**/__tests__/**", "!**/test-utils/**", "!**/migrations/**"],
+      "rule": { "pattern": "$DB.$M($T)" },
+      "constraints": { "M": { "regex": "^(insertInto|updateTable|deleteFrom)$" } },
+      "emit": { "kind": "write", "table": "$T" },
+      "examples": {
+        "match": ["db.insertInto('users')", "db.deleteFrom('users')"],
+        "noMatch": ["db.selectFrom('users')"]
+      }
+    }
+  ]
+}

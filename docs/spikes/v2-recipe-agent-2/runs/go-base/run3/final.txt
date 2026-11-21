@@ -1,0 +1,9 @@
+I wrote `.gantry/recipe.json`, and the check passes.
+
+This is a Go repository (bun on Postgres), and the engine's ast-grep rules only cover TypeScript. The recipe therefore has one text rule. It finds `CREATE TABLE` statements in `database/migrations/*.go` and gives 3 tables: `accounts`, `tokens` and `profiles`. I took the names from those statements, since the Go code has no model definitions with explicit table names.
+
+What I expect the recipe to produce:
+- **Routes:** 0. There is no frontend, only `public/index.html`.
+- **Endpoints:** 0. I couldn't express them: the HTTP routes are registered in Go, in `api/` and its sub-packages, and the engine has no Go rules.
+- **Tables:** 3.
+- **Reads and writes:** 0. I couldn't express them: the queries are in the `database/*Store.go` files, which the engine can't parse as Go. Raw SQL in Go files also isn't covered, because `sql-text` only reads TypeScript strings.

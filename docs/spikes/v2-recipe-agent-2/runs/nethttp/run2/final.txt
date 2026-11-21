@@ -1,0 +1,6 @@
+I wrote `.gantry/recipe.json`, but it is an empty recipe with no rules. The check passes ("recipe ok"). I had to drop the trailing `.` from your check command, because the CLI rejected it as too many arguments.
+
+- **Stack:** this is a Go `net/http` service (Go 1.22) with `main.go`, `router.go`, and handler, middleware, comment, invoice and monster packages. It has no `package.json` and no TypeScript.
+- **Why no rules:** the engine's rules only work on TypeScript, plus text rules that can only emit tables. Go route and endpoint registrations (for example `mux.HandleFunc("GET /path", ...)`) can't be matched. That is the missing capability.
+- **Database:** I searched for `CREATE TABLE`, `SELECT` and `INSERT` and found no database code. There are no tables, reads or writes.
+- **Expected output:** 0 routes, 0 endpoints, 0 tables, 0 reads and 0 writes. The Go endpoints are not captured.

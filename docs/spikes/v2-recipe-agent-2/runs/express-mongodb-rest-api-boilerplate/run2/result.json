@@ -1,0 +1,69 @@
+{
+  "checkRuns": 3,
+  "costUsdReported": 0.13062780000000002,
+  "model": "claude-sonnet-5-5",
+  "recipeSha256": "e3ebc46bbe2fbb5f6284c025ca660c4fb50f06dc95f5c2bf5867b73ae9409e14",
+  "run": 2,
+  "score": {
+    "bar": {
+      "precision": 0.95,
+      "recall": 0.9
+    },
+    "case": "express-mongodb-rest-api-boilerplate",
+    "extra": {},
+    "kinds": {
+      "read": {
+        "labelled": 12,
+        "matched": 5,
+        "pass": false,
+        "precision": 1,
+        "predicted": 5,
+        "recall": 0.4167
+      },
+      "table": {
+        "labelled": 7,
+        "matched": 7,
+        "pass": true,
+        "precision": 1,
+        "predicted": 7,
+        "recall": 1
+      },
+      "write": {
+        "labelled": 11,
+        "matched": 7,
+        "pass": false,
+        "precision": 1,
+        "predicted": 7,
+        "recall": 0.6364
+      }
+    },
+    "missed": {
+      "read": [
+        "src/app/runtime/commands/database/indexes.ts|media",
+        "src/app/runtime/commands/database/indexes.ts|resetpassword",
+        "src/app/runtime/commands/database/indexes.ts|user",
+        "src/app/runtime/commands/database/indexes.ts|verification",
+        "src/app/runtime/commands/database/migrate.ts|media",
+        "src/app/runtime/commands/database/migrate.ts|resetpassword",
+        "src/app/runtime/commands/database/migrate.ts|verification"
+      ],
+      "write": [
+        "src/app/runtime/commands/database/migrate.ts|media",
+        "src/app/runtime/commands/database/migrate.ts|resetpassword",
+        "src/app/runtime/commands/database/migrate.ts|user",
+        "src/app/runtime/commands/database/migrate.ts|verification"
+      ]
+    },
+    "pass": false,
+    "sha": "0ed1f89bc3e2f1a86b1b3f57f8569fa0405aa3d7"
+  },
+  "status": "ok",
+  "tokens": {
+    "cacheCreate": 14225,
+    "cacheRead": 182578,
+    "input": 20,
+    "output": 5543
+  },
+  "turns": 12,
+  "wallMs": 42201
+}

@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "dependencies": [
+    {"name":"express","role":"framework","note":"HTTP"},
+    {"name":"mongoose","role":"data-access","note":"MongoDB ODM"}
+  ],
+  "helpers": ["resolve-names","const-strings","mount-graph","call-return","param-flow","model-naming","method-classes"],
+  "passthrough": ["route","get","post","put","patch","delete"],
+  "methods": {
+    "read": ["find","findOne","findById","exists","countDocuments"],
+    "write": ["findOneAndUpdate","findOneAndDelete","findByIdAndUpdate","deleteMany","deleteOne","updateOne","updateMany","create","insertMany","save"]
+  },
+  "rules": [
+    {
+      "id": "express-router",
+      "language": "typescript",
+      "when": {"dependency": ["express"]},
+      "rule": {"pattern": "Router($$$)"},
+      "emit": {"kind": "router", "data": {"adapter": "express"}},
+      "examples": {"match": ["const r = Router()"], "noMatch": ["const r = foo()"]}
+    },
+    {
+      "id": "express-endpoint",
+      "language": "typescript",
+      "when": {"dependency": ["express"]},
+      "rule": {"pattern": "$R.$M($P, $$$H)"},
+      "constraints": {"M": {"regex": "^(get|post|put|patch|delete)$"}, "P": {"kind": "string"}},
+      "emit": {"kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$P", "handler": "$H", "data": {"adapter": "express"}},
+      "examples": {"match": ["router.get('/x', h)"], "noMatch": ["map.get(k)"]}
+    },
+    {
+      "id": "express-mount",
+      "language": "typescript",
+      "when": {"dependency": ["express"]},
+      "rule": {"pattern": "$P.use($C)"},
+      "constraints": {"C": {"kind": "call_expression"}},
+      "emit": {"kind": "mount", "parent": "$P", "child": "$C"},
+      "examples": {"match": ["router.use(createX())"], "noMatch": ["router.use(a, b)"]}
+    },
+    {
+      "id": "mongoose-model",
+      "language": "typescript",
+      "when": {"dependency": ["mongoose"]},
+      "rule": {"pattern": "const $V = model($N, $$$)"},
+      "constraints": {"N": {"kind": "string"}},
+      "emit": {"kind": "table", "name": "$N", "model": "$V"},
+      "examples": {"match": ["export const User = model('User', schema)"], "noMatch": ["const a = foo('x')"]}
+    },
+    {
+      "id": "mongoose-read",
+      "language": "typescript",
+      "when": {"dependency": ["mongoose"]},
+      "rule": {"pattern": "$M.$F($$$)"},
+      "constraints": {"M": {"regex": "^(User|Media|ResetPassword|Verification|EmailBudget|EmailOutbox|EmailWorker)$"}, "F": {"regex": "^(find|findOne|findById|exists|countDocuments)$"}},
+      "emit": {"kind": "read", "model": "$M", "method": "$F"},
+      "examples": {"match": ["User.findOne({a:1})"], "noMatch": ["Foo.findOne({a:1})"]}
+    },
+    {
+      "id": "mongoose-write",
+      "language": "typescript",
+      "when": {"dependency": ["mongoose"]},
+      "rule": {"pattern": "$M.$F($$$)"},
+      "constraints": {"M": {"regex": "^(User|Media|ResetPassword|Verification|EmailBudget|EmailOutbox|EmailWorker)$"}, "F": {"regex": "^(findOneAndUpdate|findOneAndDelete|findByIdAndUpdate|deleteMany|deleteOne|updateOne|updateMany|create|insertMany)$"}},
+      "emit": {"kind": "write", "model": "$M", "method": "$F"},
+      "examples": {"match": ["User.updateOne({a:1})"], "noMatch": ["User.findOne({a:1})"]}
+    }
+  ]
+}

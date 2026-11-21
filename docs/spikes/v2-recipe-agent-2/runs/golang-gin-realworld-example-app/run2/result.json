@@ -1,0 +1,77 @@
+{
+  "checkRuns": 2,
+  "costUsdReported": 0.0320336,
+  "model": "claude-sonnet-5-5",
+  "recipeSha256": "876b559facb63f89c39d0d0beecc8d41b41989b6466f7ec8b029403335f90851",
+  "run": 2,
+  "score": {
+    "bar": {
+      "precision": 0.95,
+      "recall": 0.9
+    },
+    "case": "golang-gin-realworld-example-app",
+    "extra": {},
+    "kinds": {
+      "endpoint": {
+        "labelled": 20,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      },
+      "table": {
+        "labelled": 7,
+        "matched": 0,
+        "pass": false,
+        "precision": 1,
+        "predicted": 0,
+        "recall": 0
+      }
+    },
+    "missed": {
+      "endpoint": [
+        "DELETE /api/articles/:param",
+        "DELETE /api/articles/:param/comments/:param",
+        "DELETE /api/articles/:param/favorite",
+        "DELETE /api/profiles/:param/follow",
+        "GET /api/articles",
+        "GET /api/articles/:param",
+        "GET /api/articles/:param/comments",
+        "GET /api/articles/feed",
+        "GET /api/ping",
+        "GET /api/profiles/:param",
+        "GET /api/tags",
+        "GET /api/user",
+        "POST /api/articles",
+        "POST /api/articles/:param/comments",
+        "POST /api/articles/:param/favorite",
+        "POST /api/profiles/:param/follow",
+        "POST /api/users",
+        "POST /api/users/login",
+        "PUT /api/articles/:param",
+        "PUT /api/user"
+      ],
+      "table": [
+        "articlemodel",
+        "articleusermodel",
+        "commentmodel",
+        "favoritemodel",
+        "followmodel",
+        "tagmodel",
+        "usermodel"
+      ]
+    },
+    "pass": false,
+    "sha": "a41289b2a4951e7cc09066f86742a27f85121c9b"
+  },
+  "status": "ok",
+  "tokens": {
+    "cacheCreate": 3902,
+    "cacheRead": 69456,
+    "input": 10,
+    "output": 946
+  },
+  "turns": 6,
+  "wallMs": 16357
+}

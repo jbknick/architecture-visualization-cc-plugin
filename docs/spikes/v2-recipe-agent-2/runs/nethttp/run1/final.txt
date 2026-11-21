@@ -1,0 +1,7 @@
+I wrote `.gantry/recipe.json`, but it is an empty recipe: no rules, so it produces no routes, endpoints, tables, reads or writes. The check command passes with "recipe ok". It rejected the `.` argument in the command you gave me ("too many arguments"), so I ran it with only the recipe path.
+
+This is a Go `net/http` project (`go.mod` module `github.com/dreamsofcode-io/nethttp`) with no TypeScript. The recipe format only accepts TypeScript rules (ast-grep) or text rules, and text rules can only emit tables. So Go endpoint registrations such as `mux.Handle` can't be expressed.
+
+A search of the `.go` files for `sql` and `create table` found nothing, so I expect no tables, reads or writes in any case.
+
+The missing capability is ast-grep rules for Go. With that, the endpoints registered in `router.go` and the handler packages (`comment`, `invoice`, `monster`) could be matched.

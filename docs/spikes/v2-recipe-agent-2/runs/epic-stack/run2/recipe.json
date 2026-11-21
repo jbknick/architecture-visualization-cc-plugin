@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "dependencies": [
+    {"name": "@prisma/client", "role": "data-access", "note": "Prisma ORM"},
+    {"name": "express", "role": "framework", "note": "server"}
+  ],
+  "helpers": ["model-naming", "method-classes"],
+  "models": {
+    "explicit": {
+      "user": "User", "note": "Note", "noteImage": "NoteImage", "userImage": "UserImage",
+      "password": "Password", "session": "Session", "permission": "Permission",
+      "role": "Role", "verification": "Verification", "connection": "Connection", "passkey": "Passkey"
+    }
+  },
+  "methods": {
+    "read": ["findUnique", "findUniqueOrThrow", "findFirst", "findFirstOrThrow", "findMany", "count", "aggregate", "groupBy"],
+    "write": ["create", "createMany", "update", "updateMany", "upsert", "delete", "deleteMany"]
+  },
+  "rules": [
+    {
+      "id": "prisma-models",
+      "language": "text",
+      "files": ["prisma/schema.prisma"],
+      "rule": {"regex": "^model\\s+(\\w+)\\s*\\{"},
+      "emit": {"kind": "table", "name": "$1"},
+      "examples": {"match": ["model User {\n id String\n}"], "noMatch": ["enum Foo {\n}"]}
+    },
+    {
+      "id": "prisma-read",
+      "language": "typescript",
+      "rule": {"pattern": "prisma.$MODEL.$METHOD($$$ARGS)"},
+      "emit": {"kind": "read", "model": "$MODEL", "method": "$METHOD"},
+      "examples": {"match": ["prisma.user.findMany({})"], "noMatch": ["foo.user.findMany({})"]}
+    },
+    {
+      "id": "prisma-write",
+      "language": "typescript",
+      "rule": {"pattern": "prisma.$MODEL.$METHOD($$$ARGS)"},
+      "emit": {"kind": "write", "model": "$MODEL", "method": "$METHOD"},
+      "examples": {"match": ["prisma.user.create({})"], "noMatch": ["foo.user.create({})"]}
+    }
+  ]
+}

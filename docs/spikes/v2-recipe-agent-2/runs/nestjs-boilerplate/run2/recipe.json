@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "dependencies": [
+    {"name": "@nestjs/common", "role": "framework", "note": "NestJS controllers (decorator routes not expressible)"},
+    {"name": "@nestjs/typeorm", "role": "data-access", "note": "TypeORM entities"},
+    {"name": "@nestjs/mongoose", "role": "data-access", "note": "Mongoose schemas"}
+  ],
+  "helpers": ["resolve-names", "const-strings", "model-naming", "method-classes"],
+  "methods": {
+    "read": ["find", "findOne", "findBy", "findOneBy", "findAndCount", "count", "exists", "findById", "countDocuments", "findOneOrFail"],
+    "write": ["save", "create", "insert", "update", "delete", "remove", "softDelete", "upsert", "findByIdAndUpdate", "findOneAndUpdate", "updateOne", "deleteOne", "deleteMany", "insertMany", "findByIdAndDelete", "findOneAndDelete", "updateMany"]
+  },
+  "rules": [
+    {
+      "id": "typeorm-entity",
+      "language": "typescript",
+      "when": {"dependency": ["@nestjs/typeorm", "typeorm"]},
+      "files": ["src/**/*.entity.ts"],
+      "rule": {"kind": "decorator", "pattern": "@Entity({ name: $N })"},
+      "emit": {"kind": "table", "name": "$N", "model": "@class"},
+      "examples": {
+        "match": ["@Entity({ name: 'user' })\nexport class UserEntity {}"],
+        "noMatch": ["@Column({ name: 'user' })\nexport class UserEntity {}"]
+      }
+    },
+    {
+      "id": "mongoose-schema",
+      "language": "typescript",
+      "when": {"dependency": ["@nestjs/mongoose", "mongoose"]},
+      "files": ["src/**/*.schema.ts"],
+      "rule": {"kind": "decorator", "has": {"kind": "call_expression", "regex": "^Schema"}},
+      "emit": {"kind": "table", "name": "@class", "model": "@class"},
+      "examples": {
+        "match": ["@Schema({ timestamps: true })\nexport class UserSchemaClass {}"],
+        "noMatch": ["@Prop({ timestamps: true })\nexport class UserSchemaClass {}"]
+      }
+    },
+    {
+      "id": "repo-read",
+      "language": "typescript",
+      "when": {"dependency": ["@nestjs/typeorm", "@nestjs/mongoose"]},
+      "files": ["src/**/*.ts"],
+      "rule": {"pattern": "$R.$M($$$A)"},
+      "constraints": {"R": {"regex": "^this\\.\\w+$"}},
+      "emit": {"kind": "read", "receiver": "$R", "method": "$M", "receiverDecl": ["@Inject(?:Repository|Model)\\((\\w+)(?:\\.name)?\\)\\s+(?:private\\s+)?(?:readonly\\s+)?{prop}\\b"]},
+      "examples": {"match": ["this.repo.find({})"], "noMatch": ["foo.find({})"]}
+    },
+    {
+      "id": "repo-write",
+      "language": "typescript",
+      "when": {"dependency": ["@nestjs/typeorm", "@nestjs/mongoose"]},
+      "files": ["src/**/*.ts"],
+      "rule": {"pattern": "$R.$M($$$A)"},
+      "constraints": {"R": {"regex": "^this\\.\\w+$"}},
+      "emit": {"kind": "write", "receiver": "$R", "method": "$M", "receiverDecl": ["@Inject(?:Repository|Model)\\((\\w+)(?:\\.name)?\\)\\s+(?:private\\s+)?(?:readonly\\s+)?{prop}\\b"]},
+      "examples": {"match": ["this.repo.save(x)"], "noMatch": ["foo.save(x)"]}
+    }
+  ]
+}
