@@ -118,6 +118,86 @@ export class GoCalls {
     return out.sort((a, b) => cmp(a.src, b.src) || cmp(a.dst, b.dst) || cmp(a.kind, b.kind));
   }
 
+  // --- lookups by place (the recipe engine) -------------------------------------------------
+
+  private readonly exprs = new Map<string, Map<string, GoNode>>();
+  private readonly scopes = new Map<string, Scope>();
+
+  /** The expression of a file at an exact source range, with the scope of the function around it. */
+  private exprAt(fileId: string, start: number, end: number): { node: GoNode; env: Env } | null {
+    const ctx = this.idx.byFileId.get(fileId);
+    if (!ctx) return null;
+    let byRange = this.exprs.get(fileId);
+    if (!byRange) {
+      byRange = new Map();
+      for (const n of ctx.root.findAll({
+        rule: {
+          any: [
+            "call_expression",
+            "selector_expression",
+            "identifier",
+            "composite_literal",
+            "unary_expression",
+          ].map((kind) => ({ kind })),
+        },
+      })) {
+        const r = n.range();
+        const key = `${r.start.index}:${r.end.index}`;
+        if (!byRange.has(key)) byRange.set(key, n);
+      }
+      this.exprs.set(fileId, byRange);
+    }
+    const node = byRange.get(`${start}:${end}`);
+    if (!node) return null;
+    const fd = ctx.root
+      .namedChildren()
+      .find(
+        (c) =>
+          (c.kind() === "function_declaration" || c.kind() === "method_declaration") &&
+          c.range().start.index <= start &&
+          end <= c.range().end.index,
+      );
+    let scope: Scope = new Map();
+    if (fd) {
+      const key = `${fileId}:${fd.range().start.index}`;
+      const hit = this.scopes.get(key);
+      if (hit) scope = hit;
+      else {
+        scope = this.buildScope(fd, ctx);
+        this.scopes.set(key, scope);
+      }
+    }
+    return { node, env: { ctx, scope } };
+  }
+
+  /**
+   * The symbol id of the function or method that the call, or the function named without a call (`rs.login`,
+   * `pkg.Handler`, `handler`), at this source range refers to; null when it is not a function of the repository or
+   * the type of its receiver is unknown.
+   */
+  targetAt(fileId: string, start: number, end: number): string | null {
+    const hit = this.exprAt(fileId, start, end);
+    if (!hit) return null;
+    const { node, env } = hit;
+    const r =
+      node.kind() === "call_expression"
+        ? this.resolveCall(node, env)
+        : this.resolveCallee(unparen(node), node, env, 0);
+    if (!r.target) return null;
+    const dst = this.idx.symbolId(r.target.file, r.target.name);
+    return this.idx.symbolIds.has(dst) ? dst : null;
+  }
+
+  /** The name of the named type of the expression at this range (a slice or map reads as its element); null when unknown. */
+  typeNameAt(fileId: string, start: number, end: number): string | null {
+    const hit = this.exprAt(fileId, start, end);
+    if (!hit) return null;
+    let t = this.idx.shape(this.typeOf(hit.node, hit.env));
+    if (t?.k === "seq") t = this.idx.shape(t.elem);
+    else if (t?.k === "map") t = this.idx.shape(t.elem);
+    return t?.k === "named" ? t.name : null;
+  }
+
   // --- calls --------------------------------------------------------------------------------
 
   private callsOf(fd: GoNode, ctx: FileCtx, idByLine: Map<number, string>, set: EdgeSet): void {
@@ -301,6 +381,11 @@ export class GoCalls {
     while (fn && (fn.kind() === "index_expression" || fn.kind() === "generic_type")) {
       fn = unparen(fn.kind() === "index_expression" ? fn.field("operand") : fn.field("type"));
     }
+    return this.resolveCallee(fn, call, env, depth);
+  }
+
+  /** What the function expression `fn` of `call` refers to (also used for a function named without a call). */
+  private resolveCallee(fn: GoNode | null, call: GoNode, env: Env, depth: number): Resolved {
     const line = (fn ?? call).range().start.line + 1;
     const none = (kind: string, extra: Partial<Resolved> = {}): Resolved => ({
       kind,

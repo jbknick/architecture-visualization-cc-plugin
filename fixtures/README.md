@@ -50,6 +50,13 @@ Two Go modules, no TypeScript (`go.work` uses `.` and `./tools`). Used by the `g
 - `vendor/example.com/dep/dep.go`: skipped.
 - `tools/go.mod` (`example.com/gobasic/tools`, requires the first module): a second workspace and a `depends_on` edge.
 
+## go-recipes
+Four small Go modules (#368), each a repo of its own with a committed `.gantry/recipe.json` of Go rules. Used by `packages/core/src/recipe/go-recipes.test.ts`, which asserts the exact endpoints (method, full path, handler), tables, reads and writes of each and that `recipe check --nodes` lists the nodes the index stores.
+- `nethttp`: a `ServeMux` app. Patterns with a method (`"GET /health"`) and without (`"/"`, which is `ALL`); a host pattern (`shop.example.com/`) that the rule's constraint leaves out; `registerUsers(mux)` called from `main`; a method value (`h.get`) and an inline handler; `registerLegacy`, which no call names, so its route keeps the path it writes.
+- `chi`: `chi.NewRouter()`, `Use`, `Mount("/api", apiRouter())` (a function that returns a router), `Mount("/users", users.Routes())` (a method that returns one), `Route` inside `Route`, `Group` with its own middleware, and `Handle` (method `ALL`).
+- `gin`: `gin.Default()`, `Group` chains (`r.Group("/api")`, then `v1.Group("/users")` passed to `users.Register` in another package, whose parameter is the router), an inline handler.
+- `sql`: raw SQL through `database/sql` (a string, a raw string over several lines, a `+` chain with a constant, a table named by a parameter, which is a run-time table); `db/migrations/*.up.sql` declares `users` and `posts`; a mapper-like `Orm` type whose `Define`, `Create` and `Find` the recipe classes as table, write and read; `db/queries/posts.sql` with `-- name:` blocks whose generated functions are in `db/gen/posts.sql.go`.
+
 ## overlay-groups
 One package, `@demo/shop`, for the group boundary warnings (#289).
 - `src/orders/invoice.ts` (`totalDue`), `src/catalog/price.ts` (`formatPrice`) and `src/catalog/cart.ts` (`cartTotal`, which imports and calls `totalDue`).

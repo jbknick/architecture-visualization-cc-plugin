@@ -230,6 +230,84 @@ export const TsRuleSchema = z.strictObject({
 });
 export type RecipeRule = z.infer<typeof TsRuleSchema>;
 
+/** A capture that reads as text in a Go rule: a capture or a literal (a Go type name reads as its name). */
+const goTextCapture = z.string().regex(/^(\$[A-Z_][A-Z0-9_]*|=.+)$/, "not a text capture ($NAME or =text)");
+
+/**
+ * The emits of a Go rule (spec section 5): the ones of a TypeScript rule except the page routes (`route`,
+ * `fileRoute`), with these differences. `mount` without `child` mounts the matched expression itself (a call that
+ * returns a new router under its parent: `parent.Group("/x")`). `endpoint` may leave `method` out and set
+ * `methodInPath`: the method is the word before a space in the path text (`"GET /x"`), `ALL` when there is none. A
+ * `table` has no `binding`, `@class` or `keysOf`. A `read` or `write` has no `receiver` and `receiverDecl`.
+ */
+export const GoEmitSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("router"), base: capture.optional(), data: emitData }),
+  z.strictObject({
+    kind: z.literal("mount"),
+    parent: capture,
+    prefix: capture.optional(),
+    child: capture.optional(),
+    childIsScope: z.boolean().optional(),
+    data: emitData,
+  }),
+  z
+    .strictObject({
+      kind: z.literal("endpoint"),
+      receiver: capture,
+      method: capture.optional(),
+      methodInPath: z.boolean().optional(),
+      path: capture.optional(),
+      handler: capture,
+      data: emitData,
+    })
+    .refine((e) => Boolean(e.method) || e.methodInPath === true, "needs method or methodInPath"),
+  z.strictObject({
+    kind: z.literal("middleware"),
+    receiver: capture,
+    path: capture.optional(),
+    handler: capture,
+    data: emitData,
+  }),
+  z.strictObject({
+    kind: z.literal("table"),
+    name: z.union([goTextCapture, z.array(goTextCapture).min(1)]),
+    model: goTextCapture.optional(),
+    data: z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "not a field name"), z.string()).optional(),
+  }),
+  z
+    .strictObject({
+      kind: z.literal("read"),
+      table: capture.optional(),
+      model: capture.optional(),
+      method: capture.optional(),
+      data: emitData,
+    })
+    .refine((e) => Boolean(e.table || e.model), "needs table or model"),
+  z
+    .strictObject({
+      kind: z.literal("write"),
+      table: capture.optional(),
+      model: capture.optional(),
+      method: capture.optional(),
+      data: emitData,
+    })
+    .refine((e) => Boolean(e.table || e.model), "needs table or model"),
+]);
+export type GoEmit = z.infer<typeof GoEmitSchema>;
+
+/** A rule over Go source (`.go` files): an ast-grep rule, run on the tree-sitter Go grammar, with the Go emits. */
+export const GoRuleSchema = z.strictObject({
+  id: ruleId,
+  language: z.literal("go"),
+  when: whenSchema,
+  files: z.array(z.string().min(1)).optional(),
+  rule: astRule,
+  constraints: z.record(z.string(), astRule).optional(),
+  emit: GoEmitSchema,
+  examples: z.strictObject({ match: z.array(z.string()), noMatch: z.array(z.string()) }),
+});
+export type GoRecipeRule = z.infer<typeof GoRuleSchema>;
+
 /** A regex group of a text rule (`$1`) or a literal (`=text`). */
 const groupRef = z.string().regex(/^(\$\d+|=.+)$/, "not a group reference ($1) or a literal (=text)");
 
@@ -251,24 +329,40 @@ export const TextRuleSchema = z.strictObject({
       .regex(/^[gimsuy]*$/, "flags are letters of gimsuy")
       .optional(),
   }),
-  emit: z.strictObject({
-    kind: z.literal("table"),
-    name: z.union([groupRef, z.array(groupRef).min(1)]),
-    model: groupRef.optional(),
-    data: tableData.optional(),
-  }),
+  emit: z.discriminatedUnion("kind", [
+    z.strictObject({
+      kind: z.literal("table"),
+      name: z.union([groupRef, z.array(groupRef).min(1)]),
+      model: groupRef.optional(),
+      data: tableData.optional(),
+    }),
+    /**
+     * A query: the Go function `fn` (a function name, or a method name without its type) runs the statements in
+     * `sql`. The tables the statements read and write become reads and writes of that function. `files` are
+     * repo-relative globs of the Go files that hold the function (default every Go file of the workspace).
+     */
+    z.strictObject({
+      kind: z.literal("query"),
+      fn: groupRef,
+      sql: groupRef,
+      files: z.array(z.string().min(1)).min(1).optional(),
+    }),
+  ]),
   examples: z.strictObject({ match: z.array(z.string()), noMatch: z.array(z.string()) }),
 });
 export type TextRecipeRule = z.infer<typeof TextRuleSchema>;
 
-export const RuleSchema = z.union([TsRuleSchema, TextRuleSchema]);
-export type AnyRecipeRule = RecipeRule | TextRecipeRule;
+export const RuleSchema = z.union([TsRuleSchema, GoRuleSchema, TextRuleSchema]);
+export type AnyRecipeRule = RecipeRule | GoRecipeRule | TextRecipeRule;
 export const isTextRule = (r: AnyRecipeRule): r is TextRecipeRule => r.language === "text";
 export const isTsRule = (r: AnyRecipeRule): r is RecipeRule => r.language === "typescript";
+export const isGoRule = (r: AnyRecipeRule): r is GoRecipeRule => r.language === "go";
 
 /** The schema a raw rule is checked against: its `language` picks one, so an error names that schema's problem. */
-export const ruleSchemaFor = (raw: unknown) =>
-  (raw as { language?: unknown } | null)?.language === "text" ? TextRuleSchema : TsRuleSchema;
+export const ruleSchemaFor = (raw: unknown) => {
+  const language = (raw as { language?: unknown } | null)?.language;
+  return language === "text" ? TextRuleSchema : language === "go" ? GoRuleSchema : TsRuleSchema;
+};
 
 export const DependencySchema = z.strictObject({
   name: z.string().min(1),

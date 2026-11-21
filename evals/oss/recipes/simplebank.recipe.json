@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "dependencies": [
+    {
+      "name": "github.com/gin-gonic/gin",
+      "role": "framework",
+      "note": "HTTP routes; not labelled for this case, which labels tables, reads and writes"
+    },
+    {
+      "name": "github.com/jackc/pgx/v5",
+      "role": "data-access",
+      "note": "driver under the generated query code; the SQL is in db/query/*.sql"
+    }
+  ],
+  "helpers": ["resolve-names", "const-strings", "sql-text"],
+  "sql": {
+    "files": ["**/*.go"],
+    "exclude": ["db/sqlc/*.sql.go", "**/*_test.go"],
+    "sqlFiles": ["db/migration/*.up.sql"]
+  },
+  "rules": [
+    {
+      "id": "query-blocks",
+      "language": "text",
+      "files": ["db/query/*.sql"],
+      "rule": { "regex": "-- name: (\\w+) :\\w+\\n((?:(?!-- name:)[\\s\\S])*)" },
+      "emit": { "kind": "query", "fn": "$1", "sql": "$2", "files": ["db/sqlc/*.sql.go"] },
+      "examples": {
+        "match": ["-- name: GetAccount :one\nSELECT * FROM accounts\nWHERE id = $1 LIMIT 1;\n"],
+        "noMatch": ["SELECT * FROM accounts;\n"]
+      }
+    }
+  ]
+}

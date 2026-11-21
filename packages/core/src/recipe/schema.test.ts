@@ -137,10 +137,77 @@ describe("RecipeSchema", () => {
     expect(g.__ran).toBeUndefined();
   });
 
-  it("requires examples, a language of typescript and a recognisable capture", () => {
+  it("requires examples, a known language and a recognisable capture", () => {
     const { examples: _e, ...noExamples } = rule;
     expect(RuleSchema.safeParse(noExamples).success).toBe(false);
-    expect(RuleSchema.safeParse({ ...rule, language: "go" }).success).toBe(false);
+    expect(RuleSchema.safeParse({ ...rule, language: "python" }).success).toBe(false);
     expect(RuleSchema.safeParse({ ...rule, emit: { ...rule.emit, receiver: "APP" } }).success).toBe(false);
+  });
+});
+
+describe("Go rules", () => {
+  const goRule = {
+    id: "mux-handle-func",
+    language: "go",
+    rule: { pattern: "$R.HandleFunc($P, $H)" },
+    emit: { kind: "endpoint", receiver: "$R", methodInPath: true, path: "$P", handler: "$H" },
+    examples: { match: ['mux.HandleFunc("GET /a", h)'], noMatch: [] },
+  };
+
+  it("accepts the emits a Go rule can make", () => {
+    const emits = [
+      { kind: "router", base: "$B" },
+      { kind: "mount", parent: "$P", prefix: "$X" },
+      { kind: "mount", parent: "$P", prefix: "$X", child: "$C", childIsScope: true },
+      { kind: "endpoint", receiver: "$R", method: "$M", path: "$P", handler: "$$$H" },
+      { kind: "endpoint", receiver: "$R", method: "=ALL", methodInPath: true, path: "$P", handler: "$H" },
+      { kind: "middleware", receiver: "$R", handler: "$$$H" },
+      { kind: "table", name: ["$N", "$M"], model: "$M", data: { file: "@file", line: "@line" } },
+      { kind: "read", model: "$V", method: "$M" },
+      { kind: "write", table: "$T" },
+    ];
+    for (const emit of emits) expect(RuleSchema.safeParse({ ...goRule, emit }).success).toBe(true);
+  });
+
+  it("rejects what a Go rule cannot say", () => {
+    const bad = [
+      { kind: "route", id: "$ID" },
+      { kind: "fileRoute", convention: "tanstack-router" },
+      // an endpoint needs a method, or a method read from its path
+      { kind: "endpoint", receiver: "$R", path: "$P", handler: "$H" },
+      { kind: "endpoint", receiver: "$R", method: "$M", path: "$P", handler: "$H", pathFromChain: true },
+      { kind: "table", name: "$N", binding: true },
+      { kind: "table", name: "@class" },
+      { kind: "read", receiver: "$R", receiverDecl: ["x"] },
+      { kind: "read", method: "$M" },
+    ];
+    for (const emit of bad) expect(RuleSchema.safeParse({ ...goRule, emit }).success).toBe(false);
+  });
+
+  it("is dropped with an error naming the rule when it is invalid, and the rest of the recipe runs", () => {
+    const r = parseRecipe(
+      JSON.stringify(
+        recipe({
+          rules: [rule, { ...goRule, id: "bad-go", emit: { kind: "route", id: "$X" } }, goRule],
+        }),
+      ),
+    );
+    expect(r.recipe?.rules.map((x) => x.id)).toEqual(["hono-route", "mux-handle-func"]);
+    expect(r.errors).toHaveLength(1);
+    expect(r.errors[0]).toContain("recipe rule bad-go skipped");
+  });
+
+  it("accepts a text rule that attributes a query to a Go function", () => {
+    const text = {
+      id: "queries",
+      language: "text",
+      files: ["db/query/*.sql"],
+      rule: { regex: "-- name: (\\w+) :\\w+\\n([^;]*;)" },
+      emit: { kind: "query", fn: "$1", sql: "$2", files: ["db/gen/*.go"] },
+      examples: { match: [], noMatch: [] },
+    };
+    expect(RuleSchema.safeParse(text).success).toBe(true);
+    expect(RuleSchema.safeParse({ ...text, emit: { kind: "query", fn: "$1" } }).success).toBe(false);
+    expect(RuleSchema.safeParse({ ...text, emit: { ...text.emit, fn: "name" } }).success).toBe(false);
   });
 });

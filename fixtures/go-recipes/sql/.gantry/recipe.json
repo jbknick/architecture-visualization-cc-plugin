@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "dependencies": [],
+  "helpers": ["resolve-names", "const-strings", "sql-text"],
+  "methods": { "read": ["Find"], "write": ["Create"] },
+  "sql": { "files": ["**/*.go"], "sqlFiles": ["db/migrations/*.up.sql"] },
+  "rules": [
+    {
+      "id": "orm-define",
+      "language": "go",
+      "rule": { "pattern": { "context": "func _() { $O.Define(&$M{}) }", "selector": "call_expression" } },
+      "emit": { "kind": "table", "name": "$M", "model": "$M" },
+      "examples": {
+        "match": ["o.Define(&Audit{})"],
+        "noMatch": ["o.Define(audit)"]
+      }
+    },
+    {
+      "id": "orm-write",
+      "language": "go",
+      "rule": { "pattern": { "context": "func _() { $O.$M($V) }", "selector": "call_expression" } },
+      "emit": { "kind": "write", "model": "$V", "method": "$M" },
+      "examples": {
+        "match": ["o.Create(&a)"],
+        "noMatch": ["o.Create()"]
+      }
+    },
+    {
+      "id": "orm-read",
+      "language": "go",
+      "rule": { "pattern": { "context": "func _() { $O.$M($V) }", "selector": "call_expression" } },
+      "emit": { "kind": "read", "model": "$V", "method": "$M" },
+      "examples": {
+        "match": ["o.Find(&rows)"],
+        "noMatch": ["o.Find()"]
+      }
+    },
+    {
+      "id": "queries-file",
+      "language": "text",
+      "files": ["db/queries/*.sql"],
+      "rule": { "regex": "-- name: (\\w+) :\\w+\\n((?:(?!-- name:)[\\s\\S])*)" },
+      "emit": { "kind": "query", "fn": "$1", "sql": "$2", "files": ["db/gen/*.sql.go"] },
+      "examples": {
+        "match": ["-- name: ListPosts :many\nSELECT id FROM posts;\n"],
+        "noMatch": ["SELECT id FROM posts;\n"]
+      }
+    }
+  ]
+}
