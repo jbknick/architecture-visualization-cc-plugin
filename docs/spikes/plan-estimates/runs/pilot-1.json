@@ -1,0 +1,193 @@
+{
+  "runs": [
+    {
+      "area": [
+        {
+          "confidence": 0.9,
+          "id": "sym:calcom/cal.com:apps/web/lib/daily-webhook/getBooking.ts#getBooking"
+        },
+        {
+          "confidence": 0.9,
+          "id": "sym:calcom/cal.com:packages/features/bookings/repositories/BookingRepository.ts#BookingRepository"
+        },
+        {
+          "confidence": 0.6,
+          "id": "file:apps/web/lib/daily-webhook/getBooking.ts"
+        }
+      ],
+      "key": "cal.com#29541"
+    },
+    {
+      "area": [
+        {
+          "confidence": 0.9,
+          "id": "sym:calcom/cal.com:packages/app-store/_utils/getAppCategories.ts#getAppCategories"
+        },
+        {
+          "confidence": 0.85,
+          "id": "sym:calcom/cal.com:apps/web/modules/apps/installed/[category]/installed-category-view.tsx#InstalledApps"
+        },
+        {
+          "confidence": 0.5,
+          "id": "sym:calcom/cal.com:packages/app-store/_components/AppCategoryNavigation.tsx#AppCategoryNavigation"
+        }
+      ],
+      "key": "cal.com#29558"
+    },
+    {
+      "area": [
+        {
+          "confidence": 0.9,
+          "id": "sym:calcom/cal.com:packages/emails/lib/generateIcsString.ts#generateIcsString"
+        },
+        {
+          "confidence": 0.9,
+          "id": "sym:calcom/cal.com:packages/emails/lib/generateIcsFile.ts#generateIcsFile"
+        },
+        {
+          "confidence": 0.6,
+          "id": "file:packages/emails/lib/generateIcsString.test.ts"
+        }
+      ],
+      "key": "cal.com#29708"
+    },
+    {
+      "area": [
+        {
+          "confidence": 0.92,
+          "id": "sym:formbricks/formbricks:apps/web/lib/survey/service.ts#updateSurveyInternal"
+        },
+        {
+          "confidence": 0.9,
+          "id": "sym:formbricks/formbricks:apps/web/modules/survey/editor/types/survey.ts#ZSurveyDraft"
+        },
+        {
+          "confidence": 0.85,
+          "id": "file:apps/web/lib/survey/service.ts"
+        },
+        {
+          "confidence": 0.8,
+          "id": "file:apps/web/modules/survey/editor/types/survey.ts"
+        }
+      ],
+      "key": "formbricks#10031"
+    },
+    {
+      "area": [
+        {
+          "confidence": 0.9,
+          "id": "sym:formbricks/formbricks:packages/surveys/src/lib/validation/evaluator.ts#validateElementResponse"
+        },
+        {
+          "confidence": 0.8,
+          "id": "sym:formbricks/formbricks:packages/surveys/src/lib/validation/evaluator.ts#validateBlockResponses"
+        },
+        {
+          "confidence": 0.85,
+          "id": "file:packages/surveys/src/lib/validation/evaluator.ts"
+        },
+        {
+          "confidence": 0.85,
+          "id": "sym:formbricks/formbricks:apps/web/app/api/v1/client/[workspaceId]/responses/[responseId]/lib/put-response-handler.ts#putResponseHandler"
+        },
+        {
+          "confidence": 0.8,
+          "id": "sym:formbricks/formbricks:apps/web/app/api/v1/client/[workspaceId]/responses/[responseId]/lib/put-response-handler.ts#validateResponse"
+        },
+        {
+          "confidence": 0.5,
+          "id": "file:apps/web/modules/api/lib/validation.ts"
+        }
+      ],
+      "key": "formbricks#10061"
+    },
+    {
+      "area": [
+        {
+          "confidence": 0.9,
+          "id": "file:apps/web/modules/ee/analysis/charts/components/advanced-chart-builder.tsx"
+        },
+        {
+          "confidence": 0.9,
+          "id": "file:apps/web/modules/ee/analysis/charts/hooks/use-chart-dirty-state.ts"
+        },
+        {
+          "confidence": 0.8,
+          "id": "file:apps/web/modules/ee/analysis/charts/lib/builder-query.ts"
+        },
+        {
+          "confidence": 0.6,
+          "id": "file:apps/web/modules/ee/analysis/charts/hooks/use-chart-dirty-state.test.ts"
+        },
+        {
+          "confidence": 0.6,
+          "id": "file:apps/web/modules/ee/analysis/charts/lib/builder-query.test.ts"
+        }
+      ],
+      "key": "formbricks#10090"
+    },
+    {
+      "area": [
+        {
+          "confidence": 0.85,
+          "id": "file:apps/web/app/middleware/endpoint-validator.ts"
+        },
+        {
+          "confidence": 0.7,
+          "id": "file:apps/web/proxy.ts"
+        },
+        {
+          "confidence": 0.8,
+          "id": "file:apps/web/modules/settings/lib/marketing-redirects.ts"
+        },
+        {
+          "confidence": 0.8,
+          "id": "file:apps/web/modules/settings/lib/marketing-redirect-handler.ts"
+        },
+        {
+          "confidence": 0.8,
+          "id": "file:apps/web/app/(redirects)/marketing-links/[[...path]]/route.ts"
+        },
+        {
+          "confidence": 0.3,
+          "id": "file:apps/web/lib/localStorage.ts"
+        }
+      ],
+      "key": "formbricks#9569"
+    },
+    {
+      "area": [
+        {
+          "confidence": 0.6,
+          "id": "sym:calcom/cal.com:packages/app-store/zoomvideo/lib/VideoApiAdapter.ts#validatePasswordAgainstRequirements"
+        },
+        {
+          "confidence": 0.55,
+          "id": "file:packages/app-store/zoomvideo/lib/VideoApiAdapter.ts"
+        }
+      ],
+      "key": "cal.com#27634"
+    },
+    {
+      "area": [],
+      "key": "cal.com#29346"
+    },
+    {
+      "area": [
+        {
+          "confidence": 0.9,
+          "id": "file:formbricks/formbricks:packages/survey-ui/src/components/elements/picture-select.tsx"
+        },
+        {
+          "confidence": 0.8,
+          "id": "sym:formbricks/formbricks:packages/survey-ui/src/components/elements/picture-select.tsx#PictureSelect"
+        },
+        {
+          "confidence": 0.4,
+          "id": "file:formbricks/formbricks:packages/survey-ui/src/components/elements/picture-select.stories.tsx"
+        }
+      ],
+      "key": "formbricks#10018"
+    }
+  ]
+}
