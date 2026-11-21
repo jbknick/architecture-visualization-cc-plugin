@@ -1,9 +1,10 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { refreshWorking } from "../heal/index.js";
 import { dumpGraph, indexRepo } from "../indexer.js";
 import { openStore } from "../store/index.js";
-import { looksLikeSql, type RecipeGap } from "./gaps.js";
+import { looksLikeSql, openGaps, type RecipeGap } from "./gaps.js";
 import { makeRepo, pathsFor } from "./testkit.js";
 
 const helperPath = "../../test/helpers/fixture.js";
@@ -160,5 +161,94 @@ describe("recipe gaps", () => {
     expect(looksLikeSql("UPDATE t SET a = 1")).toBe(true);
     expect(looksLikeSql("select a")).toBe(false);
     expect(looksLikeSql("please select from the list")).toBe(false);
+  });
+});
+
+describe("recipe gaps in the working layer", () => {
+  const ids = (gs: RecipeGap[]): string[] => gs.map((g) => g.id);
+  const SITE = 'gap:site:apps/api/src/extra.ts#router.get("/health")';
+
+  async function started() {
+    const fx = await fixture();
+    const paths = pathsFor(fx.dir);
+    await indexRepo(paths, { layer: "main" });
+    const read = <T>(fn: (s: ReturnType<typeof openStore>) => T): T => {
+      const store = openStore(paths.dbPath);
+      try {
+        return fn(store);
+      } finally {
+        store.close();
+      }
+    };
+    return { fx, paths, read, gaps: () => read((s) => s.effectiveGaps()) };
+  }
+
+  it("shows a gap from an uncommitted new file, and a second working run replaces the first", async () => {
+    const { fx, paths, gaps } = await started();
+    expect(gaps()).toEqual([]);
+    write(fx.dir, "apps/api/src/extra.ts", ROUTE_FILE);
+    await indexRepo(paths, { layer: "working" });
+    expect(ids(gaps())).toEqual([SITE]);
+    write(
+      fx.dir,
+      "apps/api/src/extra.ts",
+      'import { Router } from "express";\nconst r = Router();\nr.post("/other", () => {});\n',
+    );
+    await indexRepo(paths, { layer: "working" });
+    expect(ids(gaps())).toEqual(['gap:site:apps/api/src/extra.ts#r.post("/other")']);
+  });
+
+  it("drops the gap of a file removed in the working tree", async () => {
+    const fx = await fixture();
+    write(fx.dir, "apps/api/src/extra.ts", ROUTE_FILE);
+    commit(fx, "route");
+    const paths = pathsFor(fx.dir);
+    await indexRepo(paths, { layer: "main" });
+    rmSync(join(fx.dir, "apps/api/src/extra.ts"));
+    await indexRepo(paths, { layer: "working" });
+    const store = openStore(paths.dbPath);
+    try {
+      expect(store.effectiveGaps()).toEqual([]);
+    } finally {
+      store.close();
+    }
+  });
+
+  it("goes back to the main set when the main set is replaced after a working run", async () => {
+    const { fx, paths, read, gaps } = await started();
+    write(fx.dir, "apps/api/src/extra.ts", ROUTE_FILE);
+    await indexRepo(paths, { layer: "working" });
+    expect(ids(gaps())).toEqual([SITE]);
+    rmSync(join(fx.dir, "apps/api/src/extra.ts"));
+    await indexRepo(paths, { layer: "main" });
+    expect(gaps()).toEqual([]);
+    expect(
+      read((s) => s.db.prepare("SELECT COUNT(*) AS n FROM recipe_gaps WHERE layer = 'working'").get()),
+    ).toEqual({ n: 0 });
+    expect(read((s) => s.getMeta("recipe_gaps_working"))).toBeUndefined();
+  });
+
+  it("goes back to the main set when the tree is clean again", async () => {
+    const { fx, paths, read, gaps } = await started();
+    write(fx.dir, "apps/api/src/extra.ts", ROUTE_FILE);
+    await indexRepo(paths, { layer: "working" });
+    expect(ids(gaps())).toEqual([SITE]);
+    rmSync(join(fx.dir, "apps/api/src/extra.ts"));
+    await refreshWorking(paths);
+    expect(gaps()).toEqual([]);
+    expect(read((s) => s.getMeta("recipe_gaps_working"))).toBeUndefined();
+  });
+
+  it("hides a dismissed id from openGaps without an index run, counting the entries", async () => {
+    const { fx, paths, read } = await started();
+    write(fx.dir, "apps/api/src/extra.ts", ROUTE_FILE);
+    await indexRepo(paths, { layer: "working" });
+    expect(read((s) => openGaps(s, fx.dir))).toMatchObject({ dismissed: 0 });
+    expect(read((s) => openGaps(s, fx.dir).gaps.length)).toBe(1);
+    const recipePath = join(fx.dir, ".gantry/recipe.json");
+    const recipe = JSON.parse(readFileSync(recipePath, "utf8")) as Record<string, unknown>;
+    recipe.dismissed = [{ id: SITE, reason: "health check" }];
+    writeFileSync(recipePath, JSON.stringify(recipe));
+    expect(read((s) => openGaps(s, fx.dir))).toEqual({ gaps: [], dismissed: 1 });
   });
 });

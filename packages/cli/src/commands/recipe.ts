@@ -2,7 +2,7 @@ import {
   checkRecipeFile,
   DEFAULT_NODE_LIMIT,
   listRecipeNodes,
-  loadRecipe,
+  openGaps,
   RECIPE_NODE_KINDS,
   type RecipeCheck,
   type RecipeGap,
@@ -133,17 +133,13 @@ export function registerRecipe(program: Command): void {
     .action(async (opts: { json?: boolean }) => {
       try {
         const { paths, store } = await openFresh(process.cwd());
-        let stored: RecipeGap[];
+        let open: ReturnType<typeof openGaps>;
         try {
-          stored = store.effectiveGaps();
+          open = openGaps(store, paths.root);
         } finally {
           store.close();
         }
-        // The recipe on disk decides what is dismissed, so an entry written and not yet committed hides its gap too.
-        const dismissedList = loadRecipe(paths.root, { layer: "working" }).recipe?.dismissed ?? [];
-        const ids = new Set(dismissedList.map((d) => d.id));
-        const gaps = stored.filter((g) => !ids.has(g.id));
-        const dismissed = dismissedList.length;
+        const { gaps, dismissed } = open;
         writeStdout(
           opts.json ? `${JSON.stringify({ gaps, dismissed }, null, 2)}\n` : recipeGapsText(gaps, dismissed),
         );

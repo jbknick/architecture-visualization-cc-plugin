@@ -57,8 +57,13 @@ export interface Store {
   effectiveAdapterNodes(filter?: { kind?: string; ws?: string; fileId?: string }): AdapterNodeRecord[];
   /** Replaces the layer's recipe gaps (spec section 9); a working run also marks the working set as complete. */
   replaceGaps(layer: Layer, gaps: readonly RecipeGap[]): void;
-  /** The open recipe gaps of the effective view, ordered by id. */
+  /**
+   * The open recipe gaps of the effective view, ordered by id: the working rows while a working run has stored them
+   * and the working layer still has file rows, else the main rows.
+   */
   effectiveGaps(): RecipeGap[];
+  /** Deletes the working gap rows and their marker once the working layer holds no file row (a clean tree). */
+  dropWorkingGapsIfClean(): void;
   /** Effective edges stored on the given files (all kinds), ordered like `effectiveEdges`. One query for the lot. */
   effectiveEdgesOfFiles(fileIds: readonly string[]): EdgeRecord[];
   /** Effective adapter nodes stored on the given files, ordered by id. */
@@ -528,6 +533,11 @@ export function createStore(db: Database): Store {
       localWrites++;
       tx(() => {
         stmt("DELETE FROM recipe_gaps WHERE layer = ?").run(layer);
+        // A new main set is the truth for the committed tree; the working rows were computed against the old one.
+        if (layer === "main") {
+          stmt("DELETE FROM recipe_gaps WHERE layer = 'working'").run();
+          stmt("DELETE FROM meta WHERE key = 'recipe_gaps_working'").run();
+        }
         const ins = stmt(
           "INSERT INTO recipe_gaps(id, layer, kind, file, line, detail) VALUES (?, ?, ?, ?, ?, ?)",
         );
@@ -540,12 +550,22 @@ export function createStore(db: Database): Store {
       });
     },
     effectiveGaps() {
-      const working = stmt("SELECT 1 AS x FROM meta WHERE key = 'recipe_gaps_working'").get() !== undefined;
+      const working =
+        stmt("SELECT 1 AS x FROM meta WHERE key = 'recipe_gaps_working'").get() !== undefined &&
+        stmt("SELECT 1 AS x FROM files WHERE layer = 'working' LIMIT 1").get() !== undefined;
       return (
         stmt("SELECT id, kind, file, line, detail FROM recipe_gaps WHERE layer = ? ORDER BY id").all(
           working ? "working" : "main",
         ) as RecipeGap[]
       ).map((r) => ({ id: r.id, kind: r.kind, file: r.file, line: r.line, detail: r.detail }));
+    },
+    dropWorkingGapsIfClean() {
+      if (stmt("SELECT 1 AS x FROM files WHERE layer = 'working' LIMIT 1").get() !== undefined) return;
+      localWrites++;
+      tx(() => {
+        stmt("DELETE FROM recipe_gaps WHERE layer = 'working'").run();
+        stmt("DELETE FROM meta WHERE key = 'recipe_gaps_working'").run();
+      });
     },
     effectiveEdgesOfFiles(fileIds) {
       if (fileIds.length === 0) return [];

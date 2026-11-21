@@ -763,8 +763,16 @@ describe("entry points", () => {
     expect(git(fx.dir, ["commit", "-q", "-m", "route"]).code).toBe(0);
     const r = gantry(fx.dir, ["hook", "session-start"]);
     expect(r.code).toBe(0);
-    expect(r.out).toBe("Gantry: 1 recipe gaps open (gantry recipe gaps lists them)\n");
+    expect(r.out).toBe("Gantry: 1 recipe gap open (gantry recipe gaps lists them)\n");
     expect(r.out.length).toBeLessThanOrEqual(600);
+    // The CLI and the hook count the same: both leave out the id the recipe on disk dismisses, committed or not.
+    expect(gantry(fx.dir, ["recipe", "gaps"]).out).toContain("1 open, 0 dismissed");
+    const recipePath = join(fx.dir, ".gantry/recipe.json");
+    const recipe = JSON.parse(readFileSync(recipePath, "utf8")) as Record<string, unknown>;
+    recipe.dismissed = [{ id: 'gap:site:apps/api/src/extra.ts#router.get("/health")', reason: "not needed" }];
+    writeFileSync(recipePath, JSON.stringify(recipe));
+    expect(gantry(fx.dir, ["recipe", "gaps"]).out).toContain("0 open, 1 dismissed");
+    expect(gantry(fx.dir, ["hook", "session-start"])).toEqual({ code: 0, out: "", err: "" });
   });
 
   it("post-tool-use without usable stdin and unknown hook names fail open", async () => {

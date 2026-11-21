@@ -2,8 +2,9 @@ import { createHash } from "node:crypto";
 import { isBuiltin } from "node:module";
 import type { AdapterFileContext, AdapterNode } from "../adapters/framework.js";
 import { isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
+import type { Store } from "../store/repo.js";
 import type { EdgeRecord, WorkspaceRecord } from "../types.js";
-import type { LoadedRecipe } from "./load.js";
+import { type LoadedRecipe, loadRecipe } from "./load.js";
 
 /**
  * Recipe gaps (spec section 11): the code the committed recipe does not cover. Exactly three kinds, found by every
@@ -42,6 +43,9 @@ const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 const SQL_START = /^\s*(select|insert|update|delete|with)\b/i;
 const SQL_PART = /\b(from|into|set)\b/i;
 const MAX_DETAIL = 80;
+// A quote, then a statement keyword, then FROM, INTO or SET within reach: a file without that has no SQL site, so it is
+// not parsed for one. Looser than `looksLikeSql` on purpose (it only has to keep ordinary files out).
+const SQL_PRECHECK = /["'`]\s*(?:select|insert|update|delete|with)\b[\s\S]{0,2000}?\b(?:from|into|set)\b/i;
 
 /** Whether text reads like a SQL statement: starts with a statement keyword and has FROM, INTO or SET. */
 export function looksLikeSql(text: string): boolean {
@@ -142,7 +146,7 @@ function siteGaps(input: GapInput): RecipeGap[] {
   for (const file of input.files) {
     // Cheap text checks first: most files hold neither a path argument nor a statement.
     const mayRoute = /\(\s*(["'`])\//.test(file.source);
-    const maySql = /(select|insert|update|delete|with)\b/i.test(file.source);
+    const maySql = SQL_PRECHECK.test(file.source);
     if (!mayRoute && !maySql) continue;
     const program = file.program();
     if (!program) continue;
@@ -279,4 +283,15 @@ export function computeGaps(input: GapInput): RecipeGap[] {
     if (!dismissed.has(g.id) && !byId.has(g.id)) byId.set(g.id, g);
   }
   return [...byId.values()];
+}
+
+/**
+ * The gaps `gantry recipe gaps` and SessionStart show: the stored ones, without those whose id the recipe on disk lists
+ * under `dismissed` (an entry written and not yet committed hides its gap before the next full index), and how many
+ * entries it lists.
+ */
+export function openGaps(store: Store, root: string): { gaps: RecipeGap[]; dismissed: number } {
+  const list = loadRecipe(root, { layer: "working" }).recipe?.dismissed ?? [];
+  const ids = new Set(list.map((d) => d.id));
+  return { gaps: store.effectiveGaps().filter((g) => !ids.has(g.id)), dismissed: list.length };
 }
