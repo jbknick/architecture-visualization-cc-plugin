@@ -161,6 +161,8 @@ export function createLangResolver(ctx: ResolveContext): Resolver {
   return {
     resolveSpecifier: (fromFileId, specifier) => forFile(fromFileId).resolveSpecifier(fromFileId, specifier),
     resolveSymbol: (fileId, name) => forFile(fileId).resolveSymbol(fileId, name),
+    targetAt: (fileId, start, end) => forFile(fileId).targetAt?.(fileId, start, end) ?? null,
+    typeNameAt: (fileId, start, end) => forFile(fileId).typeNameAt?.(fileId, start, end) ?? null,
     edgesForFile: (fileId) => forFile(fileId).edgesForFile(fileId),
     workspaceEdges: () => MODULES.flatMap((m) => of(m.id).workspaceEdges()),
     stats() {

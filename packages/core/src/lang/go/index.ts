@@ -45,6 +45,8 @@ function createGoResolver(ctx: ResolveContext): Resolver {
   return {
     resolveSpecifier: () => ({ kind: "unresolved" }),
     resolveSymbol: () => null,
+    targetAt: (fileId, start, end) => callsOf().targetAt(fileId, start, end),
+    typeNameAt: (fileId, start, end) => callsOf().typeNameAt(fileId, start, end),
     edgesForFile(fileId: string): EdgeRecord[] {
       const pf = ctx.parsed.get(fileId);
       if (!pf) return [];

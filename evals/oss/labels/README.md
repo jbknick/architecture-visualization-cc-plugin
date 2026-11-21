@@ -61,6 +61,10 @@ Conventions added for these cases, on top of the ones above:
   patterns already hold the full path).
 - Group and `Route` prefixes are joined (`rwe.API.Group("/api")`, then `Group("")` in each package, then
   `g.GET("/users")` is `POST /api/users`). Middleware registrations (`Use`) are not endpoints.
+- A host-qualified pattern (`router.HandleFunc("dreamsofcode.foo/", handle)`) is not labelled as an endpoint. This
+  states what the existing `nethttp` labels do, which list `ALL /` and the four `/monster` routes and not that
+  pattern; no label was changed. The reference recipe for `nethttp` leaves such patterns out with a `constraints`
+  regex.
 - For sqlc, the query file is the read/write file (as for `simplebank`): the generated `queries.sql.go` is
   generated code and the Go store only calls it. `fns` lists the query names with the line of their
   `-- name:` comment. A query that reads a second table in a subquery or join (`ListAccounts` reads `users`)
@@ -103,6 +107,109 @@ For an endpoint with a `registration`, the line must be in the label's `file` an
 (`scripts/eval-lib.ts`) reads label files with a strict schema, so a key it does not know is an input error
 (exit 2), and `registration` is not part of any scoring key. It does not check that the label is right; that is
 the maintainer's spot check.
+
+## TypeScript data-access cases (#269)
+
+Nine held-out TypeScript repos, one per data-access stack, labelled with `table`, `read` and `write` before any
+recipe for them exists. None is a tuning repo. Each label was written by reading the table definitions and
+every access call with `rg` and then the code at each hit; no label comes from Gantry's output and none was
+changed after a run. Nothing from the repos is committed: only labels, counts and SHAs. A collection counts as a
+table.
+
+| Case                                           | Repo and licence                                                                                           | Stack                         | Tables | Reads | Writes |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------- | -----: | ----: | -----: |
+| `taxonomy`                                     | `shadcn-ui/taxonomy`, MIT, `298a8857c7128a0d121e7f699dfd729f23b3966d`                                      | Prisma (blocks)               |      5 |     6 |      4 |
+| `saas-starter`                                 | `nextjs/saas-starter`, MIT, `6e33e58b1e553a41fe22e6b941a7229a002de361`                                     | Drizzle (blocks)              |      5 |    10 |      7 |
+| `react-tanstarter`                             | `dotnize/react-tanstarter`, Unlicense, `7faa622c492fc3f699dc959afc69a76205bb1774`                          | Drizzle, TanStack Start       |      4 |     0 |      0 |
+| `graphile-worker`                              | `graphile/worker`, MIT, `b4f1b41c7abd747586879bf68a46a5a22897fa96`                                         | raw SQL through `pg` (blocks) |      5 |     7 |     16 |
+| `nestjs-realworld-typeorm`                     | `lujakob/nestjs-realworld-example-app`, ISC, `c1c2cc4e448b279ff083272df1ac50d20c3304fa`                    | TypeORM                       |      5 |     8 |      5 |
+| `fastify-api-boilerplate-jwt`                  | `Tony133/fastify-api-boilerplate-jwt`, MIT, `a081ab3dc687e1cd8f75ed4f4bb131f5181aa60d`                     | Kysely                        |      1 |     5 |      5 |
+| `sequelize-typescript-example`                 | `RobinBuschmann/sequelize-typescript-example`, ISC, `cb1e675c9cd8a6df8955c81a3dedfb02b7cc4a31`             | Sequelize                     |      5 |     2 |      3 |
+| `nestjs-realworld-mikro-orm`                   | `mikro-orm/nestjs-realworld-example-app`, MIT, `3bb628edebc95da30adcbeeb2ecb33158c3dbc95`                  | MikroORM                      |      4 |     7 |      5 |
+| `node-express-mongoose-typescript-boilerplate` | `saisilinus/node-express-mongoose-typescript-boilerplate`, MIT, `278143db5b01d5281649a968c18b40ae709f2ec7` | Mongoose                      |      2 |     5 |      3 |
+
+Labeller: agent `claude-sonnet-5-5`, 2026-11-21, not the author of any recipe or helper. Maintainer spot check
+(every tenth label in sorted order, `--sample 10`): pending, see the pull request of #269. The label files
+`taxonomy`, `react-tanstarter` and `nestjs-realworld-typeorm` also hold the route and endpoint labels of the
+framework cases below (#268) in the same file, unchanged.
+
+Conventions, on top of the ones above:
+
+- A `read` / `write` entry is a file that queries the table. For an ORM repository or model the table is the
+  entity the repository or model stands for. `find*`, `count`, `findAndCount` and query builders read; `create`,
+  `save`, `insert`, `update`, `delete`, `destroy`, `remove`, `upsert`, `flush` and `persist` write. A SQL
+  `UPDATE` or `DELETE` writes only the table it changes; a table that appears only in its `WHERE` (a sub-select
+  in `delete ... where id not in (select ... from jobs)`) is read. A relation that is loaded or changed through
+  a collection is labelled for the entity the call is made on, not for the join table.
+- Left out, as in the other cases: tests, e2e, docs, examples, mocks, one-off scripts, seed files and generated
+  code. SQL files (migrations, stored-function bodies) are not access sites: the labelled sites are the
+  TypeScript calls.
+- A site whose table cannot be read from the code at that line (a library that queries inside itself, a stored
+  function, a model chosen at run time) is a runtime-only site: it is not in `read` / `write` and is listed
+  below in the same "- `<case>` `<file>:<line>`: <reason>" form the framework cases use, which
+  `labels-check.ts` reads.
+
+Per-case naming rule and runtime-only sites:
+
+| Case                                           | Naming rule                                                                                                                                                                                                                                                                                     | Runtime-only sites (listed below)                                                                                                                                                                                                        |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `taxonomy`                                     | Prisma `model X`: the `@@map` value (`accounts`, `sessions`, `users`, `verification_tokens`, `posts`). A model access `db.user` is the table of model `User`.                                                                                                                                   | `lib/auth.ts:17`: the NextAuth Prisma adapter queries four tables inside the library.                                                                                                                                                    |
+| `saas-starter`                                 | The string in `pgTable("name")`. An access names the table variable (`teamMembers` is `team_members`). `db.select().from(x)` and joins read; `insert`, `update`, `delete` write. `lib/db/seed.ts` is a script and left out.                                                                     | none                                                                                                                                                                                                                                     |
+| `react-tanstarter`                             | The string in `pgTable("name")` (`user`, `session`, `account`, `verification`).                                                                                                                                                                                                                 | `src/lib/auth/auth.ts:15`: the better-auth Drizzle adapter does every query. The repo has no query of its own, so it has no `read` or `write` label.                                                                                     |
+| `graphile-worker`                              | `CREATE TABLE` in the migrations, after the renames of `sql/000016.sql`: `_private_jobs`, `_private_job_queues`, `_private_tasks`, `_private_known_crontabs`; plus `migrations`, created in `src/migrate.ts`.                                                                                   | `src/helpers.ts:35,101` and `src/workerUtils.ts:41,51,61,83`: calls of stored functions (`add_job`, `add_jobs`, `complete_jobs`, `permanently_fail_jobs`, `reschedule_jobs`, `force_unlock_workers`) whose bodies are in the migrations. |
+| `nestjs-realworld-typeorm`                     | `@Entity("x")` is `x`; `@Entity()` is the class name in snake case (`Comment` is `comment`). The implicit join table of `UserEntity.favorites` has no entity and is not labelled.                                                                                                               | none                                                                                                                                                                                                                                     |
+| `fastify-api-boilerplate-jwt`                  | The keys of the Kysely `Database` interface (`users`).                                                                                                                                                                                                                                          | none                                                                                                                                                                                                                                     |
+| `sequelize-typescript-example`                 | `@Table` with no options: the model class name as Sequelize pluralises it (`Movie` is `Movies`, `MovieActor` is `MovieActors`).                                                                                                                                                                 | `lib/routes/actors.ts:29,37`, `lib/routes/movies.ts:17,25`: `Model.scope(req.query.scope)` picks scopes at run time, and the scopes join other tables. `MovieGenres` is never queried by name.                                           |
+| `nestjs-realworld-mikro-orm`                   | `@Entity()` with no options: the class name in snake case (`article`, `comment`, `tag`, `user`). The pivot tables `user_to_follower` and `user_favorites` have no entity and are not labelled. A change to a `Collection` is a write of the owning entity (`user`). `src/seeders/` is left out. | none                                                                                                                                                                                                                                     |
+| `node-express-mongoose-typescript-boilerplate` | `mongoose.model("Name", schema)`, the collection as Mongoose pluralises it (`User` is `users`, `Token` is `tokens`).                                                                                                                                                                            | `src/modules/paginate/paginate.ts:69,70`: the paginate plugin queries whichever model it is attached to (`this`).                                                                                                                        |
+
+Grep used to enumerate (run over each clone, tests and node_modules left out; every hit was read):
+`rg -n "^model |@@map|pgTable\(|sqliteTable\(|mysqlTable\(|@Entity\(|define\(|@Table\(|model\(|CREATE TABLE"` for
+definitions, and for accesses `prisma|db\.\w+\.(find\w*|count|aggregate|groupBy|create\w*|update\w*|upsert|delete\w*)`,
+`db\.(select|insert|update|delete)|\.(from|innerJoin|leftJoin)\(`, `getRepository|Repository\b|\.(find|findOne\w*|save|insert|update|delete|remove)\(`,
+`selectFrom|insertInto|updateTable|deleteFrom`, `\.(findAll|findByPk|create|update|destroy)\(`,
+`\bem\.|nativeDelete|flush\(`, `\.(find|findOne|create|updateOne|deleteOne|deleteMany|countDocuments)\(` and SQL
+strings with `select|insert into|update|delete from`.
+
+`pnpm tsx evals/oss/labels-check.ts <case>` also scans the clone for these table definitions and calls with fixed
+patterns per stack (`dataHits` in `scripts/eval-label-scan.ts`) and prints `<k> unlabelled candidates`; it must be
+0. `--sample 10` prints every tenth label (tables at their definition, reads and writes at their call) for the
+spot check.
+
+**Limits of the scan.** The data scan skips an access call whose table name matches no `table` label, so a table
+whose definition it does not recognise (an implicit join table, for example) hides its accesses too; and a call
+that names no table (`em.flush`, `$queryRaw`, `sequelize.query`) counts as covered by any label of that kind in
+the same file. The file-level table check of a read or write label is a loose substring test (singular, plural,
+underscores dropped). The scan and the maintainer's spot check are what guard the labels.
+
+**Left out, and why** (for the maintainer to rule on at the spot check):
+
+- Seed scripts: `lib/db/seed.ts` of `saas-starter` and the seeders of `nestjs-realworld-mikro-orm`
+  (`src/seeders/`). They are one-off scripts, and scripts are left out in every case.
+- Implicit join tables: `user_favorites_article` (`nestjs-realworld-typeorm`), `user_to_follower` and
+  `user_favorites` (`nestjs-realworld-mikro-orm`). They have no entity or table definition of their own to
+  label; a change to the collection is a write of the owning entity.
+- Migration SQL and stored-function bodies (`graphile-worker`'s `sql/` files). The labelled sites are the
+  TypeScript calls; the stored-function calls are runtime-only lines below.
+- `react-tanstarter` has 4 tables and no reads or writes: every query goes through the better-auth Drizzle
+  adapter, a library, and the repo has no query of its own.
+
+Runtime-only sites of the data-access cases:
+
+- `taxonomy` `lib/auth.ts:17`: `PrismaAdapter(db)`, the NextAuth adapter queries accounts, sessions, users and verification_tokens inside the library
+- `react-tanstarter` `src/lib/auth/auth.ts:15`: `drizzleAdapter(db)`, the better-auth adapter does every query of the repo, so it has no read or write label
+- `graphile-worker` `src/helpers.ts:35`: calls the stored function add_job; the tables it writes are named in the migrations, not here
+- `graphile-worker` `src/helpers.ts:101`: calls the stored function add_jobs; the tables it writes are named in the migrations, not here
+- `graphile-worker` `src/workerUtils.ts:41`: calls the stored function complete_jobs; the tables it writes are named in the migrations, not here
+- `graphile-worker` `src/workerUtils.ts:51`: calls the stored function permanently_fail_jobs; the tables it writes are named in the migrations, not here
+- `graphile-worker` `src/workerUtils.ts:61`: calls the stored function reschedule_jobs; the tables it writes are named in the migrations, not here
+- `graphile-worker` `src/workerUtils.ts:83`: calls the stored function force_unlock_workers; the tables it writes are named in the migrations, not here
+- `sequelize-typescript-example` `lib/routes/actors.ts:29`: the scope comes from the query string; the scopes include the movies and genres tables
+- `sequelize-typescript-example` `lib/routes/actors.ts:37`: the scope comes from the query string; the scopes include the movies and genres tables
+- `sequelize-typescript-example` `lib/routes/movies.ts:17`: the scope comes from the query string; the scopes include the actors and genres tables
+- `sequelize-typescript-example` `lib/routes/movies.ts:25`: the scope comes from the query string; the scopes include the actors and genres tables
+- `node-express-mongoose-typescript-boilerplate` `src/modules/paginate/paginate.ts:69`: the paginate plugin counts documents of whichever model it is attached to; the model is `this`
+- `node-express-mongoose-typescript-boilerplate` `src/modules/paginate/paginate.ts:70`: the paginate plugin finds documents of whichever model it is attached to; the model is `this`
 
 ## TypeScript framework cases (#268)
 

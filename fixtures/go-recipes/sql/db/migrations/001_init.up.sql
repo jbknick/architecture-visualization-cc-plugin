@@ -1,0 +1,11 @@
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE posts (
+    id BIGSERIAL PRIMARY KEY,
+    author_id BIGINT NOT NULL REFERENCES users (id),
+    title TEXT NOT NULL,
+    published BOOLEAN NOT NULL DEFAULT FALSE
+);

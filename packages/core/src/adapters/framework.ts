@@ -45,7 +45,10 @@ export interface AdapterFile {
   source: string;
 }
 
-export type AdapterResolver = Pick<Resolver, "resolveSpecifier" | "resolveSymbol">;
+export type AdapterResolver = Pick<
+  Resolver,
+  "resolveSpecifier" | "resolveSymbol" | "targetAt" | "typeNameAt"
+>;
 
 /** What `extract` gets for one file. */
 export interface AdapterFileContext {
@@ -93,6 +96,8 @@ export interface Adapter<F = unknown> {
   mayMatch?(file: AdapterFileContext): boolean;
   /** Test files (`*.test.*`, `*.spec.*`, `__tests__/`) are skipped unless this is true: test harness apps are not endpoints. */
   includeTests?: boolean;
+  /** The languages whose files the adapter reads; default TypeScript only (Go files are the recipe adapter's alone). */
+  languages?: readonly ("typescript" | "go")[];
   extract?(ctx: AdapterFileContext): AdapterExtract<F>;
   link?(ctx: AdapterLinkContext<F>): Partial<AdapterOutput>;
 }
@@ -293,6 +298,8 @@ export function runAdapterList(ctx: AdapterRunContext, adapters: readonly Adapte
     if (wsIds.size > 0) {
       for (const f of files) {
         if (!wsIds.has(f.workspaceId)) continue;
+        if (!(adapter.languages ?? ["typescript"]).includes(f.path.endsWith(".go") ? "go" : "typescript"))
+          continue;
         if (!adapter.includeTests && isTestPath(f.path)) continue;
         const fc = contextOf(f);
         if (!fc) continue;

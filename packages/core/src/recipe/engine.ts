@@ -106,7 +106,10 @@ export function rulesFor(
 }
 
 /** Runs one rule over a tree; `error` is set when ast-grep rejects the rule. */
-export function findRule(rule: RecipeRule, root: SgNode): { nodes: SgNode[]; error?: string } {
+export function findRule(
+  rule: Pick<RecipeRule, "rule" | "constraints">,
+  root: SgNode,
+): { nodes: SgNode[]; error?: string } {
   try {
     return { nodes: root.findAll({ rule: rule.rule, constraints: rule.constraints } as never) };
   } catch (err) {

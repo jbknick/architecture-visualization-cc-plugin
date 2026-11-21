@@ -1,0 +1,296 @@
+{
+  "prs": [
+    {
+      "coverage": {
+        "fallback": 0,
+        "functionLike": 8984,
+        "model": 0,
+        "template": 2574
+      },
+      "healMs": 65059,
+      "key": "cal.com#29541"
+    },
+    {
+      "coverage": {
+        "fallback": 0,
+        "functionLike": 8988,
+        "model": 0,
+        "template": 2575
+      },
+      "healMs": 51498,
+      "key": "cal.com#29558"
+    },
+    {
+      "coverage": {
+        "fallback": 0,
+        "functionLike": 8988,
+        "model": 0,
+        "template": 2574
+      },
+      "healMs": 2018,
+      "key": "cal.com#29708"
+    },
+    {
+      "coverage": {
+        "fallback": 0,
+        "functionLike": 14418,
+        "model": 0,
+        "template": 5073
+      },
+      "healMs": 58673,
+      "key": "formbricks#10031"
+    },
+    {
+      "coverage": {
+        "fallback": 0,
+        "functionLike": 14429,
+        "model": 0,
+        "template": 5084
+      },
+      "healMs": 43556,
+      "key": "formbricks#10061"
+    },
+    {
+      "coverage": {
+        "fallback": 0,
+        "functionLike": 14788,
+        "model": 0,
+        "template": 5194
+      },
+      "healMs": 53073,
+      "key": "formbricks#10090"
+    },
+    {
+      "coverage": {
+        "fallback": 0,
+        "functionLike": 12295,
+        "model": 0,
+        "template": 4088
+      },
+      "healMs": 106705,
+      "key": "formbricks#9569"
+    },
+    {
+      "coverage": {
+        "fallback": 0,
+        "functionLike": 8986,
+        "model": 0,
+        "template": 2575
+      },
+      "healMs": 202947,
+      "key": "cal.com#27634"
+    },
+    {
+      "coverage": {
+        "fallback": 0,
+        "functionLike": 8979,
+        "model": 0,
+        "template": 2569
+      },
+      "healMs": 124364,
+      "key": "cal.com#29346"
+    },
+    {
+      "coverage": {
+        "fallback": 0,
+        "functionLike": 14762,
+        "model": 0,
+        "template": 5195
+      },
+      "healMs": 177745,
+      "key": "formbricks#10018"
+    }
+  ],
+  "runs": [
+    {
+      "empty": false,
+      "key": "cal.com#29541",
+      "model": "claude-sonnet-5-5",
+      "nodes": 3,
+      "radius": {
+        "actual": 68,
+        "estimated": 2840
+      },
+      "status": "ok",
+      "tokens": {
+        "cacheCreate": 2292,
+        "cacheRead": 90162,
+        "input": 4,
+        "output": 393
+      },
+      "turns": 4,
+      "wallMs": 6552
+    },
+    {
+      "empty": false,
+      "key": "cal.com#29558",
+      "model": "claude-sonnet-5-5",
+      "nodes": 3,
+      "radius": {
+        "actual": 2,
+        "estimated": 6
+      },
+      "status": "ok",
+      "tokens": {
+        "cacheCreate": 2539,
+        "cacheRead": 85316,
+        "input": 4,
+        "output": 375
+      },
+      "turns": 4,
+      "wallMs": 6483
+    },
+    {
+      "empty": false,
+      "key": "cal.com#29708",
+      "model": "claude-sonnet-5-5",
+      "nodes": 3,
+      "radius": {
+        "actual": 18,
+        "estimated": 41
+      },
+      "status": "ok",
+      "tokens": {
+        "cacheCreate": 1828,
+        "cacheRead": 86203,
+        "input": 4,
+        "output": 358
+      },
+      "turns": 4,
+      "wallMs": 8238
+    },
+    {
+      "empty": false,
+      "key": "formbricks#10031",
+      "model": "claude-sonnet-5-5",
+      "nodes": 4,
+      "radius": {
+        "actual": 13,
+        "estimated": 198
+      },
+      "status": "ok",
+      "tokens": {
+        "cacheCreate": 2856,
+        "cacheRead": 18927,
+        "input": 4,
+        "output": 401
+      },
+      "turns": 4,
+      "wallMs": 7472
+    },
+    {
+      "empty": false,
+      "key": "formbricks#10061",
+      "model": "claude-sonnet-5-5",
+      "nodes": 6,
+      "radius": {
+        "actual": 21,
+        "estimated": 62
+      },
+      "status": "ok",
+      "tokens": {
+        "cacheCreate": 3802,
+        "cacheRead": 30242,
+        "input": 6,
+        "output": 695
+      },
+      "turns": 5,
+      "wallMs": 10900
+    },
+    {
+      "empty": false,
+      "key": "formbricks#10090",
+      "model": "claude-sonnet-5-5",
+      "nodes": 5,
+      "radius": {
+        "actual": 5,
+        "estimated": 7
+      },
+      "status": "ok",
+      "tokens": {
+        "cacheCreate": 4352,
+        "cacheRead": 16254,
+        "input": 4,
+        "output": 523
+      },
+      "turns": 5,
+      "wallMs": 12100
+    },
+    {
+      "empty": false,
+      "key": "formbricks#9569",
+      "model": "claude-sonnet-5-5",
+      "nodes": 6,
+      "radius": {
+        "actual": 4,
+        "estimated": 19
+      },
+      "status": "ok",
+      "tokens": {
+        "cacheCreate": 3474,
+        "cacheRead": 15994,
+        "input": 4,
+        "output": 551
+      },
+      "turns": 5,
+      "wallMs": 12384
+    },
+    {
+      "empty": false,
+      "key": "cal.com#27634",
+      "model": "claude-sonnet-5-5",
+      "nodes": 3,
+      "radius": {
+        "actual": 18,
+        "estimated": 8
+      },
+      "status": "ok",
+      "tokens": {
+        "cacheCreate": 7379,
+        "cacheRead": 180818,
+        "input": 8,
+        "output": 510
+      },
+      "turns": 6,
+      "wallMs": 18423
+    },
+    {
+      "empty": true,
+      "key": "cal.com#29346",
+      "model": "claude-sonnet-5-5",
+      "nodes": 0,
+      "radius": {
+        "actual": 0,
+        "estimated": 0
+      },
+      "status": "ok",
+      "tokens": {
+        "cacheCreate": 4366,
+        "cacheRead": 141684,
+        "input": 6,
+        "output": 339
+      },
+      "turns": 5,
+      "wallMs": 10861
+    },
+    {
+      "empty": false,
+      "key": "formbricks#10018",
+      "model": "claude-sonnet-5-5",
+      "nodes": 4,
+      "radius": {
+        "actual": 3,
+        "estimated": 6
+      },
+      "status": "ok",
+      "tokens": {
+        "cacheCreate": 3578,
+        "cacheRead": 17006,
+        "input": 4,
+        "output": 441
+      },
+      "turns": 4,
+      "wallMs": 12365
+    }
+  ]
+}

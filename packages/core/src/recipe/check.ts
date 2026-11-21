@@ -3,14 +3,16 @@ import { join } from "node:path";
 import { parse } from "@ast-grep/napi";
 import { loadConfig } from "../config/index.js";
 import { discoverFiles } from "../discover/index.js";
+import { goAvailable } from "../lang/go/grammar.js";
 import { detectAllWorkspaces } from "../lang/index.js";
 import type { GantryPaths } from "../paths/index.js";
 import { listTextFiles } from "./data-access.js";
 import { astLang, findRule, rulesFor, runExamples } from "./engine.js";
+import { goRulesFor, isGoPath, runGoExamples } from "./go.js";
 import { RegexRunner } from "./helpers/bounded-regex.js";
 import { matchText, runFailure, runTextExamples } from "./helpers/text-rules.js";
 import { parseRecipe, RECIPE_PATH } from "./load.js";
-import { isTextRule } from "./schema.js";
+import { isGoRule, isTextRule } from "./schema.js";
 
 /** What `gantry recipe check` reports for one rule. */
 export interface RuleCheck {
@@ -45,18 +47,25 @@ export function checkRecipeText(paths: GantryPaths, text: string): RecipeCheck {
   const config = loadConfig(paths);
   const workspaces = detectAllWorkspaces(paths.root, config, paths.repo);
   const wsById = new Map(workspaces.map((w) => [w.id, w]));
-  const files = discoverFiles(paths, config, workspaces).filter((f) => /\.(?:ts|tsx|mts|cts)$/.test(f.path));
+  const files = discoverFiles(paths, config, workspaces).filter((f) =>
+    /\.(?:ts|tsx|mts|cts|go)$/.test(f.path),
+  );
 
   const counts = new Map<string, number>(recipe.rules.map((r) => [r.id, 0]));
   const broken = new Map<string, string>();
   for (const f of files) {
     const ws = f.workspaceId ? wsById.get(f.workspaceId) : undefined;
     if (!ws) continue;
-    const rules = rulesFor(recipe, ws, f.path, workspaces);
+    const isGo = isGoPath(f.path);
+    const rules = isGo
+      ? goRulesFor(recipe, ws, f.path, workspaces)
+      : rulesFor(recipe, ws, f.path, workspaces);
     if (rules.length === 0) continue;
     let root: ReturnType<ReturnType<typeof parse>["root"]>;
     try {
-      root = parse(astLang(f.path), readFileSync(join(paths.root, f.path), "utf8")).root();
+      const source = readFileSync(join(paths.root, f.path), "utf8");
+      if (isGo && !goAvailable()) continue;
+      root = parse(isGo ? ("go" as never) : astLang(f.path), source).root();
     } catch {
       continue;
     }
@@ -92,7 +101,7 @@ export function checkRecipeText(paths: GantryPaths, text: string): RecipeCheck {
         }
         if (error) out.errors.push(`recipe rule ${rule.id} skipped: ${error}`);
       } else {
-        const r = runExamples(rule);
+        const r = isGoRule(rule) ? runGoExamples(rule) : runExamples(rule);
         ex = r;
         error = r.error ?? broken.get(rule.id);
         if (error) out.errors.push(`recipe rule ${rule.id}: ast-grep rejects the rule: ${error}`);

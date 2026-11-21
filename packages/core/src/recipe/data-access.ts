@@ -18,6 +18,18 @@ import { isNode, nodeArray, unwrap } from "../parse/ast.js";
 import type { EdgeRecord, WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
 import { captureNode, captureNodes, type FileFacts, type RuleMatch, rootOf, whenApplies } from "./engine.js";
+import {
+  concatOperands,
+  findGoDecl,
+  type GoFacts,
+  type GoRuleMatch,
+  goRootOf,
+  goStringValue,
+  goTypeName,
+  isGoPath,
+  isStringLiteral,
+  topLevelValues,
+} from "./go.js";
 import { RegexRunner } from "./helpers/bounded-regex.js";
 import { findFunction, returnedExpressions } from "./helpers/call-return.js";
 import { classifyMethod } from "./helpers/method-classes.js";
@@ -40,7 +52,14 @@ import {
   type TextRun,
   textRuleMatches,
 } from "./helpers/text-rules.js";
-import { isTextRule, MAX_TEXT_FILES, type Recipe, type RecipeRule, type TextRecipeRule } from "./schema.js";
+import {
+  type GoEmit,
+  isTextRule,
+  MAX_TEXT_FILES,
+  type Recipe,
+  type RecipeRule,
+  type TextRecipeRule,
+} from "./schema.js";
 
 /**
  * Tables, and the code that reads and writes them, from a recipe (spec sections 5 and 9). The rules, the four
@@ -147,6 +166,8 @@ export interface DataAccessArgs {
   workspaces: readonly WorkspaceRecord[];
   recipe: Recipe | null;
   files: readonly { file: AdapterFileContext; facts: FileFacts | undefined }[];
+  /** The Go files the adapter extracted, with the matches of the Go rules. */
+  goFiles: readonly { file: AdapterFileContext; facts: GoFacts | undefined }[];
   resolver: AdapterFileContext["resolver"];
   fileOf: (fileId: string) => AdapterFileContext | undefined;
 }
@@ -203,10 +224,13 @@ class DataAccess {
     try {
       const sqlRefs = this.sqlCandidates();
       this.tablesFromRules();
+      this.tablesFromGoRules();
       this.tablesFromText();
       this.tablesFromSqlFiles();
       for (const c of sqlRefs) for (const r of c.refs) if (r.kind === "create") this.tableFromSql(c, r);
       this.accessesFromRules();
+      this.accessesFromGoRules();
+      this.queriesFromText();
       for (const c of sqlRefs) for (const r of c.refs) if (r.kind !== "create") this.accessFromSql(c, r);
       return { nodes: this.buildNodes(), edges: this.buildEdges() };
     } finally {
@@ -325,19 +349,23 @@ class DataAccess {
     this.addTable(name, file, data, { model, exportName, sym, binding: emit.binding === true });
   }
 
-  private tablesFromText(): void {
-    const rules = this.recipe.rules.filter(isTextRule);
+  /** The text rules of one emit kind, with their matches in the text files: `table` rules declare, `query` rules attribute. */
+  private textMatches(
+    kind: "table" | "query",
+  ): { rule: TextRecipeRule; anchor: AdapterFileContext; path: string; match: TextMatch }[] {
+    const rules = this.recipe.rules.filter(isTextRule).filter((r) => r.emit.kind === kind);
     // A text rule is its own request for the helper: listing `text-rules` is not required (#367).
-    if (rules.length === 0) return;
+    if (rules.length === 0) return [];
     const files = listTextFiles(this.a.root, [...new Set(rules.flatMap((r) => r.files))]);
     const anchors = this.anchors();
+    const out: { rule: TextRecipeRule; anchor: AdapterFileContext; path: string; match: TextMatch }[] = [];
     for (const rule of rules) {
       for (const f of files) {
         if (this.skipped.has(rule.id)) break;
         if (!textRuleMatches(rule, f.path)) continue;
-        const ws = workspaceForPath([...this.a.workspaces], f.path);
-        if (!whenApplies(rule.when, ws, this.a.workspaces)) continue;
-        const anchor = anchors.get(ws.id);
+        const homes = this.homes(f.path);
+        if (!whenApplies(rule.when, homes[0] as WorkspaceRecord, this.a.workspaces)) continue;
+        const anchor = homes.map((w) => anchors.get(w.id)).find((x) => x !== undefined);
         if (!anchor) continue;
         // The regex is the recipe's: it runs in the runner's worker under a time budget.
         const r = matchText(this.runner, rule, f.text);
@@ -345,9 +373,68 @@ class DataAccess {
           this.skipRule(rule.id, r);
           break;
         }
-        for (const m of r.matches) this.tableFromText(anchor, rule, f.path, m);
+        for (const match of r.matches) out.push({ rule, anchor, path: f.path, match });
       }
     }
+    return out;
+  }
+
+  private tablesFromText(): void {
+    for (const { rule, anchor, path, match } of this.textMatches("table")) {
+      this.tableFromText(anchor, rule, path, match);
+    }
+  }
+
+  /**
+   * A `query` text rule: the Go function it names runs the statements it holds, so it reads and writes the tables
+   * those statements do (only tables that are declared; a table is never guessed). The edge belongs to the function.
+   */
+  private queriesFromText(): void {
+    for (const { rule, path, match } of this.textMatches("query")) {
+      if (rule.emit.kind !== "query") continue;
+      const fn = groupValue(rule.emit.fn, match);
+      const sql = groupValue(rule.emit.sql, match);
+      if (!fn || !sql) continue;
+      const globs = rule.emit.files;
+      const targets = this.goFunctionsNamed(fn, new Set(this.homes(path).map((w) => w.id)), globs);
+      for (const ref of scanSql(sql)) {
+        if (ref.kind === "create") continue;
+        const t = refTarget(ref.ref);
+        const table = t && "name" in t ? this.byName.get(t.name.toLowerCase()) : undefined;
+        if (!table || table.runtime) continue;
+        const line = match.line + lineInText(sql, ref.offset);
+        for (const target of targets) {
+          this.accesses.push({
+            kind: ref.kind === "read" ? "reads" : "writes",
+            file: target.file,
+            src: target.sym,
+            line: target.line ?? line,
+            table,
+            conf: "high",
+          });
+        }
+      }
+    }
+  }
+
+  /** The functions and methods of the workspace's Go files that are called `name` (a method without its type). */
+  private goFunctionsNamed(
+    name: string,
+    wsIds: ReadonlySet<string>,
+    globs: readonly string[] | undefined,
+  ): { file: AdapterFileContext; sym: string; line: number | null }[] {
+    const out: { file: AdapterFileContext; sym: string; line: number | null }[] = [];
+    for (const { file } of this.a.goFiles) {
+      if (!wsIds.has(file.ws.id)) continue;
+      if (globs && !picomatch.isMatch(file.path, [...globs], { dot: true })) continue;
+      for (const s of file.parsed?.symbols ?? []) {
+        if (s.kind !== "function" && s.kind !== "method") continue;
+        if (s.name.replace(/^.*\./, "") !== name) continue;
+        if (!file.parsed?.bodies.has(s.id)) continue;
+        out.push({ file, sym: s.id, line: s.startLine });
+      }
+    }
+    return out;
   }
 
   /** Skips a rule for the rest of the run, with one stderr line (never stdout: hooks print JSON there). */
@@ -357,10 +444,25 @@ class DataAccess {
     process.stderr.write(`Gantry: recipe rule ${id} skipped: ${runFailure(r, this.runner)}\n`);
   }
 
+  /**
+   * The workspaces a text file can belong to, best first: the one its path falls in, then the Go modules that hold
+   * it (a Go module and a TypeScript package can share a directory; a `.sql` file is the module's as well).
+   */
+  private homes(path: string): WorkspaceRecord[] {
+    const primary = workspaceForPath([...this.a.workspaces], path);
+    const go = this.a.workspaces
+      .filter(
+        (w) => w.lang === "go" && w.id !== primary.id && (w.dir === "." || path.startsWith(`${w.dir}/`)),
+      )
+      .sort((x, y) => y.dir.length - x.dir.length);
+    return [primary, ...go];
+  }
+
   /** The first extracted file of each workspace: a table declared in a text file belongs to it. */
   private anchors(): Map<string, AdapterFileContext> {
     const out = new Map<string, AdapterFileContext>();
-    for (const { file } of this.a.files) if (!out.has(file.ws.id)) out.set(file.ws.id, file);
+    for (const { file } of [...this.a.files, ...this.a.goFiles])
+      if (!out.has(file.ws.id)) out.set(file.ws.id, file);
     return out;
   }
 
@@ -370,7 +472,9 @@ class DataAccess {
     if (!globs?.length || !this.recipe.helpers.includes("sql-text")) return;
     const anchors = this.anchors();
     for (const f of listTextFiles(this.a.root, globs)) {
-      const anchor = anchors.get(workspaceForPath([...this.a.workspaces], f.path).id);
+      const anchor = this.homes(f.path)
+        .map((w) => anchors.get(w.id))
+        .find((x) => x !== undefined);
       if (!anchor) continue;
       for (const r of scanSql(f.text)) {
         const t = r.kind === "create" ? refTarget(r.ref) : null;
@@ -382,6 +486,7 @@ class DataAccess {
   }
 
   private tableFromText(anchor: AdapterFileContext, rule: TextRecipeRule, path: string, m: TextMatch): void {
+    if (rule.emit.kind !== "table") return;
     const names = Array.isArray(rule.emit.name) ? rule.emit.name : [rule.emit.name];
     const name = names.map((r) => groupValue(r, m)).find((x) => x !== "");
     if (!name) return;
@@ -433,6 +538,7 @@ class DataAccess {
 
   /** A string literal, a template without substitutions, or a name (also `ns.name`) bound to a constant string. */
   private constText(file: AdapterFileContext, node: SgNode, depth = 0): string | null {
+    if (isGoPath(file.path)) return this.goConstText(file, node, depth);
     const n = unparen(node);
     const k = kindOf(n);
     if (k === "string" || k === "template_string") {
@@ -690,13 +796,236 @@ class DataAccess {
   }
 
   // ------------------------------------------------------------------------------------------------------
+  // Go rules
+
+  private goNodes(m: GoRuleMatch, c: string | undefined): SgNode[] {
+    if (!c || c.startsWith("=")) return [];
+    if (c.startsWith("$$$")) return m.node.getMultipleMatches(c.slice(3)).filter((x) => x.isNamed());
+    const x = m.node.getMatch(c.slice(1));
+    return x ? [x] : [];
+  }
+
+  private readonly goConsts = new Map<string, Map<string, SgNode>>();
+
+  /** A string literal, a concatenation of them, or a name bound to one in this file or in the package (the directory). */
+  private goConstText(file: AdapterFileContext, node: SgNode, depth = 0): string | null {
+    if (depth > 4) return null;
+    let out = "";
+    for (const op of concatOperands(node)) {
+      if (isStringLiteral(op)) {
+        out += goStringValue(op) ?? "";
+        continue;
+      }
+      if (kindOf(op) !== "identifier") return null;
+      const dir = file.path.slice(0, Math.max(0, file.path.lastIndexOf("/")));
+      let v: string | null = null;
+      for (const f of [file, ...this.a.goFiles.map((x) => x.file).filter((x) => x !== file)]) {
+        if (f.path.slice(0, Math.max(0, f.path.lastIndexOf("/"))) !== dir) continue;
+        let consts = this.goConsts.get(f.fileId);
+        if (!consts) {
+          const root = goRootOf(f);
+          consts = root ? topLevelValues(root) : new Map();
+          this.goConsts.set(f.fileId, consts);
+        }
+        const n = consts.get(op.text());
+        if (n) {
+          v = this.goConstText(f, n, depth + 1);
+          break;
+        }
+      }
+      if (v === null) return null;
+      out += v;
+    }
+    return out;
+  }
+
+  /** The text a capture of a Go match stands for: a literal, a string's value, a constant's value, a type's name. */
+  private goTextOf(file: AdapterFileContext, m: GoRuleMatch, c: string, ident = false): string | null {
+    if (c.startsWith("=")) return c.slice(1);
+    const n = this.goNodes(m, c)[0];
+    if (!n) return null;
+    const s = this.goConstText(file, n);
+    if (s !== null) return s;
+    const t = goTypeName(n);
+    if (t !== null) return t;
+    return ident && ["identifier", "field_identifier", "type_identifier"].includes(kindOf(n))
+      ? n.text()
+      : null;
+  }
+
+  private tablesFromGoRules(): void {
+    const order = new Map(this.recipe.rules.map((r, i) => [r.id, i]));
+    for (const { file, facts } of this.a.goFiles) {
+      if (!facts) continue;
+      const ms = facts.matches
+        .filter((m) => m.rule.emit.kind === "table")
+        .sort(
+          (x, y) =>
+            x.node.range().start.index - y.node.range().start.index ||
+            (order.get(x.rule.id) ?? 0) - (order.get(y.rule.id) ?? 0),
+        );
+      for (const m of ms) if (m.rule.emit.kind === "table") this.tableFromGoMatch(file, m, m.rule.emit);
+    }
+  }
+
+  private tableFromGoMatch(
+    file: AdapterFileContext,
+    m: GoRuleMatch,
+    emit: Extract<GoEmit, { kind: "table" }>,
+  ): void {
+    const line = m.node.range().start.line + 1;
+    let name: string | null = null;
+    let runtimeExpr: SgNode | undefined;
+    for (const c of Array.isArray(emit.name) ? emit.name : [emit.name]) {
+      const t = this.goTextOf(file, m, c);
+      if (t !== null) {
+        name = t;
+        break;
+      }
+      runtimeExpr ??= this.goNodes(m, c)[0];
+    }
+    if (name === null) {
+      if (runtimeExpr) this.runtimeTable(runtimeExpr.text(), goRuntimeReason(runtimeExpr), file, line);
+      return;
+    }
+    const model = emit.model ? (this.goTextOf(file, m, emit.model, true) ?? undefined) : undefined;
+    const ctx: FieldContext = {
+      name,
+      file: file.path,
+      line,
+      exportName: null,
+      symbol: null,
+      className: null,
+      capture: (c) => {
+        if (!c.startsWith("$")) return c.startsWith("=") ? c.slice(1) : c;
+        const n = this.goNodes(m, c)[0];
+        return n ? (this.goConstText(file, n) ?? goTypeName(n) ?? n.text()) : null;
+      },
+      keys: () => [],
+    };
+    this.addTable(name, file, tableData(emit.data, ctx), { model });
+  }
+
+  private accessesFromGoRules(): void {
+    const order = new Map(this.recipe.rules.map((r, i) => [r.id, i]));
+    for (const { file, facts } of this.a.goFiles) {
+      if (!facts) continue;
+      const ms = facts.matches
+        .filter((m) => m.rule.emit.kind === "read" || m.rule.emit.kind === "write")
+        .sort(
+          (x, y) =>
+            x.node.range().start.index - y.node.range().start.index ||
+            (order.get(x.rule.id) ?? 0) - (order.get(y.rule.id) ?? 0),
+        );
+      for (const m of ms) this.accessFromGoMatch(file, m);
+    }
+  }
+
+  private accessFromGoMatch(file: AdapterFileContext, m: GoRuleMatch): void {
+    const emit = m.rule.emit;
+    if (emit.kind !== "read" && emit.kind !== "write") return;
+    if (this.skipped.has(m.rule.id)) return;
+    if (emit.method) {
+      const method = this.goTextOf(file, m, emit.method, true);
+      if (!method || classifyMethod(method, this.recipe.methods) !== emit.kind) return;
+    }
+    const hits: Hit[] = [];
+    if (emit.table) for (const n of this.goNodes(m, emit.table)) hits.push(...this.tablesOfGoExpr(file, n));
+    if (emit.model) {
+      for (const n of this.goNodes(m, emit.model)) {
+        const name = this.goModelName(file, n);
+        if (name) hits.push(...this.hitsOf(this.resolveModel(name)));
+      }
+    }
+    // The line of a call is the line of its method name, so a chain `db\n.Where()\n.Find()` reports the `.Find`.
+    const callee = kindOf(m.node) === "call_expression" ? m.node.field("function") : null;
+    const at = callee && kindOf(callee) === "selector_expression" ? callee.field("field") : null;
+    const line = (at ?? m.node).range().start.line + 1;
+    const src = enclosingSymbol(file.parsed, file.fileId, m.node.range().start.index);
+    for (const h of hits)
+      this.accesses.push({
+        kind: emit.kind === "read" ? "reads" : "writes",
+        file,
+        src,
+        line,
+        table: h.table,
+        conf: h.conf,
+      });
+  }
+
+  /** The model an expression stands for: a string, a constant, a type written out (`&User{}`), or the type of a value. */
+  private goModelName(file: AdapterFileContext, n: SgNode): string | null {
+    const s = this.goConstText(file, n);
+    if (s !== null) return s;
+    const t = goTypeName(n);
+    if (t !== null) return t;
+    const r = n.range();
+    return file.resolver.typeNameAt?.(file.fileId, r.start.index, r.end.index) ?? null;
+  }
+
+  /** A table expression of a Go rule: a string or a constant, else a name that is only known at run time. */
+  private tablesOfGoExpr(file: AdapterFileContext, node: SgNode): Hit[] {
+    const s = this.goConstText(file, node);
+    if (s !== null) return this.hitsOf(this.resolveTableName(s));
+    const k = kindOf(node);
+    if (k !== "identifier" && k !== "selector_expression" && k !== "binary_expression") return [];
+    const line = node.range().start.line + 1;
+    return [{ table: this.runtimeTable(node.text(), goRuntimeReason(node), file, line), conf: "low" }];
+  }
+
+  // ------------------------------------------------------------------------------------------------------
   // SQL text
+
+  /** The SQL candidates of the Go files: each string literal, and each `+` chain of strings with names in between. */
+  private goSqlCandidates(): SqlCand[] {
+    const out: SqlCand[] = [];
+    for (const { file } of this.a.goFiles) {
+      if (!sqlApplies(this.recipe, file.path, file.source)) continue;
+      const root = goRootOf(file);
+      if (!root) continue;
+      const seen = new Set<string>();
+      for (const n of root.findAll({
+        rule: { any: [{ kind: "interpreted_string_literal" }, { kind: "raw_string_literal" }] },
+      })) {
+        // The outermost `+` chain around the literal is one text.
+        let top: SgNode = n;
+        for (let p = n.parent(); p; p = p.parent()) {
+          if (kindOf(p) === "parenthesized_expression") {
+            top = p;
+            continue;
+          }
+          if (kindOf(p) === "binary_expression" && p.field("operator")?.text() === "+") {
+            top = p;
+            continue;
+          }
+          break;
+        }
+        const key = `${top.range().start.index}:${top.range().end.index}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        let text = "";
+        const exprs: SgNode[] = [];
+        for (const op of concatOperands(top)) {
+          if (isStringLiteral(op)) text += goStringValue(op) ?? "";
+          else {
+            exprs.push(op);
+            text += placeholder(exprs.length - 1);
+          }
+        }
+        if (!looksLikeSql(text)) continue;
+        const refs = scanSql(text);
+        if (refs.length === 0) continue;
+        out.push({ file, node: top, text, exprs, line: top.range().start.line + 1, refs });
+      }
+    }
+    return out;
+  }
 
   private sqlCandidates(): SqlCand[] {
     const recipe = this.recipe;
     if (!recipe.helpers.includes("sql-text")) return [];
     const tags = new Set(recipe.sql?.tags ?? []);
-    const out: SqlCand[] = [];
+    const out: SqlCand[] = this.goSqlCandidates();
     for (const { file } of this.a.files) {
       if (!sqlApplies(recipe, file.path, file.source)) continue;
       const root = rootOf(file);
@@ -734,6 +1063,7 @@ class DataAccess {
   private substValue(file: AdapterFileContext, expr: SgNode): string | null {
     const c = this.constText(file, expr);
     if (c !== null) return c;
+    if (isGoPath(file.path)) return null;
     if (kindOf(expr) !== "call_expression" || !this.recipe.helpers.includes("call-return")) return null;
     const fn = expr.field("function");
     let target: { file: AdapterFileContext; name: string } | null = null;
@@ -789,7 +1119,8 @@ class DataAccess {
     const src = enclosingSymbol(c.file.parsed, c.file.fileId, c.node.range().start.index);
     const kind = ref.kind === "read" ? "reads" : "writes";
     if ("expr" in n) {
-      const t = this.runtimeTable(n.expr.text(), runtimeReason(n.expr), c.file, line);
+      const reason = isGoPath(c.file.path) ? goRuntimeReason(n.expr) : runtimeReason(n.expr);
+      const t = this.runtimeTable(n.expr.text(), reason, c.file, line);
       this.accesses.push({ kind, file: c.file, src, line, table: t, conf: "low" });
       return;
     }
@@ -871,6 +1202,12 @@ function push<K, V>(m: Map<K, V[]>, k: K, v: V): void {
 /** Why an expression cannot name a table before run time. */
 function runtimeReason(n: SgNode): string {
   return kindOf(n) === "identifier" && enclosingParameter(n, n.text())
+    ? "table name is a function parameter"
+    : "table name is built at runtime";
+}
+
+function goRuntimeReason(n: SgNode): string {
+  return kindOf(n) === "identifier" && findGoDecl(n, n.text())?.param
     ? "table name is a function parameter"
     : "table name is built at runtime";
 }

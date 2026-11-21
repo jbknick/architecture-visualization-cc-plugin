@@ -343,15 +343,13 @@ async function indexOneRepo(
       repo,
       workspaces,
       recipe,
-      // The framework adapters read TypeScript; other languages have none yet.
-      files: present
-        .filter((e) => langOfPath(e.path) === "typescript")
-        .map((e) => ({
-          path: e.path,
-          id: e.id,
-          workspaceId: e.workspaceId,
-          source: e.source as string,
-        })),
+      // The framework adapters read TypeScript only; the recipe adapter also reads Go (`Adapter.languages`).
+      files: present.map((e) => ({
+        path: e.path,
+        id: e.id,
+        workspaceId: e.workspaceId,
+        source: e.source as string,
+      })),
       parsed,
       resolver,
     },

@@ -1,0 +1,19 @@
+{
+  "repo": "node-express-mongoose-typescript-boilerplate",
+  "sha": "278143db5b01d5281649a968c18b40ae709f2ec7",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each site before any scoring run; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [{ "name": "tokens" }, { "name": "users" }],
+  "read": [
+    { "file": "src/modules/auth/auth.service.ts", "table": "tokens" },
+    { "file": "src/modules/auth/passport.ts", "table": "users" },
+    { "file": "src/modules/token/token.service.ts", "table": "tokens" },
+    { "file": "src/modules/user/user.model.ts", "table": "users" },
+    { "file": "src/modules/user/user.service.ts", "table": "users" }
+  ],
+  "write": [
+    { "file": "src/modules/auth/auth.service.ts", "table": "tokens" },
+    { "file": "src/modules/token/token.service.ts", "table": "tokens" },
+    { "file": "src/modules/user/user.service.ts", "table": "users" }
+  ]
+}

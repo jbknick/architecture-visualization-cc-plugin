@@ -1,0 +1,23 @@
+{
+  "repo": "nestjs-realworld-mikro-orm",
+  "sha": "3bb628edebc95da30adcbeeb2ecb33158c3dbc95",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each site before any scoring run; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [{ "name": "article" }, { "name": "comment" }, { "name": "tag" }, { "name": "user" }],
+  "read": [
+    { "file": "src/article/article.service.ts", "table": "article" },
+    { "file": "src/article/article.service.ts", "table": "comment" },
+    { "file": "src/article/article.service.ts", "table": "user" },
+    { "file": "src/profile/profile.service.ts", "table": "user" },
+    { "file": "src/tag/tag.service.ts", "table": "tag" },
+    { "file": "src/user/auth.middleware.ts", "table": "user" },
+    { "file": "src/user/user.service.ts", "table": "user" }
+  ],
+  "write": [
+    { "file": "src/article/article.service.ts", "table": "article" },
+    { "file": "src/article/article.service.ts", "table": "comment" },
+    { "file": "src/article/article.service.ts", "table": "user" },
+    { "file": "src/profile/profile.service.ts", "table": "user" },
+    { "file": "src/user/user.service.ts", "table": "user" }
+  ]
+}

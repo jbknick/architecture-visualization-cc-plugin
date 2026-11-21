@@ -11,7 +11,11 @@ export type FixtureName =
   | "adapters"
   | "go-basic"
   | "overlay-groups"
-  | "deep-radius";
+  | "deep-radius"
+  | "go-recipes/nethttp"
+  | "go-recipes/chi"
+  | "go-recipes/gin"
+  | "go-recipes/sql";
 
 export interface MaterializeOptions {
   /**
@@ -47,8 +51,8 @@ export async function materializeFixture(
   opts: MaterializeOptions = {},
 ): Promise<MaterializedFixture> {
   // The repo name of a fixture (no remote) is the basename of its directory, so every run gets the same ids.
-  const parent = await mkdtemp(join(tmpdir(), `gantry-fixture-${name}-`));
-  return materializeInto(name, join(parent, opts.dirName ?? name), opts, () =>
+  const parent = await mkdtemp(join(tmpdir(), `gantry-fixture-${name.replace("/", "-")}-`));
+  return materializeInto(name, join(parent, opts.dirName ?? name.replace(/^.*\//, "")), opts, () =>
     rm(parent, { recursive: true, force: true }),
   );
 }
