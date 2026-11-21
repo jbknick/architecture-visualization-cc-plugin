@@ -330,7 +330,7 @@ class GoRoutes {
     return { handler: label.length > 80 ? "expression" : label, handlerSymbol: sym };
   }
 
-  private methodOf(file: AdapterFileContext, m: GoRuleMatch, c: string): string | null {
+  private methodOf(m: GoRuleMatch, c: string): string | null {
     if (c.startsWith("=")) return c.slice(1).toUpperCase();
     const n = this.captureNode(m, c);
     if (!n) return null;
@@ -457,7 +457,7 @@ class GoRoutes {
           const handlers = this.captureNodes(m, emit.handler);
           let path = this.pathOf(file, this.captureNode(m, emit.path), true);
           if (!path || handlers.length === 0) continue;
-          let method = emit.method ? this.methodOf(file, m, emit.method) : null;
+          let method = emit.method ? this.methodOf(m, emit.method) : null;
           if (emit.methodInPath) {
             const first = path[0];
             const mm = typeof first === "string" ? /^([A-Za-z]+)\s+(\S[\s\S]*)$/.exec(first) : null;

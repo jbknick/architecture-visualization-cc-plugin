@@ -9,7 +9,7 @@
     {
       "name": "github.com/jackc/pgx/v5",
       "role": "data-access",
-      "note": "driver under the generated query code; the SQL is in db/query/*.sql"
+      "note": "driver under the generated query code; the SQL is in db/query/*.sql. Scored reads and writes miss the bar: the labels name the query file (db/query/*.sql), which is not a file of the index, while this recipe records the same table pairs against the generated function's file (db/sqlc/*.sql.go), so every pair differs only by its file"
     }
   ],
   "helpers": ["resolve-names", "const-strings", "sql-text"],
