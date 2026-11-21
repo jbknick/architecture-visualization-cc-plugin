@@ -27,7 +27,10 @@ interface MaterializedFixture {
 }
 const helperPath = "../../../core/test/helpers/fixture.js";
 const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as {
-  materializeFixture: (name: string) => Promise<MaterializedFixture>;
+  materializeFixture: (
+    name: string,
+    opts?: { feature?: boolean; dirName?: string },
+  ) => Promise<MaterializedFixture>;
 };
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -419,6 +422,23 @@ describe("gantry heal", () => {
 });
 
 describe("gantry review", () => {
+  it("on fixtures/deep-radius lists the reachable tier and matches the committed snapshot from two fresh data dirs", async () => {
+    // The directory is named `repo`, as in `scripts/fixture-repo.ts deep-radius <tmp>/repo`, so the ids match the snapshot.
+    const fx = await materializeFixture("deep-radius", { feature: true, dirName: "repo" });
+    fixtures.push(fx);
+    const outs: string[] = [];
+    for (const name of ["deep-radius-1", "deep-radius-2"]) {
+      const env = { CLAUDE_PLUGIN_DATA: join(dataDir, name), HOME: join(dataDir, name, "home") };
+      expect(run(fx.dir, ["init"], env).code).toBe(0);
+      const r = run(fx.dir, ["review", "main...feature", "--json"], env);
+      expect(r.err).toBe("");
+      expect(r.code).toBe(0);
+      outs.push(r.out);
+    }
+    expect(outs[1]).toBe(outs[0]);
+    await expect(outs[0]).toMatchFileSnapshot(join(repoRoot, "fixtures/deep-radius.review.json"));
+  }, 60_000);
+
   it("prints the symbol diff as JSON on a clean stdout, creates no data dir and leaves the repo alone", async () => {
     const fx = await fixture("pnpm-turbo");
     fx.git(["checkout", "-b", "feature"]);

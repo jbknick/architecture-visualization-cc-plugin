@@ -1,0 +1,10 @@
+{
+  "name": "@deep/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./hub": "./src/hub.ts",
+    "./zeta": "./src/zeta.ts"
+  }
+}

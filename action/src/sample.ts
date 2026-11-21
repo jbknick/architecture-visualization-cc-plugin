@@ -54,6 +54,8 @@ export function sampleReview(
       directTotal: per,
       potential: Array.from({ length: Math.min(per, 200) }, (_, k) => make(2, k)),
       potentialTotal: per,
+      reachable: [],
+      reachableTotal: 0,
     });
   }
   return {
@@ -66,6 +68,7 @@ export function sampleReview(
     impact: {
       changed,
       callersByHop: [],
+      reachable: { total: 0, byHop: [] },
       crossings: changed
         .slice(0, 12)
         .map((c) => ({ from: c.id, to: `sym:repo:apps/web/src/a.ts#a`, kind: "workspace" as const })),
