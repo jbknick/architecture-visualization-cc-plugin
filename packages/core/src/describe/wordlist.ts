@@ -160,7 +160,7 @@ const TECH_MORE = set(`
 email emails database databases datastore datasets dataset timeout timeouts whitespace whitespaces newline newlines
 shortcut shortcuts stopwatch keyset ids bytes byte kilobyte kilobytes megabyte megabytes gigabyte gigabytes payload payloads
 stats statistic mtime ctime atime pii wal pkce aes rsa pem ansi ecdsa ecdh hkdf kdf sha md5 crc multi auto
-params param args arg kwargs argv varargs vars var const let setup teardown bootstrap bootstrapped
+params param args arg kwargs argv varargs vars var const let setup teardown bootstrap bootstrapped startup startups
 online offline internet website websites webpage software hardware username usernames password passwords login
 backup backups restore restored workflow spreadsheet smartphone laptop desktop mobile wifi bluetooth browser browsers
 emoji podcast blog blogs tweet hashtag hyperlink hyperlinks metadata plugin touchscreen
