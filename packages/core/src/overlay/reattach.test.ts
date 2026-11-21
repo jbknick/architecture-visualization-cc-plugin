@@ -57,6 +57,17 @@ function withStore<T>(paths: GantryPaths, fn: (store: ReturnType<typeof openStor
   }
 }
 
+/** Renames `formatRelativeDate` to `formatRelative` in its file and in the barrel, and commits. */
+function renameFormatRelative(fx: MaterializedFixture): void {
+  write(fx, DATE, read(fx, DATE).replace("formatRelativeDate", "formatRelative"));
+  write(
+    fx,
+    "packages/utils/src/index.ts",
+    read(fx, "packages/utils/src/index.ts").replace("formatRelativeDate", "formatRelative"),
+  );
+  commit(fx, "rename");
+}
+
 describe("reattachOverlay (run by heal)", () => {
   it("a label follows its function through a file move", async () => {
     const { fx, paths } = await setup();
@@ -112,18 +123,57 @@ describe("reattachOverlay (run by heal)", () => {
     });
   });
 
-  it("a rename in place changes exactHash (it includes the name), so the entry is kept and listed as gone", async () => {
+  it("a label follows a function renamed in place (same body, new name)", async () => {
     const { fx, paths } = await setup();
     const from = sym(DATE, "formatRelativeDate");
     withStore(paths, (s) => setLabel(s, { nodeId: from, text: "Relative date" }));
 
-    write(fx, DATE, read(fx, DATE).replace("formatRelativeDate", "formatRelative"));
-    write(
-      fx,
-      "packages/utils/src/index.ts",
-      read(fx, "packages/utils/src/index.ts").replace("formatRelativeDate", "formatRelative"),
-    );
-    commit(fx, "rename");
+    renameFormatRelative(fx);
+    await heal(paths, { reattach: true });
+
+    withStore(paths, (s) => {
+      const to = sym(DATE, "formatRelative");
+      expect(readOverlay(s).labels).toEqual([{ nodeId: to, text: "Relative date" }]);
+      expect(listUnresolved(s)).toEqual([]);
+      expect(s.db.prepare("SELECT node_id FROM overlay.anchors").all()).toEqual([{ node_id: to }]);
+      expect(s.db.prepare("SELECT node_id FROM overlay.anchor_renames").all()).toEqual([{ node_id: to }]);
+    });
+  });
+
+  it("a hidden id, a group id and a saved view's hidden id follow a rename in place", async () => {
+    const { fx, paths } = await setup();
+    const from = sym(DATE, "formatRelativeDate");
+    const ids = [{ type: "ids" as const, ids: [from] }];
+    withStore(paths, (s) => {
+      setHidden(s, ids);
+      saveGroup(s, { id: "dates", name: "Dates", selectors: ids, mayUse: null });
+      saveView(s, {
+        id: "v",
+        name: "V",
+        spec: { view: "project-map", hidden: ids, groups: [], filters: {} },
+      });
+    });
+    renameFormatRelative(fx);
+    await heal(paths, { reattach: true });
+
+    withStore(paths, (s) => {
+      const to = [{ type: "ids", ids: [sym(DATE, "formatRelative")] }];
+      const o = readOverlay(s);
+      expect(o.hidden).toEqual(to);
+      expect(o.groups[0]?.selectors).toEqual(to);
+      expect(o.views[0]?.spec.hidden).toEqual(to);
+      expect(listUnresolved(s)).toEqual([]);
+    });
+  });
+
+  it("a rename in place with a changed body stays as it was and is listed as gone", async () => {
+    const { fx, paths } = await setup();
+    const from = sym(DATE, "formatRelativeDate");
+    withStore(paths, (s) => setLabel(s, { nodeId: from, text: "Relative date" }));
+
+    renameFormatRelative(fx);
+    write(fx, DATE, read(fx, DATE).replace('"just now"', '"now"'));
+    commit(fx, "change body");
     await heal(paths, { reattach: true });
 
     withStore(paths, (s) => {
@@ -132,6 +182,39 @@ describe("reattachOverlay (run by heal)", () => {
         { entry: "label", id: from, text: "Relative date", reason: "gone" },
       ]);
     });
+  });
+
+  it("two renamed-hash candidates are listed as ambiguous and nothing is guessed", async () => {
+    const { fx, paths } = await setup();
+    const from = sym(DATE, "formatRelativeDate");
+    withStore(paths, (s) => setLabel(s, { nodeId: from, text: "Relative date" }));
+
+    // Rename it in place and add a second copy under another name: two symbols share the renamedHash.
+    const text = read(fx, DATE).replace(/formatRelativeDate/g, "formatRelative");
+    write(fx, DATE, `${text}\n${text.replace("formatRelative", "formatRelativeCopy")}`);
+    write(
+      fx,
+      "packages/utils/src/index.ts",
+      read(fx, "packages/utils/src/index.ts").replace("formatRelativeDate", "formatRelative"),
+    );
+    commit(fx, "rename and copy");
+    await heal(paths, { reattach: true });
+
+    withStore(paths, (s) => {
+      expect(readOverlay(s).labels).toEqual([{ nodeId: from, text: "Relative date" }]);
+      expect(listUnresolved(s)).toEqual([
+        { entry: "label", id: from, text: "Relative date", reason: "ambiguous" },
+      ]);
+    });
+  });
+
+  it("a heal without reattach (the hooks) does not follow a rename in place", async () => {
+    const { fx, paths } = await setup();
+    const from = sym(DATE, "formatRelativeDate");
+    withStore(paths, (s) => setLabel(s, { nodeId: from, text: "Relative date" }));
+    renameFormatRelative(fx);
+    await heal(paths);
+    withStore(paths, (s) => expect(readOverlay(s).labels).toEqual([{ nodeId: from, text: "Relative date" }]));
   });
 
   it("a moved function whose body changed stays as it was and is listed as gone", async () => {

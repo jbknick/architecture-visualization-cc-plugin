@@ -69,6 +69,7 @@ describe("the overlay file (overlay.db)", () => {
       s.db.prepare("SELECT name FROM overlay.sqlite_master WHERE type = 'table'").all() as { name: string }[]
     ).map((r) => r.name);
     expect(ov.sort()).toEqual([
+      "anchor_renames",
       "anchors",
       "dismissals",
       "group_rules",
