@@ -2,7 +2,9 @@
 // renames and moves, by id alone and with the shipped re-attachment (heal with `reattach`, which runs reattachOverlay).
 // Each entry is a real label in an overlay.db; the script has no copy of the re-attach rule.
 // Usage: pnpm tsx docs/spikes/overlay-ids/run.ts --repo <name in evals/oss/repos.json> [--commits 500]
-//        [--sample 1000] [--seed 1] [--write-results]
+//        [--sample 1000] [--seed 1] [--write-results] [--renamed-in-place]
+// --renamed-in-place samples only the base functions that are renamed in place (same file, new name) at some replayed
+// commit, found by replaying the diffs once first (#349); the other entries cannot show whether a rename is followed.
 // Prints the repo's section of results.json (sorted keys, no timing) to stdout; timing goes to stderr.
 // --write-results also merges the section into docs/spikes/overlay-ids/results.json.
 
@@ -180,7 +182,26 @@ async function main(): Promise<void> {
 
   // Sample: function-like symbols sorted by id, a seeded partial Fisher-Yates shuffle, the first sampleN.
   const first = loadFunctionLike(paths.dbPath);
-  const pool = [...first.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  let pool = [...first.keys()].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  if (process.argv.includes("--renamed-in-place")) {
+    const origin = new Map(pool.map((id) => [id, id]));
+    const renamed = new Set<string>();
+    for (let k = 1; k < chain.length; k++) {
+      const diff = await reviewDiff(paths, chain[k - 1] as string, chain[k] as string);
+      for (const c of diff.changes) {
+        const before = c.before?.id;
+        const o = before === undefined ? undefined : origin.get(before);
+        if (before === undefined || o === undefined) continue;
+        if (c.kind === "removed") origin.delete(before);
+        else if (c.after && (c.kind === "renamed" || c.kind === "moved")) {
+          origin.delete(before);
+          origin.set(c.after.id, o);
+          if (c.kind === "renamed" && pathOf(c.after.id) === pathOf(before)) renamed.add(o);
+        }
+      }
+    }
+    pool = pool.filter((id) => renamed.has(id));
+  }
   const rnd = mulberry32(seed);
   const take = Math.min(sampleN, pool.length);
   for (let i = 0; i < take; i++) {

@@ -161,7 +161,7 @@ export function deleteView(store: Store, id: string): boolean {
 /** Clears labels, hidden, groups, rules, saved views and anchors. Dismissals and layouts stay. */
 export function resetOverlay(store: Store): void {
   store.tx(() => {
-    for (const t of ["labels", "hidden", "groups", "group_rules", "views", "anchors"]) {
+    for (const t of ["labels", "hidden", "groups", "group_rules", "views", "anchors", "anchor_renames"]) {
       store.db.prepare(`DELETE FROM overlay.${t}`).run();
     }
   });

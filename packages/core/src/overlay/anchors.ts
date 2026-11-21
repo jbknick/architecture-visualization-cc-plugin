@@ -43,4 +43,26 @@ export function syncAnchors(store: Store, state: OverlayState): void {
     const sym = store.getSymbol(id);
     if (sym && have.get(id) !== sym.exactHash) up.run(id, sym.exactHash);
   }
+  syncRenamedAnchors(store, used);
+}
+
+/** The `renamedHash` twin of the anchors (`overlay.anchor_renames`, #349), kept the same way; a symbol without a `renamedHash` gets none. */
+function syncRenamedAnchors(store: Store, used: Set<string>): void {
+  const have = new Map(
+    (
+      store.db.prepare("SELECT node_id, renamed_hash FROM overlay.anchor_renames").all() as {
+        node_id: string;
+        renamed_hash: string;
+      }[]
+    ).map((r) => [r.node_id, r.renamed_hash]),
+  );
+  const del = store.db.prepare("DELETE FROM overlay.anchor_renames WHERE node_id = ?");
+  for (const id of have.keys()) if (!used.has(id)) del.run(id);
+  const up = store.db.prepare(
+    "INSERT INTO overlay.anchor_renames(node_id, renamed_hash) VALUES (?, ?) ON CONFLICT(node_id) DO UPDATE SET renamed_hash = excluded.renamed_hash",
+  );
+  for (const id of [...used].sort()) {
+    const sym = store.getSymbol(id);
+    if (sym?.renamedHash && have.get(id) !== sym.renamedHash) up.run(id, sym.renamedHash);
+  }
 }
