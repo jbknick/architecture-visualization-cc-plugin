@@ -1,0 +1,30 @@
+{
+  "repo": "nestjs-realworld-typeorm",
+  "sha": "c1c2cc4e448b279ff083272df1ac50d20c3304fa",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each site before any scoring run; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    { "name": "tag" },
+    { "name": "article" },
+    { "name": "comment" },
+    { "name": "follows" },
+    { "name": "user" }
+  ],
+  "read": [
+    { "file": "src/article/article.service.ts", "table": "article" },
+    { "file": "src/article/article.service.ts", "table": "comment" },
+    { "file": "src/article/article.service.ts", "table": "follows" },
+    { "file": "src/article/article.service.ts", "table": "user" },
+    { "file": "src/profile/profile.service.ts", "table": "follows" },
+    { "file": "src/profile/profile.service.ts", "table": "user" },
+    { "file": "src/tag/tag.service.ts", "table": "tag" },
+    { "file": "src/user/user.service.ts", "table": "user" }
+  ],
+  "write": [
+    { "file": "src/article/article.service.ts", "table": "article" },
+    { "file": "src/article/article.service.ts", "table": "comment" },
+    { "file": "src/article/article.service.ts", "table": "user" },
+    { "file": "src/profile/profile.service.ts", "table": "follows" },
+    { "file": "src/user/user.service.ts", "table": "user" }
+  ]
+}

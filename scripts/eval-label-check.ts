@@ -3,6 +3,7 @@
 // file and, where the label names something, the line holds that name. No network, no scoring.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { holdsTable } from "./eval-label-candidates.js";
 import type { Labels } from "./eval-lib.js";
 
 /** Number of labels a case has, as printed by `check-labels`. */
@@ -84,8 +85,7 @@ export function checkLabels(labels: Labels, cloneDir: string): string[] {
     for (const p of labels[kind]) {
       const what = `${kind} ${p.file} ${p.table}`;
       if (!linesOf(p.file)) out.push(`${what}: ${p.file} does not exist`);
-      else if (!textOf(p.file)?.includes(p.table.toLowerCase()))
-        out.push(`${what}: ${p.file} does not hold ${p.table}`);
+      else if (!holdsTable(textOf(p.file), p.table)) out.push(`${what}: ${p.file} does not hold ${p.table}`);
       for (const f of p.fns ?? [])
         add(at(p.file, f.line, `${what} fn ${f.name}`), f.name, `${what} fn ${f.name}`);
     }

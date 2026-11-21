@@ -1,0 +1,44 @@
+{
+  "repo": "sequelize-typescript-example",
+  "sha": "cb1e675c9cd8a6df8955c81a3dedfb02b7cc4a31",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each site before any scoring run; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    { "name": "Actors" },
+    { "name": "Genres" },
+    { "name": "MovieActors" },
+    { "name": "MovieGenres" },
+    { "name": "Movies" }
+  ],
+  "read": [
+    { "file": "lib/routes/actors.ts", "table": "Actors" },
+    { "file": "lib/routes/movies.ts", "table": "Movies" }
+  ],
+  "write": [
+    { "file": "lib/routes/actors.ts", "table": "Actors" },
+    { "file": "lib/routes/actors.ts", "table": "MovieActors" },
+    { "file": "lib/routes/movies.ts", "table": "Movies" }
+  ],
+  "unresolved": [
+    {
+      "file": "lib/routes/actors.ts",
+      "line": 29,
+      "reason": "the scope comes from the query string; the scopes include the movies and genres tables"
+    },
+    {
+      "file": "lib/routes/actors.ts",
+      "line": 37,
+      "reason": "the scope comes from the query string; the scopes include the movies and genres tables"
+    },
+    {
+      "file": "lib/routes/movies.ts",
+      "line": 17,
+      "reason": "the scope comes from the query string; the scopes include the actors and genres tables"
+    },
+    {
+      "file": "lib/routes/movies.ts",
+      "line": 25,
+      "reason": "the scope comes from the query string; the scopes include the actors and genres tables"
+    }
+  ]
+}

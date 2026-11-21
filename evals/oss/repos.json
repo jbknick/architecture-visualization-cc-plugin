@@ -113,6 +113,14 @@
       "role": "tuning"
     },
     {
+      "name": "fastify-api-boilerplate-jwt",
+      "url": "https://github.com/Tony133/fastify-api-boilerplate-jwt.git",
+      "sha": "a081ab3dc687e1cd8f75ed4f4bb131f5181aa60d",
+      "stack": ["fastify", "kysely"],
+      "lang": ["ts"],
+      "role": "held-out"
+    },
+    {
       "name": "fastify-typescript",
       "url": "https://github.com/hmake98/fastify-typescript.git",
       "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783",
@@ -167,6 +175,14 @@
       "stack": ["react", "go"],
       "lang": ["ts"],
       "role": "tuning"
+    },
+    {
+      "name": "graphile-worker",
+      "url": "https://github.com/graphile/worker.git",
+      "sha": "b4f1b41c7abd747586879bf68a46a5a22897fa96",
+      "stack": ["pg"],
+      "lang": ["ts"],
+      "role": "held-out"
     },
     {
       "name": "hono",
@@ -241,6 +257,22 @@
       "role": "tuning"
     },
     {
+      "name": "nestjs-realworld-mikro-orm",
+      "url": "https://github.com/mikro-orm/nestjs-realworld-example-app.git",
+      "sha": "3bb628edebc95da30adcbeeb2ecb33158c3dbc95",
+      "stack": ["nestjs", "mikro-orm"],
+      "lang": ["ts"],
+      "role": "held-out"
+    },
+    {
+      "name": "nestjs-realworld-typeorm",
+      "url": "https://github.com/lujakob/nestjs-realworld-example-app.git",
+      "sha": "c1c2cc4e448b279ff083272df1ac50d20c3304fa",
+      "stack": ["nestjs", "typeorm"],
+      "lang": ["ts"],
+      "role": "held-out"
+    },
+    {
       "name": "nestjs-sequelize-typescript",
       "url": "https://github.com/kentloog/nestjs-sequelize-typescript.git",
       "sha": "6ec21637a0ad70c8a4e7d9e2498cc8b284e3eb74",
@@ -263,6 +295,14 @@
       "stack": ["nextjs", "drizzle"],
       "lang": ["ts"],
       "role": "tuning"
+    },
+    {
+      "name": "node-express-mongoose-typescript-boilerplate",
+      "url": "https://github.com/saisilinus/node-express-mongoose-typescript-boilerplate.git",
+      "sha": "278143db5b01d5281649a968c18b40ae709f2ec7",
+      "stack": ["express", "mongoose"],
+      "lang": ["ts"],
+      "role": "held-out"
     },
     {
       "name": "node-express-realworld-example-app",
@@ -305,6 +345,14 @@
       "role": "held-out"
     },
     {
+      "name": "saas-starter",
+      "url": "https://github.com/nextjs/saas-starter.git",
+      "sha": "6e33e58b1e553a41fe22e6b941a7229a002de361",
+      "stack": ["nextjs", "drizzle"],
+      "lang": ["ts"],
+      "role": "held-out"
+    },
+    {
       "name": "saasfly",
       "url": "https://github.com/nextify-limited/saasfly.git",
       "sha": "49f7e28f69eae9cd9eed84221e13a3dbae87da67",
@@ -313,12 +361,28 @@
       "role": "tuning"
     },
     {
+      "name": "sequelize-typescript-example",
+      "url": "https://github.com/RobinBuschmann/sequelize-typescript-example.git",
+      "sha": "cb1e675c9cd8a6df8955c81a3dedfb02b7cc4a31",
+      "stack": ["sequelize"],
+      "lang": ["ts"],
+      "role": "held-out"
+    },
+    {
       "name": "simplebank",
       "url": "https://github.com/techschool/simplebank.git",
       "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263",
       "stack": ["sqlc"],
       "lang": ["go"],
       "role": "tuning"
+    },
+    {
+      "name": "taxonomy",
+      "url": "https://github.com/shadcn-ui/taxonomy.git",
+      "sha": "298a8857c7128a0d121e7f699dfd729f23b3966d",
+      "stack": ["nextjs", "prisma"],
+      "lang": ["ts"],
+      "role": "held-out"
     },
     {
       "name": "trpc",

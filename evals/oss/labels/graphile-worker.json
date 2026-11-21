@@ -1,0 +1,72 @@
+{
+  "repo": "graphile-worker",
+  "sha": "b4f1b41c7abd747586879bf68a46a5a22897fa96",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each site before any scoring run; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    { "name": "_private_jobs" },
+    { "name": "_private_job_queues" },
+    { "name": "_private_tasks" },
+    { "name": "_private_known_crontabs" },
+    { "name": "migrations" }
+  ],
+  "read": [
+    { "file": "src/cleanup.ts", "table": "_private_jobs" },
+    { "file": "src/cron.ts", "table": "_private_known_crontabs" },
+    { "file": "src/migrate.ts", "table": "migrations" },
+    { "file": "src/sql/getJobs.ts", "table": "_private_job_queues" },
+    { "file": "src/sql/getJobs.ts", "table": "_private_jobs" },
+    { "file": "src/sql/getQueueNames.ts", "table": "_private_job_queues" },
+    { "file": "src/taskIdentifiers.ts", "table": "_private_tasks" }
+  ],
+  "write": [
+    { "file": "src/cleanup.ts", "table": "_private_job_queues" },
+    { "file": "src/cleanup.ts", "table": "_private_jobs" },
+    { "file": "src/cleanup.ts", "table": "_private_tasks" },
+    { "file": "src/cron.ts", "table": "_private_known_crontabs" },
+    { "file": "src/migrate.ts", "table": "migrations" },
+    { "file": "src/sql/completeJobs.ts", "table": "_private_job_queues" },
+    { "file": "src/sql/completeJobs.ts", "table": "_private_jobs" },
+    { "file": "src/sql/failJobs.ts", "table": "_private_job_queues" },
+    { "file": "src/sql/failJobs.ts", "table": "_private_jobs" },
+    { "file": "src/sql/getJobs.ts", "table": "_private_job_queues" },
+    { "file": "src/sql/getJobs.ts", "table": "_private_jobs" },
+    { "file": "src/sql/resetLockedAt.ts", "table": "_private_job_queues" },
+    { "file": "src/sql/resetLockedAt.ts", "table": "_private_jobs" },
+    { "file": "src/sql/returnJobs.ts", "table": "_private_job_queues" },
+    { "file": "src/sql/returnJobs.ts", "table": "_private_jobs" },
+    { "file": "src/taskIdentifiers.ts", "table": "_private_tasks" }
+  ],
+  "unresolved": [
+    {
+      "file": "src/helpers.ts",
+      "line": 35,
+      "reason": "calls the stored function add_job; the tables it writes are named in the migrations, not here"
+    },
+    {
+      "file": "src/helpers.ts",
+      "line": 101,
+      "reason": "calls the stored function add_jobs; the tables it writes are named in the migrations, not here"
+    },
+    {
+      "file": "src/workerUtils.ts",
+      "line": 41,
+      "reason": "calls the stored function complete_jobs; the tables it writes are named in the migrations, not here"
+    },
+    {
+      "file": "src/workerUtils.ts",
+      "line": 51,
+      "reason": "calls the stored function permanently_fail_jobs; the tables it writes are named in the migrations, not here"
+    },
+    {
+      "file": "src/workerUtils.ts",
+      "line": 61,
+      "reason": "calls the stored function reschedule_jobs; the tables it writes are named in the migrations, not here"
+    },
+    {
+      "file": "src/workerUtils.ts",
+      "line": 83,
+      "reason": "calls the stored function force_unlock_workers; the tables it writes are named in the migrations, not here"
+    }
+  ]
+}

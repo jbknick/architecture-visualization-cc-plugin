@@ -1,0 +1,34 @@
+{
+  "repo": "taxonomy",
+  "sha": "298a8857c7128a0d121e7f699dfd729f23b3966d",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each site before any scoring run; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    { "name": "accounts" },
+    { "name": "sessions" },
+    { "name": "users" },
+    { "name": "verification_tokens" },
+    { "name": "posts" }
+  ],
+  "read": [
+    { "file": "app/(dashboard)/dashboard/page.tsx", "table": "posts" },
+    { "file": "app/(editor)/editor/[postId]/page.tsx", "table": "posts" },
+    { "file": "app/api/posts/[postId]/route.ts", "table": "posts" },
+    { "file": "app/api/posts/route.ts", "table": "posts" },
+    { "file": "lib/auth.ts", "table": "users" },
+    { "file": "lib/subscription.ts", "table": "users" }
+  ],
+  "write": [
+    { "file": "app/api/posts/[postId]/route.ts", "table": "posts" },
+    { "file": "app/api/posts/route.ts", "table": "posts" },
+    { "file": "app/api/users/[userId]/route.ts", "table": "users" },
+    { "file": "app/api/webhooks/stripe/route.ts", "table": "users" }
+  ],
+  "unresolved": [
+    {
+      "file": "lib/auth.ts",
+      "line": 17,
+      "reason": "the NextAuth Prisma adapter reads and writes accounts, sessions, users and verification_tokens inside the library"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "repo": "react-tanstarter",
+  "sha": "7faa622c492fc3f699dc959afc69a76205bb1774",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each site before any scoring run; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [{ "name": "user" }, { "name": "session" }, { "name": "account" }, { "name": "verification" }],
+  "read": [],
+  "write": [],
+  "unresolved": [
+    {
+      "file": "src/lib/auth/auth.ts",
+      "line": 15,
+      "reason": "the better-auth Drizzle adapter reads and writes user, session, account and verification inside the library"
+    }
+  ]
+}
