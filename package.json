@@ -17,6 +17,7 @@
     "eval:score": "tsx scripts/eval-score.ts",
     "fmt": "biome check --write .",
     "perf": "GANTRY_PERF=1 vitest run -t performance packages/core/src/dup/engine.test.ts",
+    "reattach:e2e": "tsx scripts/reattach-e2e.ts",
     "readme:media": "tsx scripts/readme-media.ts",
     "release": "tsx scripts/release.ts",
     "release:pack": "tsx scripts/pack.ts",

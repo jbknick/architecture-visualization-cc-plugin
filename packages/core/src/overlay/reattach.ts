@@ -1,3 +1,4 @@
+import { kindFamily } from "../dup/filters.js";
 import { pathOfSymId } from "../ids.js";
 import type { Store } from "../store/index.js";
 import { ANCHOR_KINDS, syncAnchors, usedSymIds } from "./anchors.js";
@@ -40,18 +41,34 @@ function idsByHash(store: Store): { exact: Map<string, string[]>; renamed: Map<s
 }
 
 /**
- * Symbols that are the anchored function under a new name: the effective ones with its `renamedHash` in the same file.
- * Only the same file, because a `renamedHash` also matches a copy written elsewhere under another name; a rename that
- * also moves the function stays listed.
+ * Symbols that are the anchored function under a new name: the effective ones with its `renamedHash` in the same file
+ * and of the same kind family (spec section 11). Only the same file, because a `renamedHash` also matches a copy
+ * written elsewhere under another name; a rename that also moves the function stays listed. An anchor without a
+ * recorded family (written before the family table existed) has no candidates.
  */
 function renamedCandidates(
+  store: Store,
   byHash: Map<string, string[]>,
   from: string,
   renamedHash: string | undefined,
+  family: string | undefined,
 ): string[] {
-  if (renamedHash === undefined) return [];
+  if (renamedHash === undefined || family === undefined) return [];
   const path = pathOfSymId(from);
-  return (byHash.get(renamedHash) ?? []).filter((id) => pathOfSymId(id) === path);
+  return (byHash.get(renamedHash) ?? []).filter((id) => {
+    if (pathOfSymId(id) !== path) return false;
+    const sym = store.getSymbol(id);
+    return sym !== undefined && kindFamily(sym.kind) === family;
+  });
+}
+
+/** The kind family each anchored id had when its entry was last written (#349). */
+function readFamilies(store: Store): Map<string, string> {
+  const rows = store.db.prepare("SELECT node_id, family FROM overlay.anchor_families").all() as {
+    node_id: string;
+    family: string;
+  }[];
+  return new Map(rows.map((r) => [r.node_id, r.family]));
 }
 
 /** The `renamedHash` each anchored id had when its entry was last written (#349). */
@@ -85,7 +102,7 @@ function renameInSelectors(selectors: Selector[], from: string, to: string): Sel
 /**
  * Re-attaches id-keyed overlay entries whose symbol is gone (spec section 11). For every anchored id that is not in the
  * effective graph, the effective function-like symbols with the anchored `exactHash` are looked up (when there are none,
- * those in the same file with the anchored `renamedHash`, so a function renamed in place follows); exactly one, whose id
+ * those in the same file and kind family with the anchored `renamedHash`, so a function renamed in place follows); exactly one, whose id
  * the same entry does not already hold, becomes the entry's new id everywhere the old id occurs (label row, selector
  * JSON, anchor row) in one transaction. Zero or several leave the entry as it is. Writes only when an id changes, so an
  * index with no moved symbol leaves `overlay.db` byte-identical. Never called from a Claude Code hook.
@@ -97,12 +114,15 @@ export function reattachOverlay(store: Store): ReattachResult {
   if (missing.length > 0) {
     const byHash = idsByHash(store);
     const renamedAnchors = readRenamedAnchors(store);
+    const families = readFamilies(store);
     const plan: { from: string; to: string }[] = [];
     for (const from of missing) {
       // `exactHash` first; `renamedHash` (the same body under another name) only when no symbol has the exact one.
       const exact = byHash.exact.get(anchors.get(from) as string) ?? [];
       const found =
-        exact.length > 0 ? exact : renamedCandidates(byHash.renamed, from, renamedAnchors.get(from));
+        exact.length > 0
+          ? exact
+          : renamedCandidates(store, byHash.renamed, from, renamedAnchors.get(from), families.get(from));
       if (found.length === 1) plan.push({ from, to: found[0] as string });
     }
     if (plan.length > 0) {
@@ -171,10 +191,12 @@ export function listUnresolved(store: Store): UnresolvedEntry[] {
   const anchors = readAnchors(store);
   const byHash = idsByHash(store);
   const renamedAnchors = readRenamedAnchors(store);
+  const families = readFamilies(store);
   const reasonOf = (id: string): "gone" | "ambiguous" => {
     const hash = anchors.get(id);
     if (hash !== undefined && (byHash.exact.get(hash)?.length ?? 0) > 0) return "ambiguous";
-    return renamedCandidates(byHash.renamed, id, renamedAnchors.get(id)).length > 0 ? "ambiguous" : "gone";
+    const candidates = renamedCandidates(store, byHash.renamed, id, renamedAnchors.get(id), families.get(id));
+    return candidates.length > 0 ? "ambiguous" : "gone";
   };
   const gone = new Set(missing);
   const out: UnresolvedEntry[] = [];
