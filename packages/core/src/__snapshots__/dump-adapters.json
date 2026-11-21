@@ -5314,5 +5314,42 @@
         "line": 3
       }
     }
+  ],
+  "gaps": [
+    {
+      "id": "gap:client_call:call:adapters:@demo/web:rpc posts.archive",
+      "kind": "client_call",
+      "file": "apps/web/src/hooks/usePostActions.ts",
+      "line": 12,
+      "detail": "rpc posts.archive has no endpoint"
+    },
+    {
+      "id": "gap:site:apps/server/src/app.ts#app.route(\"/api\")",
+      "kind": "site",
+      "file": "apps/server/src/app.ts",
+      "line": 16,
+      "detail": "app.route(\"/api\")"
+    },
+    {
+      "id": "gap:site:apps/server/src/app.ts#app.route(\"/api/users\")",
+      "kind": "site",
+      "file": "apps/server/src/app.ts",
+      "line": 17,
+      "detail": "app.route(\"/api/users\")"
+    },
+    {
+      "id": "gap:site:packages/db/src/queries.ts#sql:05537af27c57",
+      "kind": "site",
+      "file": "packages/db/src/queries.ts",
+      "line": 40,
+      "detail": "SQL select count(*) from posts"
+    },
+    {
+      "id": "gap:site:packages/legacy/src/index.ts#legacy.get(\"/legacy\")",
+      "kind": "site",
+      "file": "packages/legacy/src/index.ts",
+      "line": 8,
+      "detail": "legacy.get(\"/legacy\")"
+    }
   ]
 }
