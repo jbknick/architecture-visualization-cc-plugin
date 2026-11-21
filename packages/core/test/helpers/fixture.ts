@@ -4,7 +4,25 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export type FixtureName = "single-pkg" | "pnpm-turbo" | "nx" | "adapters" | "go-basic" | "overlay-groups";
+export type FixtureName =
+  | "single-pkg"
+  | "pnpm-turbo"
+  | "nx"
+  | "adapters"
+  | "go-basic"
+  | "overlay-groups"
+  | "deep-radius";
+
+export interface MaterializeOptions {
+  /**
+   * Also create branch `feature` from `main` with the files of `fixtures/<name>.feature/` copied over the tree, then
+   * check `main` out again. Both commits get a fixed author, committer and date, so their SHAs are the same on every
+   * machine.
+   */
+  feature?: boolean;
+  /** Name of the directory the repo is created in, which is the repo name in ids (default: the fixture's name). */
+  dirName?: string;
+}
 
 export interface MaterializedFixture {
   dir: string;
@@ -14,13 +32,44 @@ export interface MaterializedFixture {
 
 const fixturesRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../../fixtures");
 
+const FIXED_COMMIT_ENV = {
+  GIT_AUTHOR_NAME: "Gantry Fixture",
+  GIT_AUTHOR_EMAIL: "fixture@example.invalid",
+  GIT_COMMITTER_NAME: "Gantry Fixture",
+  GIT_COMMITTER_EMAIL: "fixture@example.invalid",
+  GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z",
+  GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z",
+};
+
 /** Copy a fixture to `<temp dir>/<name>`, `git init -b main`, set a local user, commit everything as "fixture". */
-export async function materializeFixture(name: FixtureName): Promise<MaterializedFixture> {
+export async function materializeFixture(
+  name: FixtureName,
+  opts: MaterializeOptions = {},
+): Promise<MaterializedFixture> {
   // The repo name of a fixture (no remote) is the basename of its directory, so every run gets the same ids.
   const parent = await mkdtemp(join(tmpdir(), `gantry-fixture-${name}-`));
-  const dir = join(parent, name);
+  return materializeInto(name, join(parent, opts.dirName ?? name), opts, () =>
+    rm(parent, { recursive: true, force: true }),
+  );
+}
+
+/** `materializeFixture` into `dir` (which must not exist yet), for `scripts/fixture-repo.ts`. */
+export async function materializeInto(
+  name: FixtureName,
+  dir: string,
+  opts: MaterializeOptions = {},
+  cleanup: () => Promise<void> = async () => {},
+): Promise<MaterializedFixture> {
   await cp(join(fixturesRoot, name), dir, { recursive: true });
-  return commitAll(parent, dir);
+  const fx = commitAll(dir, cleanup, opts.feature === true);
+  if (opts.feature) {
+    fx.git(["checkout", "-q", "-b", "feature"]);
+    await cp(join(fixturesRoot, `${name}.feature`), dir, { recursive: true });
+    fx.git(["add", "-A", "-f"]);
+    fx.git(["commit", "-q", "-m", "feature"]);
+    fx.git(["checkout", "-q", "main"]);
+  }
+  return fx;
 }
 
 /** Write `files` (path to text) into a fresh temp repo named `repo` and commit them, like `materializeFixture`. */
@@ -34,17 +83,22 @@ export async function materializeFiles(
     await mkdir(dirname(join(dir, p)), { recursive: true });
     await writeFile(join(dir, p), text);
   }
-  return commitAll(parent, dir);
+  return commitAll(dir, () => rm(parent, { recursive: true, force: true }), false);
 }
 
-async function commitAll(parent: string, dir: string): Promise<MaterializedFixture> {
+function commitAll(dir: string, cleanup: () => Promise<void>, fixedDates: boolean): MaterializedFixture {
   const git = (args: string[]): string =>
-    execFileSync("git", args, { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-  git(["init", "-b", "main"]);
+    execFileSync("git", args, {
+      cwd: dir,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: fixedDates ? { ...process.env, ...FIXED_COMMIT_ENV } : process.env,
+    });
+  git(["init", "-q", "-b", "main"]);
   git(["config", "user.name", "Gantry Fixture"]);
   git(["config", "user.email", "fixture@example.invalid"]);
   git(["config", "commit.gpgsign", "false"]);
   git(["add", "-A", "-f"]);
-  git(["commit", "-m", "fixture"]);
-  return { dir, git, cleanup: () => rm(parent, { recursive: true, force: true }) };
+  git(["commit", "-q", "-m", "fixture"]);
+  return { dir, git, cleanup };
 }
