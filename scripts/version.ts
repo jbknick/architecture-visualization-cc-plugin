@@ -20,6 +20,8 @@ export const VERSION_FILES = [
 /** Paths whose changes ship in the plugin (plugin/ plus the packages bundled into plugin/dist, and the bundler config). */
 export const CONTENT_PATHS = [
   "plugin",
+  "action/action.yml",
+  "action/src",
   "packages/core/src",
   "packages/cli/src",
   "packages/mcp/src",

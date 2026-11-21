@@ -9,6 +9,7 @@
   },
   "packageManager": "pnpm@10.31.0",
   "scripts": {
+    "action:e2e": "tsx scripts/action-e2e.ts",
     "build": "tsc -b && tsup && pnpm --filter @gantry/explorer build:web",
     "check": "biome check . && tsx scripts/check-toolchain.ts && tsx scripts/check-version.ts && tsc -b && tsc -p evals/tsconfig.json && vitest run && tsx scripts/describe-mutations.ts",
     "eval:clone": "tsx scripts/eval-clone.ts",

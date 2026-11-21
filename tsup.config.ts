@@ -5,6 +5,8 @@ export default defineConfig({
   entry: {
     cli: "packages/cli/src/main.ts",
     mcp: "packages/mcp/src/main.ts",
+    // The pull request comment script of the GitHub Action (#282); only node built-ins, so it needs no external.
+    action: "action/src/main.ts",
   },
   outDir: "plugin/dist",
   format: ["esm"],
