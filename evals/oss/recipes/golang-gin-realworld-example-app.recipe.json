@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "dependencies": [
+    {
+      "name": "github.com/gin-gonic/gin",
+      "role": "framework",
+      "note": "router: gin.Default(), Group, GET and the other verbs"
+    },
+    {
+      "name": "gorm.io/gorm",
+      "role": "data-access",
+      "note": "ORM: the tables are the models passed to AutoMigrate"
+    }
+  ],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "param-flow"],
+  "rules": [
+    {
+      "id": "gin-engine",
+      "language": "go",
+      "when": { "dependency": ["github.com/gin-gonic/gin"] },
+      "rule": { "any": [{ "pattern": "gin.Default()" }, { "pattern": "gin.New()" }] },
+      "emit": { "kind": "router" },
+      "examples": {
+        "match": ["r := gin.Default()", "r := gin.New()"],
+        "noMatch": ["r := echo.New()"]
+      }
+    },
+    {
+      "id": "gin-group",
+      "language": "go",
+      "when": { "dependency": ["github.com/gin-gonic/gin"] },
+      "rule": { "pattern": { "context": "func _() { $P.Group($PATH) }", "selector": "call_expression" } },
+      "constraints": { "PATH": { "kind": "interpreted_string_literal" } },
+      "emit": { "kind": "mount", "parent": "$P", "prefix": "$PATH" },
+      "examples": {
+        "match": ["v1 := r.Group(\"/api\")"],
+        "noMatch": ["r.Group(prefix)", "r.GET(\"/api\", h)"]
+      }
+    },
+    {
+      "id": "gin-verb",
+      "language": "go",
+      "when": { "dependency": ["github.com/gin-gonic/gin"] },
+      "rule": { "pattern": "$R.$M($P, $$$H)" },
+      "constraints": { "M": { "regex": "^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$P", "handler": "$$$H" },
+      "examples": {
+        "match": ["r.GET(\"/ping\", ping)", "g.POST(\"/\", auth, create)"],
+        "noMatch": ["r.Get(\"/ping\", ping)"]
+      }
+    },
+    {
+      "id": "gin-use",
+      "language": "go",
+      "when": { "dependency": ["github.com/gin-gonic/gin"] },
+      "rule": { "pattern": { "context": "func _() { $R.Use($$$H) }", "selector": "call_expression" } },
+      "emit": { "kind": "middleware", "receiver": "$R", "handler": "$$$H" },
+      "examples": {
+        "match": ["v1.Use(requireToken)"],
+        "noMatch": ["v1.Used(requireToken)"]
+      }
+    },
+    {
+      "id": "gorm-automigrate",
+      "language": "go",
+      "when": { "dependency": ["gorm.io/gorm"] },
+      "rule": {
+        "pattern": { "context": "func _() { $DB.AutoMigrate(&$M{}) }", "selector": "call_expression" }
+      },
+      "emit": { "kind": "table", "name": "$M", "model": "$M" },
+      "examples": {
+        "match": ["db.AutoMigrate(&UserModel{})", "db.AutoMigrate(&articles.ArticleModel{})"],
+        "noMatch": ["db.AutoMigrate(models...)"]
+      }
+    }
+  ]
+}

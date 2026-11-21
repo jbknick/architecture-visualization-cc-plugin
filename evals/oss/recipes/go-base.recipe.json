@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "dependencies": [
+    {
+      "name": "github.com/go-chi/chi/v5",
+      "role": "framework",
+      "note": "router: chi.NewRouter(), Route, Mount, Group, Get and the other verbs"
+    },
+    {
+      "name": "github.com/uptrace/bun",
+      "role": "data-access",
+      "note": "query builder; the tables are declared by CREATE TABLE statements in the Go migration files, read with sql-text"
+    }
+  ],
+  "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "sql-text"],
+  "sql": { "exclude": ["**/*_test.go"] },
+  "rules": [
+    {
+      "id": "chi-router",
+      "language": "go",
+      "when": { "dependency": ["github.com/go-chi/chi/v5"] },
+      "rule": { "pattern": "chi.NewRouter()" },
+      "emit": { "kind": "router" },
+      "examples": {
+        "match": ["r := chi.NewRouter()"],
+        "noMatch": ["r := mux.NewRouter()"]
+      }
+    },
+    {
+      "id": "chi-route",
+      "language": "go",
+      "when": { "dependency": ["github.com/go-chi/chi/v5"] },
+      "rule": { "pattern": "$R.Route($P, $F)" },
+      "emit": { "kind": "mount", "parent": "$R", "prefix": "$P", "child": "$F", "childIsScope": true },
+      "examples": {
+        "match": ["r.Route(\"/items\", func(r chi.Router) {\n\tr.Get(\"/\", list)\n})"],
+        "noMatch": ["r.Get(\"/items\", list)"]
+      }
+    },
+    {
+      "id": "chi-group",
+      "language": "go",
+      "when": { "dependency": ["github.com/go-chi/chi/v5"] },
+      "rule": { "pattern": { "context": "func _() { $R.Group($F) }", "selector": "call_expression" } },
+      "constraints": { "F": { "kind": "func_literal" } },
+      "emit": { "kind": "mount", "parent": "$R", "child": "$F", "childIsScope": true },
+      "examples": {
+        "match": ["r.Group(func(r chi.Router) {\n\tr.Get(\"/me\", me)\n})"],
+        "noMatch": ["r.Get(\"/me\", me)"]
+      }
+    },
+    {
+      "id": "chi-mount",
+      "language": "go",
+      "when": { "dependency": ["github.com/go-chi/chi/v5"] },
+      "rule": { "pattern": "$R.Mount($P, $C)" },
+      "emit": { "kind": "mount", "parent": "$R", "prefix": "$P", "child": "$C" },
+      "examples": {
+        "match": ["r.Mount(\"/api\", apiRouter())"],
+        "noMatch": ["r.Get(\"/api\", apiRouter())"]
+      }
+    },
+    {
+      "id": "chi-verb",
+      "language": "go",
+      "when": { "dependency": ["github.com/go-chi/chi/v5"] },
+      "rule": { "pattern": "$R.$M($P, $H)" },
+      "constraints": { "M": { "regex": "^(Get|Post|Put|Patch|Delete|Head|Options)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "$M", "path": "$P", "handler": "$H" },
+      "examples": {
+        "match": ["r.Get(\"/ping\", ping)", "r.Delete(\"/{id}\", rs.delete)"],
+        "noMatch": ["v := q.Get(\"limit\")", "r.Handle(\"/x\", h)"]
+      }
+    },
+    {
+      "id": "chi-handle",
+      "language": "go",
+      "when": { "dependency": ["github.com/go-chi/chi/v5"] },
+      "rule": { "pattern": "$R.$M($P, $H)" },
+      "constraints": { "M": { "regex": "^(Handle|HandleFunc)$" } },
+      "emit": { "kind": "endpoint", "receiver": "$R", "method": "=ALL", "path": "$P", "handler": "$H" },
+      "examples": {
+        "match": ["r.Handle(\"/static/*\", fs)"],
+        "noMatch": ["r.Get(\"/static/*\", fs)"]
+      }
+    },
+    {
+      "id": "chi-use",
+      "language": "go",
+      "when": { "dependency": ["github.com/go-chi/chi/v5"] },
+      "rule": { "pattern": { "context": "func _() { $R.Use($$$H) }", "selector": "call_expression" } },
+      "emit": { "kind": "middleware", "receiver": "$R", "handler": "$$$H" },
+      "examples": {
+        "match": ["r.Use(middleware.Logger)", "r.Use(a, b)"],
+        "noMatch": ["r.Useful(a)"]
+      }
+    }
+  ]
+}
