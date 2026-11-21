@@ -26,6 +26,8 @@ export interface WorkerResult {
   inputTokens: number;
   outputTokens: number;
   ms: number;
+  /** Model ids the calls reported in `modelUsage` (what the route alias resolved to); absent when none reported one (#372). */
+  models?: string[];
 }
 
 export interface WorkerOptions {
@@ -128,6 +130,7 @@ export function renderFactSheets(sheets: FactSheet[]): string {
       if (s.doc) lines.push(`doc: ${s.doc}`);
       if (s.callees.length > 0) lines.push(`callees: ${s.callees.join(", ")}`);
       if (s.returnType) lines.push(`returns: ${s.returnType}`);
+      if (s.runsWhen) lines.push(`runs: ${s.runsWhen}`);
       lines.push("body:", s.body);
       return lines.join("\n");
     })
@@ -266,6 +269,7 @@ interface CallOutcome {
   results?: unknown[];
   inputTokens: number;
   outputTokens: number;
+  models?: string[];
 }
 
 function parseCall(stdout: string): CallOutcome {
@@ -284,6 +288,11 @@ function parseCall(stdout: string): CallOutcome {
     inputTokens: num(u.input_tokens) + num(u.cache_creation_input_tokens) + num(u.cache_read_input_tokens),
     outputTokens: num(u.output_tokens),
   };
+  const mu = j.modelUsage;
+  if (typeof mu === "object" && mu !== null && !Array.isArray(mu)) {
+    const ids = Object.keys(mu).filter((k) => k !== "" && k.length <= 100);
+    if (ids.length > 0) outcome.models = ids;
+  }
   if (j.is_error === true) return outcome;
   const so = j.structured_output;
   if (typeof so === "object" && so !== null && Array.isArray((so as { results?: unknown }).results)) {
@@ -390,6 +399,8 @@ export async function describeWithWorker(
       const hadTokens = call.inputTokens > 0 || call.outputTokens > 0;
       result.inputTokens += call.inputTokens;
       result.outputTokens += call.outputTokens;
+      if (call.models !== undefined)
+        result.models = [...new Set([...(result.models ?? []), ...call.models])].sort();
       try {
         logUsage(store, {
           task: opts.task,

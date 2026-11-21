@@ -83,6 +83,8 @@ export interface FactSheet {
   doc: string | null;
   callees: string[];
   returnType: string | null;
+  /** Host-written, never taken from the code: set only for a Go function named `init` (#372). */
+  runsWhen?: string;
   body: string;
 } // body trimmed to 1,500 chars
 export interface Description {
