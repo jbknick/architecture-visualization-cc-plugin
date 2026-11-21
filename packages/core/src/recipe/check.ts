@@ -128,14 +128,18 @@ export function checkRecipeText(paths: GantryPaths, text: string): RecipeCheck {
   return out;
 }
 
+/** The text of `file` (default `.gantry/recipe.json` under the repo root), or null when it cannot be read. */
+export function readRecipeFile(paths: GantryPaths, file?: string): string | null {
+  try {
+    return readFileSync(join(file ? process.cwd() : paths.root, file ?? RECIPE_PATH), "utf8");
+  } catch {
+    return null;
+  }
+}
+
 /** Reads `file` (default `.gantry/recipe.json` under the repo root) and checks it. */
 export function checkRecipeFile(paths: GantryPaths, file?: string): RecipeCheck {
-  const abs = join(file ? process.cwd() : paths.root, file ?? RECIPE_PATH);
-  let text: string;
-  try {
-    text = readFileSync(abs, "utf8");
-  } catch {
-    return { rules: [], errors: [`cannot read ${file ?? RECIPE_PATH}`] };
-  }
+  const text = readRecipeFile(paths, file);
+  if (text === null) return { rules: [], errors: [`cannot read ${file ?? RECIPE_PATH}`] };
   return checkRecipeText(paths, text);
 }

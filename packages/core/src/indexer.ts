@@ -12,7 +12,7 @@ import { createLangResolver, detectAllWorkspaces, langOfPath, parseFile } from "
 import { encodeParsed, LazyParsedMap, ParseCache } from "./parse/cache.js";
 import type { ParsedFile } from "./parse/index.js";
 import { ensureDataDir, type GantryPaths } from "./paths/index.js";
-import { loadRecipe, recipeNotes } from "./recipe/load.js";
+import { type LoadedRecipe, loadRecipe, recipeNotes } from "./recipe/load.js";
 import type { SpecifierClass } from "./resolve/index.js";
 import { openStore, type Store, splitIdentifier } from "./store/index.js";
 import type {
@@ -50,6 +50,8 @@ export interface IndexOptions {
   store?: Store;
   /** The adapters to run; default `ADAPTERS`. Tests use it to run one adapter alone. */
   adapters?: readonly Adapter<unknown>[];
+  /** A recipe to use instead of the one the layer reads (`gantry recipe check --nodes` applies a file it was given). */
+  recipe?: LoadedRecipe;
 }
 
 const READ_CONCURRENCY = 16;
@@ -331,7 +333,7 @@ async function indexOneRepo(
   // parents, mounts across imports, loader calls), so they run over the full read set on every run; each node and
   // edge is then stored with the file it names, replaced per file like symbols.
   // The recipe of the tree being indexed: the main layer reads it from HEAD, the working layer from disk.
-  const recipe = loadRecipe(root, { layer });
+  const recipe = opts.recipe ?? loadRecipe(root, { layer });
   const routes = runAdapters(
     {
       root,
