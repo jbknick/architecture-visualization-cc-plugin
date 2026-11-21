@@ -1,6 +1,6 @@
 import { clientsAdapter } from "./clients.js";
 import { drizzleAdapter } from "./drizzle.js";
-import { type Adapter, type AdapterOutput, type AdapterRunContext, runAdapterList } from "./framework.js";
+import { type Adapter, type AdapterRunContext, type AdapterRunOutput, runAdapterList } from "./framework.js";
 import { honoAdapter } from "./hono.js";
 import { orpcAdapter } from "./orpc.js";
 import { recipeAdapter } from "./recipe.js";
@@ -38,6 +38,6 @@ export const ADAPTERS: readonly Adapter<unknown>[] = [
 export function runAdapters(
   ctx: AdapterRunContext,
   adapters: readonly Adapter<unknown>[] = ADAPTERS,
-): AdapterOutput {
+): AdapterRunOutput {
   return runAdapterList(ctx, adapters);
 }

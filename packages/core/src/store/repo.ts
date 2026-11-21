@@ -1,6 +1,7 @@
 import type BetterSqlite3 from "better-sqlite3";
 import { pathOfFileId } from "../ids.js";
 import { langOfPath } from "../lang/index.js";
+import type { RecipeGap } from "../recipe/gaps.js";
 import { restoreMainFts } from "../search/descfts.js";
 import type {
   AdapterNodeRecord,
@@ -54,6 +55,10 @@ export interface Store {
   effectiveEdges(filter?: { src?: string; dst?: string; kind?: EdgeKind[] }): EdgeRecord[];
   /** Adapter nodes of the effective view (working rows win per file, like symbols), ordered by id. */
   effectiveAdapterNodes(filter?: { kind?: string; ws?: string; fileId?: string }): AdapterNodeRecord[];
+  /** Replaces the layer's recipe gaps (spec section 9); a working run also marks the working set as complete. */
+  replaceGaps(layer: Layer, gaps: readonly RecipeGap[]): void;
+  /** The open recipe gaps of the effective view, ordered by id. */
+  effectiveGaps(): RecipeGap[];
   /** Effective edges stored on the given files (all kinds), ordered like `effectiveEdges`. One query for the lot. */
   effectiveEdgesOfFiles(fileIds: readonly string[]): EdgeRecord[];
   /** Effective adapter nodes stored on the given files, ordered by id. */
@@ -428,6 +433,8 @@ export function createStore(db: Database): Store {
           stmt("DELETE FROM symbols WHERE layer = 'working'").run();
           stmt("DELETE FROM edges WHERE layer = 'working'").run();
           stmt("DELETE FROM adapter_nodes WHERE layer = 'working'").run();
+          stmt("DELETE FROM recipe_gaps WHERE layer = 'working'").run();
+          stmt("DELETE FROM meta WHERE key = 'recipe_gaps_working'").run();
         } else {
           stmt("DELETE FROM files WHERE layer = 'working' AND id = ?").run(fileId);
           deleteFileRows("working", fileId);
@@ -516,6 +523,29 @@ export function createStore(db: Database): Store {
         WHERE f.deleted = 0${where.map((w) => ` AND ${w}`).join("")}
         ORDER BY n.id`;
       return (stmt(sql).all(...args) as AdapterNodeRow[]).map(toAdapterNode);
+    },
+    replaceGaps(layer, gaps) {
+      localWrites++;
+      tx(() => {
+        stmt("DELETE FROM recipe_gaps WHERE layer = ?").run(layer);
+        const ins = stmt(
+          "INSERT INTO recipe_gaps(id, layer, kind, file, line, detail) VALUES (?, ?, ?, ?, ?, ?)",
+        );
+        for (const g of gaps) ins.run(g.id, layer, g.kind, g.file, g.line, g.detail);
+        if (layer === "working") {
+          stmt(
+            "INSERT INTO meta(key, value) VALUES ('recipe_gaps_working', '1') ON CONFLICT(key) DO UPDATE SET value = '1'",
+          ).run();
+        }
+      });
+    },
+    effectiveGaps() {
+      const working = stmt("SELECT 1 AS x FROM meta WHERE key = 'recipe_gaps_working'").get() !== undefined;
+      return (
+        stmt("SELECT id, kind, file, line, detail FROM recipe_gaps WHERE layer = ? ORDER BY id").all(
+          working ? "working" : "main",
+        ) as RecipeGap[]
+      ).map((r) => ({ id: r.id, kind: r.kind, file: r.file, line: r.line, detail: r.detail }));
     },
     effectiveEdgesOfFiles(fileIds) {
       if (fileIds.length === 0) return [];

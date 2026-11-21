@@ -666,7 +666,7 @@ describe("entry points", () => {
         st.close();
       }
     };
-    expect(versionOf()).toBe("12");
+    expect(versionOf()).toBe("13");
     setVersion("6");
     const input = JSON.stringify({
       session_id: "s",
@@ -748,6 +748,23 @@ describe("entry points", () => {
       out: `Gantry: ${n} functions await descriptions \u2014 run /gantry:sync when convenient\n`,
       err: "",
     });
+  });
+
+  it("session-start adds one line when recipe gaps are open, within 600 characters, and none without", async () => {
+    const fx = await fixture("pnpm-turbo");
+    expect(gantry(fx.dir, ["init"]).code).toBe(0);
+    expect(gantry(fx.dir, ["hook", "session-start"])).toEqual({ code: 0, out: "", err: "" });
+    mkdirSync(join(fx.dir, "apps/api/src"), { recursive: true });
+    writeFileSync(
+      join(fx.dir, "apps/api/src/extra.ts"),
+      'import { Router } from "express";\nconst router = Router();\nrouter.get("/health", () => {});\nexport default router;\n',
+    );
+    git(fx.dir, ["add", "-A"]);
+    expect(git(fx.dir, ["commit", "-q", "-m", "route"]).code).toBe(0);
+    const r = gantry(fx.dir, ["hook", "session-start"]);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe("Gantry: 1 recipe gaps open (gantry recipe gaps lists them)\n");
+    expect(r.out.length).toBeLessThanOrEqual(600);
   });
 
   it("post-tool-use without usable stdin and unknown hook names fail open", async () => {

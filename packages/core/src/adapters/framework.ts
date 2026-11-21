@@ -2,6 +2,7 @@ import { parseSync } from "oxc-parser";
 import { isTestPath } from "../dup/filters.js";
 import { isNode, type Node, nodeArray, unwrap } from "../parse/ast.js";
 import type { ParsedFile } from "../parse/index.js";
+import type { RecipeGap } from "../recipe/gaps.js";
 import type { LoadedRecipe } from "../recipe/load.js";
 import type { Resolver } from "../resolve/index.js";
 import type { AdapterNodeRecord, EdgeRecord, WorkspaceRecord } from "../types.js";
@@ -34,6 +35,19 @@ export interface AdapterNode extends AdapterNodeRecord {
 export interface AdapterOutput {
   nodes: AdapterNode[];
   edges: EdgeRecord[];
+}
+
+/** What `runAdapterList` returns: the nodes and edges, and the recipe gaps of the adapters that report them. */
+export interface AdapterRunOutput extends AdapterOutput {
+  gaps: RecipeGap[];
+}
+
+/** What an adapter's `gaps` stage gets: every non-test file of the read set and the final nodes and edges. */
+export interface AdapterGapContext {
+  run: AdapterRunContext;
+  files: AdapterFileContext[];
+  nodes: readonly AdapterNode[];
+  edges: readonly EdgeRecord[];
 }
 
 export interface AdapterFile {
@@ -94,6 +108,11 @@ export interface Adapter<F = unknown> {
   includeTests?: boolean;
   extract?(ctx: AdapterFileContext): AdapterExtract<F>;
   link?(ctx: AdapterLinkContext<F>): Partial<AdapterOutput>;
+  /**
+   * Runs once after every `link`, whether or not the adapter `appliesTo` a workspace, over the whole read set and the
+   * final nodes and edges: the code this adapter's inputs (the recipe) do not cover.
+   */
+  gaps?(ctx: AdapterGapContext): RecipeGap[];
 }
 
 export interface AdapterRunContext {
@@ -250,7 +269,10 @@ export function spanOf(source: string, n: Node): { start: number; end: number } 
 const edgeKeyOf = (e: EdgeRecord): string => `${e.src}\0${e.dst}\0${e.kind}`;
 
 /** Runs the given adapters, in order, over the files and returns their nodes and edges, sorted and de-duplicated (see above). */
-export function runAdapterList(ctx: AdapterRunContext, adapters: readonly Adapter<unknown>[]): AdapterOutput {
+export function runAdapterList(
+  ctx: AdapterRunContext,
+  adapters: readonly Adapter<unknown>[],
+): AdapterRunOutput {
   const wsById = new Map(ctx.workspaces.map((w) => [w.id, w]));
   const files = [...ctx.files].sort((a, b) => cmp(a.path, b.path));
   const programs = new Map<string, Node[] | null>();
@@ -347,5 +369,19 @@ export function runAdapterList(ctx: AdapterRunContext, adapters: readonly Adapte
     seenEdges.add(k);
     outEdges.push(e);
   }
-  return { nodes: outNodes, edges: outEdges };
+  const gaps: RecipeGap[] = [];
+  const withGaps = adapters.filter((a) => a.gaps);
+  if (withGaps.length > 0) {
+    const gapFiles: AdapterFileContext[] = [];
+    for (const f of files) {
+      if (isTestPath(f.path)) continue;
+      const fc = contextOf(f);
+      if (fc) gapFiles.push(fc);
+    }
+    for (const a of withGaps) {
+      gaps.push(...(a.gaps?.({ run: ctx, files: gapFiles, nodes: outNodes, edges: outEdges }) ?? []));
+    }
+    gaps.sort((a, b) => cmp(a.id, b.id));
+  }
+  return { nodes: outNodes, edges: outEdges, gaps };
 }

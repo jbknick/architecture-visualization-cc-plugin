@@ -37,9 +37,9 @@ const sha = (f: string): string => createHash("sha256").update(readFileSync(f)).
 
 describe("a store from another version of Gantry", () => {
   it("is the current version when new", () => {
-    expect(SCHEMA_VERSION).toBe(12);
+    expect(SCHEMA_VERSION).toBe(13);
     const s = openStore(dbPath);
-    expect(s.getMeta("schema_version")).toBe("12");
+    expect(s.getMeta("schema_version")).toBe("13");
     s.close();
   });
 
@@ -52,7 +52,7 @@ describe("a store from another version of Gantry", () => {
       caught = err;
     }
     expect(caught).toBeInstanceOf(StaleStoreError);
-    expect(caught).toMatchObject({ found: 6, expected: 12, dbPath });
+    expect(caught).toMatchObject({ found: 6, expected: 13, dbPath });
     // Refusing it changes nothing.
     const raw = new Database(dbPath, { readonly: true });
     expect(raw.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get()).toEqual({ value: "6" });
@@ -70,7 +70,7 @@ describe("a store from another version of Gantry", () => {
       expect(existsSync(join(dir, f))).toBe(false);
     expect(existsSync(join(dir, "config.json"))).toBe(true);
     expect(stderr.join("")).toBe(
-      "gantry: the index was built by an older version of Gantry (schema 6, now 12); rebuilding it\n",
+      "gantry: the index was built by an older version of Gantry (schema 6, now 13); rebuilding it\n",
     );
     openStore(dbPath).close(); // a new store opens
     expect(resetStaleStore({ dbPath })).toEqual({ reset: false });
@@ -95,11 +95,11 @@ describe("a store from another version of Gantry", () => {
   });
 
   it("(d) resets a newer store too", () => {
-    build(13);
+    build(14);
     expect(() => openStore(dbPath)).toThrow(StaleStoreError);
-    expect(resetStaleStore({ dbPath })).toEqual({ reset: true, found: 13 });
+    expect(resetStaleStore({ dbPath })).toEqual({ reset: true, found: 14 });
     expect(existsSync(dbPath)).toBe(false);
-    expect(stderr.join("")).toContain("(schema 13, now 12)");
+    expect(stderr.join("")).toContain("(schema 14, now 13)");
   });
 
   it("(e) resets a current store whose repo name changed, and leaves one with the same name", () => {

@@ -18,16 +18,20 @@ export async function sessionStart(paths: GantryPaths): Promise<string | undefin
   await heal(paths);
   const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath });
   let n: number;
+  let gaps: number;
   try {
     if (!isIndexed(store)) return INIT_REMINDER;
     n = (
       store.db.prepare("SELECT COUNT(*) AS n FROM backlog WHERE status != 'failed'").get() as { n: number }
     ).n;
+    gaps = store.effectiveGaps().length;
   } finally {
     store.close();
   }
   const threshold = loadConfig(paths).backlogReminderThreshold;
-  return n >= threshold
-    ? `Gantry: ${n} functions await descriptions — run /gantry:sync when convenient`
-    : undefined;
+  const lines: string[] = [];
+  if (n >= threshold)
+    lines.push(`Gantry: ${n} functions await descriptions — run /gantry:sync when convenient`);
+  if (gaps > 0) lines.push(`Gantry: ${gaps} recipe gaps open (gantry recipe gaps lists them)`);
+  return lines.length > 0 ? lines.join("\n") : undefined;
 }

@@ -1,5 +1,6 @@
 import { applyDataAccess, sqlApplies } from "../recipe/data-access.js";
 import { applyRecipe, type FileFacts, matchFile, rulesFor, whenApplies } from "../recipe/engine.js";
+import { computeGaps } from "../recipe/gaps.js";
 import { isTextRule } from "../recipe/schema.js";
 import type { Adapter } from "./framework.js";
 
@@ -55,5 +56,15 @@ export const recipeAdapter: Adapter<FileFacts> = {
       fileOf: ctx.file,
     });
     return { nodes: [...routes.nodes, ...data.nodes], edges: [...routes.edges, ...data.edges] };
+  },
+  // After every link: the client_call nodes come from the last adapter, and the covered lines from all of them.
+  gaps(ctx) {
+    return computeGaps({
+      recipe: ctx.run.recipe ?? null,
+      workspaces: ctx.run.workspaces,
+      files: ctx.files,
+      nodes: ctx.nodes,
+      edges: ctx.edges,
+    });
   },
 };
