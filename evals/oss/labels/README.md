@@ -104,6 +104,103 @@ For an endpoint with a `registration`, the line must be in the label's `file` an
 (exit 2), and `registration` is not part of any scoring key. It does not check that the label is right; that is
 the maintainer's spot check.
 
+## TypeScript framework cases (#268)
+
+Nine held-out repos, one or more per framework case of the recipe milestone. All were pinned and labelled before
+any recipe for them exists, by reading the registration sites with `rg` and then the code at each one; no label
+comes from Gantry's output. Nothing from the repos is committed: only labels, counts and SHAs.
+
+| Case                       | Repo and SHA                                                                                      | Stack                | Labelled        | Counts                                          | Maintainer spot check |
+| -------------------------- | ------------------------------------------------------------------------------------------------- | -------------------- | --------------- | ----------------------------------------------- | --------------------- |
+| `react-router-templates`   | `remix-run/react-router-templates`, `338a991a4c4d2474ea8d3699cfcd5a77a27c9424`                    | React Router         | route           | 2 routes                                        | pending               |
+| `conduit-redux-web`        | `angelguzmaning/ts-redux-react-realworld-example-app`, `cb397562724ea7f53758d5511c220690b99fe2f5` | React Router (JSX)   | route           | 9 routes                                        | pending               |
+| `fastify-demo`             | `fastify/demo`, `895908e4e706b896aa3991f3f6507617edddb1dd`                                        | Fastify, autoload    | endpoint        | 14 endpoints                                    | pending               |
+| `express-typescript`       | `edwinhern/express-typescript`, `983fa0413659cd921c5754b00f7817903eb91364`                        | Express              | endpoint        | 4 endpoints                                     | pending               |
+| `nestjs-realworld-typeorm` | `lujakob/nestjs-realworld-example-app`, `c1c2cc4e448b279ff083272df1ac50d20c3304fa`                | NestJS               | endpoint        | 21 endpoints                                    | pending               |
+| `taxonomy`                 | `shadcn-ui/taxonomy`, `298a8857c7128a0d121e7f699dfd729f23b3966d`                                  | Next.js              | route, endpoint | 14 routes, 9 endpoints                          | pending               |
+| `start-ui-web`             | `BearStudio/start-ui-web`, `368718acf5fcdd8bbee2776e5eb473647ea50950`                             | oRPC, TanStack Start | route, endpoint | 20 routes, 39 endpoints (18 rpc, 2 fn, 19 HTTP) | pending               |
+| `react-tanstarter`         | `dotnize/react-tanstarter`, `7faa622c492fc3f699dc959afc69a76205bb1774`                            | TanStack Start       | route, endpoint | 4 routes, 3 endpoints (1 fn, 2 HTTP)            | pending               |
+| `hono-open-api-starter`    | `w3cj/hono-open-api-starter`, `0d5f3bf523f525667d58edb38011e377e5898fc4`                          | Hono, zod-openapi    | endpoint        | 8 endpoints                                     | pending               |
+
+Labeller: agent `claude-sonnet-5-5`, 2026-11-21 (not the author of any recipe or matcher). The maintainer spot check
+(every tenth label in id order, from `pnpm tsx evals/oss/labels-check.ts <case> --sample 10`) is listed in the pull
+request of #268 and is recorded here when done; until then every row says `pending`.
+
+Conventions added for these cases, on top of the ones above:
+
+- **registration** is `<path>:<line>` of the call that registers the endpoint, in the label's `file`; for a call
+  that spans lines, the line where it starts (`createRoute({`, `fastify.get(`, `export async function GET(`, a
+  decorator `@Get('x')`, a `handlers` key `POST: ...`). It is absent for an endpoint with no call of its own
+  (Hono `app.doc("/doc")` is labelled without one) and for `rpc` and `fn` labels, whose schema has no such field.
+  `handler` is not given for these cases (most handlers are inline or built by a factory).
+- **Prefixes.** A Fastify autoload directory under `routes/` is a prefix (`routes/api/tasks/index.ts` is
+  `/api/tasks`; `routes/home.ts` directly under `routes/` adds none). A NestJS path is the global prefix
+  (`setGlobalPrefix('api')`), the controller prefix and the method path. A route file's own `file` holds the
+  call but not the whole path, so the check looks at the registration call, not at the last path segment.
+- **Next.js.** `page.tsx` is a route (route groups `(x)` dropped, `[x]`, `[...x]`, `[[...x]]` as written);
+  layouts are not labelled; `route.ts` has one endpoint per exported HTTP method function; `pages/api/**` is one
+  endpoint with method `ALL`. `app/api/auth/[...nextauth]/_route.ts` is not served (the file name is not
+  `route.ts`) and is not labelled.
+- **TanStack.** One route per URL; a pathless layout (`_auth`, `_guest`) and a layout file whose URL an index
+  route also has (`login/route.tsx` next to `login/index.tsx`) are not labelled. A file route with only
+  `server.handlers` is an API handler: one endpoint per handler key, path as the route id spells it (`$` for a
+  splat), and not a route. oRPC: `rpc <router key>.<procedure key>` for every procedure of the `router` object.
+  Server functions: `fn <const name>` of every `createServerFn` site, exported or not.
+- **Left out.** Routes that a plugin serves from its options (`swagger` `routePrefix` and `static` `prefix` in
+  `fastify-demo`, `SwaggerModule.setup('/docs')` in `nestjs-realworld-typeorm`, `swaggerUi.serve` in
+  `express-typescript`), and Next.js metadata files (`robots.ts`, `opengraph-image.jpg`). No path is computed at
+  run time in any of the nine repos, so `unresolved` is empty everywhere.
+
+**Replacement.** `gothinkster/react-redux-realworld-example-app` (`ee72eba4056392c95a27bc48d385d3f54ba38a18`) was
+planned for the JSX `<Route>` case. At that commit it has no TypeScript file (38 JavaScript files, 0 `.ts` or
+`.tsx`), so Gantry cannot index it and it does not use the stack the case needs. It is not pinned. The case uses
+`conduit-redux-web` instead, already pinned as held-out, which has a JSX `<Route>` tree in TypeScript. It is
+smaller (9 routes in one `Switch`, no nesting) and was already used for call-linking; the pin gains the
+`react-router` stack entry.
+
+**Few labels.** `react-router-templates` has two URLs at the pinned commit (`/` in three framework-mode templates
+and `/about` in the data-mode one); `express-typescript` has four endpoints. Both are what the repos register.
+
+Registration greps, run over each repo without tests, build output and vendored code. Every hit was read.
+
+| Case                       | Grep                                                                                                                                      |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `react-router-templates`   | `rg -n "createBrowserRouter\|<Route\b\|route\(\|index\(\|layout\(\|prefix\(\|flatRoutes" --type ts`, plus `path:` in the data-mode config |
+| `conduit-redux-web`        | `rg -n "<Route\b\|createBrowserRouter" --type ts` (`*.tsx` is included)                                                                   |
+| `fastify-demo`             | `rg -n "\.(get\|post\|put\|patch\|delete\|all\|options\|head\|route\|on)\(" src` and `rg -n "register\(\|prefix\|autoload" src`           |
+| `express-typescript`       | `rg -n "\.(get\|post\|put\|patch\|delete\|all\|route\|use)\(\|Router\(" src`                                                              |
+| `nestjs-realworld-typeorm` | `rg -n "@Controller\(\|@(Get\|Post\|Put\|Patch\|Delete\|All\|Options\|Head)\(\|setGlobalPrefix\|RouterModule" src`                        |
+| `taxonomy`                 | `rg --files app pages` and `rg -n "^export (async )?(function\|const) (GET\|POST\|PUT\|PATCH\|DELETE)" app/api`                           |
+| `start-ui-web`             | `rg -n "createFileRoute\|createServerFn\|handlers:" src`, and the keys of each `src/server/routers/*.ts` object                           |
+| `react-tanstarter`         | `rg -n "createFileRoute\|createServerFn\|handlers" src`                                                                                   |
+| `hono-open-api-starter`    | `rg -n "createRoute\|\.(get\|post\|put\|patch\|delete\|all\|route\|on\|openapi\|doc)\(" src`                                              |
+
+`pnpm tsx evals/oss/labels-check.ts <case>` runs the label checks of `check-labels` and then a scan of the same
+kind of patterns over the clone, and prints every candidate site that no label covers and this page does not list.
+It fails (exit 1) while one is left, and when this page lists a site the scan no longer finds. A site is listed
+below as "- `<case>` `<file>:<line>`: <reason>" when it is not an endpoint or route or is a second place for a URL
+that is already labelled once.
+
+- `react-router-templates` `node-custom-server/app/routes.ts:3`: the same URL `/` as `default/app/routes.ts:3`, labelled once
+- `react-router-templates` `unstable_rsc-framework-mode/app/routes.ts:3`: the same URL `/` as `default/app/routes.ts:3`, labelled once
+- `react-router-templates` `unstable_rsc-data-mode-vite/src/routes/config.ts:7`: the pathless root layout of the data-mode template, no URL of its own
+- `conduit-redux-web` `src/components/App/App.tsx:87`: the `GuestOnlyRoute` wrapper, which forwards the `path` of each use; the uses at lines 30 to 35 are labelled
+- `conduit-redux-web` `src/components/App/App.tsx:101`: the `UserOnlyRoute` wrapper, same as above; the uses at lines 36 to 44 are labelled
+- `fastify-demo` `src/plugins/app/tasks/tasks-repository.ts:104`: a knex `.delete()` query, not a route
+- `fastify-demo` `src/routes/api/tasks/index.ts:132`: a repository `.delete(id)` call inside a handler, not a route
+- `fastify-demo` `src/routes/api/tasks/index.ts:298`: a file manager `.delete(filename)` call inside a handler, not a route
+- `express-typescript` `src/index.ts:18`: `process.on("SIGINT")`, a signal handler
+- `express-typescript` `src/index.ts:19`: `process.on("SIGTERM")`, a signal handler
+- `hono-open-api-starter` `src/app.ts:16`: `app.route("/", route)`, a mount of routers whose routes are labelled
+- `hono-open-api-starter` `src/lib/create-app.ts:31`: `.route("/", router)`, a mount for tests and app creation
+- `hono-open-api-starter` `src/routes/tasks/tasks.handlers.ts:86`: a Drizzle `db.delete(tasks)` query, not a route
+- `start-ui-web` `src/routes/app/route.tsx:8`: layout of `/app`, whose URL is labelled once at `src/routes/app/index.tsx`
+- `start-ui-web` `src/routes/login/route.tsx:8`: layout of `/login`, whose URL is labelled once at `src/routes/login/index.tsx`
+- `start-ui-web` `src/routes/manager/route.tsx:8`: layout of `/manager`, whose URL is labelled once at `src/routes/manager/index.tsx`
+- `react-tanstarter` `src/routes/_auth/app/route.tsx:7`: layout of `/app`, whose URL is labelled once at `src/routes/_auth/app/index.tsx`
+- `react-tanstarter` `src/routes/_auth/route.tsx:9`: pathless layout `_auth`, no URL
+- `react-tanstarter` `src/routes/_guest/route.tsx:6`: pathless layout `_guest`, no URL
+
 ## Call-linking labels
 
 A `linking-<case>.json` file lists every request call site of a case's frontend, with the endpoint it reaches in
