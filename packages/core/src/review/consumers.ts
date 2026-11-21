@@ -49,6 +49,11 @@ export const REACHABLE_NODE_CAP = 2500;
 export const FAN_IN_ORDER: "desc" | "asc" = "desc";
 /** The reachable tier starts after the hops of the directly and potentially affected tiers. */
 export const REACHABLE_FIRST_HOP = 4;
+/**
+ * A node is a hub when its fan-in (`ConsumerGraph.fanIn`) is above this. The consumers a hub brings into the
+ * potential and reachable tiers are listed as one `HubEntry`. `docs/spikes/blast-depth.md`, "Decisions" (`hub_threshold`).
+ */
+export const HUB_THRESHOLD = 608;
 
 export type CrossingKind = "workspace" | "app" | "client_server";
 
@@ -79,23 +84,52 @@ export interface Consumer {
   fanIn?: number;
 }
 
+/**
+ * The consumers one hub (#294) brings into the potential or reachable tier, listed as one entry instead of one row
+ * each. The walk goes through the hub as through any node; only the listing collapses.
+ */
+export interface HubEntry {
+  /** Node id of the hub. */
+  hub: string;
+  name: string;
+  kind: string;
+  path: string;
+  workspace: string | null;
+  /** Hop of the consumers it stands for (the hub's own hop + 1). */
+  hop: number;
+  /** Consumers first reached through this hub (their `next` is the hub), uncapped. */
+  consumersTotal: number;
+  /** Those consumers per workspace, sorted by workspace, none last. */
+  byWorkspace: { workspace: string | null; count: number }[];
+  /** Those consumers in `compareReachable` order, at most `MAX_CONSUMERS`. Potential ones carry no `pathConfidence` or `fanIn`. */
+  members: Consumer[];
+}
+
 export interface ChangeConsumers {
   /** The change's id (a symbol change) or `file:<path>` (a changed file). */
   id: string;
   target: "symbol" | "file";
-  /** Directly affected: hop-1 consumers, sorted by workspace, path, name, id; at most MAX_CONSUMERS. */
+  /** Directly affected: hop-1 consumers, sorted by workspace, path, name, id; at most MAX_CONSUMERS. Never collapsed into hubs. */
   direct: Consumer[];
   directTotal: number;
-  /** Potentially affected: hops 2 to 3 out from the direct ones, same order and cap. */
+  /**
+   * Potentially affected: hops 2 to 3 out from the direct ones, same order and cap, without the consumers that
+   * `hubs` stands for. `potentialTotal` counts every distinct consumer of those hops, collapsed ones included.
+   */
   potential: Consumer[];
   potentialTotal: number;
   /**
    * Reachable (#293): everything else the change can reach, hop 4 and later, ranked by `compareReachable`; at most
-   * `MAX_CONSUMERS` per hop, so a wide hop cannot hide the hops after it. `reachableTotal` counts them all, up to
-   * the node cap (`REACHABLE_NODE_CAP`).
+   * `MAX_CONSUMERS` per hop, so a wide hop cannot hide the hops after it, without the consumers that `hubs` stands
+   * for. `reachableTotal` counts them all, collapsed ones included, up to the node cap (`REACHABLE_NODE_CAP`).
    */
   reachable: Consumer[];
   reachableTotal: number;
+  /**
+   * Hubs (#294): for every node above `HUB_THRESHOLD` fan-in that the potential or reachable walk went through, the
+   * consumers first reached through it. Sorted by hop, then `consumersTotal` descending, then hub id.
+   */
+  hubs: HubEntry[];
 }
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -340,11 +374,49 @@ function potentialFrom(
   return out;
 }
 
+const compareHubs = (a: HubEntry, b: HubEntry): number =>
+  a.hop - b.hop || b.consumersTotal - a.consumersTotal || cmp(a.hub, b.hub);
+
+/**
+ * Splits off the consumers whose `next` is a hub (hop 2 and later; hop 1 never collapses): they leave the list and
+ * are counted in that hub's entry. The input order is kept for the rest.
+ */
+function collapseHubs(g: ConsumerGraph, consumers: Consumer[]): { kept: Consumer[]; hubs: HubEntry[] } {
+  const groups = new Map<string, Consumer[]>();
+  const kept: Consumer[] = [];
+  for (const c of consumers) {
+    if (c.hop >= 2 && c.next !== undefined && g.fanIn(c.next) > HUB_THRESHOLD) {
+      const group = groups.get(c.next);
+      if (group) group.push(c);
+      else groups.set(c.next, [c]);
+    } else kept.push(c);
+  }
+  const hubs = [...groups].map(([hub, all]): HubEntry => {
+    const counts = new Map<string | null, number>();
+    for (const c of all) counts.set(c.workspace, (counts.get(c.workspace) ?? 0) + 1);
+    const info = g.info(hub);
+    return {
+      hub,
+      name: info.name,
+      kind: info.kind,
+      path: info.path,
+      workspace: info.workspace,
+      hop: all[0]?.hop ?? 0,
+      consumersTotal: all.length,
+      byWorkspace: [...counts]
+        .map(([workspace, count]) => ({ workspace, count }))
+        .sort((a, b) => cmp(a.workspace ?? "￿", b.workspace ?? "￿")),
+      members: [...all].sort(compareReachable).slice(0, MAX_CONSUMERS),
+    };
+  });
+  return { kept, hubs: hubs.sort(compareHubs) };
+}
+
 function tierOf(
   g: ConsumerGraph,
   changedPath: string,
   rows: { id: string; hop: number; uses: Set<UseKind>; via?: string; next?: string }[],
-): { list: Consumer[]; total: number } {
+): { list: Consumer[]; total: number; hubs: HubEntry[] } {
   const all = rows
     .map((r): Consumer => {
       const info = g.info(r.id);
@@ -358,7 +430,8 @@ function tierOf(
       };
     })
     .sort(compareConsumers);
-  return { list: all.slice(0, MAX_CONSUMERS), total: all.length };
+  const { kept, hubs } = collapseHubs(g, all);
+  return { list: kept.slice(0, MAX_CONSUMERS), total: all.length, hubs };
 }
 
 /** Rank inside the reachable tier: hop, `high` path confidence first, fan-in (`FAN_IN_ORDER`), then `compareConsumers`. */
@@ -371,12 +444,15 @@ export function compareReachable(a: Consumer, b: Consumer): number {
   return compareConsumers(a, b);
 }
 
-/** The reachable tier of one walk (hop 4 and later), ranked, at most `MAX_CONSUMERS` per hop; `total` counts all. */
+/**
+ * The reachable tier of one walk (hop 4 and later), ranked, at most `MAX_CONSUMERS` per hop after the consumers of
+ * hubs are taken out; `total` counts all, `hubs` holds the entries of those collapsed.
+ */
 export function reachableTier(
   g: ConsumerGraph,
   changedPath: string,
   rows: readonly ReachRow[],
-): { list: Consumer[]; total: number } {
+): { list: Consumer[]; total: number; hubs: HubEntry[] } {
   const ranked = rows
     .filter((r) => r.hop >= REACHABLE_FIRST_HOP)
     .map((r): Consumer => {
@@ -393,13 +469,14 @@ export function reachableTier(
       };
     })
     .sort(compareReachable);
+  const { kept, hubs } = collapseHubs(g, ranked);
   const perHop = new Map<number, number>();
-  const list = ranked.filter((c) => {
+  const list = kept.filter((c) => {
     const n = perHop.get(c.hop) ?? 0;
     perHop.set(c.hop, n + 1);
     return n < MAX_CONSUMERS;
   });
-  return { list, total: ranked.length };
+  return { list, total: ranked.length, hubs };
 }
 
 function build(
@@ -424,7 +501,7 @@ function build(
   const r =
     reachableCap !== null
       ? reachableTier(g, changedPath, walkToEnd(g, detail, new Set(own), reachableCap).rows)
-      : { list: [], total: 0 };
+      : { list: [], total: 0, hubs: [] as HubEntry[] };
   return {
     id,
     target,
@@ -434,6 +511,7 @@ function build(
     potentialTotal: p.total,
     reachable: r.list,
     reachableTotal: r.total,
+    hubs: [...p.hubs, ...r.hubs].sort(compareHubs),
   };
 }
 

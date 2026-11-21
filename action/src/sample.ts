@@ -56,6 +56,7 @@ export function sampleReview(
       potentialTotal: per,
       reachable: [],
       reachableTotal: 0,
+      hubs: [],
     });
   }
   return {
@@ -69,6 +70,7 @@ export function sampleReview(
       changed,
       callersByHop: [],
       reachable: { total: 0, byHop: [] },
+      hubs: [],
       crossings: changed
         .slice(0, 12)
         .map((c) => ({ from: c.id, to: `sym:repo:apps/web/src/a.ts#a`, kind: "workspace" as const })),

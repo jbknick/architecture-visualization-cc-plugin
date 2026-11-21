@@ -34,6 +34,11 @@ export interface Impact {
   consumers: ChangeConsumers[];
   /** The reachable tier of the whole review (#293), counted per hop. */
   reachable: Reachable;
+  /**
+   * Every hub (#294) that some change's walk collapsed, with the largest `consumersTotal` over the changes; sorted by
+   * `consumersTotal` descending, then id. Details are in `consumers[].hubs`. No risk rule reads it.
+   */
+  hubs: { hub: string; consumersTotal: number }[];
 }
 
 /**
@@ -222,7 +227,13 @@ export function computeImpact(store: Store, changes: SymbolChange[], opts: Impac
   });
 
   const consumers = computeConsumers(g, changes, opts.files ?? [], maxHops, reachableOn ? cap : null);
-  return { changed: [...changes], callersByHop, crossings, risk, notes, consumers, reachable };
+  const hubTotals = new Map<string, number>();
+  for (const c of consumers)
+    for (const h of c.hubs) hubTotals.set(h.hub, Math.max(hubTotals.get(h.hub) ?? 0, h.consumersTotal));
+  const hubs = [...hubTotals]
+    .map(([hub, consumersTotal]) => ({ hub, consumersTotal }))
+    .sort((a, b) => b.consumersTotal - a.consumersTotal || cmp(a.hub, b.hub));
+  return { changed: [...changes], callersByHop, crossings, risk, notes, consumers, reachable, hubs };
 }
 
 /**
