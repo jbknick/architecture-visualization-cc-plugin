@@ -297,6 +297,37 @@ describe("text summary of the reachable tier and hubs", () => {
     const diff = await reviewDiff(paths, "main", "feature");
     const impact = await reviewImpact(paths, store, diff);
     expect(impact.reachable.total).toBe(0);
-    expect(formatImpact(diff, impact)).not.toMatch(/reachable|Reachable|Hubs/);
+    expect(formatImpact(diff, impact)).toBe(
+      [
+        "Review main...feature: 1 file(s), 1 symbol change(s) (1 modified)",
+        "Risk: medium (56/100)",
+        "  +30 signature changed on an exported symbol",
+        "  +6 3 direct callers",
+        "  +10 2 boundary crossings",
+        "  +10 changed function in a file no test imports",
+        "Callers by hop:",
+        "  hop 1: 3 (file:pnpm-turbo:packages/ui/src/index.ts, sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage, sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage)",
+        "  hop 2: 3",
+        "Crossings: 2",
+        "  app: sym:pnpm-turbo:packages/ui/src/button.tsx#Button <- sym:pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
+        "  app: sym:pnpm-turbo:packages/ui/src/button.tsx#Button <- sym:pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+        "Consumers of sym:pnpm-turbo:packages/ui/src/button.tsx#Button:",
+        "  Directly affected (3):",
+        "    index.ts (file, packages/ui/src/index.ts) imports",
+        "    HomePage (component, apps/web/src/routes/index.tsx:7) renders; crosses app",
+        "    ProfilePage (component, apps/web/src/routes/settings/profile.tsx:7) renders; crosses app",
+        "  Potentially affected (3):",
+        "    / (route, apps/web/src/routes/index.tsx) serves hop 2 via HomePage; crosses app",
+        "    /settings/profile (route, apps/web/src/routes/settings/profile.tsx) serves hop 2 via ProfilePage; crosses app",
+        "    profile.tsx (file, apps/web/src/routes/settings/profile.tsx) imports hop 2 via index.ts; crosses app",
+        "Consumers of file:pnpm-turbo:packages/ui/src/button.tsx:",
+        "  Directly affected (3):",
+        "    index.ts (file, packages/ui/src/index.ts) imports",
+        "    index.tsx (file, apps/web/src/routes/index.tsx) imports; crosses app",
+        "    profile.tsx (file, apps/web/src/routes/settings/profile.tsx) imports; crosses app",
+        "  Potentially affected (0):",
+        "",
+      ].join("\n"),
+    );
   });
 });

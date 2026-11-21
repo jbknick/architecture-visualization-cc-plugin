@@ -249,6 +249,7 @@ describe("gantry_impact", () => {
     const r = await call(conn.client, "gantry_impact", { range: "main...feature" });
     expect(r.text.length).toBeLessThanOrEqual(MAX_RESPONSE_CHARS);
     const j = r.json as {
+      truncated?: boolean;
       reachable_total: number;
       consumers: {
         reachable_total: number;
@@ -264,6 +265,7 @@ describe("gantry_impact", () => {
       store.close();
     }
     const first = core.consumers[0];
+    expect(j.truncated).toBeUndefined();
     expect(j.reachable_total).toBe(core.reachable.total);
     expect(j.consumers[0]?.reachable_total).toBe(first?.reachableTotal);
     expect(j.consumers[0]?.hubs[0]?.hub).toBe("sym:repo:packages/core/src/hub.ts#hub");
@@ -319,16 +321,17 @@ describe("gantry_impact", () => {
     } as unknown as Impact;
     const text = fitJson(shape(impact, {} as Store));
     expect(text.length).toBeLessThanOrEqual(MAX_RESPONSE_CHARS);
-    const c = (
-      JSON.parse(text) as {
-        consumers: {
-          reachable_by_workspace: Record<string, number>;
-          reachable_workspaces_total?: number;
-          hubs: unknown[];
-          hubs_total?: number;
-        }[];
-      }
-    ).consumers[0];
+    const parsed = JSON.parse(text) as {
+      truncated?: boolean;
+      consumers: {
+        reachable_by_workspace: Record<string, number>;
+        reachable_workspaces_total?: number;
+        hubs: unknown[];
+        hubs_total?: number;
+      }[];
+    };
+    expect(parsed.truncated).toBeUndefined();
+    const c = parsed.consumers[0];
     expect(Object.keys(c?.reachable_by_workspace ?? {})).toHaveLength(IMPACT_LIMITS.reachableWorkspaces);
     expect(c?.reachable_workspaces_total).toBe(20);
     expect(c?.hubs).toHaveLength(IMPACT_LIMITS.hubs);
