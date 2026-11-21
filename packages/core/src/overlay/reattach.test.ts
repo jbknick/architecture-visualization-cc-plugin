@@ -184,6 +184,56 @@ describe("reattachOverlay (run by heal)", () => {
     });
   });
 
+  it("a function renamed to a hook (same body, other kind family) stays as it was and is listed as gone", async () => {
+    const { fx, paths } = await setup();
+    const from = sym(DATE, "formatRelativeDate");
+    withStore(paths, (s) => {
+      setLabel(s, { nodeId: from, text: "Relative date" });
+      expect(s.db.prepare("SELECT family FROM overlay.anchor_families").all()).toEqual([
+        { family: "function" },
+      ]);
+    });
+
+    // `use[A-Z]…` makes the symbol a hook: the same body in the same file, but not the same kind family.
+    write(fx, DATE, read(fx, DATE).replace("formatRelativeDate", "useRelativeDate"));
+    write(
+      fx,
+      "packages/utils/src/index.ts",
+      read(fx, "packages/utils/src/index.ts").replace("formatRelativeDate", "useRelativeDate"),
+    );
+    commit(fx, "rename to a hook");
+    await heal(paths, { reattach: true });
+
+    withStore(paths, (s) => {
+      const hook = s.getSymbol(sym(DATE, "useRelativeDate"));
+      expect(hook?.kind).toBe("hook");
+      expect(hook?.renamedHash).toBe(
+        (s.db.prepare("SELECT renamed_hash AS h FROM overlay.anchor_renames").get() as { h: string }).h,
+      );
+      expect(readOverlay(s).labels).toEqual([{ nodeId: from, text: "Relative date" }]);
+      expect(listUnresolved(s)).toEqual([
+        { entry: "label", id: from, text: "Relative date", reason: "gone" },
+      ]);
+    });
+  });
+
+  it("an anchor with no recorded kind family is never re-attached by renamedHash", async () => {
+    const { fx, paths } = await setup();
+    const from = sym(DATE, "formatRelativeDate");
+    withStore(paths, (s) => {
+      setLabel(s, { nodeId: from, text: "Relative date" });
+      s.db.prepare("DELETE FROM overlay.anchor_families").run();
+    });
+    renameFormatRelative(fx);
+    await heal(paths, { reattach: true });
+    withStore(paths, (s) => {
+      expect(readOverlay(s).labels).toEqual([{ nodeId: from, text: "Relative date" }]);
+      expect(listUnresolved(s)).toEqual([
+        { entry: "label", id: from, text: "Relative date", reason: "gone" },
+      ]);
+    });
+  });
+
   it("two renamed-hash candidates are listed as ambiguous and nothing is guessed", async () => {
     const { fx, paths } = await setup();
     const from = sym(DATE, "formatRelativeDate");
