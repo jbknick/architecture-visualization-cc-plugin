@@ -172,6 +172,24 @@ patterns per stack (`dataHits` in `scripts/eval-label-scan.ts`) and prints `<k> 
 0. `--sample 10` prints every tenth label (tables at their definition, reads and writes at their call) for the
 spot check.
 
+**Limits of the scan.** The data scan skips an access call whose table name matches no `table` label, so a table
+whose definition it does not recognise (an implicit join table, for example) hides its accesses too; and a call
+that names no table (`em.flush`, `$queryRaw`, `sequelize.query`) counts as covered by any label of that kind in
+the same file. The file-level table check of a read or write label is a loose substring test (singular, plural,
+underscores dropped). The scan and the maintainer's spot check are what guard the labels.
+
+**Left out, and why** (for the maintainer to rule on at the spot check):
+
+- Seed scripts: `lib/db/seed.ts` of `saas-starter` and the seeders of `nestjs-realworld-mikro-orm`
+  (`src/seeders/`). They are one-off scripts, and scripts are left out in every case.
+- Implicit join tables: `user_favorites_article` (`nestjs-realworld-typeorm`), `user_to_follower` and
+  `user_favorites` (`nestjs-realworld-mikro-orm`). They have no entity or table definition of their own to
+  label; a change to the collection is a write of the owning entity.
+- Migration SQL and stored-function bodies (`graphile-worker`'s `sql/` files). The labelled sites are the
+  TypeScript calls; the stored-function calls are runtime-only lines below.
+- `react-tanstarter` has 4 tables and no reads or writes: every query goes through the better-auth Drizzle
+  adapter, a library, and the repo has no query of its own.
+
 Runtime-only sites of the data-access cases:
 
 - `taxonomy` `lib/auth.ts:17`: `PrismaAdapter(db)`, the NextAuth adapter queries accounts, sessions, users and verification_tokens inside the library

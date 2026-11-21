@@ -1,7 +1,7 @@
 {
   "repo": "nestjs-realworld-typeorm",
   "sha": "c1c2cc4e448b279ff083272df1ac50d20c3304fa",
-  "labelledBy": "agent claude-sonnet-5-5, read from the code at each registration site before any scoring run; maintainer spot check pending",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each registration site, and the tables, reads and writes from the schema and query sites, before any scoring run; maintainer spot check pending",
   "kinds": ["endpoint", "table", "read", "write"],
   "table": [
     { "name": "tag" },

@@ -1,7 +1,7 @@
 {
   "repo": "taxonomy",
   "sha": "298a8857c7128a0d121e7f699dfd729f23b3966d",
-  "labelledBy": "agent claude-sonnet-5-5, read from the code at each page and route handler before any scoring run; maintainer spot check pending",
+  "labelledBy": "agent claude-sonnet-5-5, read from the code at each page and route handler, and the tables, reads and writes from the schema and query sites, before any scoring run; maintainer spot check pending",
   "kinds": ["route", "endpoint", "table", "read", "write"],
   "table": [
     { "name": "accounts" },
