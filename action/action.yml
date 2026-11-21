@@ -1,8 +1,9 @@
 # Gantry pull request comment (issue #282; spec sections 1, 3, 10 and 14). A composite Action for the workflows of
 # users' own repositories: it installs the release tarball by version and checksum, indexes the checkout, and posts one
 # comment on the pull request with its blast radius and the duplicates it adds, updated in place on each push. No model
-# calls. The script that builds the comment is bundled into the tarball (dist/action.js); no JavaScript is committed
-# here. This is not CI for the Gantry repository, which has no workflow of its own.
+# calls. It fails open: a Gantry error never fails the job, the comment says the analysis failed and why. The script
+# that builds the comment is bundled into the tarball (dist/action.js); no JavaScript is committed here. This is not CI
+# for the Gantry repository, which has no workflow of its own.
 name: Gantry pull request comment
 description: Comment on each pull request with the symbols it changes, what consumes them and the duplicates it adds.
 
@@ -11,7 +12,7 @@ inputs:
     description: "Gantry release to install, for example 0.1.0. The tarball of the release tagged v<version> is downloaded."
     required: true
   sha256:
-    description: "SHA-256 of gantry-<version>.tgz, from the release's .sha256 file. The install stops if the download differs."
+    description: "SHA-256 of gantry-<version>.tgz, from the release's .sha256 file. The tarball is not used if the download differs."
     required: true
   github-token:
     description: "Token that posts the comment. The workflow needs `pull-requests: write` for it."
@@ -32,7 +33,7 @@ inputs:
 
 outputs:
   comment:
-    description: "created or updated when a comment was posted, summary when the review went to the job summary instead."
+    description: "created or updated when a comment was posted, summary when the text went to the job summary instead."
     value: ${{ steps.comment.outputs.comment }}
   comment-url:
     description: "Link to the comment, empty when none was posted."
@@ -46,6 +47,9 @@ runs:
       with:
         node-version: "26"
 
+    # Every Gantry step below fails open: on an error it logs a warning, writes `failed=<one sanitised line>` to its
+    # outputs and exits 0, and the later Gantry steps are skipped. The last step still runs and posts a comment that
+    # says the analysis failed and why.
     - name: Install Gantry
       id: install
       shell: bash
@@ -55,55 +59,78 @@ runs:
         # Where the tarball is downloaded from; set it in the workflow's env only to try a build from another place.
         GANTRY_RELEASE_BASE: ${{ env.GANTRY_RELEASE_BASE }}
       run: |
-        set -euo pipefail
+        set -uo pipefail
+        fail() {
+          reason=$(printf '%s' "$1" | tr -c 'A-Za-z0-9 ._:,;()/=@+-' ' ' | tr -s ' ' | cut -c1-200)
+          echo "::warning title=Gantry::Install failed, the pull request comment will say so: $reason"
+          echo "failed=$reason" >> "$GITHUB_OUTPUT"
+          exit 0
+        }
         case "$GANTRY_VERSION" in
           [0-9]*.[0-9]*.[0-9]*) ;;
-          *) echo "::error title=Gantry::version must look like 0.1.0 (got '$GANTRY_VERSION')"; exit 1 ;;
+          *) fail "version must look like 0.1.0 (got $GANTRY_VERSION)" ;;
         esac
         case "$GANTRY_SHA256" in
-          *[!0-9a-fA-F]*|"") echo "::error title=Gantry::sha256 must be 64 hex digits"; exit 1 ;;
+          *[!0-9a-fA-F]*|"") fail "sha256 must be 64 hex digits" ;;
         esac
-        [ "${#GANTRY_SHA256}" -eq 64 ] || { echo "::error title=Gantry::sha256 must be 64 hex digits"; exit 1; }
+        [ "${#GANTRY_SHA256}" -eq 64 ] || fail "sha256 must be 64 hex digits"
         sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1; else shasum -a 256 "$1" | cut -d' ' -f1; fi; }
         base="${GANTRY_RELEASE_BASE:-https://github.com/jbknick/architecture-visualization-cc-plugin/releases/download/v${GANTRY_VERSION}}"
         dir="$RUNNER_TEMP/gantry-install"
-        rm -rf "$dir"; mkdir -p "$dir"; cd "$dir"
+        rm -rf "$dir"; mkdir -p "$dir" || fail "cannot create the install directory"
+        cd "$dir" || fail "cannot enter the install directory"
         tarball="gantry-${GANTRY_VERSION}.tgz"
-        curl -fsSLO "$base/$tarball"
-        curl -fsSLO "$base/$tarball.sha256"
-        actual=$(sha "$tarball")
+        curl -fsSLO "$base/$tarball" || fail "download of $tarball failed"
+        curl -fsSLO "$base/$tarball.sha256" || fail "download of $tarball.sha256 failed"
+        actual=$(sha "$tarball") || fail "cannot compute the checksum of $tarball"
         expected_file=$(cut -d' ' -f1 "$tarball.sha256")
         want=$(printf '%s' "$GANTRY_SHA256" | tr 'A-F' 'a-f')
         if [ "$actual" != "$want" ] || [ "$actual" != "$expected_file" ]; then
-          echo "::error title=Gantry::checksum mismatch for $tarball (downloaded $actual, input $want, release file $expected_file)"
-          exit 1
+          # Never extract or run a tarball that does not match: remove it, and say so loudly.
+          rm -f "$tarball"
+          echo "::error title=Gantry::checksum mismatch for $tarball (downloaded $actual, input $want, release file $expected_file). The tarball was not used."
+          fail "checksum mismatch for $tarball: the download was not used"
         fi
-        tar -xzf "$tarball"
-        (cd gantry && npm ci --omit=dev --no-audit --no-fund)
-        ./gantry/bin/gantry --version
+        tar -xzf "$tarball" || fail "cannot extract $tarball"
+        (cd gantry && npm ci --omit=dev --no-audit --no-fund) || fail "npm ci failed in the extracted tarball"
+        ./gantry/bin/gantry --version || fail "the installed gantry does not start"
         echo "home=$dir/gantry" >> "$GITHUB_OUTPUT"
 
     - name: Index the checkout
+      id: index
+      if: steps.install.outputs.failed == ''
       shell: bash
       env:
         GANTRY_HOME: ${{ steps.install.outputs.home }}
         CLAUDE_PLUGIN_DATA: ${{ runner.temp }}/gantry-data
       run: |
-        set -euo pipefail
+        set -uo pipefail
         "$GANTRY_HOME/bin/gantry" init
+        code=$?
+        if [ "$code" -ne 0 ]; then
+          echo "::warning title=Gantry::gantry init failed (exit $code), the pull request comment will say so"
+          echo "failed=gantry init failed (exit $code)" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Embed code vectors
-      if: inputs.embed == 'true'
+      id: embed
+      if: inputs.embed == 'true' && steps.install.outputs.failed == '' && steps.index.outputs.failed == ''
       shell: bash
       env:
         GANTRY_HOME: ${{ steps.install.outputs.home }}
         CLAUDE_PLUGIN_DATA: ${{ runner.temp }}/gantry-data
       run: |
-        set -euo pipefail
+        set -uo pipefail
         "$GANTRY_HOME/bin/gantry" embed
+        code=$?
+        if [ "$code" -ne 0 ]; then
+          echo "::warning title=Gantry::gantry embed failed (exit $code), the pull request comment will say so"
+          echo "failed=gantry embed failed (exit $code)" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Comment on the pull request
       id: comment
+      if: ${{ !cancelled() }}
       shell: bash
       env:
         GANTRY_HOME: ${{ steps.install.outputs.home }}
@@ -113,7 +140,20 @@ runs:
         GANTRY_HEAD: ${{ inputs.head }}
         GANTRY_EMBED: ${{ inputs.embed }}
         GANTRY_VERSION: ${{ inputs.version }}
+        GANTRY_INSTALL_FAILED: ${{ steps.install.outputs.failed }}
+        # Why an earlier Gantry step failed, empty when none did. action.js turns it into the failure comment.
+        GANTRY_FAILURE: ${{ steps.install.outputs.failed || steps.index.outputs.failed || steps.embed.outputs.failed }}
+        GANTRY_PR: ${{ github.event.pull_request.number }}
+        GANTRY_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
       run: |
-        set -euo pipefail
+        set -uo pipefail
+        if [ -n "$GANTRY_INSTALL_FAILED" ]; then
+          # No tarball, so no dist/action.js: post the failure notice with the small script that ships in this Action.
+          GANTRY_FORK=false
+          if [ -n "$GANTRY_HEAD_REPO" ] && [ "$GANTRY_HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then GANTRY_FORK=true; fi
+          export GANTRY_FORK
+          bash "$GITHUB_ACTION_PATH/post-failure.sh"
+          exit 0
+        fi
         export GANTRY_BIN="$GANTRY_HOME/bin/gantry"
         node "$GANTRY_HOME/dist/action.js"

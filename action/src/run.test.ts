@@ -122,12 +122,63 @@ describe("run", () => {
     expect(fake.comments[0]?.body).toContain("Structural radius only");
   });
 
-  it("fails when the review cannot be produced", async () => {
+  it("fails open when the review cannot be produced: the comment says the analysis failed and why", async () => {
     fake = await startFakeGithub();
-    await expect(run(env(fake, pr()), deps(stubExec({ reviewFails: true })))).rejects.toThrow(
-      /gantry review failed \(exit 1\).*unknown git ref/,
+    const logs: string[] = [];
+    const r = await run(env(fake, pr()), {
+      ...deps(stubExec({ reviewFails: true })),
+      log: (l) => logs.push(l),
+    });
+    expect(r.comment).toBe("created");
+    const body = fake.comments[0]?.body ?? "";
+    expect(body.startsWith(`${MARKER}\n`)).toBe(true);
+    expect(body).toContain("the analysis failed");
+    expect(body).toContain("gantry review failed (exit 1)");
+    expect(body).toContain("unknown git ref");
+    expect(logs.some((l) => l.startsWith("::warning"))).toBe(true);
+    // the next run, now healthy, updates that same comment in place
+    const again = await run(env(fake, pr()), deps(stubExec()));
+    expect(again.comment).toBe("updated");
+    expect(fake.comments).toHaveLength(1);
+    expect(fake.comments[0]?.body).toContain("what this pull request changes");
+  });
+
+  it("fails open when the review prints something that is not JSON", async () => {
+    fake = await startFakeGithub();
+    const exec: Exec = async () => ({ code: 0, stdout: "not json", stderr: "" });
+    const r = await run(env(fake, pr()), deps(exec));
+    expect(r.comment).toBe("created");
+    expect(fake.comments[0]?.body).toContain("gantry review did not print JSON");
+  });
+
+  it("posts the failure of an earlier step (install, index, embed) without running the CLI", async () => {
+    fake = await startFakeGithub();
+    const exec = stubExec();
+    const r = await run(env(fake, pr(), { GANTRY_FAILURE: "gantry init failed (exit 3)" }), deps(exec));
+    expect(r.comment).toBe("created");
+    expect(exec.calls).toHaveLength(0);
+    expect(fake.comments[0]?.body).toContain("`gantry init failed (exit 3)`");
+  });
+
+  it("puts the failure notice in the job summary when no comment can be posted", async () => {
+    fake = await startFakeGithub({ refuseWrites: 403 });
+    const r = await run(
+      env(fake, pr(), { GANTRY_FAILURE: "download of the tarball failed" }),
+      deps(stubExec()),
     );
-    expect(fake.calls).toHaveLength(0);
+    expect(r.comment).toBe("summary");
+    expect(readFileSync(join(dir, "summary.md"), "utf8")).toContain("the analysis failed");
+  });
+
+  it("keeps the reason to one bounded, sanitised line", async () => {
+    fake = await startFakeGithub();
+    const evil = `boom\n\`\`\` @everyone [x](http://evil) ${"y".repeat(1000)}`;
+    await run(env(fake, pr(), { GANTRY_FAILURE: evil }), deps(stubExec()));
+    const body = fake.comments[0]?.body ?? "";
+    const line = body.split("\n").find((l) => l.startsWith("Gantry could not analyse")) ?? "";
+    expect(line.length).toBeLessThan(300);
+    expect(line).not.toContain("```");
+    expect(body.split("\n").filter((l) => l.includes("everyone"))).toHaveLength(1);
   });
 
   it("needs a base and a head outside a pull request event, and uses the summary", async () => {

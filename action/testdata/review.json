@@ -1,0 +1,137 @@
+{
+  "base": "a521528741f04a4d0aa02695f1788d12b0408ffc",
+  "head": "32416af50852d09c5b159028a37e62567a97712d",
+  "mergeBase": "a521528741f04a4d0aa02695f1788d12b0408ffc",
+  "files": [
+    {
+      "path": "packages/ui/src/slug-copy.ts",
+      "status": "A"
+    }
+  ],
+  "changes": [
+    {
+      "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#SLUG_VERSION",
+      "kind": "added",
+      "after": {
+        "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#SLUG_VERSION",
+        "path": "packages/ui/src/slug-copy.ts",
+        "line": 11,
+        "signature": "",
+        "exactHash": "dde0ac16a8090b2b31a982fdbeb9c3ec",
+        "kind": "const",
+        "exported": true,
+        "complexity": 1
+      },
+      "signatureChanged": false,
+      "exportedChanged": false,
+      "locDelta": 1
+    },
+    {
+      "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#slugify",
+      "kind": "added",
+      "after": {
+        "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#slugify",
+        "path": "packages/ui/src/slug-copy.ts",
+        "line": 2,
+        "signature": "(input: string): string",
+        "exactHash": "8443c45ca4363d0363ffaab88cb18427",
+        "kind": "function",
+        "exported": false,
+        "complexity": 1
+      },
+      "signatureChanged": false,
+      "exportedChanged": false,
+      "locDelta": 8
+    }
+  ],
+  "importChanges": [],
+  "impact": {
+    "changed": [
+      {
+        "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#SLUG_VERSION",
+        "kind": "added",
+        "after": {
+          "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#SLUG_VERSION",
+          "path": "packages/ui/src/slug-copy.ts",
+          "line": 11,
+          "signature": "",
+          "exactHash": "dde0ac16a8090b2b31a982fdbeb9c3ec",
+          "kind": "const",
+          "exported": true,
+          "complexity": 1
+        },
+        "signatureChanged": false,
+        "exportedChanged": false,
+        "locDelta": 1
+      },
+      {
+        "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#slugify",
+        "kind": "added",
+        "after": {
+          "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#slugify",
+          "path": "packages/ui/src/slug-copy.ts",
+          "line": 2,
+          "signature": "(input: string): string",
+          "exactHash": "8443c45ca4363d0363ffaab88cb18427",
+          "kind": "function",
+          "exported": false,
+          "complexity": 1
+        },
+        "signatureChanged": false,
+        "exportedChanged": false,
+        "locDelta": 8
+      }
+    ],
+    "callersByHop": [],
+    "crossings": [],
+    "risk": {
+      "score": 0,
+      "level": "low",
+      "reasons": []
+    },
+    "notes": [
+      "New function sym:pnpm-turbo:packages/ui/src/slug-copy.ts#slugify duplicates sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify (exact, score 1.00).",
+      "New function sym:pnpm-turbo:packages/ui/src/slug-copy.ts#slugify duplicates sym:pnpm-turbo:packages/utils/src/slug.ts#slugify (exact, score 1.00)."
+    ],
+    "consumers": [
+      {
+        "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#SLUG_VERSION",
+        "target": "symbol",
+        "direct": [],
+        "directTotal": 0,
+        "potential": [],
+        "potentialTotal": 0
+      },
+      {
+        "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#slugify",
+        "target": "symbol",
+        "direct": [
+          {
+            "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#SLUG_VERSION",
+            "name": "SLUG_VERSION",
+            "kind": "const",
+            "path": "packages/ui/src/slug-copy.ts",
+            "line": 11,
+            "workspace": "@acme/ui",
+            "hop": 1,
+            "uses": [
+              "calls"
+            ],
+            "crosses": []
+          }
+        ],
+        "directTotal": 1,
+        "potential": [],
+        "potentialTotal": 0
+      },
+      {
+        "id": "file:pnpm-turbo:packages/ui/src/slug-copy.ts",
+        "target": "file",
+        "direct": [],
+        "directTotal": 0,
+        "potential": [],
+        "potentialTotal": 0
+      }
+    ]
+  }
+}
