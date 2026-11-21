@@ -9,6 +9,7 @@ Task: name the area of the code base the change will most likely touch.
 1. Read the plan. List the features, names, routes, tables, components and files it mentions or implies.
 2. Search: call `gantry_search` for those words (names, short phrases of what the code does). Send independent searches in the same turn. Use `kind`, `workspace` or `exported` to narrow a search that returns too much.
 3. Follow up: `gantry_node` on the best hits shows the file, the callers and callees (neighbors); `gantry_impact` with `symbol` or `paths` shows who depends on code and so which neighbours a change is likely to need. Add a neighbour only when the plan gives a reason to think it changes too (a caller that must handle a new value, the test or the type next to the function), not merely because it is connected.
+   Never use the `range` argument of `gantry_impact`: this repository holds no history beyond the current tree, and the estimate must come from the plan and the code as it stands.
 4. Stop after at most 10 tool calls, or earlier when more searching finds nothing new. Do not repeat a search.
 
 Output: a JSON object `{ "area": [ { "id": "<node id>", "confidence": <0 to 1> } ] }`, at most 40 entries, best first.

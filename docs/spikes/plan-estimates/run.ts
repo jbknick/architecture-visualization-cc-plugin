@@ -1,5 +1,6 @@
-// Runner of the plan-estimates spike (#304): for each pull request, check out `base` in a worktree, heal the index,
-// run the estimator prompt headless and record the area it names.
+// Runner of the plan-estimates spike (#304): for each pull request, export the tree of `base` into an isolated
+// estimator repository (no commit later than the base), heal the index, run the estimator prompt headless and
+// record the area it names.
 //   pnpm tsx docs/spikes/plan-estimates/run.ts [--pilot | --subset] --run <name> [--run <name> ...]
 //   full set:   run.ts --run full
 //   subset:     run.ts --subset --run sub-1   (and sub-2, sub-3)
@@ -11,7 +12,15 @@
 // runs/<name>.meta.json (model id, tokens, wall time, description coverage, radius counts; no text). Resumable:
 // a PR already in the run file is skipped. Never part of `pnpm check`.
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -50,6 +59,7 @@ const EFFORT = opts("--effort")[0] ?? "low";
 const TOKEN_BUDGET = Number(opts("--token-budget")[0] ?? 0); // 0: no stop; else stop when input+cache tokens pass it
 const names = opts("--run");
 const RADIUS_ONLY = flag("--radius-only");
+const PREPARE_ONLY = flag("--prepare-only"); // prepare and check the estimator repo, heal; no model call
 if (names.length === 0) throw new Error("give at least one --run <name>");
 
 const SCHEMA = {
@@ -220,6 +230,60 @@ const node = (args: string[], cwd: string, dataDir: string) =>
     maxBuffer: 64 * 1024 * 1024,
   });
 
+/**
+ * The estimator's repository holds the tree of the PR's base and nothing later: a standalone repository whose
+ * history is one synthetic commit per visited base (no real commit, no merge commit, no other ref). The tree comes
+ * from `git archive` of the history clone. `gantry_impact` accepts a git range, so the answer must not be reachable
+ * from here: `assertIsolated` fails the run when the merge commit or the real base commit is stored in, or
+ * reachable from, this repository.
+ */
+function prepareEstimatorRepo(est: string, url: string, bare: string, pr: Pr): void {
+  if (!existsSync(join(est, ".git"))) {
+    mkdirSync(est, { recursive: true });
+    git(est, "init", "-q");
+    git(est, "config", "user.name", "plan-estimates");
+    git(est, "config", "user.email", "plan-estimates@example.invalid");
+    git(est, "config", "core.autocrlf", "false");
+    git(est, "remote", "add", "origin", url);
+  }
+  for (const e of readdirSync(est)) if (e !== ".git") rmSync(join(est, e), { recursive: true, force: true });
+  const tar = join(scratch, `${pr.repo}-${pr.number}.tar`);
+  execFileSync("git", ["-C", bare, "archive", "--format=tar", "-o", tar, pr.base], { stdio: "ignore" });
+  execFileSync("tar", ["-xf", tar, "-C", est]);
+  rmSync(tar, { force: true });
+  git(est, "add", "-A");
+  execFileSync("git", ["-C", est, "commit", "-q", "--allow-empty", "-m", `tree of ${pr.repo}#${pr.number}`], {
+    env: {
+      ...process.env,
+      GIT_AUTHOR_DATE: "2000-01-01T00:00:00Z",
+      GIT_COMMITTER_DATE: "2000-01-01T00:00:00Z",
+    },
+    stdio: "ignore",
+  });
+  assertIsolated(est, pr);
+}
+
+function assertIsolated(est: string, pr: Pr): void {
+  const stored = (sha: string): boolean => {
+    try {
+      git(est, "cat-file", "-e", `${sha}^{commit}`);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  if (stored(pr.merge) || stored(pr.base))
+    throw new Error(`${prKey(pr)}: the merge or base commit is stored in the estimator repo`);
+  const reachable = git(est, "rev-list", "--all", "--reflog").split("\n");
+  if (reachable.includes(pr.merge) || reachable.includes(pr.base))
+    throw new Error(`${prKey(pr)}: the merge or base commit is reachable from the estimator repo`);
+  if (
+    existsSync(join(est, ".git", "objects", "info", "alternates")) ||
+    existsSync(join(est, ".git", "commondir"))
+  )
+    throw new Error(`${prKey(pr)}: the estimator repo borrows objects from another repository`);
+}
+
 /** The keyword-only variant: a copy of the healed index with every description removed. */
 function keywordCopy(pathsDb: string, kwDb: string): void {
   mkdirSync(join(kwDb, ".."), { recursive: true });
@@ -275,7 +339,7 @@ async function main() {
     const mine = todo.filter((p) => p.repo === repo.name).sort((a, b) => a.number - b.number);
     if (mine.length === 0) continue;
     const bare = historyClone(repo.name);
-    const wt = join(workDir, "wt", repo.name);
+    const wt = join(workDir, "est", repo.name);
     for (const pr of mine) {
       const key = prKey(pr);
       const pending = RADIUS_ONLY ? [] : names.filter((n) => !state.get(n)?.runs.some((r) => r.key === key));
@@ -285,11 +349,7 @@ async function main() {
         console.log(`token budget ${TOKEN_BUDGET} reached (${used}); stopping before ${key}`);
         return;
       }
-      if (existsSync(wt)) git(wt, "checkout", "--detach", "-f", pr.base);
-      else {
-        mkdirSync(join(workDir, "wt"), { recursive: true });
-        git(bare, "worktree", "add", "--detach", wt, pr.base);
-      }
+      prepareEstimatorRepo(wt, repo.url, bare, pr);
       const paths = resolvePaths(wt, childEnv(dataDesc));
       const t0 = Date.now();
       if (existsSync(paths.dbPath)) node(["heal"], wt, dataDesc);
@@ -337,12 +397,14 @@ async function main() {
         save(n);
         console.log(`${n} ${key}: radius ${JSON.stringify(m.radius)}`);
       }
-      if (pending.length === 0) continue;
+      if (PREPARE_ONLY) console.log(`${key}: estimator repo ready and isolated`);
+      if (pending.length === 0 || PREPARE_ONLY) continue;
       const plan = planText(loadPlan(pr));
       for (const n of pending) {
         const s = state.get(n);
         if (!s) continue;
         const kw = n.endsWith("-kw");
+        assertIsolated(wt, pr);
         const r = await claudeRun(wt, plan, kw ? dataKw : dataDesc);
         const area = (r.structured?.area ?? []).filter((a) => typeof a.id === "string");
         let estimated: number | null = null;
