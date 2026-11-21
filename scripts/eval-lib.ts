@@ -45,8 +45,18 @@ export const reposSchema = z.strictObject({ repos: z.array(repoSchema) }).superR
 export type Repo = z.infer<typeof repoSchema>;
 
 const file = z.string().min(1);
+/** `repo/relative/path.go:123`: where a handler is declared. Informational, checked by check-labels only. */
+const handlerRef = z.string().regex(/^[^:\s]+:[1-9]\d*$/, "handler must be <repo-relative path>:<line>");
+const line = z.number().int().positive();
+/** The functions that read or write a table in the pair's file, each with its declaration line. */
+const fns = z.array(z.strictObject({ name: z.string().min(1), line })).min(1);
 const endpointLabel = z.union([
-  z.strictObject({ method: z.string().min(1), path: z.string().min(1), file }),
+  z.strictObject({
+    method: z.string().min(1),
+    path: z.string().min(1),
+    file,
+    handler: handlerRef.optional(),
+  }),
   z.strictObject({ rpc: z.string().min(1), file }),
   z.strictObject({ fn: z.string().min(1), file }),
 ]);
@@ -60,9 +70,11 @@ export const labelsSchema = z.strictObject({
   route: z.array(z.strictObject({ path: z.string().min(1), file })).default([]),
   endpoint: z.array(endpointLabel).default([]),
   table: z.array(z.strictObject({ name: z.string().min(1) })).default([]),
-  read: z.array(z.strictObject({ file, table: z.string().min(1) })).default([]),
-  write: z.array(z.strictObject({ file, table: z.string().min(1) })).default([]),
+  read: z.array(z.strictObject({ file, table: z.string().min(1), fns: fns.optional() })).default([]),
+  write: z.array(z.strictObject({ file, table: z.string().min(1), fns: fns.optional() })).default([]),
   link: z.array(z.strictObject({ file, endpoint: z.string().min(1) })).default([]),
+  /** Sites whose path or table name cannot be read from the code. Never scored. */
+  unresolved: z.array(z.strictObject({ file, line, reason: z.string().min(1) })).default([]),
 });
 export type Labels = z.infer<typeof labelsSchema>;
 

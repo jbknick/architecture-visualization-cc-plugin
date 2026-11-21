@@ -1,0 +1,163 @@
+{
+  "repo": "gopodder",
+  "sha": "65c265576465c63cf7ee276ac956f63642196c9d",
+  "labelledBy": "agent claude-fable-5-2, read from the code at each query site before any scoring run; maintainer spot check pending",
+  "kinds": ["table", "read", "write"],
+  "table": [
+    { "name": "accounts" },
+    { "name": "users" },
+    { "name": "devices" },
+    { "name": "subscriptions" },
+    { "name": "episodes" },
+    { "name": "api_keys" },
+    { "name": "settings" }
+  ],
+  "read": [
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "accounts",
+      "fns": [
+        { "name": "GetAccountByID", "line": 2 },
+        { "name": "GetAccountByUsername", "line": 5 },
+        { "name": "GetAccountBySession", "line": 17 },
+        { "name": "ListAccounts", "line": 20 },
+        { "name": "CountAccounts", "line": 30 },
+        { "name": "ListInactiveAccounts", "line": 33 },
+        { "name": "ListUsers", "line": 76 }
+      ]
+    },
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "users",
+      "fns": [
+        { "name": "ListAccounts", "line": 20 },
+        { "name": "ListInactiveAccounts", "line": 33 },
+        { "name": "GetUser", "line": 52 },
+        { "name": "GetUserBySession", "line": 67 },
+        { "name": "GetUserByShareToken", "line": 73 },
+        { "name": "ListUsers", "line": 76 },
+        { "name": "ListUsersByAccount", "line": 82 },
+        { "name": "ListUsersByAccountWithStats", "line": 85 },
+        { "name": "CountUsers", "line": 197 }
+      ]
+    },
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "devices",
+      "fns": [
+        { "name": "ListUsersByAccountWithStats", "line": 85 },
+        { "name": "ListDevices", "line": 100 },
+        { "name": "CountDevices", "line": 200 }
+      ]
+    },
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "subscriptions",
+      "fns": [
+        { "name": "ListUsersByAccountWithStats", "line": 85 },
+        { "name": "GetSubscriptions", "line": 123 },
+        { "name": "GetSubscriptionsSince", "line": 126 },
+        { "name": "CountActiveSubscriptions", "line": 203 }
+      ]
+    },
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "episodes",
+      "fns": [
+        { "name": "GetEpisodes", "line": 150 },
+        { "name": "GetEpisodesByPodcast", "line": 156 },
+        { "name": "GetEpisodesByDevice", "line": 162 },
+        { "name": "GetEpisodesByPodcastAndDevice", "line": 168 },
+        { "name": "CountEpisodes", "line": 206 }
+      ]
+    },
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "api_keys",
+      "fns": [
+        { "name": "ListAPIKeysByAccount", "line": 213 },
+        { "name": "GetAPIKeysByPrefix", "line": 216 },
+        { "name": "CountAPIKeysByAccount", "line": 228 }
+      ]
+    },
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "settings",
+      "fns": [{ "name": "GetSetting", "line": 232 }]
+    }
+  ],
+  "write": [
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "accounts",
+      "fns": [
+        { "name": "CreateAccount", "line": 8 },
+        { "name": "UpdateAccountSession", "line": 11 },
+        { "name": "UpdateAccountLastLogin", "line": 14 },
+        { "name": "DeleteAccount", "line": 27 },
+        { "name": "UpdateAccountUsername", "line": 42 },
+        { "name": "UpdateAccountPassword", "line": 45 },
+        { "name": "UpdateAccountRole", "line": 48 }
+      ]
+    },
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "users",
+      "fns": [
+        { "name": "CreateUser", "line": 55 },
+        { "name": "UpdateUserPassword", "line": 58 },
+        { "name": "UpdateUserSession", "line": 61 },
+        { "name": "UpdateUserLastActivity", "line": 64 },
+        { "name": "UpdateUserShareToken", "line": 70 },
+        { "name": "DeleteUser", "line": 93 },
+        { "name": "DeleteUsersByAccount", "line": 96 }
+      ]
+    },
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "devices",
+      "fns": [
+        { "name": "CreateDevice", "line": 103 },
+        { "name": "UpdateDeviceCaption", "line": 107 },
+        { "name": "UpdateDeviceType", "line": 110 },
+        { "name": "UpdateDeviceLastActivity", "line": 113 },
+        { "name": "DeleteDevice", "line": 116 },
+        { "name": "DeleteAllUserDevices", "line": 119 }
+      ]
+    },
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "subscriptions",
+      "fns": [
+        { "name": "AddSubscription", "line": 131 },
+        { "name": "ReactivateSubscription", "line": 138 },
+        { "name": "DeleteSubscription", "line": 142 },
+        { "name": "DeleteAllUserSubscriptions", "line": 146 }
+      ]
+    },
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "episodes",
+      "fns": [
+        { "name": "DeleteAllUserEpisodes", "line": 174 },
+        { "name": "DeleteEpisodesOlderThan", "line": 177 },
+        { "name": "UpsertEpisode", "line": 180 }
+      ]
+    },
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "api_keys",
+      "fns": [
+        { "name": "CreateAPIKey", "line": 210 },
+        { "name": "DeleteAPIKey", "line": 219 },
+        { "name": "DeleteAPIKeysByAccount", "line": 222 },
+        { "name": "UpdateAPIKeyLastUsed", "line": 225 }
+      ]
+    },
+    {
+      "file": "gopodder/pggen/queries.sql",
+      "table": "settings",
+      "fns": [{ "name": "UpsertSetting", "line": 235 }]
+    }
+  ]
+}

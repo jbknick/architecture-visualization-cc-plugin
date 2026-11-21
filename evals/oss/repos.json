@@ -137,12 +137,28 @@
       "role": "tuning"
     },
     {
+      "name": "go-realworld-example-app",
+      "url": "https://github.com/uptrace/go-realworld-example-app.git",
+      "sha": "94fc6d26f3206208de8f3c1d20799aa733fdb3c3",
+      "stack": ["gin"],
+      "lang": ["go"],
+      "role": "held-out"
+    },
+    {
       "name": "golang-gin-realworld-example-app",
       "url": "https://github.com/realworld-apps/golang-gin-realworld-example-app.git",
       "sha": "a41289b2a4951e7cc09066f86742a27f85121c9b",
       "stack": ["gin", "gorm"],
       "lang": ["go"],
       "role": "tuning"
+    },
+    {
+      "name": "gopodder",
+      "url": "https://github.com/cbrgm/gopodder.git",
+      "sha": "65c265576465c63cf7ee276ac956f63642196c9d",
+      "stack": ["sqlc"],
+      "lang": ["go"],
+      "role": "held-out"
     },
     {
       "name": "grafana",
@@ -159,6 +175,14 @@
       "stack": ["typescript"],
       "lang": ["ts"],
       "role": "tuning"
+    },
+    {
+      "name": "hotel-bookings",
+      "url": "https://github.com/raihan2bd/hotel-bookings.git",
+      "sha": "56e92cfb8e3fed52804f4d6e62b78ee9edadfc58",
+      "stack": ["chi"],
+      "lang": ["go"],
+      "role": "held-out"
     },
     {
       "name": "hugo",
@@ -270,6 +294,14 @@
       "sha": "7faa622c492fc3f699dc959afc69a76205bb1774",
       "stack": ["tanstack-start", "drizzle"],
       "lang": ["ts"],
+      "role": "held-out"
+    },
+    {
+      "name": "realworld.go",
+      "url": "https://github.com/raeperd/realworld.go.git",
+      "sha": "c109ab8a966aa532287e8749994771a4d116ad7b",
+      "stack": ["net-http"],
+      "lang": ["go"],
       "role": "held-out"
     },
     {
