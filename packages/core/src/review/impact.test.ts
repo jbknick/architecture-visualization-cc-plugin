@@ -15,7 +15,10 @@ interface MaterializedFixture {
 }
 const helperPath = "../../test/helpers/fixture.js";
 const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as {
-  materializeFixture: (name: string) => Promise<MaterializedFixture>;
+  materializeFixture: (
+    name: string,
+    opts?: { feature?: boolean; dirName?: string },
+  ) => Promise<MaterializedFixture>;
 };
 
 const fixtures: MaterializedFixture[] = [];
@@ -262,5 +265,38 @@ describe("impact on fixtures/pnpm-turbo", () => {
     const impact = computeImpact(store, [ghost]);
     expect(impact.notes[0]).toContain("not in the index");
     expect(impact.callersByHop).toEqual([]);
+  });
+});
+
+describe("text summary of the reachable tier and hubs", () => {
+  it("on deep-radius prints the reachable line, the reachable block and the hub line", async () => {
+    const fx = await materializeFixture("deep-radius", { feature: true, dirName: "repo" });
+    fixtures.push(fx);
+    const data = mkdtempSync(join(tmpdir(), "gantry-impact-data-"));
+    dataDirs.push(data);
+    const paths: GantryPaths = resolvePaths(fx.dir, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
+    await indexRepo(paths, { layer: "main" });
+    const store = openStore(paths.dbPath);
+    stores.push(store);
+    const diff = await reviewDiff(paths, "main", "feature");
+    const impact = await reviewImpact(paths, store, diff);
+    const lines = formatImpact(diff, impact).split("\n");
+    const base = impact.consumers.find((c) => c.id.endsWith("#base"));
+    expect(base?.reachableTotal).toBeGreaterThan(0);
+    expect(lines).toContain(`  reachable (hop 4+): ${impact.reachable.total}`);
+    expect(lines).toContain(`  Reachable (${base?.reachableTotal}):`);
+    expect(lines.filter((l) => l.startsWith("  Hubs ("))).toEqual(["  Hubs (1):"]);
+    expect(lines).toContain(
+      `    hub (function, packages/core/src/hub.ts): ${base?.hubs[0]?.consumersTotal} consumers at hop 4 in 2 workspace(s)`,
+    );
+  });
+
+  it("on pnpm-turbo adds no line when the tier is empty", async () => {
+    const { fx, paths, store } = await setup();
+    changeButtonSignature(fx);
+    const diff = await reviewDiff(paths, "main", "feature");
+    const impact = await reviewImpact(paths, store, diff);
+    expect(impact.reachable.total).toBe(0);
+    expect(formatImpact(diff, impact)).not.toMatch(/reachable|Reachable|Hubs/);
   });
 });

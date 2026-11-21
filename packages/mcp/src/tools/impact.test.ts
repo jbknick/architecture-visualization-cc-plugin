@@ -1,11 +1,20 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { contentKey, heal, openStore, refreshDescriptionFts } from "@gantry/core";
+import {
+  contentKey,
+  heal,
+  type Impact,
+  openStore,
+  refreshDescriptionFts,
+  reviewDiff,
+  reviewImpact,
+  type Store,
+} from "@gantry/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { MAX_RESPONSE_CHARS } from "../envelope.js";
+import { fitJson, MAX_RESPONSE_CHARS } from "../envelope.js";
 import { type Connected, call, connect, type Repo } from "../testkit.js";
-import { impactTool } from "./impact.js";
+import { IMPACT_LIMITS, impactTool, shape } from "./impact.js";
 import { TOOLS } from "./index.js";
 
 interface MaterializedFixture {
@@ -15,7 +24,10 @@ interface MaterializedFixture {
 }
 const helperPath = "../../../core/test/helpers/fixture.js";
 const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as {
-  materializeFixture: (name: string) => Promise<MaterializedFixture>;
+  materializeFixture: (
+    name: string,
+    opts?: { feature?: boolean; dirName?: string },
+  ) => Promise<MaterializedFixture>;
 };
 
 const MARKER = "ZetaNineImpactMarker";
@@ -220,5 +232,106 @@ describe("gantry_impact", () => {
     expect(consumers).toBeGreaterThan(0);
     // not vacuous: the description really is returned for a changed symbol
     expect(surfaced).toBeGreaterThan(0);
+  });
+
+  it("on deep-radius returns the reachable total, per-workspace counts and the hub within the cap", async () => {
+    const fx = await materializeFixture("deep-radius", { feature: true, dirName: "repo" });
+    fixtures.push(fx);
+    const data = mkdtempSync(join(tmpdir(), "gantry-mcp-impact-"));
+    dataDirs.push(data);
+    const { resolvePaths } = await import("@gantry/core");
+    const env = { ...process.env, HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data };
+    const paths = resolvePaths(fx.dir, env);
+    await heal(paths);
+    const repo = { dir: fx.dir, env, paths } as unknown as Repo;
+    const conn = await connect(repo, { getEmbedder: async () => undefined });
+    conns.push(conn);
+    const r = await call(conn.client, "gantry_impact", { range: "main...feature" });
+    expect(r.text.length).toBeLessThanOrEqual(MAX_RESPONSE_CHARS);
+    const j = r.json as {
+      reachable_total: number;
+      consumers: {
+        reachable_total: number;
+        reachable_by_workspace: Record<string, number>;
+        hubs: { hub: string; consumers_total: number; by_workspace: Record<string, number> }[];
+      }[];
+    };
+    const store = openStore(paths.dbPath);
+    let core: Impact;
+    try {
+      core = await reviewImpact(paths, store, await reviewDiff(paths, "main", "feature"));
+    } finally {
+      store.close();
+    }
+    const first = core.consumers[0];
+    expect(j.reachable_total).toBe(core.reachable.total);
+    expect(j.consumers[0]?.reachable_total).toBe(first?.reachableTotal);
+    expect(j.consumers[0]?.hubs[0]?.hub).toBe("sym:repo:packages/core/src/hub.ts#hub");
+    expect(j.consumers[0]?.hubs[0]?.consumers_total).toBe(first?.hubs[0]?.consumersTotal);
+    const counted = Object.values(j.consumers[0]?.reachable_by_workspace ?? {}).reduce((a, b) => a + b, 0);
+    expect(counted).toBeGreaterThan(0);
+  });
+
+  it("keeps the workspace maps short for 20 workspaces and says how many there are", () => {
+    const many = Array.from({ length: 20 }, (_, i) => ({
+      id: `sym:r:w${i}/a.ts#f${i}`,
+      name: `f${i}`,
+      kind: "function",
+      path: `w${i}/a.ts`,
+      line: 1,
+      workspace: `w${i}`,
+      hop: 4,
+      uses: ["calls"],
+      crosses: [],
+    }));
+    const hubs = Array.from({ length: 5 }, (_, i) => ({
+      hub: `sym:r:h${i}.ts#h${i}`,
+      name: `h${i}`,
+      kind: "function",
+      path: `h${i}.ts`,
+      workspace: null,
+      hop: 4,
+      consumersTotal: 100 + i,
+      byWorkspace: many.map((m) => ({ workspace: m.workspace, count: 5 })),
+      members: [],
+    }));
+    const impact = {
+      changed: [],
+      callersByHop: [],
+      crossings: [],
+      risk: { score: 0, level: "low", reasons: [] },
+      notes: [],
+      reachable: { total: 20, byHop: [{ hop: 4, count: 20 }] },
+      hubs: [],
+      consumers: [
+        {
+          id: "sym:r:x.ts#x",
+          target: "symbol",
+          direct: [],
+          directTotal: 1,
+          potential: [],
+          potentialTotal: 0,
+          reachable: many,
+          reachableTotal: 20,
+          hubs,
+        },
+      ],
+    } as unknown as Impact;
+    const text = fitJson(shape(impact, {} as Store));
+    expect(text.length).toBeLessThanOrEqual(MAX_RESPONSE_CHARS);
+    const c = (
+      JSON.parse(text) as {
+        consumers: {
+          reachable_by_workspace: Record<string, number>;
+          reachable_workspaces_total?: number;
+          hubs: unknown[];
+          hubs_total?: number;
+        }[];
+      }
+    ).consumers[0];
+    expect(Object.keys(c?.reachable_by_workspace ?? {})).toHaveLength(IMPACT_LIMITS.reachableWorkspaces);
+    expect(c?.reachable_workspaces_total).toBe(20);
+    expect(c?.hubs).toHaveLength(IMPACT_LIMITS.hubs);
+    expect(c?.hubs_total).toBe(5);
   });
 });
