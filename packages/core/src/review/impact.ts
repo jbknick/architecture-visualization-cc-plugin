@@ -330,6 +330,8 @@ export function modifiedChanges(store: Store, ids: string[]): SymbolChange[] {
 const TEXT_CHANGES = 20;
 const TEXT_DIRECT = 5;
 const TEXT_POTENTIAL = 3;
+const TEXT_REACHABLE = 3;
+const TEXT_HUBS = 3;
 
 /** `HomePage (component, apps/web/src/routes/index.tsx:5) renders; crosses app`, or `... hop 2 via X` (potential). */
 function consumerLine(c: Consumer): string {
@@ -361,13 +363,14 @@ export function formatImpact(diff: ReviewDiff, impact: Impact): string {
     lines.push("Callers by hop:");
     for (const h of impact.callersByHop)
       lines.push(`  hop ${h.hop}: ${h.ids.length}${h.hop === 1 ? ` (${list(h.ids)})` : ""}`);
+    if (impact.reachable.total > 0) lines.push(`  reachable (hop 4+): ${impact.reachable.total}`);
   }
   if (impact.crossings.length > 0) {
     lines.push(`Crossings: ${impact.crossings.length}`);
     for (const x of impact.crossings.slice(0, 5)) lines.push(`  ${x.kind}: ${x.from} <- ${x.to}`);
     if (impact.crossings.length > 5) lines.push(`  and ${impact.crossings.length - 5} more`);
   }
-  const used = impact.consumers.filter((c) => c.directTotal + c.potentialTotal > 0);
+  const used = impact.consumers.filter((c) => c.directTotal + c.potentialTotal + c.reachableTotal > 0);
   for (const c of used.slice(0, TEXT_CHANGES)) {
     lines.push(`Consumers of ${c.id}:`);
     lines.push(`  Directly affected (${c.directTotal}):`);
@@ -376,6 +379,19 @@ export function formatImpact(diff: ReviewDiff, impact: Impact): string {
     lines.push(`  Potentially affected (${c.potentialTotal}):`);
     for (const p of c.potential.slice(0, TEXT_POTENTIAL)) lines.push(`    ${consumerLine(p)}`);
     if (c.potentialTotal > TEXT_POTENTIAL) lines.push(`    and ${c.potentialTotal - TEXT_POTENTIAL} more`);
+    if (c.reachableTotal > 0) {
+      lines.push(`  Reachable (${c.reachableTotal}):`);
+      for (const r of c.reachable.slice(0, TEXT_REACHABLE)) lines.push(`    ${consumerLine(r)}`);
+      if (c.reachableTotal > TEXT_REACHABLE) lines.push(`    and ${c.reachableTotal - TEXT_REACHABLE} more`);
+    }
+    if (c.hubs.length > 0) {
+      lines.push(`  Hubs (${c.hubs.length}):`);
+      for (const h of c.hubs.slice(0, TEXT_HUBS))
+        lines.push(
+          `    ${h.name} (${h.kind}, ${h.path}): ${h.consumersTotal} consumers at hop ${h.hop} in ${h.byWorkspace.length} workspace(s)`,
+        );
+      if (c.hubs.length > TEXT_HUBS) lines.push(`    and ${c.hubs.length - TEXT_HUBS} more`);
+    }
   }
   if (used.length > TEXT_CHANGES)
     lines.push(`Consumers of ${used.length - TEXT_CHANGES} more change(s) are in --json.`);

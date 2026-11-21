@@ -100,7 +100,10 @@
         "direct": [],
         "directTotal": 0,
         "potential": [],
-        "potentialTotal": 0
+        "potentialTotal": 0,
+        "reachable": [],
+        "reachableTotal": 0,
+        "hubs": []
       },
       {
         "id": "sym:pnpm-turbo:packages/ui/src/slug-copy.ts#slugify",
@@ -122,7 +125,10 @@
         ],
         "directTotal": 1,
         "potential": [],
-        "potentialTotal": 0
+        "potentialTotal": 0,
+        "reachable": [],
+        "reachableTotal": 0,
+        "hubs": []
       },
       {
         "id": "file:pnpm-turbo:packages/ui/src/slug-copy.ts",
@@ -130,8 +136,16 @@
         "direct": [],
         "directTotal": 0,
         "potential": [],
-        "potentialTotal": 0
+        "potentialTotal": 0,
+        "reachable": [],
+        "reachableTotal": 0,
+        "hubs": []
       }
-    ]
+    ],
+    "reachable": {
+      "total": 0,
+      "byHop": []
+    },
+    "hubs": []
   }
 }

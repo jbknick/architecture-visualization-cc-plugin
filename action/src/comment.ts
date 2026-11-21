@@ -44,6 +44,7 @@ export const CAPS = {
   clusters: 15,
   membersPerCluster: 6,
   notes: 10,
+  hubs: 3,
 } as const;
 const LINE_MAX = 200;
 const CELL_MAX = 80;
@@ -207,9 +208,20 @@ function crossingsSection(review: ReviewJson): string {
 }
 
 function consumersSection(review: ReviewJson): string {
-  const used = (review.impact?.consumers ?? []).filter((c) => c.directTotal + c.potentialTotal > 0);
+  const used = (review.impact?.consumers ?? []).filter(
+    (c) => c.directTotal + c.potentialTotal + c.reachableTotal > 0,
+  );
   if (used.length === 0) return "";
   const lines = ["### Consumers", ""];
+  const impact = review.impact;
+  if (impact && impact.reachable.total > 0) lines.push(`Reachable (4+ hops): ${impact.reachable.total}`, "");
+  if (impact && impact.hubs.length > 0) {
+    const shown = impact.hubs
+      .slice(0, CAPS.hubs)
+      .map((h) => `${code(nameOfId(h.hub), CELL_MAX)} (${h.consumersTotal})`);
+    const more = impact.hubs.length - CAPS.hubs;
+    lines.push(`Hubs: ${shown.join(", ")}${more > 0 ? `, and ${more} more` : ""}`, "");
+  }
   for (const c of used.slice(0, CAPS.consumerChanges)) {
     lines.push(
       "<details>",
