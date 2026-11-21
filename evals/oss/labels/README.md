@@ -61,6 +61,10 @@ Conventions added for these cases, on top of the ones above:
   patterns already hold the full path).
 - Group and `Route` prefixes are joined (`rwe.API.Group("/api")`, then `Group("")` in each package, then
   `g.GET("/users")` is `POST /api/users`). Middleware registrations (`Use`) are not endpoints.
+- A host-qualified pattern (`router.HandleFunc("dreamsofcode.foo/", handle)`) is not labelled as an endpoint. This
+  states what the existing `nethttp` labels do, which list `ALL /` and the four `/monster` routes and not that
+  pattern; no label was changed. The reference recipe for `nethttp` leaves such patterns out with a `constraints`
+  regex.
 - For sqlc, the query file is the read/write file (as for `simplebank`): the generated `queries.sql.go` is
   generated code and the Go store only calls it. `fns` lists the query names with the line of their
   `-- name:` comment. A query that reads a second table in a subquery or join (`ListAccounts` reads `users`)
