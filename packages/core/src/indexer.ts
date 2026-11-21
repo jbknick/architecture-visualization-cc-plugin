@@ -483,6 +483,8 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     }
 
     store.tx(() => {
+      // The recipe gaps of this tree, whole (spec section 11): computed over the full read set on every run.
+      store.replaceGaps(layer, routes.gaps);
       for (const id of clearWorking) store.clearWorking(id);
       for (const id of markDeleted) {
         if (layer === "main") removeMainFile(store, id, !rebuildFts);
@@ -657,6 +659,7 @@ export function dumpGraph(store: Store): {
   symbols: unknown[];
   edges: unknown[];
   adapterNodes?: unknown[];
+  gaps?: unknown[];
 } {
   const wsRows = store.db.prepare("SELECT * FROM workspaces ORDER BY id").all() as Json[];
   const workspaces = wsRows.map((w) => ({
@@ -684,5 +687,14 @@ export function dumpGraph(store: Store): {
   const edges = store.effectiveEdges().filter((e) => e.kind !== "similar_to");
   // Adapter nodes (routes) appear only when an adapter found some, so repositories without them dump as before.
   const adapterNodes = store.effectiveAdapterNodes();
-  return { workspaces, files, symbols, edges, ...(adapterNodes.length > 0 ? { adapterNodes } : {}) };
+  // Recipe gaps appear only when there are some, like adapter nodes.
+  const gaps = store.effectiveGaps();
+  return {
+    workspaces,
+    files,
+    symbols,
+    edges,
+    ...(adapterNodes.length > 0 ? { adapterNodes } : {}),
+    ...(gaps.length > 0 ? { gaps } : {}),
+  };
 }

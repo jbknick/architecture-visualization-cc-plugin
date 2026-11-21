@@ -666,7 +666,7 @@ describe("entry points", () => {
         st.close();
       }
     };
-    expect(versionOf()).toBe("12");
+    expect(versionOf()).toBe("13");
     setVersion("6");
     const input = JSON.stringify({
       session_id: "s",
@@ -706,15 +706,15 @@ describe("entry points", () => {
       err: "",
     });
     expect(versionOf()).toBe("6");
-    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 12)");
+    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 13)");
 
     // The next non-hook command rebuilds from scratch, with one message naming the reason.
     const init = gantry(fx.dir, ["init"]);
     expect(init.code).toBe(0);
     expect(
-      init.err.split("built by an older version of Gantry (schema 6, now 12); rebuilding it").length - 1,
+      init.err.split("built by an older version of Gantry (schema 6, now 13); rebuilding it").length - 1,
     ).toBe(1);
-    expect(versionOf()).toBe("12");
+    expect(versionOf()).toBe("13");
   });
 
   it("session-start and the git hooks create no data dir for a repository without an index (#147)", async () => {
@@ -748,6 +748,31 @@ describe("entry points", () => {
       out: `Gantry: ${n} functions await descriptions \u2014 run /gantry:sync when convenient\n`,
       err: "",
     });
+  });
+
+  it("session-start adds one line when recipe gaps are open, within 600 characters, and none without", async () => {
+    const fx = await fixture("pnpm-turbo");
+    expect(gantry(fx.dir, ["init"]).code).toBe(0);
+    expect(gantry(fx.dir, ["hook", "session-start"])).toEqual({ code: 0, out: "", err: "" });
+    mkdirSync(join(fx.dir, "apps/api/src"), { recursive: true });
+    writeFileSync(
+      join(fx.dir, "apps/api/src/extra.ts"),
+      'import { Router } from "express";\nconst router = Router();\nrouter.get("/health", () => {});\nexport default router;\n',
+    );
+    git(fx.dir, ["add", "-A"]);
+    expect(git(fx.dir, ["commit", "-q", "-m", "route"]).code).toBe(0);
+    const r = gantry(fx.dir, ["hook", "session-start"]);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe("Gantry: 1 recipe gap open (gantry recipe gaps lists them)\n");
+    expect(r.out.length).toBeLessThanOrEqual(600);
+    // The CLI and the hook count the same: both leave out the id the recipe on disk dismisses, committed or not.
+    expect(gantry(fx.dir, ["recipe", "gaps"]).out).toContain("1 open, 0 dismissed");
+    const recipePath = join(fx.dir, ".gantry/recipe.json");
+    const recipe = JSON.parse(readFileSync(recipePath, "utf8")) as Record<string, unknown>;
+    recipe.dismissed = [{ id: 'gap:site:apps/api/src/extra.ts#router.get("/health")', reason: "not needed" }];
+    writeFileSync(recipePath, JSON.stringify(recipe));
+    expect(gantry(fx.dir, ["recipe", "gaps"]).out).toContain("0 open, 1 dismissed");
+    expect(gantry(fx.dir, ["hook", "session-start"])).toEqual({ code: 0, out: "", err: "" });
   });
 
   it("post-tool-use without usable stdin and unknown hook names fail open", async () => {

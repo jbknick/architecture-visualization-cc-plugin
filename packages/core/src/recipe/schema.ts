@@ -283,6 +283,8 @@ export const RecipeShellSchema = z.strictObject({
   dependencies: z.array(DependencySchema),
   helpers: z.array(z.enum(HELPER_NAMES)),
   rules: z.array(z.unknown()),
+  /** Gaps the recipe has decided to leave uncovered, by gap id (spec section 11); a listed gap is not stored. */
+  dismissed: z.array(z.strictObject({ id: z.string().min(1), reason: z.string() })).optional(),
   /** Chain methods that return the same router (`r.With(mw).Get`, `new Hono().basePath(..).get(..)`). */
   passthrough: z.array(z.string().min(1)).optional(),
   /** `model-naming`: how a model name maps to a table name (an explicit map, `snake_case`, plural, or both). */

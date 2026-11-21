@@ -2,14 +2,17 @@ import {
   checkRecipeFile,
   DEFAULT_NODE_LIMIT,
   listRecipeNodes,
+  openGaps,
   RECIPE_NODE_KINDS,
   type RecipeCheck,
+  type RecipeGap,
   type RecipeNodes,
   readRecipeFile,
   recipeCheckOk,
   resolvePaths,
 } from "@gantry/core";
 import type { Command } from "commander";
+import { openFresh } from "./lookup.js";
 import { EXIT_ERROR, EXIT_OK, fail, writeStdout } from "./shared.js";
 
 const PLURAL: Record<(typeof RECIPE_NODE_KINDS)[number], string> = {
@@ -55,6 +58,13 @@ export function recipeCheckText(c: RecipeCheck, nodes?: RecipeNodes): string {
   for (const e of c.errors) lines.push(`error: ${e}`);
   if (nodes) lines.push(...recipeNodesText(nodes));
   lines.push(recipeCheckOk(c) ? "recipe ok" : "recipe has problems");
+  return `${lines.join("\n")}\n`;
+}
+
+/** The text form of `gantry recipe gaps`: one line per open gap in id order, then the counts. */
+export function recipeGapsText(gaps: readonly RecipeGap[], dismissed: number): string {
+  const lines = gaps.map((g) => `${g.kind} ${g.file}:${g.line} ${g.detail}`);
+  lines.push(`${gaps.length} open, ${dismissed} dismissed`);
   return `${lines.join("\n")}\n`;
 }
 
@@ -114,4 +124,28 @@ export function registerRecipe(program: Command): void {
         }
       },
     );
+  recipe
+    .command("gaps")
+    .description(
+      "List the code the recipe does not cover: dependencies, unmatched client calls and route or SQL sites",
+    )
+    .option("--json", "print { gaps: [{ id, kind, file, line, detail }], dismissed: <n> } as JSON")
+    .action(async (opts: { json?: boolean }) => {
+      try {
+        const { paths, store } = await openFresh(process.cwd());
+        let open: ReturnType<typeof openGaps>;
+        try {
+          open = openGaps(store, paths.root);
+        } finally {
+          store.close();
+        }
+        const { gaps, dismissed } = open;
+        writeStdout(
+          opts.json ? `${JSON.stringify({ gaps, dismissed }, null, 2)}\n` : recipeGapsText(gaps, dismissed),
+        );
+        process.exitCode = EXIT_OK;
+      } catch (err) {
+        process.exitCode = fail(err);
+      }
+    });
 }

@@ -9,6 +9,7 @@ export {
   rulesFor,
   runExamples,
 } from "./engine.js";
+export * from "./gaps.js";
 export * from "./load.js";
 export * from "./nodes.js";
 export * from "./schema.js";

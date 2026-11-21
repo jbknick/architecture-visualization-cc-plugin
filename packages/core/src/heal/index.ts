@@ -215,6 +215,7 @@ export async function heal(
       changed = r.files;
       store.setMeta("head_sha", newSha);
       pruneWorking(store, root, layerRows(store, "working").keys());
+      store.dropWorkingGapsIfClean();
     } else {
       const live = changedPaths.filter(([s]) => s !== "D").map(([, p]) => p);
       const gone = changedPaths.filter(([s]) => s === "D").map(([, p]) => p);
@@ -241,6 +242,7 @@ export async function heal(
           .map((w) => w.path);
         if (keep.length > 0) await indexRepo(paths, { layer: "working", files: keep, store });
         dropRedundantWorking(store);
+        store.dropWorkingGapsIfClean();
       }
       store.setMeta("head_sha", newSha);
     }
@@ -342,6 +344,7 @@ export async function refreshWorking(
       refreshDescriptionFts(store); // re-indexed rows start without their description columns
     }
     dropRedundantWorking(store);
+    store.dropWorkingGapsIfClean();
     store.setMeta("last_refresh_at", new Date().toISOString());
 
     const after = layerRows(store, "working");
