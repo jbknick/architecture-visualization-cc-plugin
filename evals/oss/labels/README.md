@@ -47,6 +47,9 @@ the pull request of #277.
 
 Conventions added for these cases, on top of the ones above:
 
+- **registration** is `<path>:<line>` of the call that registers the endpoint, in the label's `file`. For a
+  call that spans lines it is the line where the call starts. It is read at the registration site, never
+  from Gantry's output, and is never scored (like `handler`, `fns` and `unresolved`).
 - **handler** is `<path>:<line>` of the `func` that declares the handler, also when the registration wraps it
   (`authenticate(handleGetUser(db, ...))` names `handleGetUser`). A handler that is a standard-library function
   (`pprof.Index`) or an inline expression (`http.StripPrefix(...)`) has no `handler`.
@@ -75,9 +78,31 @@ read; the ones that are not a registration (session `Get`, form `Get`) are not l
 | `realworld.go`             | `rg -n "HandleFunc\(\|\.Handle\(" --glob '!vendor/**' --glob '!*_test.go' .`                                                                                                          |
 | `gopodder`                 | `rg -n "^-- name:" gopodder/pggen/queries.sql` and `rg -n -i "SELECT \|INSERT INTO\|UPDATE \w+ SET\|DELETE FROM\|\.Exec\(\|\.Query\(" --glob '*.go' .` outside `pggen/queries.sql.go` |
 
+Site-by-site comparison of the greps above with the labels (every hit was read):
+
+| Case                       | Grep hits                             | Registrations labelled       | Hits that are not an endpoint                                                                                                                                          |
+| -------------------------- | ------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hotel-bookings`           | 119 (96 outside `*_test.go`)          | 26 of 26, all in `routes.go` | 1 `mux.Route("/admin", ...)` prefix; 69 session, form and query `Get` / `Put` calls; 23 in tests (12 repeat the routes on a test mux, 11 are client and session calls) |
+| `go-realworld-example-app` | 22                                    | 19 of 19                     | 3 `Group` calls that only set a prefix (`rwe/router.go:25`, `org/init.go:8`, `blog/init.go:9`)                                                                         |
+| `realworld.go`             | 38 (the 14 vendored hits are removed) | 27 of 27, all in `main.go`   | 1 mount (`mux.Handle("/debug/", handleGetDebug())`); 10 in `docs/prompts/*.md`, planning notes that repeat a registration already labelled in `main.go`, not code      |
+
+No unlabelled registration was found, so `unresolved` stays empty in all three. `gopodder` has no endpoints; its
+query sites are in the table above.
+
+**Shortfall.** The issue asks for at least 20 endpoints per held-out router case. `go-realworld-example-app`
+has 19 at the pinned commit: the grep finds 19 registration calls and all 19 are labelled. The repo is not
+replaced. One more URL is reachable without a registration: `GET /api/articles/feed` is served by `showArticle`,
+which hands over to `listArticlesFeed` when the slug is `feed` (`blog/article_api.go:48`). It is not labelled
+because the conventions label registrations; with it the case would have 20. The maintainer rules on both at the
+spot check.
+
 `pnpm tsx evals/oss/check-labels.ts <case>...` checks these files against the clones (spec section 13): every
 file exists, and every handler and function line is inside its file and holds a `func` or the function's name.
-It does not check that the label is right; that is the maintainer's spot check.
+For an endpoint with a `registration`, the line must be in the label's `file` and hold the method (unless
+`ALL`), the last literal segment of the path and the name of the function the `handler` line declares. The scorer
+(`scripts/eval-lib.ts`) reads label files with a strict schema, so a key it does not know is an input error
+(exit 2), and `registration` is not part of any scoring key. It does not check that the label is right; that is
+the maintainer's spot check.
 
 ## Call-linking labels
 
