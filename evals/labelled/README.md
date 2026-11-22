@@ -9,7 +9,7 @@ and this README are committed. Never commit, paste or screenshot the output.
 
 ```sh
 # 1. Sample 200 symbols (seed 42) and build fact sheets -> candidates.jsonl
-DEVPRENTICE_PATH=/path/to/private-project pnpm tsx evals/labelled/sample.ts
+GANTRY_TESTBED_PATH=/path/to/private-project pnpm tsx evals/labelled/sample.ts
 #    the repo is read-only, never written; also set LABELLED_SERVER_DIRS to its server-side
 #    workspace dirs, comma-separated with trailing slashes (the real values are recorded in
 #    evals/private/labelled/sample-meta.json, not here)

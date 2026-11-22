@@ -1,9 +1,9 @@
 /**
- * Samples 200 function-like symbols from a private test-bed repo (Devprentice) and writes
+ * Samples 200 function-like symbols from a the private test bed and writes
  * `candidates.jsonl` (fact sheets only, no labels) to the git-ignored `evals/private/labelled/`.
  *
  * Usage: pnpm tsx evals/labelled/sample.ts [repoPath]
- * Env:   DEVPRENTICE_PATH (required unless passed as the first argument), LABELLED_SERVER_DIRS (required)
+ * Env:   GANTRY_TESTBED_PATH (required unless passed as the first argument), LABELLED_SERVER_DIRS (required)
  *        LABELLED_OUT     (default <repo>/evals/private/labelled)
  *
  * Read-only on the target repo. Output must never be committed (spec section 1).
@@ -291,10 +291,10 @@ function buildFactSheet(c: Candidate, kind: "function" | "component" | "hook") {
 }
 
 function main(): void {
-  const rootArg = process.argv[2] ?? process.env.DEVPRENTICE_PATH;
+  const rootArg = process.argv[2] ?? process.env.GANTRY_TESTBED_PATH;
   if (!rootArg || SERVER_DIRS.length === 0) {
     process.stderr.write(
-      "usage: DEVPRENTICE_PATH=<repo> LABELLED_SERVER_DIRS=<dir/,dir/> tsx evals/labelled/sample.ts\n",
+      "usage: GANTRY_TESTBED_PATH=<repo> LABELLED_SERVER_DIRS=<dir/,dir/> tsx evals/labelled/sample.ts\n",
     );
     process.exit(2);
   }
