@@ -16,6 +16,7 @@ export function registerNode(program: Command): void {
           const info = nodeInfo(store, target);
           if (!info) throw new Error(`No node found for '${target}'`);
           const { node } = info;
+          const multi = store.listRepos().length > 1;
           const rows = Object.entries(info.neighbors).flatMap(([kind, ids]) => ids.map((id) => [kind, id]));
           if ("fileId" in node) {
             const filePath = pathOfFileId(node.fileId);
@@ -26,6 +27,7 @@ export function registerNode(program: Command): void {
               const head = [
                 `${node.name} (${node.kind}${node.exported ? ", exported" : ""})`,
                 `  id:        ${node.id}`,
+                ...(multi ? [`  repo:      ${info.repo}`] : []),
                 `  language:  ${langLabel(node.lang)}`,
                 `  location:  ${filePath}:${node.startLine}-${node.endLine}`,
                 `  signature: ${node.signature}`,
@@ -42,6 +44,7 @@ export function registerNode(program: Command): void {
             const head = [
               `${node.path} (file)`,
               `  id:        ${node.id}`,
+              ...(multi ? [`  repo:      ${info.repo}`] : []),
               `  language:  ${langLabel(node.lang)}`,
               `  fan-in:    ${info.fanIn}`,
               `  fan-out:   ${info.fanOut}`,

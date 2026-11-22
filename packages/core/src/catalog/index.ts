@@ -2,9 +2,10 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { contentKey, FUNCTION_LIKE_KINDS } from "../describe/factsheet.js";
+import { parseWorkspaceId, repoOfId } from "../ids.js";
 import type { GantryPaths } from "../paths/index.js";
 import { behaviorMap, type DescribedBy, describedByMap } from "../search/lookup.js";
-import type { Store } from "../store/index.js";
+import { type Store, safeRepo } from "../store/index.js";
 import type { FileRecord, SymbolKind, SymbolRecord } from "../types.js";
 
 /** First line of every catalog file (descriptions are untrusted data; spec section 8). */
@@ -29,20 +30,31 @@ const oneLine = (s: string, max: number): string => {
 };
 
 export const dirOf = (p: string): string => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
-/** Catalog file (relative to the catalog dir) that lists the functions defined directly in `dir`. */
-export const catalogFileFor = (dir: string): string => (dir === "" ? ROOT_CATALOG_FILE : `${dir}.md`);
+/**
+ * The catalog key of a directory: the directory itself when the store has one repo, `<repo>/<dir>` when it has
+ * several (`<repo>/` for the repo's root).
+ */
+export const catalogKey = (repo: string | undefined, dir: string): string =>
+  repo === undefined ? dir : dir === "" ? `${repo}/` : `${repo}/${dir}`;
+/** Catalog file (relative to the catalog dir) that lists the functions defined directly in a directory (`catalogKey`). */
+export const catalogFileFor = (key: string): string =>
+  key === "" ? ROOT_CATALOG_FILE : key.endsWith("/") ? `${key}${ROOT_CATALOG_FILE}` : `${key}.md`;
 const safeDir = (dir: string): boolean =>
   !dir.split("/").some((seg) => seg === ".." || seg === "." || seg === "");
 
 interface Fn {
   sym: SymbolRecord;
+  repo: string;
   path: string;
   workspaceId: string;
 }
 
 interface Snapshot {
+  /** The store holds more than one repo: catalog files are written per repo. */
+  multi: boolean;
   files: FileRecord[];
   fns: Fn[];
+  /** Functions by catalog key (`catalogKey`). */
   byDir: Map<string, Fn[]>;
   behaviors: Map<string, string>;
   /** Provenance by content key (#175): a fallback line is tagged after its text. */
@@ -58,22 +70,31 @@ function snapshot(store: Store): Snapshot {
   const fns: Fn[] = [];
   for (const sym of store.effectiveSymbols({ kind: [...FUNCTION_LIKE_KINDS] })) {
     const f = byId.get(sym.fileId);
-    if (f) fns.push({ sym, path: f.path, workspaceId: f.workspaceId ?? "" });
+    if (f) fns.push({ sym, repo: repoOfId(sym.id) ?? "", path: f.path, workspaceId: f.workspaceId ?? "" });
   }
-  fns.sort((a, b) => cmp(a.path, b.path) || a.sym.startLine - b.sym.startLine || cmp(a.sym.id, b.sym.id));
+  fns.sort(
+    (a, b) =>
+      cmp(a.repo, b.repo) ||
+      cmp(a.path, b.path) ||
+      a.sym.startLine - b.sym.startLine ||
+      cmp(a.sym.id, b.sym.id),
+  );
+  const multi = store.listRepos().length > 1;
   const byDir = new Map<string, Fn[]>();
   for (const fn of fns) {
-    const dir = dirOf(fn.path);
-    byDir.set(dir, [...(byDir.get(dir) ?? []), fn]);
+    const key = catalogKey(multi ? fn.repo : undefined, dirOf(fn.path));
+    byDir.set(key, [...(byDir.get(key) ?? []), fn]);
   }
-  return { files, fns, byDir, behaviors: behaviorMap(store), describedBy: describedByMap(store) };
+  return { multi, files, fns, byDir, behaviors: behaviorMap(store), describedBy: describedByMap(store) };
 }
 
 const describeOf = (snap: Snapshot, sym: SymbolRecord): string | null =>
   sym.exactHash === "" ? null : (snap.behaviors.get(contentKey(sym.exactHash)) ?? null);
 
 function renderDir(snap: Snapshot, dir: string, list: Fn[]): string {
-  const lines = [CATALOG_NOTE, "", `# ${dir === "" ? "(repo root)" : dir}`, ""];
+  const title = dir === "" ? "(repo root)" : dir;
+  const repo = list[0]?.repo;
+  const lines = [CATALOG_NOTE, "", `# ${snap.multi ? `${repo}: ${title}` : title}`, ""];
   for (const { sym, path: p } of list) {
     const open = sym.signature.indexOf("(");
     const args = open >= 0 ? sym.signature.slice(open) : "()";
@@ -103,8 +124,9 @@ function renderIndex(store: Store, snap: Snapshot): string {
   const workspaces = store.listWorkspaces().sort((a, b) => cmp(a.id, b.id));
   for (const ws of workspaces) {
     const dir = ws.dir === "." ? "" : ws.dir;
+    const key = catalogKey(snap.multi ? parseWorkspaceId(ws.id)?.repo : undefined, dir);
     lines.push(
-      `- ${ws.id} (${ws.name}) — ${ws.dir}: ${fnCount.get(ws.id) ?? 0} functions in ${fileCount.get(ws.id) ?? 0} files, catalog ${catalogFileFor(dir)}`,
+      `- ${ws.id} (${ws.name}) — ${ws.dir}: ${fnCount.get(ws.id) ?? 0} functions in ${fileCount.get(ws.id) ?? 0} files, catalog ${catalogFileFor(key)}`,
     );
   }
   lines.push("", `${snap.fns.length} functions in ${snap.files.length} files in total.`);
@@ -134,7 +156,8 @@ function removeWithParents(file: string, stop: string): void {
 /**
  * Writes the catalog under `paths.catalogDir` (the data dir, never the repo): one markdown file per directory
  * that defines function-like symbols (`catalog/packages/utils/src.md`), and `catalog/INDEX.md` listing workspaces
- * with counts. A hash of each file's content is kept in `meta` (`catalog_hash:*`); a file is rewritten only when
+ * with counts. With more than one repo in the store every path starts with the repo name (`catalog/acme/api/src.md`,
+ * a repo's root-level functions in `catalog/acme/api/_root.md`). A hash of each file's content is kept in `meta` (`catalog_hash:*`); a file is rewritten only when
  * its hash changed or the file is missing, and files of directories that no longer have functions are deleted.
  * Returns how many files were written.
  */
@@ -160,9 +183,10 @@ export function writeCatalog(store: Store, paths: GantryPaths): number {
     written++;
   };
 
-  for (const [dir, list] of [...snap.byDir].sort((a, b) => cmp(a[0], b[0]))) {
-    if (dir !== "" && !safeDir(dir)) continue;
-    save(`${DIR_META}${dir}`, catalogFileFor(dir), renderDir(snap, dir, list));
+  for (const [key, list] of [...snap.byDir].sort((a, b) => cmp(a[0], b[0]))) {
+    if (key !== "" && !safeDir(key.replace(/\/$/, ""))) continue;
+    const dir = dirOf(list[0]?.path ?? "");
+    save(`${DIR_META}${key}`, catalogFileFor(key), renderDir(snap, dir, list));
   }
   save(INDEX_META, INDEX_CATALOG_FILE, renderIndex(store, snap));
 
@@ -190,14 +214,14 @@ export function writeCatalogDebounced(store: Store, paths: GantryPaths, nowMs: n
 }
 
 export interface BrowseItem {
-  /** `sym:...`, `file:...` or `dir:<path>`. */
+  /** `sym:...`, `file:...`, `dir:<path>`, `ws:...` or `repo:<name>`. */
   id: string;
   name: string;
-  kind: SymbolKind | "dir" | "file";
+  kind: SymbolKind | "dir" | "file" | "workspace" | "repo";
   exported: boolean | null;
   path: string;
   line: number | null;
-  /** Function-like symbols in a directory or file; null for symbols. */
+  /** Function-like symbols in a repo, workspace, directory or file; null for symbols. */
   count: number | null;
   /** Stored behavior text (model-written, untrusted); null when none or for dirs and files. */
   description: string | null;
@@ -213,7 +237,9 @@ export class BrowseTargetError extends Error {
 /**
  * Lists one level below `target`: a workspace id or name, a directory path, or a file path (or its `file:`/`dir:`
  * id). Directories and files become items of kind `dir` and `file` with function counts; a file lists its symbols.
- * `catalogPath` is relative to the catalog dir (`INDEX.md` when the directory has no catalog file of its own).
+ * When the store holds more than one repo, `.` lists the repos (kind `repo`, id `repo:<name>`), `repo:<name>` lists
+ * that repo's workspaces (kind `workspace`), and a directory or file path means the one in the repo the command runs
+ * in. `catalogPath` is relative to the catalog dir (`INDEX.md` when the directory has no catalog file of its own).
  * Throws `BrowseTargetError` when nothing matches.
  */
 export function browse(store: Store, target: string): { items: BrowseItem[]; catalogPath: string } {
@@ -222,9 +248,54 @@ export function browse(store: Store, target: string): { items: BrowseItem[]; cat
   if (t.startsWith("dir:")) t = t.slice(4);
   const fnsPerFile = new Map<string, number>();
   for (const fn of snap.fns) fnsPerFile.set(fn.sym.fileId, (fnsPerFile.get(fn.sym.fileId) ?? 0) + 1);
+  const entry = safeRepo(store);
+  const workspaces = store.listWorkspaces();
 
-  const ws = store.listWorkspaces().find((w) => w.id === t || w.name === t);
-  const file = snap.files.find((f) => f.id === t || f.path === t);
+  if (snap.multi && t === ".") {
+    const items = store.listRepos().map(
+      (r): BrowseItem => ({
+        id: `repo:${r.name}`,
+        name: r.name,
+        kind: "repo",
+        exported: null,
+        path: "",
+        line: null,
+        count: snap.fns.filter((fn) => fn.repo === r.name).length,
+        description: null,
+      }),
+    );
+    return { items, catalogPath: INDEX_CATALOG_FILE };
+  }
+  if (snap.multi && t.startsWith("repo:")) {
+    const name = t.slice(5);
+    if (!store.listRepos().some((r) => r.name === name)) throw new BrowseTargetError(target);
+    const items = workspaces
+      .filter((w) => parseWorkspaceId(w.id)?.repo === name)
+      .sort((a, b) => cmp(a.id, b.id))
+      .map(
+        (w): BrowseItem => ({
+          id: w.id,
+          name: w.name,
+          kind: "workspace",
+          exported: null,
+          path: w.dir,
+          line: null,
+          count: snap.fns.filter((fn) => fn.workspaceId === w.id).length,
+          description: null,
+        }),
+      );
+    return { items, catalogPath: INDEX_CATALOG_FILE };
+  }
+
+  // A workspace name can exist in several repos: an id wins, then the repo the command runs in.
+  const ws =
+    workspaces.find((w) => w.id === t) ??
+    workspaces.find((w) => w.name === t && parseWorkspaceId(w.id)?.repo === entry) ??
+    workspaces.find((w) => w.name === t);
+  // Paths mean the repo of the workspace named, else the repo the command runs in.
+  const scope = snap.multi ? (ws ? parseWorkspaceId(ws.id)?.repo : entry) : undefined;
+  const inScope = (f: FileRecord): boolean => scope === undefined || repoOfId(f.id) === scope;
+  const file = snap.files.find((f) => f.id === t || (f.path === t && inScope(f)));
   if (file && !ws) {
     const items: BrowseItem[] = store
       .effectiveSymbols({ fileId: file.id })
@@ -239,8 +310,8 @@ export function browse(store: Store, target: string): { items: BrowseItem[]; cat
         count: null,
         description: FUNCTION_LIKE.has(s.kind) ? describeOf(snap, s) : null,
       }));
-    const dir = dirOf(file.path);
-    return { items, catalogPath: snap.byDir.has(dir) ? catalogFileFor(dir) : INDEX_CATALOG_FILE };
+    const key = catalogKey(snap.multi ? repoOfId(file.id) : undefined, dirOf(file.path));
+    return { items, catalogPath: snap.byDir.has(key) ? catalogFileFor(key) : INDEX_CATALOG_FILE };
   }
 
   let dir: string;
@@ -250,7 +321,7 @@ export function browse(store: Store, target: string): { items: BrowseItem[]; cat
     if (dir === ".") dir = "";
   }
   const prefix = dir === "" ? "" : `${dir}/`;
-  const under = snap.files.filter((f) => f.path.startsWith(prefix));
+  const under = snap.files.filter((f) => inScope(f) && f.path.startsWith(prefix));
   if (under.length === 0 && !ws && dir !== "") throw new BrowseTargetError(target);
 
   const dirCounts = new Map<string, number>();
@@ -288,5 +359,6 @@ export function browse(store: Store, target: string): { items: BrowseItem[]; cat
       description: null,
     });
   }
-  return { items, catalogPath: snap.byDir.has(dir) ? catalogFileFor(dir) : INDEX_CATALOG_FILE };
+  const key = catalogKey(scope, dir);
+  return { items, catalogPath: snap.byDir.has(key) ? catalogFileFor(key) : INDEX_CATALOG_FILE };
 }

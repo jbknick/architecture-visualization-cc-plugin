@@ -9,13 +9,16 @@ export const browseTool = defineTool({
   description:
     "Lists what is one level below a workspace id (ws:...), a directory path or a file path: {items: [{id, name, kind, exported, path, line, count, untrusted_description, described_by?}], catalog_path}; described_by is model, template or fallback (written by Gantry without a model). " +
     "Directories and files come back as items of kind dir and file with the number of functions in them; a file lists its symbols. " +
+    "When the workspace has more than one repo, the target . lists the repos (kind repo, id repo:<name>) and repo:<name> lists that repo's workspaces (kind workspace); a directory or file path means the one in the repo you are in. " +
     "catalog_path is a markdown file on disk with every function of the directory and a one-line description each; Read it when you need more than the 4,000 characters a response can hold.",
   inputSchema: {
     target: z
       .string()
       .min(1)
       .max(500)
-      .describe("A workspace id (ws:...) or name, a directory path or a file path"),
+      .describe(
+        "A workspace id (ws:...) or name, a directory path or a file path; with several repos also . (the repos) or repo:<name>",
+      ),
   },
   run({ target }, { store, paths, log }) {
     try {

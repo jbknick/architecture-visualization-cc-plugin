@@ -1,5 +1,6 @@
 import { contentKey, FUNCTION_LIKE_KINDS } from "../describe/factsheet.js";
 import { type Embedder, knn } from "../embed/index.js";
+import { repoOfId } from "../ids.js";
 import type { Store } from "../store/index.js";
 import type { Lang, SymbolKind } from "../types.js";
 import { DEFAULT_SEARCH_LIMIT, ftsSearch, type SearchOptions } from "./fts.js";
@@ -7,6 +8,8 @@ import { behaviorMap } from "./lookup.js";
 
 export interface HybridHit {
   id: string;
+  /** The repo the symbol is in. */
+  repo: string;
   name: string;
   kind: SymbolKind;
   lang: Lang;
@@ -52,7 +55,13 @@ export async function hybridSearch(store: Store, q: string, opts: HybridOptions 
   const query = q.trim().slice(0, MAX_QUERY_LEN);
   if (query === "") return [];
   const limit = opts.limit ?? DEFAULT_SEARCH_LIMIT;
-  const filters = { kind: opts.kind, workspace: opts.workspace, exported: opts.exported, lang: opts.lang };
+  const filters = {
+    kind: opts.kind,
+    workspace: opts.workspace,
+    repo: opts.repo,
+    exported: opts.exported,
+    lang: opts.lang,
+  };
 
   const keyword = ftsSearch(store, query, { ...filters, limit: HYBRID_CANDIDATES, descriptions: true });
   const fused = new Map<string, number>();
@@ -79,6 +88,7 @@ export async function hybridSearch(store: Store, q: string, opts: HybridOptions 
     if (s.name.toLowerCase() === lower) score *= EXACT_NAME_BOOST;
     hits.push({
       id: s.id,
+      repo: repoOfId(s.id) ?? "",
       name: s.name,
       kind: s.kind,
       lang: s.lang,
@@ -118,6 +128,7 @@ async function vectorRanking(store: Store, query: string, opts: HybridOptions): 
   for (const s of store.effectiveSymbols({ kind: [...FUNCTION_LIKE_KINDS] })) {
     if (s.exactHash === "") continue;
     if (kinds && !kinds.has(s.kind)) continue;
+    if (opts.repo !== undefined && repoOfId(s.id) !== opts.repo) continue;
     if (opts.lang !== undefined && s.lang !== opts.lang) continue;
     if (opts.exported !== undefined && s.exported !== opts.exported) continue;
     const file = files.get(s.fileId);

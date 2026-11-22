@@ -1,3 +1,4 @@
+import { repoOfId } from "../ids.js";
 import { type Store, splitIdentifier } from "../store/index.js";
 import type { Lang, SymbolKind } from "../types.js";
 
@@ -5,6 +6,8 @@ export interface SearchOptions {
   kind?: SymbolKind[];
   /** Workspace id (`ws:...`) or workspace name. */
   workspace?: string;
+  /** Only symbols of this repo (its name, as in ids). */
+  repo?: string;
   exported?: boolean;
   /** Only symbols of this language. */
   lang?: Lang;
@@ -15,6 +18,8 @@ export interface SearchOptions {
 
 export interface SearchHit {
   id: string;
+  /** The repo the symbol is in (the repo part of its id). */
+  repo: string;
   name: string;
   kind: SymbolKind;
   lang: Lang;
@@ -88,6 +93,7 @@ export function ftsSearch(store: Store, q: string, opts: SearchOptions = {}): Se
     if (!s) continue; // stale FTS row for a symbol hidden by the effective view
     const file = files.get(s.fileId);
     if (!file || file.deleted) continue;
+    if (opts.repo !== undefined && repoOfId(s.id) !== opts.repo) continue;
     if (kinds && !kinds.has(s.kind)) continue;
     if (opts.lang !== undefined && s.lang !== opts.lang) continue;
     if (opts.exported !== undefined && s.exported !== opts.exported) continue;
@@ -97,6 +103,7 @@ export function ftsSearch(store: Store, q: string, opts: SearchOptions = {}): Se
     if (s.name.toLowerCase() === lower) score *= EXACT_NAME_BOOST;
     hits.push({
       id: s.id,
+      repo: repoOfId(s.id) ?? "",
       name: s.name,
       kind: s.kind,
       lang: s.lang,
