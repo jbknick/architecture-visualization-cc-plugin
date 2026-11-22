@@ -27,8 +27,8 @@ comboboxes are the kit's `native-select` (role `combobox`). `breadcrumb/index.ts
 ## shadcn primitives (`../ui/`, base-nova style on Base UI)
 
 Used where SmoothUI has no component for the control (fallback order: SmoothUI, then a shadcn primitive on the same
-style, then hand-written). Copied on 2026-11-20 from https://ui.shadcn.com/r/styles/base-nova/<name>.json, except
-`collapsible`, which was written from the registry's shape on `@base-ui/react/collapsible` (SmoothUI has no disclosure).
+style, then hand-written). Copied on 2026-11-20 (`collapsible`: 2026-11-22; SmoothUI has no disclosure) from
+https://ui.shadcn.com/r/styles/base-nova/<name>.json.
 
 | Primitive       | Used for                                                        |
 | --------------- | --------------------------------------------------------------- |

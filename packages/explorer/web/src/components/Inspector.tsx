@@ -220,10 +220,11 @@ function UsedBySection({ id, consumers }: { id: string; consumers: ReviewConsume
   const { selectNode, state } = useStore();
   return (
     <section aria-label="Used by" className="rv-change rv-used-by">
-      <h3>Used by ({consumers.directTotal + consumers.potentialTotal + consumers.reachableTotal})</h3>
+      <h3>Used by ({consumers.directTotal + consumers.potentialTotal})</h3>
       <ConsumerTiers
         consumers={consumers}
         label="Consumers in two tiers"
+        reachable={false}
         sel={state.route.sel}
         onPick={(c) => {
           reviewFocus.set(id);

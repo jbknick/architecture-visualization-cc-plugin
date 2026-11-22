@@ -35,11 +35,12 @@ interface MaterializedFixture {
   cleanup(): Promise<void>;
 }
 const helperPath = "../../../core/test/helpers/fixture.js";
-const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as {
+const { materializeFixture, materializeFiles } = (await import(/* @vite-ignore */ helperPath)) as {
   materializeFixture: (
     name: string,
     opts?: { feature?: boolean; dirName?: string },
   ) => Promise<MaterializedFixture>;
+  materializeFiles: (files: Record<string, string>, repo?: string) => Promise<MaterializedFixture>;
 };
 
 const BUTTON = "sym:pnpm-turbo:packages/ui/src/button.tsx#Button";
@@ -411,6 +412,45 @@ describe("review view", () => {
     const plain = await buildReview(ctx, opts({ range: "main...feature", mode: "rings" }));
     expect(plain.nodes.some((n) => (n.hop ?? 0) >= 4)).toBe(false);
     expect(plain.review?.reachableTotal).toBe(0);
+  });
+
+  it("rings: a hub of hop 2 stays in the potential tier, with no node on the outer ring", async () => {
+    const users = Array.from(
+      { length: HUB_THRESHOLD + 2 },
+      (_, i) => `export function user${i}() { return mid(${i}); }`,
+    ).join("\n");
+    const fx = await materializeFiles({
+      "package.json": '{ "name": "mid-hub", "private": true }',
+      "tsconfig.json": '{ "compilerOptions": { "strict": true } }',
+      "src/base.ts": "export function base(x: number): number { return x; }\n",
+      "src/mid.ts":
+        'import { base } from "./base";\nexport function mid(x: number): number { return base(x) + 1; }\n',
+      "src/users.ts": `import { mid } from "./mid";\n${users}\n`,
+    });
+    fixtures.push(fx);
+    const data = mkdtempSync(join(tmpdir(), "gantry-review-mid-"));
+    dataDirs.push(data);
+    const paths = resolvePaths(fx.dir, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
+    await indexRepo(paths, { layer: "main" });
+    const store = openStore(paths.dbPath);
+    stores.push(store);
+    fx.git(["checkout", "-b", "feature"]);
+    const base = join(fx.dir, "src/base.ts");
+    writeFileSync(base, readFileSync(base, "utf8").replace("return x;", "return x * 2;"));
+    fx.git(["add", "-A"]);
+    fx.git(["commit", "-m", "base"]);
+    fx.git(["checkout", "main"]);
+    const mid: ApiContext = { store, paths, config: loadConfig(paths) };
+    const r = await buildReview(mid, opts({ range: "main...feature", mode: "rings" }));
+    const cc = r.review?.changes[0]?.consumers;
+    expect(cc?.hubs).toEqual([expect.objectContaining({ hop: 2 })]);
+    // the response agrees with itself: the hub's consumers are in the potential total, none are reachable
+    expect(cc?.potentialTotal).toBeGreaterThanOrEqual(
+      cc?.hubs[0]?.consumersTotal ?? Number.POSITIVE_INFINITY,
+    );
+    expect(cc?.reachableTotal).toBe(0);
+    expect(r.review?.reachableTotal).toBe(0);
+    expect(r.nodes.some((n) => n.id.startsWith("hub:") || (n.hop ?? 0) >= 4)).toBe(false);
   });
 
   it("ring slots: files grouped together with one empty slot between groups; radii fit the slots", () => {

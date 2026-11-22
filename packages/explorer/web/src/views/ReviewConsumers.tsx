@@ -162,11 +162,14 @@ function Tier({
 export function ConsumerTiers({
   consumers,
   label,
+  reachable = true,
   sel,
   onPick,
 }: {
   consumers: ReviewConsumers;
   label: string;
+  /** False for the inspector, which lists the two affected tiers only. */
+  reachable?: boolean;
   sel: string | null;
   onPick: (id: string) => void;
 }) {
@@ -186,20 +189,23 @@ export function ConsumerTiers({
         tier="potential"
         list={consumers.potential}
         total={consumers.potentialTotal}
+        hubs={consumers.hubs.filter((h) => h.hop < REACHABLE_RING)}
         collapsed={hubTotal(consumers.hubs, (h) => h.hop < REACHABLE_RING)}
         sel={sel}
         onPick={onPick}
       />
-      <Tier
-        title={REACHABLE_HEADING}
-        tier="reachable"
-        list={consumers.reachable}
-        total={consumers.reachableTotal}
-        hubs={consumers.hubs}
-        collapsed={hubTotal(consumers.hubs, (h) => h.hop >= REACHABLE_RING)}
-        sel={sel}
-        onPick={onPick}
-      />
+      {reachable && (
+        <Tier
+          title={REACHABLE_HEADING}
+          tier="reachable"
+          list={consumers.reachable}
+          total={consumers.reachableTotal}
+          hubs={consumers.hubs.filter((h) => h.hop >= REACHABLE_RING)}
+          collapsed={hubTotal(consumers.hubs, (h) => h.hop >= REACHABLE_RING)}
+          sel={sel}
+          onPick={onPick}
+        />
+      )}
     </section>
   );
 }

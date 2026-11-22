@@ -602,6 +602,52 @@ describe("consumers (#169)", () => {
     expect(row.getAttribute("aria-expanded")).toBe("false");
   });
 
+  it("a hub of hop 2 is a row under Potentially affected, not under Reachable", () => {
+    const hub = "sym:pnpm-turbo:packages/utils/src/mid.ts#mid";
+    const m: ReviewConsumer = {
+      ...consumer("sym:pnpm-turbo:apps/web/src/a.ts#webUser", "x"),
+      hop: 2,
+      next: hub,
+    };
+    const consumers = {
+      direct: [],
+      directTotal: 0,
+      potential: [],
+      potentialTotal: 1,
+      reachable: [],
+      reachableTotal: 0,
+      hubs: [
+        {
+          hub,
+          name: "mid",
+          kind: "function",
+          path: "packages/utils/src/mid.ts",
+          workspace: null,
+          hop: 2,
+          consumersTotal: 1,
+          byWorkspace: [{ workspace: null, count: 1 }],
+          members: [m],
+        },
+      ],
+    };
+    const { container } = render(
+      <ConsumerTiers consumers={consumers} label="Consumers of x" sel={null} onPick={() => {}} />,
+    );
+    expect(container.querySelector('[data-tier="potential"] [data-hub]')).toBeTruthy();
+    expect(container.querySelector('[data-tier="reachable"] [data-hub]')).toBeNull();
+    expect(screen.getByRole("heading", { name: /^Potentially affected \(1\)$/ })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /^Reachable \(0\)$/ })).toBeTruthy();
+    expect(screen.queryByText(/and \d+ more/)).toBeNull();
+    expect(
+      withHubMembers(
+        [],
+        [],
+        { changes: [{ consumers }], files: [] } as unknown as ReviewData,
+        new Set([`hub:${hub}`]),
+      ).nodes,
+    ).toEqual([]);
+  });
+
   it("withHubMembers: an expanded hub's members join the outer ring beside it, none while collapsed", () => {
     const hub = "sym:pnpm-turbo:packages/utils/src/hub.ts#hub";
     const m: ReviewConsumer = {

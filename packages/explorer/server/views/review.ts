@@ -679,7 +679,8 @@ function ringLayout(
   const hubs = new Map<string, { hub: HubEntry; count: number }>();
   for (const cc of impact.consumers) {
     for (const x of cc.reachable) if (!ringOf.has(x.id) && !reachable.has(x.id)) reachable.set(x.id, x);
-    for (const h of cc.hubs) {
+    // A hub of hop 2 or 3 stands for consumers of the potential tier, which the rings draw on their own rings.
+    for (const h of cc.hubs.filter((x) => x.hop >= REACHABLE_RING)) {
       const cur = hubs.get(h.hub);
       if (!cur || h.consumersTotal > cur.count) hubs.set(h.hub, { hub: h, count: h.consumersTotal });
     }

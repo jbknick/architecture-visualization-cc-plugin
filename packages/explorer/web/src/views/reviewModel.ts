@@ -415,11 +415,11 @@ export function ringFocus(
   const softer = [...c.potential, ...c.reachable];
   const potential = new Set([
     ...softer.flatMap((x) => (x.node && !direct.has(x.node) && x.node !== centre ? [x.node] : [])),
-    ...c.hubs.flatMap((h) => (h.node ? [hubNodeId(h.hub)] : [])),
+    ...reachableHubs(c.hubs).flatMap((h) => (h.node ? [hubNodeId(h.hub)] : [])),
   ]);
   const pairs = new Map<string, "strong" | "soft">();
   for (const d of direct) pairs.set(`${d}->${centre}`, "strong");
-  for (const h of c.hubs) if (h.node) pairs.set(`${hubNodeId(h.hub)}->${h.node}`, "soft");
+  for (const h of reachableHubs(c.hubs)) if (h.node) pairs.set(`${hubNodeId(h.hub)}->${h.node}`, "soft");
   for (const p of softer) {
     if (p.node && p.nextNode && !pairs.has(`${p.node}->${p.nextNode}`))
       pairs.set(`${p.node}->${p.nextNode}`, "soft");
@@ -446,6 +446,9 @@ export function ringTitle(hop: number): string {
 
 /** The outer ring: every consumer at this hop or farther, and the hubs. The server's `REACHABLE_RING`. */
 export const REACHABLE_RING = 4;
+/** The hubs of the reachable tier; one of hop 2 or 3 belongs to the potential tier and has no node on the outer ring. */
+export const reachableHubs = <H extends { hop: number }>(hubs: readonly H[]): H[] =>
+  hubs.filter((h) => h.hop >= REACHABLE_RING);
 /** The id of the node that stands for a hub on the outer ring. */
 export const hubNodeId = (hub: string): string => `hub:${hub}`;
 
@@ -468,7 +471,7 @@ export function withHubMembers(
   const added: GraphNode[] = [];
   const extra = new Map<string, GraphEdge>();
   for (const cc of [...review.changes, ...review.files]) {
-    for (const h of cc.consumers.hubs) {
+    for (const h of reachableHubs(cc.consumers.hubs)) {
       const hubNode = hubNodeId(h.hub);
       if (!expanded.has(hubNode)) continue;
       for (const m of h.members) {
