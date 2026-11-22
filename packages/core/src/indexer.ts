@@ -16,6 +16,7 @@ import { type LoadedRecipe, loadRecipe, recipeNotes } from "./recipe/load.js";
 import { isQueryFile } from "./recipe/query-files.js";
 import type { SpecifierClass } from "./resolve/index.js";
 import { SiblingFiles, type SiblingRepo } from "./resolve/sibling.js";
+import { mapScip, ProtoError, type ScipStats, withScipEdges } from "./scip/index.js";
 import { refreshDescriptionFts } from "./search/descfts.js";
 import { openStore, type Store, splitIdentifier } from "./store/index.js";
 import type {
@@ -47,6 +48,8 @@ export interface IndexResult {
   parseErrors: { file: string; errors: string[] }[];
   /** Notes on the repo's recipe (spec section 5), for stderr: no recipe, or a rule that was skipped. */
   recipeNotes: string[];
+  /** Precise mode (spec section 11): present when a SCIP index was read. Counts of the index, summed over the repos that read one. */
+  scip?: ScipStats;
   ms: number;
 }
 
@@ -69,6 +72,11 @@ export interface IndexOptions {
   singleRepo?: boolean;
   /** A recipe to use instead of the one the layer reads (`gantry recipe check --nodes` applies a file it was given). */
   recipe?: LoadedRecipe;
+  /**
+   * A SCIP index of the repo `paths` names, as an absolute path (`gantry index --scip`). It wins over `precise.scip` of
+   * the config for this run. Other repos of the workspace read their own `precise.scip`, if any.
+   */
+  scip?: string;
 }
 
 const READ_CONCURRENCY = 16;
@@ -88,6 +96,13 @@ interface Entry {
 }
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+const warned = new Set<string>();
+/** One stderr line per distinct message for the life of the process. */
+function warnOnce(line: string): void {
+  if (warned.has(line)) return;
+  warned.add(line);
+  process.stderr.write(`${line}\n`);
+}
 const sha256 = (b: Buffer | string): string => createHash("sha256").update(b).digest("hex");
 
 /**
@@ -160,7 +175,7 @@ async function readEntry(root: string, e: Entry, sources?: Map<string, string>):
 }
 
 const edgeKey = (e: EdgeRecord): string =>
-  `${e.src}\0${e.dst}\0${e.kind}\0${e.confidence}\0${e.count}\0${JSON.stringify(e.evidence)}\0${e.fileId}\0${e.level ?? ""}\0${e.textFileId ?? ""}`;
+  `${e.src}\0${e.dst}\0${e.kind}\0${e.confidence}\0${e.count}\0${JSON.stringify(e.evidence)}\0${e.fileId}\0${e.level ?? ""}\0${e.textFileId ?? ""}\0${e.source ?? ""}`;
 
 function sameEdges(a: EdgeRecord[], b: EdgeRecord[]): boolean {
   if (a.length !== b.length) return false;
@@ -235,7 +250,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
         const out = new Set<string>();
         const r = await indexOneRepo(
           { ...paths, root: m.root, repo: m.name },
-          opts,
+          { ...opts, scip: m.name === paths.repo ? opts.scip : undefined },
           store,
           cache,
           seen,
@@ -396,7 +411,16 @@ function mergeResults(parts: IndexResult[], ms: number): IndexResult {
   out.edges = 0;
   out.specifierCounts = { ...first.specifierCounts };
   for (const k of Object.keys(out.specifierCounts) as SpecifierClass[]) out.specifierCounts[k] = 0;
+  delete out.scip;
   for (const r of parts) {
+    if (r.scip) {
+      const s: ScipStats = out.scip ?? { documents: 0, edges: 0, unmapped: 0, stale: 0 };
+      s.documents += r.scip.documents;
+      s.edges += r.scip.edges;
+      s.unmapped += r.scip.unmapped;
+      s.stale += r.scip.stale;
+      out.scip = s;
+    }
     out.files += r.files;
     out.symbols += r.symbols;
     out.functionLike += r.functionLike;
@@ -497,6 +521,43 @@ async function indexOneRepo(
     siblings: siblingsOf(paths, repo, known),
   });
   store.upsertWorkspaces(workspaces);
+
+  // Precise mode (spec section 11): for the files a SCIP index covers, its edges replace the inferred ones of the kinds
+  // it writes. Every place that resolves a file's edges goes through `edgesOf`, so an importer that is re-resolved
+  // keeps the edges the index gave it.
+  let scipStats: ScipStats | undefined;
+  let scipEdges: Map<string, EdgeRecord[]> | undefined;
+  const scipFile = opts.scip ?? (config.precise?.scip ? path.resolve(root, config.precise.scip) : undefined);
+  if (scipFile !== undefined) {
+    if (!fs.existsSync(scipFile)) {
+      warnOnce(`gantry: SCIP index ${scipFile} not found; keeping inferred edges`);
+    } else {
+      const byPath = new Map(present.map((e) => [e.path, e]));
+      try {
+        const r = await mapScip(scipFile, (p) => {
+          const e = byPath.get(p);
+          const pf = e ? parsed.get(e.id) : undefined;
+          if (!e || !pf) return undefined;
+          return {
+            id: e.id,
+            source: e.source as string,
+            contentHash: e.contentHash as string,
+            symbols: pf.symbols,
+          };
+        });
+        scipEdges = r.edges;
+        scipStats = r.stats;
+      } catch (err) {
+        if (!(err instanceof ProtoError)) throw err;
+        throw new Error(`${scipFile} is not a readable SCIP index: ${err.message}`);
+      }
+    }
+  }
+  const edgesOf = (id: string): EdgeRecord[] => {
+    const inferred = resolver.edgesForFile(id);
+    const scip = scipEdges?.get(id);
+    return scip ? withScipEdges(inferred, scip) : inferred;
+  };
 
   // Framework adapters (routes, server functions, Hono endpoints). Their results depend on other files (route
   // parents, mounts across imports, loader calls), so they run over the full read set on every run; each node and
@@ -608,6 +669,7 @@ async function indexOneRepo(
     },
     parseErrors: [],
     recipeNotes: recipeNotes(recipe),
+    ...(scipStats ? { scip: scipStats } : {}),
     ms: 0,
   };
   // fts_symbols has no index on symbol_id (UNINDEXED column), so a per-symbol delete scans the whole
@@ -697,7 +759,7 @@ async function indexOneRepo(
           };
       return { ...s, lang, ...h };
     });
-    const edges = [...resolver.edgesForFile(e.id), ...(routeEdges.get(e.id) ?? [])];
+    const edges = [...edgesOf(e.id), ...(routeEdges.get(e.id) ?? [])];
     const file: FileRecord = {
       id: e.id,
       path: e.path,
@@ -765,7 +827,7 @@ async function indexOneRepo(
         if (written.has(e.id)) continue;
         const file = effFiles.get(e.id);
         if (!file) continue;
-        const fresh = [...resolver.edgesForFile(e.id), ...(routeEdges.get(e.id) ?? [])];
+        const fresh = [...edgesOf(e.id), ...(routeEdges.get(e.id) ?? [])];
         const freshNodes = routeNodes.get(e.id) ?? [];
         if (sameEdges(fresh, eff.get(e.id) ?? []) && sameNodes(freshNodes, effNodes.get(e.id) ?? []))
           continue;
@@ -810,7 +872,7 @@ async function indexOneRepo(
         for (const id of round) {
           const file = store.effectiveFile(id);
           if (!file) continue;
-          const fresh = [...resolver.edgesForFile(id), ...(routeEdges.get(id) ?? [])];
+          const fresh = [...edgesOf(id), ...(routeEdges.get(id) ?? [])];
           const freshNodes = routeNodes.get(id) ?? [];
           if (sameEdges(fresh, eff.get(id) ?? []) && sameNodes(freshNodes, effNodes.get(id) ?? [])) continue;
           store.replaceFile(layer, file, store.effectiveSymbols({ fileId: id }), fresh, freshNodes);

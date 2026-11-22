@@ -34,6 +34,7 @@ export * from "./paths/index.js";
 export * from "./recipe/index.js";
 export * from "./resolve/index.js";
 export * from "./review/index.js";
+export type { ScipStats } from "./scip/index.js";
 export * from "./search/index.js";
 export * from "./store/index.js";
 export * from "./trace.js";

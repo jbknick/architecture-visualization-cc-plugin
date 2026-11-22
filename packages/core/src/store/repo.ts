@@ -169,6 +169,7 @@ interface EdgeRow {
   file_id: string;
   level: EdgeLevel | null;
   text_file_id: string | null;
+  source: "scip" | null;
 }
 
 /** 64 little-endian uint32 values, regardless of host byte order. */
@@ -226,6 +227,7 @@ const toEdge = (r: EdgeRow): EdgeRecord => ({
   fileId: r.file_id,
   ...(r.level ? { level: r.level } : {}),
   ...(r.text_file_id ? { textFileId: r.text_file_id } : {}),
+  ...(r.source ? { source: r.source } : {}),
 });
 
 interface WorkspaceRow {
@@ -499,11 +501,11 @@ export function createStore(db: Database, entryRepo?: string): Store {
           );
         }
         const ei = stmt(
-          `INSERT INTO edges(src, dst, kind, layer, confidence, count, evidence, file_id, level, text_file_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO edges(src, dst, kind, layer, confidence, count, evidence, file_id, level, text_file_id, source)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(src, dst, kind, layer) DO UPDATE SET confidence = excluded.confidence,
              count = excluded.count, evidence = excluded.evidence, file_id = excluded.file_id,
-             level = excluded.level, text_file_id = excluded.text_file_id`,
+             level = excluded.level, text_file_id = excluded.text_file_id, source = excluded.source`,
         );
         for (const e of edges) {
           ei.run(
@@ -517,6 +519,7 @@ export function createStore(db: Database, entryRepo?: string): Store {
             e.fileId,
             e.level ?? null,
             e.textFileId ?? null,
+            e.source ?? null,
           );
         }
         const ai = stmt(

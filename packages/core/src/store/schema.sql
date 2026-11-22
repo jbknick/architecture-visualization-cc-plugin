@@ -7,7 +7,7 @@ CREATE TABLE files(id TEXT, layer TEXT CHECK(layer IN ('main','working')), repo 
 CREATE TABLE symbols(id TEXT, layer TEXT, file_id TEXT, name TEXT, kind TEXT, exported INTEGER, signature TEXT,
   start_line INTEGER, end_line INTEGER, loc INTEGER, complexity INTEGER, stmt_count INTEGER,
   exact_hash TEXT, shape_hash TEXT, minhash BLOB, near_minhash BLOB, renamed_hash TEXT, lang TEXT NOT NULL, PRIMARY KEY(id, layer));
-CREATE TABLE edges(src TEXT, dst TEXT, kind TEXT, layer TEXT, confidence TEXT, count INTEGER, evidence TEXT, file_id TEXT, level INTEGER, text_file_id TEXT,
+CREATE TABLE edges(src TEXT, dst TEXT, kind TEXT, layer TEXT, confidence TEXT, count INTEGER, evidence TEXT, file_id TEXT, level INTEGER, text_file_id TEXT, source TEXT,
   PRIMARY KEY(src, dst, kind, layer));
 CREATE INDEX symbols_file ON symbols(file_id, layer);            -- per-file replace without a table scan
 CREATE INDEX edges_file ON edges(file_id, layer);
