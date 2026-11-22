@@ -87,6 +87,14 @@ export interface AdapterLinkContext<F> {
   parsed: { get(fileId: string): ParsedFile | undefined };
   /** Any read file by id (also files outside this adapter's workspaces), e.g. to read a constant another file exports. */
   file(fileId: string): AdapterFileContext | undefined;
+  /** What the other repos of the workspace stored: their endpoints and workspaces. Empty for a workspace of one repo. */
+  external: ExternalRepos;
+}
+
+/** The endpoints and workspaces of the other repos of a workspace, read from the store (client calls may name them). */
+export interface ExternalRepos {
+  nodes: readonly AdapterNode[];
+  workspaces: readonly WorkspaceRecord[];
 }
 
 export interface Adapter<F = unknown> {
@@ -111,6 +119,8 @@ export interface AdapterRunContext {
   resolver: AdapterResolver;
   /** The recipe of the tree being indexed (loaded by the indexer for the layer it indexes); null when there is none. */
   recipe?: LoadedRecipe | null;
+  /** The endpoints and workspaces of the other repos of the workspace; default none. */
+  external?: ExternalRepos;
 }
 
 export const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -329,6 +339,7 @@ export function runAdapterList(ctx: AdapterRunContext, adapters: readonly Adapte
       nodes: sorted,
       resolver: ctx.resolver,
       parsed: ctx.parsed,
+      external: ctx.external ?? { nodes: [], workspaces: [] },
       file: (id) => {
         const f = byId.get(id);
         return f ? contextOf(f) : undefined;

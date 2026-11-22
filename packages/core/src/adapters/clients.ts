@@ -1,4 +1,4 @@
-import { callId, fileId as makeFileId, parseId, symId } from "../ids.js";
+import { callId, fileId as makeFileId, parseId, repoOfId, symId } from "../ids.js";
 import { isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
 import type { EdgeRecord, WorkspaceRecord } from "../types.js";
 import {
@@ -44,8 +44,10 @@ import {
  * An alternative that does not start with text (an environment member, a value that is not known, a parameter) is
  * dropped; none left is a `dynamic_url` gap. Per alternative the candidates are the endpoints of the method whose path
  * fits segment by segment (a call literal fits an endpoint parameter, a call parameter does not fit an endpoint
- * literal), those with the fewest parameter segments, narrowed to the caller's workspace and its dependencies. The
- * call links, `high`, when the alternatives that fit agree on one endpoint and each is fully evaluated (no
+ * literal), those with the fewest parameter segments, narrowed to the caller's workspace and its dependencies, then
+ * to the caller's repo. In a workspace of several repos the endpoints of every repo are candidates (the other repos'
+ * come from the store, `AdapterLinkContext.external`), so a call links to a handler in another repo when no
+ * nearer one fits, and the same method and path in two other repos is an `ambiguous` gap. The call links, `high`, when the alternatives that fit agree on one endpoint and each is fully evaluated (no
  * environment member and no unknown part inside it); otherwise it is an `ambiguous` gap whose `data.candidates` are
  * the sorted endpoint ids, and gets no edge.
  *
@@ -1084,13 +1086,14 @@ export const clientsAdapter: Adapter<ClientFacts> = {
     const http: AdapterNode[] = [];
     /** The endpoints a Hono app made (rule 3 reads these only). */
     const hono: AdapterNode[] = [];
-    for (const n of ctx.nodes) {
+    // The endpoints of the other repos of the workspace are candidates like the repo's own.
+    for (const n of [...ctx.nodes, ...ctx.external.nodes]) {
       if (n.kind !== "endpoint") continue;
       const d = n.data;
       if (d.adapter === "tanstack-start" && typeof d.name === "string" && typeof d.file === "string") {
-        const fileId = makeFileId(ctx.repo, d.file);
+        const fileId = makeFileId(repoOfId(n.fileId) ?? ctx.repo, d.file);
         const sym = d.exported === true ? ctx.resolver.resolveSymbol(fileId, d.name) : null;
-        fnBySym.set(sym ?? symId(ctx.repo, d.file, d.name), n.id);
+        fnBySym.set(sym ?? symId(repoOfId(n.fileId) ?? ctx.repo, d.file, d.name), n.id);
         // A const that is no symbol of its file (a non-exported `createServerFn()` chain) is found by name there.
         fnByLocal.set(`${fileId}\0${d.name}`, n.id);
         const key = `${n.ws}\0${d.name}`;
@@ -1104,8 +1107,11 @@ export const clientsAdapter: Adapter<ClientFacts> = {
         if (d.adapter === "hono") hono.push(n);
       }
     }
-    const wsByName = new Map(ctx.workspaces.map((w) => [w.id, w]));
-    /** Narrows several candidates to the caller's workspace and its dependencies. */
+    const wsByName = new Map([...ctx.workspaces, ...ctx.external.workspaces].map((w) => [w.id, w]));
+    /**
+     * Narrows several candidates to the caller's workspace and its dependencies, then to the caller's repo. Several
+     * left (the same endpoint in two repos, or two workspaces) stay candidates.
+     */
     const narrow = (
       cands: AdapterNode[],
       ws: WorkspaceRecord,
@@ -1116,7 +1122,8 @@ export const clientsAdapter: Adapter<ClientFacts> = {
         return c.ws === ws.id || (w !== undefined && ws.deps.includes(w.name));
       });
       if (near.length === 1) return { dsts: [(near[0] as AdapterNode).id], confidence: "high" };
-      const use = near.length > 0 ? near : cands;
+      const own = cands.filter((c) => repoOfId(c.id) === ctx.repo);
+      const use = near.length > 0 ? near : own.length > 0 ? own : cands;
       return { dsts: use.map((c) => c.id).sort(cmp), confidence: "low" };
     };
 

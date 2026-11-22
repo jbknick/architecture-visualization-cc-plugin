@@ -1,0 +1,1 @@
+{ "name": "@fx/web", "private": true, "type": "module", "dependencies": { "hono": "^4.0.0" } }

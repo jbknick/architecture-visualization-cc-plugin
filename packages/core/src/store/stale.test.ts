@@ -37,9 +37,9 @@ const sha = (f: string): string => createHash("sha256").update(readFileSync(f)).
 
 describe("a store from another version of Gantry", () => {
   it("is the current version when new", () => {
-    expect(SCHEMA_VERSION).toBe(15);
+    expect(SCHEMA_VERSION).toBe(16);
     const s = openStore(dbPath);
-    expect(s.getMeta("schema_version")).toBe("15");
+    expect(s.getMeta("schema_version")).toBe("16");
     s.close();
   });
 
