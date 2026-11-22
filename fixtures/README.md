@@ -31,8 +31,9 @@ Workspace (`apps/*`, `packages/*`) for the framework adapters (#45).
 ## tsconfig-extends-workspace
 Workspace (`apps/*`, `packages/*`), no `node_modules`, for a tsconfig that extends a config a workspace package provides.
 - `packages/config-typescript` (`@acme/config-typescript`): `exports` expose `./base.json` and `./nextjs.json`. `base.json` has `baseUrl: "."` and `paths` `~shared/*` pointing at `packages/shared/src/*`; `nextjs.json` extends `./base.json`.
-- `apps/web/tsconfig.json` extends `@acme/config-typescript/nextjs.json` and adds its own `paths` `@/*`.
-- `apps/web/src/app/page.ts` imports `@/lib/format` (the app's own alias) and `~shared/date` (the base's alias). Both resolve with no `node_modules`, so `init` reports 0 unresolved.
+- `apps/web/tsconfig.json` extends `@acme/config-typescript/nextjs.json` and sets its own `paths` `@/*`, which replace the base's. `apps/web/src/app/page.ts` imports `@/lib/format`.
+- `apps/admin/tsconfig.json` extends the same file and sets no `paths`, so it inherits `~shared/*`. `apps/admin/src/main.ts` imports `~shared/date`.
+- Both imports resolve with no `node_modules`, so `init` reports 0 unresolved.
 
 ## nx
 - `nx.json`, two projects with `project.json`: `apps/shop` and `libs/cart`.

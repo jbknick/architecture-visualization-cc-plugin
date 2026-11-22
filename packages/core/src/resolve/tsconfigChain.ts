@@ -10,13 +10,17 @@ export interface TsconfigChain {
    * oxc-resolver cannot follow such a chain, so the caller passes `aliases` instead of the tsconfig.
    */
   needsAlias: boolean;
-  /** The merged `paths` as oxc-resolver `alias` entries with absolute targets, longest key first. */
+  /** The `paths` as oxc-resolver `alias` entries with absolute targets, longest key first. */
   aliases: Array<{ find: string; targets: string[] }>;
+  /** The inherited `baseUrl`, absolute; bare imports are also looked up there. */
+  baseUrl?: string;
 }
 
 interface Loaded {
-  /** Absolute entries of the nearest `paths`; undefined when no config of the chain has one. */
-  paths?: Array<{ pattern: string; targets: string[] }>;
+  /** The nearest `paths` and the directory of the config that declares it; undefined when no config has one. */
+  paths?: { dir: string; entries: Array<{ pattern: string; targets: string[] }> };
+  /** The nearest `baseUrl`, absolute (resolved against the config that declares it). */
+  baseUrl?: string;
   needsAlias: boolean;
 }
 
@@ -90,13 +94,16 @@ function viaWorkspace(spec: string, workspaces: WorkspaceRecord[], realRoot: str
   return configFileAt(direct.endsWith(".json") ? direct : `${direct}.json`);
 }
 
-function load(file: string, workspaces: WorkspaceRecord[], realRoot: string, seen: Set<string>): Loaded {
+function load(file: string, workspaces: WorkspaceRecord[], realRoot: string, stack: string[]): Loaded {
   const out: Loaded = { needsAlias: false };
-  if (seen.has(file)) return out;
-  seen.add(file);
+  // A base reached twice through different branches is read twice; only a cycle ends the chain.
+  if (stack.includes(file)) return out;
+  const branch = [...stack, file];
   const json = readJsonc(file);
   if (!json || typeof json !== "object") return out;
   const dir = path.dirname(file);
+  // `${configDir}` is the directory of the config the resolver was asked to use, the leaf of the chain.
+  const withConfigDir = (s: string): string => s.replaceAll("${configDir}", path.dirname(stack[0] ?? file));
 
   const ext = (json as { extends?: unknown }).extends;
   const specs = typeof ext === "string" ? [ext] : Array.isArray(ext) ? ext : [];
@@ -107,49 +114,43 @@ function load(file: string, workspaces: WorkspaceRecord[], realRoot: string, see
       parent = configFileAt(path.resolve(dir, spec));
       if (!parent) out.needsAlias = true;
     } else {
+      // A link in `node_modules` (a package manager's link to a workspace package too) is followed by oxc-resolver itself.
       parent = viaNodeModules(spec, dir);
-      if (parent) {
-        // A link to a workspace package is that package: oxc-resolver would read its relative `paths` from the link.
-        const real = fs.realpathSync(parent);
-        const rel = path.relative(realRoot, real);
-        if (!(rel.startsWith("..") || path.isAbsolute(rel) || rel.split(path.sep).includes("node_modules"))) {
-          parent = real;
-          out.needsAlias = true;
-        }
-      } else {
+      if (!parent) {
         parent = viaWorkspace(spec, workspaces, realRoot);
         out.needsAlias = true;
       }
     }
     if (!parent) continue;
-    const base = load(parent, workspaces, realRoot, seen);
+    const base = load(parent, workspaces, realRoot, branch);
     if (base.paths) out.paths = base.paths;
+    if (base.baseUrl !== undefined) out.baseUrl = base.baseUrl;
     if (base.needsAlias) out.needsAlias = true;
   }
 
   const co = (json as { compilerOptions?: Record<string, unknown> }).compilerOptions;
+  if (typeof co?.baseUrl === "string") out.baseUrl = path.resolve(dir, withConfigDir(co.baseUrl));
   const paths = co?.paths;
   if (paths && typeof paths === "object" && !Array.isArray(paths)) {
-    const baseUrl = typeof co?.baseUrl === "string" ? path.resolve(dir, co.baseUrl) : dir;
-    // A nearer config replaces the entry of the same pattern and keeps the others of the base.
-    const merged = new Map((out.paths ?? []).map((e) => [e.pattern, e] as const));
-    for (const [pattern, targets] of Object.entries(paths)) {
-      merged.set(pattern, {
+    // The nearer config replaces `paths` wholesale; its entries keep the directory of the config that declares them.
+    out.paths = {
+      dir,
+      entries: Object.entries(paths).map(([pattern, targets]) => ({
         pattern,
         targets: (Array.isArray(targets) ? targets : [])
           .filter((t): t is string => typeof t === "string")
-          .map((t) => path.resolve(baseUrl, t)),
-      });
-    }
-    out.paths = [...merged.values()];
+          .map(withConfigDir),
+      })),
+    };
   }
   return out;
 }
 
 /**
- * Read the `extends` chain of a tsconfig (`compilerOptions` from the base to the leaf; a nearer config replaces the
- * `paths` entry of the same pattern and keeps the other entries; each entry is relative to the `baseUrl` of the config
- * that declares it or to its directory).
+ * Read the `extends` chain of a tsconfig as TypeScript does: `compilerOptions` from the base to the leaf, `paths`
+ * replaced wholesale by a nearer config, `baseUrl` inherited (resolved against the config that declares it), each
+ * `paths` target relative to that `baseUrl`, or to the directory of the config that declares `paths` when there is none.
+ * `${configDir}` stands for the directory of the leaf config.
  * A bare `extends` is tried through `node_modules` first; one that only a workspace package provides is followed through
  * the workspace's directory and `exports`; one that nothing provides is skipped and the rest of the chain applies.
  */
@@ -158,9 +159,11 @@ export function readTsconfigChain(
   workspaces: WorkspaceRecord[],
   realRoot: string,
 ): TsconfigChain {
-  const loaded = load(configFile, workspaces, realRoot, new Set());
+  const loaded = load(configFile, workspaces, realRoot, []);
   const aliases: TsconfigChain["aliases"] = [];
-  for (const { pattern, targets } of loaded.paths ?? []) {
+  const from = loaded.baseUrl ?? loaded.paths?.dir ?? "";
+  for (const { pattern, targets: raw } of loaded.paths?.entries ?? []) {
+    const targets = raw.map((t) => path.resolve(from, t));
     const star = pattern.indexOf("*");
     if (star < 0) {
       aliases.push({ find: `${pattern}$`, targets: targets.map(posix) });
@@ -176,5 +179,9 @@ export function readTsconfigChain(
     if (dirs.length > 0) aliases.push({ find: pattern.slice(0, -2), targets: dirs });
   }
   aliases.sort((a, b) => b.find.length - a.find.length);
-  return { needsAlias: loaded.needsAlias, aliases };
+  return {
+    needsAlias: loaded.needsAlias,
+    aliases,
+    ...(loaded.baseUrl !== undefined ? { baseUrl: loaded.baseUrl } : {}),
+  };
 }

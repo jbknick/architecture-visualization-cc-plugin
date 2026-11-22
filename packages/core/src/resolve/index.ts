@@ -302,6 +302,7 @@ export function createResolver(ctx: ResolveContext): TypeScriptResolver {
     let r = resolvers.get(cacheKey);
     if (!r) {
       let tsconfig = aliasOnly ? null : nearestTsconfig(ws.dir);
+      let baseUrl: string | undefined;
       const aliases: Array<{ find: string; targets: string[] }> = aliasOnly
         ? aliasesOf(ws).aliases.map((a) => ({ find: a.find, targets: [a.target] }))
         : [];
@@ -310,6 +311,7 @@ export function createResolver(ctx: ResolveContext): TypeScriptResolver {
         const chain = readTsconfigChain(tsconfig, ctx.workspaces, realRoot);
         if (chain.needsAlias) {
           aliases.push(...chain.aliases);
+          baseUrl = chain.baseUrl;
           tsconfig = null;
         }
       }
@@ -324,6 +326,7 @@ export function createResolver(ctx: ResolveContext): TypeScriptResolver {
         conditionNames: ["import", "types", "default"],
         mainFields: ["types", "module", "main"],
         builtinModules: true,
+        ...(baseUrl !== undefined ? { modules: ["node_modules", baseUrl] } : {}),
         ...(aliases.length > 0
           ? { alias: Object.fromEntries(aliases.map((a) => [a.find, a.targets] as const)) }
           : {}),

@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -19,6 +20,7 @@ import { type ParsedFile, parseSource } from "../parse/index.js";
 import type { WorkspaceRecord } from "../types.js";
 import { detectWorkspaces } from "../workspace/index.js";
 import { createResolver, dependsOnEdges } from "./index.js";
+import { readTsconfigChain } from "./tsconfigChain.js";
 
 const fixturesRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../../fixtures");
 const config = { exclude: [] } as unknown as GantryConfig; // isIndexable only reads `exclude`
@@ -759,54 +761,112 @@ describe("workspace package output mapped to source", () => {
 
 describe("tsconfig extends through a workspace package", () => {
   const page = "file:repo:apps/web/src/app/page.ts";
-  const resolved = (ctx: ReturnType<typeof fixture>) => {
+  const admin = "file:repo:apps/admin/src/main.ts";
+  const format = { kind: "file", fileId: "file:repo:apps/web/src/lib/format.ts" };
+  const date = { kind: "file", fileId: "file:repo:packages/shared/src/date.ts" };
+  const unresolved = { kind: "unresolved" };
+  const setWebConfig = (ctx: { dir: string }, config: object) =>
+    writeFileSync(join(ctx.dir, "apps/web/tsconfig.json"), JSON.stringify(config));
+  const webResolver = (ctx: ReturnType<typeof fixture>) => {
     const r = createResolver(ctx);
-    return [r.resolveSpecifier(page, "@/lib/format"), r.resolveSpecifier(page, "~shared/date")];
+    return (spec: string) => r.resolveSpecifier(page, spec);
   };
-  const files = [
-    { kind: "file", fileId: "file:repo:apps/web/src/lib/format.ts" },
-    { kind: "file", fileId: "file:repo:packages/shared/src/date.ts" },
-  ];
 
-  test("the fixture's own and the base's aliases resolve with no node_modules", () => {
-    expect(resolved(fixture("tsconfig-extends-workspace"))).toEqual(files);
+  test("an app's own paths and an app that inherits the base's paths both resolve with no node_modules", () => {
+    const r = createResolver(fixture("tsconfig-extends-workspace"));
+    expect(r.resolveSpecifier(page, "@/lib/format")).toEqual(format);
+    expect(r.resolveSpecifier(admin, "~shared/date")).toEqual(date);
+    // The app's `paths` replace the base's.
+    expect(r.resolveSpecifier(page, "~shared/date")).toEqual(unresolved);
   });
 
-  test("with the config package linked into node_modules the results are identical", () => {
-    const ctx = fixture("tsconfig-extends-workspace");
-    mkdirSync(join(ctx.dir, "apps/web/node_modules/@acme"), { recursive: true });
+  test("with the config package linked into node_modules oxc-resolver reads the chain and the results are identical", () => {
+    const unlinked = fixture("tsconfig-extends-workspace");
+    const linked = fixture("tsconfig-extends-workspace");
+    mkdirSync(join(linked.dir, "node_modules/@acme"), { recursive: true });
     symlinkSync(
-      join(ctx.dir, "packages/config-typescript"),
-      join(ctx.dir, "apps/web/node_modules/@acme/config-typescript"),
+      join(linked.dir, "packages/config-typescript"),
+      join(linked.dir, "node_modules/@acme/config-typescript"),
     );
-    expect(resolved(ctx)).toEqual(files);
+    const chain = (c: typeof linked) =>
+      readTsconfigChain(join(c.dir, "apps/admin/tsconfig.json"), c.workspaces, realpathSync(c.dir));
+    expect(chain(unlinked).needsAlias).toBe(true);
+    expect(chain(linked).needsAlias).toBe(false);
+    const both = (c: typeof linked) => {
+      const r = createResolver(c);
+      return [r.resolveSpecifier(page, "@/lib/format"), r.resolveSpecifier(admin, "~shared/date")];
+    };
+    expect(both(linked)).toEqual([format, date]);
+    expect(both(linked)).toEqual(both(unlinked));
   });
 
-  test("a paths in the leaf replaces the base's", () => {
+  test("a paths in the leaf replaces the base's and resolves against the inherited baseUrl", () => {
     const ctx = fixture("tsconfig-extends-workspace");
-    writeFileSync(
-      join(ctx.dir, "apps/web/tsconfig.json"),
-      JSON.stringify({
-        extends: "@acme/config-typescript/nextjs.json",
-        compilerOptions: { paths: { "~shared/*": ["./src/lib/*"] } },
-      }),
-    );
-    const r = createResolver(ctx);
-    expect(r.resolveSpecifier(page, "~shared/format")).toEqual(files[0]);
-    expect(r.resolveSpecifier(page, "~shared/date")).toEqual({ kind: "unresolved" });
-    expect(r.resolveSpecifier(page, "@/lib/format")).toEqual({ kind: "unresolved" });
+    // The base's `baseUrl` is its own directory, so the leaf's target is relative to `packages/config-typescript`.
+    setWebConfig(ctx, {
+      extends: "@acme/config-typescript/nextjs.json",
+      compilerOptions: { paths: { "~shared/*": ["../shared/src/*"] } },
+    });
+    const at = webResolver(ctx);
+    expect(at("~shared/date")).toEqual(date);
+    expect(at("@/lib/format")).toEqual(unresolved);
+    setWebConfig(ctx, {
+      extends: "@acme/config-typescript/nextjs.json",
+      compilerOptions: { paths: { "~x/*": ["./src/lib/*"] } },
+    });
+    expect(webResolver(ctx)("~x/format")).toEqual(unresolved);
+    setWebConfig(ctx, {
+      extends: "@acme/config-typescript/nextjs.json",
+      compilerOptions: { baseUrl: ".", paths: { "~x/*": ["./src/lib/*"] } },
+    });
+    expect(webResolver(ctx)("~x/format")).toEqual(format);
   });
 
   test("an extends of an unknown package keeps the leaf's paths", () => {
     const ctx = fixture("tsconfig-extends-workspace");
-    writeFileSync(
-      join(ctx.dir, "apps/web/tsconfig.json"),
-      JSON.stringify({
-        extends: ["@nowhere/config/base.json"],
-        compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
-      }),
-    );
-    const r = createResolver(ctx);
-    expect(r.resolveSpecifier(page, "@/lib/format")).toEqual(files[0]);
+    setWebConfig(ctx, {
+      extends: ["@nowhere/config/base.json"],
+      compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
+    });
+    expect(webResolver(ctx)("@/lib/format")).toEqual(format);
+  });
+
+  test("${configDir} in paths is the directory of the leaf config", () => {
+    const ctx = fixture("tsconfig-extends-workspace");
+    setWebConfig(ctx, {
+      extends: "@acme/config-typescript/nextjs.json",
+      compilerOptions: { paths: { "@/*": ["${configDir}/src/*"] } },
+    });
+    expect(webResolver(ctx)("@/lib/format")).toEqual(format);
+  });
+
+  test("a leaf baseUrl still resolves bare imports when the chain goes through a workspace package", () => {
+    const ctx = fixture("tsconfig-extends-workspace");
+    setWebConfig(ctx, {
+      extends: "@acme/config-typescript/nextjs.json",
+      compilerOptions: { baseUrl: "src" },
+    });
+    expect(webResolver(ctx)("lib/format")).toEqual(format);
+  });
+
+  test("a base that two extends entries share is read for each", () => {
+    const ctx = fixture("tsconfig-extends-workspace", {
+      "apps/web/src/a/x.ts": "export const a = 1;\n",
+      "apps/web/src/b/x.ts": "export const b = 1;\n",
+    });
+    for (const d of ["a", "b"]) {
+      mkdirSync(join(ctx.dir, "apps/web/src", d), { recursive: true });
+      writeFileSync(join(ctx.dir, "apps/web/src", d, "x.ts"), "export const x = 1;\n");
+    }
+    const web = (name: string, config: object) =>
+      writeFileSync(join(ctx.dir, "apps/web", name), JSON.stringify(config));
+    web("base.json", { compilerOptions: { baseUrl: ".", paths: { "@b/*": ["./src/b/*"] } } });
+    web("a.json", { extends: "./base.json", compilerOptions: { paths: { "@a/*": ["./src/a/*"] } } });
+    web("b.json", { extends: "./base.json" });
+    setWebConfig(ctx, { extends: ["@nowhere/config", "./a.json", "./b.json"] });
+    const at = webResolver(ctx);
+    // The later entry wins: `b.json` brings the base's `paths` back.
+    expect(at("@b/x")).toEqual({ kind: "file", fileId: "file:repo:apps/web/src/b/x.ts" });
+    expect(at("@a/x")).toEqual(unresolved);
   });
 });
