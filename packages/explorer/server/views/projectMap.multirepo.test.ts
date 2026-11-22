@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { indexRepo, loadConfigForDb, openStore, resolvePaths, type Store } from "@gantry/core";
@@ -7,6 +7,7 @@ import { handleApi } from "../api.js";
 
 interface MaterializedMultirepo {
   repos: { web: string; api: string };
+  git: (repo: "web" | "api", args: string[]) => string;
   cleanup(): Promise<void>;
 }
 const helperPath = "../../../core/test/helpers/fixture.js";
@@ -19,9 +20,16 @@ afterEach(async () => {
   for (const c of cleanups.splice(0).reverse()) await c();
 });
 
-async function setup() {
+async function setup(withApiSrc = false) {
   const mr = await materializeMultirepo();
   cleanups.push(() => mr.cleanup());
+  if (withApiSrc) {
+    // A folder `src/` at the root of `api`, the same path as `src/` of the root workspace of `web`.
+    mkdirSync(join(mr.repos.api, "src"));
+    writeFileSync(join(mr.repos.api, "src/extra.ts"), "export function extra(): number {\n  return 1;\n}\n");
+    mr.git("api", ["add", "-A", "-f"]);
+    mr.git("api", ["commit", "-q", "-m", "extra"]);
+  }
   const data = mkdtempSync(join(tmpdir(), "gantry-map-mr-"));
   cleanups.push(() => rmSync(data, { recursive: true, force: true }));
   const paths = resolvePaths(mr.repos.web, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
@@ -81,5 +89,20 @@ describe("project map of a workspace of two repos", () => {
       "acme/api",
       "web",
     ]);
+  });
+
+  it("keeps equal folder paths of two repos apart: unique ids, each folder under its own workspace", async () => {
+    const ctx = await setup(true);
+    const r = get(ctx, "level=files");
+    const ids = r.nodes.map((n) => n.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const dirs = r.nodes.filter((n) => n.kind === "dir");
+    expect(dirs.every((d) => d.id.startsWith("dir:web:") || d.id.startsWith("dir:acme/api:"))).toBe(true);
+    const byId = new Map(r.nodes.map((n) => [n.id, n]));
+    expect(byId.get("dir:web:src")?.parent).toBe("ws:web:.");
+    expect(byId.get("dir:acme/api:src")?.parent).toBe("ws:acme/api:.");
+    expect(byId.get("file:acme/api:src/extra.ts")?.parent).toBe("dir:acme/api:src");
+    expect(byId.get("dir:acme/api:packages/contracts/src")?.parent).toBe("ws:acme/api:@mr/contracts");
+    for (const n of r.nodes) if (n.parent) expect(byId.has(n.parent)).toBe(true);
   });
 });

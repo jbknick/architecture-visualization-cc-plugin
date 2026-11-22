@@ -9,6 +9,7 @@ import {
   matchAny,
   type OverlayState,
   readOverlay,
+  repoOfId,
   resetOverlay,
   SavedViewSchema,
   type SelectableNode,
@@ -160,8 +161,14 @@ function nodeExists(ctx: ApiContext, id: string): boolean {
   if (isFileId(id)) return store.effectiveFile(id) !== undefined;
   if (id.startsWith("ws:")) return store.listWorkspaces().some((w) => w.id === id);
   if (id.startsWith("dir:")) {
-    const dir = id.slice(4);
-    return store.effectiveFiles().some((f) => f.path.startsWith(`${dir}/`));
+    // `dir:<path>`, or `dir:<repo>:<path>` in a store of several repos (a path has no colon before its first slash).
+    const rest = id.slice(4);
+    const colon = rest.indexOf(":");
+    const repo = store.listRepos().length > 1 && colon > 0 ? rest.slice(0, colon) : undefined;
+    const dir = repo === undefined ? rest : rest.slice(colon + 1);
+    return store
+      .effectiveFiles()
+      .some((f) => f.path.startsWith(`${dir}/`) && (repo === undefined || repoOfId(f.id) === repo));
   }
   return store.effectiveAdapterNodes().some((n) => n.id === id);
 }
