@@ -1,5 +1,6 @@
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -531,5 +532,130 @@ describe("classification", () => {
       fileId: "file:repo:packages/a/src/util.ts",
     });
     expect(r.workspaceEdges().map((e) => `${e.src}>${e.dst}`)).toEqual(["ws:repo:@w/b>ws:repo:@w/a"]);
+  });
+});
+
+describe("bundler aliases", () => {
+  const file = (rel: string) => `file:repo:${rel}`;
+
+  test("every alias form of the bundler-aliases fixture resolves to its source file", () => {
+    const r = createResolver(fixture("bundler-aliases"));
+    const cases: [string, string, string][] = [
+      ["apps/vite-app/src/main.ts", "@/components/Button", "apps/vite-app/src/components/Button.tsx"],
+      ["apps/vite-app/src/main.ts", "@/lib/format", "apps/vite-app/src/lib/format.ts"],
+      ["apps/vite-app/src/main.ts", "~ui", "packages/ui/src/index.ts"],
+      ["apps/vite-app/src/main.ts", "~ui/card", "packages/ui/src/card.ts"],
+      ["apps/vite-array/src/main.ts", "#lib/math", "apps/vite-array/src/lib/math.ts"],
+      ["apps/vite-array/src/main.ts", "#lib/range", "apps/vite-array/src/lib/range.ts"],
+      ["apps/webpack-app/src/index.ts", "@app/util/text", "apps/webpack-app/src/util/text.ts"],
+      ["apps/webpack-app/src/index.ts", "components", "apps/webpack-app/src/components/index.ts"],
+    ];
+    for (const [from, spec, to] of cases) {
+      expect(r.resolveSpecifier(file(from), spec)).toEqual({ kind: "file", fileId: file(to) });
+    }
+    expect(r.stats().unresolved.filter((u) => !u.fromFileId.includes("apps/dynamic/"))).toEqual([]);
+  });
+
+  test("a webpack key ending in $ matches the exact specifier only", () => {
+    const r = createResolver(fixture("bundler-aliases"));
+    expect(r.resolveSpecifier(file("apps/webpack-app/src/index.ts"), "components/other")).toEqual({
+      kind: "unresolved",
+    });
+  });
+
+  test("a computed alias value is unresolved with reason alias_not_static", () => {
+    const r = createResolver(fixture("bundler-aliases"));
+    const from = file("apps/dynamic/src/main.ts");
+    expect(r.resolveSpecifier(from, "@dyn/one")).toEqual({ kind: "unresolved" });
+    expect(r.resolveSpecifier(from, "@dyn/two")).toEqual({ kind: "unresolved" });
+    expect(r.stats().unresolved).toEqual([
+      {
+        fromFileId: from,
+        specifier: "@dyn/one",
+        class: "unresolved",
+        reason: "alias_not_static",
+        alias: "*",
+      },
+      {
+        fromFileId: from,
+        specifier: "@dyn/two",
+        class: "unresolved",
+        reason: "alias_not_static",
+        alias: "*",
+      },
+    ]);
+  });
+
+  test("one unreadable key only marks specifiers that start with it", () => {
+    const r = createResolver(
+      repo({
+        "package.json": JSON.stringify({ name: "root", devDependencies: { vite: "1" } }),
+        "vite.config.ts": `export default { resolve: { alias: { "@ok": "/src/ok", "@dyn": compute() } } };`,
+        "src/ok.ts": "export const ok = 1;",
+        "src/m.ts": `import { ok } from "@ok";\nimport { x } from "@dyn/x";\nimport { y } from "@other/y";\n`,
+      }),
+    );
+    const from = file("src/m.ts");
+    expect(r.resolveSpecifier(from, "@ok")).toEqual({ kind: "file", fileId: file("src/ok.ts") });
+    r.resolveSpecifier(from, "@dyn/x");
+    r.resolveSpecifier(from, "@other/y");
+    expect(r.stats().unresolved).toEqual([
+      {
+        fromFileId: from,
+        specifier: "@dyn/x",
+        class: "unresolved",
+        reason: "alias_not_static",
+        alias: "@dyn",
+      },
+      { fromFileId: from, specifier: "@other/y", class: "unresolved" },
+    ]);
+  });
+
+  test("other config shapes and path forms are read", () => {
+    const r = createResolver(
+      repo({
+        "package.json": JSON.stringify({ name: "root" }),
+        "pnpm-workspace.yaml": "packages:\n  - 'apps/*'\n",
+        "apps/a/package.json": JSON.stringify({ name: "a" }),
+        "apps/a/vite.config.js": `import path from "node:path";
+export default ({ mode }) => {
+  const base = 1;
+  return { resolve: { alias: { "@t": \`\${__dirname}/tpl\`, "@m": path.join(import.meta.dirname, "meta"), "@c": path.resolve(process.cwd(), "cwd") } } };
+};`,
+        "apps/a/tpl/x.ts": "export const x = 1;",
+        "apps/a/meta/x.ts": "export const x = 1;",
+        "apps/a/cwd/x.ts": "export const x = 1;",
+        "apps/a/src/m.ts": "export {};",
+        "apps/b/package.json": JSON.stringify({ name: "b" }),
+        "apps/b/webpack.config.cjs": `module.exports = { resolve: { alias: { w: require("path").resolve(__dirname, "w") } } };`,
+        "apps/b/w/x.ts": "export const x = 1;",
+        "apps/b/src/m.ts": "export {};",
+      }),
+    );
+    const a = file("apps/a/src/m.ts");
+    expect(r.resolveSpecifier(a, "@t/x")).toEqual({ kind: "file", fileId: file("apps/a/tpl/x.ts") });
+    expect(r.resolveSpecifier(a, "@m/x")).toEqual({ kind: "file", fileId: file("apps/a/meta/x.ts") });
+    expect(r.resolveSpecifier(a, "@c/x")).toEqual({ kind: "file", fileId: file("apps/a/cwd/x.ts") });
+    // `require("path").resolve(...)` is not one of the accepted forms.
+    expect(r.resolveSpecifier(file("apps/b/src/m.ts"), "w/x")).toEqual({ kind: "unresolved" });
+  });
+
+  test("a config with a top-level side effect is never run", () => {
+    const dir = mkTmp();
+    const marker = join(dir, "ran.txt");
+    const r = createResolver(
+      repo({
+        "package.json": JSON.stringify({ name: "root" }),
+        "vite.config.ts": `import fs from "node:fs";
+fs.writeFileSync(${JSON.stringify(marker)}, "ran");
+export default { resolve: { alias: { "@": "/src" } } };`,
+        "webpack.config.js": `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "ran");
+module.exports = { resolve: { alias: { "~": __dirname + "/src" } } };`,
+        "src/a.ts": "export const a = 1;",
+        "src/m.ts": "export {};",
+      }),
+    );
+    expect(r.resolveSpecifier(file("src/m.ts"), "@/a")).toEqual({ kind: "file", fileId: file("src/a.ts") });
+    expect(existsSync(marker)).toBe(false);
   });
 });

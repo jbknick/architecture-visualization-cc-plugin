@@ -54,8 +54,6 @@ Spec sections touched: 1, 4, 6, 9, 11, 13, 14.
 
 ## M8 Any TypeScript project (Path A)
 
-Runs after M10 (#242).
-
 Most layouts already work: pnpm, `package.json` workspaces (npm, yarn, bun), Nx `project.json`, and single packages are detected, and the resolver already follows tsconfig with `references: "auto"`. M8 closes the remaining, verified gaps:
 
 - A repo whose packages are tied together only by tsconfig project references.
@@ -174,7 +172,7 @@ Every issue states a Verify block: the exact commands, their inputs and the expe
 - **Timings** are measured on a named machine, recorded in the milestone report as the median of 3 runs, and never part of `pnpm check`.
 - **UI** is checked by a Playwright spec in `packages/explorer/web/e2e`, with reduced motion forced, against the built CLI's `map` on a fixture. The issue lists the steps the spec takes.
 - **Search and descriptions.** A check that depends on search sets the model directory and says whether vectors exist (#262); a check that depends on descriptions uses committed description fixtures, not a describer run.
-- **Milestone reports.** The last issue of each milestone runs its regression and writes `docs/milestones/M<n>.md`: #264 (M7), #266 (M8), #270 (M9), #272 (M10), #274 (M11), #275 (M12), #276 (M13), #233 (M15).
+- **Milestone reports.** The last issue of each milestone runs its regression and writes `docs/milestones/M<n>.md`: #264 (M7), #266 (M8), #270 (M9), #274 (M11), #275 (M12), #276 (M13), #233 (M15).
 
 ## Build order
 
@@ -190,7 +188,7 @@ Other order that the milestone order does not show:
 - #260 (corpus) comes before any measurement on public repos.
 - #246 blocks #247 and #249.
 - #247 deletes the Drizzle adapter; #206 deletes the oRPC and TanStack Start ones.
-- M10's issues follow #203. Its evaluation repos (#271) have Express or Fastify backends, so they are measured after #207 and #241; no M10 case waits for another framework. M8's issues follow M10.
+- M10's issues follow #203. Its evaluation repos (#271) have Express or Fastify backends, so they are measured after #207 and #241; no M10 case waits for another framework.
 
 ## Lost or at risk
 

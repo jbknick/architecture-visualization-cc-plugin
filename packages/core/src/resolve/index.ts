@@ -7,6 +7,7 @@ import { fileId as makeFileId, pathOfFileId } from "../ids.js";
 import type { ParsedFile, ParsedImport, ParsedSite } from "../parse/index.js";
 import type { EdgeKind, EdgeRecord, WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
+import { type BundlerAliases, readBundlerAliases } from "./bundlerAliases.js";
 
 export interface ResolveContext {
   root: string;
@@ -36,6 +37,10 @@ export interface UnresolvedSpecifier {
   fromFileId: string;
   specifier: string;
   class: "generated" | "excluded" | "unresolved";
+  /** Set when a bundler alias that the index cannot read statically may stand behind the specifier. */
+  reason?: "alias_not_static";
+  /** With `reason`: the alias key the specifier starts with, or `*` when the whole alias value is unreadable. */
+  alias?: string;
 }
 
 export interface ResolveStats {
@@ -159,6 +164,8 @@ interface Classified {
   class: SpecifierClass;
   fileId?: string;
   pkg?: string;
+  reason?: "alias_not_static";
+  alias?: string;
 }
 
 export function createResolver(ctx: ResolveContext): Resolver {
@@ -175,6 +182,7 @@ export function createResolver(ctx: ResolveContext): Resolver {
   const rootWs = ctx.workspaces.find((w) => w.dir === ".");
 
   const resolvers = new Map<string, ResolverFactory>();
+  const bundlerAliases = new Map<string, BundlerAliases>();
   const classCache = new Map<string, Classified>();
   const counted = new Map<string, UnresolvedSpecifier | null>();
   const counts: Record<SpecifierClass, number> = {
@@ -202,10 +210,31 @@ export function createResolver(ctx: ResolveContext): Resolver {
     }
   }
 
+  /** The aliases of the Vite and webpack configs in the workspace directory (read, never run). */
+  function aliasesOf(ws: WorkspaceRecord): BundlerAliases {
+    let a = bundlerAliases.get(ws.id);
+    if (!a) {
+      a = readBundlerAliases(path.join(realRoot, ws.dir === "." ? "" : ws.dir));
+      bundlerAliases.set(ws.id, a);
+    }
+    return a;
+  }
+
+  /** `alias_not_static` for a specifier that an alias the index could not read may have stood for. */
+  function unreadableAlias(ws: WorkspaceRecord, spec: string): Classified {
+    const hit = aliasesOf(ws).unreadable.find(
+      (u) => u.key === "*" || spec.startsWith(u.key.endsWith("$") ? u.key.slice(0, -1) : u.key),
+    );
+    return hit
+      ? { class: "unresolved", reason: "alias_not_static", alias: hit.key }
+      : { class: "unresolved" };
+  }
+
   function resolverFor(ws: WorkspaceRecord): ResolverFactory {
     let r = resolvers.get(ws.id);
     if (!r) {
       const tsconfig = nearestTsconfig(ws.dir);
+      const aliases = aliasesOf(ws).aliases;
       r = new ResolverFactory({
         extensions: EXTENSIONS,
         extensionAlias: {
@@ -217,6 +246,9 @@ export function createResolver(ctx: ResolveContext): Resolver {
         conditionNames: ["import", "types", "default"],
         mainFields: ["types", "module", "main"],
         builtinModules: true,
+        ...(aliases.length > 0
+          ? { alias: Object.fromEntries(aliases.map((a) => [a.find, [a.target]] as const)) }
+          : {}),
         ...(tsconfig ? { tsconfig: { configFile: tsconfig, references: "auto" as const } } : {}),
       });
       resolvers.set(ws.id, r);
@@ -372,7 +404,7 @@ export function createResolver(ctx: ResolveContext): Resolver {
     if (pkg && (declaredDependency(fromWs, pkg) || hasTypesPackage(fromAbs, pkg))) {
       return { class: "external", pkg };
     }
-    return { class: "unresolved" };
+    return unreadableAlias(fromWs, spec);
   }
 
   function classified(fromFileId: string, spec: string): Classified {
@@ -385,7 +417,12 @@ export function createResolver(ctx: ResolveContext): Resolver {
       counted.set(
         key,
         c.class === "generated" || c.class === "excluded" || c.class === "unresolved"
-          ? { fromFileId, specifier: spec, class: c.class }
+          ? {
+              fromFileId,
+              specifier: spec,
+              class: c.class,
+              ...(c.reason ? { reason: c.reason, alias: c.alias as string } : {}),
+            }
           : null,
       );
     }

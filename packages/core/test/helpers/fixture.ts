@@ -8,6 +8,7 @@ export type FixtureName =
   | "single-pkg"
   | "pnpm-turbo"
   | "nx"
+  | "bundler-aliases"
   | "adapters"
   | "go-basic"
   | "overlay-groups"

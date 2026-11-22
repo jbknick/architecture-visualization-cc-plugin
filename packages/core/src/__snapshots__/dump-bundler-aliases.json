@@ -1,0 +1,1168 @@
+{
+  "repos": [
+    {
+      "name": "bundler-aliases"
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "ws:bundler-aliases:.",
+      "repo": "bundler-aliases",
+      "name": "bundler-aliases-root",
+      "dir": ".",
+      "kind": "unknown",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:bundler-aliases:@fx/ui",
+      "repo": "bundler-aliases",
+      "name": "@fx/ui",
+      "dir": "packages/ui",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:bundler-aliases:dynamic",
+      "repo": "bundler-aliases",
+      "name": "dynamic",
+      "dir": "apps/dynamic",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [
+        "vite"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:bundler-aliases:vite-app",
+      "repo": "bundler-aliases",
+      "name": "vite-app",
+      "dir": "apps/vite-app",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [
+        "vite"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:bundler-aliases:vite-array",
+      "repo": "bundler-aliases",
+      "name": "vite-array",
+      "dir": "apps/vite-array",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [
+        "vite"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:bundler-aliases:webpack-app",
+      "repo": "bundler-aliases",
+      "name": "webpack-app",
+      "dir": "apps/webpack-app",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [
+        "webpack"
+      ],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:bundler-aliases:apps/dynamic/src/main.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/dynamic/src/main.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:dynamic",
+      "contentHash": "7719a1abc369e25b46ee451da71258f9dfcb76910a92dc27227b687361feefc0"
+    },
+    {
+      "id": "file:bundler-aliases:apps/dynamic/src/one.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/dynamic/src/one.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:dynamic",
+      "contentHash": "56e187148dde3173b6313e6b35c1206d514cd64799b1efba319e4f3410fa62f4"
+    },
+    {
+      "id": "file:bundler-aliases:apps/dynamic/src/two.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/dynamic/src/two.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:dynamic",
+      "contentHash": "bc3a5c7e467cff370aa7ba438b01c384fd373f7653ed0f684ac3235716969834"
+    },
+    {
+      "id": "file:bundler-aliases:apps/dynamic/vite.config.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/dynamic/vite.config.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:dynamic",
+      "contentHash": "bb8e078399d5a394e510ef8670b4e53c32bddb7e75a4a30cc37548fb7507391c"
+    },
+    {
+      "id": "file:bundler-aliases:apps/vite-app/src/components/Button.tsx",
+      "repo": "bundler-aliases",
+      "path": "apps/vite-app/src/components/Button.tsx",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:vite-app",
+      "contentHash": "67cf8204e59228d42cd843382d4a2121979d2036cdd24531f30bc3f5d8f1db98"
+    },
+    {
+      "id": "file:bundler-aliases:apps/vite-app/src/lib/format.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/vite-app/src/lib/format.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:vite-app",
+      "contentHash": "4b12b404001a3a80905f848eeb29dfd178f1f42cde8ee0ca64bb168f7827906e"
+    },
+    {
+      "id": "file:bundler-aliases:apps/vite-app/src/main.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/vite-app/src/main.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:vite-app",
+      "contentHash": "2f03ab2a12374b6edd0e2dd743e64171a232e217964c147961d13832423eb7fc"
+    },
+    {
+      "id": "file:bundler-aliases:apps/vite-app/vite.config.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/vite-app/vite.config.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:vite-app",
+      "contentHash": "35cdbf2e55bde6b7b1756c373b2983c603b8ad3b456e3d277c0e331e0cf8a57c"
+    },
+    {
+      "id": "file:bundler-aliases:apps/vite-array/src/lib/math.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/vite-array/src/lib/math.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:vite-array",
+      "contentHash": "9a30ac96b5d5c1b67eca69e1e2cf0798817d9578c8d7d904a81a67b983b35cba"
+    },
+    {
+      "id": "file:bundler-aliases:apps/vite-array/src/lib/range.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/vite-array/src/lib/range.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:vite-array",
+      "contentHash": "aa42b3b87298b88a6ba7760f2b7206bfe0067a30989519c465b848ce67a78ae9"
+    },
+    {
+      "id": "file:bundler-aliases:apps/vite-array/src/main.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/vite-array/src/main.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:vite-array",
+      "contentHash": "68e8b260cbb64ac302b055e92a0490b91135e5981a13619322920b9bd941eabf"
+    },
+    {
+      "id": "file:bundler-aliases:apps/vite-array/vite.config.mts",
+      "repo": "bundler-aliases",
+      "path": "apps/vite-array/vite.config.mts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:vite-array",
+      "contentHash": "a6683aec7e2a1f38aba9b14260fdea2b6b82df6eb904a8b7ef96a732ebb6e231"
+    },
+    {
+      "id": "file:bundler-aliases:apps/webpack-app/src/components/index.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/webpack-app/src/components/index.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:webpack-app",
+      "contentHash": "da36860a66ca39c65f2eb41688cd63bb347594b3261a96b89a8f5f17f439c36e"
+    },
+    {
+      "id": "file:bundler-aliases:apps/webpack-app/src/index.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/webpack-app/src/index.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:webpack-app",
+      "contentHash": "22c0591297eb89155eb2bb29ab7d0d587b6d4b8f4d3eab926ba1c8d3a9271382"
+    },
+    {
+      "id": "file:bundler-aliases:apps/webpack-app/src/util/text.ts",
+      "repo": "bundler-aliases",
+      "path": "apps/webpack-app/src/util/text.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:webpack-app",
+      "contentHash": "ac303ed8fb88a583ced71f35b2fd551d0c963608eac8d9d1a235f1242e6cd67e"
+    },
+    {
+      "id": "file:bundler-aliases:packages/ui/src/card.ts",
+      "repo": "bundler-aliases",
+      "path": "packages/ui/src/card.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:@fx/ui",
+      "contentHash": "ca9ba0f3ec09405615dee2a9f24e29b30503a4b88e9aeb2ddb56d2af2894351f"
+    },
+    {
+      "id": "file:bundler-aliases:packages/ui/src/index.ts",
+      "repo": "bundler-aliases",
+      "path": "packages/ui/src/index.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:bundler-aliases:@fx/ui",
+      "contentHash": "33fafb6e3101675dce481cf4de8a963f88b7d14711b81c02f7f137b295f365ab"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:bundler-aliases:apps/dynamic/src/main.ts#sum",
+      "fileId": "file:bundler-aliases:apps/dynamic/src/main.ts",
+      "name": "sum",
+      "kind": "const",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "",
+      "startLine": 4,
+      "endLine": 4,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "d781f6311d9d8473f8175ae6c6a35f3f",
+      "shapeHash": "0c3e116b8346712caf7720433ccf531e"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/dynamic/src/one.ts#one",
+      "fileId": "file:bundler-aliases:apps/dynamic/src/one.ts",
+      "name": "one",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(): number",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "b8084eaaf3f82c0572f4c5207adb19bf",
+      "shapeHash": "bc2bc2ad2fa57fa1bd2955bb037302da"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/dynamic/src/two.ts#two",
+      "fileId": "file:bundler-aliases:apps/dynamic/src/two.ts",
+      "name": "two",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(): number",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "c4819f289c0d34070af66ebe1e815c5b",
+      "shapeHash": "bc2bc2ad2fa57fa1bd2955bb037302da"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/dynamic/vite.config.ts#default",
+      "fileId": "file:bundler-aliases:apps/dynamic/vite.config.ts",
+      "name": "default",
+      "kind": "const",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "",
+      "startLine": 8,
+      "endLine": 10,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "e5869d041cde948c9a07c29b37b78372",
+      "shapeHash": "23e7454db7670a98f1dce84c9aa425fe"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/dynamic/vite.config.ts#makeAliases",
+      "fileId": "file:bundler-aliases:apps/dynamic/vite.config.ts",
+      "name": "makeAliases",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": false,
+      "signature": "(): Record<string, string>",
+      "startLine": 4,
+      "endLine": 6,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "9b72bb0393de6598d3d41f6e3b63518b",
+      "shapeHash": "3911c47c1582aec3c5b22264788fd6c0"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/vite-app/src/components/Button.tsx#Button",
+      "fileId": "file:bundler-aliases:apps/vite-app/src/components/Button.tsx",
+      "name": "Button",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(label: string): string",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "3b29b67c3d5ee026c6be13a81514285c",
+      "shapeHash": "dbc3a8565f8a91675a1a8fbd16461eb6"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/vite-app/src/lib/format.ts#format",
+      "fileId": "file:bundler-aliases:apps/vite-app/src/lib/format.ts",
+      "name": "format",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(n: number): string",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "b0f1f6465a2025984c93f52c339f0485",
+      "shapeHash": "9b435209a9cb69a0df57d679469f491e"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/vite-app/src/main.ts#page",
+      "fileId": "file:bundler-aliases:apps/vite-app/src/main.ts",
+      "name": "page",
+      "kind": "const",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "",
+      "startLine": 6,
+      "endLine": 6,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "510af57f4af006debc50e6ed043e297f",
+      "shapeHash": "21173153b47b7663e1fb578d3bed6cae"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/vite-app/vite.config.ts#default",
+      "fileId": "file:bundler-aliases:apps/vite-app/vite.config.ts",
+      "name": "default",
+      "kind": "const",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "",
+      "startLine": 5,
+      "endLine": 12,
+      "loc": 8,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "2e45d93f4bd144ec49afe7fe5f4bf10a",
+      "shapeHash": "da345290fc455fd4d3bcb8b985a87fc9"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/vite-array/src/lib/math.ts#add",
+      "fileId": "file:bundler-aliases:apps/vite-array/src/lib/math.ts",
+      "name": "add",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(a: number, b: number): number",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "92c75b6bb40f3943f0562b4e87dd3dbc",
+      "shapeHash": "2dcc002aa43aa4e70c92c9d2743ff675"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/vite-array/src/lib/range.ts#clamp",
+      "fileId": "file:bundler-aliases:apps/vite-array/src/lib/range.ts",
+      "name": "clamp",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(n: number, lo: number, hi: number): number",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "13299ec01dafb8bd467dfcef5307be2e",
+      "shapeHash": "23b6309976831c0746952ae98dc837ae"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/vite-array/src/main.ts#total",
+      "fileId": "file:bundler-aliases:apps/vite-array/src/main.ts",
+      "name": "total",
+      "kind": "const",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "",
+      "startLine": 4,
+      "endLine": 4,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "d40aef29b1d038f83f5656b8d3851b87",
+      "shapeHash": "dbb0bda806d63e03ff1bc2fce700a684"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/vite-array/vite.config.mts#default",
+      "fileId": "file:bundler-aliases:apps/vite-array/vite.config.mts",
+      "name": "default",
+      "kind": "const",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 7,
+      "loc": 5,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "f3e17cf1f98bed5c2aaa68490b91a645",
+      "shapeHash": "e32e3336e9d2353d0d139a1240317ce8"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/webpack-app/src/components/index.ts#widget",
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/components/index.ts",
+      "name": "widget",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(): string",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "b8b1b808e2d281c743701db3d73ab24c",
+      "shapeHash": "02ccdec3c7e847b226be235ce5b42ca6"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/webpack-app/src/index.ts#out",
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/index.ts",
+      "name": "out",
+      "kind": "const",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "",
+      "startLine": 4,
+      "endLine": 4,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "2963bae70e27ce2ae8cc24d732425cd7",
+      "shapeHash": "6636ff46d4fcb1700a75acbf1a24de6f"
+    },
+    {
+      "id": "sym:bundler-aliases:apps/webpack-app/src/util/text.ts#shout",
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/util/text.ts",
+      "name": "shout",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(s: string): string",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "a8cb79bcd3cb86dd399613e4347239c5",
+      "shapeHash": "1250ae21f9313e6439bca5d8729a9780"
+    },
+    {
+      "id": "sym:bundler-aliases:packages/ui/src/card.ts#card",
+      "fileId": "file:bundler-aliases:packages/ui/src/card.ts",
+      "name": "card",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(title: string): string",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "837995611ca6392d86f8845a6f00e353",
+      "shapeHash": "dbc3a8565f8a91675a1a8fbd16461eb6"
+    }
+  ],
+  "edges": [
+    {
+      "src": "file:bundler-aliases:apps/dynamic/src/main.ts",
+      "dst": "sym:bundler-aliases:apps/dynamic/src/main.ts#sum",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/src/main.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/dynamic/src/main.ts",
+      "dst": "sym:bundler-aliases:apps/dynamic/src/main.ts#sum",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/src/main.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/dynamic/src/one.ts",
+      "dst": "sym:bundler-aliases:apps/dynamic/src/one.ts#one",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/src/one.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/dynamic/src/one.ts",
+      "dst": "sym:bundler-aliases:apps/dynamic/src/one.ts#one",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/src/one.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/dynamic/src/two.ts",
+      "dst": "sym:bundler-aliases:apps/dynamic/src/two.ts#two",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/src/two.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/dynamic/src/two.ts",
+      "dst": "sym:bundler-aliases:apps/dynamic/src/two.ts#two",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/src/two.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/dynamic/vite.config.ts",
+      "dst": "ext:vite",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/dynamic/vite.config.ts:2"
+      ],
+      "fileId": "file:bundler-aliases:apps/dynamic/vite.config.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/dynamic/vite.config.ts",
+      "dst": "sym:bundler-aliases:apps/dynamic/vite.config.ts#default",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/vite.config.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/dynamic/vite.config.ts",
+      "dst": "sym:bundler-aliases:apps/dynamic/vite.config.ts#default",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/vite.config.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/dynamic/vite.config.ts",
+      "dst": "sym:bundler-aliases:apps/dynamic/vite.config.ts#makeAliases",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/vite.config.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/src/components/Button.tsx",
+      "dst": "sym:bundler-aliases:apps/vite-app/src/components/Button.tsx#Button",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/components/Button.tsx"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/src/components/Button.tsx",
+      "dst": "sym:bundler-aliases:apps/vite-app/src/components/Button.tsx#Button",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/components/Button.tsx"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/src/lib/format.ts",
+      "dst": "sym:bundler-aliases:apps/vite-app/src/lib/format.ts#format",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/lib/format.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/src/lib/format.ts",
+      "dst": "sym:bundler-aliases:apps/vite-app/src/lib/format.ts#format",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/lib/format.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/src/main.ts",
+      "dst": "file:bundler-aliases:apps/vite-app/src/components/Button.tsx",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/vite-app/src/main.ts:1"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/main.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/src/main.ts",
+      "dst": "file:bundler-aliases:apps/vite-app/src/lib/format.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/vite-app/src/main.ts:2"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/main.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/src/main.ts",
+      "dst": "file:bundler-aliases:packages/ui/src/card.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/vite-app/src/main.ts:4"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/main.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/src/main.ts",
+      "dst": "file:bundler-aliases:packages/ui/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/vite-app/src/main.ts:3"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/main.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/src/main.ts",
+      "dst": "sym:bundler-aliases:apps/vite-app/src/main.ts#page",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/main.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/src/main.ts",
+      "dst": "sym:bundler-aliases:apps/vite-app/src/main.ts#page",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/main.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/vite.config.ts",
+      "dst": "ext:vite",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/vite-app/vite.config.ts:3"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-app/vite.config.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/vite.config.ts",
+      "dst": "sym:bundler-aliases:apps/vite-app/vite.config.ts#default",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-app/vite.config.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-app/vite.config.ts",
+      "dst": "sym:bundler-aliases:apps/vite-app/vite.config.ts#default",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-app/vite.config.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-array/src/lib/math.ts",
+      "dst": "sym:bundler-aliases:apps/vite-array/src/lib/math.ts#add",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/lib/math.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-array/src/lib/math.ts",
+      "dst": "sym:bundler-aliases:apps/vite-array/src/lib/math.ts#add",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/lib/math.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-array/src/lib/range.ts",
+      "dst": "sym:bundler-aliases:apps/vite-array/src/lib/range.ts#clamp",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/lib/range.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-array/src/lib/range.ts",
+      "dst": "sym:bundler-aliases:apps/vite-array/src/lib/range.ts#clamp",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/lib/range.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-array/src/main.ts",
+      "dst": "file:bundler-aliases:apps/vite-array/src/lib/math.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/vite-array/src/main.ts:1"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/main.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-array/src/main.ts",
+      "dst": "file:bundler-aliases:apps/vite-array/src/lib/range.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/vite-array/src/main.ts:2"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/main.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-array/src/main.ts",
+      "dst": "sym:bundler-aliases:apps/vite-array/src/main.ts#total",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/main.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-array/src/main.ts",
+      "dst": "sym:bundler-aliases:apps/vite-array/src/main.ts#total",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/main.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-array/vite.config.mts",
+      "dst": "ext:vite",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/vite-array/vite.config.mts:1"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-array/vite.config.mts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-array/vite.config.mts",
+      "dst": "sym:bundler-aliases:apps/vite-array/vite.config.mts#default",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-array/vite.config.mts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/vite-array/vite.config.mts",
+      "dst": "sym:bundler-aliases:apps/vite-array/vite.config.mts#default",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-array/vite.config.mts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/webpack-app/src/components/index.ts",
+      "dst": "sym:bundler-aliases:apps/webpack-app/src/components/index.ts#widget",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/components/index.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/webpack-app/src/components/index.ts",
+      "dst": "sym:bundler-aliases:apps/webpack-app/src/components/index.ts#widget",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/components/index.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/webpack-app/src/index.ts",
+      "dst": "file:bundler-aliases:apps/webpack-app/src/components/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/webpack-app/src/index.ts:1"
+      ],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/index.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/webpack-app/src/index.ts",
+      "dst": "file:bundler-aliases:apps/webpack-app/src/util/text.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/webpack-app/src/index.ts:2"
+      ],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/index.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/webpack-app/src/index.ts",
+      "dst": "sym:bundler-aliases:apps/webpack-app/src/index.ts#out",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/index.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/webpack-app/src/index.ts",
+      "dst": "sym:bundler-aliases:apps/webpack-app/src/index.ts#out",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/index.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/webpack-app/src/util/text.ts",
+      "dst": "sym:bundler-aliases:apps/webpack-app/src/util/text.ts#shout",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/util/text.ts"
+    },
+    {
+      "src": "file:bundler-aliases:apps/webpack-app/src/util/text.ts",
+      "dst": "sym:bundler-aliases:apps/webpack-app/src/util/text.ts#shout",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/util/text.ts"
+    },
+    {
+      "src": "file:bundler-aliases:packages/ui/src/card.ts",
+      "dst": "sym:bundler-aliases:packages/ui/src/card.ts#card",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:packages/ui/src/card.ts"
+    },
+    {
+      "src": "file:bundler-aliases:packages/ui/src/card.ts",
+      "dst": "sym:bundler-aliases:packages/ui/src/card.ts#card",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:packages/ui/src/card.ts"
+    },
+    {
+      "src": "file:bundler-aliases:packages/ui/src/index.ts",
+      "dst": "file:bundler-aliases:packages/ui/src/card.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:packages/ui/src/index.ts"
+    },
+    {
+      "src": "file:bundler-aliases:packages/ui/src/index.ts",
+      "dst": "sym:bundler-aliases:packages/ui/src/card.ts#card",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:packages/ui/src/index.ts"
+    },
+    {
+      "src": "sym:bundler-aliases:apps/dynamic/vite.config.ts#default",
+      "dst": "sym:bundler-aliases:apps/dynamic/vite.config.ts#makeAliases",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/dynamic/vite.config.ts:9"
+      ],
+      "fileId": "file:bundler-aliases:apps/dynamic/vite.config.ts"
+    },
+    {
+      "src": "sym:bundler-aliases:apps/vite-app/src/main.ts#page",
+      "dst": "sym:bundler-aliases:apps/vite-app/src/components/Button.tsx#Button",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/vite-app/src/main.ts:6"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/main.ts"
+    },
+    {
+      "src": "sym:bundler-aliases:apps/vite-app/src/main.ts#page",
+      "dst": "sym:bundler-aliases:apps/vite-app/src/lib/format.ts#format",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/vite-app/src/main.ts:6"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/main.ts"
+    },
+    {
+      "src": "sym:bundler-aliases:apps/vite-app/src/main.ts#page",
+      "dst": "sym:bundler-aliases:packages/ui/src/card.ts#card",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "apps/vite-app/src/main.ts:6"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/main.ts"
+    },
+    {
+      "src": "sym:bundler-aliases:apps/vite-array/src/main.ts#total",
+      "dst": "sym:bundler-aliases:apps/vite-array/src/lib/math.ts#add",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/vite-array/src/main.ts:4"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/main.ts"
+    },
+    {
+      "src": "sym:bundler-aliases:apps/vite-array/src/main.ts#total",
+      "dst": "sym:bundler-aliases:apps/vite-array/src/lib/range.ts#clamp",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/vite-array/src/main.ts:4"
+      ],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/main.ts"
+    },
+    {
+      "src": "sym:bundler-aliases:apps/webpack-app/src/index.ts#out",
+      "dst": "sym:bundler-aliases:apps/webpack-app/src/components/index.ts#widget",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/webpack-app/src/index.ts:4"
+      ],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/index.ts"
+    },
+    {
+      "src": "sym:bundler-aliases:apps/webpack-app/src/index.ts#out",
+      "dst": "sym:bundler-aliases:apps/webpack-app/src/util/text.ts#shout",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/webpack-app/src/index.ts:4"
+      ],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/index.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:@fx/ui",
+      "dst": "file:bundler-aliases:packages/ui/src/card.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:packages/ui/src/card.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:@fx/ui",
+      "dst": "file:bundler-aliases:packages/ui/src/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:packages/ui/src/index.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:dynamic",
+      "dst": "file:bundler-aliases:apps/dynamic/src/main.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/src/main.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:dynamic",
+      "dst": "file:bundler-aliases:apps/dynamic/src/one.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/src/one.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:dynamic",
+      "dst": "file:bundler-aliases:apps/dynamic/src/two.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/src/two.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:dynamic",
+      "dst": "file:bundler-aliases:apps/dynamic/vite.config.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/dynamic/vite.config.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:vite-app",
+      "dst": "file:bundler-aliases:apps/vite-app/src/components/Button.tsx",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/components/Button.tsx"
+    },
+    {
+      "src": "ws:bundler-aliases:vite-app",
+      "dst": "file:bundler-aliases:apps/vite-app/src/lib/format.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/lib/format.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:vite-app",
+      "dst": "file:bundler-aliases:apps/vite-app/src/main.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-app/src/main.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:vite-app",
+      "dst": "file:bundler-aliases:apps/vite-app/vite.config.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-app/vite.config.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:vite-array",
+      "dst": "file:bundler-aliases:apps/vite-array/src/lib/math.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/lib/math.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:vite-array",
+      "dst": "file:bundler-aliases:apps/vite-array/src/lib/range.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/lib/range.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:vite-array",
+      "dst": "file:bundler-aliases:apps/vite-array/src/main.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-array/src/main.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:vite-array",
+      "dst": "file:bundler-aliases:apps/vite-array/vite.config.mts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/vite-array/vite.config.mts"
+    },
+    {
+      "src": "ws:bundler-aliases:webpack-app",
+      "dst": "file:bundler-aliases:apps/webpack-app/src/components/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/components/index.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:webpack-app",
+      "dst": "file:bundler-aliases:apps/webpack-app/src/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/index.ts"
+    },
+    {
+      "src": "ws:bundler-aliases:webpack-app",
+      "dst": "file:bundler-aliases:apps/webpack-app/src/util/text.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:bundler-aliases:apps/webpack-app/src/util/text.ts"
+    }
+  ]
+}
