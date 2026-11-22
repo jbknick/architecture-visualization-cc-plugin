@@ -1,6 +1,8 @@
+import { spawnSync } from "node:child_process";
 import { type Dirent, existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import picomatch from "picomatch";
+import { BUILTIN_EXCLUDES, matchesAny } from "../config/index.js";
 import { workspaceId } from "../ids.js";
 import type { ExportsEntry, WorkspaceRecord } from "../types.js";
 
@@ -154,6 +156,27 @@ function dirsContaining(root: string, file: string): string[] {
   return found;
 }
 
+/**
+ * Every directory that holds a package.json, the root included, except those under the built-in excludes (spec
+ * section 5) and those git ignores. Outside a git repository nothing is ignored.
+ */
+function packageDirs(root: string): string[] {
+  const dirs = dirsContaining(root, "package.json").filter(
+    (d) => d === "." || !matchesAny(BUILTIN_EXCLUDES, d),
+  );
+  const manifests = dirs.filter((d) => d !== ".").map((d) => `${d}/package.json`);
+  if (manifests.length === 0) return dirs;
+  const res = spawnSync("git", ["check-ignore", "-z", "--stdin"], {
+    cwd: root,
+    encoding: "utf8",
+    input: manifests.join("\0"),
+    stdio: ["pipe", "pipe", "ignore"],
+  });
+  if (res.status !== 0 && res.status !== 1) return dirs;
+  const ignored = new Set(res.stdout.split("\0").filter((p) => p !== ""));
+  return dirs.filter((d) => d === "." || !ignored.has(`${d}/package.json`));
+}
+
 function expandGlobs(root: string, globs: string[], marker: string): string[] {
   const include: string[] = [];
   const exclude: string[] = [];
@@ -293,7 +316,7 @@ function buildRecord(
 
 /**
  * Detect workspaces: pnpm-workspace.yaml, then package.json `workspaces`, then Nx
- * project.json files, then the projects the root tsconfig.json references, else a single root workspace. The root is always `ws:<repo>:.`.
+ * project.json files, then the projects the root tsconfig.json references, then every directory holding a package.json (built-in excludes and git-ignored paths skipped), else a single root workspace. The root is always `ws:<repo>:.`.
  */
 export function detectWorkspaces(
   root: string,
@@ -311,6 +334,7 @@ export function detectWorkspaces(
   } else {
     dirs = dirsContaining(root, "project.json").filter((d) => d !== ".");
     if (dirs.length === 0) dirs = tsconfigReferenceDirs(root);
+    if (dirs.length === 0) dirs = packageDirs(root).filter((d) => d !== ".");
   }
   const all = [...new Set([".", ...dirs])].sort();
   const records = all.map((d) => buildRecord(root, repo, d, config));
