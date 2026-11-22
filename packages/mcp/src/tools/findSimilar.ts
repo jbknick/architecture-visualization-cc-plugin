@@ -13,6 +13,7 @@ import {
   type Lang,
   loadConfigForDb,
   pathOfFileId,
+  repoOfId,
   type Store,
   type SymbolKind,
   type SymbolRecord,
@@ -41,6 +42,7 @@ const NO_VECTORS =
   "meaning search unavailable (no description vectors or embedding model); showing code and keyword matches only";
 
 interface Found {
+  repo: string;
   tier: Tier;
   score: number;
   /** Inside the semantic tier a measured cosine ranks above a keyword-only hit. */
@@ -84,7 +86,8 @@ export const findSimilarTool = defineTool({
   description:
     "Call this before writing a new helper, hook or component: it looks for code that already does the same thing. " +
     "Give query (one sentence on what you are about to write), code (a draft), or both. " +
-    "Returns {matches: [{id, name, kind, lang, path, line, signature, import_path, tier, score, untrusted_description, advice: {situation, action, inline, untrusted_suggested_name?} | null}]}, best first: tier exact, near, code_vector (a draft matches in code), semantic (a query matches in meaning or words). " +
+    "Returns {matches: [{id, repo, name, kind, lang, path, line, signature, import_path, tier, score, untrusted_description, advice: {situation, action, inline, untrusted_suggested_name?} | null}]}, best first: tier exact, near, code_vector (a draft matches in code), semantic (a query matches in meaning or words). " +
+    "A match can be in another repo of the workspace (its repo says which; path is relative to that repo); the advice then says so, and is an import line only when the caller's workspace already depends on the package that holds the match. " +
     "advice.inline true means the match can be imported as is (advice.action has the import line); otherwise advice.action is a suggestion for the user. " +
     "Without description vectors meaning search is skipped and the payload says so in notes. Read the file before relying on a match. Responses are capped at 4,000 characters (truncated: true).",
   inputSchema: {
@@ -142,7 +145,8 @@ export const findSimilarTool = defineTool({
         { code: { source: code, lang: dialect, ...(isGo ? { path: "scratch.go" } : {}) } },
         { limit: POOL },
       );
-      for (const c of r.candidates) add(c.symbolId, { tier: c.tier, score: c.score, measured: true });
+      for (const c of r.candidates)
+        add(c.symbolId, { repo: c.repo, tier: c.tier, score: c.score, measured: true });
       for (const s of r.skipped) if (!notes.includes(s.message)) notes.push(s.message);
     }
 
@@ -158,7 +162,8 @@ export const findSimilarTool = defineTool({
             const byKey = new Map(near.map((n) => [n.contentKey, n.cosine]));
             for (const s of store.effectiveSymbols({ kind: [...FUNCTION_LIKE_KINDS] })) {
               const cos = s.exactHash === "" ? undefined : byKey.get(contentKey(s.exactHash));
-              if (cos !== undefined) add(s.id, { tier: "semantic", score: cos, measured: true });
+              if (cos !== undefined)
+                add(s.id, { repo: repoOfId(s.id) as string, tier: "semantic", score: cos, measured: true });
             }
           }
         } catch {
@@ -173,7 +178,7 @@ export const findSimilarTool = defineTool({
         limit: POOL,
         ...(embedder ? { embedder } : {}),
       });
-      for (const h of hits) add(h.id, { tier: "semantic", score: h.score, measured: false });
+      for (const h of hits) add(h.id, { repo: h.repo, tier: "semantic", score: h.score, measured: false });
     }
 
     const behaviors = behaviorMap(store);
@@ -193,10 +198,12 @@ export const findSimilarTool = defineTool({
         sym,
         config.renameSuggestions ? descriptionOf(store, sym) : null,
         config,
+        paths.repo,
       )[0];
       const description = sym.exactHash === "" ? null : (behaviors.get(contentKey(sym.exactHash)) ?? null);
       return {
         id: sym.id,
+        repo: f.repo,
         name: sym.name,
         kind: sym.kind,
         lang: sym.lang,

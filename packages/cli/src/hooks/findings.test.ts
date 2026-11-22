@@ -4,9 +4,11 @@ import { dirname, join } from "node:path";
 import {
   type GantryConfig,
   hashSymbol,
+  indexRepo,
   loadConfigForDb,
   openStore,
   parseFile,
+  resolvePaths,
   type Store,
   type SymbolRecord,
 } from "@gantry/core";
@@ -251,5 +253,58 @@ func ${name}(values []int, factor int) int {
       const f = { ...finding(mine, old, "exact"), path: "internal/other/total.go" };
       expect(diskCheck(root, store, config)({ ...f, existingPath: "internal/util/sum.go" })).toBe(true);
     });
+  });
+});
+
+// The helper lives in core's test folder, outside any tsconfig rootDir, so load it dynamically by path.
+interface MaterializedMultirepo {
+  repos: { web: string; api: string };
+  cleanup(): Promise<void>;
+}
+const helperPath = "../../../core/test/helpers/fixture.js";
+const { materializeMultirepo } = (await import(/* @vite-ignore */ helperPath)) as {
+  materializeMultirepo: () => Promise<MaterializedMultirepo>;
+};
+
+describe("a duplicate in another repo of the workspace", () => {
+  const cleanups: (() => Promise<void> | void)[] = [];
+  afterEach(async () => {
+    for (const c of cleanups.splice(0).reverse()) await c();
+  });
+
+  async function setup() {
+    const mr = await materializeMultirepo();
+    cleanups.push(() => mr.cleanup());
+    const data = mkdtempSync(join(tmpdir(), "gantry-findings-mr-"));
+    cleanups.push(() => rmSync(data, { recursive: true, force: true }));
+    const web = resolvePaths(mr.repos.web, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
+    await indexRepo(web, { layer: "main" });
+    const store = openStore(web.dbPath, { repo: web.repo });
+    cleanups.push(() => store.close());
+    return { mr, store, config: loadConfigForDb(web.dbPath, { HOME: data }) };
+  }
+
+  it("names the match as <repo>:<path>:<line> and says it is in that repo", async () => {
+    const { store, config } = await setup();
+    const mine = store.getSymbol("sym:web:src/lib/slug.ts#makeSlug") as SymbolRecord;
+    const notes = await duplicateFindings(store, [mine], config);
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatchObject({ existing: "toSlug", existingRepo: "acme/api", inline: false });
+    expect(formatFinding(notes[0] as DupFinding)).toBe(
+      "Gantry: makeSlug (src/lib/slug.ts:1) looks like toSlug in acme/api:apps/server/src/slug.ts:1 [exact 1.00]. " +
+        "It is in the acme/api repo: reuse it through a package that repo publishes, or move it to one",
+    );
+  });
+
+  it("double-checks the match against the root of the repo it is in", async () => {
+    const { mr, store, config } = await setup();
+    const mine = store.getSymbol("sym:web:src/lib/slug.ts#makeSlug") as SymbolRecord;
+    const [note] = await duplicateFindings(store, [mine], config);
+    const check = diskCheck(mr.repos.web, store, config);
+    expect(check(note as DupFinding)).toBe(true);
+    // The same path in this repo does not stand in for the match.
+    expect(
+      check({ ...(note as DupFinding), existingPath: "src/lib/slug.ts", existingId: "sym:acme/api:x#y" }),
+    ).toBe(false);
   });
 });

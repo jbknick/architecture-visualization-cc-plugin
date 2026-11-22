@@ -75,3 +75,22 @@ describe("gantry_browse and gantry_node across repos", () => {
     expect((file.json.node as { repo: string }).repo).toBe("web");
   });
 });
+
+describe("gantry_find_similar across repos", () => {
+  const draft =
+    "export function slugOf(text: string): string {\n" +
+    "  const lower = text.toLowerCase();\n  const trimmed = lower.trim();\n" +
+    '  const dashed = trimmed.replace(/\\s+/g, "-");\n  const clean = dashed.replace(/[^a-z0-9-]/g, "");\n' +
+    '  const collapsed = clean.replace(/-+/g, "-");\n  return collapsed.replace(/^-|-$/g, "");\n}\n';
+
+  it("returns a match in the sibling repo with its repo, and advice that says where it is", async () => {
+    const { client } = await setup("web");
+    const r = await call(client, "gantry_find_similar", { code: draft, caller_path: "src/lib/other.ts" });
+    expect(r.isError).toBe(false);
+    const apiMatch = (r.json.matches as { repo: string; name: string; advice: { situation: number } }[]).find(
+      (m) => m.repo === "acme/api",
+    );
+    expect(apiMatch).toMatchObject({ name: "toSlug", advice: { situation: 7 } });
+    expect((r.json.matches as { repo: string }[]).map((m) => m.repo)).toContain("web");
+  });
+});

@@ -779,6 +779,34 @@ describe("/api/source", () => {
     for (const p of extras) store.replaceFile("main", fileRec(p, "ws:repo:.", { deleted: true }), [], []);
   });
 
+  describe("repo", () => {
+    let sibling: string;
+    beforeAll(() => {
+      sibling = join(tmp, "sibling");
+      mkdirSync(join(sibling, "src"), { recursive: true });
+      writeFileSync(join(sibling, "src", "a.ts"), "export function fromSibling() {}\n");
+      store.upsertRepo("sibling", sibling);
+      store.replaceFile("main", fileRec("src/a.ts", null, { id: "file:sibling:src/a.ts" }), [], []);
+    });
+    afterAll(() => {
+      store.removeReposExcept(["repo"]);
+    });
+
+    it("reads the file of the named repo, not the file of the same path in this repo", async () => {
+      const own = (await src("path=src/a.ts&start=1&end=1")).json();
+      const other = (await src("path=src/a.ts&start=1&end=1&repo=sibling")).json();
+      expect(own.lines).toEqual(["export function alpha() {}"]);
+      expect(other.lines).toEqual(["export function fromSibling() {}"]);
+    });
+
+    it("refuses an unknown repo, and a path the repo does not index", async () => {
+      expect((await src("path=src/a.ts&repo=nope")).status).toBe(404);
+      expect((await src("path=src/b.ts&repo=sibling")).status).toBe(404);
+      expect((await src("path=../a.ts&repo=sibling")).status).toBe(403);
+      expect((await src("path=.env&repo=sibling")).status).toBe(403);
+    });
+  });
+
   it("returns the requested lines", async () => {
     const res = await src("path=src/a.ts&start=2&end=2");
     expect(res.status).toBe(200);

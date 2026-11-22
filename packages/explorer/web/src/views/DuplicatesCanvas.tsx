@@ -200,7 +200,7 @@ function ClusterList({
 
 function CopyPath({ member }: { member: DupMember }) {
   const [copied, setCopied] = useState(false);
-  const text = `${member.path}:${member.line}`;
+  const text = `${member.repo === undefined ? "" : `${member.repo}:`}${member.path}:${member.line}`;
   return (
     <button
       type="button"

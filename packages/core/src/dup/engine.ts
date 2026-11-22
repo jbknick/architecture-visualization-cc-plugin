@@ -2,6 +2,7 @@ import { type GantryConfig, loadConfigForDb } from "../config/index.js";
 import { contentKey, FUNCTION_LIKE_KINDS } from "../describe/factsheet.js";
 import { allVectors, getVector, knn, type VecTable, vecAvailable } from "../embed/vec.js";
 import { hashSymbol, MINHASH_PERMUTATIONS, minhashJaccard } from "../hash/index.js";
+import { repoOfId } from "../ids.js";
 import { langOfPath, languageModule, languages, parseFile } from "../lang/index.js";
 import type { Store } from "../store/index.js";
 import { decodeMinhash } from "../store/repo.js";
@@ -39,6 +40,8 @@ import {
 export type Tier = "exact" | "near" | "code_vector" | "semantic";
 export interface DupCandidate {
   symbolId: string;
+  /** The repo of the matched symbol (the repo part of `symbolId`). */
+  repo: string;
   tier: Tier;
   score: number;
 }
@@ -115,6 +118,7 @@ const VECTOR_MESSAGE = "vector tiers unavailable: run gantry embed";
 interface Entry {
   id: string;
   fileId: string;
+  repo: string;
   path: string;
   kind: SymbolKind;
   lang: Lang;
@@ -213,6 +217,7 @@ function buildIndex(store: Store, layer: "effective" | "main"): DupIndex {
     const e: Entry = {
       id: r.id,
       fileId: r.file_id,
+      repo: repoOfId(r.id) as string,
       path: r.path,
       kind: r.kind,
       lang: r.lang,
@@ -432,7 +437,7 @@ function runTiers(inp: RunInput): DupCandidate[] {
   };
   const take = (tier: Tier, hits: { e: Entry; score: number }[]): void => {
     const picked = hits
-      .map((h) => ({ symbolId: h.e.id, tier, score: h.score }))
+      .map((h) => ({ symbolId: h.e.id, repo: h.e.repo, tier, score: h.score }))
       .sort(byScore)
       .filter((c) => !seen.has(c.symbolId));
     for (const c of picked) {
