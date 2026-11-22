@@ -60,6 +60,8 @@ export interface TraceEdge {
   dst: string;
   kind: EdgeKind;
   confidence: "high" | "low";
+  /** A read or write written in a query file: the repo-relative path of that file (spec section 5). */
+  textFile?: string;
 }
 
 export interface TraceResult {
@@ -237,6 +239,8 @@ export function trace(store: Store, target: string, opts: TraceOptions = {}): Tr
       dst: e.dst,
       kind: e.kind,
       confidence: e.confidence,
+      ...("textFileId" in e && e.textFileId ? { textFile: pathOfFileId(e.textFileId) } : {}),
+      ...("textFile" in e && e.textFile ? { textFile: e.textFile } : {}),
     });
   };
   const reach = (id: string, from: string, via: string, low: boolean): boolean => {

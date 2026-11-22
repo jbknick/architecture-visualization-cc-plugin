@@ -13,7 +13,7 @@ import {
   stringValue,
   symbolForName,
 } from "../adapters/framework.js";
-import { fileIdOfSymId, nameOfSymId, tableId } from "../ids.js";
+import { fileId, fileIdOfSymId, nameOfSymId, pathOfFileId, tableId } from "../ids.js";
 import { isNode, nodeArray, unwrap } from "../parse/ast.js";
 import type { EdgeRecord, WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
@@ -156,6 +156,8 @@ interface Access {
   file: AdapterFileContext;
   src: string;
   line: number;
+  /** The path the evidence line is in, when it is not `file` (a query written in a text file). */
+  at?: string;
   table: TableNode;
   conf: "high" | "low";
 }
@@ -387,7 +389,9 @@ class DataAccess {
 
   /**
    * A `query` text rule: the Go function it names runs the statements it holds, so it reads and writes the tables
-   * those statements do (only tables that are declared; a table is never guessed). The edge belongs to the function.
+   * those statements do (only tables that are declared; a table is never guessed). The edge is stored with the
+   * function's file (only files with a syntax tree are rows of the index); its evidence is the line of the text file
+   * that holds the statement.
    */
   private queriesFromText(): void {
     for (const { rule, path, match } of this.textMatches("query")) {
@@ -396,19 +400,23 @@ class DataAccess {
       const sql = groupValue(rule.emit.sql, match);
       if (!fn || !sql) continue;
       const globs = rule.emit.files;
+      // The line where the `sql` group starts in the text file (it may start below the match's first line).
+      const sqlGroup = /^\$(\d+)$/.exec(rule.emit.sql);
+      const sqlLine = (sqlGroup ? match.groupLines[Number(sqlGroup[1])] : 0) || match.line;
       const targets = this.goFunctionsNamed(fn, new Set(this.homes(path).map((w) => w.id)), globs);
       for (const ref of scanSql(sql)) {
         if (ref.kind === "create") continue;
         const t = refTarget(ref.ref);
         const table = t && "name" in t ? this.byName.get(t.name.toLowerCase()) : undefined;
         if (!table || table.runtime) continue;
-        const line = match.line + lineInText(sql, ref.offset);
+        const line = sqlLine + lineInText(sql, ref.offset);
         for (const target of targets) {
           this.accesses.push({
             kind: ref.kind === "read" ? "reads" : "writes",
             file: target.file,
             src: target.sym,
-            line: target.line ?? line,
+            line,
+            at: path,
             table,
             conf: "high",
           });
@@ -422,8 +430,8 @@ class DataAccess {
     name: string,
     wsIds: ReadonlySet<string>,
     globs: readonly string[] | undefined,
-  ): { file: AdapterFileContext; sym: string; line: number | null }[] {
-    const out: { file: AdapterFileContext; sym: string; line: number | null }[] = [];
+  ): { file: AdapterFileContext; sym: string }[] {
+    const out: { file: AdapterFileContext; sym: string }[] = [];
     for (const { file } of this.a.goFiles) {
       if (!wsIds.has(file.ws.id)) continue;
       if (globs && !picomatch.isMatch(file.path, [...globs], { dot: true })) continue;
@@ -431,7 +439,7 @@ class DataAccess {
         if (s.kind !== "function" && s.kind !== "method") continue;
         if (s.name.replace(/^.*\./, "") !== name) continue;
         if (!file.parsed?.bodies.has(s.id)) continue;
-        out.push({ file, sym: s.id, line: s.startLine });
+        out.push({ file, sym: s.id });
       }
     }
     return out;
@@ -1147,7 +1155,7 @@ class DataAccess {
   }
 
   private buildEdges(): EdgeRecord[] {
-    const acc = new Map<string, EdgeRecord & { lines: Set<number>; path: string }>();
+    const acc = new Map<string, EdgeRecord & { lines: Map<string, { path: string; line: number }> }>();
     for (const u of this.accesses) {
       const k = `${u.file.fileId}\0${u.src}\0${u.table.id}\0${u.kind}`;
       let e = acc.get(k);
@@ -1160,18 +1168,23 @@ class DataAccess {
           count: 0,
           evidence: [],
           fileId: u.file.fileId,
-          lines: new Set(),
-          path: u.file.path,
+          lines: new Map(),
         };
         acc.set(k, e);
       }
       if (u.conf === "high") e.confidence = "high";
-      e.lines.add(u.line);
+      const path = u.at ?? u.file.path;
+      e.lines.set(`${path}:${u.line}`, { path, line: u.line });
+      // The text file whose statement it is: the one whose path sorts first.
+      if (u.at !== undefined && (e.textFileId === undefined || u.at < pathOfFileId(e.textFileId)))
+        e.textFileId = fileId(this.a.repo, u.at);
       e.count++;
     }
-    const edges: EdgeRecord[] = [...acc.values()].map(({ lines, path, ...e }) => ({
+    const edges: EdgeRecord[] = [...acc.values()].map(({ lines, ...e }) => ({
       ...e,
-      evidence: [...lines].sort((x, y) => x - y).map((l) => `${path}:${l}`),
+      evidence: [...lines.entries()]
+        .sort(([, x], [, y]) => cmp(x.path, y.path) || x.line - y.line)
+        .map(([entry]) => entry),
     }));
     edges.sort(
       (x, y) => cmp(x.fileId, y.fileId) || cmp(x.src, y.src) || cmp(x.dst, y.dst) || cmp(x.kind, y.kind),

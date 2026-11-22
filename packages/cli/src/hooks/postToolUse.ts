@@ -7,7 +7,9 @@ import {
   type GantryPaths,
   indexRepo,
   isIndexable,
+  isQueryFile,
   loadConfig,
+  loadRecipe,
   openStore,
   parseFile,
   pathsForRepo,
@@ -120,13 +122,15 @@ export async function postToolUse(
   if (rel === undefined) return undefined;
   const config = loadConfig(paths);
   const source = isIndexable(rel, config);
-  if (!source && !MANIFEST_RE.test(rel)) return undefined;
+  // A query file of the recipe has no syntax tree, but the edges of the Go files that run it come from it.
+  const query = !source && isQueryFile(loadRecipe(paths.root, { layer: "working" }).recipe, rel);
+  if (!source && !query && !MANIFEST_RE.test(rel)) return undefined;
 
   const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   try {
     const session = input.sessionId ?? `once:${randomUUID()}`;
-    const recorded = recordEdit(store, session, rel, source);
-    if (source) {
+    const recorded = recordEdit(store, session, rel, source, !source && !query);
+    if (source || query) {
       await indexRepo(paths, { layer: "working", files: [rel], store });
       // Only now is the file indexed: a trigger cut off before this line leaves reindexed = 0, and Stop indexes it.
       store.db
@@ -200,7 +204,13 @@ export async function settleBatch(
  * same file moves `created_at` (so a settle that read the row before that edit does not delete it) and sets
  * `reindexed` back to 0 until that edit's own index finishes.
  */
-export function recordEdit(store: Store, session: string, rel: string, source: boolean): string {
+export function recordEdit(
+  store: Store,
+  session: string,
+  rel: string,
+  source: boolean,
+  manifest: boolean = !source,
+): string {
   const baseline = source
     ? Object.fromEntries(
         store.effectiveSymbols({ fileId: fileId(store.repo(), rel) }).map((s) => [s.id, s.exactHash]),
@@ -214,7 +224,7 @@ export function recordEdit(store: Store, session: string, rel: string, source: b
     )
     .run(session, store.repo(), rel, JSON.stringify(baseline), at);
   // A manifest edit changes how every file of the batch resolves: all of them are re-indexed again at Stop.
-  if (!source) {
+  if (manifest) {
     store.db
       .prepare("UPDATE pending_files SET reindexed = 0 WHERE session_id = ? AND repo = ?")
       .run(session, store.repo());
@@ -304,13 +314,15 @@ export async function settle(
     "DELETE FROM pending_files WHERE session_id = ? AND repo = ? AND path = ? AND created_at = ?",
   );
   const sources = rows.filter((r) => isIndexable(r.path, config));
-  const manifests = rows.filter((r) => !isIndexable(r.path, config));
+  const recipe = loadRecipe(paths.root, { layer: "working" }).recipe;
+  const queries = rows.filter((r) => !isIndexable(r.path, config) && isQueryFile(recipe, r.path));
+  const manifests = rows.filter((r) => !isIndexable(r.path, config) && !isQueryFile(recipe, r.path));
   out.remaining = rows.length;
 
   // Re-index step, in chunks that each commit, so a batch too large for one Stop still makes progress.
   const gone = (r: { path: string }): boolean => !fs.existsSync(path.join(paths.root, r.path));
   // Not indexed since its last edit (a trigger cut off before its index, or a manifest edited since), or gone.
-  const todo = sources.filter((r) => r.reindexed === 0 || gone(r));
+  const todo = [...sources, ...queries].filter((r) => r.reindexed === 0 || gone(r));
   const mark = store.db.prepare(
     "UPDATE pending_files SET reindexed = 1 WHERE session_id = ? AND repo = ? AND path = ? AND created_at = ?",
   );
@@ -322,6 +334,16 @@ export async function settle(
       for (const r of chunk) mark.run(session, store.repo(), r.path, r.created_at);
     });
     if (!ok) return out;
+  }
+  if (queries.length > 0) {
+    if (late()) return out;
+    // A query file has nothing to check once its Go files are re-indexed: its row leaves the batch.
+    const ok = await step(async () => {
+      for (const q of queries) del.run(session, store.repo(), q.path, q.created_at);
+    });
+    if (!ok) return out;
+    out.settled += queries.length;
+    out.remaining -= queries.length;
   }
   if (manifests.length > 0) {
     if (late()) return out;
@@ -336,7 +358,11 @@ export async function settle(
 
   const check = diskCheck(paths.root, store, config);
   for (const r of sources) {
-    if (late() || out.settled - manifests.length >= (opts.maxFiles ?? Number.POSITIVE_INFINITY)) break;
+    if (
+      late() ||
+      out.settled - manifests.length - queries.length >= (opts.maxFiles ?? Number.POSITIVE_INFINITY)
+    )
+      break;
     const found: Finding[] = [];
     const ok = await step(async () => {
       let baseline: Record<string, string>;

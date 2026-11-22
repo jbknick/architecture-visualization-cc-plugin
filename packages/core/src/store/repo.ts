@@ -166,6 +166,7 @@ interface EdgeRow {
   count: number;
   evidence: string;
   file_id: string;
+  text_file_id: string | null;
 }
 
 /** 64 little-endian uint32 values, regardless of host byte order. */
@@ -221,6 +222,7 @@ const toEdge = (r: EdgeRow): EdgeRecord => ({
   count: r.count,
   evidence: JSON.parse(r.evidence ?? "[]") as string[],
   fileId: r.file_id,
+  ...(r.text_file_id ? { textFileId: r.text_file_id } : {}),
 });
 
 interface WorkspaceRow {
@@ -494,13 +496,24 @@ export function createStore(db: Database, entryRepo?: string): Store {
           );
         }
         const ei = stmt(
-          `INSERT INTO edges(src, dst, kind, layer, confidence, count, evidence, file_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO edges(src, dst, kind, layer, confidence, count, evidence, file_id, text_file_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(src, dst, kind, layer) DO UPDATE SET confidence = excluded.confidence,
-             count = excluded.count, evidence = excluded.evidence, file_id = excluded.file_id`,
+             count = excluded.count, evidence = excluded.evidence, file_id = excluded.file_id,
+             text_file_id = excluded.text_file_id`,
         );
         for (const e of edges) {
-          ei.run(e.src, e.dst, e.kind, layer, e.confidence, e.count, JSON.stringify(e.evidence), e.fileId);
+          ei.run(
+            e.src,
+            e.dst,
+            e.kind,
+            layer,
+            e.confidence,
+            e.count,
+            JSON.stringify(e.evidence),
+            e.fileId,
+            e.textFileId ?? null,
+          );
         }
         const ai = stmt(
           `INSERT INTO adapter_nodes(id, layer, kind, ws, label, file_id, data) VALUES (?, ?, ?, ?, ?, ?, ?)

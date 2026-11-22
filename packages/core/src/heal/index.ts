@@ -10,6 +10,8 @@ import { fileId } from "../ids.js";
 import { indexRepo } from "../indexer.js";
 import { reattachOverlay } from "../overlay/reattach.js";
 import { type GantryPaths, pathsForRepo } from "../paths/index.js";
+import { loadRecipe } from "../recipe/load.js";
+import { isQueryFile } from "../recipe/query-files.js";
 import { refreshDescriptionFts } from "../search/descfts.js";
 import { openStore, type Store } from "../store/index.js";
 
@@ -127,7 +129,7 @@ function dropRedundantWorking(store: Store, repo: string): void {
     )
     .all(repo) as { id: string }[];
   const edges = store.db.prepare(
-    "SELECT src, dst, kind, confidence, count, evidence FROM edges WHERE layer = ? AND file_id = ? ORDER BY src, dst, kind",
+    "SELECT src, dst, kind, confidence, count, evidence, text_file_id FROM edges WHERE layer = ? AND file_id = ? ORDER BY src, dst, kind",
   );
   const nodes = store.db.prepare(
     "SELECT id, kind, ws, label, data FROM adapter_nodes WHERE layer = ? AND file_id = ? ORDER BY id",
@@ -234,7 +236,9 @@ async function healRepo(
     const diff = reachable ? diffNameStatus(root, oldSha as string, newSha) : undefined;
     const total = indexedFileCount(store, paths.repo);
 
-    const changedPaths = diff?.filter(([, p]) => isIndexable(p, config)) ?? [];
+    // A query file (read by a recipe's `query` rule) is not indexable but its edit changes the edges of Go files.
+    const recipe = loadRecipe(root, { layer: "main" }).recipe;
+    const changedPaths = diff?.filter(([, p]) => isIndexable(p, config) || isQueryFile(recipe, p)) ?? [];
     const structural = diff?.some(([, p]) => STRUCTURAL.test(p)) ?? false;
     const full = !diff || structural || total === 0 || changedPaths.length > total * FULL_REINDEX_RATIO;
 

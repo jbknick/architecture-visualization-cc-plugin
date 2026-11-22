@@ -12,13 +12,13 @@ describe("bounded-regex", () => {
     expect(r).toEqual({
       ok: true,
       matches: [
-        { index: 0, groups: ["a=1", "a", "1"] },
-        { index: 4, groups: ["b=2", "b", "2"] },
+        { index: 0, groups: ["a=1", "a", "1"], starts: [0, 0, 2] },
+        { index: 4, groups: ["b=2", "b", "2"], starts: [4, 4, 6] },
       ],
     });
     expect(runner.run("(x)?y", "", "y", true)).toEqual({
       ok: true,
-      matches: [{ index: 0, groups: ["y", ""] }],
+      matches: [{ index: 0, groups: ["y", ""], starts: [0, -1] }],
     });
   });
 
