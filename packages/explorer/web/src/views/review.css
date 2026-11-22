@@ -447,3 +447,33 @@
 .rv-more {
   font-size: 12px;
 }
+
+/* The reachable tier (hop 4 or more): one outer ring, faint and dashed; a hub is a larger node that opens */
+.rv-ring-reachable {
+  stroke-dasharray: 2 6;
+}
+.rv-edge-reachable {
+  stroke-dasharray: 4 3;
+  opacity: 0.45;
+}
+.rv-node.rv-hub {
+  fill: var(--surface);
+  stroke: var(--rv-caller-3);
+  stroke-width: 3;
+}
+.rv-node-g[aria-expanded="true"] .rv-node.rv-hub {
+  fill: var(--rv-caller-3);
+  stroke: var(--surface);
+}
+.rv-hub-row {
+  margin: 2px 0;
+}
+.rv-hub-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+}
+.rv-hub-members {
+  margin-left: 14px;
+}

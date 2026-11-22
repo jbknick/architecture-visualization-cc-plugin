@@ -1,14 +1,15 @@
 // @vitest-environment jsdom
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { handleMockApi } from "../../mock/fixture.ts";
-import type { ReviewConsumer, ReviewData, ReviewLayer, ViewData } from "../api.ts";
+import type { GraphNode, ReviewConsumer, ReviewData, ReviewLayer, ViewData } from "../api.ts";
 import { pathOfFileId, pathOfSymId } from "../ids.ts";
 import "../canvases.ts";
 import { ringEdges, ringNodes } from "../../mock/review.ts";
 import { computeLayout } from "../canvas/layout.ts";
 import { buildScene, layoutInputFor } from "../canvas/scene.ts";
 import { installMockFetch, renderApp } from "../testUtils.tsx";
+import { ConsumerTiers } from "./ReviewConsumers.tsx";
 import {
   affectedTotals,
   capPaintLinks,
@@ -31,6 +32,7 @@ import {
   SHOW_CHOICES,
   shortName,
   showOf,
+  withHubMembers,
 } from "./reviewModel.ts";
 
 const BUTTON = "sym:pnpm-turbo:packages/ui/src/button.tsx#Button";
@@ -221,11 +223,13 @@ describe("rings model", () => {
   });
 
   it("names every ring in plain words", () => {
-    expect([0, 1, 2, 3].map(ringTitle)).toEqual([
+    expect([0, 1, 2, 3, 4, 6].map(ringTitle)).toEqual([
       "Changed in this range",
       "Call the changed code directly",
       "2 calls away",
       "3 calls away",
+      "4 or more calls away",
+      "4 or more calls away",
     ]);
   });
 
@@ -545,5 +549,155 @@ describe("consumers (#169)", () => {
       node("sym:pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce")?.getAttribute("data-tier"),
     ).toBe("potential");
     expect(node(BUTTON)?.getAttribute("class")).toContain("rv-dim");
+  });
+
+  it("a hub is one row under Reachable that opens to its members, grouped by workspace", () => {
+    const member = (id: string, workspace: string): ReviewConsumer => ({
+      ...consumer(id, id),
+      workspace,
+      hop: 5,
+      next: "sym:pnpm-turbo:packages/utils/src/hub.ts#hub",
+    });
+    const web = member("sym:pnpm-turbo:apps/web/src/a.ts#webUser", "@app/web");
+    const api = member("sym:pnpm-turbo:apps/api/src/b.ts#apiUser", "@app/api");
+    const consumers = {
+      direct: [],
+      directTotal: 0,
+      potential: [],
+      potentialTotal: 0,
+      reachable: [{ ...consumer("sym:pnpm-turbo:packages/utils/src/far.ts#far", "x"), hop: 4 }],
+      reachableTotal: 3,
+      hubs: [
+        {
+          hub: "sym:pnpm-turbo:packages/utils/src/hub.ts#hub",
+          name: "hub",
+          kind: "function",
+          path: "packages/utils/src/hub.ts",
+          workspace: null,
+          hop: 4,
+          consumersTotal: 2,
+          byWorkspace: [
+            { workspace: "@app/api", count: 1 },
+            { workspace: "@app/web", count: 1 },
+          ],
+          members: [web, api],
+        },
+      ],
+    };
+    render(<ConsumerTiers consumers={consumers} label="Consumers of x" sel={null} onPick={() => {}} />);
+    expect(screen.getByRole("heading", { name: /^Reachable \(3\)$/ })).toBeTruthy();
+    const row = screen.getByRole("button", { name: /^hub · 2 consumers$/ });
+    expect(row.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText(/apiUser/)).toBeNull();
+    fireEvent.click(row);
+    expect(row.getAttribute("aria-expanded")).toBe("true");
+    const groups = [...document.querySelectorAll(".rv-hub-members .rv-consumer-file")].map(
+      (x) => x.textContent,
+    );
+    expect(groups).toEqual(["@app/api (1)", "@app/web (1)"]);
+    expect(screen.getByText(/webUser/)).toBeTruthy();
+    expect(screen.getByText(/apiUser/)).toBeTruthy();
+    expect(screen.getAllByText(/hop 5 via hub/)).toHaveLength(2);
+    fireEvent.click(row);
+    expect(row.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("a hub of hop 2 is a row under Potentially affected, not under Reachable", () => {
+    const hub = "sym:pnpm-turbo:packages/utils/src/mid.ts#mid";
+    const m: ReviewConsumer = {
+      ...consumer("sym:pnpm-turbo:apps/web/src/a.ts#webUser", "x"),
+      hop: 2,
+      next: hub,
+    };
+    const consumers = {
+      direct: [],
+      directTotal: 0,
+      potential: [],
+      potentialTotal: 1,
+      reachable: [],
+      reachableTotal: 0,
+      hubs: [
+        {
+          hub,
+          name: "mid",
+          kind: "function",
+          path: "packages/utils/src/mid.ts",
+          workspace: null,
+          hop: 2,
+          consumersTotal: 1,
+          byWorkspace: [{ workspace: null, count: 1 }],
+          members: [m],
+        },
+      ],
+    };
+    const { container } = render(
+      <ConsumerTiers consumers={consumers} label="Consumers of x" sel={null} onPick={() => {}} />,
+    );
+    expect(container.querySelector('[data-tier="potential"] [data-hub]')).toBeTruthy();
+    expect(container.querySelector('[data-tier="reachable"] [data-hub]')).toBeNull();
+    expect(screen.getByRole("heading", { name: /^Potentially affected \(1\)$/ })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /^Reachable \(0\)$/ })).toBeTruthy();
+    expect(screen.queryByText(/and \d+ more/)).toBeNull();
+    expect(
+      withHubMembers(
+        [],
+        [],
+        { changes: [{ consumers }], files: [] } as unknown as ReviewData,
+        new Set([`hub:${hub}`]),
+      ).nodes,
+    ).toEqual([]);
+  });
+
+  it("withHubMembers: an expanded hub's members join the outer ring beside it, none while collapsed", () => {
+    const hub = "sym:pnpm-turbo:packages/utils/src/hub.ts#hub";
+    const m: ReviewConsumer = {
+      ...consumer("sym:pnpm-turbo:apps/web/src/a.ts#webUser", ""),
+      hop: 5,
+      next: hub,
+    };
+    const hubEntry = {
+      hub,
+      name: "hub",
+      kind: "function",
+      path: "packages/utils/src/hub.ts",
+      workspace: null,
+      hop: 4,
+      consumersTotal: 1,
+      byWorkspace: [{ workspace: null, count: 1 }],
+      members: [m],
+    };
+    const review = {
+      changes: [
+        {
+          consumers: {
+            direct: [],
+            directTotal: 0,
+            potential: [],
+            potentialTotal: 0,
+            reachable: [],
+            reachableTotal: 1,
+            hubs: [hubEntry],
+          },
+        },
+      ],
+      files: [],
+    } as unknown as ReviewData;
+    const node = (id: string, hop: number, x: number): GraphNode => ({
+      id,
+      kind: id.startsWith("hub:") ? "hub" : "function",
+      label: id,
+      size: 1,
+      hop,
+      x,
+      y: 0,
+      group: "g",
+    });
+    const nodes = [node(BUTTON, 0, 0), node("a", 3, 450), node(`hub:${hub}`, 4, 600)];
+    expect(withHubMembers(nodes, [], review, new Set()).nodes).toEqual(nodes);
+    const open = withHubMembers(nodes, [], review, new Set([`hub:${hub}`]));
+    expect(open.nodes.filter((n) => n.hop === 4).map((n) => n.id)).toEqual([m.id, `hub:${hub}`].sort());
+    expect(open.edges).toEqual([
+      expect.objectContaining({ src: m.id, dst: `hub:${hub}`, confidence: "low" }),
+    ]);
   });
 });

@@ -9,6 +9,7 @@ import {
   fileId,
   fileIdBeside,
   fileIdOfSymId,
+  type HubEntry,
   type Impact,
   isFileId,
   isSymId,
@@ -78,11 +79,24 @@ export interface ReviewConsumer extends Consumer {
   nextNode?: string;
 }
 
+/** A hub (one node above the fan-in threshold) with the node that shows it and the nodes that show its members. */
+export type ReviewHub = HubEntry & {
+  /** The node of this response that shows the hub (itself, else its file); absent when the map has none. */
+  node?: string;
+  members: ReviewConsumer[];
+};
+
 export interface ReviewConsumers {
   direct: ReviewConsumer[];
   directTotal: number;
   potential: ReviewConsumer[];
   potentialTotal: number;
+  /** Hop 4 and later, as listed (capped, without the hubs' consumers). */
+  reachable: ReviewConsumer[];
+  /** Every reachable consumer, the hubs' included. */
+  reachableTotal: number;
+  /** The hubs whose consumers are listed as one entry each. */
+  hubs: ReviewHub[];
 }
 
 /**
@@ -156,6 +170,8 @@ export interface ReviewData {
   files: (ReviewFile & { id: string; changes: number; consumers: ReviewConsumers })[];
   changes: ReviewChangeRow[];
   callersByHop: { hop: number; count: number }[];
+  /** Distinct nodes at hop 4 or later, summed over the changes (the collapsed ones included). */
+  reachableTotal: number;
   crossings: Crossing[];
   risk: Risk;
   rules: readonly RiskRule[];
@@ -249,18 +265,40 @@ function placeId(place: MapPlacement, id: string, path?: string): string | undef
 
 /** A change's consumers with their nodes on this map. */
 function consumersOn(cc: ChangeConsumers | undefined, place: MapPlacement): ReviewConsumers {
-  if (!cc) return { direct: [], directTotal: 0, potential: [], potentialTotal: 0 };
-  const pathOfAny = new Map([...cc.direct, ...cc.potential].map((x) => [x.id, x.path]));
+  if (!cc)
+    return {
+      direct: [],
+      directTotal: 0,
+      potential: [],
+      potentialTotal: 0,
+      reachable: [],
+      reachableTotal: 0,
+      hubs: [],
+    };
+  const pathOfAny = new Map(
+    [...cc.direct, ...cc.potential, ...cc.reachable, ...cc.hubs.flatMap((h) => h.members)].map((x) => [
+      x.id,
+      x.path,
+    ]),
+  );
+  for (const h of cc.hubs) pathOfAny.set(h.hub, h.path);
   const row = (x: Consumer): ReviewConsumer => {
     const node = placeId(place, x.id, x.path);
     const nextNode = x.next !== undefined ? placeId(place, x.next, pathOfAny.get(x.next)) : undefined;
     return { ...x, ...(node !== undefined ? { node } : {}), ...(nextNode !== undefined ? { nextNode } : {}) };
+  };
+  const hub = (h: HubEntry): ReviewHub => {
+    const node = placeId(place, h.hub, h.path);
+    return { ...h, ...(node !== undefined ? { node } : {}), members: h.members.map(row) };
   };
   return {
     direct: cc.direct.map(row),
     directTotal: cc.directTotal,
     potential: cc.potential.map(row),
     potentialTotal: cc.potentialTotal,
+    reachable: cc.reachable.map(row),
+    reachableTotal: cc.reachableTotal,
+    hubs: cc.hubs.map(hub),
   };
 }
 
@@ -450,7 +488,7 @@ function buildLayer(c: Computed, place: MapPlacement): ReviewLayer {
 
   // Consumers: clicking one in the panel selects and zooms to the node that shows it.
   for (const cc of impact.consumers) {
-    for (const x of [...cc.direct, ...cc.potential]) {
+    for (const x of [...cc.direct, ...cc.potential, ...cc.reachable, ...cc.hubs.flatMap((h) => h.members)]) {
       if (placed.has(x.id)) continue;
       const node = placeId(place, x.id, x.path);
       if (node !== undefined) placed.set(x.id, node);
@@ -612,7 +650,17 @@ export function ringSlots(items: readonly { id: string; group: string }[]): {
   return { slots: slot + (groups > 1 ? 1 : 0), at };
 }
 
-/** Ring nodes (`hop`, `group` = file path, `change` on ring 0) and the edges from ring h + 1 to ring h. */
+/** The ring of the reachable tier: every consumer at hop 4 or more, and one node per hub. */
+export const REACHABLE_RING = 4;
+const HUB_PREFIX = "hub:";
+const hubNodeId = (hub: string): string => `${HUB_PREFIX}${hub}`;
+const hubOfNode = (id: string): string | undefined =>
+  id.startsWith(HUB_PREFIX) ? id.slice(HUB_PREFIX.length) : undefined;
+
+/**
+ * Ring nodes (`hop`, `group` = file path, `change` on ring 0) and the edges from ring h + 1 to ring h. Ring 4 holds
+ * the reachable consumers and the hubs; its edges go to each consumer's `next` and from a hub node to its hub.
+ */
 function ringLayout(
   store: Store,
   c: Computed,
@@ -626,12 +674,29 @@ function ringLayout(
     levels[h.hop] = [...h.ids].sort(cmp);
     for (const id of h.ids) ringOf.set(id, h.hop);
   }
+  // The outer ring (hop 4): the reachable consumers as listed, one node per hub in place of the consumers it stands for.
+  const reachable = new Map<string, Consumer>();
+  const hubs = new Map<string, { hub: HubEntry; count: number }>();
+  for (const cc of impact.consumers) {
+    for (const x of cc.reachable) if (!ringOf.has(x.id) && !reachable.has(x.id)) reachable.set(x.id, x);
+    // A hub of hop 2 or 3 stands for consumers of the potential tier, which the rings draw on their own rings.
+    for (const h of cc.hubs.filter((x) => x.hop >= REACHABLE_RING)) {
+      const cur = hubs.get(h.hub);
+      if (!cur || h.consumersTotal > cur.count) hubs.set(h.hub, { hub: h, count: h.consumersTotal });
+    }
+  }
+  if (reachable.size + hubs.size > 0) {
+    levels[REACHABLE_RING] = [...reachable.keys(), ...[...hubs.keys()].map(hubNodeId)].sort(cmp);
+    for (const id of levels[REACHABLE_RING] as string[]) ringOf.set(id, REACHABLE_RING);
+  }
   for (let h = 0; h < levels.length; h++) levels[h] ??= [];
   const changeById = new Map(changed.map((ch) => [ch.id, ch]));
   const groupOf = (id: string): string => {
     const ch = changeById.get(id);
     if (ch) return (ch.after ?? ch.before)?.path ?? "";
-    return pathOf(id) ?? "";
+    const hubOf = hubOfNode(id);
+    if (hubOf !== undefined) return hubs.get(hubOf)?.hub.path ?? "";
+    return reachable.get(id)?.path ?? pathOf(id) ?? "";
   };
   const layouts = levels.map((ids) => ringSlots(ids.map((id) => ({ id, group: groupOf(id) }))));
   const radii = ringRadii(layouts.map((l) => l.slots));
@@ -658,8 +723,24 @@ function ringLayout(
         });
         continue;
       }
+      const hubOf = hubOfNode(id);
+      if (hubOf !== undefined) {
+        const entry = hubs.get(hubOf) as { hub: HubEntry; count: number };
+        nodes.push({
+          id,
+          kind: "hub",
+          label: entry.hub.name,
+          path: entry.hub.path,
+          group: entry.hub.path,
+          size: 1,
+          hop: h,
+          count: entry.count,
+          ...pos,
+        });
+        continue;
+      }
       const sym = isSymId(id) ? store.getSymbol(id) : undefined;
-      const path = pathOf(id);
+      const path = reachable.get(id)?.path ?? pathOf(id);
       nodes.push({
         id,
         kind: sym?.kind ?? (isFileId(id) ? "file" : "function"),
@@ -683,11 +764,20 @@ function ringLayout(
   };
   for (const e of c.direct) add(e.src, e.dst, "calls", "high");
   const g = new ConsumerGraph(store);
-  for (let h = 1; h < levels.length - 1; h++) {
+  // The edges into the outer ring come from the consumers' own `next`, below.
+  for (let h = 1; h < Math.min(levels.length - 1, REACHABLE_RING - 1); h++) {
     for (const id of levels[h] ?? []) {
       for (const n of g.incoming(id)) add(n.src, id, n.kind, "high");
     }
   }
+  // Reachable consumers point to the node one step nearer (dashed and faint); a hub node joins its hub.
+  const addSoft = (src: string, dst: string, kind: string) => {
+    const id = `${src}->${dst}`;
+    if (src !== dst && ringOf.has(src) && ringOf.has(dst) && !edges.has(id))
+      edges.set(id, { id, src, dst, kind, weight: 1, confidence: "low" });
+  };
+  for (const x of reachable.values()) if (x.next !== undefined) addSoft(x.id, x.next, x.uses[0] ?? "calls");
+  for (const hub of hubs.keys()) addSoft(hubNodeId(hub), hub, "calls");
   const all = [...edges.values()].sort((a, b) => cmp(a.id, b.id));
   return { nodes, edges: all.slice(0, MAX_RING_EDGES), edgesTotal: all.length };
 }
@@ -756,6 +846,7 @@ function dataOf(
     })),
     changes,
     callersByHop: impact.callersByHop.map((h) => ({ hop: h.hop, count: h.ids.length })),
+    reachableTotal: impact.reachable.total,
     crossings: impact.crossings,
     risk: impact.risk,
     rules: RISK_RULES,
