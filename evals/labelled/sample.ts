@@ -1,5 +1,5 @@
 /**
- * Samples 200 function-like symbols from a the private test bed and writes
+ * Samples 200 function-like symbols from the private test bed and writes
  * `candidates.jsonl` (fact sheets only, no labels) to the git-ignored `evals/private/labelled/`.
  *
  * Usage: pnpm tsx evals/labelled/sample.ts [repoPath]
