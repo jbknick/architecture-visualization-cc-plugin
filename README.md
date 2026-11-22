@@ -12,7 +12,7 @@ The screenshots on this page are the real app. The larger ones come from the exp
 
 ### 2D project map
 
-Boxes are workspaces and their area is their function count. A line goes from the workspace that imports to the workspace it imports from, in the importing workspace's colour; the number on it is how many files import across that link, and thicker means more. Double-click a box to look inside.
+Boxes are workspaces and their area is their function count. A line goes from the workspace that imports to the workspace it imports from, in the importing workspace's colour; the number on it is how many files import across that link, and thicker means more. Double-click a box to look inside. When a `gantry-workspace.json` lists several repos, each repo is a labelled group around its workspaces, links between repos are dashed, and a Repos level shows one box per repo.
 
 ![Project map, Workspaces level](docs/readme/project-map-workspaces.png)
 

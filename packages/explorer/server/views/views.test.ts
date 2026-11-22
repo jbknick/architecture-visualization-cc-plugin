@@ -43,6 +43,16 @@ describe("project-map", () => {
     expect(view("project-map", "level=symbols&filters=showExternal=true")).toMatchSnapshot();
   });
 
+  it("a store of one repo has no repo node, no repos level and no crossRepo flag", () => {
+    const r = view("project-map", "level=symbols");
+    expect(r.nodes.some((n) => n.kind === "repo")).toBe(false);
+    expect(r.edges.some((e) => e.crossRepo)).toBe(false);
+    expect(() => view("project-map", "level=repos")).toThrow(/level must be one of workspaces, dirs/);
+    expect((handleApi(ctx, "/api/meta", new URLSearchParams()) as { repos: string[] }).repos).toEqual([
+      "pnpm-turbo",
+    ]);
+  });
+
   it("builds workspace > dir > file > symbol and collapses single-child directory chains", () => {
     const r = view("project-map", "level=symbols");
     const byId = new Map(r.nodes.map((n) => [n.id, n]));

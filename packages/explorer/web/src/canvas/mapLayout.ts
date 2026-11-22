@@ -5,7 +5,7 @@
 // chosen so that, when the camera fits the whole diagram, titles are at least 11px and gaps at least 60px.
 import ELK, { type ElkExtendedEdge, type ElkNode } from "elkjs/lib/elk.bundled.js";
 import { collapseChains, kindTier, type Tree, type TreeNode } from "./hierarchy.ts";
-import { WS_HEAD_MAX } from "./mapGeom.ts";
+import { REPO_GROUP_PAD, WS_HEAD_MAX } from "./mapGeom.ts";
 import { GRID, type RouteLink, routeLinks } from "./mapRoute.ts";
 import { type Pt, routeAround } from "./route.ts";
 import { isTinyWorkspace, TINY_MIN_H, TINY_MIN_W, TINY_STRIP } from "./tiny.ts";
@@ -148,8 +148,17 @@ interface BoxPlan {
   head: number;
 }
 
+/** A repo container of the map layout: the roots (tree indices) it holds. */
+interface GroupDef {
+  id: string;
+  label: string;
+  members: number[];
+}
+
 interface Placed {
   boxes: Map<number, Rect>;
+  /** Repo containers by index into the group list. */
+  groups?: Map<number, Rect>;
   routes: Map<string, [number, number][]>;
   width: number;
   height: number;
@@ -245,8 +254,26 @@ async function placeBoxes(
   pairs: [number, number][],
   v: Variant,
   aspect: number,
+  groups: GroupDef[] = [],
 ): Promise<Placed> {
-  const children: ElkNode[] = plans.map((p) => ({ id: `n${p.index}`, width: p.w, height: p.h }));
+  const node = (p: BoxPlan): ElkNode => ({ id: `n${p.index}`, width: p.w, height: p.h });
+  const inGroup = new Set(groups.flatMap((g) => g.members));
+  const planOf = new Map(plans.map((p) => [p.index, p]));
+  const children: ElkNode[] = [
+    ...groups.map(
+      (g, k): ElkNode => ({
+        id: `g${k}`,
+        layoutOptions: {
+          "elk.padding": `[top=${REPO_GROUP_PAD.top},left=${REPO_GROUP_PAD.side},bottom=${REPO_GROUP_PAD.bottom},right=${REPO_GROUP_PAD.side}]`,
+        },
+        children: g.members.flatMap((m) => {
+          const p = planOf.get(m);
+          return p ? [node(p)] : [];
+        }),
+      }),
+    ),
+    ...plans.filter((p) => !inGroup.has(p.index)).map(node),
+  ];
   const elkEdges: ElkExtendedEdge[] = pairs.map(([a, b], k) => ({
     id: `e${k}`,
     sources: [`n${a}`],
@@ -271,37 +298,44 @@ async function placeBoxes(
       "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
       "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
       "elk.aspectRatio": aspect.toFixed(3),
+      ...(groups.length > 0 ? { "elk.hierarchyHandling": "INCLUDE_CHILDREN" } : {}),
     },
     children,
     edges: elkEdges,
   });
   const boxes = new Map<number, Rect>();
+  const groupRects = new Map<number, Rect>();
   let x1 = 0;
   let y1 = 0;
-  for (const c of out.children ?? []) {
-    const index = Number(c.id.slice(1));
-    const r = { x: c.x ?? 0, y: c.y ?? 0, w: c.width ?? 0, h: c.height ?? 0 };
-    boxes.set(index, r);
+  const visit = (c: ElkNode, ox: number, oy: number): void => {
+    const r = { x: ox + (c.x ?? 0), y: oy + (c.y ?? 0), w: c.width ?? 0, h: c.height ?? 0 };
+    if (c.id.startsWith("g")) {
+      groupRects.set(Number(c.id.slice(1)), r);
+      for (const k of c.children ?? []) visit(k, r.x, r.y);
+    } else boxes.set(Number(c.id.slice(1)), r);
     x1 = Math.max(x1, r.x + r.w);
     y1 = Math.max(y1, r.y + r.h);
-  }
+  };
+  for (const c of out.children ?? []) visit(c, 0, 0);
   const routes = new Map<string, [number, number][]>();
-  (out.edges ?? []).forEach((e, k) => {
-    const pair = pairs[Number(e.id.slice(1))] ?? pairs[k];
-    const section = e.sections?.[0];
-    if (!pair || !section) return;
-    const pts: [number, number][] = [
-      [section.startPoint.x, section.startPoint.y],
-      ...(section.bendPoints ?? []).map((b): [number, number] => [b.x, b.y]),
-      [section.endPoint.x, section.endPoint.y],
-    ];
-    for (const [px, py] of pts) {
-      x1 = Math.max(x1, px);
-      y1 = Math.max(y1, py);
-    }
-    routes.set(`${pair[0]}>${pair[1]}`, pts);
-  });
-  return { boxes, routes, width: x1, height: y1 };
+  // Inside containers the elk routes are relative to a container: every link is routed afterwards instead.
+  if (groups.length === 0)
+    (out.edges ?? []).forEach((e, k) => {
+      const pair = pairs[Number(e.id.slice(1))] ?? pairs[k];
+      const section = e.sections?.[0];
+      if (!pair || !section) return;
+      const pts: [number, number][] = [
+        [section.startPoint.x, section.startPoint.y],
+        ...(section.bendPoints ?? []).map((b): [number, number] => [b.x, b.y]),
+        [section.endPoint.x, section.endPoint.y],
+      ];
+      for (const [px, py] of pts) {
+        x1 = Math.max(x1, px);
+        y1 = Math.max(y1, py);
+      }
+      routes.set(`${pair[0]}>${pair[1]}`, pts);
+    });
+  return { boxes, groups: groupRects, routes, width: x1, height: y1 };
 }
 
 /** Lays the whole map out. Tree indices are the sorted-id order shared with the renderer. */
@@ -314,6 +348,14 @@ export async function layoutMap(
   const usableW = Math.max(300, viewport.w - FIT_INSETS.left - FIT_INSETS.right);
   const usableH = Math.max(240, viewport.h - FIT_INSETS.top - FIT_INSETS.bottom);
   const roots = rootsOf(tree);
+  const rootSet = new Set(roots);
+  const groupDefs: GroupDef[] = (input.groups ?? []).flatMap((g) => {
+    const members = g.members.flatMap((id) => {
+      const i = tree.index.get(id);
+      return i !== undefined && rootSet.has(i) ? [i] : [];
+    });
+    return members.length > 0 ? [{ id: g.id, label: g.label, members }] : [];
+  });
 
   const given = new Map(input.nodes.map((n) => [n.id, n.functions]));
   const titles = new Map(input.nodes.map((n) => [n.id, n]));
@@ -424,13 +466,13 @@ export async function layoutMap(
     let lo = AREA_MIN;
     let hi = AREA_MAX;
     let plans = plansFor(lo, v.box);
-    let placed = await placeBoxes(plans, layered, v, aspect);
+    let placed = await placeBoxes(plans, layered, v, aspect, groupDefs);
     if (fits(placed)) {
       const rounds = roots.length > 60 ? 4 : 6;
       for (let k = 0; k < rounds; k++) {
         const mid = Math.sqrt(lo * hi);
         const tryPlans = plansFor(mid, v.box);
-        const tryPlaced = await placeBoxes(tryPlans, layered, v, aspect);
+        const tryPlaced = await placeBoxes(tryPlans, layered, v, aspect, groupDefs);
         if (fits(tryPlaced)) {
           lo = mid;
           placed = tryPlaced;
@@ -444,10 +486,11 @@ export async function layoutMap(
     const widest = Math.max(...plans.map((p) => p.w)) * scale;
     // The biggest box should be at least about a quarter of the canvas wide; sets that manage it come first.
     const score = biggest * scale * scale * (widest >= 0.23 * viewport.w ? 1 : 0.85);
-    return { placed, plans, score, rest: split.rest };
+    // Inside repo containers no elk route is kept: every layered link is routed afterwards like the others.
+    return { placed, plans, score, rest: groupDefs.length > 0 ? [...layered, ...split.rest] : split.rest };
   };
   // After a refresh with the same workspaces: their boxes stay exactly where they were (no placement search).
-  const kept = keptBoxes(tree, roots, input.keep);
+  const kept = keptBoxes(tree, roots, input.keep, groupDefs);
   let best: { placed: Placed; plans: BoxPlan[]; rest: [number, number][] };
   if (kept) best = kept;
   else {
@@ -480,7 +523,7 @@ export async function layoutMap(
   let by0 = 0;
   let bx1 = 0;
   let by1 = 0;
-  for (const r of placedBest.boxes.values()) {
+  for (const r of [...placedBest.boxes.values(), ...(placedBest.groups?.values() ?? [])]) {
     bx0 = Math.min(bx0, r.x);
     by0 = Math.min(by0, r.y);
     bx1 = Math.max(bx1, r.x + r.w);
@@ -556,6 +599,14 @@ export async function layoutMap(
       routes,
       bounds: { x: bx0, y: by0, w: bx1 - bx0, h: by1 - by0 },
       weights,
+      ...(groupDefs.length > 0
+        ? {
+            groups: groupDefs.flatMap((g, k) => {
+              const r = placedBest.groups?.get(k);
+              return r ? [{ id: g.id, label: g.label, x: r.x, y: r.y, w: r.w, h: r.h }] : [];
+            }),
+          }
+        : {}),
     },
   };
 }
@@ -565,8 +616,15 @@ function keptBoxes(
   tree: Tree,
   roots: number[],
   keep: KeepLayout | undefined,
+  groupDefs: GroupDef[],
 ): { placed: Placed; plans: BoxPlan[]; rest: [number, number][] } | null {
   if (!keep || roots.length === 0 || roots.length !== Object.keys(keep.boxes).length) return null;
+  const groups = new Map<number, Rect>();
+  for (const [k, g] of groupDefs.entries()) {
+    const b = keep.groups?.[g.id];
+    if (!b) return null;
+    groups.set(k, { x: b[0], y: b[1], w: b[2], h: b[3] });
+  }
   const boxes = new Map<number, Rect>();
   const plans: BoxPlan[] = [];
   let width = 0;
@@ -581,7 +639,11 @@ function keptBoxes(
     width = Math.max(width, x + w);
     height = Math.max(height, y + h);
   }
-  return { placed: { boxes, routes: new Map(), width, height }, plans, rest: [] };
+  for (const r of groups.values()) {
+    width = Math.max(width, r.x + r.w);
+    height = Math.max(height, r.y + r.h);
+  }
+  return { placed: { boxes, groups, routes: new Map(), width, height }, plans, rest: [] };
 }
 
 /**
@@ -594,6 +656,7 @@ export function keepFrom(
   isRoot: (i: number) => boolean,
 ): KeepLayout {
   const keep: KeepLayout = { boxes: {}, heads: {}, weights: {} };
+  if (map.groups) keep.groups = Object.fromEntries(map.groups.map((g) => [g.id, [g.x, g.y, g.w, g.h]]));
   ids.forEach((id, i) => {
     if (isRoot(i)) {
       const k = i * 4;

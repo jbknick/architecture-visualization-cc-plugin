@@ -73,6 +73,8 @@ export interface GraphEdge {
   bindings?: number;
   /** Slices view: true when the edge crosses a slice boundary. */
   cross?: boolean;
+  /** Project map of a store with several repos: true when the two ends are in different repos. */
+  crossRepo?: boolean;
   /** Cross-stack views (#48): how many places the aggregated edge stands for (page -> API: the requesting code). */
   via?: number;
   /** Cross-stack views: up to 6 of those places, by label. */
@@ -93,7 +95,7 @@ export type LayoutHint =
   /** The review view (#167): the project map, 2D or 3D, with the review layer on it. */
   | "review";
 
-export type ViewLevel = "workspaces" | "dirs" | "files" | "symbols";
+export type ViewLevel = "repos" | "workspaces" | "dirs" | "files" | "symbols";
 
 export interface ViewResult {
   nodes: GraphNode[];

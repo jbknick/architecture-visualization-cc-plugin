@@ -11,11 +11,13 @@ import { useViewData } from "../hooks.ts";
 import { rankView } from "../rankedFiles/store.ts";
 import { useRanked } from "../rankedFiles/useRanked.ts";
 import type { FilterPanelProps } from "../slots.ts";
+import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
 import { getBool, getList, setBool, setList } from "./filterUtils.ts";
 
 const LEVELS: { id: ViewLevel; label: string; hint: string }[] = [
+  { id: "repos", label: "Repos", hint: "One box per repo of the workspace" },
   { id: "workspaces", label: "Workspaces", hint: "One box per package or app in the repo" },
   { id: "dirs", label: "Folders", hint: "Workspaces and the folders inside them" },
   { id: "files", label: "Files", hint: "Folders and the files inside them" },
@@ -119,6 +121,15 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
     filters: filters.scenario ? { scenario: filters.scenario } : {},
   });
   const ui = useMapView();
+  // A workspace of several repos adds the Repos level and a list of the repos to filter by.
+  const repos = useStore().state.meta?.repos ?? [];
+  const multiRepo = repos.length > 1;
+  const pickedRepos = getList(filters, "repos");
+  const setRepo = (name: string, on: boolean) => {
+    const current = pickedRepos ?? repos;
+    const next = on ? [...new Set([...current, name])] : current.filter((x) => x !== name);
+    onFiltersChange(setList(filters, "repos", next.length === 0 ? repos : next, repos));
+  };
   const workspaces = [...(all.data?.nodes ?? nodes)]
     .filter((n) => n.kind === "workspace")
     .sort((a, b) => (b.stats?.functions ?? 0) - (a.stats?.functions ?? 0) || (a.id < b.id ? -1 : 1));
@@ -214,7 +225,7 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
           <section className="filter-group" aria-label="Detail level">
             <h3>How much detail</h3>
             <div className="segmented" role="radiogroup" aria-label="Detail level">
-              {LEVELS.map((l) => (
+              {LEVELS.filter((l) => l.id !== "repos" || multiRepo).map((l) => (
                 <Segment
                   key={l.id}
                   checked={level === l.id}
@@ -244,6 +255,29 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
             />
           )}
         </>
+      )}
+
+      {multiRepo && (
+        <section className="filter-group" aria-label="Repos">
+          <h3>Repos</h3>
+          {repos.map((name) => (
+            <Check
+              key={name}
+              label={name}
+              checked={pickedRepos ? pickedRepos.includes(name) : true}
+              onChange={(on) => setRepo(name, on)}
+            />
+          ))}
+          {pickedRepos && (
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => onFiltersChange(setList(filters, "repos", [], []))}
+            >
+              Show all repos
+            </button>
+          )}
+        </section>
       )}
 
       <section className="filter-group" aria-label="Workspaces">

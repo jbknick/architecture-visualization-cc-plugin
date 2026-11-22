@@ -31,7 +31,7 @@ import { parseOptions } from "./views/options.js";
 
 export { HttpError };
 
-const VIEW_LEVELS: readonly ViewLevel[] = ["workspaces", "dirs", "files", "symbols"];
+const VIEW_LEVELS: readonly ViewLevel[] = ["repos", "workspaces", "dirs", "files", "symbols"];
 export const MAX_SOURCE_LINES = 400;
 export const SEARCH_LIMIT = 20;
 const SIGNATURE_MAX = 200;
@@ -103,6 +103,7 @@ function meta(ctx: ApiContext) {
   const { store, paths } = ctx;
   return {
     repo: path.basename(paths.root),
+    repos: store.listRepos().map((r) => r.name),
     headSha: store.headSha(paths.repo) ?? null,
     // Counted in SQL: meta is fetched again after every refresh and whenever the tab gets focus back.
     counts: {
@@ -154,8 +155,10 @@ function view(ctx: ApiContext, id: string, query: URLSearchParams) {
   };
   const level = query.get("level") || spec?.level;
   if (level) {
-    if (!(VIEW_LEVELS as readonly string[]).includes(level)) {
-      throw new HttpError(400, `level must be one of ${VIEW_LEVELS.join(", ")}`);
+    // The `repos` level exists only when the store holds more than one repo.
+    const levels = ctx.store.listRepos().length > 1 ? VIEW_LEVELS : VIEW_LEVELS.filter((l) => l !== "repos");
+    if (!(levels as readonly string[]).includes(level)) {
+      throw new HttpError(400, `level must be one of ${levels.join(", ")}`);
     }
     params.level = level as ViewLevel;
   }
