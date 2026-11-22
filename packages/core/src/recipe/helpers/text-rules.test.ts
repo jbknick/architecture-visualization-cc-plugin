@@ -58,7 +58,7 @@ describe("text-rules", () => {
   });
 
   it("reads groups and literals", () => {
-    const m = { groups: ["all", "User", "users"], line: 1 };
+    const m = { groups: ["all", "User", "users"], line: 1, groupLines: [1, 1, 1] };
     expect(groupValue("$1", m)).toBe("User");
     expect(groupValue("$2", m)).toBe("users");
     expect(groupValue("$9", m)).toBe("");

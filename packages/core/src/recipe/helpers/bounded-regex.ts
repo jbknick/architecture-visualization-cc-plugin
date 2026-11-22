@@ -21,6 +21,8 @@ export interface RegexMatch {
   index: number;
   /** Group 0 is the whole match; an unmatched group is an empty string. */
   groups: string[];
+  /** The offset in the text where each group starts (-1 for an unmatched group), from the `d` flag. */
+  starts: number[];
 }
 
 export type RegexResult =
@@ -32,11 +34,15 @@ const WORKER_SOURCE = `
 const { workerData } = require("node:worker_threads");
 const flag = new Int32Array(workerData.sab);
 const port = workerData.port;
-const rows = (m) => ({ index: m.index || 0, groups: Array.from(m, (g) => (g === undefined ? "" : g)) });
+const rows = (m) => ({
+  index: m.index || 0,
+  groups: Array.from(m, (g) => (g === undefined ? "" : g)),
+  starts: Array.from(m.indices || [], (i) => (i ? i[0] : -1)),
+});
 port.on("message", (job) => {
   let res;
   try {
-    const rx = new RegExp(job.source, job.flags);
+    const rx = new RegExp(job.source, job.flags.includes("d") ? job.flags : job.flags + "d");
     const out = [];
     if (job.first) {
       const m = rx.exec(job.text);

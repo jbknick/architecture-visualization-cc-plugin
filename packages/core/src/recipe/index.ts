@@ -11,4 +11,5 @@ export {
 } from "./engine.js";
 export * from "./load.js";
 export * from "./nodes.js";
+export { isQueryFile } from "./query-files.js";
 export * from "./schema.js";

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { parse } from "@ast-grep/napi";
 import { loadConfig } from "../config/index.js";
 import { discoverFiles } from "../discover/index.js";
-import { goAvailable } from "../lang/go/grammar.js";
+import { goAvailable } from "../lang/go/index.js";
 import { detectAllWorkspaces } from "../lang/index.js";
 import type { GantryPaths } from "../paths/index.js";
 import { listTextFiles } from "./data-access.js";

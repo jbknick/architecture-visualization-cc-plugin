@@ -1,8 +1,9 @@
 import type { TokenStreams } from "../index.js";
-import { type GoNode, parseGo } from "./grammar.js";
+import { parseTree, type SyntaxNode } from "./grammar.js";
+import type { LanguagePack } from "./pack.js";
 
 /**
- * The Go half of the structural fingerprints (spec sections 3 and 7): the walk over the syntax tree of a symbol's
+ * The structural fingerprints of a pack's language (spec sections 3 and 7): the walk over the syntax tree of a symbol's
  * source range. Shared code (`hash/`) turns the streams into the five hash values. The exact stream holds node kinds,
  * operators and literal values in source order with locals renamed `$1, $2…` in order of first appearance; the shape
  * stream holds node kinds only, with identifiers, strings and numbers reduced to `ID`, `STR` and `NUM`.
@@ -14,28 +15,18 @@ interface Range {
   end: number;
 }
 
-const IDENTIFIER_KINDS = new Set([
-  "identifier",
-  "field_identifier",
-  "type_identifier",
-  "package_identifier",
-  "label_name",
-]);
-const STRING_KINDS = new Set(["interpreted_string_literal", "raw_string_literal", "rune_literal"]);
-const NUMBER_KINDS = new Set(["int_literal", "float_literal", "imaginary_literal"]);
-const PUNCTUATION = new Set(["(", ")", "{", "}", "[", "]", ",", ";"]);
+/** The tree of the file the last call read: a symbol's streams and its embedding text come from one parse. */
+let cache: { pack: string; source: string; root: SyntaxNode } | null = null;
 
-let cache: { source: string; root: GoNode } | null = null;
-
-function rootOf(source: string): GoNode {
-  if (cache && cache.source === source) return cache.root;
-  const root = parseGo(source);
-  cache = { source, root };
+function rootOf(pack: LanguagePack, source: string): SyntaxNode {
+  if (cache && cache.pack === pack.id && cache.source === source) return cache.root;
+  const root = parseTree(pack, source);
+  cache = { pack: pack.id, source, root };
   return root;
 }
 
 /** The node whose range is exactly `r`: a declaration, or one spec of a grouped declaration. */
-function locate(n: GoNode, r: Range): GoNode | null {
+function locate(n: SyntaxNode, r: Range): SyntaxNode | null {
   for (const c of n.namedChildren()) {
     const cr = c.range();
     if (cr.start.index === r.start && cr.end.index === r.end) return c;
@@ -48,53 +39,54 @@ function locate(n: GoNode, r: Range): GoNode | null {
 }
 
 /** The name the declaration at `node` introduces (a method's own name without its receiver). */
-function ownName(node: GoNode): string {
-  const n = node.field("name");
+function ownName(pack: LanguagePack, node: SyntaxNode): string {
+  const n = node.field(pack.tokens.ownName);
   return n ? n.text() : "";
 }
 
-/** Names declared inside the node: parameters, results, receivers, `:=`, `var`, `const`, `range` and type-switch bindings. */
-function declaredLocals(node: GoNode): Set<string> {
+/** Names declared inside the node: parameters, results, receivers, bindings, local specs and the like. */
+function declaredLocals(pack: LanguagePack, node: SyntaxNode): Set<string> {
+  const t = pack.tokens;
   const names = new Set<string>();
-  const add = (n: GoNode | null): void => {
+  const add = (n: SyntaxNode | null): void => {
     if (!n) return;
-    if (n.kind() === "identifier") {
-      if (n.text() !== "_") names.add(n.text());
+    if (n.kind() === t.local) {
+      if (n.text() !== t.locals.blank) names.add(n.text());
     } else for (const c of n.namedChildren()) add(c);
   };
-  const id = (n: GoNode): string => `${n.range().start.index}:${n.range().end.index}`;
+  const id = (n: SyntaxNode): string => `${n.range().start.index}:${n.range().end.index}`;
   const self = id(node);
-  for (const n of node.findAll({
-    rule: { any: [{ kind: "parameter_declaration" }, { kind: "variadic_parameter_declaration" }] },
-  }))
-    for (const c of n.fieldChildren("name")) add(c);
-  for (const n of node.findAll({ rule: { kind: "short_var_declaration" } })) add(n.field("left"));
-  for (const n of node.findAll({ rule: { kind: "range_clause" } })) add(n.field("left"));
-  for (const n of node.findAll({ rule: { kind: "type_switch_statement" } })) add(n.field("alias"));
-  for (const n of node.findAll({ rule: { any: [{ kind: "var_spec" }, { kind: "const_spec" }] } })) {
+  const p = t.locals.parameters;
+  for (const n of node.findAll({ rule: { any: p.kinds.map((kind) => ({ kind })) } }))
+    for (const c of n.fieldChildren(p.field)) add(c);
+  for (const b of t.locals.bindings)
+    for (const n of node.findAll({ rule: { kind: b.kind } })) add(n.field(b.field));
+  const s = t.locals.specs;
+  for (const n of node.findAll({ rule: { any: s.kinds.map((kind) => ({ kind })) } })) {
     if (id(n) === self) continue; // the declaration itself introduces a package-level name, not a local
-    for (const c of n.fieldChildren("name")) add(c);
+    for (const c of n.fieldChildren(s.field)) add(c);
   }
   return names;
 }
 
-function analyze(node: GoNode): TokenStreams {
+function analyze(pack: LanguagePack, node: SyntaxNode): TokenStreams {
+  const t = pack.tokens;
   const exact: string[] = [];
   const shape: string[] = [];
   const selfRefs: number[] = [];
-  const locals = declaredLocals(node);
+  const locals = declaredLocals(pack, node);
   const numbered = new Map<string, number>();
-  const own = ownName(node);
-  const walk = (n: GoNode): void => {
+  const own = ownName(pack, node);
+  const walk = (n: SyntaxNode): void => {
     const kind = n.kind();
-    if (kind === "comment") return;
+    if (t.comments.includes(kind)) return;
     if (!n.isNamed()) {
-      if (!PUNCTUATION.has(kind)) exact.push(kind);
+      if (!t.punctuation.includes(kind)) exact.push(kind);
       return;
     }
-    if (IDENTIFIER_KINDS.has(kind)) {
+    if (t.identifiers.includes(kind)) {
       const text = n.text();
-      if (kind === "identifier" && locals.has(text)) {
+      if (kind === t.local && locals.has(text)) {
         let k = numbered.get(text);
         if (k === undefined) {
           k = numbered.size + 1;
@@ -108,12 +100,12 @@ function analyze(node: GoNode): TokenStreams {
       shape.push("ID");
       return;
     }
-    if (STRING_KINDS.has(kind)) {
+    if (t.strings.includes(kind)) {
       exact.push(`S:${n.text()}`);
       shape.push("STR");
       return;
     }
-    if (NUMBER_KINDS.has(kind)) {
+    if (t.numbers.includes(kind)) {
       exact.push(`N:${n.text()}`);
       shape.push("NUM");
       return;
@@ -126,10 +118,10 @@ function analyze(node: GoNode): TokenStreams {
   return { exact, shape, selfRefs };
 }
 
-/** Token streams of the declaration in `range` of Go `source`; empty when no declaration has exactly that range. */
-export function goStreams(source: string, range: Range, _path: string): TokenStreams {
-  const node = locate(rootOf(source), range);
-  return node ? analyze(node) : { exact: [], shape: [], selfRefs: [] };
+/** Token streams of the declaration in `range` of `source`; empty when no declaration has exactly that range. */
+export function streamsWithPack(pack: LanguagePack, source: string, range: Range): TokenStreams {
+  const node = locate(rootOf(pack, source), range);
+  return node ? analyze(pack, node) : { exact: [], shape: [], selfRefs: [] };
 }
 
 /**
@@ -138,27 +130,20 @@ export function goStreams(source: string, range: Range, _path: string): TokenStr
  * first appearance, and string literals replaced by `"s"`. Field, method and package names, and identifiers that are
  * declared outside the declaration, are kept. Without the renaming a copy under a new name embedded far from the original.
  */
-export function goEmbeddingText(source: string, range: Range, _path: string): string {
-  const node = locate(rootOf(source), range);
+export function embeddingTextWithPack(pack: LanguagePack, source: string, range: Range): string {
+  const node = locate(rootOf(pack, source), range);
   if (!node) return source.slice(range.start, range.end).replace(/\s+/g, " ").trim();
-  const locals = declaredLocals(node);
-  const own = ownName(node);
+  const t = pack.tokens;
+  const locals = declaredLocals(pack, node);
+  const own = ownName(pack, node);
   const numbered = new Map<string, number>();
   const edits: { start: number; end: number; text: string }[] = [];
-  for (const n of node.findAll({
-    rule: {
-      any: [
-        { kind: "comment" },
-        { kind: "identifier" },
-        { kind: "interpreted_string_literal" },
-        { kind: "raw_string_literal" },
-      ],
-    },
-  })) {
+  const kinds = [...t.comments, t.local, ...t.embedding.strings];
+  for (const n of node.findAll({ rule: { any: kinds.map((kind) => ({ kind })) } })) {
     const kind = n.kind();
     const r = n.range();
     const edit = { start: r.start.index, end: r.end.index, text: " " };
-    if (kind === "identifier") {
+    if (kind === t.local) {
       const name = n.text();
       if (!locals.has(name) && name !== own) continue;
       let k = numbered.get(name);
@@ -166,8 +151,8 @@ export function goEmbeddingText(source: string, range: Range, _path: string): st
         k = numbered.size + 1;
         numbered.set(name, k);
       }
-      edit.text = `v${k}`;
-    } else if (kind !== "comment") edit.text = '"s"';
+      edit.text = `${t.embedding.localPrefix}${k}`;
+    } else if (!t.comments.includes(kind)) edit.text = t.embedding.stringText;
     edits.push(edit);
   }
   edits.sort((a, b) => a.start - b.start);
@@ -175,7 +160,7 @@ export function goEmbeddingText(source: string, range: Range, _path: string): st
   let pos = range.start;
   for (const e of edits) {
     if (e.start < pos) continue;
-    out += `${source.slice(pos, e.start)}${e.text === " " ? " " : e.text}`;
+    out += `${source.slice(pos, e.start)}${e.text}`;
     pos = e.end;
   }
   out += source.slice(pos, range.end);

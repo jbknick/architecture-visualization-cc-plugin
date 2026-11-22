@@ -13,6 +13,7 @@ import { encodeParsed, LazyParsedMap, ParseCache } from "./parse/cache.js";
 import type { ParsedFile } from "./parse/index.js";
 import { ensureDataDir, type GantryPaths } from "./paths/index.js";
 import { type LoadedRecipe, loadRecipe, recipeNotes } from "./recipe/load.js";
+import { isQueryFile } from "./recipe/query-files.js";
 import type { SpecifierClass } from "./resolve/index.js";
 import { SiblingFiles, type SiblingRepo } from "./resolve/sibling.js";
 import { refreshDescriptionFts } from "./search/descfts.js";
@@ -159,7 +160,7 @@ async function readEntry(root: string, e: Entry, sources?: Map<string, string>):
 }
 
 const edgeKey = (e: EdgeRecord): string =>
-  `${e.src}\0${e.dst}\0${e.kind}\0${e.confidence}\0${e.count}\0${JSON.stringify(e.evidence)}\0${e.fileId}`;
+  `${e.src}\0${e.dst}\0${e.kind}\0${e.confidence}\0${e.count}\0${JSON.stringify(e.evidence)}\0${e.fileId}\0${e.level ?? ""}\0${e.textFileId ?? ""}`;
 
 function sameEdges(a: EdgeRecord[], b: EdgeRecord[]): boolean {
   if (a.length !== b.length) return false;
@@ -524,6 +525,29 @@ async function indexOneRepo(
   const routeEdges = groupByFile(routes.edges);
   const routeNodes = groupByFile(routes.nodes);
 
+  // A query file (a text file a recipe's `query` rule reads) has no syntax tree: an edit or deletion of it rewrites
+  // the files whose edges come from it, those that name it now and those that named it before.
+  const queryOwners = new Set<string>();
+  const queryIds = new Set(
+    (opts.files ?? [])
+      .map((raw) => raw.split(path.sep).join("/").replace(/^\.\//, ""))
+      .filter((p) => !isIndexable(p, config) && isQueryFile(recipe.recipe, p))
+      .map((p) => makeFileId(repo, p)),
+  );
+  if (queryIds.size > 0) {
+    for (const e of routes.edges) {
+      if (e.textFileId && queryIds.has(e.textFileId)) queryOwners.add(e.fileId);
+    }
+    const stored = store.db.prepare("SELECT DISTINCT file_id FROM edges WHERE text_file_id = ?");
+    for (const id of queryIds) {
+      for (const r of stored.all(id) as { file_id: string }[]) queryOwners.add(r.file_id);
+    }
+    for (const id of queryOwners) {
+      const p = pathOfFileId(id);
+      if (entries.has(p)) targets.add(p);
+    }
+  }
+
   // 3. Decide what to write.
   const full = !opts.files;
   const existsNow = new Set(present.map((e) => e.id));
@@ -547,7 +571,7 @@ async function indexOneRepo(
   const markDeleted: string[] = [];
   for (const e of present) {
     if (!full && !targets.has(e.path) && !sources?.has(e.path)) continue;
-    if (layer === "working") {
+    if (layer === "working" && !queryOwners.has(e.id)) {
       const m = mainFiles.get(e.id);
       if (m && m.contentHash === e.contentHash) {
         clearWorking.push(e.id);

@@ -277,6 +277,38 @@ describe("table usage view", () => {
   });
 });
 
+describe("table usage view of a query file", () => {
+  let sql: Indexed;
+  beforeAll(async () => {
+    sql = await indexed("go-recipes/sql");
+  });
+  it("carries the query file on the edges a query rule made, and on no other", () => {
+    for (const [table, want] of [
+      [
+        "posts",
+        [
+          "reads Queries.ListAuthorPosts db/queries/posts.sql",
+          "reads Queries.ListPosts db/queries/posts.sql",
+          "writes Queries.PublishPost db/queries/posts.sql",
+        ],
+      ],
+      ["users", ["reads Queries.ListAuthorPosts db/queries/posts.sql"]],
+    ] as const) {
+      const r = run<TableUsageResult>("table-usage", `focus=${table}`, sql.ctx);
+      const label = new Map(r.nodes.map((n) => [n.id, n.label]));
+      const access = r.edges.filter((e) => e.kind === "reads" || e.kind === "writes");
+      expect(access.length).toBeGreaterThan(want.length);
+      expect(
+        access
+          .filter((e) => e.textFile !== undefined)
+          .map((e) => `${e.kind} ${label.get(e.src)} ${e.textFile}`)
+          .sort(),
+      ).toEqual([...want]);
+      for (const e of r.edges) if (e.textFile === undefined) expect("textFile" in e).toBe(false);
+    }
+  });
+});
+
 describe("enabling counts", () => {
   it("counts adapter nodes by kind in SQL, equal to the effective nodes", () => {
     const want: Record<string, number> = {};

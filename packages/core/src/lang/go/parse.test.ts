@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { hashStreams } from "../../hash/index.js";
-import { goEmbeddingText, goStreams } from "./hash.js";
-import { parseGoSource } from "./parse.js";
-import { parseGoWorkUses, parseModulePath, parseRequires } from "./workspace.js";
+import { parseWithPack } from "../engine/parse.js";
+import { embeddingTextWithPack, streamsWithPack } from "../engine/streams.js";
+import { parseGroupMembers, parseManifestDeps, parseManifestName } from "../engine/workspace.js";
+import { goPack } from "../packs/index.js";
+
+type Range = { start: number; end: number };
+const parseGoSource = (repo: string, path: string, src: string) => parseWithPack(goPack, repo, path, src);
+const goStreams = (src: string, range: Range, _path: string) => streamsWithPack(goPack, src, range);
+const goEmbeddingText = (src: string, range: Range, _path: string) =>
+  embeddingTextWithPack(goPack, src, range);
+const parseModulePath = (text: string) => parseManifestName(goPack, text);
+const parseRequires = (text: string) => parseManifestDeps(goPack, text);
+const parseGoWorkUses = (text: string) => parseGroupMembers(goPack, text);
 
 const parse = (src: string, path = "pkg/a.go") => parseGoSource("r", path, src);
 const byName = (src: string) => new Map(parse(src).symbols.map((s) => [s.name, s]));

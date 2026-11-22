@@ -1,6 +1,8 @@
+import type { PACKS } from "./lang/packs/index.js";
+
 export type Layer = "main" | "working";
-/** The language of a file or symbol (spec section 7). TypeScript includes TSX; Go has no language module yet. */
-export type Lang = "typescript" | "go";
+/** The language of a file or symbol (spec section 7): TypeScript (which includes TSX) or the id of a registered language pack. */
+export type Lang = "typescript" | (typeof PACKS)[number]["id"];
 export type SymbolKind =
   | "function"
   | "method"
@@ -50,6 +52,8 @@ export type EdgeKind =
   | "reads"
   | "writes"
   | "similar_to";
+/** The resolver that produced a `calls` edge: 1 the engine's name resolver, 2 a resolver that reads declared types, 3 flow heuristics. */
+export type EdgeLevel = 1 | 2 | 3;
 export interface EdgeRecord {
   src: string;
   dst: string;
@@ -58,6 +62,10 @@ export interface EdgeRecord {
   count: number;
   evidence: string[];
   fileId: string;
+  /** A `calls` edge from a language pack's resolver: the level that produced it (spec section 7). */
+  level?: EdgeLevel;
+  /** A `reads` / `writes` edge from a `query` text rule: the id of the text file that holds the statement (spec section 5). */
+  textFileId?: string;
 }
 /**
  * A node contributed by a framework adapter (routes, endpoints, middleware; tables and procedures later), stored in

@@ -260,7 +260,7 @@ export class FlowBuilder {
     return n;
   }
 
-  edge(src: string, dst: string, kind: string, low: boolean, weight = 1): GraphEdge {
+  edge(src: string, dst: string, kind: string, low: boolean, weight = 1, textFile?: string): GraphEdge {
     const id = `${src}|${kind}|${dst}`;
     let e = this.edges.get(id);
     if (!e) {
@@ -268,13 +268,14 @@ export class FlowBuilder {
       this.edges.set(id, e);
     }
     e.weight += weight;
+    if (textFile !== undefined && e.textFile === undefined) e.textFile = textFile;
     if (!low) e.highSeen = true;
     e.confidence = e.highSeen ? "high" : "low";
     return e;
   }
 
   traceEdge(e: TraceEdge): GraphEdge {
-    return this.edge(e.src, e.dst, e.kind, e.confidence === "low");
+    return this.edge(e.src, e.dst, e.kind, e.confidence === "low", 1, e.textFile);
   }
 
   /** Sorted, with ranks unset filled in (by label then id within each lane). */
