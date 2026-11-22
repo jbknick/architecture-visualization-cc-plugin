@@ -1,0 +1,5 @@
+{
+  "name": "@refs/core",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts"
+}

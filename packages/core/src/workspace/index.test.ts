@@ -103,6 +103,40 @@ describe("detectWorkspaces", () => {
     ]);
   });
 
+  it("follows tsconfig project references transitively, once each, inside the repo", () => {
+    const root = repo({
+      "package.json": { name: "root" },
+      "tsconfig.json": `{
+        // comments and trailing commas are allowed
+        "files": [],
+        "references": [{ "path": "./packages/a" }, { "path": "./tsconfig.web.json", }, { "path": "../outside" }],
+      }`,
+      "tsconfig.web.json": { references: [{ path: "./apps/web/tsconfig.app.json" }] },
+      "packages/a/package.json": { name: "@acme/a" },
+      "packages/a/tsconfig.json": { references: [{ path: "../b" }] },
+      "packages/b/tsconfig.json": { references: [{ path: "../a" }, { path: "../../node_modules/x" }] },
+      "apps/web/tsconfig.app.json": {},
+      "node_modules/x/tsconfig.json": {},
+    });
+    const ws = detectWorkspaces(root, config, "repo");
+    expect(ws.map((w) => [w.id, w.dir])).toEqual([
+      ["ws:repo:.", "."],
+      ["ws:repo:apps/web", "apps/web"],
+      ["ws:repo:@acme/a", "packages/a"],
+      ["ws:repo:packages/b", "packages/b"],
+    ]);
+  });
+
+  it("prefers Nx projects over tsconfig references", () => {
+    const root = repo({
+      "package.json": { name: "root" },
+      "tsconfig.json": { references: [{ path: "./libs/x" }] },
+      "libs/x/tsconfig.json": {},
+      "libs/y/project.json": { name: "y" },
+    });
+    expect(detectWorkspaces(root, config, "repo").map((w) => w.dir)).toEqual([".", "libs/y"]);
+  });
+
   it("falls back to a single root workspace", () => {
     const root = repo({
       "package.json": { name: "solo", dependencies: { hono: "1" } },

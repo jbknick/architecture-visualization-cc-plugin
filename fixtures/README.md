@@ -92,3 +92,11 @@ A pnpm workspace (`apps/*`, `packages/*`) with no `node_modules` and no tsconfig
 - `apps/webpack-app/webpack.config.js`: `module.exports` with `"@app"` (`path.resolve(__dirname, "src/")`) and `components$` (`path.join(__dirname, "src/components/index.ts")`, an exact alias).
 - `apps/dynamic/vite.config.ts`: `alias: makeAliases()`, a computed value that cannot be read statically. Its two imports (`@dyn/one`, `@dyn/two`) are unresolved with reason `alias_not_static`.
 - Counts: the three readable apps hold 10 import edges (`imports` edges whose source is in `apps/vite-app`, `apps/vite-array` or `apps/webpack-app`): 4 + 1 in `vite-app`, 2 + 1 in `vite-array`, 2 in `webpack-app`; the `+ 1` is each Vite config's import of `vite`. Imports of `node:` modules make no edge and are not counted. `gantry init` prints `unresolved:    2`, the two imports of `apps/dynamic/src/main.ts`.
+
+## ts-references
+A repo with no workspace tool: no `pnpm-workspace.yaml`, no `workspaces` field, no `project.json`, no `node_modules`. The packages are tied together only by tsconfig project references.
+- Root: `package.json` (`ts-references-root`) and `tsconfig.json` with `"files": []` and `references` to `./packages/core`, `./packages/util` and `./apps/cli`.
+- `packages/core` (`@refs/core`, `main` `dist/index.js`, `types` `dist/index.d.ts`; tsconfig `composite`, `outDir: "dist"`, `rootDir: "src"`): `src/index.ts` exports `parseLine` and `formatLine`.
+- `packages/util` (no `package.json`, named by its directory; tsconfig `composite`): `src/strings.ts` exports `padLeft`.
+- `apps/cli` (`@refs/cli`, depends on `@refs/core`; tsconfig references `../../packages/core` and `../../packages/util`): `src/main.ts` imports `@refs/core` and `../../../packages/util/src/strings`.
+- Counts: four workspaces (`.`, `@refs/core`, `packages/util`, `@refs/cli`), four files in the dump, two `imports` edges (both from `main.ts`, both into `src/`), no edge into `dist/`.
