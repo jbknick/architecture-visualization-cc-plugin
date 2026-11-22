@@ -335,3 +335,65 @@ describe("default axios base", () => {
     ]);
   });
 });
+
+describe("rule 3 reads Hono endpoints only", () => {
+  it("does not link an hc chain to an endpoint another framework made", async () => {
+    const recipe = {
+      version: 1,
+      dependencies: [
+        { name: "express", workspace: "@x/api", role: "framework", note: "HTTP framework" },
+        { name: "hono", workspace: "@x/web", role: "neither", note: "client types" },
+      ],
+      helpers: [],
+      passthrough: [],
+      rules: [
+        {
+          id: "express-app",
+          language: "typescript",
+          when: { dependency: ["express"] },
+          rule: { pattern: "express($$$A)" },
+          emit: { kind: "router", data: { adapter: "express" } },
+          examples: { match: ["const app = express();"], noMatch: ["const app = new Map();"] },
+        },
+        {
+          id: "express-route",
+          language: "typescript",
+          when: { dependency: ["express"] },
+          rule: { pattern: "$APP.$M($P, $$$H)" },
+          constraints: {
+            M: { regex: "^(get|post)$" },
+            P: { kind: "string" },
+          },
+          emit: {
+            kind: "endpoint",
+            receiver: "$APP",
+            method: "$M",
+            path: "$P",
+            handler: "$$$H",
+            data: { adapter: "express" },
+          },
+          examples: { match: ['app.get("/api/posts", list);'], noMatch: ["cache.has(k);"] },
+        },
+      ],
+    };
+    const g = await indexDir(
+      repo({
+        "package.json": JSON.stringify({ name: "root", private: true }),
+        "pnpm-workspace.yaml": 'packages:\n  - "apps/*"\n',
+        ".gantry/recipe.json": JSON.stringify(recipe),
+        "apps/api/package.json": JSON.stringify({ name: "@x/api", dependencies: { express: "^4.0.0" } }),
+        "apps/api/src/app.ts": 'const app = express();\napp.get("/api/posts", (req, res) => res.json([]));\n',
+        "apps/web/package.json": JSON.stringify({ name: "@x/web", dependencies: { hono: "^4.0.0" } }),
+        "apps/web/src/client.ts":
+          'import { hc } from "hono/client";\nexport const client = hc("/");\nexport function load() {\n  return client.api.posts.$get();\n}\n',
+      }),
+    );
+    expect(g.nodes.filter((n) => n.kind === "endpoint").map((n) => [n.data.adapter, n.label])).toEqual([
+      ["express", "GET /api/posts"],
+    ]);
+    expect(requests(g, "sym:repo:apps/web/src/client.ts#load")).toEqual([]);
+    expect(g.nodes.filter((n) => n.kind === "client_call").map((n) => [n.data.rule, n.data.reason])).toEqual([
+      ["hono", "no_endpoint"],
+    ]);
+  });
+});

@@ -26,7 +26,7 @@ import { START_PACKAGES } from "./tanstack-start.js";
  * | 2    | `orpc.posts.list.queryOptions()`, `client.posts.list()` on an oRPC client   | `ep:*:rpc posts.list`           | high if unique |
  * | 3    | `client.api.posts[":id"].$get()` on a Hono `hc()` client                    | `ep:*:GET /api/posts/:id`       | high if unique |
  * | 4    | `fetch("/api/posts/${id}")`, `ky.post(...)`, `axios.get(...)` (literal URL)  | endpoint path, `${x}` as `:param` | low          |
- * | 5    | `rel.get("/users")` on an `axios.create` / `ky.create` / `ky.extend` instance, or on `axios` with `axios.defaults.baseURL` set | endpoint path of the joined URL | low |
+ * | 4b   | `rel.get("/users")` on an `axios.create` / `ky.create` / `ky.extend` instance, or on `axios` with `axios.defaults.baseURL` set | endpoint path of the joined URL | low |
  *
  * An instance is a top-level `const` initialised by `<axios>.create({ baseURL })`, `<ky>.create({ prefixUrl })` or
  * `<kyInstance>.extend({ prefixUrl? })` (`extend` without `prefixUrl` keeps the parent's base). Calls on it are
@@ -599,6 +599,8 @@ export const clientsAdapter: Adapter<ClientFacts> = {
     const rpcPrefixes = new Set<string>();
     /** Endpoints with a method and a path, whatever made them. */
     const http: AdapterNode[] = [];
+    /** The endpoints a Hono app made (rule 3 reads these only). */
+    const hono: AdapterNode[] = [];
     for (const n of ctx.nodes) {
       if (n.kind !== "endpoint") continue;
       const d = n.data;
@@ -614,7 +616,10 @@ export const clientsAdapter: Adapter<ClientFacts> = {
         rpcByPath.set(d.path, [...(rpcByPath.get(d.path) ?? []), n]);
         const parts = d.path.split(".");
         for (let i = 1; i < parts.length; i++) rpcPrefixes.add(parts.slice(0, i).join("."));
-      } else if (typeof d.method === "string" && typeof d.path === "string") http.push(n);
+      } else if (typeof d.method === "string" && typeof d.path === "string") {
+        http.push(n);
+        if (d.adapter === "hono") hono.push(n);
+      }
     }
     const wsByName = new Map(ctx.workspaces.map((w) => [w.id, w]));
     /** Narrows several candidates to the caller's workspace and its dependencies. */
@@ -844,7 +849,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
           if (!method) return undefined;
           const segs = allKeys.slice(0, -1).filter((k) => k !== "index" && k !== "");
           const path = `/${segs.join("/")}`;
-          const cands = http.filter(
+          const cands = hono.filter(
             (ep) => (ep.data.method === method || ep.data.method === "ALL") && ep.data.path === path,
           );
           const label = `${method} ${path}`;
