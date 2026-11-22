@@ -9,6 +9,7 @@ import type { EdgeKind, EdgeRecord, WorkspaceRecord } from "../types.js";
 import { readJsonc, workspaceForPath } from "../workspace/index.js";
 import { type BundlerAliases, readBundlerAliases } from "./bundlerAliases.js";
 import type { SiblingRepo } from "./sibling.js";
+import { readTsconfigChain } from "./tsconfigChain.js";
 
 export interface ResolveContext {
   root: string;
@@ -300,8 +301,18 @@ export function createResolver(ctx: ResolveContext): TypeScriptResolver {
     const cacheKey = aliasOnly ? `${ws.id}\0alias` : ws.id;
     let r = resolvers.get(cacheKey);
     if (!r) {
-      const tsconfig = aliasOnly ? null : nearestTsconfig(ws.dir);
-      const aliases = aliasOnly ? aliasesOf(ws).aliases : [];
+      let tsconfig = aliasOnly ? null : nearestTsconfig(ws.dir);
+      const aliases: Array<{ find: string; targets: string[] }> = aliasOnly
+        ? aliasesOf(ws).aliases.map((a) => ({ find: a.find, targets: [a.target] }))
+        : [];
+      if (tsconfig) {
+        // A chain that `node_modules` does not fully provide: oxc-resolver would drop the `paths`, so they go in as aliases.
+        const chain = readTsconfigChain(tsconfig, ctx.workspaces, realRoot);
+        if (chain.needsAlias) {
+          aliases.push(...chain.aliases);
+          tsconfig = null;
+        }
+      }
       r = new ResolverFactory({
         extensions: EXTENSIONS,
         extensionAlias: {
@@ -314,7 +325,7 @@ export function createResolver(ctx: ResolveContext): TypeScriptResolver {
         mainFields: ["types", "module", "main"],
         builtinModules: true,
         ...(aliases.length > 0
-          ? { alias: Object.fromEntries(aliases.map((a) => [a.find, [a.target]] as const)) }
+          ? { alias: Object.fromEntries(aliases.map((a) => [a.find, a.targets] as const)) }
           : {}),
         ...(tsconfig ? { tsconfig: { configFile: tsconfig, references: "auto" as const } } : {}),
       });
