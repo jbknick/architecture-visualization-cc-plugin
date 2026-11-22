@@ -11,6 +11,7 @@ import {
   rmSync,
   statSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -344,7 +345,11 @@ describe("bundled CLI: vector tables and embeddings", () => {
 describe("gantry index --scip", () => {
   it("gives byte-identical dumps into two fresh data dirs and prints what it read", async () => {
     const fx = await fixture("pnpm-turbo");
-    const scip = join(repoRoot, "fixtures/scip/pnpm-turbo.scip");
+    // The fixture is copied now, so a copy of the index dated an hour ahead stands for one made after the checkout.
+    const scip = join(mkdtempSync(join(tmpdir(), "gantry-scip-index-")), "pnpm-turbo.scip");
+    copyFileSync(join(repoRoot, "fixtures/scip/pnpm-turbo.scip"), scip);
+    const ahead = new Date(Date.now() + 3600 * 1000);
+    utimesSync(scip, ahead, ahead);
     const dump = (flags: string[]) => {
       const data = mkdtempSync(join(tmpdir(), "gantry-scip-data-"));
       try {
@@ -358,9 +363,11 @@ describe("gantry index --scip", () => {
     const a = dump(["--scip", scip]);
     const b = dump(["--scip", scip]);
     expect(a.out).toBe(b.out);
-    expect(a.err).toContain("  scip:          22 documents, 18 edges, 212 unmapped, 0 stale\n");
+    expect(a.err).toContain(
+      "  scip:          22 documents, 12 edges, 262 unmapped, 29 other references, 0 stale\n",
+    );
     const edges = (JSON.parse(a.out) as { edges: { kind: string; fileId: string; source?: string }[] }).edges;
-    expect(edges.filter((e) => e.source === "scip")).toHaveLength(18);
+    expect(edges.filter((e) => e.source === "scip")).toHaveLength(12);
     const code = edges.filter(
       (e) =>
         ["calls", "renders", "uses_hook", "references_type"].includes(e.kind) && /\.tsx?$/.test(e.fileId),

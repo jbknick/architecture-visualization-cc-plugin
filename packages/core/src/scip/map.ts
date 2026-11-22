@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import fs from "node:fs";
 import type { EdgeKind, EdgeRecord, SymbolKind } from "../types.js";
 import {
   type PositionEncoding,
@@ -21,6 +22,8 @@ export interface ScipSourceFile {
   source: string;
   /** sha256 of the file's bytes (the `files.content_hash` the indexer computed). */
   contentHash: string;
+  /** Modification time of the working file, in ms (0 when unknown, as for in-memory text). */
+  mtimeMs: number;
   symbols: { id: string; name: string; kind: SymbolKind; startLine: number; endLine: number }[];
 }
 
@@ -33,6 +36,8 @@ export interface ScipStats {
   unmapped: number;
   /** Documents that were ignored because their file is not the file that was indexed. */
   stale: number;
+  /** References to a symbol of the repo that are no call, construction, render or type reference (a read of a value, an import): no edge. */
+  otherRefs: number;
 }
 
 export interface ScipResult {
@@ -52,21 +57,52 @@ export function withScipEdges(inferred: EdgeRecord[], scip: EdgeRecord[]): EdgeR
 /** The symbols whose lines hold code that runs: a reference inside one of them belongs to it. */
 const CODE_BEARING: ReadonlySet<SymbolKind> = new Set(["function", "method", "component", "hook", "const"]);
 
-/** The edge kind a reference to a symbol of this kind makes. */
-function edgeKindOf(target: SymbolKind): EdgeKind {
-  switch (target) {
-    case "component":
-      return "renders";
-    case "hook":
-      return "uses_hook";
-    case "class":
-    case "interface":
-    case "type":
-    case "enum":
-      return "references_type";
-    default:
-      return "calls";
+const TYPE_LIKE: ReadonlySet<SymbolKind> = new Set(["class", "interface", "type", "enum"]);
+const FUNCTION_LIKE: ReadonlySet<SymbolKind> = new Set(["function", "method", "component", "hook"]);
+
+/** How the source text uses a name at an occurrence. SCIP has no role for a call, so the text around the range says. */
+interface Use {
+  /** The range directly follows `<` or `</`. */
+  tag: boolean;
+  /** The range is followed, past whitespace, `?.` and a `<...>` type-argument list, by `(`. */
+  called: boolean;
+  /** The range is preceded by `new `. */
+  constructed: boolean;
+}
+
+const AFTER_CALL = /^\s*(?:\?\.)?\s*(?:<[^()<>]*(?:<[^()<>]*>[^()<>]*)*>)?\s*\(/;
+
+/** Reads the use off the line the occurrence is on (only that line: a range and its neighbours on other lines are not looked at). */
+function useAt(line: string, start: number, end: number): Use {
+  const before = line.slice(0, start);
+  return {
+    tag: /<\/?$/.test(before),
+    called: AFTER_CALL.test(line.slice(end)),
+    constructed: /(?:^|[^\w$])new\s+$/.test(before),
+  };
+}
+
+/**
+ * The edge kind a reference makes, or undefined when it is none of them (a read of a value, a name passed along, an
+ * import). `renders` is a reference right after `<` or `</`. A type target is `references_type`, except when it is
+ * constructed (`new X`), which calls it. A call or construction (`calls`, `uses_hook` for a hook) needs a target that
+ * is a function: the descriptor is a method (`name().`), or a term that maps to a function-like symbol. At a file level
+ * (no enclosing symbol) a type reference makes no edge.
+ */
+function edgeKindOf(
+  use: Use,
+  suffix: ScipSuffix | undefined,
+  target: SymbolKind,
+  fileLevel: boolean,
+): EdgeKind | undefined {
+  if (use.tag) return "renders";
+  if (TYPE_LIKE.has(target)) {
+    if (use.constructed) return "calls";
+    return fileLevel ? undefined : "references_type";
   }
+  const isFunction = suffix === "method" || (suffix === "term" && FUNCTION_LIKE.has(target));
+  if (isFunction && (use.called || use.constructed)) return target === "hook" ? "uses_hook" : "calls";
+  return undefined;
 }
 
 /** `Descriptor.Suffix` of the last descriptor of a symbol: namespace `/`, type `#`, term `.`, method `().`, meta `:`, macro `!`, type parameter `[x]`, parameter `(x)`. */
@@ -159,6 +195,13 @@ export function scipDescriptor(symbol: string): { name: string; suffix: ScipSuff
   return last;
 }
 
+/** The UTF-16 offset in `line` of a character offset counted in the document's position encoding. */
+function unitOffset(line: string, offset: number, encoding: PositionEncoding): number {
+  if (encoding === 1) return Buffer.from(line, "utf8").subarray(0, offset).toString("utf8").length;
+  if (encoding === 3) return Array.from(line).slice(0, offset).join("").length;
+  return offset;
+}
+
 /** The text of `[start, end)` on one line, characters counted as the document's position encoding says. */
 function sliceLine(line: string, start: number, end: number, encoding: PositionEncoding): string | undefined {
   if (start < 0 || end < start) return undefined;
@@ -178,14 +221,15 @@ const unquote = (s: string): string =>
 
 /**
  * Whether a document is no longer the file that was indexed. When the document carries its text (most indexers do not)
- * the hashes of the two texts are compared. Otherwise the index holds no hash, so the definitions are checked: at the
- * range of each definition of a non-local symbol the file must spell the symbol's name (a quoted name without its
- * quotes), and every range must lie inside the file. A file edited since the index was made moves its declarations.
+ * the hashes of the two texts are compared. Otherwise the index holds no hash, so the file is stale when it was
+ * modified after the index file was written (`indexMtimeMs`), when a range lies outside it, or when at the range of a
+ * definition of a non-local symbol it does not spell the symbol's name (a quoted name without its quotes).
  */
-function isStale(doc: ScipDocument, file: ScipSourceFile, lines: string[]): boolean {
+function isStale(doc: ScipDocument, file: ScipSourceFile, lines: string[], indexMtimeMs: number): boolean {
   if (doc.text !== undefined) {
     return createHash("sha256").update(Buffer.from(doc.text, "utf8")).digest("hex") !== file.contentHash;
   }
+  if (file.mtimeMs > indexMtimeMs) return true;
   const encoding = doc.positionEncoding;
   for (const o of doc.occurrences) {
     if (o.symbol.startsWith("local ")) continue;
@@ -204,11 +248,14 @@ function isStale(doc: ScipDocument, file: ScipSourceFile, lines: string[]): bool
 }
 
 interface Pending {
+  /** The enclosing symbol, or the file id when the reference is outside every symbol that holds code. */
   from: string;
+  fileLevel: boolean;
   fileId: string;
   path: string;
   line: number;
   symbol: string;
+  use: Use;
 }
 
 /** The innermost of the symbols whose lines contain `line` (1-based) and that `accept` allows. */
@@ -234,12 +281,11 @@ const lastSegment = (name: string): string => name.slice(name.lastIndexOf(".") +
  * - A document whose path is not an indexed file is skipped. One that is stale (see `isStale`) is counted and ignored.
  * - A definition occurrence of a non-local symbol maps to the symbol of that file whose lines contain it, the
  *   innermost one, when the name the index gives the symbol is the symbol's name (the part after the last dot).
- * - A reference occurrence inside a function, method, component, hook or const (the innermost one) is kept with that
- *   symbol as its source. After the last document, each reference whose symbol has a definition becomes an edge
- *   from the enclosing symbol to the definition's symbol: `high`, `source: "scip"`, kind by the target (`renders`
- *   for a component, `uses_hook` for a hook, `references_type` for a class, interface, type or enum, `calls` for
- *   the rest). A reference outside all of them (an import, a top-level statement) and a symbol's reference to itself
- *   make no edge and are not counted.
+ * - A reference occurrence is kept with the innermost function, method, component, hook or const that contains it as
+ *   its source, or the file when there is none. After the last document, each reference whose symbol has a definition
+ *   becomes an edge from that source to the definition's symbol when `edgeKindOf` gives it a kind (`high`,
+ *   `source: "scip"`); a symbol's reference to itself makes none. A reference that is none of a call, construction,
+ *   render or type reference is counted in `otherRefs`.
  * - Occurrences of non-local symbols that map to nothing are `unmapped`; references to symbols with no definition in
  *   the index (packages that are not in the repo, the language's built-ins) are among them.
  * - Occurrences with the `Import` role and occurrences of local symbols are not read.
@@ -248,7 +294,8 @@ export async function mapScip(
   indexFile: string,
   lookup: (relativePath: string) => ScipSourceFile | undefined,
 ): Promise<ScipResult> {
-  const stats: ScipStats = { documents: 0, edges: 0, unmapped: 0, stale: 0 };
+  const stats: ScipStats = { documents: 0, edges: 0, unmapped: 0, stale: 0, otherRefs: 0 };
+  const indexMtimeMs = (await fs.promises.stat(indexFile)).mtimeMs;
   const definitions = new Map<string, { id: string; kind: SymbolKind }>();
   const pending: Pending[] = [];
   const covered = new Map<string, string>();
@@ -260,15 +307,21 @@ export async function mapScip(
     if (!file) continue;
     stats.documents++;
     const lines = file.source.split(/\r?\n/);
-    if (isStale(doc, file, lines)) {
+    if (isStale(doc, file, lines, indexMtimeMs)) {
       stats.stale++;
       continue;
     }
     covered.set(file.id, doc.path);
-    for (const o of doc.occurrences) readOccurrence(o, doc.path, file);
+    for (const o of doc.occurrences) readOccurrence(o, doc.path, file, lines, doc.positionEncoding);
   }
 
-  function readOccurrence(o: ScipOccurrence, path: string, file: ScipSourceFile): void {
+  function readOccurrence(
+    o: ScipOccurrence,
+    path: string,
+    file: ScipSourceFile,
+    lines: string[],
+    encoding: PositionEncoding,
+  ): void {
     if (o.symbol === "" || o.symbol.startsWith("local ")) return;
     if ((o.roles & SYMBOL_ROLE_IMPORT) !== 0) return;
     const line = o.line + 1;
@@ -289,8 +342,19 @@ export async function mapScip(
       return;
     }
     const from = innermost(file.symbols, line, (s) => CODE_BEARING.has(s.kind));
-    if (!from) return;
-    pending.push({ from: from.id, fileId: file.id, path, line, symbol: o.symbol });
+    // The text before and after the range, as UTF-16 code units: a document in another encoding is read through it.
+    const text = lines[o.line] ?? "";
+    const start = unitOffset(text, o.startCharacter, encoding);
+    const end = o.endLine === o.line ? unitOffset(text, o.endCharacter, encoding) : text.length;
+    pending.push({
+      from: from?.id ?? file.id,
+      fileLevel: from === undefined,
+      fileId: file.id,
+      path,
+      line,
+      symbol: o.symbol,
+      use: useAt(text, start, end),
+    });
   }
 
   const byFile = new Map<string, Map<string, EdgeRecord>>();
@@ -302,7 +366,11 @@ export async function mapScip(
       continue;
     }
     if (target.id === p.from) continue;
-    const kind = edgeKindOf(target.kind);
+    const kind = edgeKindOf(p.use, scipDescriptor(p.symbol)?.suffix, target.kind, p.fileLevel);
+    if (!kind) {
+      stats.otherRefs++;
+      continue;
+    }
     const edges = byFile.get(p.fileId) as Map<string, EdgeRecord>;
     const key = `${p.from}\0${target.id}\0${kind}`;
     let e = edges.get(key);

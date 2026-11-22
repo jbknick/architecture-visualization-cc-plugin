@@ -414,7 +414,8 @@ function mergeResults(parts: IndexResult[], ms: number): IndexResult {
   delete out.scip;
   for (const r of parts) {
     if (r.scip) {
-      const s: ScipStats = out.scip ?? { documents: 0, edges: 0, unmapped: 0, stale: 0 };
+      const s: ScipStats = out.scip ?? { documents: 0, edges: 0, unmapped: 0, stale: 0, otherRefs: 0 };
+      s.otherRefs += r.scip.otherRefs;
       s.documents += r.scip.documents;
       s.edges += r.scip.edges;
       s.unmapped += r.scip.unmapped;
@@ -542,6 +543,7 @@ async function indexOneRepo(
             id: e.id,
             source: e.source as string,
             contentHash: e.contentHash as string,
+            mtimeMs: e.mtimeMs,
             symbols: pf.symbols,
           };
         });

@@ -210,7 +210,7 @@ Run as `node <path>/plugin/dist/cli.js <command>`. Every command below exists to
 
 ### Precise mode
 
-`gantry index --scip <file>`, or `precise.scip` in the config, reads a SCIP index of the repo and uses its exact call and type edges for the files it covers. You run the indexer that makes the file yourself; Gantry never does.
+`gantry index --scip <file>`, or `precise.scip` in the config, reads a SCIP index of the repo and takes the call, render, hook and type edges of the files it covers from the index instead of inferring them. A file that changed after the index was written keeps its inferred edges, so make the index after your last edit. You run the indexer that makes the file yourself; Gantry never does.
 
 ## Status
 

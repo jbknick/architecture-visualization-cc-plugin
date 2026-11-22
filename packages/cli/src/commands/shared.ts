@@ -35,7 +35,7 @@ export function summaryLines(r: IndexResult, dataDir: string): string[] {
     `  parse errors:  ${r.parseErrors.length}`,
     ...(r.scip
       ? [
-          `  scip:          ${r.scip.documents} documents, ${r.scip.edges} edges, ${r.scip.unmapped} unmapped, ${r.scip.stale} stale`,
+          `  scip:          ${r.scip.documents} documents, ${r.scip.edges} edges, ${r.scip.unmapped} unmapped, ${r.scip.otherRefs} other references, ${r.scip.stale} stale`,
         ]
       : []),
     `  data:          ${dataDir}`,
