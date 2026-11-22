@@ -18,6 +18,8 @@ export interface TextMatch {
   groups: string[];
   /** 1-based line of the start of the match. */
   line: number;
+  /** 1-based line where each group starts (0 for a group that did not match); entry 0 is `line`. */
+  groupLines: number[];
 }
 
 export const textRuleMatches = (rule: TextRuleLike, path: string): boolean =>
@@ -37,9 +39,16 @@ export function matchText(runner: RegexRunner, rule: TextRuleLike, text: string)
   return {
     ok: true,
     matches: r.matches.map((m) => {
-      let line = 1;
-      for (let i = 0; i < m.index; i++) if (text.charCodeAt(i) === 10) line++;
-      return { groups: m.groups, line };
+      const lineAt = (offset: number): number => {
+        let line = 1;
+        for (let i = 0; i < offset; i++) if (text.charCodeAt(i) === 10) line++;
+        return line;
+      };
+      return {
+        groups: m.groups,
+        line: lineAt(m.index),
+        groupLines: m.starts.map((s) => (s < 0 ? 0 : lineAt(s))),
+      };
     }),
   };
 }

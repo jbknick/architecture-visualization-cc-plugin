@@ -13,7 +13,7 @@ import {
   stringValue,
   symbolForName,
 } from "../adapters/framework.js";
-import { fileIdOfSymId, nameOfSymId, tableId } from "../ids.js";
+import { fileId, fileIdOfSymId, nameOfSymId, pathOfFileId, tableId } from "../ids.js";
 import { isNode, nodeArray, unwrap } from "../parse/ast.js";
 import type { EdgeRecord, WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
@@ -400,9 +400,9 @@ class DataAccess {
       const sql = groupValue(rule.emit.sql, match);
       if (!fn || !sql) continue;
       const globs = rule.emit.files;
-      // The line of the first character of `sql` in the text file (the group may start below the match's first line).
-      const whole = match.groups[0] ?? "";
-      const sqlLine = match.line + lineInText(whole, Math.max(0, whole.indexOf(sql)));
+      // The line where the `sql` group starts in the text file (it may start below the match's first line).
+      const sqlGroup = /^\$(\d+)$/.exec(rule.emit.sql);
+      const sqlLine = (sqlGroup ? match.groupLines[Number(sqlGroup[1])] : 0) || match.line;
       const targets = this.goFunctionsNamed(fn, new Set(this.homes(path).map((w) => w.id)), globs);
       for (const ref of scanSql(sql)) {
         if (ref.kind === "create") continue;
@@ -1175,6 +1175,9 @@ class DataAccess {
       if (u.conf === "high") e.confidence = "high";
       const path = u.at ?? u.file.path;
       e.lines.set(`${path}:${u.line}`, { path, line: u.line });
+      // The text file whose statement it is: the one whose path sorts first.
+      if (u.at !== undefined && (e.textFileId === undefined || u.at < pathOfFileId(e.textFileId)))
+        e.textFileId = fileId(this.a.repo, u.at);
       e.count++;
     }
     const edges: EdgeRecord[] = [...acc.values()].map(({ lines, ...e }) => ({

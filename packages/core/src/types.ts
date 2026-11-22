@@ -58,6 +58,8 @@ export interface EdgeRecord {
   count: number;
   evidence: string[];
   fileId: string;
+  /** A `reads` / `writes` edge from a `query` text rule: the id of the text file that holds the statement (spec section 5). */
+  textFileId?: string;
 }
 /**
  * A node contributed by a framework adapter (routes, endpoints, middleware; tables and procedures later), stored in
