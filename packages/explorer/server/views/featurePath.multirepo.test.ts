@@ -48,7 +48,7 @@ describe("feature path across repos", () => {
     expect(new Set(out.nodes.map((n) => n.repo))).toEqual(new Set(["web", "billing"]));
   });
 
-  it("links a page of one repo to the endpoint of another in the page and table views", async () => {
+  it("links each page of the web repo to the endpoint of another repo in the page to API view", async () => {
     const m = await materializeLinkingRepos();
     const pages = (await view(m, m.repos?.web as string, "page-api", {})) as unknown as {
       edges: { src: string; dst: string }[];
