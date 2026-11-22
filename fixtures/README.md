@@ -107,3 +107,11 @@ A repo with no workspace tool: no `pnpm-workspace.yaml`, no `workspaces` field, 
 - `packages/util` (no `package.json`, named by its directory; tsconfig `composite`): `src/strings.ts` exports `padLeft`.
 - `apps/cli` (`@refs/cli`, depends on `@refs/core`; tsconfig references `../../packages/core` and `../../packages/util`): `src/main.ts` imports `@refs/core` and `../../../packages/util/src/strings`.
 - Counts: four workspaces (`.`, `@refs/core`, `packages/util`, `@refs/cli`), four files in the dump, two `imports` edges (both from `main.ts`, both into `src/`), no edge into `dist/`.
+
+## no-workspace-tool
+A repo with several `package.json` files and no pnpm, npm, yarn, bun or Nx workspace config and no tsconfig references. Every directory holding a `package.json` is a workspace.
+- Root: `package.json` (`plain-root`, no `workspaces`).
+- `shared` (`@plain/shared`, `main` `src/index.ts`): `src/index.ts` exports `greet`.
+- `server` (`@plain/server`) and `web` (`@plain/web`): each depends on `@plain/shared` and imports it from `src/`.
+- `tools/scripts` (`@plain/scripts`, no dependencies): a nested folder.
+- Counts: five workspaces (`.` and the four packages), two `imports` edges into `shared/src/index.ts`, two `depends_on` edges.

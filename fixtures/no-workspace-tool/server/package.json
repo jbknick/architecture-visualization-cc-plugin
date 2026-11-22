@@ -1,0 +1,1 @@
+{ "name": "@plain/server", "dependencies": { "@plain/shared": "*" } }
