@@ -87,7 +87,7 @@ Per the spike's call budget the approximation stopped there. These are the two f
 
 1. Make a scratch project directory outside any real repo and put in it:
    - `.claude/agents/describer.md`: a copy of `docs/spikes/describe/describer.md`.
-   - `.mcp.json` with a `gantrystub` server: `command: node`, `args: [<absolute path to docs/spikes/describe/mcp-stub.mjs>]`, `env: { STUB_DATA: <repo>/evals/private/labelled/devprentice.jsonl, STUB_OUT: <repo>/evals/private/describe-out/path-b, STUB_BATCH: "40" }`.
+   - `.mcp.json` with a `gantrystub` server: `command: node`, `args: [<absolute path to docs/spikes/describe/mcp-stub.mjs>]`, `env: { STUB_DATA: <repo>/evals/private/labelled/testbed.jsonl, STUB_OUT: <repo>/evals/private/describe-out/path-b, STUB_BATCH: "40" }`.
 2. Start `claude` in that directory (not `claude -p`) and approve the project MCP server. Check `/agents` lists `describer` and `/mcp` shows `gantrystub` connected.
 3. Run `/usage` and write down the session and weekly figures.
 4. Send: `Use the describer subagent to drain the description queue. Invoke it with the prompt "Drain the queue." and invoke it again if it stops before saying "queue empty". Describe nothing yourself.`
@@ -96,9 +96,9 @@ Per the spike's call budget the approximation stopped there. These are the two f
 
 `/usage` before and after is operator-only and is pending. A headless run has no plan-usage readout either, so no usage figure exists for Path B yet.
 
-## Projection for Devprentice (`gantry init --estimate` style)
+## Projection for the private test bed (`gantry init --estimate` style)
 
-No `gantry init --estimate` run was made against the test bed (it writes to the repo). Function count used: 2,217, the number of non-trivial functions in the five sampling strata (pool sizes printed by `evals/labelled/sample.ts`: 473 component, 30 hook, 185 util, 485 server, 1,044 helper). This is a lower bound for the real estimate, which may include others, and it is an input, so override it with `DEVPRENTICE_FUNCTIONS=<n>` when scoring. Functions times the measured Path A numbers per function (953 tokens in, 250 tokens out, 0.96 s):
+No `gantry init --estimate` run was made against the test bed (it writes to the repo). Function count used: 2,217, the number of non-trivial functions in the five sampling strata (pool sizes printed by `evals/labelled/sample.ts`: 473 component, 30 hook, 185 util, 485 server, 1,044 helper). This is a lower bound for the real estimate, which may include others, and it is an input, so override it with `TESTBED_FUNCTIONS=<n>` when scoring. Functions times the measured Path A numbers per function (953 tokens in, 250 tokens out, 0.96 s):
 
 | measure                                        | value     |
 | ---------------------------------------------- | --------- |

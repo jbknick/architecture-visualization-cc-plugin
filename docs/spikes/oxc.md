@@ -7,8 +7,8 @@ This report is public. It contains counts, generalised path shapes and public mo
 ## Setup
 
 - Versions (pinned exactly in `packages/core/package.json`): `oxc-parser` 0.158.0, `oxc-resolver` 11.24.2.
-- Machine: Apple M3 Pro, Node v26.13.0, macOS arm64. Test bed cloned to `/tmp/devprentice`, `pnpm install --frozen-lockfile` only; nothing else written there.
-- Script: `pnpm tsx docs/spikes/oxc/run.ts /tmp/devprentice` (helpers and tests in `docs/spikes/oxc/analyze.ts`, `analyze.test.ts`). Optional `--runs N` (default 3) and `--private-out <file>`.
+- Machine: Apple M3 Pro, Node v26.13.0, macOS arm64. Test bed cloned to `/tmp/testbed`, `pnpm install --frozen-lockfile` only; nothing else written there.
+- Script: `pnpm tsx docs/spikes/oxc/run.ts /tmp/testbed` (helpers and tests in `docs/spikes/oxc/analyze.ts`, `analyze.test.ts`). Optional `--runs N` (default 3) and `--private-out <file>`.
 - Files: `git ls-files '*.ts' '*.tsx' '*.mts' '*.cts'` (1,538), minus spec section 5 excludes (`*.d.ts`, `*.gen.ts`, `dist`, `node_modules`, sensitive names, and so on) = **1,529 parsed**. About 660 of these are unit, worker, e2e or other test files, so non-test source is roughly 870 files. The "about 1,086" in the issue understates the total.
 - Resolver options: `conditionNames: ["import","types","default"]`, `extensions: [".ts",".tsx",".mts",".cts",".js"]`, `tsconfig: "auto"`, plus `builtinModules: true` (see Findings). Fresh `ResolverFactory` per run, so every run is cold.
 - No type checker. Call sites are mapped by name only: callee root identifier, shadowed by any name declared inside the enclosing top-level function, else matched to an import binding, else to a top-level declaration of the file, else "global".

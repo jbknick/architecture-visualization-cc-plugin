@@ -1,6 +1,6 @@
 /**
  * Merges `candidates.jsonl` (from sample.ts) with hand-drafted labels into the private
- * `devprentice.jsonl` and writes the operator's `review.md` scan table.
+ * `testbed.jsonl` and writes the operator's `review.md` scan table.
  *
  * Usage: pnpm tsx evals/labelled/merge.ts
  * Env:   LABELLED_OUT (default <repo>/evals/private/labelled)
@@ -45,7 +45,7 @@ candidates.forEach((c, i) => {
   );
 });
 
-writeFileSync(join(out, "devprentice.jsonl"), `${lines.join("\n")}\n`);
+writeFileSync(join(out, "testbed.jsonl"), `${lines.join("\n")}\n`);
 const falseCount = [...labels.values()].filter((l) => !l[2]).length;
 writeFileSync(
   join(out, "review.md"),
@@ -53,7 +53,7 @@ writeFileSync(
     "# Labelled set review (PRIVATE, do not commit)",
     "",
     "Draft labels by Claude. Scan each row; correct `behavior`, `nameFits` or `suggestedName` in place,",
-    "then tell the agent the corrections so they are applied to `devprentice.jsonl`.",
+    "then tell the agent the corrections so they are applied to `testbed.jsonl`.",
     "",
     `Rows: ${candidates.length}. nameFits=false: ${falseCount} (${((100 * falseCount) / candidates.length).toFixed(1)}%).`,
     "",

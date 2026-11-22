@@ -6,7 +6,7 @@ It is a Claude Code plugin: a codebase map, function index and reuse guard for T
 
 - Follow `docs/SPEC.md`. It is the source of truth for contracts. If a brief conflicts with it, follow the spec and flag the conflict in the PR. To change a contract, edit the spec in the same PR and say so.
 - Per PR, run `biome check` on the files you changed, `tsc -b` if you changed code, and only the vitest folders you touched. The maintainer runs the full `pnpm check` on `main`, not per PR. There is no CI service and no GitHub Actions.
-- This repo is public. Never commit code, descriptions, graph dumps or screenshots from private repos (the Devprentice test bed). Private eval data lives only in git-ignored `evals/private/`.
+- This repo is public. Never commit code, descriptions, graph dumps or screenshots from private repos (the private test bed). Private eval data lives only in git-ignored `evals/private/`.
 - Branch names: `gantry/<slug>`. One branch and PR per piece of work.
 - The PR body is three lines (what changed, how it was checked, differences from the brief) plus the generated-with line.
 - Add only dependencies listed in spec section 2.
