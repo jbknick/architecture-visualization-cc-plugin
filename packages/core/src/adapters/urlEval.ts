@@ -7,7 +7,7 @@ import { isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
  * (`{ unknown }`).
  *
  * Forms: string literals and templates, `+`, a local, top-level or imported `const`, a TypeScript `enum` member, a
- * member of an object literal bound to a `const` (`ROUTES.me`, `as const` or not), `process.env.X` and
+ * member of an object literal bound to a `const` written `as const` (`ROUTES.me`), `process.env.X` and
  * `import.meta.env.X`, `a ?? b` and `a || b` (both alternatives), `c ? a : b` (both alternatives) and
  * `new URL(path, base)` (an absolute `path` replaces the path of `base`, a relative one joins it). Nesting stops at
  * depth 8 and at 16 alternatives, where the result is `{ unknown }`.
@@ -203,9 +203,10 @@ function resolveUrl(path: UrlPart[], base: UrlPart[]): UrlPart[] {
   if (typeof first !== "string") return [UNKNOWN];
   if (ABSOLUTE.test(first)) return path;
   if (first.startsWith("/")) {
-    // The origin of the base is not part of the path; it is kept only when the base writes one out.
+    // The origin of the base is not part of the path; it is kept when the base writes one out, and a leading
+    // environment member or parameter is kept too (the origin is a configured one: the alternative is dropped).
     const b0 = base[0];
-    const origin = typeof b0 === "string" ? (ORIGIN.exec(b0)?.[0] ?? "") : "";
+    const origin = typeof b0 === "string" ? (ORIGIN.exec(b0)?.[0] ?? "") : b0 && !("unknown" in b0) ? b0 : "";
     return normalize([origin, ...path]);
   }
   const last = base[base.length - 1];
@@ -268,7 +269,7 @@ function ev(expr: unknown, scope: UrlScope, depth: number): Alts {
         });
         return member?.initializer ? ev(member.initializer, b.scope, depth + 1) : [[UNKNOWN]];
       }
-      return evMember(b.init, chain.keys, b.scope, depth + 1);
+      return evMember(b.init, chain.keys, b.scope, depth + 1, false);
     }
     case "NewExpression": {
       const callee = unwrap(v.callee);
@@ -285,18 +286,26 @@ function ev(expr: unknown, scope: UrlScope, depth: number): Alts {
   }
 }
 
-/** The member `keys` of an expression that is (or names) an object literal. */
-function evMember(init: unknown, keys: string[], scope: UrlScope, depth: number): Alts {
+/** `expr as const`: an object that cannot be changed, so its members are what the literal says. */
+function isAsConst(expr: unknown): boolean {
+  if (!isNode(expr) || expr.type !== "TSAsExpression") return false;
+  const t = expr.typeAnnotation as { typeName?: { name?: unknown } } | undefined;
+  return t?.typeName?.name === "const";
+}
+
+/** The member `keys` of an object literal written `as const` (or a const naming one); any other object is a run-time value. */
+function evMember(init: unknown, keys: string[], scope: UrlScope, depth: number, frozen: boolean): Alts {
   const v = unwrap(init);
   if (!isNode(v) || depth > MAX_DEPTH) return [[UNKNOWN]];
   if (keys.length === 0) return ev(v, scope, depth + 1);
   if (v.type === "ObjectExpression") {
+    if (!frozen && !isAsConst(init)) return [[{ param: keys[keys.length - 1] as string }]];
     const value = objectMember(v, keys[0] as string);
-    return value === undefined ? [[UNKNOWN]] : evMember(value, keys.slice(1), scope, depth + 1);
+    return value === undefined ? [[UNKNOWN]] : evMember(value, keys.slice(1), scope, depth + 1, true);
   }
   if (v.type === "Identifier") {
     const b = scope.lookup(v.name as string);
-    return b?.kind === "const" ? evMember(b.init, keys, b.scope, depth + 1) : [[UNKNOWN]];
+    return b?.kind === "const" ? evMember(b.init, keys, b.scope, depth + 1, false) : [[UNKNOWN]];
   }
   return [[UNKNOWN]];
 }

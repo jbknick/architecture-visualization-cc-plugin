@@ -59,9 +59,14 @@ describe("evalUrl", () => {
 
   it("reads a member of an `as const` object, nested and computed keys included", () => {
     expect(evalLast('const R = { me: "/users/me" } as const;\nR.me;')).toEqual([["/users/me"]]);
-    expect(evalLast('const R = { a: { b: "/x" } };\nR.a.b;')).toEqual([["/x"]]);
-    expect(evalLast('const R = { "a-b": "/x" };\nR["a-b"];')).toEqual([["/x"]]);
+    expect(evalLast('const R = { a: { b: "/x" } } as const;\nR.a.b;')).toEqual([["/x"]]);
+    expect(evalLast('const R = { "a-b": "/x" } as const;\nR["a-b"];')).toEqual([["/x"]]);
     expect(evalLast("R.missing;", { R: 'export const R = { me: "/m" } as const;' })).toEqual([[UNKNOWN]]);
+  });
+
+  it("reads a member of an object that is not `as const` as a value known only at run time", () => {
+    expect(evalLast('const cfg = { api: "/x" };\ncfg.api;')).toEqual([[{ param: "api" }]]);
+    expect(evalLast('const cfg = { a: { b: "/x" } };\ncfg.a.b;')).toEqual([[{ param: "b" }]]);
   });
 
   it("reads process.env.X and import.meta.env.X as env parts", () => {
@@ -88,6 +93,11 @@ describe("evalUrl", () => {
       ["https://h.example/orders/1"],
     ]);
     expect(evalLast('new URL("/orders/1", location.origin + "/api/");')).toEqual([["/orders/1"]]);
+    // A base that starts with an environment member or a parameter is kept, so the call is dropped as dynamic.
+    expect(evalLast('new URL("/users", import.meta.env.VITE_API_URL);')).toEqual([
+      [{ env: "VITE_API_URL" }, "/users"],
+    ]);
+    expect(evalLast('let b = "x";\nnew URL("/u", b + "/api");')).toEqual([[{ param: "b" }, "/u"]]);
     expect(evalLast('new URL("orders/1", "/api/v1/");')).toEqual([["/api/v1/orders/1"]]);
     expect(evalLast('new URL("orders/1", "/api/v1");')).toEqual([["/api/orders/1"]]);
     expect(evalLast('new URL("orders", "https://h.example");')).toEqual([["https://h.example/orders"]]);

@@ -851,6 +851,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
       return moduleScopeOf(target)?.own((id.name as string).replace(/~\d+$/, "")) ?? null;
     }
     const functionsOf = new Map<string, Node[]>();
+    const localScopes = new Map<Node, { parent: UrlScope; scope: UrlScope }>();
     /** The scope at an offset of a file: its top level, then each function around the offset, outermost first. */
     const scopeAt = (file: AdapterFileContext, offset: number): UrlScope | null => {
       let scope: UrlScope | null = moduleScopeOf(file);
@@ -865,7 +866,15 @@ export const clientsAdapter: Adapter<ClientFacts> = {
         fns = list;
         functionsOf.set(file.fileId, list);
       }
-      for (const fn of fns) if (fn.start <= offset && offset < fn.end) scope = localScope(scope, fn);
+      for (const fn of fns) {
+        if (fn.start > offset || offset >= fn.end) continue;
+        let local = localScopes.get(fn);
+        if (!local || local.parent !== scope) {
+          local = { parent: scope, scope: localScope(scope, fn) };
+          localScopes.set(fn, local);
+        }
+        scope = local.scope;
+      }
       return scope;
     };
     /** The alternatives of a URL expression as text; none when it is not an expression or no alternative starts with text. */
