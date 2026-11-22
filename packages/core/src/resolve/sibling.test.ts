@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -27,7 +27,11 @@ const POSTS = "file:web:src/pages/posts.tsx";
 const CONTRACTS = "file:acme/api:packages/contracts/src/index.ts";
 const FORMAT_DATE = "sym:acme/api:packages/contracts/src/index.ts#formatDate";
 
-async function setup(): Promise<{ mr: MaterializedMultirepo; web: () => GantryPaths }> {
+async function setup(): Promise<{
+  mr: MaterializedMultirepo;
+  web: () => GantryPaths;
+  env: NodeJS.ProcessEnv;
+}> {
   const mr = await materializeMultirepo();
   cleanups.push(() => mr.cleanup());
   const data = mkdtempSync(join(tmpdir(), "gantry-sibling-"));
@@ -35,7 +39,7 @@ async function setup(): Promise<{ mr: MaterializedMultirepo; web: () => GantryPa
   // Resolved when asked, so a test can change the workspace file first.
   const web = (): GantryPaths =>
     resolvePaths(mr.repos.web, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
-  return { mr, web };
+  return { mr, web, env: { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data } };
 }
 
 async function indexed(
@@ -162,5 +166,47 @@ describe("imports of a package a sibling repo publishes", () => {
       from: "src/pages/posts.tsx",
       candidates: ["ws:acme/api:@mr/contracts", "ws:third:."],
     });
+  });
+
+  it("never links an import to a file the sibling's own index pass skips", async () => {
+    const { mr, web } = await setup();
+    // The package entry now lies in a git-ignored folder: api indexes no file there, so web must get no edge to it.
+    const contracts = join(mr.repos.api, "packages/contracts");
+    mkdirSync(join(contracts, "gen"), { recursive: true });
+    writeFileSync(
+      join(contracts, "gen/index.ts"),
+      "export function formatDate(iso: string): string {\n  return iso;\n}\n",
+    );
+    writeFileSync(join(mr.repos.api, ".gitignore"), "gen/\n");
+    writeFileSync(
+      join(contracts, "package.json"),
+      JSON.stringify({ name: "@mr/contracts", version: "1.0.0", exports: { ".": "./gen/index.ts" } }),
+    );
+    const { store } = await indexed(web);
+    const dsts = store.effectiveEdges().map((e) => e.dst);
+    expect(dsts.some((d) => d.includes("gen/index.ts"))).toBe(false);
+    expect(
+      store
+        .effectiveEdges({ kind: ["imports"] })
+        .filter((e) => e.src === POSTS)
+        .map((e) => e.dst),
+    ).toEqual(["ext:react"]);
+  });
+
+  it("re-resolves the other repos' importers when a targeted run renames an export", async () => {
+    const { mr, web, env } = await setup();
+    const { store } = await indexed(web);
+    expect(store.effectiveEdges({ kind: ["calls"] }).some((e) => e.dst === FORMAT_DATE)).toBe(true);
+    const file = join(mr.repos.api, "packages/contracts/src/index.ts");
+    writeFileSync(file, readFileSync(file, "utf8").replaceAll("formatDate", "formatDay"));
+    const api = resolvePaths(mr.repos.api, env);
+    await indexRepo(api, { layer: "main", files: ["packages/contracts/src/index.ts"] });
+    const symbols = new Set(
+      (store.db.prepare("SELECT id FROM symbols").all() as { id: string }[]).map((r) => r.id),
+    );
+    const calls = store.effectiveEdges({ kind: ["calls"] });
+    expect(calls.filter((e) => e.dst === FORMAT_DATE)).toEqual([]);
+    // No edge anywhere points at a symbol that no longer exists.
+    expect(calls.filter((e) => e.dst.startsWith("sym:") && !symbols.has(e.dst))).toEqual([]);
   });
 });

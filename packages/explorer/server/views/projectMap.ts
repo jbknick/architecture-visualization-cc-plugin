@@ -5,13 +5,12 @@ import {
   type Store,
   type SymbolKind,
   type SymbolRecord,
-  type WorkspaceRecord,
 } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { GraphEdge, GraphNode, ViewLevel, ViewModule, ViewParams, ViewResult } from "../types.js";
 import { addImportEdge, type ImportTally, importGraphEdge, newImportTally } from "./aggregate.js";
 import { buildBadgeIndex } from "./badges.js";
-import { addRepoTier, buildHierarchy, type HNode, repoOfNodeId, TIER } from "./hierarchy.js";
+import { addRepoTier, buildHierarchy, type HNode, TIER } from "./hierarchy.js";
 import { shortWorkspaceLabels } from "./labels.js";
 import { cmp, getOrInit, isTestPath, optBool, optList } from "./options.js";
 import { type MapPlacement, reviewFor, wantsReview } from "./review.js";
