@@ -68,6 +68,8 @@ export interface GraphEdge {
   kind: string;
   weight: number;
   confidence: "high" | "low";
+  /** Table usage: a read or write written in a query file, the path of that file. */
+  textFile?: string;
   /** Project map: number of call/render/hook edges between the same two nodes. */
   uses?: number;
   /** Imports edges: imported names summed over the underlying file edges. Present only when it differs from `weight`. */

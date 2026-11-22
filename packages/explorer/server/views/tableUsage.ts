@@ -1,4 +1,4 @@
-import { resolveTraceTarget, type TraceStep } from "@gantry/core";
+import { pathOfFileId, resolveTraceTarget, type TraceStep } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { ViewModule, ViewResult } from "../types.js";
 import {
@@ -134,7 +134,15 @@ export const tableUsageView: ViewModule = {
         const n = b.node(e.src, Math.max(0, deepest - 1), { rank: extra++ });
         n.badges = [...(n.badges ?? []), role, "no endpoint"];
       }
-      if (!b.edges.has(`${e.src}|${e.kind}|${e.dst}`)) b.edge(e.src, e.dst, e.kind, e.confidence === "low");
+      if (!b.edges.has(`${e.src}|${e.kind}|${e.dst}`))
+        b.edge(
+          e.src,
+          e.dst,
+          e.kind,
+          e.confidence === "low",
+          1,
+          e.textFileId ? pathOfFileId(e.textFileId) : undefined,
+        );
     }
     const { nodes, edges } = b.result();
     const lanes: Lane[] = [];
