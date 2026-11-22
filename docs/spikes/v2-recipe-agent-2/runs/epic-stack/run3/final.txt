@@ -1,9 +1,0 @@
-I wrote `.gantry/recipe.json`, and the check passes: the schema is valid, all examples pass, and the counts match the code. It covers tables, reads and writes only. It has no routes or endpoints.
-
-- **Stack:** React Router 7 with file-based routes, Express 5, and Prisma.
-- **Tables:** 11, one per `model` in `prisma/schema.prisma`. The text rule found 11, and I counted 11 `model` blocks in the schema.
-- **Reads and writes:** the two rules match `prisma.<model>.<method>(...)`. Read methods are `find*`, `count`, `aggregate` and `groupBy`. Write methods are `create*`, `update*`, `upsert` and `delete*`. Each rule matched 128 call sites, so I expect somewhat fewer unique (file, table) pairs. I didn't check that count.
-- **Routes:** I expect none from this recipe. `app/routes.ts` builds routes with `autoRoutes()` from `react-router-auto-routes`, a file-based convention. The route emits I have can't read it; `fileRoute` only supports the `tanstack-router` convention. That is the missing capability, and it leaves roughly 40 page URLs unmapped.
-- **Endpoints:** I expect none. `server/index.ts` only registers middleware and a catch-all, and the app's API-style handlers are React Router resource routes, which the recipe can't read either.
-
-I did not write a SQL rule.

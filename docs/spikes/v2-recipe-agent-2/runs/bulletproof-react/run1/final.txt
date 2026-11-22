@@ -1,7 +1,0 @@
-I'm stopping here. The recipe is at `.gantry/recipe.json`. It passes the check, but its one rule matches nothing in this repository, so the recipe is effectively incomplete.
-
-- **Stack:** This is a monorepo with three frontend apps: `react-vite` (react-router), `nextjs-app` (Next.js App Router) and `nextjs-pages` (Next.js Pages Router). There is no backend and no database. The `http.get`/`http.post` calls I found are all MSW mock handlers, which the task says to leave out.
-- **What I wrote:** One rule for the react-router `createBrowserRouter` route objects in `apps/react-vite/src/app/router.tsx`. Its examples pass, but it gets 0 matches in the repo. I tried two `files` globs and didn't work out why. I expected about 9 routes from that file.
-- **Expected output:** Realistically 0 routes, 0 endpoints, 0 tables, 0 reads and 0 writes.
-- **Next.js routes:** I listed `fs-routes` in `helpers` hoping it would pick up the `page.tsx` and `pages/*.tsx` files, but I never confirmed that it does. There is about 10 pages-router and 10 app-router pages to expect if it works.
-- **react-vite paths:** These are written as `paths.x.path` references from `@/config/paths`. Even if the rule matched, the engine might not resolve them to URLs.

@@ -1,8 +1,0 @@
-The recipe is at `.gantry/recipe.json`, and the dry-run says ACCEPTED.
-
-- **Stack:** React Router with `react-router-auto-routes`, so URLs come from file paths. The database is Prisma.
-- **Routes (30):** these are files under `app/routes` that have a default export. The rewrite rules drop pathless folders like `_auth` and `_marketing`, turn `.` into `/`, and drop the trailing `_` in names like `password_.create`. Layout, `.server`, `.test` and `+shared` files are excluded.
-- **Endpoints (14):** these are files under `app/routes` that export `loader` or `action` but have no default export. They are the resource routes, `/auth/$provider` and `/webauthn`, with method `ALL`.
-- **Tables (11):** one per `model` in `prisma/schema.prisma`.
-
-I didn't check `app/routes/admin/cache/sqlite.tsx` for loaders or actions. It has no default export, and the dry-run lists no endpoint for it. If it exports a `loader` or `action`, the endpoint rule isn't picking it up.

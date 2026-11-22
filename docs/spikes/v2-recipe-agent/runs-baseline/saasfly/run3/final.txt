@@ -1,8 +1,0 @@
-The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED` with all examples passing.
-
-- **Stack:** Next.js app router with Prisma. There is no Express or other router mounting to compose.
-- **Routes (14):** these come from `page.tsx` files. Route groups like `(marketing)` are stripped, and `[lang]` stays in the paths.
-- **Endpoints (6):** GET and POST on `/api/auth/[...nextauth]`, `/api/trpc/edge/[trpc]` and `/api/webhooks/stripe`. They come from `export { handler as GET, handler as POST }` in each `route.ts`. The recipe only matches that aliased-export form; plain `export function GET` handlers aren't covered, since none exist in this repo.
-- **Tables (6):** `Customer`, `Account`, `Session`, `User`, `VerificationToken` and `K8sClusterConfig`. They come from the models in `schema.prisma`, and none uses `@@map`. I left out `packages/db/prisma/types.ts` because it looks like generated code.
-
-The tRPC procedures are skipped, as the task specifies. The `/api/trpc/edge/[trpc]` handler is still listed as an endpoint because it is a real route file.

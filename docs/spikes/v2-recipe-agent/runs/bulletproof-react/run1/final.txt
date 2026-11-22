@@ -1,8 +1,0 @@
-The recipe is at `.gantry/recipe.json`, and the dry-run says ACCEPTED with 18 routes listed, 0 endpoints and 0 tables.
-
-- **Stack:** `bulletproof-react` holds three frontend apps: Next.js app router, Next.js pages router and React Router (Vite).
-- **Routes:** 9 URLs from the Next.js app router (page files under `apps/nextjs-app/src/app`) and 9 from the Vite app, including the catch-all `*`. The Next.js pages rule excludes `_app` and `404`, which aren't real URLs. The Vite app's URLs are hard-coded per route file, because its router config builds paths from `paths.*` and the recipe has no way to read those.
-- **Pages router:** the dry-run list shows no `nextjs-pages` entries, but the Next.js pages rule did match 9 files before I narrowed its file list. The pages router has the same URLs as the app router, so they're probably collapsed by URL. I didn't check that.
-- **Endpoints and tables:** I found none. The only mock database is `@mswjs/data` under `testing/mocks`, which is excluded.
-
-The Vite route rules are static: a new Vite route file won't be picked up until someone adds a rule for it.

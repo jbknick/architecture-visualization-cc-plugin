@@ -1,6 +1,0 @@
-I wrote `.gantry/recipe.json`. The dry-run says `ACCEPTED`, and every example passes.
-
-- **Stack:** the repo has three front-end apps and no backend or database schema. They are a Next.js app router app (`apps/nextjs-app`), a Next.js pages router app (`apps/nextjs-pages`) and a React Router app (`apps/react-vite`).
-- **Routes:** I did not re-read the full route list after the last fix. Before it, the list had 21 entries, including `/_app` and `/index` from the pages app, which the fix is meant to drop. The last check only filtered for the pages app and `ACCEPTED`. There, `/404` is listed, but I did not confirm `/_app` and `/index` are gone.
-- **Endpoints and tables:** both are 0. The only API handlers and database code are mocks under `src/testing/mocks`, which are excluded.
-- **Not expressed:** the React Router app builds its routes from `paths.*` constants in `router.tsx`. I mapped its route files to URLs with hard-coded rewrites instead, and I wrote its catch-all route as `/*`. If a route file is added or renamed there, the recipe needs a manual update.

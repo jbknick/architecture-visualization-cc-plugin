@@ -1,9 +1,0 @@
-I wrote `.gantry/recipe.json`, and `gantry recipe check` passes (`recipe ok`, 2 examples passed). The recipe covers only the React Vite routes. Everything else in the repository is left out, mostly because the engine's rule format can't express it.
-
-- **Stack:** three frontend apps, `react-vite` (React Router), `nextjs-app` (App Router) and `nextjs-pages` (Pages Router). There is no real backend or database. The only API handlers and the `db.ts` files are MSW mocks under `src/testing/mocks`, which are excluded.
-- **Routes:** the one rule, `react-router-routes`, reads `createBrowserRouter` in `apps/react-vite/src/app/router.tsx`. It matches 10 route objects, which agrees with my count: landing, register, login, the app root, 5 app children, and the `*` catch-all.
-- **Endpoints, tables, reads, writes:** none expected, since there is no backend or database.
-
-**Not expressed:**
-- The routes in `nextjs-app` (9 `page.tsx` files) and `nextjs-pages` (9 pages, not counting `_app.tsx`) have no rule. I listed `fs-routes` as a helper, but I don't know whether the engine's built-in Next.js handling picks those files up, and I never checked. The expected route total of 10 counts only the Vite routes.
-- The `path` values in the Vite rule are references like `paths.app.discussions.path`. I expect the engine to resolve them through `config/paths`, but I didn't check how they come out.
