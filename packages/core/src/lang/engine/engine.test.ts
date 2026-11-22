@@ -67,7 +67,9 @@ const TypingSchema = z.strictObject({
   implements: z.enum(["structural", "nominal"]),
   enclosing: z.strictObject({ self: strings, parent: strings }).optional(),
   arity: z.strictObject({ arguments: field, parameters: strings, variadic: strings }).optional(),
-  construct: z.strictObject({ kind: field, type: field, arguments: field }).optional(),
+  construct: z
+    .strictObject({ kind: field, type: field, arguments: field, body: field.optional() })
+    .optional(),
   generics: field,
   vars: z.strictObject({ declarations: strings, specs: strings, type: field, value: field }),
   unnamed: strings,

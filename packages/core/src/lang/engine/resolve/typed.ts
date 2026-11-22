@@ -9,7 +9,7 @@ import { ImportIndex } from "./imports.js";
 import { Reader } from "./read.js";
 import { LastTree, withTree } from "./source.js";
 import { type FileInfo, type MethodHit, type Named, type Ty, TypeIndex, type VarInfo } from "./typeindex.js";
-import type { CallExpr, Callee, Decl, Expr, Results, TypeRef } from "./typing.js";
+import type { CallExpr, Callee, Decl, Expr, LocalBody, Results, TypeRef } from "./typing.js";
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -180,7 +180,7 @@ export class TypeCalls implements CallResolver {
     if (!place || !node) return null;
     const fd = this.reader.functionAt(place.root, start, end);
     let scope: Scope = new Map();
-    this.reader.setOwner(fd?.owner ?? null);
+    this.reader.setOwner(fd?.owner ?? null, fd?.node ?? null);
     if (fd) {
       const key = fd.node.range().start.index;
       const hit = place.scopes.get(key);
@@ -278,8 +278,28 @@ export class TypeCalls implements CallResolver {
     for (const o of index.chain(env.owner)) {
       const t = index.fieldType(o, name);
       if (t) return t;
+      // A name the type may inherit from a type outside the repo is not one of the types around it.
+      if (index.hasUnknownSupers(o)) return null;
     }
     return null;
+  }
+
+  /** The types of the repo a local body extends; null when it extends one that is not (what it inherits is not known). */
+  private bodySupers(body: LocalBody, env: Env): Named[] | null {
+    const index = this.idx();
+    const out: Named[] = [];
+    for (const ref of body.supers) {
+      const t = named(index.canon(index.resolveType(ref, env.file)));
+      if (!t || !index.typeInfo(t)) return null;
+      out.push(t);
+    }
+    return out;
+  }
+
+  /** The type `this` has in a local body: the one type it extends; unknown when it extends none or several. */
+  private bodySelf(body: LocalBody, env: Env): Ty | null {
+    const supers = this.bodySupers(body, env);
+    return supers?.length === 1 ? (supers[0] ?? null) : null;
   }
 
   /** The type a bare name denotes when it is not a variable (`Helper.make()`): a type of the repo, for a pack whose code sits in type bodies. */
@@ -297,14 +317,20 @@ export class TypeCalls implements CallResolver {
       case "name": {
         const l = lookupLocal(env.scope, e.name, e.pos);
         if (l) return this.typeOfLocal(l, env);
+        if (e.body) {
+          // In a local body only what its supertypes declare is known; the type around it is not searched.
+          const t = this.bodySelf(e.body, env);
+          return t?.k === "named" ? index.fieldType(t, e.name) : null;
+        }
         const f = this.fieldInScope(e.name, env);
         if (f) return f;
         const v = env.file.pkg.vars.get(e.name);
         return v ? this.typeOfVar(v, depth) : null;
       }
       case "self":
-        return env.owner;
+        return e.body ? this.bodySelf(e.body, env) : env.owner;
       case "parent": {
+        if (e.body) return this.bodySelf(e.body, env);
         const ti = env.owner ? index.typeInfo(env.owner) : undefined;
         const sup = ti?.supers.find((s) => s.edge === "extends");
         return ti && sup ? index.resolveType(sup.type, ti.file) : null;
@@ -375,12 +401,25 @@ export class TypeCalls implements CallResolver {
   }
 
   /** The methods a bare name can mean inside a type body: of the type itself or one around it, else a static import. */
-  private bareHits(name: string, args: number | null, env: Env): MethodHit[] {
+  private bareHits(name: string, args: number | null, env: Env, body?: LocalBody): MethodHit[] {
     const idx = this.idx();
+    if (body) {
+      // A method the body declares has no symbol; what its supertypes declare comes next, and only when all are known.
+      if (body.members.includes(name)) return [];
+      for (const ref of body.supers) {
+        const t = named(idx.canon(idx.resolveType(ref, env.file)));
+        if (!t || !idx.typeInfo(t)) return [];
+        const hits = idx.lookupMethods(t, name, args);
+        if (hits.length > 0) return hits;
+        if (idx.hasUnknownSupers(t)) return [];
+      }
+    }
     if (env.owner) {
       for (const o of idx.chain(env.owner)) {
         const hits = idx.lookupMethods(o, name, args);
         if (hits.length > 0) return hits;
+        // A name the type may inherit from a type outside the repo is not a member of the types around it.
+        if (idx.hasUnknownSupers(o)) return [];
       }
     }
     for (const t of [...(env.file.statics.get(name) ?? []), ...env.file.staticDemand]) {
@@ -405,7 +444,7 @@ export class TypeCalls implements CallResolver {
     }
     if (callee.k === "name") {
       if (this.typing.enclosing) {
-        const hits = this.bareHits(callee.name, args, env);
+        const hits = this.bareHits(callee.name, args, env, callee.body);
         if (hits.length > 0) return this.fromHits(hits, callee.line, env);
       } else if (lookupLocal(env.scope, callee.name, callee.pos)) return none(callee.line);
       const f = pkg.funcs.get(callee.name);
@@ -421,6 +460,8 @@ export class TypeCalls implements CallResolver {
       return none(callee.line);
     }
     const op = callee.operand;
+    // `this.m()` in a local body that declares `m` itself calls a method that has no symbol.
+    if (op?.k === "self" && op.body?.members.includes(callee.name)) return none(callee.line);
     const plain = op?.k === "name" && !lookupLocal(env.scope, op.name, op.pos);
     if (op?.k === "name" && plain) {
       const path = env.file.imports.get(op.name);

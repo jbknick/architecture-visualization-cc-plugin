@@ -12,6 +12,7 @@ import type {
   Expr,
   FileDecls,
   FunctionBody,
+  LocalBody,
   Results,
   TypeDecl,
   TypeRef,
@@ -53,6 +54,8 @@ export class Reader {
   private readonly typing: TypingRules;
   /** The dotted name of the type whose body the types being read sit in; null at the top of a file. */
   private owner: string | null = null;
+  /** The function or method whose body is being read; null outside one. */
+  private fn: SyntaxNode | null = null;
 
   constructor(private readonly pack: LanguagePack) {
     if (!pack.nodes.typing) throw new Error(`${pack.id}: the pack has no typing rules`);
@@ -155,9 +158,10 @@ export class Reader {
     const e = this.typing.expressions;
     const kind = x.kind();
     if (this.isCall(kind)) return { k: "call", call: this.call(x, depth + 1) };
-    if (this.typing.enclosing?.self.includes(kind)) return { k: "self" };
-    if (this.typing.enclosing?.parent.includes(kind)) return { k: "parent" };
-    if (e.names.includes(kind)) return { k: "name", name: x.text(), pos: x.range().start.index };
+    if (this.typing.enclosing?.self.includes(kind)) return { k: "self", ...this.bodyOf(x) };
+    if (this.typing.enclosing?.parent.includes(kind)) return { k: "parent", ...this.bodyOf(x) };
+    if (e.names.includes(kind))
+      return { k: "name", name: x.text(), pos: x.range().start.index, ...this.bodyOf(x) };
     const through = e.through.find((r) => r.kind === kind);
     if (through) {
       if (
@@ -192,8 +196,43 @@ export class Reader {
   private operand(node: SyntaxNode | null, depth: number): Expr | null {
     const x = unparen(this.typing, node);
     if (x && this.typing.callee.operands.includes(x.kind()))
-      return { k: "name", name: x.text(), pos: x.range().start.index };
+      return { k: "name", name: x.text(), pos: x.range().start.index, ...this.bodyOf(x) };
     return this.expr(x, depth);
+  }
+
+  /**
+   * The body of a construction expression or of a type declared inside the function that holds `x`, when `x` is inside
+   * one (the innermost): its code is not in the type around the function. Empty otherwise.
+   */
+  private bodyOf(x: SyntaxNode): { body?: LocalBody } {
+    const t = this.typing;
+    const fn = this.fn;
+    if (!fn || !t.enclosing) return {};
+    const same = (a: SyntaxNode, b: SyntaxNode): boolean =>
+      a.range().start.index === b.range().start.index && a.range().end.index === b.range().end.index;
+    const names = (body: SyntaxNode): string[] =>
+      membersOf(this.pack, body).flatMap((m) => {
+        const rule = this.pack.nodes.method.find((r) => r.kind === m.kind());
+        const name = rule ? m.field(rule.name)?.text() : undefined;
+        return name ? [name] : [];
+      });
+    let child = x;
+    for (let p = x.parent(); p && !same(p, fn); child = p, p = p.parent()) {
+      const created = t.construct;
+      if (created?.body && p.kind() === created.kind && child.kind() === created.body)
+        return { body: { supers: [this.typeRef(p.field(created.type))], members: names(child) } };
+      const rule = bodiedRule(this.pack, p.kind());
+      const body = rule ? p.field(rule.body) : null;
+      if (body && same(body, child)) {
+        const supers = t.supertypes.flatMap((s) =>
+          (s.field ? p.fieldChildren(s.field) : p.namedChildren().filter((c) => c.kind() === s.kind)).flatMap(
+            (h) => this.typesIn(h).map((ty) => this.typeRef(ty)),
+          ),
+        );
+        return { body: { supers, members: names(body) } };
+      }
+    }
+    return {};
   }
 
   /** What an expression calls. With `strip`, an instantiation (`f[T]`) stands for what it instantiates. */
@@ -216,14 +255,20 @@ export class Reader {
     if (!fn) return { k: "none", line };
     const kind = fn.kind();
     if (t.callee.names.includes(kind))
-      return { k: "name", name: fn.text(), pos: fn.range().start.index, line };
+      return { k: "name", name: fn.text(), pos: fn.range().start.index, line, ...this.bodyOf(fn) };
     const member = t.callee.members.find((r) => r.kind === kind);
     if (member) {
       const nameNode = fn.field(member.name);
       const operand = fn.field(member.operand);
       // A member node without an operand names something in scope: a bare name.
       if (!operand && nameNode)
-        return { k: "name", name: nameNode.text(), pos: nameNode.range().start.index, line };
+        return {
+          k: "name",
+          name: nameNode.text(),
+          pos: nameNode.range().start.index,
+          line,
+          ...this.bodyOf(fn),
+        };
       return {
         k: "member",
         operand: this.operand(operand, depth + 1),
@@ -278,8 +323,9 @@ export class Reader {
   }
 
   /** Sets the type body the types read next sit in (a lookup by place reads inside a function of a type). */
-  setOwner(owner: string | null): void {
+  setOwner(owner: string | null, fn: SyntaxNode | null = null): void {
     this.owner = owner;
+    this.fn = fn;
   }
 
   // --- function bodies ----------------------------------------------------------------------
@@ -392,6 +438,7 @@ export class Reader {
       const body = f.rule.body ? f.node.field(f.rule.body) : null;
       if (!body) continue;
       this.owner = f.owner;
+      this.fn = f.node;
       out.push({
         start: f.node.range().start.index,
         owner: f.owner,
@@ -400,6 +447,7 @@ export class Reader {
       });
     }
     this.owner = null;
+    this.fn = null;
     return out;
   }
 

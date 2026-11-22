@@ -113,7 +113,12 @@ export const javaPack = {
         parameters: ["formal_parameter", "spread_parameter"],
         variadic: ["spread_parameter"],
       },
-      construct: { kind: "object_creation_expression", type: "type", arguments: "arguments" },
+      construct: {
+        kind: "object_creation_expression",
+        type: "type",
+        arguments: "arguments",
+        body: "class_body",
+      },
       generics: "type_parameters",
       vars: { declarations: [], specs: [], type: "type", value: "value" },
       unnamed: [],

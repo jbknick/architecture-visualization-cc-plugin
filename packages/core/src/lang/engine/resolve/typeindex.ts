@@ -287,6 +287,17 @@ export class TypeIndex {
     return chainOf(owner.name).map((name) => ({ k: "named", pkg: owner.pkg, name }));
   }
 
+  /** True when the type, or a type in its chain of supertypes, is not a type of the repo: what it inherits is not known. */
+  hasUnknownSupers(r: Named, depth = 0): boolean {
+    const c = this.canon(r);
+    const ti = c?.k === "named" ? this.typeInfo(c) : undefined;
+    if (!ti || depth > 8) return true;
+    return ti.supers.some((s) => {
+      const sr = this.resolveType(s.type, ti.file);
+      return sr?.k !== "named" || this.hasUnknownSupers(sr, depth + 1);
+    });
+  }
+
   /** Follows aliases (`type A = B`) to the target. */
   canon(t: Ty | null, depth = 0): Ty | null {
     if (!t || depth > 8 || t.k !== "named") return t;

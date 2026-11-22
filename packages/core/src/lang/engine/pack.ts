@@ -159,8 +159,11 @@ export interface TypingRules {
    * them that take any number of arguments.
    */
   arity?: { arguments: string; parameters: readonly string[]; variadic: readonly string[] };
-  /** An expression that creates a value by calling a constructor: its kind, the field of the type and of the arguments. */
-  construct?: { kind: string; type: string; arguments: string };
+  /**
+   * An expression that creates a value by calling a constructor: its kind, the field of the type and of the arguments,
+   * and the kind of its child that holds a body of members, which makes the value an instance of a subtype of the type.
+   */
+  construct?: { kind: string; type: string; arguments: string; body?: string };
   /** Field of a type declaration that holds its type parameters. */
   generics: string;
   /** Package-level variables: declarations, specs, and the fields of a spec that hold its type and its values. */

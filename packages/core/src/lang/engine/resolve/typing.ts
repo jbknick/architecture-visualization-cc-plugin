@@ -11,9 +11,19 @@ export type TypeRef =
   | { k: "seq"; elem: TypeRef | null }
   | { k: "map"; key: TypeRef | null; elem: TypeRef | null };
 
+/**
+ * The type body a site is in when that body belongs to no declared type of the index: the body of a construction
+ * expression (a subtype of the type created) or of a type declared inside a function. `supers` are the types it extends,
+ * `members` the names of the methods it declares itself.
+ */
+export interface LocalBody {
+  supers: (TypeRef | null)[];
+  members: string[];
+}
+
 /** The thing a call site calls. `line` is the 1-based line used as evidence. */
 export type Callee =
-  | { k: "name"; name: string; pos: number; line: number }
+  | { k: "name"; name: string; pos: number; line: number; body?: LocalBody }
   | { k: "member"; operand: Expr | null; name: string; line: number }
   | { k: "new"; type: TypeRef | null; line: number }
   | { k: "none"; line: number };
@@ -30,14 +40,14 @@ export interface CallExpr {
 
 /** An expression, as far as its type is read. `pos` is the source offset of a name. */
 export type Expr =
-  | { k: "name"; name: string; pos: number }
+  | { k: "name"; name: string; pos: number; body?: LocalBody }
   | { k: "through"; of: Expr | null }
   | { k: "typed"; type: TypeRef | null }
   | { k: "elem"; of: Expr | null }
   | { k: "member"; of: Expr | null; name: string }
   | { k: "call"; call: CallExpr }
-  | { k: "self" }
-  | { k: "parent" };
+  | { k: "self"; body?: LocalBody }
+  | { k: "parent"; body?: LocalBody };
 
 /** Where a declared name gets its type. */
 export type DeclSource =

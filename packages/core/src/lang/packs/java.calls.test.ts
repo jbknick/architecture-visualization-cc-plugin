@@ -207,6 +207,90 @@ describe("java calls on small repos", () => {
     ]);
   });
 
+  const callsOf = (edges: Edge[]): string[] =>
+    edges.filter((e) => e.kind === "calls").map((e) => `${e.src} -> ${e.dst} ${e.conf}`);
+
+  it("types an anonymous class body as a subtype of the type created, not as the class around it", async () => {
+    const edges = await repo({
+      "A.java": `package p;
+interface Adapter { void write(String s); void flush(); }
+class Outer {
+  void flush() {}
+  Adapter make() {
+    return new Adapter() {
+      public void write(String s) { flush(); this.flush(); }
+    };
+  }
+}
+`,
+    });
+    expect(callsOf(edges)).toEqual(["A.java#Outer.make -> A.java#Adapter.flush high"]);
+  });
+
+  it("gives no edge for a method an anonymous class declares itself, or for one of a type outside the repo", async () => {
+    const edges = await repo({
+      "A.java": `package p;
+interface Adapter { void flush(); }
+class Outer {
+  void flush() {}
+  void own() {
+    new Adapter() { public void flush() {} void go() { flush(); this.flush(); } };
+  }
+  void external() {
+    new Thread() { public void run() { flush(); this.flush(); } };
+  }
+}
+`,
+    });
+    expect(callsOf(edges)).toEqual([]);
+  });
+
+  it("looks outward from an anonymous body only when every type it extends is known", async () => {
+    const edges = await repo({
+      "A.java": `package p;
+interface Adapter { void write(String s); }
+class Outer {
+  void log() {}
+  void make() { new Adapter() { public void write(String s) { log(); } }; }
+}
+`,
+    });
+    expect(callsOf(edges)).toEqual(["A.java#Outer.make -> A.java#Outer.log high"]);
+  });
+
+  it("gives a bare name no edge when the class extends a type outside the repo and does not declare it", async () => {
+    const edges = await repo({
+      "A.java": `package p;
+class Outer2 {
+  void add(String s) {}
+  class Bag extends java.util.ArrayList<String> { void put(String s) { add(s); } }
+  class Bag2 extends ArrayList<String> { void put(String s) { add(s); own(); } void own() {} }
+  class Fine { void put(String s) { add(s); } }
+}
+`,
+    });
+    expect(callsOf(edges)).toEqual([
+      "A.java#Outer2.Bag2.put -> A.java#Outer2.Bag2.own high",
+      "A.java#Outer2.Fine.put -> A.java#Outer2.add high",
+    ]);
+  });
+
+  it("types the body of a class declared inside a method by its supertypes", async () => {
+    const edges = await repo({
+      "A.java": `package p;
+class Base { void ping() {} }
+class Outer {
+  void ping() {}
+  void helper() {}
+  void known() { class L extends Base { void a() { ping(); this.ping(); } } }
+  void unknown() { class M extends Thing { void a() { ping(); } } }
+  void own() { class N extends Base { void helper() {} void a() { helper(); this.helper(); } } }
+}
+`,
+    });
+    expect(callsOf(edges)).toEqual(["A.java#Outer.known -> A.java#Base.ping high"]);
+  });
+
   it("types a `var` local by its constructor and a local by its declared type", async () => {
     const edges = await repo({
       "T.java":
