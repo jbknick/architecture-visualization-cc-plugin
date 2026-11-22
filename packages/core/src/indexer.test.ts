@@ -27,6 +27,7 @@ type Name =
   | "go-basic"
   | "bundler-aliases"
   | "ts-references"
+  | "tsconfig-extends-workspace"
   | "no-workspace-tool";
 const fixtures: MaterializedFixture[] = [];
 const dataDirs: string[] = [];
@@ -64,6 +65,7 @@ describe("indexRepo + dumpGraph snapshots", () => {
     "go-basic",
     "bundler-aliases",
     "ts-references",
+    "tsconfig-extends-workspace",
     "no-workspace-tool",
   ] as const)("%s dump matches the committed snapshot", async (name) => {
     const { paths } = await setup(name);

@@ -2,6 +2,7 @@
 // resolved against a map scene (tree indices). No DOM, no randomness.
 import type {
   ChangeKind,
+  GraphEdge,
   GraphNode,
   ReviewConsumer,
   ReviewConsumers,
@@ -201,6 +202,7 @@ export interface LayerPaint {
 
 export const DIRECT_HEADING = "Directly affected";
 export const POTENTIAL_HEADING = "Potentially affected";
+export const REACHABLE_HEADING = "Reachable";
 
 export const USE_WORDS: Record<UseKind, string> = {
   calls: "calls",
@@ -237,7 +239,13 @@ export function focusedChange(
   const by = consumersById(review);
   if (by.has(sel)) return sel;
   const c = stored ? by.get(stored) : undefined;
-  if (c && [...c.direct, ...c.potential].some((x) => x.id === sel)) return stored;
+  if (
+    c &&
+    [...c.direct, ...c.potential, ...c.reachable, ...c.hubs.flatMap((h) => h.members)].some(
+      (x) => x.id === sel,
+    )
+  )
+    return stored;
   return null;
 }
 
@@ -403,12 +411,16 @@ export function ringFocus(
   if (!c || !id) return null;
   const centre = placedId(review?.layer, id) ?? id;
   const direct = new Set(c.direct.flatMap((x) => (x.node ? [x.node] : [])));
-  const potential = new Set(
-    c.potential.flatMap((x) => (x.node && !direct.has(x.node) && x.node !== centre ? [x.node] : [])),
-  );
+  // Reachable consumers and hub nodes take the potential ones' soft tint.
+  const softer = [...c.potential, ...c.reachable];
+  const potential = new Set([
+    ...softer.flatMap((x) => (x.node && !direct.has(x.node) && x.node !== centre ? [x.node] : [])),
+    ...reachableHubs(c.hubs).flatMap((h) => (h.node ? [hubNodeId(h.hub)] : [])),
+  ]);
   const pairs = new Map<string, "strong" | "soft">();
   for (const d of direct) pairs.set(`${d}->${centre}`, "strong");
-  for (const p of c.potential) {
+  for (const h of reachableHubs(c.hubs)) if (h.node) pairs.set(`${hubNodeId(h.hub)}->${h.node}`, "soft");
+  for (const p of softer) {
     if (p.node && p.nextNode && !pairs.has(`${p.node}->${p.nextNode}`))
       pairs.set(`${p.node}->${p.nextNode}`, "soft");
   }
@@ -428,7 +440,91 @@ export function ringFocus(
 export function ringTitle(hop: number): string {
   if (hop === 0) return "Changed in this range";
   if (hop === 1) return "Call the changed code directly";
+  if (hop >= REACHABLE_RING) return `${REACHABLE_RING} or more calls away`;
   return `${hop} calls away`;
+}
+
+/** The outer ring: every consumer at this hop or farther, and the hubs. The server's `REACHABLE_RING`. */
+export const REACHABLE_RING = 4;
+/** The hubs of the reachable tier; one of hop 2 or 3 belongs to the potential tier and has no node on the outer ring. */
+export const reachableHubs = <H extends { hop: number }>(hubs: readonly H[]): H[] =>
+  hubs.filter((h) => h.hop >= REACHABLE_RING);
+/** The id of the node that stands for a hub on the outer ring. */
+export const hubNodeId = (hub: string): string => `hub:${hub}`;
+
+const cmpStr = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+const round1 = (n: number): number => Math.round(n * 10) / 10;
+
+/**
+ * The outer ring with the members of the `expanded` hubs (hub node ids) drawn beside their hubs, grouped by file like
+ * every ring, plus a dashed edge from each member to the node one step nearer. The slots, spacing and radius follow
+ * the server's `ringLayout`; nothing changes while no hub is expanded.
+ */
+export function withHubMembers(
+  nodes: readonly GraphNode[],
+  edges: readonly GraphEdge[],
+  review: ReviewData | null | undefined,
+  expanded: ReadonlySet<string>,
+): { nodes: GraphNode[]; edges: GraphEdge[] } {
+  if (expanded.size === 0 || !review) return { nodes: [...nodes], edges: [...edges] };
+  const have = new Set(nodes.map((n) => n.id));
+  const added: GraphNode[] = [];
+  const extra = new Map<string, GraphEdge>();
+  for (const cc of [...review.changes, ...review.files]) {
+    for (const h of reachableHubs(cc.consumers.hubs)) {
+      const hubNode = hubNodeId(h.hub);
+      if (!expanded.has(hubNode)) continue;
+      for (const m of h.members) {
+        const dst = m.nextNode ?? hubNode;
+        const id = `${m.id}->${dst}`;
+        if (!extra.has(id) && m.id !== dst)
+          extra.set(id, { id, src: m.id, dst, kind: m.uses[0] ?? "calls", weight: 1, confidence: "low" });
+        if (have.has(m.id)) continue;
+        have.add(m.id);
+        added.push({
+          id: m.id,
+          kind: m.kind,
+          label: m.name,
+          path: m.path,
+          group: m.path,
+          size: 1,
+          hop: REACHABLE_RING,
+        });
+      }
+    }
+  }
+  const ring = [...nodes.filter((n) => (n.hop ?? 0) === REACHABLE_RING), ...added]
+    .map((n) => ({ n, group: n.group ?? "" }))
+    .sort((a, b) => cmpStr(a.group, b.group) || cmpStr(a.n.id, b.n.id));
+  const at = new Map<string, number>();
+  let slot = 0;
+  let last: string | undefined;
+  for (const it of ring) {
+    if (last !== undefined && it.group !== last) slot += 1;
+    at.set(it.n.id, slot);
+    slot += 1;
+    last = it.group;
+  }
+  const slots = slot + (new Set(ring.map((x) => x.group)).size > 1 ? 1 : 0);
+  const inner = Math.max(
+    0,
+    ...nodes.filter((n) => (n.hop ?? 0) < REACHABLE_RING).map((n) => Math.hypot(n.x ?? 0, n.y ?? 0)),
+  );
+  const r = round1(Math.max(inner + 150, (slots * 30) / (2 * Math.PI)));
+  const placed = new Map<string, GraphNode>();
+  for (const { n } of ring) {
+    const a = -Math.PI / 2 + (2 * Math.PI * ((at.get(n.id) ?? 0) + 0.5)) / Math.max(1, slots);
+    placed.set(n.id, { ...n, x: round1(r * Math.cos(a)), y: round1(r * Math.sin(a)) });
+  }
+  const all = [
+    ...nodes.map((n) => placed.get(n.id) ?? n),
+    ...added.map((n) => placed.get(n.id) as GraphNode),
+  ];
+  all.sort((a, b) => (a.hop ?? 0) - (b.hop ?? 0) || cmpStr(a.id, b.id));
+  const out = [...edges];
+  const ids = new Set(edges.map((e) => e.id));
+  for (const e of extra.values()) if (!ids.has(e.id) && have.has(e.dst)) out.push(e);
+  return { nodes: all, edges: out };
 }
 
 export const RINGS_CAPTION = "Centre: what changed. Each ring out: code that calls the ring inside it.";

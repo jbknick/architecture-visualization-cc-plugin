@@ -32,6 +32,8 @@ export interface GraphNode {
   change?: string;
   /** Review view, rings mode: the changed symbol's signature differs between the two sides. */
   signatureChanged?: boolean;
+  /** Review view, rings mode: a hub node (`kind: "hub"`) stands for this many consumers. */
+  count?: number;
   /**
    * Cross-stack views (#48): the column or swimlane the node is drawn in (0 = leftmost). The `columns` and
    * `tree-lr` layouts place nodes by it; `elk-layered` keeps it as an ELK partition.
