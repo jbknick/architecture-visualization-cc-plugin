@@ -30,12 +30,14 @@ const oneLine = (s: string, max: number): string => {
 };
 
 export const dirOf = (p: string): string => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
+/** A repo name as one path segment: `%` and `/` are escaped, so `acme/api` and `acme` + `api/` never meet. */
+const repoSegment = (repo: string): string => repo.replace(/%/g, "%25").replace(/\//g, "%2F");
 /**
- * The catalog key of a directory: the directory itself when the store has one repo, `<repo>/<dir>` when it has
- * several (`<repo>/` for the repo's root).
+ * The catalog key of a directory: the directory itself when the store has one repo, `<repo segment>/<dir>` when it
+ * has several (`<repo segment>/` for the repo's root).
  */
 export const catalogKey = (repo: string | undefined, dir: string): string =>
-  repo === undefined ? dir : dir === "" ? `${repo}/` : `${repo}/${dir}`;
+  repo === undefined ? dir : dir === "" ? `${repoSegment(repo)}/` : `${repoSegment(repo)}/${dir}`;
 /** Catalog file (relative to the catalog dir) that lists the functions defined directly in a directory (`catalogKey`). */
 export const catalogFileFor = (key: string): string =>
   key === "" ? ROOT_CATALOG_FILE : key.endsWith("/") ? `${key}${ROOT_CATALOG_FILE}` : `${key}.md`;
@@ -156,8 +158,8 @@ function removeWithParents(file: string, stop: string): void {
 /**
  * Writes the catalog under `paths.catalogDir` (the data dir, never the repo): one markdown file per directory
  * that defines function-like symbols (`catalog/packages/utils/src.md`), and `catalog/INDEX.md` listing workspaces
- * with counts. With more than one repo in the store every path starts with the repo name (`catalog/acme/api/src.md`,
- * a repo's root-level functions in `catalog/acme/api/_root.md`). A hash of each file's content is kept in `meta` (`catalog_hash:*`); a file is rewritten only when
+ * with counts. With more than one repo in the store every path starts with the repo name as one directory, `/` written
+ * `%2F` (`catalog/acme%2Fapi/src.md`, a repo's root-level functions in `catalog/acme%2Fapi/_root.md`). A hash of each file's content is kept in `meta` (`catalog_hash:*`); a file is rewritten only when
  * its hash changed or the file is missing, and files of directories that no longer have functions are deleted.
  * Returns how many files were written.
  */

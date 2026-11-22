@@ -33,6 +33,8 @@ export interface HybridOptions extends Omit<SearchOptions, "descriptions"> {
 export const HYBRID_CANDIDATES = 50;
 /** Reciprocal rank fusion constant. */
 export const RRF_K = 60;
+/** Most nearest vectors read when filters leave too few of the first `HYBRID_CANDIDATES`. */
+const MAX_VECTOR_CANDIDATES = 4000;
 /**
  * Smallest cosine similarity between the query and a description vector for that vector hit to be fused. Nearest
  * neighbours below it are noise (the nearest vectors of a query that matches nothing are still returned), and
@@ -113,9 +115,6 @@ async function vectorRanking(store: Store, query: string, opts: HybridOptions): 
     return [];
   }
   if (!vector || vector.every((x) => x === 0)) return [];
-  const near = knn(store, "vec_descriptions", vector, HYBRID_CANDIDATES);
-  if (near.length === 0) return [];
-
   let workspaceId: string | undefined;
   if (opts.workspace !== undefined) {
     const ws = store.listWorkspaces().find((w) => w.id === opts.workspace || w.name === opts.workspace);
@@ -137,13 +136,24 @@ async function vectorRanking(store: Store, query: string, opts: HybridOptions): 
     const key = contentKey(s.exactHash);
     byKey.set(key, [...(byKey.get(key) ?? []), s.id]);
   }
-  const ids: string[] = [];
-  for (const n of near) {
-    if (n.cosine < VECTOR_MIN_COSINE) break; // `near` is nearest first: the rest are further away
-    for (const id of (byKey.get(n.contentKey) ?? []).sort(cmp)) {
-      if (ids.length >= HYBRID_CANDIDATES) return ids;
-      ids.push(id);
+  // The nearest vectors are cut before the filters apply, so when the first 50 hold too few symbols that pass them,
+  // ask for more, until 50 are found, the next vector is below the cosine floor, or the table has no more.
+  let k = HYBRID_CANDIDATES;
+  for (;;) {
+    const near = knn(store, "vec_descriptions", vector, k);
+    const ids: string[] = [];
+    let exhausted = near.length < k;
+    for (const n of near) {
+      if (n.cosine < VECTOR_MIN_COSINE) {
+        exhausted = true; // `near` is nearest first: the rest are further away
+        break;
+      }
+      for (const id of (byKey.get(n.contentKey) ?? []).sort(cmp)) {
+        if (ids.length >= HYBRID_CANDIDATES) return ids;
+        ids.push(id);
+      }
     }
+    if (ids.length >= HYBRID_CANDIDATES || exhausted || k >= MAX_VECTOR_CANDIDATES) return ids;
+    k = Math.min(k * 4, MAX_VECTOR_CANDIDATES);
   }
-  return ids;
 }
