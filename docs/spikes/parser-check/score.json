@@ -1,0 +1,3906 @@
+{
+  "java": {
+    "files": [
+      {
+        "path": "extras/src/main/java/com/google/gson/interceptors/InterceptorFactory.java",
+        "hand": {
+          "function": 0,
+          "method": 4,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 9,
+          "new": 2,
+          "macro": 0,
+          "import": 7,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 3,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 9,
+          "new": 1,
+          "macro": 0,
+          "import": 0,
+          "other": 1
+        },
+        "ast": {
+          "function": 0,
+          "method": 4,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 9,
+          "new": 2,
+          "macro": 0,
+          "import": 7,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "extras/src/test/java/com/google/gson/typeadapters/UtcDateTypeAdapterTest.java",
+        "hand": {
+          "function": 0,
+          "method": 6,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 43,
+          "new": 7,
+          "macro": 0,
+          "import": 11,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 6,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 43,
+          "new": 7,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 6,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 43,
+          "new": 7,
+          "macro": 0,
+          "import": 11,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "gson/src/main/java/com/google/gson/internal/NumberLimits.java",
+        "hand": {
+          "function": 0,
+          "method": 4,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 6,
+          "new": 4,
+          "macro": 0,
+          "import": 2,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 3,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 6,
+          "new": 4,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 4,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 6,
+          "new": 4,
+          "macro": 0,
+          "import": 2,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "gson/src/main/java/com/google/gson/internal/PreJava9DateFormatProvider.java",
+        "hand": {
+          "function": 0,
+          "method": 4,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 2,
+          "new": 3,
+          "macro": 0,
+          "import": 3,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 3,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 2,
+          "new": 3,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 4,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 2,
+          "new": 3,
+          "macro": 0,
+          "import": 3,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java",
+        "hand": {
+          "function": 0,
+          "method": 5,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 21,
+          "new": 3,
+          "macro": 0,
+          "import": 14,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 3,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 21,
+          "new": 2,
+          "macro": 0,
+          "import": 0,
+          "other": 1
+        },
+        "ast": {
+          "function": 0,
+          "method": 5,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 21,
+          "new": 3,
+          "macro": 0,
+          "import": 14,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "gson/src/main/java/com/google/gson/internal/bind/EnumTypeAdapter.java",
+        "hand": {
+          "function": 0,
+          "method": 5,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 27,
+          "new": 6,
+          "macro": 0,
+          "import": 14,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 4,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 27,
+          "new": 3,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 5,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 27,
+          "new": 6,
+          "macro": 0,
+          "import": 14,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "gson/src/main/java/com/google/gson/internal/sql/SqlTimestampTypeAdapter.java",
+        "hand": {
+          "function": 0,
+          "method": 4,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 5,
+          "new": 3,
+          "macro": 0,
+          "import": 9,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 3,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 5,
+          "new": 3,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 4,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 5,
+          "new": 3,
+          "macro": 0,
+          "import": 9,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "gson/src/test/java/com/google/gson/DefaultInetAddressTypeAdapterTest.java",
+        "hand": {
+          "function": 0,
+          "method": 5,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 23,
+          "new": 1,
+          "macro": 0,
+          "import": 5,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 5,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 23,
+          "new": 1,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 5,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 23,
+          "new": 1,
+          "macro": 0,
+          "import": 5,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "gson/src/test/java/com/google/gson/JsonArrayAsListSuiteTest.java",
+        "hand": {
+          "function": 0,
+          "method": 5,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 6,
+          "new": 7,
+          "macro": 0,
+          "import": 10,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 5,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 6,
+          "new": 6,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 5,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 6,
+          "new": 7,
+          "macro": 0,
+          "import": 10,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "gson/src/test/java/com/google/gson/functional/ExposeFieldsTest.java",
+        "hand": {
+          "function": 0,
+          "method": 14,
+          "class": 6,
+          "interface": 1,
+          "module": 0,
+          "call": 45,
+          "new": 12,
+          "macro": 0,
+          "import": 9,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 11,
+          "class": 6,
+          "interface": 1,
+          "module": 0,
+          "call": 45,
+          "new": 12,
+          "macro": 0,
+          "import": 0,
+          "other": 1
+        },
+        "ast": {
+          "function": 0,
+          "method": 14,
+          "class": 6,
+          "interface": 1,
+          "module": 0,
+          "call": 45,
+          "new": 12,
+          "macro": 0,
+          "import": 9,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "gson/src/test/java/com/google/gson/functional/FieldExclusionTest.java",
+        "hand": {
+          "function": 0,
+          "method": 7,
+          "class": 4,
+          "interface": 0,
+          "module": 0,
+          "call": 23,
+          "new": 11,
+          "macro": 0,
+          "import": 5,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 5,
+          "class": 4,
+          "interface": 0,
+          "module": 0,
+          "call": 23,
+          "new": 11,
+          "macro": 0,
+          "import": 0,
+          "other": 1
+        },
+        "ast": {
+          "function": 0,
+          "method": 7,
+          "class": 4,
+          "interface": 0,
+          "module": 0,
+          "call": 23,
+          "new": 11,
+          "macro": 0,
+          "import": 5,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "gson/src/test/java/com/google/gson/functional/SerializedNameTest.java",
+        "hand": {
+          "function": 0,
+          "method": 4,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 18,
+          "new": 2,
+          "macro": 0,
+          "import": 4,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 3,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 18,
+          "new": 2,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 4,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 18,
+          "new": 2,
+          "macro": 0,
+          "import": 4,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "gson/src/test/java/com/google/gson/functional/StringTest.java",
+        "hand": {
+          "function": 0,
+          "method": 19,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 64,
+          "new": 1,
+          "macro": 0,
+          "import": 4,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 19,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 64,
+          "new": 1,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 19,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 64,
+          "new": 1,
+          "macro": 0,
+          "import": 4,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "gson/src/test/java/com/google/gson/internal/reflect/Java17ReflectionHelperTest.java",
+        "hand": {
+          "function": 0,
+          "method": 6,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 26,
+          "new": 3,
+          "macro": 0,
+          "import": 8,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 5,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 26,
+          "new": 3,
+          "macro": 0,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 0,
+          "method": 6,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 26,
+          "new": 3,
+          "macro": 0,
+          "import": 8,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "test-graal-native-image/src/test/java/com/google/gson/native_test/Java17RecordReflectionTest.java",
+        "hand": {
+          "function": 0,
+          "method": 18,
+          "class": 13,
+          "interface": 0,
+          "module": 0,
+          "call": 50,
+          "new": 19,
+          "macro": 0,
+          "import": 10,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 17,
+          "class": 3,
+          "interface": 0,
+          "module": 0,
+          "call": 50,
+          "new": 18,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 18,
+          "class": 13,
+          "interface": 0,
+          "module": 0,
+          "call": 50,
+          "new": 19,
+          "macro": 0,
+          "import": 10,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      }
+    ],
+    "totals": {
+      "hand": {
+        "function": 0,
+        "method": 110,
+        "class": 40,
+        "interface": 1,
+        "module": 0,
+        "call": 368,
+        "new": 84,
+        "macro": 0,
+        "import": 115,
+        "other": 0
+      },
+      "tags": {
+        "function": 0,
+        "method": 95,
+        "class": 30,
+        "interface": 1,
+        "module": 0,
+        "call": 368,
+        "new": 77,
+        "macro": 0,
+        "import": 0,
+        "other": 6
+      },
+      "ast": {
+        "function": 0,
+        "method": 110,
+        "class": 40,
+        "interface": 1,
+        "module": 0,
+        "call": 368,
+        "new": 84,
+        "macro": 0,
+        "import": 115,
+        "other": 0
+      }
+    },
+    "handCallsInsideMacroArguments": 0,
+    "scores": {
+      "tags": {
+        "definitions": {
+          "hand": 151,
+          "tool": 126,
+          "matched": 126,
+          "recall": 0.8344370860927153,
+          "precision": 1
+        },
+        "definitionsMerged": {
+          "hand": 151,
+          "tool": 126,
+          "matched": 126,
+          "recall": 0.8344370860927153,
+          "precision": 1
+        },
+        "calls": {
+          "hand": 368,
+          "tool": 368,
+          "matched": 368,
+          "recall": 1,
+          "precision": 1
+        },
+        "newExpressions": {
+          "hand": 84,
+          "tool": 77,
+          "matched": 77,
+          "recall": 0.9166666666666666,
+          "precision": 1
+        },
+        "macros": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "imports": {
+          "hand": 115,
+          "tool": 0,
+          "matched": 0,
+          "recall": 0,
+          "precision": null
+        }
+      },
+      "ast": {
+        "definitions": {
+          "hand": 151,
+          "tool": 151,
+          "matched": 151,
+          "recall": 1,
+          "precision": 1
+        },
+        "definitionsMerged": {
+          "hand": 151,
+          "tool": 151,
+          "matched": 151,
+          "recall": 1,
+          "precision": 1
+        },
+        "calls": {
+          "hand": 368,
+          "tool": 368,
+          "matched": 368,
+          "recall": 1,
+          "precision": 1
+        },
+        "newExpressions": {
+          "hand": 84,
+          "tool": 84,
+          "matched": 84,
+          "recall": 1,
+          "precision": 1
+        },
+        "macros": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "imports": {
+          "hand": 115,
+          "tool": 115,
+          "matched": 115,
+          "recall": 1,
+          "precision": 1
+        }
+      }
+    },
+    "parseErrorFiles": {
+      "tags": 0,
+      "ast": 0
+    },
+    "tagsInfo": {
+      "exists": true,
+      "nonBlankLines": 14,
+      "patterns": 7,
+      "tagCaptures": [
+        "definition.class",
+        "definition.interface",
+        "definition.method",
+        "reference.call",
+        "reference.class",
+        "reference.implementation"
+      ],
+      "hasImportCapture": false,
+      "language": "java"
+    },
+    "tagsAbi": 14
+  },
+  "python": {
+    "files": [
+      {
+        "path": "docs/_ext/scrapydocs.py",
+        "hand": {
+          "function": 12,
+          "method": 1,
+          "class": 3,
+          "interface": 0,
+          "module": 0,
+          "call": 35,
+          "new": 0,
+          "macro": 0,
+          "import": 8,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 13,
+          "method": 0,
+          "class": 3,
+          "interface": 0,
+          "module": 0,
+          "call": 35,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 12,
+          "method": 1,
+          "class": 3,
+          "interface": 0,
+          "module": 0,
+          "call": 35,
+          "new": 0,
+          "macro": 0,
+          "import": 8,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "docs/_ext/scrapyfixautodoc.py",
+        "hand": {
+          "function": 4,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 7,
+          "new": 0,
+          "macro": 0,
+          "import": 4,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 4,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 7,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 4,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 7,
+          "new": 0,
+          "macro": 0,
+          "import": 4,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "extras/qps-bench-server.py",
+        "hand": {
+          "function": 0,
+          "method": 5,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 19,
+          "new": 0,
+          "macro": 0,
+          "import": 5,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 5,
+          "method": 0,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 19,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 0,
+          "method": 5,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 19,
+          "new": 0,
+          "macro": 0,
+          "import": 5,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "scrapy/downloadermiddlewares/robotstxt.py",
+        "hand": {
+          "function": 1,
+          "method": 12,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 60,
+          "new": 0,
+          "macro": 0,
+          "import": 17,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 13,
+          "method": 0,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 60,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 1
+        },
+        "ast": {
+          "function": 1,
+          "method": 12,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 60,
+          "new": 0,
+          "macro": 0,
+          "import": 17,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "scrapy/extensions/closespider.py",
+        "hand": {
+          "function": 0,
+          "method": 11,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 39,
+          "new": 0,
+          "macro": 0,
+          "import": 12,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 11,
+          "method": 0,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 39,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 1
+        },
+        "ast": {
+          "function": 0,
+          "method": 11,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 39,
+          "new": 0,
+          "macro": 0,
+          "import": 12,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "scrapy/http/__init__.py",
+        "hand": {
+          "function": 0,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 0,
+          "new": 0,
+          "macro": 0,
+          "import": 11,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 0,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 1
+        },
+        "ast": {
+          "function": 0,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 0,
+          "new": 0,
+          "macro": 0,
+          "import": 11,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "scrapy/spiders/feed.py",
+        "hand": {
+          "function": 0,
+          "method": 12,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 31,
+          "new": 0,
+          "macro": 0,
+          "import": 10,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 12,
+          "method": 0,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 31,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 12,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 31,
+          "new": 0,
+          "macro": 0,
+          "import": 10,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "scrapy/utils/_compression.py",
+        "hand": {
+          "function": 6,
+          "method": 2,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 43,
+          "new": 0,
+          "macro": 0,
+          "import": 11,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 8,
+          "method": 0,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 43,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 6,
+          "method": 2,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 43,
+          "new": 0,
+          "macro": 0,
+          "import": 11,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "scrapy/utils/_ssl.py",
+        "hand": {
+          "function": 10,
+          "method": 0,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 40,
+          "new": 0,
+          "macro": 0,
+          "import": 12,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 10,
+          "method": 0,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 40,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 3
+        },
+        "ast": {
+          "function": 10,
+          "method": 0,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 40,
+          "new": 0,
+          "macro": 0,
+          "import": 12,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/AsyncCrawlerProcess/reactorless_import_hook_multiple.py",
+        "hand": {
+          "function": 1,
+          "method": 1,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 11,
+          "new": 0,
+          "macro": 0,
+          "import": 5,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 2,
+          "method": 0,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 11,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 1
+        },
+        "ast": {
+          "function": 1,
+          "method": 1,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 11,
+          "new": 0,
+          "macro": 0,
+          "import": 5,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/AsyncCrawlerRunner/custom_loop_different.py",
+        "hand": {
+          "function": 1,
+          "method": 1,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 5,
+          "new": 0,
+          "macro": 0,
+          "import": 6,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 2,
+          "method": 0,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 5,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 1,
+          "method": 1,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 5,
+          "new": 0,
+          "macro": 0,
+          "import": 6,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/CrawlerProcess/reactor_settings.py",
+        "hand": {
+          "function": 0,
+          "method": 1,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 9,
+          "new": 0,
+          "macro": 0,
+          "import": 6,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 1,
+          "method": 0,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 9,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 1
+        },
+        "ast": {
+          "function": 0,
+          "method": 1,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 9,
+          "new": 0,
+          "macro": 0,
+          "import": 6,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/benchmarks/test_urls.py",
+        "hand": {
+          "function": 11,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 41,
+          "new": 0,
+          "macro": 0,
+          "import": 10,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 11,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 41,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 8
+        },
+        "ast": {
+          "function": 11,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 41,
+          "new": 0,
+          "macro": 0,
+          "import": 10,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/test_spidermiddleware_process_start.py",
+        "hand": {
+          "function": 9,
+          "method": 6,
+          "class": 6,
+          "interface": 0,
+          "module": 0,
+          "call": 16,
+          "new": 0,
+          "macro": 0,
+          "import": 11,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 15,
+          "method": 0,
+          "class": 6,
+          "interface": 0,
+          "module": 0,
+          "call": 16,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 4
+        },
+        "ast": {
+          "function": 9,
+          "method": 6,
+          "class": 6,
+          "interface": 0,
+          "module": 0,
+          "call": 16,
+          "new": 0,
+          "macro": 0,
+          "import": 11,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/utils/cmdline.py",
+        "hand": {
+          "function": 5,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 12,
+          "new": 0,
+          "macro": 0,
+          "import": 8,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 5,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 12,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 5,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 12,
+          "new": 0,
+          "macro": 0,
+          "import": 8,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      }
+    ],
+    "totals": {
+      "hand": {
+        "function": 60,
+        "method": 52,
+        "class": 20,
+        "interface": 0,
+        "module": 0,
+        "call": 368,
+        "new": 0,
+        "macro": 0,
+        "import": 136,
+        "other": 0
+      },
+      "tags": {
+        "function": 112,
+        "method": 0,
+        "class": 20,
+        "interface": 0,
+        "module": 0,
+        "call": 368,
+        "new": 0,
+        "macro": 0,
+        "import": 0,
+        "other": 24
+      },
+      "ast": {
+        "function": 60,
+        "method": 52,
+        "class": 20,
+        "interface": 0,
+        "module": 0,
+        "call": 368,
+        "new": 0,
+        "macro": 0,
+        "import": 136,
+        "other": 0
+      }
+    },
+    "handCallsInsideMacroArguments": 0,
+    "scores": {
+      "tags": {
+        "definitions": {
+          "hand": 132,
+          "tool": 132,
+          "matched": 80,
+          "recall": 0.6060606060606061,
+          "precision": 0.6060606060606061
+        },
+        "definitionsMerged": {
+          "hand": 132,
+          "tool": 132,
+          "matched": 132,
+          "recall": 1,
+          "precision": 1
+        },
+        "calls": {
+          "hand": 368,
+          "tool": 368,
+          "matched": 368,
+          "recall": 1,
+          "precision": 1
+        },
+        "newExpressions": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "macros": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "imports": {
+          "hand": 136,
+          "tool": 0,
+          "matched": 0,
+          "recall": 0,
+          "precision": null
+        }
+      },
+      "ast": {
+        "definitions": {
+          "hand": 132,
+          "tool": 132,
+          "matched": 132,
+          "recall": 1,
+          "precision": 1
+        },
+        "definitionsMerged": {
+          "hand": 132,
+          "tool": 132,
+          "matched": 132,
+          "recall": 1,
+          "precision": 1
+        },
+        "calls": {
+          "hand": 368,
+          "tool": 368,
+          "matched": 368,
+          "recall": 1,
+          "precision": 1
+        },
+        "newExpressions": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "macros": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "imports": {
+          "hand": 136,
+          "tool": 136,
+          "matched": 136,
+          "recall": 1,
+          "precision": 1
+        }
+      }
+    },
+    "parseErrorFiles": {
+      "tags": 0,
+      "ast": 0
+    },
+    "tagsInfo": {
+      "exists": true,
+      "nonBlankLines": 11,
+      "patterns": 4,
+      "tagCaptures": ["definition.class", "definition.constant", "definition.function", "reference.call"],
+      "hasImportCapture": false,
+      "language": "python"
+    },
+    "tagsAbi": 15
+  },
+  "csharp": {
+    "files": [
+      {
+        "path": "src/AutoMapper.DI.Tests/AppDomainResolutionTests.cs",
+        "hand": {
+          "function": 0,
+          "method": 4,
+          "class": 1,
+          "interface": 0,
+          "module": 1,
+          "call": 11,
+          "new": 1,
+          "macro": 0,
+          "import": 7,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 3,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 7,
+          "new": 1,
+          "macro": 0,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 0,
+          "method": 4,
+          "class": 1,
+          "interface": 0,
+          "module": 1,
+          "call": 11,
+          "new": 1,
+          "macro": 0,
+          "import": 7,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/AutoMapper/Configuration/Annotations/ValueConverterAttribute.cs",
+        "hand": {
+          "function": 0,
+          "method": 1,
+          "class": 1,
+          "interface": 0,
+          "module": 1,
+          "call": 3,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 1,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 2,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 0,
+          "method": 1,
+          "class": 1,
+          "interface": 0,
+          "module": 1,
+          "call": 3,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/AutoMapper/Configuration/CtorParamConfigurationExpression.cs",
+        "hand": {
+          "function": 0,
+          "method": 10,
+          "class": 1,
+          "interface": 3,
+          "module": 1,
+          "call": 11,
+          "new": 3,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 10,
+          "class": 1,
+          "interface": 3,
+          "module": 0,
+          "call": 9,
+          "new": 3,
+          "macro": 0,
+          "import": 0,
+          "other": 3
+        },
+        "ast": {
+          "function": 0,
+          "method": 10,
+          "class": 1,
+          "interface": 3,
+          "module": 1,
+          "call": 11,
+          "new": 3,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/AutoMapper/Mappers/FromStringDictionaryMapper.cs",
+        "hand": {
+          "function": 3,
+          "method": 4,
+          "class": 1,
+          "interface": 0,
+          "module": 1,
+          "call": 29,
+          "new": 2,
+          "macro": 0,
+          "import": 1,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 4,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 23,
+          "new": 2,
+          "macro": 0,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 3,
+          "method": 4,
+          "class": 1,
+          "interface": 0,
+          "module": 1,
+          "call": 30,
+          "new": 2,
+          "macro": 0,
+          "import": 1,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/UnitTests/AssertionExtensions.cs",
+        "hand": {
+          "function": 0,
+          "method": 5,
+          "class": 1,
+          "interface": 0,
+          "module": 1,
+          "call": 9,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 5,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 5,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 1
+        },
+        "ast": {
+          "function": 0,
+          "method": 5,
+          "class": 1,
+          "interface": 0,
+          "module": 1,
+          "call": 9,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/UnitTests/BasicFlattening.cs",
+        "hand": {
+          "function": 0,
+          "method": 11,
+          "class": 20,
+          "interface": 0,
+          "module": 1,
+          "call": 19,
+          "new": 17,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 11,
+          "class": 20,
+          "interface": 0,
+          "module": 0,
+          "call": 7,
+          "new": 12,
+          "macro": 0,
+          "import": 0,
+          "other": 6
+        },
+        "ast": {
+          "function": 0,
+          "method": 11,
+          "class": 20,
+          "interface": 0,
+          "module": 1,
+          "call": 20,
+          "new": 17,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/UnitTests/Bug/AfterMapNestedObjects.cs",
+        "hand": {
+          "function": 0,
+          "method": 3,
+          "class": 5,
+          "interface": 0,
+          "module": 1,
+          "call": 5,
+          "new": 3,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 3,
+          "class": 5,
+          "interface": 0,
+          "module": 0,
+          "call": 2,
+          "new": 2,
+          "macro": 0,
+          "import": 0,
+          "other": 1
+        },
+        "ast": {
+          "function": 0,
+          "method": 3,
+          "class": 5,
+          "interface": 0,
+          "module": 1,
+          "call": 5,
+          "new": 3,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/UnitTests/Bug/InitializeNRE.cs",
+        "hand": {
+          "function": 0,
+          "method": 5,
+          "class": 7,
+          "interface": 1,
+          "module": 1,
+          "call": 7,
+          "new": 3,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 5,
+          "class": 7,
+          "interface": 1,
+          "module": 0,
+          "call": 2,
+          "new": 1,
+          "macro": 0,
+          "import": 0,
+          "other": 4
+        },
+        "ast": {
+          "function": 0,
+          "method": 5,
+          "class": 7,
+          "interface": 1,
+          "module": 1,
+          "call": 7,
+          "new": 3,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/UnitTests/Bug/ListSourceMapperBug.cs",
+        "hand": {
+          "function": 0,
+          "method": 2,
+          "class": 4,
+          "interface": 0,
+          "module": 1,
+          "call": 5,
+          "new": 4,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 2,
+          "class": 4,
+          "interface": 0,
+          "module": 0,
+          "call": 3,
+          "new": 2,
+          "macro": 0,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 0,
+          "method": 2,
+          "class": 4,
+          "interface": 0,
+          "module": 1,
+          "call": 5,
+          "new": 4,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/UnitTests/Bug/NullableEnumToNullableValueType.cs",
+        "hand": {
+          "function": 0,
+          "method": 2,
+          "class": 5,
+          "interface": 0,
+          "module": 1,
+          "call": 3,
+          "new": 2,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 2,
+          "class": 4,
+          "interface": 0,
+          "module": 0,
+          "call": 1,
+          "new": 1,
+          "macro": 0,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 0,
+          "method": 2,
+          "class": 5,
+          "interface": 0,
+          "module": 1,
+          "call": 3,
+          "new": 2,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/UnitTests/Bug/NullableUntypedMapFrom.cs",
+        "hand": {
+          "function": 0,
+          "method": 3,
+          "class": 3,
+          "interface": 0,
+          "module": 1,
+          "call": 5,
+          "new": 2,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 3,
+          "class": 3,
+          "interface": 0,
+          "module": 0,
+          "call": 3,
+          "new": 1,
+          "macro": 0,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 0,
+          "method": 3,
+          "class": 3,
+          "interface": 0,
+          "module": 1,
+          "call": 5,
+          "new": 2,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/UnitTests/Bug/RepeatedMappingConfigurationTest.cs",
+        "hand": {
+          "function": 0,
+          "method": 1,
+          "class": 5,
+          "interface": 0,
+          "module": 1,
+          "call": 6,
+          "new": 1,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 1,
+          "class": 5,
+          "interface": 0,
+          "module": 0,
+          "call": 0,
+          "new": 1,
+          "macro": 0,
+          "import": 0,
+          "other": 3
+        },
+        "ast": {
+          "function": 0,
+          "method": 1,
+          "class": 5,
+          "interface": 0,
+          "module": 1,
+          "call": 6,
+          "new": 1,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/UnitTests/Internal/GenerateSimilarType.cs",
+        "hand": {
+          "function": 0,
+          "method": 2,
+          "class": 4,
+          "interface": 0,
+          "module": 1,
+          "call": 21,
+          "new": 2,
+          "macro": 0,
+          "import": 1,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 2,
+          "class": 3,
+          "interface": 0,
+          "module": 0,
+          "call": 19,
+          "new": 2,
+          "macro": 0,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 0,
+          "method": 2,
+          "class": 4,
+          "interface": 0,
+          "module": 1,
+          "call": 21,
+          "new": 2,
+          "macro": 0,
+          "import": 1,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/UnitTests/MappingInheritance/IncludeBaseBug.cs",
+        "hand": {
+          "function": 0,
+          "method": 8,
+          "class": 23,
+          "interface": 0,
+          "module": 1,
+          "call": 51,
+          "new": 7,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 8,
+          "class": 23,
+          "interface": 0,
+          "module": 0,
+          "call": 26,
+          "new": 3,
+          "macro": 0,
+          "import": 0,
+          "other": 15
+        },
+        "ast": {
+          "function": 0,
+          "method": 8,
+          "class": 23,
+          "interface": 0,
+          "module": 1,
+          "call": 51,
+          "new": 7,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "src/UnitTests/Projection/ToStringTests.cs",
+        "hand": {
+          "function": 0,
+          "method": 6,
+          "class": 6,
+          "interface": 0,
+          "module": 1,
+          "call": 10,
+          "new": 4,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 6,
+          "class": 6,
+          "interface": 0,
+          "module": 0,
+          "call": 6,
+          "new": 2,
+          "macro": 0,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 0,
+          "method": 6,
+          "class": 6,
+          "interface": 0,
+          "module": 1,
+          "call": 10,
+          "new": 4,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      }
+    ],
+    "totals": {
+      "hand": {
+        "function": 3,
+        "method": 67,
+        "class": 87,
+        "interface": 4,
+        "module": 15,
+        "call": 195,
+        "new": 51,
+        "macro": 0,
+        "import": 9,
+        "other": 0
+      },
+      "tags": {
+        "function": 0,
+        "method": 66,
+        "class": 85,
+        "interface": 4,
+        "module": 0,
+        "call": 115,
+        "new": 33,
+        "macro": 0,
+        "import": 0,
+        "other": 49
+      },
+      "ast": {
+        "function": 3,
+        "method": 67,
+        "class": 87,
+        "interface": 4,
+        "module": 15,
+        "call": 197,
+        "new": 51,
+        "macro": 0,
+        "import": 9,
+        "other": 0
+      }
+    },
+    "handCallsInsideMacroArguments": 0,
+    "scores": {
+      "tags": {
+        "definitions": {
+          "hand": 176,
+          "tool": 155,
+          "matched": 155,
+          "recall": 0.8806818181818182,
+          "precision": 1
+        },
+        "definitionsMerged": {
+          "hand": 176,
+          "tool": 155,
+          "matched": 155,
+          "recall": 0.8806818181818182,
+          "precision": 1
+        },
+        "calls": {
+          "hand": 195,
+          "tool": 115,
+          "matched": 115,
+          "recall": 0.5897435897435898,
+          "precision": 1
+        },
+        "newExpressions": {
+          "hand": 51,
+          "tool": 33,
+          "matched": 33,
+          "recall": 0.6470588235294118,
+          "precision": 1
+        },
+        "macros": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "imports": {
+          "hand": 9,
+          "tool": 0,
+          "matched": 0,
+          "recall": 0,
+          "precision": null
+        }
+      },
+      "ast": {
+        "definitions": {
+          "hand": 176,
+          "tool": 176,
+          "matched": 176,
+          "recall": 1,
+          "precision": 1
+        },
+        "definitionsMerged": {
+          "hand": 176,
+          "tool": 176,
+          "matched": 176,
+          "recall": 1,
+          "precision": 1
+        },
+        "calls": {
+          "hand": 195,
+          "tool": 197,
+          "matched": 195,
+          "recall": 1,
+          "precision": 0.9898477157360406
+        },
+        "newExpressions": {
+          "hand": 51,
+          "tool": 51,
+          "matched": 51,
+          "recall": 1,
+          "precision": 1
+        },
+        "macros": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "imports": {
+          "hand": 9,
+          "tool": 9,
+          "matched": 9,
+          "recall": 1,
+          "precision": 1
+        }
+      }
+    },
+    "parseErrorFiles": {
+      "tags": 0,
+      "ast": 0
+    },
+    "tagsInfo": {
+      "exists": true,
+      "nonBlankLines": 12,
+      "patterns": 12,
+      "tagCaptures": [
+        "definition.class",
+        "definition.interface",
+        "definition.method",
+        "definition.module",
+        "reference.class",
+        "reference.interface",
+        "reference.send"
+      ],
+      "hasImportCapture": false,
+      "language": "csharp"
+    },
+    "tagsAbi": 15
+  },
+  "rust": {
+    "files": [
+      {
+        "path": "clap_builder/src/builder/value_hint.rs",
+        "hand": {
+          "function": 0,
+          "method": 1,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 3,
+          "new": 0,
+          "macro": 1,
+          "import": 1,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 1,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 3,
+          "new": 0,
+          "macro": 1,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 0,
+          "method": 1,
+          "class": 1,
+          "interface": 0,
+          "module": 0,
+          "call": 3,
+          "new": 0,
+          "macro": 1,
+          "import": 1,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "clap_builder/src/error/context.rs",
+        "hand": {
+          "function": 0,
+          "method": 3,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 30,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 3,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 30,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 4
+        },
+        "ast": {
+          "function": 0,
+          "method": 3,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 30,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "clap_builder/src/parser/features/suggestions.rs",
+        "hand": {
+          "function": 12,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 30,
+          "new": 0,
+          "macro": 11,
+          "import": 4,
+          "other": 0,
+          "inMacro": 33
+        },
+        "tags": {
+          "function": 3,
+          "method": 9,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 27,
+          "new": 0,
+          "macro": 11,
+          "import": 0,
+          "other": 9
+        },
+        "ast": {
+          "function": 12,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 30,
+          "new": 0,
+          "macro": 11,
+          "import": 4,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "clap_complete/examples/dynamic.rs",
+        "hand": {
+          "function": 3,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 18,
+          "new": 0,
+          "macro": 1,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 3,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 14,
+          "new": 0,
+          "macro": 1,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 3,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 18,
+          "new": 0,
+          "macro": 1,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "clap_derive/src/lib.rs",
+        "hand": {
+          "function": 5,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 6,
+          "call": 29,
+          "new": 0,
+          "macro": 8,
+          "import": 3,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 5,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 6,
+          "call": 18,
+          "new": 0,
+          "macro": 5,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 5,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 6,
+          "call": 29,
+          "new": 0,
+          "macro": 8,
+          "import": 3,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "examples/pacman.rs",
+        "hand": {
+          "function": 5,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 100,
+          "new": 0,
+          "macro": 8,
+          "import": 2,
+          "other": 0,
+          "inMacro": 4
+        },
+        "tags": {
+          "function": 2,
+          "method": 3,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 84,
+          "new": 0,
+          "macro": 7,
+          "import": 0,
+          "other": 3
+        },
+        "ast": {
+          "function": 5,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 100,
+          "new": 0,
+          "macro": 8,
+          "import": 2,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "examples/typed-derive/custom.rs",
+        "hand": {
+          "function": 0,
+          "method": 5,
+          "class": 3,
+          "interface": 0,
+          "module": 0,
+          "call": 15,
+          "new": 0,
+          "macro": 2,
+          "import": 2,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 5,
+          "class": 6,
+          "interface": 0,
+          "module": 0,
+          "call": 8,
+          "new": 0,
+          "macro": 2,
+          "import": 0,
+          "other": 5
+        },
+        "ast": {
+          "function": 0,
+          "method": 5,
+          "class": 3,
+          "interface": 0,
+          "module": 0,
+          "call": 15,
+          "new": 0,
+          "macro": 2,
+          "import": 2,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "examples/typed-derive/implicit.rs",
+        "hand": {
+          "function": 0,
+          "method": 2,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 10,
+          "new": 0,
+          "macro": 1,
+          "import": 4,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 2,
+          "class": 3,
+          "interface": 0,
+          "module": 0,
+          "call": 9,
+          "new": 0,
+          "macro": 1,
+          "import": 0,
+          "other": 2
+        },
+        "ast": {
+          "function": 0,
+          "method": 2,
+          "class": 2,
+          "interface": 0,
+          "module": 0,
+          "call": 10,
+          "new": 0,
+          "macro": 1,
+          "import": 4,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/builder/arg_aliases_short.rs",
+        "hand": {
+          "function": 7,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 108,
+          "new": 0,
+          "macro": 40,
+          "import": 2,
+          "other": 0,
+          "inMacro": 62
+        },
+        "tags": {
+          "function": 7,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 87,
+          "new": 0,
+          "macro": 40,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 7,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 108,
+          "new": 0,
+          "macro": 40,
+          "import": 2,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/builder/template_help.rs",
+        "hand": {
+          "function": 7,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 47,
+          "new": 0,
+          "macro": 4,
+          "import": 2,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 7,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 34,
+          "new": 0,
+          "macro": 4,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 7,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 47,
+          "new": 0,
+          "macro": 4,
+          "import": 2,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/builder/unique_args.rs",
+        "hand": {
+          "function": 3,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 21,
+          "new": 0,
+          "macro": 0,
+          "import": 3,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 3,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 12,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 3,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 21,
+          "new": 0,
+          "macro": 0,
+          "import": 3,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/derive/arguments.rs",
+        "hand": {
+          "function": 6,
+          "method": 0,
+          "class": 6,
+          "interface": 0,
+          "module": 0,
+          "call": 2,
+          "new": 0,
+          "macro": 17,
+          "import": 5,
+          "other": 0,
+          "inMacro": 40
+        },
+        "tags": {
+          "function": 6,
+          "method": 0,
+          "class": 6,
+          "interface": 0,
+          "module": 0,
+          "call": 0,
+          "new": 0,
+          "macro": 17,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 6,
+          "method": 0,
+          "class": 6,
+          "interface": 0,
+          "module": 0,
+          "call": 2,
+          "new": 0,
+          "macro": 17,
+          "import": 5,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/derive/nested_subcommands.rs",
+        "hand": {
+          "function": 7,
+          "method": 0,
+          "class": 9,
+          "interface": 0,
+          "module": 0,
+          "call": 7,
+          "new": 0,
+          "macro": 15,
+          "import": 1,
+          "other": 0,
+          "inMacro": 28
+        },
+        "tags": {
+          "function": 7,
+          "method": 0,
+          "class": 9,
+          "interface": 0,
+          "module": 0,
+          "call": 1,
+          "new": 0,
+          "macro": 15,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 7,
+          "method": 0,
+          "class": 9,
+          "interface": 0,
+          "module": 0,
+          "call": 7,
+          "new": 0,
+          "macro": 15,
+          "import": 1,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/derive/utils.rs",
+        "hand": {
+          "function": 4,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 19,
+          "new": 0,
+          "macro": 8,
+          "import": 2,
+          "other": 0,
+          "inMacro": 3
+        },
+        "tags": {
+          "function": 4,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 14,
+          "new": 0,
+          "macro": 8,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 4,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 19,
+          "new": 0,
+          "macro": 8,
+          "import": 2,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "tests/examples.rs",
+        "hand": {
+          "function": 1,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 6,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 1,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 4,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 1,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 6,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      }
+    ],
+    "totals": {
+      "hand": {
+        "function": 60,
+        "method": 11,
+        "class": 23,
+        "interface": 0,
+        "module": 8,
+        "call": 445,
+        "new": 0,
+        "macro": 116,
+        "import": 31,
+        "other": 0
+      },
+      "tags": {
+        "function": 48,
+        "method": 23,
+        "class": 28,
+        "interface": 0,
+        "module": 8,
+        "call": 345,
+        "new": 0,
+        "macro": 112,
+        "import": 0,
+        "other": 25
+      },
+      "ast": {
+        "function": 60,
+        "method": 11,
+        "class": 23,
+        "interface": 0,
+        "module": 8,
+        "call": 445,
+        "new": 0,
+        "macro": 116,
+        "import": 31,
+        "other": 0
+      }
+    },
+    "handCallsInsideMacroArguments": 170,
+    "scores": {
+      "tags": {
+        "definitions": {
+          "hand": 102,
+          "tool": 107,
+          "matched": 90,
+          "recall": 0.8823529411764706,
+          "precision": 0.8411214953271028
+        },
+        "definitionsMerged": {
+          "hand": 102,
+          "tool": 107,
+          "matched": 102,
+          "recall": 1,
+          "precision": 0.9532710280373832
+        },
+        "calls": {
+          "hand": 445,
+          "tool": 345,
+          "matched": 345,
+          "recall": 0.7752808988764045,
+          "precision": 1
+        },
+        "newExpressions": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "macros": {
+          "hand": 116,
+          "tool": 112,
+          "matched": 112,
+          "recall": 0.9655172413793104,
+          "precision": 1
+        },
+        "imports": {
+          "hand": 31,
+          "tool": 0,
+          "matched": 0,
+          "recall": 0,
+          "precision": null
+        }
+      },
+      "ast": {
+        "definitions": {
+          "hand": 102,
+          "tool": 102,
+          "matched": 102,
+          "recall": 1,
+          "precision": 1
+        },
+        "definitionsMerged": {
+          "hand": 102,
+          "tool": 102,
+          "matched": 102,
+          "recall": 1,
+          "precision": 1
+        },
+        "calls": {
+          "hand": 445,
+          "tool": 445,
+          "matched": 445,
+          "recall": 1,
+          "precision": 1
+        },
+        "newExpressions": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "macros": {
+          "hand": 116,
+          "tool": 116,
+          "matched": 116,
+          "recall": 1,
+          "precision": 1
+        },
+        "imports": {
+          "hand": 31,
+          "tool": 31,
+          "matched": 31,
+          "recall": 1,
+          "precision": 1
+        }
+      }
+    },
+    "parseErrorFiles": {
+      "tags": 0,
+      "ast": 0
+    },
+    "tagsInfo": {
+      "exists": true,
+      "nonBlankLines": 31,
+      "patterns": 14,
+      "tagCaptures": [
+        "definition.class",
+        "definition.function",
+        "definition.interface",
+        "definition.macro",
+        "definition.method",
+        "definition.module",
+        "reference.call",
+        "reference.implementation"
+      ],
+      "hasImportCapture": false,
+      "language": "rust"
+    },
+    "tagsAbi": 14
+  },
+  "ruby": {
+    "files": [
+      {
+        "path": "lib/rspec/core.rb",
+        "hand": {
+          "function": 0,
+          "method": 11,
+          "class": 1,
+          "interface": 0,
+          "module": 2,
+          "call": 34,
+          "new": 0,
+          "macro": 0,
+          "import": 3,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 11,
+          "class": 1,
+          "interface": 0,
+          "module": 2,
+          "call": 137,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 11,
+          "class": 1,
+          "interface": 0,
+          "module": 2,
+          "call": 35,
+          "new": 0,
+          "macro": 0,
+          "import": 3,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "lib/rspec/core/bisect/fork_runner.rb",
+        "hand": {
+          "function": 0,
+          "method": 10,
+          "class": 3,
+          "interface": 0,
+          "module": 3,
+          "call": 51,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 10,
+          "class": 3,
+          "interface": 0,
+          "module": 3,
+          "call": 182,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 10,
+          "class": 3,
+          "interface": 0,
+          "module": 3,
+          "call": 51,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "lib/rspec/core/formatters/bisect_drb_formatter.rb",
+        "hand": {
+          "function": 0,
+          "method": 2,
+          "class": 1,
+          "interface": 0,
+          "module": 3,
+          "call": 11,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 2,
+          "class": 1,
+          "interface": 0,
+          "module": 3,
+          "call": 39,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 2,
+          "class": 1,
+          "interface": 0,
+          "module": 3,
+          "call": 12,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "lib/rspec/core/formatters/console_codes.rb",
+        "hand": {
+          "function": 0,
+          "method": 3,
+          "class": 0,
+          "interface": 0,
+          "module": 4,
+          "call": 16,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 3,
+          "class": 0,
+          "interface": 0,
+          "module": 4,
+          "call": 67,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 3,
+          "class": 0,
+          "interface": 0,
+          "module": 4,
+          "call": 16,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "lib/rspec/core/formatters/html_snippet_extractor.rb",
+        "hand": {
+          "function": 0,
+          "method": 6,
+          "class": 1,
+          "interface": 0,
+          "module": 5,
+          "call": 22,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 6,
+          "class": 1,
+          "interface": 0,
+          "module": 5,
+          "call": 125,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 6,
+          "class": 1,
+          "interface": 0,
+          "module": 5,
+          "call": 23,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "lib/rspec/core/mocking_adapters/rspec.rb",
+        "hand": {
+          "function": 0,
+          "method": 5,
+          "class": 0,
+          "interface": 0,
+          "module": 4,
+          "call": 6,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 5,
+          "class": 0,
+          "interface": 0,
+          "module": 4,
+          "call": 31,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 5,
+          "class": 0,
+          "interface": 0,
+          "module": 4,
+          "call": 6,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "lib/rspec/core/ordering.rb",
+        "hand": {
+          "function": 0,
+          "method": 23,
+          "class": 7,
+          "interface": 0,
+          "module": 3,
+          "call": 49,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 23,
+          "class": 7,
+          "interface": 0,
+          "module": 3,
+          "call": 249,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 23,
+          "class": 7,
+          "interface": 0,
+          "module": 3,
+          "call": 49,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "spec/integration/bisect_runners_spec.rb",
+        "hand": {
+          "function": 0,
+          "method": 1,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 67,
+          "new": 0,
+          "macro": 0,
+          "import": 4,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 1,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 181,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 1,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 67,
+          "new": 0,
+          "macro": 0,
+          "import": 4,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "spec/integration/order_spec.rb",
+        "hand": {
+          "function": 5,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 153,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 5,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 410,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 5,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 153,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "spec/rspec/core/bisect/coordinator_spec.rb",
+        "hand": {
+          "function": 0,
+          "method": 2,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 88,
+          "new": 0,
+          "macro": 0,
+          "import": 3,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 2,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 261,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 2,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 88,
+          "new": 0,
+          "macro": 0,
+          "import": 3,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "spec/rspec/core/bisect/server_spec.rb",
+        "hand": {
+          "function": 0,
+          "method": 1,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 69,
+          "new": 0,
+          "macro": 0,
+          "import": 2,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 1,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 201,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 1,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 69,
+          "new": 0,
+          "macro": 0,
+          "import": 2,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "spec/rspec/core/formatters/deprecation_formatter_spec.rb",
+        "hand": {
+          "function": 0,
+          "method": 1,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 225,
+          "new": 0,
+          "macro": 0,
+          "import": 3,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 1,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 563,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 1,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 225,
+          "new": 0,
+          "macro": 0,
+          "import": 3,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "spec/rspec/core/formatters/documentation_formatter_spec.rb",
+        "hand": {
+          "function": 0,
+          "method": 1,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 96,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 1,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 273,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 1,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 96,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "spec/rspec/core/resources/formatter_specs.rb",
+        "hand": {
+          "function": 2,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 48,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 2,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 113,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 2,
+          "method": 0,
+          "class": 0,
+          "interface": 0,
+          "module": 0,
+          "call": 48,
+          "new": 0,
+          "macro": 0,
+          "import": 1,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      },
+      {
+        "path": "spec/support/helper_methods.rb",
+        "hand": {
+          "function": 0,
+          "method": 7,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 11,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0,
+          "inMacro": 0
+        },
+        "tags": {
+          "function": 0,
+          "method": 7,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 66,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "ast": {
+          "function": 0,
+          "method": 7,
+          "class": 0,
+          "interface": 0,
+          "module": 1,
+          "call": 11,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "tagsError": false,
+        "astError": false
+      }
+    ],
+    "totals": {
+      "hand": {
+        "function": 7,
+        "method": 73,
+        "class": 13,
+        "interface": 0,
+        "module": 30,
+        "call": 946,
+        "new": 0,
+        "macro": 0,
+        "import": 22,
+        "other": 0
+      },
+      "tags": {
+        "function": 0,
+        "method": 80,
+        "class": 13,
+        "interface": 0,
+        "module": 30,
+        "call": 2898,
+        "new": 0,
+        "macro": 0,
+        "import": 0,
+        "other": 0
+      },
+      "ast": {
+        "function": 7,
+        "method": 73,
+        "class": 13,
+        "interface": 0,
+        "module": 30,
+        "call": 949,
+        "new": 0,
+        "macro": 0,
+        "import": 22,
+        "other": 0
+      }
+    },
+    "handCallsInsideMacroArguments": 0,
+    "scores": {
+      "tags": {
+        "definitions": {
+          "hand": 123,
+          "tool": 123,
+          "matched": 116,
+          "recall": 0.943089430894309,
+          "precision": 0.943089430894309
+        },
+        "definitionsMerged": {
+          "hand": 123,
+          "tool": 123,
+          "matched": 123,
+          "recall": 1,
+          "precision": 1
+        },
+        "calls": {
+          "hand": 946,
+          "tool": 2898,
+          "matched": 946,
+          "recall": 1,
+          "precision": 0.32643202208419597
+        },
+        "newExpressions": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "macros": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "imports": {
+          "hand": 22,
+          "tool": 0,
+          "matched": 0,
+          "recall": 0,
+          "precision": null
+        }
+      },
+      "ast": {
+        "definitions": {
+          "hand": 123,
+          "tool": 123,
+          "matched": 123,
+          "recall": 1,
+          "precision": 1
+        },
+        "definitionsMerged": {
+          "hand": 123,
+          "tool": 123,
+          "matched": 123,
+          "recall": 1,
+          "precision": 1
+        },
+        "calls": {
+          "hand": 946,
+          "tool": 949,
+          "matched": 946,
+          "recall": 1,
+          "precision": 0.9968387776606955
+        },
+        "newExpressions": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "macros": {
+          "hand": 0,
+          "tool": 0,
+          "matched": 0,
+          "recall": null,
+          "precision": null
+        },
+        "imports": {
+          "hand": 22,
+          "tool": 22,
+          "matched": 22,
+          "recall": 1,
+          "precision": 1
+        }
+      }
+    },
+    "parseErrorFiles": {
+      "tags": 0,
+      "ast": 0
+    },
+    "tagsInfo": {
+      "exists": true,
+      "nonBlankLines": 50,
+      "patterns": 7,
+      "tagCaptures": ["definition.class", "definition.method", "definition.module", "reference.call"],
+      "hasImportCapture": false,
+      "language": "ruby"
+    },
+    "tagsAbi": 14
+  }
+}

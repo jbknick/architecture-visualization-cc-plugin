@@ -1,0 +1,272 @@
+{
+  "machine": {
+    "cpu": "Apple M3 Pro",
+    "cores": 11,
+    "memoryGb": 18,
+    "node": "v26.13.0",
+    "platform": "darwin-arm64",
+    "uptimeAtStart": "8:00  up 2 days, 12:10, 2 users, load averages: 6.41 3.75 2.71",
+    "uptimeAtEnd": "8:01  up 2 days, 12:10, 2 users, load averages: 5.67 3.79 2.76"
+  },
+  "packages": {
+    "web-tree-sitter": "0.27.2",
+    "tree-sitter-java": "0.23.5",
+    "tree-sitter-python": "0.25.0",
+    "tree-sitter-c-sharp": "0.24.0",
+    "tree-sitter-rust": "0.24.0",
+    "tree-sitter-ruby": "0.23.1",
+    "@ast-grep/napi": "0.51.3",
+    "@ast-grep/lang-java": "0.0.7",
+    "@ast-grep/lang-python": "0.0.6",
+    "@ast-grep/lang-csharp": "0.0.6",
+    "@ast-grep/lang-rust": "0.0.7",
+    "@ast-grep/lang-ruby": "0.0.7"
+  },
+  "languages": {
+    "java": {
+      "repo": "google/gson",
+      "sha": "d9b5079eaa4567219771bba6d04289cf45c7589b",
+      "tags": {
+        "files": 268,
+        "parseMsRuns": [202.896, 196.068, 195.856],
+        "parseMsWorst": 202.896,
+        "fullMsRuns": [256.626, 256.735, 289.161],
+        "fullMsWorst": 289.161,
+        "rssBeforeKb": 104224,
+        "peakRssKbWorst": 121904,
+        "peakRssKbNoFree": 153536,
+        "totals": {
+          "function": 0,
+          "method": 3218,
+          "class": 687,
+          "interface": 26,
+          "module": 0,
+          "call": 20612,
+          "new": 2989,
+          "macro": 0,
+          "import": 0,
+          "other": 117
+        },
+        "filesWithParseErrors": 0
+      },
+      "ast": {
+        "files": 268,
+        "parseMsRuns": [116.713, 117.712, 119.367],
+        "parseMsWorst": 119.367,
+        "fullMsRuns": [212.146, 202.399, 205.685],
+        "fullMsWorst": 212.146,
+        "rssBeforeKb": 75600,
+        "peakRssKbWorst": 143152,
+        "totals": {
+          "function": 0,
+          "method": 3569,
+          "class": 748,
+          "interface": 34,
+          "module": 0,
+          "call": 20612,
+          "new": 3674,
+          "macro": 0,
+          "import": 2770,
+          "other": 0
+        },
+        "filesWithParseErrors": 0
+      }
+    },
+    "python": {
+      "repo": "scrapy/scrapy",
+      "sha": "00acf3f31a322871a47aead5fec610d900263103",
+      "tags": {
+        "files": 557,
+        "parseMsRuns": [441.228, 438.583, 443.442],
+        "parseMsWorst": 443.442,
+        "fullMsRuns": [544.358, 574.289, 568.726],
+        "fullMsWorst": 574.289,
+        "rssBeforeKb": 105264,
+        "peakRssKbWorst": 132608,
+        "peakRssKbNoFree": 227328,
+        "totals": {
+          "function": 7658,
+          "method": 0,
+          "class": 1748,
+          "interface": 0,
+          "module": 0,
+          "call": 30068,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 849
+        },
+        "filesWithParseErrors": 0
+      },
+      "ast": {
+        "files": 557,
+        "parseMsRuns": [278.14, 278.811, 278.625],
+        "parseMsWorst": 278.811,
+        "fullMsRuns": [481.571, 482.853, 489.179],
+        "fullMsWorst": 489.179,
+        "rssBeforeKb": 75392,
+        "peakRssKbWorst": 229632,
+        "totals": {
+          "function": 1791,
+          "method": 5867,
+          "class": 1748,
+          "interface": 0,
+          "module": 0,
+          "call": 30089,
+          "new": 0,
+          "macro": 0,
+          "import": 5582,
+          "other": 0
+        },
+        "filesWithParseErrors": 0
+      }
+    },
+    "csharp": {
+      "repo": "AutoMapper/AutoMapper",
+      "sha": "79d10deec5881a617c38e7373f354694044bf83d",
+      "tags": {
+        "files": 520,
+        "parseMsRuns": [391.995, 389.329, 398.4],
+        "parseMsWorst": 398.4,
+        "fullMsRuns": [473.626, 474.942, 473.657],
+        "fullMsWorst": 474.942,
+        "rssBeforeKb": 128288,
+        "peakRssKbWorst": 208064,
+        "peakRssKbNoFree": 276576,
+        "totals": {
+          "function": 0,
+          "method": 4209,
+          "class": 4980,
+          "interface": 139,
+          "module": 39,
+          "call": 8823,
+          "new": 2875,
+          "macro": 0,
+          "import": 0,
+          "other": 3076
+        },
+        "filesWithParseErrors": 2
+      },
+      "ast": {
+        "files": 520,
+        "parseMsRuns": [260.117, 259.702, 261.339],
+        "parseMsWorst": 261.339,
+        "fullMsRuns": [382.386, 384.762, 383.253],
+        "fullMsWorst": 384.762,
+        "rssBeforeKb": 75568,
+        "peakRssKbWorst": 186416,
+        "totals": {
+          "function": 86,
+          "method": 4706,
+          "class": 5123,
+          "interface": 139,
+          "module": 557,
+          "call": 14009,
+          "new": 4432,
+          "macro": 0,
+          "import": 238,
+          "other": 0
+        },
+        "filesWithParseErrors": 2
+      }
+    },
+    "rust": {
+      "repo": "clap-rs/clap",
+      "sha": "487474f013d3e0cbffc911934575f7ebcc72a6d4",
+      "tags": {
+        "files": 337,
+        "parseMsRuns": [291.038, 287.969, 288.56],
+        "parseMsWorst": 291.038,
+        "fullMsRuns": [411.52, 406.633, 405.215],
+        "fullMsWorst": 411.52,
+        "rssBeforeKb": 108208,
+        "peakRssKbWorst": 128800,
+        "peakRssKbNoFree": 203888,
+        "totals": {
+          "function": 1963,
+          "method": 1637,
+          "class": 709,
+          "interface": 38,
+          "module": 160,
+          "call": 18491,
+          "new": 0,
+          "macro": 5983,
+          "import": 0,
+          "other": 1969
+        },
+        "filesWithParseErrors": 13
+      },
+      "ast": {
+        "files": 337,
+        "parseMsRuns": [178.272, 175.624, 176.66],
+        "parseMsWorst": 178.272,
+        "fullMsRuns": [310.898, 310.916, 313.631],
+        "fullMsWorst": 313.631,
+        "rssBeforeKb": 75232,
+        "peakRssKbWorst": 193632,
+        "totals": {
+          "function": 2121,
+          "method": 1522,
+          "class": 617,
+          "interface": 38,
+          "module": 160,
+          "call": 23823,
+          "new": 0,
+          "macro": 6224,
+          "import": 1045,
+          "other": 0
+        },
+        "filesWithParseErrors": 13
+      }
+    },
+    "ruby": {
+      "repo": "rspec/rspec-core",
+      "sha": "aec5f49485d97908183dbe790a7fefb8baaa8091",
+      "tags": {
+        "files": 233,
+        "parseMsRuns": [163.185, 163.812, 163.924],
+        "parseMsWorst": 163.924,
+        "fullMsRuns": [251.383, 254.621, 250.228],
+        "fullMsWorst": 254.621,
+        "rssBeforeKb": 112752,
+        "peakRssKbWorst": 165408,
+        "peakRssKbNoFree": 199424,
+        "totals": {
+          "function": 0,
+          "method": 1421,
+          "class": 146,
+          "interface": 0,
+          "module": 324,
+          "call": 72941,
+          "new": 0,
+          "macro": 0,
+          "import": 0,
+          "other": 0
+        },
+        "filesWithParseErrors": 0
+      },
+      "ast": {
+        "files": 233,
+        "parseMsRuns": [104.51, 104.873, 105.324],
+        "parseMsWorst": 105.324,
+        "fullMsRuns": [242.092, 240.146, 243.825],
+        "fullMsWorst": 243.825,
+        "rssBeforeKb": 75456,
+        "peakRssKbWorst": 163184,
+        "totals": {
+          "function": 94,
+          "method": 1311,
+          "class": 142,
+          "interface": 0,
+          "module": 324,
+          "call": 24796,
+          "new": 0,
+          "macro": 0,
+          "import": 201,
+          "other": 0
+        },
+        "filesWithParseErrors": 0
+      }
+    }
+  }
+}

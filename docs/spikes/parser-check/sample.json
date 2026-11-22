@@ -1,0 +1,117 @@
+{
+  "java": {
+    "repo": "google/gson",
+    "sha": "d9b5079eaa4567219771bba6d04289cf45c7589b",
+    "total": 268,
+    "eligible": 176,
+    "files": [
+      "extras/src/main/java/com/google/gson/interceptors/InterceptorFactory.java",
+      "extras/src/test/java/com/google/gson/typeadapters/UtcDateTypeAdapterTest.java",
+      "gson/src/main/java/com/google/gson/internal/NumberLimits.java",
+      "gson/src/main/java/com/google/gson/internal/PreJava9DateFormatProvider.java",
+      "gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java",
+      "gson/src/main/java/com/google/gson/internal/bind/EnumTypeAdapter.java",
+      "gson/src/main/java/com/google/gson/internal/sql/SqlTimestampTypeAdapter.java",
+      "gson/src/test/java/com/google/gson/DefaultInetAddressTypeAdapterTest.java",
+      "gson/src/test/java/com/google/gson/JsonArrayAsListSuiteTest.java",
+      "gson/src/test/java/com/google/gson/functional/ExposeFieldsTest.java",
+      "gson/src/test/java/com/google/gson/functional/FieldExclusionTest.java",
+      "gson/src/test/java/com/google/gson/functional/SerializedNameTest.java",
+      "gson/src/test/java/com/google/gson/functional/StringTest.java",
+      "gson/src/test/java/com/google/gson/internal/reflect/Java17ReflectionHelperTest.java",
+      "test-graal-native-image/src/test/java/com/google/gson/native_test/Java17RecordReflectionTest.java"
+    ]
+  },
+  "python": {
+    "repo": "scrapy/scrapy",
+    "sha": "00acf3f31a322871a47aead5fec610d900263103",
+    "total": 557,
+    "eligible": 267,
+    "files": [
+      "docs/_ext/scrapydocs.py",
+      "docs/_ext/scrapyfixautodoc.py",
+      "extras/qps-bench-server.py",
+      "scrapy/downloadermiddlewares/robotstxt.py",
+      "scrapy/extensions/closespider.py",
+      "scrapy/http/__init__.py",
+      "scrapy/spiders/feed.py",
+      "scrapy/utils/_compression.py",
+      "scrapy/utils/_ssl.py",
+      "tests/AsyncCrawlerProcess/reactorless_import_hook_multiple.py",
+      "tests/AsyncCrawlerRunner/custom_loop_different.py",
+      "tests/CrawlerProcess/reactor_settings.py",
+      "tests/benchmarks/test_urls.py",
+      "tests/test_spidermiddleware_process_start.py",
+      "tests/utils/cmdline.py"
+    ]
+  },
+  "csharp": {
+    "repo": "AutoMapper/AutoMapper",
+    "sha": "79d10deec5881a617c38e7373f354694044bf83d",
+    "total": 520,
+    "eligible": 299,
+    "files": [
+      "src/AutoMapper.DI.Tests/AppDomainResolutionTests.cs",
+      "src/AutoMapper/Configuration/Annotations/ValueConverterAttribute.cs",
+      "src/AutoMapper/Configuration/CtorParamConfigurationExpression.cs",
+      "src/AutoMapper/Mappers/FromStringDictionaryMapper.cs",
+      "src/UnitTests/AssertionExtensions.cs",
+      "src/UnitTests/BasicFlattening.cs",
+      "src/UnitTests/Bug/AfterMapNestedObjects.cs",
+      "src/UnitTests/Bug/InitializeNRE.cs",
+      "src/UnitTests/Bug/ListSourceMapperBug.cs",
+      "src/UnitTests/Bug/NullableEnumToNullableValueType.cs",
+      "src/UnitTests/Bug/NullableUntypedMapFrom.cs",
+      "src/UnitTests/Bug/RepeatedMappingConfigurationTest.cs",
+      "src/UnitTests/Internal/GenerateSimilarType.cs",
+      "src/UnitTests/MappingInheritance/IncludeBaseBug.cs",
+      "src/UnitTests/Projection/ToStringTests.cs"
+    ]
+  },
+  "rust": {
+    "repo": "clap-rs/clap",
+    "sha": "487474f013d3e0cbffc911934575f7ebcc72a6d4",
+    "total": 337,
+    "eligible": 143,
+    "files": [
+      "clap_builder/src/builder/value_hint.rs",
+      "clap_builder/src/error/context.rs",
+      "clap_builder/src/parser/features/suggestions.rs",
+      "clap_complete/examples/dynamic.rs",
+      "clap_derive/src/lib.rs",
+      "examples/pacman.rs",
+      "examples/typed-derive/custom.rs",
+      "examples/typed-derive/implicit.rs",
+      "tests/builder/arg_aliases_short.rs",
+      "tests/builder/template_help.rs",
+      "tests/builder/unique_args.rs",
+      "tests/derive/arguments.rs",
+      "tests/derive/nested_subcommands.rs",
+      "tests/derive/utils.rs",
+      "tests/examples.rs"
+    ]
+  },
+  "ruby": {
+    "repo": "rspec/rspec-core",
+    "sha": "aec5f49485d97908183dbe790a7fefb8baaa8091",
+    "total": 233,
+    "eligible": 130,
+    "files": [
+      "lib/rspec/core.rb",
+      "lib/rspec/core/bisect/fork_runner.rb",
+      "lib/rspec/core/formatters/bisect_drb_formatter.rb",
+      "lib/rspec/core/formatters/console_codes.rb",
+      "lib/rspec/core/formatters/html_snippet_extractor.rb",
+      "lib/rspec/core/mocking_adapters/rspec.rb",
+      "lib/rspec/core/ordering.rb",
+      "spec/integration/bisect_runners_spec.rb",
+      "spec/integration/order_spec.rb",
+      "spec/rspec/core/bisect/coordinator_spec.rb",
+      "spec/rspec/core/bisect/server_spec.rb",
+      "spec/rspec/core/formatters/deprecation_formatter_spec.rb",
+      "spec/rspec/core/formatters/documentation_formatter_spec.rb",
+      "spec/rspec/core/resources/formatter_specs.rb",
+      "spec/support/helper_methods.rb"
+    ]
+  }
+}
