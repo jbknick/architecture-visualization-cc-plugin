@@ -14,13 +14,13 @@ import { syncBacklog } from "./backlog.js";
 // inside that one call. These tests use a synthetic repository, not grafana.
 
 const goParses = vi.hoisted(() => ({ n: 0 }));
-vi.mock("../lang/go/grammar.js", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("../lang/go/grammar.js")>();
+vi.mock("../lang/engine/grammar.js", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("../lang/engine/grammar.js")>();
   return {
     ...mod,
-    parseGo: (source: string) => {
+    parseTree: (pack: Parameters<typeof mod.parseTree>[0], source: string) => {
       goParses.n++;
-      return mod.parseGo(source);
+      return mod.parseTree(pack, source);
     },
   };
 });

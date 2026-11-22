@@ -1,7 +1,7 @@
 import { parse, type SgNode } from "@ast-grep/napi";
 import picomatch from "picomatch";
 import type { AdapterFileContext } from "../adapters/framework.js";
-import { goAvailable } from "../lang/go/grammar.js";
+import { goAvailable } from "../lang/go/index.js";
 import type { WorkspaceRecord } from "../types.js";
 import { type ExampleResult, findRule, whenApplies } from "./engine.js";
 import type { LoadedRecipe } from "./load.js";

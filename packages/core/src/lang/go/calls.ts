@@ -1,7 +1,7 @@
 import type { ParsedFile } from "../../parse/index.js";
 import { EVIDENCE_CAP } from "../../resolve/index.js";
 import type { EdgeKind, EdgeRecord } from "../../types.js";
-import type { GoNode } from "./grammar.js";
+import type { SyntaxNode as GoNode } from "../engine/grammar.js";
 import {
   type FileCtx,
   type GoIndex,

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { goAvailable, parseGo } from "./grammar.js";
+import { parseTree } from "../engine/grammar.js";
+import { goPack } from "../packs/index.js";
+import { goAvailable } from "./index.js";
+
+const parseGo = (source: string) => parseTree(goPack, source);
 
 const SNIPPET = `package a
 

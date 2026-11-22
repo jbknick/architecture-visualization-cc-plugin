@@ -7,6 +7,7 @@ import type { ResolveContext, Resolver } from "../resolve/index.js";
 import type { Lang, SymbolKind, WorkspaceRecord } from "../types.js";
 import type { detectWorkspaces, WorkspaceDetectionConfig } from "../workspace/index.js";
 import { go } from "./go/index.js";
+import { PACKS } from "./packs/index.js";
 import { typescript } from "./typescript/index.js";
 
 /** The languages the index knows are defined in `types.ts`; every file and symbol record carries one. */
@@ -88,8 +89,8 @@ export function languageModule(id: Lang): LanguageModule {
   return m;
 }
 
-/** The ids of all languages (a language can be named before its module exists), for validating `--lang` and the MCP `lang` input. */
-export const LANG_IDS: readonly Lang[] = ["typescript", "go"];
+/** The ids of all languages: TypeScript and every registered pack, for validating `--lang` and the MCP `lang` input. */
+export const LANG_IDS: readonly Lang[] = ["typescript", ...PACKS.map((p) => p.id)];
 
 /** True when `v` is a language id. */
 export const isLang = (v: unknown): v is Lang =>
