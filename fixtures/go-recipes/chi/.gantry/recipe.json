@@ -1,8 +1,5 @@
 {
   "version": 1,
-  "dependencies": [
-    { "name": "github.com/go-chi/chi/v5", "role": "framework", "note": "router: chi.NewRouter(), Route, Mount, Group, Get and the other verbs" }
-  ],
   "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return"],
   "rules": [
     {

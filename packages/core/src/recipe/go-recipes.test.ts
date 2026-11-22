@@ -263,7 +263,6 @@ describe("uncalled: a function that takes a router and is called nowhere", () =>
   const recipeFor = (uncalled: boolean): string =>
     JSON.stringify({
       version: 1,
-      dependencies: [],
       helpers: ["resolve-names", "const-strings", "mount-graph", "param-flow"],
       rules: [
         {

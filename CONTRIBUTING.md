@@ -9,9 +9,9 @@ Thanks for wanting to help. The project is at an early stage and its contracts s
 - For anything larger than a small fix, comment on the issue (or open one) first so we can agree on the approach before you write code. Issues labelled `good first issue` or `help wanted` are good places to start.
 - Report security problems privately as described in [`SECURITY.md`](SECURITY.md), not in a public issue.
 
-## Contributing through Devprentice
+## Contributing through a guided program
 
-If you joined through a Devprentice guided program, follow the program's steps alongside this page. The rules here apply the same way: one issue per PR, `pnpm check` passing locally, and review by the code owner before merge. Ask questions about the program in the program itself, and questions about this project in Discussions or on the issue you are working on.
+If you joined through a guided program, follow the program's steps alongside this page. The rules here apply the same way: one issue per PR, `pnpm check` passing locally, and review by the code owner before merge. Ask questions about the program in the program itself, and questions about this project in Discussions or on the issue you are working on.
 
 ## Set up
 
@@ -33,7 +33,7 @@ To try the plugin in Claude Code from your clone, follow [`docs/INSTALL.md`](doc
 These come from [`CLAUDE.md`](CLAUDE.md), which the coding agents that work on this repo also follow.
 
 1. Follow the spec. [`docs/SPEC.md`](docs/SPEC.md) defines the contracts. If an issue conflicts with it, follow the spec and say so in the PR. To change a contract, edit the spec in the same PR and say so.
-2. Run `pnpm check` before you open or update a PR, and make sure it passes. There is no hosted CI to run it for you. If the PR touches `packages/explorer` or the mock data it serves, also run `pnpm build && pnpm --filter @gantry/explorer e2e` and make sure it reports 0 failed. `pnpm check` does not run the e2e suite and there is no hosted CI, so a red e2e test is only noticed if the PR author runs it. Paste the summary line in the PR. Playwright rewrites some tracked images under `docs/milestones/screenshots/`; revert the ones you did not mean to change. `pnpm fmt` applies Biome fixes. Several checkouts or worktrees may run `pnpm check` at the same time, and files that git ignores do not fail it.
+2. Run `pnpm check` before you open or update a PR, and make sure it passes. There is no CI service to run it for you. If the PR touches `packages/explorer` or the mock data it serves, also run `pnpm build && pnpm --filter @gantry/explorer e2e` and make sure it reports 0 failed. `pnpm check` does not run the e2e suite and there is no CI service, so a red e2e test is only noticed if the PR author runs it. Paste the summary line in the PR. Playwright rewrites some tracked images under `docs/milestones/screenshots/`; revert the ones you did not mean to change. `pnpm fmt` applies Biome fixes. Several checkouts or worktrees may run `pnpm check` at the same time, and files that git ignores do not fail it.
 3. Keep private code and data out. This repo is public, so never commit code, descriptions, graph dumps or screenshots from a private repository. Tests and screenshots use `fixtures/` and the explorer mock's synthetic scenarios only. Private eval data goes in the git-ignored `evals/private/`.
 4. Add only dependencies listed in section 2 of the spec. If you need another one, propose it in the issue first.
 5. Keep each PR to one issue and put `Closes #<n>` in the description. A branch name like `gantry/<issue-number>-<slug>` is welcome but not required on forks.
@@ -62,7 +62,7 @@ The tarball is one file for every platform. It holds `plugin/` (`bin/`, `dist/`,
 
 ## Review
 
-A ruleset protects `main`. Changes land through pull requests, force-pushes and branch deletion are blocked, and PRs merge by squash only. Each PR needs one approving review, and [`.github/CODEOWNERS`](.github/CODEOWNERS) makes the code owner's approval the required one. There is no hosted CI, so no status checks are required: run `pnpm check` yourself and tick the box in the PR template.
+A ruleset protects `main`. Changes land through pull requests, force-pushes and branch deletion are blocked, and PRs merge by squash only. Each PR needs one approving review, and [`.github/CODEOWNERS`](.github/CODEOWNERS) makes the code owner's approval the required one. There is no CI service, so no status checks are required: run `pnpm check` yourself and tick the box in the PR template.
 
 The maintainer reviews each PR against the rules above (spec, `pnpm check`, private data, dependencies, one issue per PR, README), may ask for changes, and merges when it is ready. Pushing to your PR branch updates the PR, so you do not need to open a new one.
 

@@ -694,10 +694,6 @@ describe("rule 3 reads Hono endpoints only", () => {
   it("does not link an hc chain to an endpoint another framework made", async () => {
     const recipe = {
       version: 1,
-      dependencies: [
-        { name: "express", workspace: "@x/api", role: "framework", note: "HTTP framework" },
-        { name: "hono", workspace: "@x/web", role: "neither", note: "client types" },
-      ],
       helpers: [],
       passthrough: [],
       rules: [

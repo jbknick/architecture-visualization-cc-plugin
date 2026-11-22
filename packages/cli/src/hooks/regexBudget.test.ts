@@ -24,7 +24,6 @@ describe("PostToolUse with a recipe regex that backtracks catastrophically", () 
   it("re-indexes the edited file, skips the rule with one note and returns quickly", async () => {
     const recipe = {
       version: 1,
-      dependencies: [],
       helpers: ["text-rules"],
       rules: [
         {

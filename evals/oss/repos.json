@@ -1,14 +1,6 @@
 {
   "repos": [
     {
-      "name": "blogdev",
-      "url": "https://github.com/devat-youtuber/MERN-Typescript-Blogdev.git",
-      "sha": "939657f24a945f642c9680a989a9a440f027004a",
-      "stack": ["react", "axios", "express", "mongoose"],
-      "lang": ["ts"],
-      "role": "tuning"
-    },
-    {
       "name": "bulletproof-react",
       "url": "https://github.com/alan2207/bulletproof-react.git",
       "sha": "9506629ed003a561c6627735480cce4994244bb4",
@@ -41,38 +33,6 @@
       "role": "tuning"
     },
     {
-      "name": "conduit-express-prisma",
-      "url": "https://github.com/gothinkster/node-express-prisma-v1-official-app.git",
-      "sha": "6ac99ea5aeadc4e001dd4d6933c2e269f878a969",
-      "stack": ["express", "prisma"],
-      "lang": ["ts"],
-      "role": "held-out"
-    },
-    {
-      "name": "conduit-express-ts",
-      "url": "https://github.com/skopekreep/typescript-node-express-realworld-example-app.git",
-      "sha": "e55f4d58895912ac37aa8a01fe2edda665628bfa",
-      "stack": ["express"],
-      "lang": ["ts"],
-      "role": "tuning"
-    },
-    {
-      "name": "conduit-hooks-web",
-      "url": "https://github.com/chagweyh/react-hooks-typescript-realworld.git",
-      "sha": "6dbaeda7c207684291aa0d02214e81189457cf6b",
-      "stack": ["react", "axios"],
-      "lang": ["ts"],
-      "role": "tuning"
-    },
-    {
-      "name": "conduit-redux-web",
-      "url": "https://github.com/angelguzmaning/ts-redux-react-realworld-example-app.git",
-      "sha": "cb397562724ea7f53758d5511c220690b99fe2f5",
-      "stack": ["react", "react-router", "axios"],
-      "lang": ["ts"],
-      "role": "held-out"
-    },
-    {
       "name": "ecom",
       "url": "https://github.com/sikozonpc/ecom.git",
       "sha": "6cc220748ec673a15fb818fd39843347244f39c3",
@@ -86,14 +46,6 @@
       "sha": "8037bc89bcab9a264099afa2672581237a3e079b",
       "stack": ["ent"],
       "lang": ["go"],
-      "role": "tuning"
-    },
-    {
-      "name": "epic-stack",
-      "url": "https://github.com/epicweb-dev/epic-stack.git",
-      "sha": "893610db76127fb5a5f1ffa786bee6b050637429",
-      "stack": ["react-router", "express", "prisma"],
-      "lang": ["ts"],
       "role": "tuning"
     },
     {
@@ -113,30 +65,6 @@
       "role": "tuning"
     },
     {
-      "name": "express-typescript",
-      "url": "https://github.com/edwinhern/express-typescript.git",
-      "sha": "983fa0413659cd921c5754b00f7817903eb91364",
-      "stack": ["express"],
-      "lang": ["ts"],
-      "role": "held-out"
-    },
-    {
-      "name": "fastify-api-boilerplate-jwt",
-      "url": "https://github.com/Tony133/fastify-api-boilerplate-jwt.git",
-      "sha": "a081ab3dc687e1cd8f75ed4f4bb131f5181aa60d",
-      "stack": ["fastify", "kysely"],
-      "lang": ["ts"],
-      "role": "held-out"
-    },
-    {
-      "name": "fastify-demo",
-      "url": "https://github.com/fastify/demo.git",
-      "sha": "895908e4e706b896aa3991f3f6507617edddb1dd",
-      "stack": ["fastify"],
-      "lang": ["ts"],
-      "role": "held-out"
-    },
-    {
       "name": "fastify-typescript",
       "url": "https://github.com/hmake98/fastify-typescript.git",
       "sha": "3e195bf8ed9b5c43999f19bd3785b51c17f69783",
@@ -153,52 +81,12 @@
       "role": "held-out"
     },
     {
-      "name": "go-base",
-      "url": "https://github.com/dhax/go-base.git",
-      "sha": "5f852fdb86c05bb2dac20627dc99135abd819e3a",
-      "stack": ["chi"],
-      "lang": ["go"],
-      "role": "tuning"
-    },
-    {
-      "name": "go-realworld-example-app",
-      "url": "https://github.com/uptrace/go-realworld-example-app.git",
-      "sha": "94fc6d26f3206208de8f3c1d20799aa733fdb3c3",
-      "stack": ["gin"],
-      "lang": ["go"],
-      "role": "held-out"
-    },
-    {
-      "name": "golang-gin-realworld-example-app",
-      "url": "https://github.com/realworld-apps/golang-gin-realworld-example-app.git",
-      "sha": "a41289b2a4951e7cc09066f86742a27f85121c9b",
-      "stack": ["gin", "gorm"],
-      "lang": ["go"],
-      "role": "tuning"
-    },
-    {
-      "name": "gopodder",
-      "url": "https://github.com/cbrgm/gopodder.git",
-      "sha": "65c265576465c63cf7ee276ac956f63642196c9d",
-      "stack": ["sqlc"],
-      "lang": ["go"],
-      "role": "held-out"
-    },
-    {
       "name": "grafana",
       "url": "https://github.com/grafana/grafana.git",
       "sha": "42c9c62eb2dd6b6f1f01265ef946b0eeef9c9c6d",
       "stack": ["react", "go"],
       "lang": ["ts"],
       "role": "tuning"
-    },
-    {
-      "name": "graphile-worker",
-      "url": "https://github.com/graphile/worker.git",
-      "sha": "b4f1b41c7abd747586879bf68a46a5a22897fa96",
-      "stack": ["pg"],
-      "lang": ["ts"],
-      "role": "held-out"
     },
     {
       "name": "hono",
@@ -209,43 +97,11 @@
       "role": "tuning"
     },
     {
-      "name": "hono-open-api-starter",
-      "url": "https://github.com/w3cj/hono-open-api-starter.git",
-      "sha": "0d5f3bf523f525667d58edb38011e377e5898fc4",
-      "stack": ["hono"],
-      "lang": ["ts"],
-      "role": "held-out"
-    },
-    {
-      "name": "hotel-bookings",
-      "url": "https://github.com/raihan2bd/hotel-bookings.git",
-      "sha": "56e92cfb8e3fed52804f4d6e62b78ee9edadfc58",
-      "stack": ["chi"],
-      "lang": ["go"],
-      "role": "held-out"
-    },
-    {
       "name": "hugo",
       "url": "https://github.com/gohugoio/hugo.git",
       "sha": "93be9f1f5b43446231ed3255b660cd7d3dd0ba11",
       "stack": ["go"],
       "lang": ["go"],
-      "role": "held-out"
-    },
-    {
-      "name": "insta",
-      "url": "https://github.com/tuananhfr/instagram-MERN-typescript.git",
-      "sha": "139e2bf48e09b703080443feec3949ebbb3bcac7",
-      "stack": ["react", "axios", "express", "mongoose"],
-      "lang": ["ts"],
-      "role": "tuning"
-    },
-    {
-      "name": "meetmind-ai",
-      "url": "https://github.com/naresh-kamarthy/meetmind-ai.git",
-      "sha": "515664df7a5ddb3de7883066b1057dede9ce487d",
-      "stack": ["react", "axios", "express", "mongoose"],
-      "lang": ["ts"],
       "role": "held-out"
     },
     {
@@ -281,35 +137,11 @@
       "role": "tuning"
     },
     {
-      "name": "nestjs-realworld-mikro-orm",
-      "url": "https://github.com/mikro-orm/nestjs-realworld-example-app.git",
-      "sha": "3bb628edebc95da30adcbeeb2ecb33158c3dbc95",
-      "stack": ["nestjs", "mikro-orm"],
-      "lang": ["ts"],
-      "role": "held-out"
-    },
-    {
-      "name": "nestjs-realworld-typeorm",
-      "url": "https://github.com/lujakob/nestjs-realworld-example-app.git",
-      "sha": "c1c2cc4e448b279ff083272df1ac50d20c3304fa",
-      "stack": ["nestjs", "typeorm"],
-      "lang": ["ts"],
-      "role": "held-out"
-    },
-    {
       "name": "nestjs-sequelize-typescript",
       "url": "https://github.com/kentloog/nestjs-sequelize-typescript.git",
       "sha": "6ec21637a0ad70c8a4e7d9e2498cc8b284e3eb74",
       "stack": ["nestjs", "sequelize"],
       "lang": ["ts"],
-      "role": "tuning"
-    },
-    {
-      "name": "nethttp",
-      "url": "https://github.com/dreamsofcode-io/nethttp.git",
-      "sha": "63ead0d466e6ece610c2bcb1b304fab435981f35",
-      "stack": ["net-http"],
-      "lang": ["go"],
       "role": "tuning"
     },
     {
@@ -319,14 +151,6 @@
       "stack": ["nextjs", "drizzle"],
       "lang": ["ts"],
       "role": "tuning"
-    },
-    {
-      "name": "node-express-mongoose-typescript-boilerplate",
-      "url": "https://github.com/saisilinus/node-express-mongoose-typescript-boilerplate.git",
-      "sha": "278143db5b01d5281649a968c18b40ae709f2ec7",
-      "stack": ["express", "mongoose"],
-      "lang": ["ts"],
-      "role": "held-out"
     },
     {
       "name": "node-express-realworld-example-app",
@@ -353,34 +177,10 @@
       "role": "tuning"
     },
     {
-      "name": "react-router-templates",
-      "url": "https://github.com/remix-run/react-router-templates.git",
-      "sha": "338a991a4c4d2474ea8d3699cfcd5a77a27c9424",
-      "stack": ["react-router"],
-      "lang": ["ts"],
-      "role": "held-out"
-    },
-    {
       "name": "react-tanstarter",
       "url": "https://github.com/dotnize/react-tanstarter.git",
       "sha": "7faa622c492fc3f699dc959afc69a76205bb1774",
       "stack": ["tanstack-start", "drizzle"],
-      "lang": ["ts"],
-      "role": "held-out"
-    },
-    {
-      "name": "realworld.go",
-      "url": "https://github.com/raeperd/realworld.go.git",
-      "sha": "c109ab8a966aa532287e8749994771a4d116ad7b",
-      "stack": ["net-http"],
-      "lang": ["go"],
-      "role": "held-out"
-    },
-    {
-      "name": "saas-starter",
-      "url": "https://github.com/nextjs/saas-starter.git",
-      "sha": "6e33e58b1e553a41fe22e6b941a7229a002de361",
-      "stack": ["nextjs", "drizzle"],
       "lang": ["ts"],
       "role": "held-out"
     },
@@ -393,36 +193,12 @@
       "role": "tuning"
     },
     {
-      "name": "sequelize-typescript-example",
-      "url": "https://github.com/RobinBuschmann/sequelize-typescript-example.git",
-      "sha": "cb1e675c9cd8a6df8955c81a3dedfb02b7cc4a31",
-      "stack": ["sequelize"],
-      "lang": ["ts"],
-      "role": "held-out"
-    },
-    {
       "name": "simplebank",
       "url": "https://github.com/techschool/simplebank.git",
       "sha": "97f000fe58ad01a0774179ffa8884ac7784cf263",
       "stack": ["sqlc"],
       "lang": ["go"],
       "role": "tuning"
-    },
-    {
-      "name": "start-ui-web",
-      "url": "https://github.com/BearStudio/start-ui-web.git",
-      "sha": "368718acf5fcdd8bbee2776e5eb473647ea50950",
-      "stack": ["orpc", "tanstack-start"],
-      "lang": ["ts"],
-      "role": "held-out"
-    },
-    {
-      "name": "taxonomy",
-      "url": "https://github.com/shadcn-ui/taxonomy.git",
-      "sha": "298a8857c7128a0d121e7f699dfd729f23b3966d",
-      "stack": ["nextjs", "prisma"],
-      "lang": ["ts"],
-      "role": "held-out"
     },
     {
       "name": "trpc",

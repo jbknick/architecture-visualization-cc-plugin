@@ -13,10 +13,9 @@ const rule = (id: string, over: Record<string, unknown> = {}) => ({
   examples: { match: ["new Hono()"], noMatch: [] },
   ...over,
 });
-const text = (rules: unknown[], marker = "a") =>
+const text = (rules: unknown[]) =>
   JSON.stringify({
     version: 1,
-    dependencies: [{ name: "hono", role: "framework", note: marker }],
     helpers: [],
     rules,
   });
@@ -30,7 +29,7 @@ describe("parseRecipe", () => {
   });
 
   it("a file that fails the top-level schema gives no recipe and one error", () => {
-    const r = parseRecipe(JSON.stringify({ version: 2, dependencies: [], helpers: [], rules: [] }));
+    const r = parseRecipe(JSON.stringify({ version: 2, helpers: [], rules: [] }));
     expect(r.recipe).toBeNull();
     expect(r.errors).toHaveLength(1);
   });
@@ -78,11 +77,11 @@ describe("loadRecipe reads the copy it is asked for", () => {
   it("main reads HEAD, working reads the disk, a ref reads that commit", async () => {
     const repo = await makeRepo({
       "package.json": "{}",
-      ".gantry/recipe.json": text([rule("committed")], "head"),
+      ".gantry/recipe.json": text([rule("committed")]),
     });
     const base = repo.git(["rev-parse", "HEAD"]).trim();
     // The disk now differs from HEAD (uncommitted edit).
-    writeFileSync(join(repo.dir, ".gantry/recipe.json"), text([rule("on-disk")], "disk"));
+    writeFileSync(join(repo.dir, ".gantry/recipe.json"), text([rule("on-disk")]));
     expect(loadRecipe(repo.dir, { layer: "main" }).recipe?.rules.map((r) => r.id)).toEqual(["committed"]);
     expect(loadRecipe(repo.dir, { layer: "working" }).recipe?.rules.map((r) => r.id)).toEqual(["on-disk"]);
     // A new commit changes HEAD; the old ref still reads the old recipe.

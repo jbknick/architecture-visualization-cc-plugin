@@ -27,7 +27,7 @@ Behaviour notes measured:
 - **Platform gap.** `@ast-grep/napi` 0.51.3 has native builds for 9 targets (incl. `win32-arm64-msvc`, `win32-ia32-msvc`, `linux-*-musl`); the grammar packages have 5. Windows arm64 and ia32 have no Go/Java prebuild. The prebuild directory names do not say glibc or musl; Linux musl was not tested.
 - **Calling `registerDynamicLanguage` twice** did not throw here, although its type docs say "call exactly once" and mark it `@experimental`. Production code should register once at module load.
 - **Typing.** The grammar packages' default export is not typed as a `LangRegistration`; a cast is needed (`as unknown as DynamicLangRegistrations`). `parse("go", ...)` takes the language as a plain string.
-- **Go pattern pitfall.** `findAll("fmt.Println($$$A)")` and `findAll("fmt.Println($A)")` match **0** of 2 calls; `fmt.Println($A, $B)` matches its one call, and the `{ context: "func _() { fmt.Println($$$A) }", selector: "call_expression" }` form matches both. A one-argument selector call alone does not parse as a call in tree-sitter-go (it reads like a conversion). The recipe spike (`v2-recipes.md`) hit the same issue.
+- **Go pattern pitfall.** `findAll("fmt.Println($$$A)")` and `findAll("fmt.Println($A)")` match **0** of 2 calls; `fmt.Println($A, $B)` matches its one call, and the `{ context: "func _() { fmt.Println($$$A) }", selector: "call_expression" }` form matches both. A one-argument selector call alone does not parse as a call in tree-sitter-go (it reads like a conversion). The recipe spike hit the same issue.
 - The rule kind `MISSING` is rejected by ast-grep ("Kind `MISSING` is invalid"); only `ERROR` nodes can be searched for, so a parse-error count misses inserted-missing tokens.
 
 ## Findings
@@ -36,7 +36,7 @@ Behaviour notes measured:
 2. **Pin both in spec section 2**, exactly: `@ast-grep/napi` (currently approved without a version or a user) and the grammar packages (new dependencies, need a section 2 edit). The grammar packages are at 0.0.x and were last published eight months before this spike; treat them as low-maintenance and keep a fixture test that fails if a grammar bump changes node kinds.
 3. **Platforms:** document that Go support needs one of the five prebuilt targets, or a `tree-sitter-cli` build with install scripts allowed. Windows arm64 is the visible gap.
 4. Go parse speed is about 1,600 files/s single-threaded on a real repo (test files included); `v2-go-parse.md` has the symbol accuracy and the walk cost.
-5. Recipes authored for Go need the pattern pitfalls above in the discovery agent's prompt, and recipe validation should test each rule on example snippets (see `v2-recipes.md`).
+5. Whoever writes Go recipe rules needs the pattern pitfalls above, and recipe validation should test each rule on example snippets.
 
 ## Deviations and notes
 

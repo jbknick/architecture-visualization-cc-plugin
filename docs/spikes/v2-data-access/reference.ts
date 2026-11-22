@@ -1,5 +1,5 @@
 // Reference output: indexes a fixture with today's indexer and returns its table nodes and reads and writes edges
-// (the Drizzle adapter's output), for comparison with the Drizzle recipe. Same method as ../v2-recipes/reference.ts.
+// (the Drizzle adapter's output), for comparison with the Drizzle recipe.
 import { execFileSync } from "node:child_process";
 import { cpSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

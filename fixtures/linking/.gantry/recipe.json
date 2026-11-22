@@ -1,43 +1,5 @@
 {
   "version": 1,
-  "dependencies": [
-    {
-      "name": "hono",
-      "workspace": "@fx/users-api",
-      "role": "framework",
-      "note": "HTTP framework: new Hono(), route, basePath"
-    },
-    {
-      "name": "hono",
-      "workspace": "@fx/billing",
-      "role": "framework",
-      "note": "HTTP framework: new Hono(), route, basePath"
-    },
-    {
-      "name": "axios",
-      "workspace": "@fx/web",
-      "role": "neither",
-      "note": "HTTP client"
-    },
-    {
-      "name": "ky",
-      "workspace": "@fx/web",
-      "role": "neither",
-      "note": "HTTP client"
-    },
-    {
-      "name": "react",
-      "workspace": "@fx/web",
-      "role": "neither",
-      "note": "UI library"
-    },
-    {
-      "name": "axios",
-      "workspace": "@fx/legacy-web",
-      "role": "neither",
-      "note": "HTTP client"
-    }
-  ],
   "helpers": [
     "resolve-names",
     "const-strings",
