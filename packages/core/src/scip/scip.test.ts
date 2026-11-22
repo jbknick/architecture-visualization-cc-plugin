@@ -116,7 +116,7 @@ describe("precise mode on the pnpm-turbo fixture", () => {
       ].sort(),
     );
     const call = edgesOf(dump(paths)).find(
-      (e) => e.dst === "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+      (e) => e.kind === "calls" && e.dst === "sym:pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
     );
     expect(call).toMatchObject({
       src: "sym:pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#PostPage",
