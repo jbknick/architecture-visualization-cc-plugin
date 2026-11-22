@@ -1,0 +1,322 @@
+{
+  "repos": [
+    {
+      "name": "tsconfig-extends-workspace"
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "ws:tsconfig-extends-workspace:.",
+      "repo": "tsconfig-extends-workspace",
+      "name": "tsconfig-extends-workspace",
+      "dir": ".",
+      "kind": "unknown",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:tsconfig-extends-workspace:@acme/admin",
+      "repo": "tsconfig-extends-workspace",
+      "name": "@acme/admin",
+      "dir": "apps/admin",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:tsconfig-extends-workspace:@acme/config-typescript",
+      "repo": "tsconfig-extends-workspace",
+      "name": "@acme/config-typescript",
+      "dir": "packages/config-typescript",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": [
+        {
+          "subpath": "./base.json",
+          "target": "./base.json"
+        },
+        {
+          "subpath": "./nextjs.json",
+          "target": "./nextjs.json"
+        }
+      ]
+    },
+    {
+      "id": "ws:tsconfig-extends-workspace:@acme/shared",
+      "repo": "tsconfig-extends-workspace",
+      "name": "@acme/shared",
+      "dir": "packages/shared",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:tsconfig-extends-workspace:@acme/web",
+      "repo": "tsconfig-extends-workspace",
+      "name": "@acme/web",
+      "dir": "apps/web",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:tsconfig-extends-workspace:apps/admin/src/main.ts",
+      "repo": "tsconfig-extends-workspace",
+      "path": "apps/admin/src/main.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:tsconfig-extends-workspace:@acme/admin",
+      "contentHash": "da99f6b61c5e57fb8e28dc7a065fcf40986f5b13dd237aab6f004dc0f1c9cb6e"
+    },
+    {
+      "id": "file:tsconfig-extends-workspace:apps/web/src/app/page.ts",
+      "repo": "tsconfig-extends-workspace",
+      "path": "apps/web/src/app/page.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:tsconfig-extends-workspace:@acme/web",
+      "contentHash": "d249ef7f373bb2af33e128c3c6c8b6e4d0ef4551a4562bc00bae7dd133470213"
+    },
+    {
+      "id": "file:tsconfig-extends-workspace:apps/web/src/lib/format.ts",
+      "repo": "tsconfig-extends-workspace",
+      "path": "apps/web/src/lib/format.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:tsconfig-extends-workspace:@acme/web",
+      "contentHash": "e4d284bf8fa70e6558f1de13c5818f50472bd0b6a2c58a663908c58e1671c3b7"
+    },
+    {
+      "id": "file:tsconfig-extends-workspace:packages/shared/src/date.ts",
+      "repo": "tsconfig-extends-workspace",
+      "path": "packages/shared/src/date.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:tsconfig-extends-workspace:@acme/shared",
+      "contentHash": "76849fcfafa71f243ed4d975e1e51ccefaacaf4531e930522305b8e0d08d0fb8"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:tsconfig-extends-workspace:apps/admin/src/main.ts#today",
+      "fileId": "file:tsconfig-extends-workspace:apps/admin/src/main.ts",
+      "name": "today",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(at: Date): string",
+      "startLine": 3,
+      "endLine": 5,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "5a9c0655f25b7b246e5cf3e85b3e56ee",
+      "shapeHash": "603aca8c6d52200f595307edfe8dd99a"
+    },
+    {
+      "id": "sym:tsconfig-extends-workspace:apps/web/src/app/page.ts#summary",
+      "fileId": "file:tsconfig-extends-workspace:apps/web/src/app/page.ts",
+      "name": "summary",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(cents: number): string",
+      "startLine": 3,
+      "endLine": 5,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "ff554a651cc8d7358af9435917b602c7",
+      "shapeHash": "8ec198459c0855117a5b4569bf742175"
+    },
+    {
+      "id": "sym:tsconfig-extends-workspace:apps/web/src/lib/format.ts#money",
+      "fileId": "file:tsconfig-extends-workspace:apps/web/src/lib/format.ts",
+      "name": "money",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(cents: number): string",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "93909269b25d11fa21921cf407eba7a0",
+      "shapeHash": "9221bb2f229b7cc6036d533fa4f91e33"
+    },
+    {
+      "id": "sym:tsconfig-extends-workspace:packages/shared/src/date.ts#isoDay",
+      "fileId": "file:tsconfig-extends-workspace:packages/shared/src/date.ts",
+      "name": "isoDay",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(d: Date): string",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "2ac2675c949e1705a5af0c131aa4a048",
+      "shapeHash": "f1775d55f192014b240b75cc44db2d2a"
+    }
+  ],
+  "edges": [
+    {
+      "src": "file:tsconfig-extends-workspace:apps/admin/src/main.ts",
+      "dst": "file:tsconfig-extends-workspace:packages/shared/src/date.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/admin/src/main.ts:1"
+      ],
+      "fileId": "file:tsconfig-extends-workspace:apps/admin/src/main.ts"
+    },
+    {
+      "src": "file:tsconfig-extends-workspace:apps/admin/src/main.ts",
+      "dst": "sym:tsconfig-extends-workspace:apps/admin/src/main.ts#today",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:tsconfig-extends-workspace:apps/admin/src/main.ts"
+    },
+    {
+      "src": "file:tsconfig-extends-workspace:apps/admin/src/main.ts",
+      "dst": "sym:tsconfig-extends-workspace:apps/admin/src/main.ts#today",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:tsconfig-extends-workspace:apps/admin/src/main.ts"
+    },
+    {
+      "src": "file:tsconfig-extends-workspace:apps/web/src/app/page.ts",
+      "dst": "file:tsconfig-extends-workspace:apps/web/src/lib/format.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/app/page.ts:1"
+      ],
+      "fileId": "file:tsconfig-extends-workspace:apps/web/src/app/page.ts"
+    },
+    {
+      "src": "file:tsconfig-extends-workspace:apps/web/src/app/page.ts",
+      "dst": "sym:tsconfig-extends-workspace:apps/web/src/app/page.ts#summary",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:tsconfig-extends-workspace:apps/web/src/app/page.ts"
+    },
+    {
+      "src": "file:tsconfig-extends-workspace:apps/web/src/app/page.ts",
+      "dst": "sym:tsconfig-extends-workspace:apps/web/src/app/page.ts#summary",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:tsconfig-extends-workspace:apps/web/src/app/page.ts"
+    },
+    {
+      "src": "file:tsconfig-extends-workspace:apps/web/src/lib/format.ts",
+      "dst": "sym:tsconfig-extends-workspace:apps/web/src/lib/format.ts#money",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:tsconfig-extends-workspace:apps/web/src/lib/format.ts"
+    },
+    {
+      "src": "file:tsconfig-extends-workspace:apps/web/src/lib/format.ts",
+      "dst": "sym:tsconfig-extends-workspace:apps/web/src/lib/format.ts#money",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:tsconfig-extends-workspace:apps/web/src/lib/format.ts"
+    },
+    {
+      "src": "file:tsconfig-extends-workspace:packages/shared/src/date.ts",
+      "dst": "sym:tsconfig-extends-workspace:packages/shared/src/date.ts#isoDay",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:tsconfig-extends-workspace:packages/shared/src/date.ts"
+    },
+    {
+      "src": "file:tsconfig-extends-workspace:packages/shared/src/date.ts",
+      "dst": "sym:tsconfig-extends-workspace:packages/shared/src/date.ts#isoDay",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:tsconfig-extends-workspace:packages/shared/src/date.ts"
+    },
+    {
+      "src": "sym:tsconfig-extends-workspace:apps/admin/src/main.ts#today",
+      "dst": "sym:tsconfig-extends-workspace:packages/shared/src/date.ts#isoDay",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/admin/src/main.ts:4"
+      ],
+      "fileId": "file:tsconfig-extends-workspace:apps/admin/src/main.ts"
+    },
+    {
+      "src": "sym:tsconfig-extends-workspace:apps/web/src/app/page.ts#summary",
+      "dst": "sym:tsconfig-extends-workspace:apps/web/src/lib/format.ts#money",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/web/src/app/page.ts:4"
+      ],
+      "fileId": "file:tsconfig-extends-workspace:apps/web/src/app/page.ts"
+    },
+    {
+      "src": "ws:tsconfig-extends-workspace:@acme/admin",
+      "dst": "file:tsconfig-extends-workspace:apps/admin/src/main.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:tsconfig-extends-workspace:apps/admin/src/main.ts"
+    },
+    {
+      "src": "ws:tsconfig-extends-workspace:@acme/shared",
+      "dst": "file:tsconfig-extends-workspace:packages/shared/src/date.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:tsconfig-extends-workspace:packages/shared/src/date.ts"
+    },
+    {
+      "src": "ws:tsconfig-extends-workspace:@acme/web",
+      "dst": "file:tsconfig-extends-workspace:apps/web/src/app/page.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:tsconfig-extends-workspace:apps/web/src/app/page.ts"
+    },
+    {
+      "src": "ws:tsconfig-extends-workspace:@acme/web",
+      "dst": "file:tsconfig-extends-workspace:apps/web/src/lib/format.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:tsconfig-extends-workspace:apps/web/src/lib/format.ts"
+    }
+  ]
+}

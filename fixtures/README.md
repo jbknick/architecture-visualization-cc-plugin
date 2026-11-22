@@ -28,6 +28,13 @@ Workspace (`apps/*`, `packages/*`) for the framework adapters (#45).
 - `apps/web` (`@tanstack/react-start`, `@tanstack/react-router`): server functions `fetchPost` (GET, `inputValidator`, inline handler) and `savePost` (POST, `middleware([requireUser])`, named handler) in `src/server/posts.ts`; route `/posts/$postId` calls `fetchPost` in its `loader`; route `/` defines `countPosts` and calls it from its `beforeLoad` function.
 - `packages/legacy`: uses `new Hono()` and `createServerFn` without depending on either, so no adapter reads it.
 
+## tsconfig-extends-workspace
+Workspace (`apps/*`, `packages/*`), no `node_modules`, for a tsconfig that extends a config a workspace package provides.
+- `packages/config-typescript` (`@acme/config-typescript`): `exports` expose `./base.json` and `./nextjs.json`. `base.json` has `baseUrl: "."` and `paths` `~shared/*` pointing at `packages/shared/src/*`; `nextjs.json` extends `./base.json`.
+- `apps/web/tsconfig.json` extends `@acme/config-typescript/nextjs.json` and sets its own `paths` `@/*`, which replace the base's. `apps/web/src/app/page.ts` imports `@/lib/format`.
+- `apps/admin/tsconfig.json` extends the same file and sets no `paths`, so it inherits `~shared/*`. `apps/admin/src/main.ts` imports `~shared/date`.
+- Both imports resolve with no `node_modules`, so `init` reports 0 unresolved.
+
 ## nx
 - `nx.json`, two projects with `project.json`: `apps/shop` and `libs/cart`.
 - `tsconfig.base.json` path alias `@shop/cart`.
