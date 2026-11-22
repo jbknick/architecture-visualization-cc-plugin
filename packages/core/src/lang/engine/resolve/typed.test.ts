@@ -29,12 +29,17 @@ const typedPack = {
   extensions: [".tt"],
   testPatterns: ["**/*_check.tt"],
   workspace: {
-    manifest: "typed.mod",
-    quotes: '"',
-    comment: /#.*$/gm,
-    name: /^\s*name\s+(\S+)/m,
+    manifests: [
+      {
+        files: ["typed.mod"],
+        format: "text",
+        quotes: '"',
+        comment: /#.*$/gm,
+        name: [{ pattern: /^\s*name\s+(\S+)/m }],
+        deps: { directive: "needs", tokens: 1 },
+      },
+    ],
     skipDirs: [],
-    deps: { directive: "needs", tokens: 1 },
     main: /^package main\b/m,
     group: { file: "typed.work", directive: "use", tokens: 1 },
   },

@@ -34,12 +34,17 @@ const toyPack = {
   testPatterns: ["**/*_check.toy"],
   nodes: { ...nodesWithoutTyping, import: { ...goPack.nodes.import, separator: "." } },
   workspace: {
-    manifest: "toy.mod",
-    quotes: '"',
-    comment: /#.*$/gm,
-    name: /^\s*name\s+(\S+)/m,
+    manifests: [
+      {
+        files: ["toy.mod"],
+        format: "text",
+        quotes: '"',
+        comment: /#.*$/gm,
+        name: [{ pattern: /^\s*name\s+(\S+)/m }],
+        deps: { directive: "needs", tokens: 1 },
+      },
+    ],
     skipDirs: ["vendored"],
-    deps: { directive: "needs", tokens: 1 },
     main: /^package main\b/m,
     group: { file: "toy.work", directive: "use", tokens: 1 },
   },

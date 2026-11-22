@@ -32,24 +32,42 @@ const from = z.enum(["start", "end"]);
 const TypingSchema = z.strictObject({
   type: z.strictObject({
     names: strings,
-    qualified: z.strictObject({ kind: field, qualifier: field, name: field }),
+    qualified: z.strictObject({ kind: field, qualifier: field, name: field }).optional(),
     wrappers: strings,
-    generic: z.strictObject({ kind: field, field }),
+    generic: z.strictObject({ kind: field, field: field.optional() }),
     sequences: z.array(z.strictObject({ kind: field, element: field })),
-    maps: z.strictObject({ kind: field, key: field, value: field }),
+    maps: z.strictObject({ kind: field, key: field, value: field }).optional(),
     predeclared: strings,
+    unread: strings,
   }),
-  package: z.strictObject({ clause: field, separate: field }),
+  package: z.strictObject({
+    clause: field,
+    path: z.enum(["directory", "clause"]),
+    separate: field.optional(),
+  }),
   unboundAliases: strings,
-  results: z.strictObject({ list: field, name: field, nameKinds: strings, type: field }),
+  results: z.strictObject({ list: field, name: field, nameKinds: strings, type: field }).optional(),
   members: z.strictObject({
     container: field,
     entries: strings,
     name: field,
     nameKinds: strings,
     type: field,
+    declarator: field.optional(),
+    callable: z.boolean(),
   }),
   interfaces: z.strictObject({ embeds: strings, embedKinds: strings }),
+  supertypes: z.array(
+    z.strictObject({
+      field: field.optional(),
+      kind: field.optional(),
+      edge: z.enum(["extends", "implements"]),
+    }),
+  ),
+  implements: z.enum(["structural", "nominal"]),
+  enclosing: z.strictObject({ self: strings, parent: strings }).optional(),
+  arity: z.strictObject({ arguments: field, parameters: strings, variadic: strings }).optional(),
+  construct: z.strictObject({ kind: field, type: field, arguments: field }).optional(),
   generics: field,
   vars: z.strictObject({ declarations: strings, specs: strings, type: field, value: field }),
   unnamed: strings,
@@ -58,8 +76,8 @@ const TypingSchema = z.strictObject({
     members: z.array(z.strictObject({ kind: field, operand: field, name: field })),
     operands: strings,
   }),
-  conversion: z.strictObject({ kind: field, type: field }),
-  builtins: z.strictObject({ arguments: field, typed: strings, first: strings }),
+  conversion: z.strictObject({ kind: field, type: field }).optional(),
+  builtins: z.strictObject({ arguments: field, typed: strings, first: strings }).optional(),
   expressions: z.strictObject({
     wrappers: strings,
     names: strings,
@@ -79,8 +97,17 @@ const TypingSchema = z.strictObject({
       z.strictObject({ kind: field, name: field, type: field, variadic: z.boolean(), from }),
     ),
     declarations: z.array(
-      z.strictObject({ kind: field, names: field, type: field.optional(), values: field, from }),
+      z.strictObject({
+        kind: field,
+        names: field,
+        type: field.optional(),
+        parentType: field.optional(),
+        values: field,
+        from,
+      }),
     ),
+    inferred: strings,
+    valueLists: strings,
     ranges: z.array(z.strictObject({ kind: field, names: field, source: field, from })),
     untyped: z.array(z.strictObject({ kind: field, names: field, from })),
   }),
@@ -94,21 +121,24 @@ const PackSchema = z.strictObject({
   skipPaths: strings,
   testPatterns: strings,
   generatedPatterns: z.array(regexp),
+  generatedPaths: z.array(z.string()),
   grammar: z.strictObject({ package: field, name: field }),
   nodes: z.strictObject({
     errorKind: field,
     function: z.array(declaration),
     method: z.array(declaration),
-    receiver: z.strictObject({
-      parameter: field,
-      type: field,
-      baseType: z.strictObject({
-        names: strings,
-        wrappers: strings,
-        generic: z.strictObject({ kind: field, field }),
-        unknown: field,
-      }),
-    }),
+    receiver: z
+      .strictObject({
+        parameter: field,
+        type: field,
+        baseType: z.strictObject({
+          names: strings,
+          wrappers: strings,
+          generic: z.strictObject({ kind: field, field }),
+          unknown: field,
+        }),
+      })
+      .optional(),
     types: z.strictObject({
       declarations: strings,
       specs: strings,
@@ -118,29 +148,51 @@ const PackSchema = z.strictObject({
       type: field,
       class: strings,
       interface: strings,
-      interfaceMethods: z.strictObject({
-        container: field,
-        members: strings,
-        rule: z.strictObject({ name: field, parameters: field, result: field }),
-      }),
+      interfaceMethods: z
+        .strictObject({
+          container: field,
+          members: strings,
+          rule: z.strictObject({ name: field, parameters: field, result: field }),
+        })
+        .optional(),
+      bodied: z.array(
+        z.strictObject({
+          kind: field,
+          as: z.enum(["class", "interface", "enum", "type"]),
+          name: field,
+          body: field,
+        }),
+      ),
+      bodies: strings,
     }),
     values: z.strictObject({ ...specGroup, name: field, nameKinds: strings }),
     import: z.strictObject({
       ...specGroup,
-      path: field,
-      alias: field,
+      path: field.optional(),
+      pathKinds: strings.optional(),
+      alias: field.optional(),
       quotes: z.string(),
       separator: field,
       localName: z.strictObject({ skip: regexp }),
+      named: z.strictObject({ onDemand: field, static: field }).optional(),
     }),
     call: strings,
     callee: z.strictObject({
-      field,
+      field: field.nullable(),
       names: strings,
       member: z.strictObject({ kind: field, operand: field, name: field, operands: strings }),
     }),
     typing: TypingSchema.optional(),
-    exported: z.literal("capitalized"),
+    exported: z.discriminatedUnion("by", [
+      z.strictObject({ by: z.literal("capital") }),
+      z.strictObject({
+        by: z.literal("modifier"),
+        node: field,
+        keywords: strings,
+        implicit: strings,
+      }),
+      z.strictObject({ by: z.literal("underscore") }),
+    ]),
     signature: z.strictObject({ empty: z.string(), maxLength: z.number().int().positive() }),
     measure: z.strictObject({
       branches: strings,
@@ -149,14 +201,33 @@ const PackSchema = z.strictObject({
     }),
   }),
   workspace: z.strictObject({
-    manifest: field,
-    quotes: z.string(),
-    comment: regexp,
-    name: regexp,
+    manifests: z
+      .array(
+        z.strictObject({
+          files: strings.min(1),
+          format: z.enum(["text", "xml"]),
+          quotes: z.string(),
+          comment: regexp,
+          name: z
+            .array(
+              z.union([
+                z.strictObject({ pattern: regexp, files: strings.optional() }),
+                z.strictObject({ path: field }),
+                z.strictObject({ directory: z.literal(true) }),
+              ]),
+            )
+            .min(1),
+          deps: z.union([
+            z.strictObject({ directive: field, tokens: z.number().int().positive() }),
+            z.strictObject({ pattern: regexp }),
+            z.strictObject({ path: field }),
+          ]),
+        }),
+      )
+      .min(1),
     skipDirs: strings,
-    deps: z.strictObject({ directive: field, tokens: z.number().int().positive() }),
     main: regexp,
-    group: z.strictObject({ file: field, directive: field, tokens: z.number().int().positive() }),
+    group: z.strictObject({ file: field, directive: field, tokens: z.number().int().positive() }).optional(),
   }),
   tokens: z.strictObject({
     identifiers: strings,
@@ -236,9 +307,12 @@ afterEach(async () => {
   for (const c of cleanups.splice(0)) await c();
 });
 
-describe("Go index determinism", () => {
+describe.each([
+  ["Go", "go-basic"],
+  ["Java", "java-basic"],
+] as const)("%s index determinism", (_label, name) => {
   it("dumps byte-equal output from two fresh data dirs", async () => {
-    const fx = await materializeFixture("go-basic");
+    const fx = await materializeFixture(name);
     cleanups.push(fx.cleanup);
     const dumps: string[] = [];
     for (let i = 0; i < 2; i++) {

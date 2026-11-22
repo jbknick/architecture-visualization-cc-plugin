@@ -175,7 +175,7 @@ export function adviseReuse(
   } else if (matchRel !== caller) {
     const all = store.listWorkspaces().filter((w) => parseWorkspaceId(w.id)?.repo === callerRepo);
     if (match.lang === "go") out.push(...adviseGo(store, all, caller, match));
-    else {
+    else if (match.lang === "typescript") {
       const callerWs = all.length > 0 ? workspaceForPath(all, caller) : undefined;
       const matchWs = all.length > 0 ? workspaceForPath(all, matchRel) : undefined;
       if (callerWs && matchWs) out.push(...primary(store, all, caller, callerWs, match, matchRel, matchWs));
@@ -208,7 +208,7 @@ function otherRepo(
     store.listWorkspaces().filter((w) => parseWorkspaceId(w.id)?.repo === repo);
   const callerAll = inRepo(callerRepo);
   const matchAll = inRepo(matchRepo);
-  if (match.lang !== "go" && callerAll.length > 0 && matchAll.length > 0) {
+  if (match.lang === "typescript" && callerAll.length > 0 && matchAll.length > 0) {
     const callerWs = workspaceForPath(callerAll, caller);
     const matchWs = workspaceForPath(matchAll, pathOfFileId(match.fileId));
     const dependent =
