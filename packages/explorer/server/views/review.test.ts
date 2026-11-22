@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   contentKey,
   type GantryPaths,
+  HUB_THRESHOLD,
   indexRepo,
   loadConfig,
   openStore,
@@ -35,7 +36,10 @@ interface MaterializedFixture {
 }
 const helperPath = "../../../core/test/helpers/fixture.js";
 const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as {
-  materializeFixture: (name: string) => Promise<MaterializedFixture>;
+  materializeFixture: (
+    name: string,
+    opts?: { feature?: boolean; dirName?: string },
+  ) => Promise<MaterializedFixture>;
 };
 
 const BUTTON = "sym:pnpm-turbo:packages/ui/src/button.tsx#Button";
@@ -365,6 +369,48 @@ describe("review view", () => {
       xs.map((x) => ({ ...x, consumers: x.consumers.directTotal }));
     expect(strip(r.review?.changes)).toEqual(strip(map.review?.changes));
     expect(r.review?.changes[0]?.consumers.direct.find((d) => d.id === HOME)?.node).toBe(HOME);
+  });
+
+  it("rings, the reachable tier: one outer ring on deep-radius with one node per hub, none on pnpm-turbo", async () => {
+    const fx = await materializeFixture("deep-radius", { feature: true, dirName: "repo" });
+    fixtures.push(fx);
+    const data = mkdtempSync(join(tmpdir(), "gantry-review-deep-"));
+    dataDirs.push(data);
+    const paths = resolvePaths(fx.dir, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
+    await indexRepo(paths, { layer: "main" });
+    const store = openStore(paths.dbPath);
+    stores.push(store);
+    const deep: ApiContext = { store, paths, config: loadConfig(paths) };
+    const r = await buildReview(deep, opts({ range: "main...feature", mode: "rings" }));
+    const outer = r.nodes.filter((n) => (n.hop ?? 0) >= 4);
+    expect(new Set(r.nodes.map((n) => n.hop)).has(5)).toBe(false);
+    expect(outer.length).toBeGreaterThan(0);
+    const hubs = outer.filter((n) => n.id.startsWith("hub:"));
+    expect(hubs).toEqual([expect.objectContaining({ kind: "hub", count: HUB_THRESHOLD + 2, hop: 4 })]);
+    expect(r.review?.callersByHop.map((h) => h.hop)).toEqual([1, 2, 3]);
+    expect(r.review?.reachableTotal).toBeGreaterThanOrEqual(HUB_THRESHOLD + 2);
+    // the hub's consumers are one entry: collapsed on the ring, members listed with the panel's data
+    const cc = r.review?.changes[0]?.consumers;
+    expect(cc?.hubs).toHaveLength(1);
+    expect(cc?.hubs[0]?.members.length).toBeGreaterThan(0);
+    expect(cc?.reachableTotal).toBe(r.review?.reachableTotal);
+    const ids = new Set(r.nodes.map((n) => n.id));
+    for (const x of cc?.reachable ?? []) expect(ids.has(x.id)).toBe(true);
+    for (const m of cc?.hubs[0]?.members ?? []) expect(ids.has(m.id)).toBe(false);
+    // dashed, faint lines from the outer ring to the node one step nearer; the hub node joins its hub
+    const hubId = hubs[0]?.id ?? "";
+    expect(r.edges.some((e) => e.src === hubId && e.dst === cc?.hubs[0]?.hub && e.confidence === "low")).toBe(
+      true,
+    );
+    for (const e of r.edges.filter(
+      (x) => ids.has(x.src) && (r.nodes.find((n) => n.id === x.src)?.hop ?? 0) >= 4,
+    ))
+      expect(e.confidence).toBe("low");
+
+    const { ctx } = await setup();
+    const plain = await buildReview(ctx, opts({ range: "main...feature", mode: "rings" }));
+    expect(plain.nodes.some((n) => (n.hop ?? 0) >= 4)).toBe(false);
+    expect(plain.review?.reachableTotal).toBe(0);
   });
 
   it("ring slots: files grouped together with one empty slot between groups; radii fit the slots", () => {
