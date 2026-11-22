@@ -8,7 +8,15 @@ import { EdgeSet } from "./edges.js";
 import { ImportIndex } from "./imports.js";
 import { Reader } from "./read.js";
 import { LastTree, withTree } from "./source.js";
-import { type FileInfo, type MethodHit, type Named, type Ty, TypeIndex, type VarInfo } from "./typeindex.js";
+import {
+  type Bindings,
+  type FileInfo,
+  type MethodHit,
+  type Named,
+  type Ty,
+  TypeIndex,
+  type VarInfo,
+} from "./typeindex.js";
 import type { CallExpr, Callee, Decl, Expr, LocalBody, Results, TypeRef } from "./typing.js";
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -48,6 +56,10 @@ interface Resolved {
   /** The file the result types are written in. */
   file: FileInfo;
   conversion?: Ty | null;
+  /** What the type parameters in `results` stand for. */
+  bind?: Bindings;
+  /** The type the call has when it is no function of the repo but an accessor of a library type the pack knows. */
+  result?: Ty | null;
   line: number;
 }
 
@@ -111,9 +123,10 @@ export class TypeCalls implements CallResolver {
     const bodies = withTree(this.pack, this.ctx.root, file.rel, (root) => this.reader.bodies(root));
     if (!bodies) return [];
     const idByStart = new Map<number, string>();
+    // Code outside a method (an initializer) belongs to the symbol of the type around it, so every symbol is a caller.
     for (const s of pf.symbols) {
       const r = pf.bodies.get(s.id);
-      if ((s.kind === "function" || s.kind === "method") && r) idByStart.set(r.start, s.id);
+      if (r && !idByStart.has(r.start)) idByStart.set(r.start, s.id);
     }
     const calls = new EdgeSet(fileId, 2);
     for (const b of bodies) {
@@ -378,8 +391,9 @@ export class TypeCalls implements CallResolver {
         return idx === 0 ? this.typeOf(call.first?.expr ?? null, env, 0, depth + 1) : null;
     }
     const r = this.resolveCall(call, env, depth + 1);
-    if (idx < r.results.length) return index.resolveType(r.results[idx] ?? null, r.file);
-    return idx === 0 && r.conversion ? r.conversion : null;
+    if (idx < r.results.length) return index.resolveType(r.results[idx] ?? null, r.file, r.bind);
+    if (idx !== 0) return null;
+    return r.result !== undefined ? r.result : (r.conversion ?? null);
   }
 
   private resolveCall(call: CallExpr, env: Env, depth: number): Resolved {
@@ -395,6 +409,7 @@ export class TypeCalls implements CallResolver {
     return {
       targets: real.map((h) => ({ file: h.file, start: h.start })),
       results: same ? first.results : [],
+      bind: first.bind,
       file: first.file,
       line,
     };
@@ -484,7 +499,12 @@ export class TypeCalls implements CallResolver {
     let t = named(idx.canon(this.typeOf(op, env, 0, depth + 1)));
     if (!t && op?.k === "name" && plain) t = this.typeByName(op.name, env);
     if (!t) return none(callee.line);
-    return this.fromHits(idx.lookupMethods(t, callee.name, args), callee.line, env);
+    const hits = idx.lookupMethods(t, callee.name, args);
+    if (hits.length === 0) {
+      const result = idx.libraryResult(t, callee.name);
+      if (result !== undefined) return { ...none(callee.line), result };
+    }
+    return this.fromHits(hits, callee.line, env);
   }
 }
 

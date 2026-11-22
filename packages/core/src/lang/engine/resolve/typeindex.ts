@@ -7,13 +7,19 @@ import { Reader } from "./read.js";
 import { withTree } from "./source.js";
 import type { Arity, Expr, FileDecls, Results, TypeDecl, TypeRef } from "./typing.js";
 
-/** A type as far as the resolver reads it: a named type, or a sequence or map with element types. */
+/**
+ * A type as far as the resolver reads it: a named type, with the type arguments written after it (null for one that is
+ * not known), or a sequence or map with element types.
+ */
 export type Ty =
-  | { k: "named"; pkg: string; name: string }
+  | { k: "named"; pkg: string; name: string; args?: readonly (Ty | null)[] }
   | { k: "seq"; elem: Ty | null }
   | { k: "map"; key: Ty | null; elem: Ty | null };
 
 export type Named = Extract<Ty, { k: "named" }>;
+
+/** What the type parameters in scope stand for: a type, or null for a parameter whose type is not known. */
+export type Bindings = ReadonlyMap<string, Ty | null>;
 
 export interface FuncInfo {
   results: Results;
@@ -21,6 +27,7 @@ export interface FuncInfo {
   /** Offset of the declaration in its file; it names the symbol. */
   start: number;
   arity: Arity | null;
+  tparams: string[];
 }
 
 export interface TypeInfo extends TypeDecl {
@@ -68,6 +75,8 @@ export interface MethodHit {
   file: FileInfo;
   start: number;
   results: Results;
+  /** What the type parameters of the declaring type and of the method itself stand for in `results`. */
+  bind?: Bindings;
 }
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -157,7 +166,13 @@ export class TypeIndex {
       this.rawImports.set(entry.fileId, decls.imports);
       for (const f of decls.funcs)
         if (!pkg.funcs.has(f.name))
-          pkg.funcs.set(f.name, { results: f.results, file, start: f.start, arity: f.arity });
+          pkg.funcs.set(f.name, {
+            results: f.results,
+            file,
+            start: f.start,
+            arity: f.arity,
+            tparams: f.tparams,
+          });
       for (const t of decls.types) {
         if (pkg.types.has(t.name)) continue;
         const info: TypeInfo = { ...t, file };
@@ -170,7 +185,13 @@ export class TypeIndex {
         // A method in a type body belongs to the type the index took; one of a type another file declared first is left out.
         if (m.owner !== null && pkg.types.get(m.owner)?.file !== file) continue;
         const list = pkg.methods.get(m.key);
-        const info: FuncInfo = { results: m.results, file, start: m.start, arity: m.arity };
+        const info: FuncInfo = {
+          results: m.results,
+          file,
+          start: m.start,
+          arity: m.arity,
+          tparams: m.tparams,
+        };
         if (!list) pkg.methods.set(m.key, [info]);
         else if (this.typing.arity) list.push(info);
       }
@@ -247,33 +268,73 @@ export class TypeIndex {
     return this.pkgs.get(r.pkg)?.types.get(r.name);
   }
 
-  /** Resolves a type as written in `file` to a named type, sequence or map; null for anything else. */
-  resolveType(t: TypeRef | null, file: FileInfo): Ty | null {
+  /**
+   * Resolves a type as written in `file` to a named type, sequence or map; null for anything else. A name in `bound` is a
+   * type parameter and stands for what it is bound to (nothing is known of an unbound one).
+   */
+  resolveType(t: TypeRef | null, file: FileInfo, bound?: Bindings): Ty | null {
     if (!t) return null;
     switch (t.k) {
       case "name": {
-        // A type of the enclosing types first, then the package, the names the file imports, and the packages it imports whole.
-        for (const o of chainOf(t.owner)) {
-          const nested = `${o}.${t.name}`;
-          if (file.pkg.types.has(nested)) return { k: "named", pkg: file.pkg.path, name: nested };
-        }
-        if (file.pkg.types.has(t.name)) return { k: "named", pkg: file.pkg.path, name: t.name };
-        const imported = file.named.get(t.name);
-        if (imported) return imported;
-        for (const p of file.demand)
-          if (this.pkgs.get(p)?.types.has(t.name)) return { k: "named", pkg: p, name: t.name };
-        if (this.predeclared.has(t.name)) return null;
-        return { k: "named", pkg: file.pkg.path, name: t.name };
+        if (!t.args && bound?.has(t.name)) return bound.get(t.name) ?? null;
+        const base = this.resolveName(t, file);
+        if (!t.args || base?.k !== "named") return base;
+        return { ...base, args: t.args.map((a) => this.resolveType(a, file, bound)) };
       }
       case "qual": {
         const path = file.imports.get(t.qualifier);
         return path ? { k: "named", pkg: path, name: t.name } : null;
       }
       case "seq":
-        return { k: "seq", elem: this.resolveType(t.elem, file) };
+        return { k: "seq", elem: this.resolveType(t.elem, file, bound) };
       case "map":
-        return { k: "map", key: this.resolveType(t.key, file), elem: this.resolveType(t.elem, file) };
+        return {
+          k: "map",
+          key: this.resolveType(t.key, file, bound),
+          elem: this.resolveType(t.elem, file, bound),
+        };
     }
+  }
+
+  /** The type a plain name written in `file` stands for, without its type arguments. */
+  private resolveName(t: Extract<TypeRef, { k: "name" }>, file: FileInfo): Named | null {
+    // A type parameter of an enclosing type is not a type of the repo; nothing is known of it.
+    for (const o of chainOf(t.owner)) if (file.pkg.types.get(o)?.params.includes(t.name)) return null;
+    // A type of the enclosing types first, then the package, the names the file imports, and the packages it imports whole.
+    for (const o of chainOf(t.owner)) {
+      const nested = `${o}.${t.name}`;
+      if (file.pkg.types.has(nested)) return { k: "named", pkg: file.pkg.path, name: nested };
+    }
+    if (file.pkg.types.has(t.name)) return { k: "named", pkg: file.pkg.path, name: t.name };
+    const imported = file.named.get(t.name);
+    if (imported) return imported;
+    for (const p of file.demand)
+      if (this.pkgs.get(p)?.types.has(t.name)) return { k: "named", pkg: p, name: t.name };
+    // A type of a library the pack knows, brought in by a package import or by the language itself.
+    for (const e of this.typing.type.library ?? [])
+      if (e.types.includes(t.name) && (e.implicit || file.demand.includes(e.package)))
+        return { k: "named", pkg: e.package, name: t.name };
+    if (this.predeclared.has(t.name)) return null;
+    return { k: "named", pkg: file.pkg.path, name: t.name };
+  }
+
+  /** What the type parameters of a type stand for when it is written with the arguments of `r` (none, for a raw type). */
+  bindings(ti: TypeInfo, r: Named): Bindings {
+    return new Map(ti.params.map((p, i) => [p, r.args?.[i] ?? null]));
+  }
+
+  /**
+   * The type a method of a type outside the repo that the pack knows returns (`List<T>.get`): the type argument the
+   * pack names. Undefined when the type is not a known library type or the method is not one of its accessors; null when
+   * it is but the argument is not known.
+   */
+  libraryResult(r: Named, method: string): Ty | null | undefined {
+    if (this.typeInfo(r)) return undefined;
+    const entry = (this.typing.type.library ?? []).find(
+      (e) => e.package === r.pkg && e.types.includes(r.name),
+    );
+    const at = entry && Object.hasOwn(entry.returns, method) ? entry.returns[method] : undefined;
+    return at === undefined ? undefined : (r.args?.[at] ?? null);
   }
 
   /** The type a name written in `file` inside the type `owner` names, when it is a type of the repo. */
@@ -325,16 +386,17 @@ export class TypeIndex {
     if (!c || c.k !== "named" || depth > 4) return null;
     const ti = this.typeInfo(c);
     if (ti?.kind !== "class") return null;
-    if (ti.fields.has(name)) return this.resolveType(ti.fields.get(name) ?? null, ti.file);
+    const bound = this.bindings(ti, c);
+    if (ti.fields.has(name)) return this.resolveType(ti.fields.get(name) ?? null, ti.file, bound);
     for (const e of ti.embedded) {
-      const er = this.resolveType(e.type, ti.file);
+      const er = this.resolveType(e.type, ti.file, bound);
       if (er?.k !== "named") continue;
       if (er.name === name) return er;
       const sub = this.fieldType(er, name, depth + 1);
       if (sub) return sub;
     }
     for (const s of ti.supers) {
-      const sr = this.resolveType(s.type, ti.file);
+      const sr = this.resolveType(s.type, ti.file, bound);
       const sub = sr?.k === "named" ? this.fieldType(sr, name, depth + 1) : null;
       if (sub) return sub;
     }
@@ -365,11 +427,19 @@ export class TypeIndex {
     if (!c || c.k !== "named" || depth > 5) return [];
     const pkg = this.pkgs.get(c.pkg);
     if (!pkg) return [];
+    const ti = pkg.types.get(c.name);
+    const bound = ti ? this.bindings(ti, c) : undefined;
     const own = this.fitting(pkg.methods.get(`${c.name}.${m}`), args);
     if (own.length > 0)
-      return own.map((f) => ({ kind: "method", file: f.file, start: f.start, results: f.results }));
+      return own.map((f) => ({
+        kind: "method",
+        file: f.file,
+        start: f.start,
+        results: f.results,
+        // The method's own type parameters hide those of the type, and nothing is inferred for them.
+        bind: new Map([...(bound ?? []), ...f.tparams.map((p): [string, null] => [p, null])]),
+      }));
     if (!inherit) return [];
-    const ti = pkg.types.get(c.name);
     if (!ti) return [];
     if (ti.kind === "interface") {
       // A direct call is the interface's own method; one promoted through a class names the declaring interface.
@@ -380,13 +450,13 @@ export class TypeIndex {
       if (this.typing.members.callable && ti.fields.has(m))
         return [{ kind: "func-field", file: ti.file, start: -1, results: [] }];
       for (const e of ti.embedded) {
-        const er = this.resolveType(e.type, ti.file);
+        const er = this.resolveType(e.type, ti.file, bound);
         const sub = er?.k === "named" ? this.lookupMethods(er, m, args, true, depth + 1, true) : [];
         if (sub.length > 0) return sub;
       }
     }
     for (const s of ti.supers) {
-      const sr = this.resolveType(s.type, ti.file);
+      const sr = this.resolveType(s.type, ti.file, bound);
       const sub = sr?.k === "named" ? this.lookupMethods(sr, m, args, true, depth + 1, true) : [];
       if (sub.length > 0) return sub;
     }

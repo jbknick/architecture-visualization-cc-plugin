@@ -109,7 +109,9 @@ function typeKind(pack: LanguagePack, spec: SyntaxNode): SymbolKind {
 function draftsOf(pack: LanguagePack, root: SyntaxNode): Draft[] {
   const n = pack.nodes;
   const out: Draft[] = [];
-  walkDeclarations(pack, root, ({ node: d, owner, container }) => {
+  walkDeclarations(pack, root, ({ node: d, owner, container, body: hanging }) => {
+    // A hanging body is no symbol itself; its methods are, named after it.
+    if (hanging) return;
     const kind = d.kind();
     const fn = owner === null ? n.function.find((r) => r.kind === kind) : undefined;
     const method = n.method.find((r) => r.kind === kind);

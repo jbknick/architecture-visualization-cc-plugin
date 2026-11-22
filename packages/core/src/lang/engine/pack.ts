@@ -22,6 +22,8 @@ export interface DeclarationRule {
   body?: string;
   /** Field holding the receiver; a declaration with one is a method named `<receiver type>.<name>`. */
   receiver?: string;
+  /** Field holding the declaration's own type parameters (`<T> T pick()`). */
+  generics?: string;
 }
 
 /**
@@ -100,8 +102,26 @@ export interface TypingRules {
     qualified?: { kind: string; qualifier: string; name: string };
     /** Kinds that wrap a type and hold it as their first named child (pointer, parentheses). */
     wrappers: readonly string[];
-    /** A generic instantiation: its kind and the field holding the generic type (the first named child when there is no field). */
-    generic: { kind: string; field?: string };
+    /**
+     * A generic instantiation: its kind and the field holding the generic type (the first named child when there is no
+     * field), and the kind of its child that holds the type arguments (each a type; one that is not read is unknown). A
+     * language without it reads types without their arguments.
+     */
+    generic: { kind: string; field?: string; arguments?: string };
+    /** The type parameters of a declaration (the field named by `generics`): the kind of each entry and the kinds of its child that is the parameter's name. */
+    parameters?: { entry: string; names: readonly string[] };
+    /**
+     * Types outside the repo whose accessors return one of their type arguments: the package, whether the language brings
+     * its names in without an import, the simple names of the types, and for each method name the index of the type
+     * argument it returns. A type is known by its package (an import or a package imported whole), so a type of the repo
+     * or of another library with the same name is not one.
+     */
+    library?: readonly {
+      package: string;
+      implicit?: boolean;
+      types: readonly string[];
+      returns: Readonly<Record<string, number>>;
+    }[];
     /** Kinds that hold a run of values of one type, and the field holding that type. */
     sequences: readonly { kind: string; element: string }[];
     /** A map type: its kind and the fields of the key and of the value. */
@@ -289,6 +309,15 @@ export interface LanguagePack {
       bodied: readonly BodiedTypeRule[];
       /** Kinds of body nodes that hold members, or hold nodes that do (they are walked through). */
       bodies: readonly string[];
+      /**
+       * An expression that creates a value of a type with a body of members of its own, outside any declaration of a type:
+       * its kind, the field of the type it names, the kind of its child that holds the body, and the prefix of the name the
+       * body gets (`<enclosing type>.<prefix><n>`, `n` counting from 1 in source order among the bodies of that type).
+       * The members of such a body are symbols, named by that name.
+       */
+      anonymous?: { kind: string; type: string; body: string; prefix: string };
+      /** An element of an enumeration's body that may carry a body of members: its kind and the fields of its name and its body. The body is named `<enclosing type>.<name>`. */
+      constants?: { kind: string; name: string; body: string };
     };
     /** Constants and variables: every name is a `const` symbol. */
     values: {
