@@ -1,8 +1,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import picomatch from "picomatch";
-import { BUILTIN_EXCLUDES, type GantryConfig } from "../config/index.js";
+import { BUILTIN_EXCLUDES, type GantryConfig, matchesAny } from "../config/index.js";
 import { languageOfPath } from "../lang/index.js";
 import type { GantryPaths } from "../paths/index.js";
 import type { WorkspaceRecord } from "../types.js";
@@ -34,17 +33,6 @@ export const SENSITIVE_PATTERNS: readonly string[] = [
   "*.tfvars",
 ];
 
-const matcherCache = new Map<string, (s: string) => boolean>();
-function matcher(pattern: string, nocase = false): (s: string) => boolean {
-  const key = `${nocase ? "i" : "s"}:${pattern}`;
-  let m = matcherCache.get(key);
-  if (!m) {
-    m = picomatch(pattern, { dot: true, nocase });
-    matcherCache.set(key, m);
-  }
-  return m;
-}
-
 /**
  * Normalise to a clean repo-relative POSIX path, or null when the path is empty, absolute,
  * has a drive letter, or escapes the repo root via `..`.
@@ -59,23 +47,6 @@ function safeNormalize(repoRelPath: string): string | null {
 
 function normalize(repoRelPath: string): string {
   return safeNormalize(repoRelPath) ?? repoRelPath.replace(/\\/g, "/");
-}
-
-/**
- * A pattern matches a path when it matches the path itself, any ancestor directory
- * (so `dist` excludes everything below it), or, for slash-free patterns, any single
- * path segment (so `dist` and `secrets*` match at any depth).
- */
-function matchesAny(patterns: readonly string[], p: string, nocase = false): boolean {
-  const segments = p.split("/");
-  const prefixes: string[] = [];
-  for (let i = 1; i <= segments.length; i++) prefixes.push(segments.slice(0, i).join("/"));
-  for (const pattern of patterns) {
-    const m = matcher(pattern, nocase);
-    if (prefixes.some((pre) => m(pre))) return true;
-    if (!pattern.includes("/") && segments.some((s) => m(s))) return true;
-  }
-  return false;
 }
 
 /** Path-only sensitivity check: basename and full path (and each directory segment). Never reads the file. */

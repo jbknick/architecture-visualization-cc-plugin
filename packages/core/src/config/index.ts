@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import picomatch from "picomatch";
 import { z } from "zod";
 import type { GantryPaths } from "../paths/index.js";
 
@@ -87,6 +88,34 @@ export const BUILTIN_EXCLUDES: readonly string[] = [
   "secrets*",
   "*.tfvars",
 ];
+
+const matcherCache = new Map<string, (s: string) => boolean>();
+function matcher(pattern: string, nocase = false): (s: string) => boolean {
+  const key = `${nocase ? "i" : "s"}:${pattern}`;
+  let m = matcherCache.get(key);
+  if (!m) {
+    m = picomatch(pattern, { dot: true, nocase });
+    matcherCache.set(key, m);
+  }
+  return m;
+}
+
+/**
+ * A pattern matches a path when it matches the path itself, any ancestor directory
+ * (so `dist` excludes everything below it), or, for slash-free patterns, any single
+ * path segment (so `dist` and `secrets*` match at any depth).
+ */
+export function matchesAny(patterns: readonly string[], p: string, nocase = false): boolean {
+  const segments = p.split("/");
+  const prefixes: string[] = [];
+  for (let i = 1; i <= segments.length; i++) prefixes.push(segments.slice(0, i).join("/"));
+  for (const pattern of patterns) {
+    const m = matcher(pattern, nocase);
+    if (prefixes.some((pre) => m(pre))) return true;
+    if (!pattern.includes("/") && segments.some((s) => m(s))) return true;
+  }
+  return false;
+}
 
 function defaults(): GantryConfig {
   return {
