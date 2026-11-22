@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "drizzle-orm", "workspace": ".", "role": "data-access", "note": "tables in src/db/schema.ts" },
+    { "name": "hono", "workspace": ".", "role": "framework", "note": "HTTP framework; read by the built-in Hono adapter" }
+  ],
+  "helpers": ["resolve-names", "const-strings"],
+  "rules": [
+    {
+      "id": "drizzle-table-sqlite",
+      "language": "typescript",
+      "when": { "dependency": ["drizzle-orm"] },
+      "rule": {
+        "all": [
+          { "pattern": "sqliteTable($N, $$$A)" },
+          {
+            "inside": {
+              "kind": "variable_declarator",
+              "inside": {
+                "kind": "lexical_declaration",
+                "inside": { "any": [{ "kind": "program" }, { "kind": "export_statement", "inside": { "kind": "program" } }] }
+              }
+            }
+          }
+        ]
+      },
+      "constraints": { "N": { "kind": "string" } },
+      "emit": {
+        "kind": "table",
+        "name": "$N",
+        "binding": true,
+        "data": {
+          "adapter": "drizzle",
+          "name": "@name",
+          "exportName": "@exportName",
+          "symbol": "@symbol",
+          "dialect": "sqlite",
+          "columns": { "keysOf": "$$$A" },
+          "file": "@file",
+          "line": "@line"
+        }
+      },
+      "examples": {
+        "match": ["export const users = sqliteTable(\"users\", { id: text(\"id\") });"],
+        "noMatch": ["function f() { const t = sqliteTable(\"users\", {}); }", "export const t = pgTable(\"t\", {});"]
+      }
+    },
+    {
+      "id": "drizzle-select-from",
+      "language": "typescript",
+      "when": { "dependency": ["drizzle-orm"], "viaWorkspaces": true },
+      "rule": { "pattern": "$S.from($T)" },
+      "constraints": { "S": { "kind": "call_expression" } },
+      "emit": { "kind": "read", "table": "$T" },
+      "examples": {
+        "match": ["db.select().from(posts);"],
+        "noMatch": ["Array.from(posts);"]
+      }
+    },
+    {
+      "id": "drizzle-write",
+      "language": "typescript",
+      "when": { "dependency": ["drizzle-orm"], "viaWorkspaces": true },
+      "rule": { "any": [{ "pattern": "$D.$M($T)" }, { "pattern": "$D.$M($T, $$$A)" }] },
+      "constraints": { "M": { "regex": "^(insert|update|delete)$" } },
+      "emit": { "kind": "write", "table": "$T" },
+      "examples": {
+        "match": ["db.insert(posts);", "tx.update(schema.users);", "db.delete(posts);"],
+        "noMatch": ["db.select(posts);"]
+      }
+    }
+  ],
+  "tablePassthrough": ["alias"]
+}

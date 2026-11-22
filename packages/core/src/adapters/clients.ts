@@ -174,8 +174,11 @@ interface InstanceDecl {
   parent: string | null;
 }
 
-/** A piece of request text: literal text, a parameter of the enclosing function (its index), or anything else (null). */
-type Piece = string | number | null;
+/**
+ * A piece of request text: literal text, a parameter of the enclosing function (its index), a name read inside a
+ * wrapper candidate that the linking step looks up (`{ ident }`, a top-level or imported const), or anything else (null).
+ */
+type Piece = string | number | null | { ident: string };
 /** An argument of a call: its text (null for an object literal), or for an object literal its `url` and `method`. */
 interface ArgFact {
   text: Piece[] | null;
@@ -386,26 +389,32 @@ const joinPieces = (pieces: Piece[]): Piece[] => {
   return out;
 };
 
-/** A string, template or `+` concatenation as pieces; a parameter by its index, anything else null. */
-function textPieces(expr: unknown, params: Map<string, number>): Piece[] {
+/**
+ * A string, template or `+` concatenation as pieces; a parameter by its index, any other name as `{ ident }` when
+ * `idents` is set (null otherwise), anything else null.
+ */
+function textPieces(expr: unknown, params: Map<string, number>, idents = false): Piece[] {
   const v = unwrap(expr);
   if (!isNode(v)) return [null];
   if (v.type === "Literal" && typeof v.value === "string") return [v.value];
-  if (v.type === "Identifier") return [params.get(v.name as string) ?? null];
+  if (v.type === "Identifier") {
+    const name = v.name as string;
+    return [params.get(name) ?? (idents ? { ident: name } : null)];
+  }
   if (v.type === "BinaryExpression" && v.operator === "+")
-    return joinPieces([...textPieces(v.left, params), ...textPieces(v.right, params)]);
+    return joinPieces([...textPieces(v.left, params, idents), ...textPieces(v.right, params, idents)]);
   if (v.type !== "TemplateLiteral") return [null];
   const exprs = Array.isArray(v.expressions) ? v.expressions : [];
   const out: Piece[] = [];
   nodeArray(v.quasis).forEach((q, i) => {
     const cooked = (q.value as { cooked?: unknown } | undefined)?.cooked;
     out.push(typeof cooked === "string" ? cooked : null);
-    if (i < exprs.length) out.push(...textPieces(exprs[i], params));
+    if (i < exprs.length) out.push(...textPieces(exprs[i], params, idents));
   });
   return joinPieces(out);
 }
 
-function argFact(expr: unknown, params: Map<string, number>): ArgFact {
+function argFact(expr: unknown, params: Map<string, number>, idents = false): ArgFact {
   const v = unwrap(expr);
   if (isNode(v) && v.type === "ObjectExpression") {
     const url = propOf(v, "url");
@@ -413,12 +422,12 @@ function argFact(expr: unknown, params: Map<string, number>): ArgFact {
     return {
       text: null,
       obj: {
-        ...(url !== undefined ? { url: textPieces(url, params) } : {}),
-        ...(method !== undefined ? { method: textPieces(method, params) } : {}),
+        ...(url !== undefined ? { url: textPieces(url, params, idents) } : {}),
+        ...(method !== undefined ? { method: textPieces(method, params, idents) } : {}),
       },
     };
   }
-  return { text: textPieces(v, params) };
+  return { text: textPieces(v, params, idents) };
 }
 
 const usesParam = (a: ArgFact): boolean =>
@@ -474,7 +483,7 @@ function readWrapperFacts(ctx: AdapterFileContext): WrapperFact[] {
       const chain = memberChain(n.callee);
       if (!chain || chain.computed) return undefined;
       const args = (Array.isArray(n.arguments) ? (n.arguments as unknown[]) : []).map((a) =>
-        argFact(a, params),
+        argFact(a, params, true),
       );
       if (args.some(usesParam))
         calls.push({ callee: [chain.root, ...chain.keys].join("."), start: n.start, args });
@@ -1004,7 +1013,37 @@ export const clientsAdapter: Adapter<ClientFacts> = {
       (facts?.wrappers ?? []).map((w) => ({ file, w })),
     );
     /** What a call of a function's body requests, in the function's parameters: null when it is no request. */
-    const requestOfCall = (file: AdapterFileContext, own: string, c: ParamCall) => {
+    const requestOfCall = (file: AdapterFileContext, own: string, call: ParamCall) => {
+      // A name that is a top-level or imported const with one fully known text is that text; any other is unknown.
+      const scope = scopeAt(file, call.start);
+      const known = (pieces: Piece[] | null | undefined): Piece[] | null | undefined =>
+        pieces
+          ? joinPieces(
+              pieces.map((p): Piece => {
+                if (p === null || typeof p !== "object") return p;
+                const b = scope?.lookup(p.ident);
+                const alts = b?.kind === "const" ? evalUrl(b.init, b.scope) : null;
+                const [only] = alts ?? [];
+                return alts?.length === 1 && only?.parts.every((x) => typeof x === "string")
+                  ? only.parts.join("")
+                  : null;
+              }),
+            )
+          : pieces;
+      const c: ParamCall = {
+        ...call,
+        args: call.args.map((a) => ({
+          text: known(a.text) ?? null,
+          ...(a.obj
+            ? {
+                obj: {
+                  ...(a.obj.url !== undefined ? { url: known(a.obj.url) } : {}),
+                  ...(a.obj.method !== undefined ? { method: known(a.obj.method) } : {}),
+                },
+              }
+            : {}),
+        })),
+      };
       const callee = c.callee.split(".");
       const client = clientCall(file, callee);
       if (client) {

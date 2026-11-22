@@ -1,4 +1,4 @@
-import { resolveTraceTarget, type TraceResult } from "@gantry/core";
+import { repoOfId, resolveTraceTarget, type TraceResult } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { ViewModule, ViewResult } from "../types.js";
 import {
@@ -152,6 +152,13 @@ export const featurePathView: ViewModule = {
       for (const e of t.edges) b.traceEdge(e);
     }
     const { nodes, edges } = b.result();
+    // A workspace of several repos: a path can cross from a page to a handler in another repo, so each node names its repo.
+    if (store.listRepos().length > 1) {
+      for (const n of nodes) {
+        const repo = repoOfId(n.id);
+        if (repo !== undefined) n.repo = repo;
+      }
+    }
     labelRanks(nodes, PAGE);
     for (const lane of [CLIENT, ENDPOINT, SERVICE, TABLE]) barycentreRanks(nodes, edges, lane, lane - 1);
     const count = (k: string) => nodes.filter((n) => n.kind === k).length;

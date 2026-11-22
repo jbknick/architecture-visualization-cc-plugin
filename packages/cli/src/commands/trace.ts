@@ -3,13 +3,14 @@ import type { Command } from "commander";
 import { openFresh } from "./lookup.js";
 import { EXIT_OK, fail, writeStdout } from "./shared.js";
 
-/** The text form: one line per step, indented by depth, then the gaps. */
+/** The text form: one line per step, indented by depth and led by `[repo]` when the workspace has several repos, then the gaps. */
 export function traceText(r: TraceResult): string {
   const lines = [`${r.direction === "down" ? "Down" : "Up"} from ${r.target}`];
   for (const s of r.chain) {
     if (s.depth === 0) continue;
     const low = s.confidence === "low" ? " (low confidence)" : "";
-    lines.push(`${"  ".repeat(s.depth)}${s.via} → ${s.kind} ${s.id}${low}`);
+    const repo = s.repo === undefined ? "" : `[${s.repo}] `;
+    lines.push(`${"  ".repeat(s.depth)}${repo}${s.via} → ${s.kind} ${s.id}${low}`);
   }
   if (r.chain.length <= 1) lines.push("  (nothing reached)");
   if (r.omitted > 0)
