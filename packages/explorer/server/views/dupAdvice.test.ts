@@ -35,7 +35,7 @@ describe("adviceFor rename suggestions (#118)", () => {
 
   it("puts the suggested name only in untrusted_suggested_name, never in the action text", () => {
     const config = { renameSuggestions: true } as GantryConfig;
-    const advice = adviceFor(store, config, "packages/utils/src/slug.ts", keep());
+    const advice = adviceFor(store, config, "packages/utils/src/slug.ts", "pnpm-turbo", keep());
     expect(advice).toMatchObject({ situation: 5, untrusted_suggested_name: MARKER });
     expect(advice?.action).not.toContain(MARKER);
     expect(advice?.action).toContain("untrusted_suggested_name");
@@ -44,7 +44,7 @@ describe("adviceFor rename suggestions (#118)", () => {
   it("says nothing about names while renameSuggestions is off", () => {
     const config = { renameSuggestions: false } as GantryConfig;
     expect(
-      JSON.stringify(adviceFor(store, config, "packages/utils/src/slug.ts", keep()) ?? null),
+      JSON.stringify(adviceFor(store, config, "packages/utils/src/slug.ts", "pnpm-turbo", keep()) ?? null),
     ).not.toContain(MARKER);
   });
 });

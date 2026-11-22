@@ -124,6 +124,7 @@ describe("gantry_search", () => {
         "line",
         "name",
         "path",
+        "repo",
         "score",
         "signature",
         UNTRUSTED_FIELD,

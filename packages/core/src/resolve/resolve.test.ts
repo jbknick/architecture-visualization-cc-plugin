@@ -1,9 +1,11 @@
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -18,6 +20,7 @@ import { type ParsedFile, parseSource } from "../parse/index.js";
 import type { WorkspaceRecord } from "../types.js";
 import { detectWorkspaces } from "../workspace/index.js";
 import { createResolver, dependsOnEdges } from "./index.js";
+import { readTsconfigChain } from "./tsconfigChain.js";
 
 const fixturesRoot = join(dirname(fileURLToPath(import.meta.url)), "../../../../fixtures");
 const config = { exclude: [] } as unknown as GantryConfig; // isIndexable only reads `exclude`
@@ -531,5 +534,339 @@ describe("classification", () => {
       fileId: "file:repo:packages/a/src/util.ts",
     });
     expect(r.workspaceEdges().map((e) => `${e.src}>${e.dst}`)).toEqual(["ws:repo:@w/b>ws:repo:@w/a"]);
+  });
+});
+
+describe("bundler aliases", () => {
+  const file = (rel: string) => `file:repo:${rel}`;
+
+  test("every alias form of the bundler-aliases fixture resolves to its source file", () => {
+    const r = createResolver(fixture("bundler-aliases"));
+    const cases: [string, string, string][] = [
+      ["apps/vite-app/src/main.ts", "@/components/Button", "apps/vite-app/src/components/Button.tsx"],
+      ["apps/vite-app/src/main.ts", "@/lib/format", "apps/vite-app/src/lib/format.ts"],
+      ["apps/vite-app/src/main.ts", "~ui", "packages/ui/src/index.ts"],
+      ["apps/vite-app/src/main.ts", "~ui/card", "packages/ui/src/card.ts"],
+      ["apps/vite-array/src/main.ts", "#lib/math", "apps/vite-array/src/lib/math.ts"],
+      ["apps/vite-array/src/main.ts", "#lib/range", "apps/vite-array/src/lib/range.ts"],
+      ["apps/webpack-app/src/index.ts", "@app/util/text", "apps/webpack-app/src/util/text.ts"],
+      ["apps/webpack-app/src/index.ts", "components", "apps/webpack-app/src/components/index.ts"],
+    ];
+    for (const [from, spec, to] of cases) {
+      expect(r.resolveSpecifier(file(from), spec)).toEqual({ kind: "file", fileId: file(to) });
+    }
+    expect(r.stats().unresolved.filter((u) => !u.fromFileId.includes("apps/dynamic/"))).toEqual([]);
+  });
+
+  test("a webpack key ending in $ matches the exact specifier only", () => {
+    const r = createResolver(fixture("bundler-aliases"));
+    expect(r.resolveSpecifier(file("apps/webpack-app/src/index.ts"), "components/other")).toEqual({
+      kind: "unresolved",
+    });
+  });
+
+  test("a computed alias value is unresolved with reason alias_not_static", () => {
+    const r = createResolver(fixture("bundler-aliases"));
+    const from = file("apps/dynamic/src/main.ts");
+    expect(r.resolveSpecifier(from, "@dyn/one")).toEqual({ kind: "unresolved" });
+    expect(r.resolveSpecifier(from, "@dyn/two")).toEqual({ kind: "unresolved" });
+    expect(r.stats().unresolved).toEqual([
+      {
+        fromFileId: from,
+        specifier: "@dyn/one",
+        class: "unresolved",
+        reason: "alias_not_static",
+        alias: "*",
+      },
+      {
+        fromFileId: from,
+        specifier: "@dyn/two",
+        class: "unresolved",
+        reason: "alias_not_static",
+        alias: "*",
+      },
+    ]);
+  });
+
+  test("one unreadable key only marks specifiers that start with it", () => {
+    const r = createResolver(
+      repo({
+        "package.json": JSON.stringify({ name: "root", devDependencies: { vite: "1" } }),
+        "vite.config.ts": `export default { resolve: { alias: { "@ok": "/src/ok", "@dyn": compute() } } };`,
+        "src/ok.ts": "export const ok = 1;",
+        "src/m.ts": `import { ok } from "@ok";\nimport { x } from "@dyn/x";\nimport { y } from "@other/y";\n`,
+      }),
+    );
+    const from = file("src/m.ts");
+    expect(r.resolveSpecifier(from, "@ok")).toEqual({ kind: "file", fileId: file("src/ok.ts") });
+    r.resolveSpecifier(from, "@dyn/x");
+    r.resolveSpecifier(from, "@other/y");
+    expect(r.stats().unresolved).toEqual([
+      {
+        fromFileId: from,
+        specifier: "@dyn/x",
+        class: "unresolved",
+        reason: "alias_not_static",
+        alias: "@dyn",
+      },
+      { fromFileId: from, specifier: "@other/y", class: "unresolved" },
+    ]);
+  });
+
+  test("other config shapes and path forms are read", () => {
+    const r = createResolver(
+      repo({
+        "package.json": JSON.stringify({ name: "root" }),
+        "pnpm-workspace.yaml": "packages:\n  - 'apps/*'\n",
+        "apps/a/package.json": JSON.stringify({ name: "a" }),
+        "apps/a/vite.config.js": `import path from "node:path";
+export default ({ mode }) => {
+  const base = 1;
+  return { resolve: { alias: { "@t": \`\${__dirname}/tpl\`, "@m": path.join(import.meta.dirname, "meta"), "@c": path.resolve(process.cwd(), "cwd") } } };
+};`,
+        "apps/a/tpl/x.ts": "export const x = 1;",
+        "apps/a/meta/x.ts": "export const x = 1;",
+        "apps/a/cwd/x.ts": "export const x = 1;",
+        "apps/a/src/m.ts": "export {};",
+        "apps/b/package.json": JSON.stringify({ name: "b" }),
+        "apps/b/webpack.config.cjs": `module.exports = { resolve: { alias: { w: require("path").resolve(__dirname, "w") } } };`,
+        "apps/b/w/x.ts": "export const x = 1;",
+        "apps/b/src/m.ts": "export {};",
+      }),
+    );
+    const a = file("apps/a/src/m.ts");
+    expect(r.resolveSpecifier(a, "@t/x")).toEqual({ kind: "file", fileId: file("apps/a/tpl/x.ts") });
+    expect(r.resolveSpecifier(a, "@m/x")).toEqual({ kind: "file", fileId: file("apps/a/meta/x.ts") });
+    expect(r.resolveSpecifier(a, "@c/x")).toEqual({ kind: "file", fileId: file("apps/a/cwd/x.ts") });
+    // `require("path").resolve(...)` is not one of the accepted forms.
+    expect(r.resolveSpecifier(file("apps/b/src/m.ts"), "w/x")).toEqual({ kind: "unresolved" });
+  });
+
+  test("an alias wins over tsconfig paths", () => {
+    const r = createResolver(
+      repo({
+        "package.json": JSON.stringify({ name: "root" }),
+        "tsconfig.json": JSON.stringify({
+          compilerOptions: { baseUrl: ".", paths: { "@/*": ["other/*"] } },
+        }),
+        "vite.config.ts": `export default { resolve: { alias: { "@": "/src" } } };`,
+        "src/a/x.ts": "export const x = 1;",
+        "other/a/x.ts": "export const x = 2;",
+        "src/m.ts": "export {};",
+      }),
+    );
+    expect(r.resolveSpecifier(file("src/m.ts"), "@/a/x")).toEqual({
+      kind: "file",
+      fileId: file("src/a/x.ts"),
+    });
+  });
+
+  test("an unreadable key marks its own specifier and subpaths, and a $ key only the exact one", () => {
+    const r = createResolver(
+      repo({
+        "package.json": JSON.stringify({ name: "root" }),
+        "vite.config.ts": `export default { resolve: { alias: { "@dyn": compute(), exact$: compute() } } };`,
+        "src/m.ts": "export {};",
+      }),
+    );
+    const from = file("src/m.ts");
+    for (const spec of ["@dyn", "@dyn/x", "@dynamo/x", "exact", "exact/x"]) r.resolveSpecifier(from, spec);
+    expect(r.stats().unresolved.map((u) => [u.specifier, u.reason, u.alias])).toEqual([
+      ["@dyn", "alias_not_static", "@dyn"],
+      ["@dyn/x", "alias_not_static", "@dyn"],
+      ["@dynamo/x", undefined, undefined],
+      ["exact", "alias_not_static", "exact$"],
+      ["exact/x", undefined, undefined],
+    ]);
+  });
+
+  test("a config with a top-level side effect is never run", () => {
+    const dir = mkTmp();
+    const marker = join(dir, "ran.txt");
+    const r = createResolver(
+      repo({
+        "package.json": JSON.stringify({ name: "root" }),
+        "vite.config.ts": `import fs from "node:fs";
+fs.writeFileSync(${JSON.stringify(marker)}, "ran");
+export default { resolve: { alias: { "@": "/src" } } };`,
+        "webpack.config.js": `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "ran");
+module.exports = { resolve: { alias: { "~": __dirname + "/src" } } };`,
+        "src/a.ts": "export const a = 1;",
+        "src/m.ts": "export {};",
+      }),
+    );
+    expect(r.resolveSpecifier(file("src/m.ts"), "@/a")).toEqual({ kind: "file", fileId: file("src/a.ts") });
+    expect(existsSync(marker)).toBe(false);
+  });
+});
+
+describe("workspace package output mapped to source", () => {
+  const files = (pkg: Record<string, unknown>, tsconfig: Record<string, unknown>, src: string) => ({
+    "package.json": JSON.stringify({ name: "root", workspaces: ["packages/*"] }),
+    "packages/lib/package.json": JSON.stringify({ name: "@t/lib", ...pkg }),
+    "packages/lib/tsconfig.json": JSON.stringify({ compilerOptions: tsconfig.compilerOptions, ...tsconfig }),
+    [`packages/lib/${src}`]: "export const x = 1;",
+    "app.ts": "import { x } from '@t/lib';",
+  });
+  const hit = (f: Record<string, string>) =>
+    createResolver(repo(f)).resolveSpecifier("file:repo:app.ts", "@t/lib");
+
+  test("outDir dist with rootDir lib maps dist/index.js to lib/index.ts", () => {
+    const f = files(
+      { main: "dist/index.js" },
+      { compilerOptions: { outDir: "dist", rootDir: "lib" } },
+      "lib/index.ts",
+    );
+    expect(hit(f)).toEqual({ kind: "file", fileId: "file:repo:packages/lib/lib/index.ts" });
+  });
+
+  test("rootDir . with include src maps dist/src/index.js to src/index.ts", () => {
+    const f = files(
+      { main: "dist/src/index.js" },
+      { compilerOptions: { outDir: "dist", rootDir: "." }, include: ["src"] },
+      "src/index.ts",
+    );
+    expect(hit(f)).toEqual({ kind: "file", fileId: "file:repo:packages/lib/src/index.ts" });
+  });
+
+  test("without rootDir the root is the common directory of include", () => {
+    const f = files(
+      { main: "dist/index.js" },
+      { compilerOptions: { outDir: "dist" }, include: ["src/**/*"] },
+      "src/index.ts",
+    );
+    expect(hit(f)).toEqual({ kind: "file", fileId: "file:repo:packages/lib/src/index.ts" });
+  });
+
+  test("a custom outDir such as types maps a .d.ts target to source", () => {
+    const f = files(
+      { types: "types/index.d.ts" },
+      { compilerOptions: { outDir: "types", rootDir: "src" } },
+      "src/index.ts",
+    );
+    expect(hit(f)).toEqual({ kind: "file", fileId: "file:repo:packages/lib/src/index.ts" });
+  });
+
+  test("names dist, build, out and lib map to src only without an outDir", () => {
+    const withOut = files(
+      { main: "build/x.js" },
+      { compilerOptions: { outDir: "elsewhere", rootDir: "src" } },
+      "src/x.ts",
+    );
+    expect(hit(withOut)).toEqual({ kind: "unresolved" });
+    const without = files({ main: "build/x.js" }, { compilerOptions: {} }, "src/x.ts");
+    expect(hit(without)).toEqual({ kind: "file", fileId: "file:repo:packages/lib/src/x.ts" });
+  });
+});
+
+describe("tsconfig extends through a workspace package", () => {
+  const page = "file:repo:apps/web/src/app/page.ts";
+  const admin = "file:repo:apps/admin/src/main.ts";
+  const format = { kind: "file", fileId: "file:repo:apps/web/src/lib/format.ts" };
+  const date = { kind: "file", fileId: "file:repo:packages/shared/src/date.ts" };
+  const unresolved = { kind: "unresolved" };
+  const setWebConfig = (ctx: { dir: string }, config: object) =>
+    writeFileSync(join(ctx.dir, "apps/web/tsconfig.json"), JSON.stringify(config));
+  const webResolver = (ctx: ReturnType<typeof fixture>) => {
+    const r = createResolver(ctx);
+    return (spec: string) => r.resolveSpecifier(page, spec);
+  };
+
+  test("an app's own paths and an app that inherits the base's paths both resolve with no node_modules", () => {
+    const r = createResolver(fixture("tsconfig-extends-workspace"));
+    expect(r.resolveSpecifier(page, "@/lib/format")).toEqual(format);
+    expect(r.resolveSpecifier(admin, "~shared/date")).toEqual(date);
+    // The app's `paths` replace the base's.
+    expect(r.resolveSpecifier(page, "~shared/date")).toEqual(unresolved);
+  });
+
+  test("with the config package linked into node_modules oxc-resolver reads the chain and the results are identical", () => {
+    const unlinked = fixture("tsconfig-extends-workspace");
+    const linked = fixture("tsconfig-extends-workspace");
+    mkdirSync(join(linked.dir, "node_modules/@acme"), { recursive: true });
+    symlinkSync(
+      join(linked.dir, "packages/config-typescript"),
+      join(linked.dir, "node_modules/@acme/config-typescript"),
+    );
+    const chain = (c: typeof linked) =>
+      readTsconfigChain(join(c.dir, "apps/admin/tsconfig.json"), c.workspaces, realpathSync(c.dir));
+    expect(chain(unlinked).needsAlias).toBe(true);
+    expect(chain(linked).needsAlias).toBe(false);
+    const both = (c: typeof linked) => {
+      const r = createResolver(c);
+      return [r.resolveSpecifier(page, "@/lib/format"), r.resolveSpecifier(admin, "~shared/date")];
+    };
+    expect(both(linked)).toEqual([format, date]);
+    expect(both(linked)).toEqual(both(unlinked));
+  });
+
+  test("a paths in the leaf replaces the base's and resolves against the inherited baseUrl", () => {
+    const ctx = fixture("tsconfig-extends-workspace");
+    // The base's `baseUrl` is its own directory, so the leaf's target is relative to `packages/config-typescript`.
+    setWebConfig(ctx, {
+      extends: "@acme/config-typescript/nextjs.json",
+      compilerOptions: { paths: { "~shared/*": ["../shared/src/*"] } },
+    });
+    const at = webResolver(ctx);
+    expect(at("~shared/date")).toEqual(date);
+    expect(at("@/lib/format")).toEqual(unresolved);
+    setWebConfig(ctx, {
+      extends: "@acme/config-typescript/nextjs.json",
+      compilerOptions: { paths: { "~x/*": ["./src/lib/*"] } },
+    });
+    expect(webResolver(ctx)("~x/format")).toEqual(unresolved);
+    setWebConfig(ctx, {
+      extends: "@acme/config-typescript/nextjs.json",
+      compilerOptions: { baseUrl: ".", paths: { "~x/*": ["./src/lib/*"] } },
+    });
+    expect(webResolver(ctx)("~x/format")).toEqual(format);
+  });
+
+  test("an extends of an unknown package keeps the leaf's paths", () => {
+    const ctx = fixture("tsconfig-extends-workspace");
+    setWebConfig(ctx, {
+      extends: ["@nowhere/config/base.json"],
+      compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } },
+    });
+    expect(webResolver(ctx)("@/lib/format")).toEqual(format);
+  });
+
+  test("${configDir} in paths is the directory of the leaf config", () => {
+    const ctx = fixture("tsconfig-extends-workspace");
+    setWebConfig(ctx, {
+      extends: "@acme/config-typescript/nextjs.json",
+      compilerOptions: { paths: { "@/*": ["${configDir}/src/*"] } },
+    });
+    expect(webResolver(ctx)("@/lib/format")).toEqual(format);
+  });
+
+  test("a leaf baseUrl still resolves bare imports when the chain goes through a workspace package", () => {
+    const ctx = fixture("tsconfig-extends-workspace");
+    setWebConfig(ctx, {
+      extends: "@acme/config-typescript/nextjs.json",
+      compilerOptions: { baseUrl: "src" },
+    });
+    expect(webResolver(ctx)("lib/format")).toEqual(format);
+  });
+
+  test("a base that two extends entries share is read for each", () => {
+    const ctx = fixture("tsconfig-extends-workspace", {
+      "apps/web/src/a/x.ts": "export const a = 1;\n",
+      "apps/web/src/b/x.ts": "export const b = 1;\n",
+    });
+    for (const d of ["a", "b"]) {
+      mkdirSync(join(ctx.dir, "apps/web/src", d), { recursive: true });
+      writeFileSync(join(ctx.dir, "apps/web/src", d, "x.ts"), "export const x = 1;\n");
+    }
+    const web = (name: string, config: object) =>
+      writeFileSync(join(ctx.dir, "apps/web", name), JSON.stringify(config));
+    web("base.json", { compilerOptions: { baseUrl: ".", paths: { "@b/*": ["./src/b/*"] } } });
+    web("a.json", { extends: "./base.json", compilerOptions: { paths: { "@a/*": ["./src/a/*"] } } });
+    web("b.json", { extends: "./base.json" });
+    setWebConfig(ctx, { extends: ["@nowhere/config", "./a.json", "./b.json"] });
+    const at = webResolver(ctx);
+    // The later entry wins: `b.json` brings the base's `paths` back.
+    expect(at("@b/x")).toEqual({ kind: "file", fileId: "file:repo:apps/web/src/b/x.ts" });
+    expect(at("@a/x")).toEqual(unresolved);
   });
 });

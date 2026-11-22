@@ -1,0 +1,281 @@
+{
+  "version": 1,
+  "dependencies": [
+    {
+      "name": "hono",
+      "workspace": "@fx/users-api",
+      "role": "framework",
+      "note": "HTTP framework: new Hono(), route, basePath"
+    },
+    {
+      "name": "hono",
+      "workspace": "@fx/billing",
+      "role": "framework",
+      "note": "HTTP framework: new Hono(), route, basePath"
+    },
+    {
+      "name": "axios",
+      "workspace": "@fx/web",
+      "role": "neither",
+      "note": "HTTP client"
+    },
+    {
+      "name": "ky",
+      "workspace": "@fx/web",
+      "role": "neither",
+      "note": "HTTP client"
+    },
+    {
+      "name": "react",
+      "workspace": "@fx/web",
+      "role": "neither",
+      "note": "UI library"
+    },
+    {
+      "name": "axios",
+      "workspace": "@fx/legacy-web",
+      "role": "neither",
+      "note": "HTTP client"
+    }
+  ],
+  "helpers": [
+    "resolve-names",
+    "const-strings",
+    "mount-graph",
+    "fs-routes"
+  ],
+  "passthrough": [
+    "basePath",
+    "get",
+    "post",
+    "put",
+    "patch",
+    "delete",
+    "options",
+    "all",
+    "on",
+    "use",
+    "route"
+  ],
+  "rules": [
+    {
+      "id": "hono-app",
+      "language": "typescript",
+      "when": {
+        "dependency": [
+          "hono"
+        ]
+      },
+      "rule": {
+        "pattern": "new Hono($$$A)"
+      },
+      "emit": {
+        "kind": "router",
+        "data": {
+          "adapter": "hono"
+        }
+      },
+      "examples": {
+        "match": [
+          "const app = new Hono();",
+          "export const users = new Hono().basePath(\"/v1\");"
+        ],
+        "noMatch": [
+          "const app = new Elysia();",
+          "const m = new Map();"
+        ]
+      }
+    },
+    {
+      "id": "hono-base-path",
+      "language": "typescript",
+      "when": {
+        "dependency": [
+          "hono"
+        ]
+      },
+      "rule": {
+        "pattern": "$X.basePath($B)"
+      },
+      "emit": {
+        "kind": "router",
+        "base": "$B",
+        "data": {
+          "adapter": "hono"
+        }
+      },
+      "examples": {
+        "match": [
+          "const users = new Hono().basePath(\"/v1\");"
+        ],
+        "noMatch": [
+          "app.get(\"/v1\", handler);"
+        ]
+      }
+    },
+    {
+      "id": "hono-route",
+      "language": "typescript",
+      "when": {
+        "dependency": [
+          "hono"
+        ]
+      },
+      "rule": {
+        "pattern": "$APP.$M($P, $$$H)"
+      },
+      "constraints": {
+        "M": {
+          "regex": "^(get|post|put|patch|delete|options|all)$"
+        },
+        "P": {
+          "any": [
+            {
+              "kind": "string"
+            },
+            {
+              "kind": "template_string"
+            },
+            {
+              "kind": "identifier"
+            }
+          ]
+        }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$APP",
+        "method": "$M",
+        "path": "$P",
+        "handler": "$$$H",
+        "pathFromChain": true,
+        "data": {
+          "adapter": "hono"
+        }
+      },
+      "examples": {
+        "match": [
+          "app.get(\"/health\", (c) => c.text(\"ok\"));",
+          "app.post(HEALTH_PATH, auth, handler);"
+        ],
+        "noMatch": [
+          "app.use(\"/x\", mw);",
+          "cache.has(\"k\");"
+        ]
+      }
+    },
+    {
+      "id": "hono-route-chained",
+      "language": "typescript",
+      "when": {
+        "dependency": [
+          "hono"
+        ]
+      },
+      "rule": {
+        "pattern": "$APP.$M($H)"
+      },
+      "constraints": {
+        "M": {
+          "regex": "^(get|post|put|patch|delete|options|all)$"
+        },
+        "H": {
+          "not": {
+            "any": [
+              {
+                "kind": "string"
+              },
+              {
+                "kind": "template_string"
+              }
+            ]
+          }
+        }
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$APP",
+        "method": "$M",
+        "handler": "$H",
+        "pathFromChain": true,
+        "data": {
+          "adapter": "hono"
+        }
+      },
+      "examples": {
+        "match": [
+          "new Hono().get(\"/\", list).post(create);"
+        ],
+        "noMatch": [
+          "app.use(logger());"
+        ]
+      }
+    },
+    {
+      "id": "hono-route-on",
+      "language": "typescript",
+      "when": {
+        "dependency": [
+          "hono"
+        ]
+      },
+      "rule": {
+        "pattern": "$APP.on($MS, $P, $$$H)"
+      },
+      "emit": {
+        "kind": "endpoint",
+        "receiver": "$APP",
+        "method": "$MS",
+        "path": "$P",
+        "handler": "$$$H",
+        "data": {
+          "adapter": "hono"
+        }
+      },
+      "examples": {
+        "match": [
+          "posts.on([\"PUT\", \"PATCH\"], \"/posts/:id\", async (c) => c.json({}));"
+        ],
+        "noMatch": [
+          "posts.get(\"/posts/:id\", showPost);"
+        ]
+      }
+    },
+    {
+      "id": "hono-mount",
+      "language": "typescript",
+      "when": {
+        "dependency": [
+          "hono"
+        ]
+      },
+      "rule": {
+        "pattern": "$PARENT.route($P, $CHILD)"
+      },
+      "emit": {
+        "kind": "mount",
+        "parent": "$PARENT",
+        "prefix": "$P",
+        "child": "$CHILD",
+        "data": {
+          "adapter": "hono"
+        }
+      },
+      "examples": {
+        "match": [
+          "app.route(\"/api\", posts);"
+        ],
+        "noMatch": [
+          "app.get(\"/api\", posts);"
+        ]
+      }
+    }
+  ],
+  "clientWrappers": [
+    {
+      "symbol": "sym:linking:apps/web/src/lib/opaque.ts#send",
+      "pathArg": 0,
+      "prefix": "/api"
+    }
+  ]
+}

@@ -1,9 +1,0 @@
-The recipe is at `.gantry/recipe.json`, and the check passes. It finds the 6 tables I counted in `doc/schema.sql`, but nothing else.
-
-- **Stack:** The backend is Go (Gin, sqlc, Postgres) and the frontend is Vue 3 with vue-router. The engine only parses TypeScript, so most of the repository is out of reach.
-- **Tables (6):** `users`, `verify_emails`, `accounts`, `entries`, `transfers` and `sessions`, from the `CREATE TABLE` statements in `doc/schema.sql`.
-- **Routes (0 expected):** The Vue router has one page, `/` in `frontend/src/router/index.ts`. I didn't write a rule for it.
-- **Endpoints (0 expected):** The Go server registers 3 public routes and some authenticated ones in `api/server.go`, which the engine can't read.
-- **Reads and writes (0 expected):** The sqlc-generated Go files in `db/sqlc` run the queries, and the engine can't parse them. The SQL under `db/query` is only query definitions, not code that runs.
-
-The check also reported one file over 1 MB that it skipped. I didn't track down which file it was.

@@ -22,6 +22,16 @@ export interface SceneEdge {
   dst: number;
   weight: number;
   kind: string;
+  /** The ends are in different repos (project map of a workspace of several repos). */
+  crossRepo?: boolean;
+}
+
+/** A repo of a workspace of several repos: drawn as a labelled container around the boxes of its workspaces. */
+export interface RepoGroup {
+  id: string;
+  label: string;
+  /** Ids of the root nodes (workspaces) inside the container. */
+  members: string[];
 }
 
 /** A workspace-to-workspace link. `weight` counts imports (or uses); `declaredOnly` links come only from package.json. */
@@ -33,6 +43,8 @@ export interface WsEdge {
   /** The pair also has a `depends_on` link in package.json (it never adds to `weight`). */
   declared: boolean;
   kind: string;
+  /** The two workspaces (or repos) are in different repos: the link is drawn dashed. */
+  crossRepo: boolean;
 }
 
 export interface Scene {
@@ -60,6 +72,10 @@ export interface Scene {
   /** Edge indices incident to each node. */
   incident: Map<number, number[]>;
   hierarchical: boolean;
+  /** Repo containers around the workspace boxes; empty for a workspace of one repo and at the Repos level. */
+  repos: RepoGroup[];
+  /** The Repos level: every root is a repo, drawn as a box like a workspace. */
+  repoLevel: boolean;
   /**
    * True at the Folders level when file nodes were loaded in the background only to fill folders with a faint
    * mosaic: file cells are drawn without text and cannot be picked.
@@ -184,7 +200,9 @@ function buildWsEdges(tree: Tree, edges: readonly SceneEdge[]): WsEdge[] {
       declaredOnly: true,
       declared: false,
       kind: e.kind,
+      crossRepo: false,
     };
+    if (e.crossRepo) cur.crossRepo = true;
     if (e.kind !== "depends_on") {
       cur.weight += e.weight;
       cur.declaredOnly = false;
@@ -199,13 +217,51 @@ function buildWsEdges(tree: Tree, edges: readonly SceneEdge[]): WsEdge[] {
   return [...map.values()].sort((p, q) => q.weight - p.weight || p.src - q.src || p.dst - q.dst);
 }
 
+/**
+ * The repo nodes of a project map of several repos. With workspaces below them they become containers (`repos`) and
+ * leave the tree, so every layout step sees the workspaces as roots; alone (the Repos level) they are the boxes.
+ */
+function splitRepos(input: GraphNode[]): { nodes: GraphNode[]; repos: RepoGroup[]; repoLevel: boolean } {
+  const repoIds = new Set(input.filter((n) => n.kind === "repo").map((n) => n.id));
+  if (repoIds.size === 0) return { nodes: input, repos: [], repoLevel: false };
+  if (!input.some((n) => n.parent !== undefined && repoIds.has(n.parent)))
+    return {
+      nodes: input.map((n) => (repoIds.has(n.id) ? { ...n, kind: "workspace" } : n)),
+      repos: [],
+      repoLevel: true,
+    };
+  const members = new Map<string, string[]>();
+  const nodes: GraphNode[] = [];
+  for (const n of input) {
+    if (repoIds.has(n.id)) continue;
+    if (n.parent !== undefined && repoIds.has(n.parent)) {
+      members.set(n.parent, [...(members.get(n.parent) ?? []), n.id]);
+      const { parent: _repo, ...top } = n;
+      nodes.push(top);
+    } else nodes.push(n);
+  }
+  const repos = input.flatMap((n) =>
+    repoIds.has(n.id) && members.has(n.id)
+      ? [{ id: n.id, label: n.label, members: members.get(n.id) as string[] }]
+      : [],
+  );
+  return { nodes, repos, repoLevel: false };
+}
+
 /** `hint` decides whether childless workspaces become boxes: only the nested hint (project map) does. */
 export function buildScene(
-  input: GraphNode[],
+  rawInput: GraphNode[],
   edges: GraphEdge[],
   hint = "nested-elk",
-  opts: { mosaic?: boolean; sticky?: SceneSticky } = {},
+  opts: { mosaic?: boolean; sticky?: SceneSticky; repos?: RepoGroup[]; repoLevel?: boolean } = {},
 ): Scene {
+  const split =
+    hint === "nested-elk"
+      ? splitRepos(rawInput)
+      : { nodes: rawInput, repos: [] as RepoGroup[], repoLevel: false };
+  const input = split.nodes;
+  const repos = opts.repos ?? split.repos;
+  const repoLevel = opts.repoLevel ?? split.repoLevel;
   const nodes = hint === "nested-elk" ? withRootFileGroups(input, opts.sticky) : input;
   const tree = buildTree(nodes, { boxWorkspaces: hint === "nested-elk" });
   const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -215,7 +271,13 @@ export function buildScene(
     const a = tree.index.get(e.src);
     const b = tree.index.get(e.dst);
     if (a === undefined || b === undefined || a === b) continue;
-    sceneEdges.push({ src: a, dst: b, weight: Math.max(1, e.weight || 1), kind: e.kind });
+    sceneEdges.push({
+      src: a,
+      dst: b,
+      weight: Math.max(1, e.weight || 1),
+      kind: e.kind,
+      ...(e.crossRepo ? { crossRepo: true } : {}),
+    });
   }
   const roots: number[] = [];
   tree.nodes.forEach((n, i) => {
@@ -282,6 +344,8 @@ export function buildScene(
     wsEdges: tree.hierarchical ? buildWsEdges(tree, sceneEdges) : [],
     incident,
     hierarchical: tree.hierarchical,
+    repos,
+    repoLevel,
     mosaic: Boolean(opts.mosaic),
     ...(opts.sticky ? { sticky: opts.sticky } : {}),
   };
@@ -369,6 +433,7 @@ export function layoutInputFor(
     focus,
     saved,
     viewport,
+    ...(scene.repos.length > 0 ? { groups: scene.repos } : {}),
     ...(stableTitles ? { stableBoxes: true, tinyBoxes: true } : {}),
   };
 }

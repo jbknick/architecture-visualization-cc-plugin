@@ -2,6 +2,7 @@ import { type GantryConfig, loadConfigForDb } from "../config/index.js";
 import { contentKey, FUNCTION_LIKE_KINDS } from "../describe/factsheet.js";
 import { allVectors, getVector, knn, type VecTable, vecAvailable } from "../embed/vec.js";
 import { hashSymbol, MINHASH_PERMUTATIONS, minhashJaccard } from "../hash/index.js";
+import { repoOfId } from "../ids.js";
 import { langOfPath, languageModule, languages, parseFile } from "../lang/index.js";
 import type { Store } from "../store/index.js";
 import { decodeMinhash } from "../store/repo.js";
@@ -39,6 +40,8 @@ import {
 export type Tier = "exact" | "near" | "code_vector" | "semantic";
 export interface DupCandidate {
   symbolId: string;
+  /** The repo of the matched symbol (the repo part of `symbolId`). */
+  repo: string;
   tier: Tier;
   score: number;
 }
@@ -115,6 +118,7 @@ const VECTOR_MESSAGE = "vector tiers unavailable: run gantry embed";
 interface Entry {
   id: string;
   fileId: string;
+  repo: string;
   path: string;
   kind: SymbolKind;
   lang: Lang;
@@ -213,6 +217,7 @@ function buildIndex(store: Store, layer: "effective" | "main"): DupIndex {
     const e: Entry = {
       id: r.id,
       fileId: r.file_id,
+      repo: repoOfId(r.id) as string,
       path: r.path,
       kind: r.kind,
       lang: r.lang,
@@ -432,7 +437,7 @@ function runTiers(inp: RunInput): DupCandidate[] {
   };
   const take = (tier: Tier, hits: { e: Entry; score: number }[]): void => {
     const picked = hits
-      .map((h) => ({ symbolId: h.e.id, tier, score: h.score }))
+      .map((h) => ({ symbolId: h.e.id, repo: h.e.repo, tier, score: h.score }))
       .sort(byScore)
       .filter((c) => !seen.has(c.symbolId));
     for (const c of picked) {
@@ -611,6 +616,11 @@ export interface RebuildOptions {
   config?: GantryConfig;
   /** Candidates kept per symbol. Default 10. */
   perSymbolLimit?: number;
+  /**
+   * Replace only the pairs that involve a symbol of this repo, with the pairs a full rebuild would find for them; edges
+   * between symbols of other repos are left alone (spec section 11).
+   */
+  repo?: string;
 }
 
 const EDGE_TIERS: readonly Tier[] = ["exact", "near", "code_vector"];
@@ -651,6 +661,9 @@ export async function rebuildSimilarEdges(store: Store, opts: RebuildOptions = {
   };
   const runTiersSet = new Set<Tier>([...tiers].filter((t) => t !== "semantic"));
 
+  const prefix = opts.repo === undefined ? undefined : `sym:${opts.repo}:`;
+  const involved = (id: string): boolean => prefix === undefined || id.startsWith(prefix);
+
   const best = new Map<string, { src: Entry; dst: string; tier: Tier; score: number }>();
   for (const e of index.entries) {
     if (!(e.exported || e.stmt >= floorsOf(e.lang).nearMinStmts)) continue;
@@ -670,6 +683,8 @@ export async function rebuildSimilarEdges(store: Store, opts: RebuildOptions = {
     for (const c of found) {
       const key = pairKey(e.id, c.symbolId);
       if (dismissedPairs.has(key)) continue;
+      // Searches start from every symbol, as in a full rebuild, so a pair that only the other side finds is kept too.
+      if (!involved(e.id) && !involved(c.symbolId)) continue;
       const prev = best.get(key);
       if (
         !prev ||
@@ -685,13 +700,15 @@ export async function rebuildSimilarEdges(store: Store, opts: RebuildOptions = {
 
   return store.tx(() => {
     const tierList = [...tiers].map((t) => `'${t}'`).join(",");
+    const ofRepo = prefix === undefined ? "" : " AND (substr(src, 1, ?) = ? OR substr(dst, 1, ?) = ?)";
+    const repoArgs = prefix === undefined ? [] : [prefix.length, prefix, prefix.length, prefix];
     if (tierList !== "") {
       store.db
         .prepare(
           `DELETE FROM edges WHERE kind = 'similar_to' AND layer = 'main'
-           AND json_extract(evidence, '$[0]') IN (${tierList})`,
+           AND json_extract(evidence, '$[0]') IN (${tierList})${ofRepo}`,
         )
-        .run();
+        .run(...repoArgs);
     }
     // Edges whose symbols are no longer comparable (removed, below the floor, now in an excluded file).
     const stale = store.db
@@ -700,7 +717,10 @@ export async function rebuildSimilarEdges(store: Store, opts: RebuildOptions = {
     const del = store.db.prepare(
       "DELETE FROM edges WHERE kind = 'similar_to' AND layer = 'main' AND src = ? AND dst = ?",
     );
-    for (const e of stale) if (!index.byId.has(e.src) || !index.byId.has(e.dst)) del.run(e.src, e.dst);
+    for (const e of stale) {
+      if (!involved(e.src) && !involved(e.dst)) continue;
+      if (!index.byId.has(e.src) || !index.byId.has(e.dst)) del.run(e.src, e.dst);
+    }
 
     const ins = store.db.prepare(
       `INSERT INTO edges(src, dst, kind, layer, confidence, count, evidence, file_id)

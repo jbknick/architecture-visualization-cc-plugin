@@ -145,6 +145,39 @@ export function resolvePaths(
   };
 }
 
+/**
+ * The paths of another repo of the same workspace: the same data dir, with that repo's root, name and worktree hash.
+ * Throws when the workspace does not list `repo`.
+ */
+export function pathsForRepo(paths: GantryPaths, repo: string): GantryPaths {
+  if (repo === paths.repo) return paths;
+  const member = paths.workspace.repos.find((r) => r.name === repo);
+  if (!member) throw new Error(`the workspace has no repo named ${repo}`);
+  return {
+    ...paths,
+    root: member.root,
+    repo: member.name,
+    worktreeHash: createHash("sha256").update(member.root).digest("hex").slice(0, 16),
+  };
+}
+
+/** The repo of the workspace whose work tree holds `file` (an absolute path, or one relative to `paths.root`). */
+export function repoOfPath(paths: GantryPaths, file: string): GantryPaths | undefined {
+  let real: string;
+  try {
+    real = fs.realpathSync(path.isAbsolute(file) ? file : path.join(paths.root, file));
+  } catch {
+    return undefined;
+  }
+  let best: { name: string; len: number } | undefined;
+  for (const r of paths.workspace.repos) {
+    const rel = path.relative(r.root, real);
+    if (rel === "" || rel.startsWith("..") || path.isAbsolute(rel)) continue;
+    if (!best || r.root.length > best.len) best = { name: r.name, len: r.root.length };
+  }
+  return best ? pathsForRepo(paths, best.name) : undefined;
+}
+
 /** mkdir -p the data dir and its subdirs with mode 0700. */
 export function ensureDataDir(p: GantryPaths): void {
   for (const dir of [p.dataDir, p.catalogDir, p.logsDir]) {

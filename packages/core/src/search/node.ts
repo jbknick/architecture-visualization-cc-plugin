@@ -1,8 +1,10 @@
-import { isFileId, isSymId, qualifyId } from "../ids.js";
+import { isFileId, isSymId, qualifyId, repoOfId } from "../ids.js";
 import { type Store, safeRepo } from "../store/index.js";
 import type { FileRecord, SymbolRecord } from "../types.js";
 
 export interface NodeInfo {
+  /** The repo the node is in. */
+  repo: string;
   node: SymbolRecord | FileRecord;
   /** Distinct nodes with a non-`contains` edge into this one. */
   fanIn: number;
@@ -34,11 +36,19 @@ function innermost(store: Store, fileId: string, line: number): SymbolRecord | u
  */
 export function nodeInfo(store: Store, target: string): NodeInfo | null {
   const t = target.trim();
-  const files = store.effectiveFiles().filter((f) => !f.deleted);
-  const byPath = new Map(files.map((f) => [f.path, f]));
+  const repo = safeRepo(store);
+  // Files sorted by repo name; a path that exists in several repos means the file of the repo the command runs in.
+  const files = store
+    .effectiveFiles()
+    .filter((f) => !f.deleted)
+    .sort((a, b) => (repoOfId(a.id) ?? "").localeCompare(repoOfId(b.id) ?? ""));
+  const byPath = new Map<string, FileRecord>();
+  for (const f of files) {
+    const known = byPath.get(f.path);
+    if (!known || (repoOfId(f.id) === repo && repoOfId(known.id) !== repo)) byPath.set(f.path, f);
+  }
   let node: SymbolRecord | FileRecord | undefined;
 
-  const repo = safeRepo(store);
   const long = repo === undefined ? undefined : qualifyId(repo, t);
   if (isSymId(t)) node = store.getSymbol(t) ?? (long ? store.getSymbol(long) : undefined);
   else if (isFileId(t)) node = files.find((f) => f.id === t || f.id === long);
@@ -68,5 +78,11 @@ export function nodeInfo(store: Store, target: string): NodeInfo | null {
   }
   const sorted: Record<string, string[]> = {};
   for (const k of Object.keys(neighbors).sort()) sorted[k] = (neighbors[k] as string[]).sort();
-  return { node, fanIn: incoming.size, fanOut: outgoing.size, neighbors: sorted };
+  return {
+    repo: repoOfId(node.id) ?? "",
+    node,
+    fanIn: incoming.size,
+    fanOut: outgoing.size,
+    neighbors: sorted,
+  };
 }

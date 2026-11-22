@@ -133,7 +133,9 @@ export function qualifyId(repo: string, target: string): string | undefined {
 /** An id without its kind and repo parts, for labels: a path, `path#name`, a table name, `ws:rest`; `ws:` and `dir:` ids lose their prefix. */
 export function displayOfId(id: string): string {
   const p = parseId(id);
-  if (p === undefined) return parseWorkspaceId(id)?.name ?? id.replace(/^(ws|dir):/, "");
+  // A `dir:<repo>:<path>` id (a store of several repos) shows the path only.
+  if (p === undefined)
+    return parseWorkspaceId(id)?.name ?? id.replace(/^dir:[^:]*:/, "").replace(/^(ws|dir):/, "");
   if (p.kind === "file") return p.path as string;
   if (p.kind === "sym") return `${p.path}#${p.name}`;
   if (p.kind === "table") return p.name as string;

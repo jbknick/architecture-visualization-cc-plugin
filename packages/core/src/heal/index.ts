@@ -9,7 +9,7 @@ import { rebuildSimilarEdges } from "../dup/index.js";
 import { fileId } from "../ids.js";
 import { indexRepo } from "../indexer.js";
 import { reattachOverlay } from "../overlay/reattach.js";
-import type { GantryPaths } from "../paths/index.js";
+import { type GantryPaths, pathsForRepo } from "../paths/index.js";
 import { refreshDescriptionFts } from "../search/descfts.js";
 import { openStore, type Store } from "../store/index.js";
 
@@ -119,13 +119,13 @@ function pruneWorking(store: Store, root: string, repo: string, ids: Iterable<st
 }
 
 /** Working rows with main's content hash and main's edges carry nothing; the effective view is the same without them. */
-function dropRedundantWorking(store: Store): void {
+function dropRedundantWorking(store: Store, repo: string): void {
   const rows = store.db
     .prepare(
       `SELECT w.id FROM files w JOIN files m ON m.id = w.id AND m.layer = 'main' AND m.deleted = 0
-       WHERE w.layer = 'working' AND w.deleted = 0 AND w.content_hash = m.content_hash`,
+       WHERE w.layer = 'working' AND w.deleted = 0 AND w.content_hash = m.content_hash AND w.repo = ?`,
     )
-    .all() as { id: string }[];
+    .all(repo) as { id: string }[];
   const edges = store.db.prepare(
     "SELECT src, dst, kind, confidence, count, evidence FROM edges WHERE layer = ? AND file_id = ? ORDER BY src, dst, kind",
   );
@@ -172,12 +172,41 @@ function indexedFileCount(store: Store, repo: string): number {
   return r.n;
 }
 
+/** The repos a heal or refresh covers: the one named, or every repo of the workspace in name order. */
+function targets(paths: GantryPaths, repo: string | undefined): GantryPaths[] {
+  return repo !== undefined
+    ? [pathsForRepo(paths, repo)]
+    : paths.workspace.repos.map((r) => pathsForRepo(paths, r.name));
+}
+
 /**
- * Brings the main layer to `HEAD` (spec section 11). Incremental from `repos.head_sha` of this repo (or `opts.from`)
- * when the diff is small, a full main re-index otherwise. Never calls a model. With `opts.reattach` it also
- * re-attaches hand-picked overlay entries to moved functions (#288); a Claude Code hook never sets it (budget).
+ * Brings the main layer to `HEAD` (spec section 11), repo by repo. With `opts.repo` only that repo is healed; without it
+ * every repo of the workspace is, in turn. Rows of the other repos are never deleted or rewritten.
  */
 export async function heal(
+  paths: GantryPaths,
+  opts?: { from?: string; reattach?: boolean; repo?: string },
+): Promise<{ changed: number; full: boolean; ms: number }> {
+  const t0 = performance.now();
+  if (opts?.from !== undefined && opts.repo === undefined && paths.workspace.repos.length > 1) {
+    throw new Error("a starting commit names one repo: pass the repo with it");
+  }
+  let changed = 0;
+  let full = false;
+  for (const p of targets(paths, opts?.repo)) {
+    const r = await healRepo(p, { from: opts?.from, reattach: opts?.reattach });
+    changed += r.changed;
+    full ||= r.full;
+  }
+  return { changed, full, ms: Math.round(performance.now() - t0) };
+}
+
+/**
+ * One repo: incremental from `repos.head_sha` of `paths.repo` (or `opts.from`) when the diff is small, a full re-index
+ * of that repo otherwise. Never calls a model. With `opts.reattach` it also
+ * re-attaches hand-picked overlay entries to moved functions (#288); a Claude Code hook never sets it (budget).
+ */
+async function healRepo(
   paths: GantryPaths,
   opts?: { from?: string; reattach?: boolean },
 ): Promise<{ changed: number; full: boolean; ms: number }> {
@@ -211,7 +240,7 @@ export async function heal(
 
     let changed: number;
     if (full) {
-      const r = await indexRepo(paths, { layer: "main", store });
+      const r = await indexRepo(paths, { layer: "main", store, singleRepo: true });
       changed = r.files;
       store.setHeadSha(paths.repo, newSha);
       pruneWorking(store, root, paths.repo, layerRows(store, "working", paths.repo).keys());
@@ -241,12 +270,12 @@ export async function heal(
           .filter((w) => !w.deleted && isIndexable(w.path, config))
           .map((w) => w.path);
         if (keep.length > 0) await indexRepo(paths, { layer: "working", files: keep, store });
-        dropRedundantWorking(store);
+        dropRedundantWorking(store, paths.repo);
       }
       store.setHeadSha(paths.repo, newSha);
     }
     // Derived edges follow the main layer; exact and near only (vector edges are rebuilt by `gantry embed`).
-    if (changed > 0) await rebuildSimilarEdges(store, { tiers: ["exact", "near"] });
+    if (changed > 0) await rebuildSimilarEdges(store, { tiers: ["exact", "near"], repo: paths.repo });
     if (changed > 0) {
       // Incremental indexing rewrites FTS rows without description columns; then the catalog follows the graph.
       refreshDescriptionFts(store);
@@ -287,7 +316,22 @@ function statusPaths(root: string): string[] {
  */
 export async function refreshWorking(
   paths: GantryPaths,
-  opts?: { reattach?: boolean },
+  opts?: { reattach?: boolean; repo?: string },
+): Promise<{ reindexed: number; cleared: number; ms: number }> {
+  const t0 = performance.now();
+  let reindexed = 0;
+  let cleared = 0;
+  for (const p of targets(paths, opts?.repo)) {
+    const r = await refreshWorkingRepo(p, opts?.reattach);
+    reindexed += r.reindexed;
+    cleared += r.cleared;
+  }
+  return { reindexed, cleared, ms: Math.round(performance.now() - t0) };
+}
+
+async function refreshWorkingRepo(
+  paths: GantryPaths,
+  reattach: boolean | undefined,
 ): Promise<{ reindexed: number; cleared: number; ms: number }> {
   const t0 = performance.now();
   const root = paths.root;
@@ -342,13 +386,13 @@ export async function refreshWorking(
       await indexRepo(paths, { layer: "working", files: [...targets], store });
       refreshDescriptionFts(store); // re-indexed rows start without their description columns
     }
-    dropRedundantWorking(store);
+    dropRedundantWorking(store, paths.repo);
     store.setMeta("last_refresh_at", new Date().toISOString());
 
     const after = layerRows(store, "working", paths.repo);
     let cleared = 0;
     for (const id of before) if (!after.has(id)) cleared++;
-    if (opts?.reattach) reattachOverlay(store);
+    if (reattach) reattachOverlay(store);
     return { reindexed: reindex.length, cleared, ms: Math.round(performance.now() - t0) };
   });
 }
@@ -378,18 +422,22 @@ export async function rebuildIndex(paths: GantryPaths): Promise<void> {
   if (!hasMainIndex(paths)) await indexRepo(paths, { layer: "main" });
 }
 
-/** True when `HEAD` is not the commit the main layer was built for, so a heal is due. One `git rev-parse`. */
+/** True when `HEAD` of any repo of the workspace is not the commit its main layer was built for, so a heal is due. One `git rev-parse` per repo. */
 export function healPending(paths: GantryPaths, store: Store): boolean {
-  const headSha = revParseHead(paths.root);
-  return headSha !== undefined && store.headSha(paths.repo) !== headSha;
+  return paths.workspace.repos.some((r) => {
+    const headSha = revParseHead(r.root);
+    return headSha !== undefined && store.headSha(r.name) !== headSha;
+  });
 }
 
 /**
  * What changed since the index was last brought up to date, without re-indexing or writing anything (spec section
  * 11 (c)): the same `git status` plus mtime test as `refreshWorking`, and the `git diff` of a pending heal. Cheap
- * enough to run before every explorer request; reads through the caller's open store.
+ * enough to run before every explorer request; reads through the caller's open store. `repo` names another repo of the
+ * workspace (default: the repo `paths` is for).
  */
-export function staleFiles(paths: GantryPaths, store: Store): StaleFiles {
+export function staleFiles(workspacePaths: GantryPaths, store: Store, repo?: string): StaleFiles {
+  const paths = repo === undefined ? workspacePaths : pathsForRepo(workspacePaths, repo);
   const root = paths.root;
   const config = loadConfig(paths);
   const out = new Set<string>();

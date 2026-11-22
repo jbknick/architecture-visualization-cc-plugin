@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathOfFileId } from "../ids.js";
 import type { ParsedFile } from "../parse/index.js";
-import type { createResolver, ResolveContext, Resolver } from "../resolve/index.js";
+import type { ResolveContext, Resolver } from "../resolve/index.js";
 import type { Lang, SymbolKind, WorkspaceRecord } from "../types.js";
 import type { detectWorkspaces, WorkspaceDetectionConfig } from "../workspace/index.js";
 import { go } from "./go/index.js";
@@ -56,7 +56,7 @@ export interface LanguageModule {
   /** Parsing to symbols, imports and exports. */
   parseSource: (repo: string, repoRelPath: string, source: string) => ParsedFile;
   /** Import resolution, the adapter resolver, and call and type edges with confidence. */
-  createResolver: typeof createResolver;
+  createResolver: (ctx: ResolveContext) => Resolver;
   /** Token streams of the code in `range` of the file at `path`. */
   streams: (source: string, range: { start: number; end: number }, path: string) => TokenStreams;
   /** The text a code embedding is computed from. */

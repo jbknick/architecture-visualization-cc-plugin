@@ -6,10 +6,7 @@ import { endpointLabels, indexGraph, makeRepo } from "../testkit.js";
 
 const expressRecipe = (): string =>
   readFileSync(
-    join(
-      import.meta.dirname,
-      "../../../../../evals/oss/recipes/express-mongodb-rest-api-boilerplate.recipe.json",
-    ),
+    join(import.meta.dirname, "../testdata/express-mongodb-rest-api-boilerplate.recipe.json"),
     "utf8",
   );
 

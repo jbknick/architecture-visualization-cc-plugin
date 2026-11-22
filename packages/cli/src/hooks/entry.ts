@@ -107,10 +107,10 @@ export async function runHook(
       case "post-checkout":
       case "post-merge":
       case "post-rewrite":
-        if (fs.existsSync(paths.dbPath)) await heal(paths);
+        if (fs.existsSync(paths.dbPath)) await heal(paths, { repo: paths.repo });
         return undefined;
       case "pre-push": {
-        if (fs.existsSync(paths.dbPath)) await heal(paths);
+        if (fs.existsSync(paths.dbPath)) await heal(paths, { repo: paths.repo });
         const n = pushBacklog(paths);
         if (n > 0) {
           errOut(

@@ -1,7 +1,14 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { contentKey, heal, openStore, refreshDescriptionFts, type TraceResult } from "@gantry/core";
+import {
+  contentKey,
+  heal,
+  openStore,
+  refreshDescriptionFts,
+  resolvePaths,
+  type TraceResult,
+} from "@gantry/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { MAX_RESPONSE_CHARS } from "../envelope.js";
 import { type Connected, call, connect, type Repo } from "../testkit.js";
@@ -13,8 +20,9 @@ interface MaterializedFixture {
   cleanup(): Promise<void>;
 }
 const helperPath = "../../../core/test/helpers/fixture.js";
-const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as {
+const { materializeFixture, materializeLinkingRepos } = (await import(/* @vite-ignore */ helperPath)) as {
   materializeFixture: (name: string) => Promise<MaterializedFixture>;
+  materializeLinkingRepos: () => Promise<{ repos: { web: string }; cleanup(): Promise<void> }>;
 };
 
 const MARKER = "ZetaNineTraceMarker";
@@ -86,7 +94,9 @@ describe("gantry_trace", () => {
     expect(d.target).toBe(ROUTE);
     expect(d.direction).toBe("down");
     expect(d.endpoints.map((e) => e.id)).toContain("ep:adapters:@demo/api:rpc posts.get");
-    expect(d.endpoints.find((e) => e.id === "ep:adapters:@demo/server:PATCH /api/posts/:id")?.low).toBe(true);
+    expect(
+      d.endpoints.find((e) => e.id === "ep:adapters:@demo/server:PATCH /api/posts/:id")?.low,
+    ).toBeUndefined();
     expect(d.tables).toContain("table:adapters:posts");
 
     const up = await call(client, "gantry_trace", { target: "table:posts" });
@@ -94,6 +104,41 @@ describe("gantry_trace", () => {
     expect(u.direction).toBe("up");
     expect(u.routes).toEqual([ROUTE]);
     expect((await call(client, "gantry_trace", { target: "nope" })).json.error).toBe("not_found");
+  });
+
+  it("follows a page in one repo to the handler and table in another, and back up", async () => {
+    const fx = await materializeLinkingRepos();
+    fixtures.push({ dir: fx.repos.web, cleanup: fx.cleanup });
+    const data = mkdtempSync(join(tmpdir(), "gantry-mcp-trace-ws-"));
+    dataDirs.push(data);
+    const env = { ...process.env, HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data };
+    await heal(resolvePaths(fx.repos.web, env));
+    const conn = await connect({ dir: fx.repos.web, env } as unknown as Repo);
+    conns.push(conn);
+
+    const down = await call(conn.client, "gantry_trace", { target: "/invoices/$id" });
+    expect(down.isError).toBe(false);
+    const d = down.json as {
+      target: string;
+      endpoints: { id: string }[];
+      tables: string[];
+      chain: { id: string; repo?: string; via: string }[];
+    };
+    expect(d.target).toBe("route:web:.:/invoices/$id");
+    expect(d.endpoints.map((e) => e.id)).toEqual(["ep:billing:.:GET /invoices/:id"]);
+    expect(d.tables).toEqual(["table:billing:invoices"]);
+    expect(d.chain.find((s) => s.id === d.target)?.repo).toBe("web");
+    expect(d.chain.find((s) => s.id === "ep:billing:.:GET /invoices/:id")).toMatchObject({
+      repo: "billing",
+      via: "requests",
+    });
+    expect(d.chain.find((s) => s.via === "handles")).toMatchObject({
+      id: "sym:billing:src/handlers.ts#getInvoiceHandler",
+      repo: "billing",
+    });
+
+    const up = await call(conn.client, "gantry_trace", { target: "table:billing:invoices" });
+    expect((up.json as { routes: string[] }).routes).toEqual(["route:web:.:/invoices/$id"]);
   });
 
   it("never returns description text (containment)", async () => {

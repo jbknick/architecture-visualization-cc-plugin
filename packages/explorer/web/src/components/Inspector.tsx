@@ -224,6 +224,7 @@ function UsedBySection({ id, consumers }: { id: string; consumers: ReviewConsume
       <ConsumerTiers
         consumers={consumers}
         label="Consumers in two tiers"
+        reachable={false}
         sel={state.route.sel}
         onPick={(c) => {
           reviewFocus.set(id);

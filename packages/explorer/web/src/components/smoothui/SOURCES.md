@@ -27,7 +27,8 @@ comboboxes are the kit's `native-select` (role `combobox`). `breadcrumb/index.ts
 ## shadcn primitives (`../ui/`, base-nova style on Base UI)
 
 Used where SmoothUI has no component for the control (fallback order: SmoothUI, then a shadcn primitive on the same
-style, then hand-written). Copied on 2026-11-20 from https://ui.shadcn.com/r/styles/base-nova/<name>.json.
+style, then hand-written). Copied on 2026-11-20 (`collapsible`: 2026-11-22; SmoothUI has no disclosure) from
+https://ui.shadcn.com/r/styles/base-nova/<name>.json.
 
 | Primitive       | Used for                                                        |
 | --------------- | --------------------------------------------------------------- |
@@ -36,6 +37,7 @@ style, then hand-written). Copied on 2026-11-20 from https://ui.shadcn.com/r/sty
 | `checkbox`      | every filter checkbox (Base UI renders `role="checkbox"`)       |
 | `input`         | the search box and the text fields                              |
 | `native-select` | the two `<select>` menus (kept native so `selectOption` works)  |
+| `collapsible`   | a hub's row in the review panel (Base UI's Collapsible)         |
 
 `button` and `badge` call `class-variance-authority` in the registry; here they use plain lookup tables because that
 package is not an approved dependency (docs/SPEC.md section 2). The icon imports that came with the primitives are

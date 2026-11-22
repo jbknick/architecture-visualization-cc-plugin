@@ -1,4 +1,4 @@
-import type { AdapterNodeRecord, EdgeRecord } from "@gantry/core";
+import { type AdapterNodeRecord, type EdgeRecord, repoOfId } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { ViewModule, ViewResult } from "../types.js";
 import {
@@ -52,10 +52,11 @@ const spanOf = (n: AdapterNodeRecord): Span | null => {
     : null;
 };
 /** Does a call leave the handler from inside the span (or can that not be told)? Same rule as `trace`. */
-const inSpan = (e: EdgeRecord, span: Span): boolean => {
-  const lines = e.evidence.map((x) => Number(x.slice(x.lastIndexOf(":") + 1)));
+export const inSpan = (e: EdgeRecord, span: Span): boolean => {
+  const entries = e.evidence.filter((x) => !x.startsWith("sibling:")); // `sibling:<repo>` is a note, not a line
+  const lines = entries.map((x) => Number(x.slice(x.lastIndexOf(":") + 1)));
   if (lines.some((l) => l >= span.start && l <= span.end)) return true;
-  return e.evidence.length < e.count; // capped evidence: the dropped lines may be inside
+  return entries.length < e.count; // capped evidence: the dropped lines may be inside
 };
 
 /**
@@ -164,6 +165,13 @@ export const endpointsView: ViewModule = {
       }
     }
     const { nodes, edges } = b.result();
+    // A workspace of several repos: every node says which repo it is in (`mwref:` nodes are names, not code).
+    if (store.listRepos().length > 1) {
+      for (const n of nodes) {
+        const repo = n.id.startsWith("mwref:") ? undefined : repoOfId(n.id);
+        if (repo !== undefined) n.repo = repo;
+      }
+    }
     for (let lane = 1; lane < SERVICE + depth; lane++) labelRanks(nodes, lane);
     const lanes: Lane[] = [
       { lane: 0, label: "Endpoint" },

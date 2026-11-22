@@ -1,0 +1,316 @@
+{
+  "repos": [
+    {
+      "name": "ts-references"
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "ws:ts-references:.",
+      "repo": "ts-references",
+      "name": "ts-references-root",
+      "dir": ".",
+      "kind": "unknown",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:ts-references:@refs/cli",
+      "repo": "ts-references",
+      "name": "@refs/cli",
+      "dir": "apps/cli",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [
+        "@refs/core"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:ts-references:@refs/core",
+      "repo": "ts-references",
+      "name": "@refs/core",
+      "dir": "packages/core",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:ts-references:packages/util",
+      "repo": "ts-references",
+      "name": "packages/util",
+      "dir": "packages/util",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:ts-references:apps/cli/package.json",
+      "repo": "ts-references",
+      "path": "apps/cli/package.json",
+      "lang": "typescript",
+      "workspaceId": "ws:ts-references:@refs/cli",
+      "contentHash": "c4256a1a59050f249a9409e5b95ded7d6bdf575711a06b8c459b14dbbfd46688"
+    },
+    {
+      "id": "file:ts-references:apps/cli/src/main.ts",
+      "repo": "ts-references",
+      "path": "apps/cli/src/main.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:ts-references:@refs/cli",
+      "contentHash": "4928bcd2261327989ea65255225ee14ca7816c61bc1251593ee5bcddcdf89259"
+    },
+    {
+      "id": "file:ts-references:packages/core/src/index.ts",
+      "repo": "ts-references",
+      "path": "packages/core/src/index.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:ts-references:@refs/core",
+      "contentHash": "4f3816e13b4a540ce392f6dbff0ca3e90f8b388adfe407878d6cfb47b9341e05"
+    },
+    {
+      "id": "file:ts-references:packages/util/src/strings.ts",
+      "repo": "ts-references",
+      "path": "packages/util/src/strings.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:ts-references:packages/util",
+      "contentHash": "c3b8ccf622d373a0841d4a6c701de47c69108335b7379f4df520d4677c6e52cb"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:ts-references:apps/cli/src/main.ts#main",
+      "fileId": "file:ts-references:apps/cli/src/main.ts",
+      "name": "main",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(input: string): string",
+      "startLine": 4,
+      "endLine": 7,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "44dbd193824d0afe231d877fdf79c131",
+      "shapeHash": "45b22df107afd695d1ebc25967410c5b"
+    },
+    {
+      "id": "sym:ts-references:packages/core/src/index.ts#formatLine",
+      "fileId": "file:ts-references:packages/core/src/index.ts",
+      "name": "formatLine",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(cells: string[]): string",
+      "startLine": 5,
+      "endLine": 7,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "e5404b980471e4dcb3738ce34f483bbf",
+      "shapeHash": "185fb399ff2d5fc7df4c9f9ba07d3835"
+    },
+    {
+      "id": "sym:ts-references:packages/core/src/index.ts#parseLine",
+      "fileId": "file:ts-references:packages/core/src/index.ts",
+      "name": "parseLine",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(line: string): string[]",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "69412626deb338e8c7d5ff1e5014aff7",
+      "shapeHash": "8682d740ccc55bb408156d9ed9796e74"
+    },
+    {
+      "id": "sym:ts-references:packages/util/src/strings.ts#padLeft",
+      "fileId": "file:ts-references:packages/util/src/strings.ts",
+      "name": "padLeft",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(text: string, width: number): string",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 2,
+      "stmtCount": 1,
+      "exactHash": "6bddff854ebf7b93827ce407789a65e4",
+      "shapeHash": "0d8d61d7f370dd3dacdd5688a644ef0e"
+    }
+  ],
+  "edges": [
+    {
+      "src": "file:ts-references:apps/cli/src/main.ts",
+      "dst": "file:ts-references:packages/core/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "apps/cli/src/main.ts:1"
+      ],
+      "fileId": "file:ts-references:apps/cli/src/main.ts"
+    },
+    {
+      "src": "file:ts-references:apps/cli/src/main.ts",
+      "dst": "file:ts-references:packages/util/src/strings.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/cli/src/main.ts:2"
+      ],
+      "fileId": "file:ts-references:apps/cli/src/main.ts"
+    },
+    {
+      "src": "file:ts-references:apps/cli/src/main.ts",
+      "dst": "sym:ts-references:apps/cli/src/main.ts#main",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:ts-references:apps/cli/src/main.ts"
+    },
+    {
+      "src": "file:ts-references:apps/cli/src/main.ts",
+      "dst": "sym:ts-references:apps/cli/src/main.ts#main",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:ts-references:apps/cli/src/main.ts"
+    },
+    {
+      "src": "file:ts-references:packages/core/src/index.ts",
+      "dst": "sym:ts-references:packages/core/src/index.ts#formatLine",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:ts-references:packages/core/src/index.ts"
+    },
+    {
+      "src": "file:ts-references:packages/core/src/index.ts",
+      "dst": "sym:ts-references:packages/core/src/index.ts#formatLine",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:ts-references:packages/core/src/index.ts"
+    },
+    {
+      "src": "file:ts-references:packages/core/src/index.ts",
+      "dst": "sym:ts-references:packages/core/src/index.ts#parseLine",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:ts-references:packages/core/src/index.ts"
+    },
+    {
+      "src": "file:ts-references:packages/core/src/index.ts",
+      "dst": "sym:ts-references:packages/core/src/index.ts#parseLine",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:ts-references:packages/core/src/index.ts"
+    },
+    {
+      "src": "file:ts-references:packages/util/src/strings.ts",
+      "dst": "sym:ts-references:packages/util/src/strings.ts#padLeft",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:ts-references:packages/util/src/strings.ts"
+    },
+    {
+      "src": "file:ts-references:packages/util/src/strings.ts",
+      "dst": "sym:ts-references:packages/util/src/strings.ts#padLeft",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:ts-references:packages/util/src/strings.ts"
+    },
+    {
+      "src": "sym:ts-references:apps/cli/src/main.ts#main",
+      "dst": "sym:ts-references:packages/core/src/index.ts#formatLine",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/cli/src/main.ts:6"
+      ],
+      "fileId": "file:ts-references:apps/cli/src/main.ts"
+    },
+    {
+      "src": "sym:ts-references:apps/cli/src/main.ts#main",
+      "dst": "sym:ts-references:packages/core/src/index.ts#parseLine",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/cli/src/main.ts:5"
+      ],
+      "fileId": "file:ts-references:apps/cli/src/main.ts"
+    },
+    {
+      "src": "sym:ts-references:apps/cli/src/main.ts#main",
+      "dst": "sym:ts-references:packages/util/src/strings.ts#padLeft",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "apps/cli/src/main.ts:5"
+      ],
+      "fileId": "file:ts-references:apps/cli/src/main.ts"
+    },
+    {
+      "src": "ws:ts-references:@refs/cli",
+      "dst": "file:ts-references:apps/cli/src/main.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:ts-references:apps/cli/src/main.ts"
+    },
+    {
+      "src": "ws:ts-references:@refs/cli",
+      "dst": "ws:ts-references:@refs/core",
+      "kind": "depends_on",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:ts-references:apps/cli/package.json"
+    },
+    {
+      "src": "ws:ts-references:@refs/core",
+      "dst": "file:ts-references:packages/core/src/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:ts-references:packages/core/src/index.ts"
+    },
+    {
+      "src": "ws:ts-references:packages/util",
+      "dst": "file:ts-references:packages/util/src/strings.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:ts-references:packages/util/src/strings.ts"
+    }
+  ]
+}

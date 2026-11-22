@@ -10,6 +10,8 @@ import {
   loadConfig,
   openStore,
   parseFile,
+  pathsForRepo,
+  repoOfPath,
   type Store,
 } from "@gantry/core";
 import { crossingFindings } from "./boundaries.js";
@@ -106,11 +108,14 @@ function repoRelative(root: string, abs: string): string | undefined {
  * Never calls a model.
  */
 export async function postToolUse(
-  paths: GantryPaths,
+  workspacePaths: GantryPaths,
   input: PostToolInput,
   opts: SettleOptions = {},
 ): Promise<string | undefined> {
-  if (!fs.existsSync(paths.dbPath)) return undefined;
+  if (!fs.existsSync(workspacePaths.dbPath)) return undefined;
+  // The edited file's repo is found from its path; only that repo's working layer is refreshed.
+  const paths = repoOfPath(workspacePaths, input.filePath);
+  if (paths === undefined) return undefined;
   const rel = repoRelative(paths.root, input.filePath);
   if (rel === undefined) return undefined;
   const config = loadConfig(paths);
@@ -126,9 +131,9 @@ export async function postToolUse(
       // Only now is the file indexed: a trigger cut off before this line leaves reindexed = 0, and Stop indexes it.
       store.db
         .prepare(
-          "UPDATE pending_files SET reindexed = 1 WHERE session_id = ? AND path = ? AND created_at = ?",
+          "UPDATE pending_files SET reindexed = 1 WHERE session_id = ? AND repo = ? AND path = ? AND created_at = ?",
         )
-        .run(session, rel, recorded);
+        .run(session, paths.repo, rel, recorded);
     }
     if (input.sessionId !== undefined) return undefined;
     const r = await settle(paths, store, session, config, opts);
@@ -154,15 +159,40 @@ export async function settleBatch(
   opts: SettleOptions = {},
 ): Promise<string | undefined> {
   if (!fs.existsSync(paths.dbPath)) return undefined;
-  const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
+  const open = (p: GantryPaths) => openStore(p.dbPath, { overlayPath: p.overlayPath, repo: p.repo });
+  // A batch can hold edits of several repos of the workspace; each repo's files are settled against that repo.
+  const first = open(paths);
+  let repos: string[];
   try {
-    const r = await settle(paths, store, input.sessionId, loadConfig(paths), opts);
-    const text = formatCapped(r.findings, 600);
-    if (text === "") return undefined;
-    return JSON.stringify({ hookSpecificOutput: { hookEventName: "Stop", additionalContext: text } });
+    repos = (
+      first.db
+        .prepare("SELECT DISTINCT repo FROM pending_files WHERE session_id = ? ORDER BY repo")
+        .all(input.sessionId) as { repo: string }[]
+    )
+      .map((r) => r.repo)
+      .filter((r) => paths.workspace.repos.some((m) => m.name === r));
   } finally {
-    store.close();
+    first.close();
   }
+  const findings: Finding[] = [];
+  let settled = 0;
+  for (const repo of repos) {
+    const p = pathsForRepo(paths, repo);
+    const store = open(p);
+    try {
+      const r = await settle(p, store, input.sessionId, loadConfig(p), {
+        ...opts,
+        maxFiles: (opts.maxFiles ?? Number.POSITIVE_INFINITY) - settled,
+      });
+      findings.push(...r.findings);
+      settled += r.settled;
+    } finally {
+      store.close();
+    }
+  }
+  const text = formatCapped(findings, 600);
+  if (text === "") return undefined;
+  return JSON.stringify({ hookSpecificOutput: { hookEventName: "Stop", additionalContext: text } });
 }
 
 /**
@@ -179,12 +209,16 @@ export function recordEdit(store: Store, session: string, rel: string, source: b
   const at = stamp();
   store.db
     .prepare(
-      `INSERT INTO pending_files(session_id, path, baseline, created_at) VALUES (?, ?, ?, ?)
-       ON CONFLICT(session_id, path) DO UPDATE SET created_at = excluded.created_at, reindexed = 0`,
+      `INSERT INTO pending_files(session_id, repo, path, baseline, created_at) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(session_id, repo, path) DO UPDATE SET created_at = excluded.created_at, reindexed = 0`,
     )
-    .run(session, rel, JSON.stringify(baseline), at);
+    .run(session, store.repo(), rel, JSON.stringify(baseline), at);
   // A manifest edit changes how every file of the batch resolves: all of them are re-indexed again at Stop.
-  if (!source) store.db.prepare("UPDATE pending_files SET reindexed = 0 WHERE session_id = ?").run(session);
+  if (!source) {
+    store.db
+      .prepare("UPDATE pending_files SET reindexed = 0 WHERE session_id = ? AND repo = ?")
+      .run(session, store.repo());
+  }
   return at;
 }
 
@@ -256,13 +290,18 @@ export async function settle(
 
   const rows = store.db
     .prepare(
-      "SELECT path, baseline, created_at, reindexed FROM pending_files WHERE session_id = ? ORDER BY path",
+      "SELECT path, baseline, created_at, reindexed FROM pending_files WHERE session_id = ? AND repo = ? ORDER BY path",
     )
-    .all(session) as { path: string; baseline: string; created_at: string; reindexed: number }[];
+    .all(session, store.repo()) as {
+    path: string;
+    baseline: string;
+    created_at: string;
+    reindexed: number;
+  }[];
   if (rows.length === 0) return out;
   opts.afterRead?.();
   const del = store.db.prepare(
-    "DELETE FROM pending_files WHERE session_id = ? AND path = ? AND created_at = ?",
+    "DELETE FROM pending_files WHERE session_id = ? AND repo = ? AND path = ? AND created_at = ?",
   );
   const sources = rows.filter((r) => isIndexable(r.path, config));
   const manifests = rows.filter((r) => !isIndexable(r.path, config));
@@ -273,14 +312,14 @@ export async function settle(
   // Not indexed since its last edit (a trigger cut off before its index, or a manifest edited since), or gone.
   const todo = sources.filter((r) => r.reindexed === 0 || gone(r));
   const mark = store.db.prepare(
-    "UPDATE pending_files SET reindexed = 1 WHERE session_id = ? AND path = ? AND created_at = ?",
+    "UPDATE pending_files SET reindexed = 1 WHERE session_id = ? AND repo = ? AND path = ? AND created_at = ?",
   );
   for (let i = 0; i < todo.length; i += REINDEX_CHUNK) {
     if (late()) return out;
     const chunk = todo.slice(i, i + REINDEX_CHUNK);
     const ok = await step(async () => {
       await indexRepo(paths, { layer: "working", files: chunk.map((r) => r.path), store });
-      for (const r of chunk) mark.run(session, r.path, r.created_at);
+      for (const r of chunk) mark.run(session, store.repo(), r.path, r.created_at);
     });
     if (!ok) return out;
   }
@@ -288,7 +327,7 @@ export async function settle(
     if (late()) return out;
     const ok = await step(async () => {
       if (todo.length === 0) await indexRepo(paths, { layer: "working", files: [], store }); // workspaces from disk
-      for (const m of manifests) del.run(session, m.path, m.created_at);
+      for (const m of manifests) del.run(session, store.repo(), m.path, m.created_at);
     });
     if (!ok) return out;
     out.settled += manifests.length;
@@ -324,7 +363,7 @@ export async function settle(
       }
       // Group boundaries (spec section 14): reads overlay.db, never writes it; same disk double-check.
       found.push(...crossingFindings(store, changed, [r.path]).filter(check));
-      del.run(session, r.path, r.created_at);
+      del.run(session, store.repo(), r.path, r.created_at);
     });
     if (!ok) break;
     out.findings.push(...found);

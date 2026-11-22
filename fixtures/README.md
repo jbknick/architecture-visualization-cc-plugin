@@ -28,12 +28,19 @@ Workspace (`apps/*`, `packages/*`) for the framework adapters (#45).
 - `apps/web` (`@tanstack/react-start`, `@tanstack/react-router`): server functions `fetchPost` (GET, `inputValidator`, inline handler) and `savePost` (POST, `middleware([requireUser])`, named handler) in `src/server/posts.ts`; route `/posts/$postId` calls `fetchPost` in its `loader`; route `/` defines `countPosts` and calls it from its `beforeLoad` function.
 - `packages/legacy`: uses `new Hono()` and `createServerFn` without depending on either, so no adapter reads it.
 
+## tsconfig-extends-workspace
+Workspace (`apps/*`, `packages/*`), no `node_modules`, for a tsconfig that extends a config a workspace package provides.
+- `packages/config-typescript` (`@acme/config-typescript`): `exports` expose `./base.json` and `./nextjs.json`. `base.json` has `baseUrl: "."` and `paths` `~shared/*` pointing at `packages/shared/src/*`; `nextjs.json` extends `./base.json`.
+- `apps/web/tsconfig.json` extends `@acme/config-typescript/nextjs.json` and sets its own `paths` `@/*`, which replace the base's. `apps/web/src/app/page.ts` imports `@/lib/format`.
+- `apps/admin/tsconfig.json` extends the same file and sets no `paths`, so it inherits `~shared/*`. `apps/admin/src/main.ts` imports `~shared/date`.
+- Both imports resolve with no `node_modules`, so `init` reports 0 unresolved.
+
 ## nx
 - `nx.json`, two projects with `project.json`: `apps/shop` and `libs/cart`.
 - `tsconfig.base.json` path alias `@shop/cart`.
 
 ## react-router-fastify
-Workspace (`apps/*`, `packages/*`) with three React Router apps, one per declaration mode, a Fastify API and a Drizzle package, for the route, endpoint and table recipes. Hand labels are in `evals/fixtures/labels/react-router-fastify.json` (label `file` values are relative to this fixture; routes declared in a config file are labelled with that file). Every route path is unique across the apps (each app owns its own URL space) so a label key is one path.
+Workspace (`apps/*`, `packages/*`) with three React Router apps, one per declaration mode, a Fastify API and a Drizzle package, for the route, endpoint and table recipes. Every route path is unique across the apps (each app owns its own URL space).
 - `apps/web-data` (`react`, `react-router`): data mode. `src/router.tsx` has one `createBrowserRouter` with route objects using `path`, `index: true`, `element`, `Component`, three levels of `children`, a pathless layout route and `lazy: () => import("./routes/settings")`; the root route is `/app`. `src/memory.tsx` has a `createMemoryRouter` with `/preview` and `/preview/:postId`.
 - `apps/web-declarative` (`react`, `react-router`): declarative mode. `src/App.tsx` has `<BrowserRouter><Routes>` with nested `<Route>` elements under `docs`, a pathless `<Route element={<Layout />}>`, an `index` route and `posts/*`, whose component `src/pages/PostsSection.tsx` holds a nested `<Routes>` (`/docs/posts`, `/docs/posts/:postId`, `/docs/posts/new`).
 - `apps/web-framework` (`react-router`, `@react-router/dev`, `@react-router/fs-routes`): framework mode. `app/routes.ts` exports a `RouteConfig` with `route()`, `layout()`, `prefix()` and `index()`, plus `...(await flatRoutes({ rootDirectory: "routes/flat" }))` over `app/routes/flat/` (`_index.tsx`, `articles.tsx`, `articles._index.tsx`, `articles.$articleId.tsx`, `articles_.new.tsx`, `_auth.tsx`, `_auth.login.tsx`, `($lang).about.tsx`, `files.$.tsx`).
@@ -84,3 +91,34 @@ Two separate repos under one directory, for the multirepo workspace (#214); the 
 - `web/` (repo name `web`; package `mr-web`, depending on `@mr/contracts` ^1.0.0 and `react`): `src/pages/posts.tsx` (a component that calls `fetch("/api/posts")` and renders with `formatDate` from `@mr/contracts`), `src/lib/slug.ts` (`makeSlug`, six statements, a near-copy of the api repo's `toSlug`), `src/lib/only-in-web.ts` (`debounceInput`).
 - `api/` (repo name `acme/api`; a pnpm workspace: `pnpm-workspace.yaml` with `apps/*` and `packages/*`, and a private root package): `apps/server` (`mr-server`, depending on `hono` and `@mr/contracts`) with `src/index.ts` (a Hono app, `app.get("/api/posts", listPosts)`), `src/posts.ts` (`listPosts`), `src/slug.ts` (`toSlug`, six statements), `src/retry.ts` (`computeRetryDelay`, exists only here); `packages/contracts` (`@mr/contracts`, `"exports": { ".": "./src/index.ts" }`) with `formatDate` and `parseCursor`.
 - `@mr/contracts` is declared by `web` but its source is in the other repo, so until sibling-package resolution (a later issue) it resolves as an external package.
+
+## bundler-aliases
+A pnpm workspace (`apps/*`, `packages/*`) with no `node_modules` and no tsconfig `paths`: every alias lives in a bundler config, which the index reads as text and never runs. Every app declares `vite` or `webpack` in `devDependencies`, so a config's own `import ... from "vite"` is external. No source file imports another third-party package.
+- `apps/vite-app/vite.config.ts`: object-form `resolve.alias` with `"@"` (`path.resolve(__dirname, "src")`) and `"~ui"` (`fileURLToPath(new URL("../../packages/ui/src", import.meta.url))`, pointing into `packages/ui`).
+- `apps/vite-array/vite.config.mts`: array form `[{ find: "#lib", replacement: "/src/lib" }]` inside `defineConfig(() => ({ ... }))`; the leading `/` is relative to the app.
+- `apps/webpack-app/webpack.config.js`: `module.exports` with `"@app"` (`path.resolve(__dirname, "src/")`) and `components$` (`path.join(__dirname, "src/components/index.ts")`, an exact alias).
+- `apps/dynamic/vite.config.ts`: `alias: makeAliases()`, a computed value that cannot be read statically. Its two imports (`@dyn/one`, `@dyn/two`) are unresolved with reason `alias_not_static`.
+- Counts: the three readable apps hold 10 import edges (`imports` edges whose source is in `apps/vite-app`, `apps/vite-array` or `apps/webpack-app`): 4 + 1 in `vite-app`, 2 + 1 in `vite-array`, 2 in `webpack-app`; the `+ 1` is each Vite config's import of `vite`. Imports of `node:` modules make no edge and are not counted. `gantry init` prints `unresolved:    2`, the two imports of `apps/dynamic/src/main.ts`.
+
+## linking
+Workspace (`apps/*`) for client calls through axios and ky instances (spec section 9, rules 4b and 4c), with a Hono recipe in `.gantry/recipe.json`.
+
+- `apps/users-api` (`@fx/users-api`) mounts its `users` app at `/api`; `apps/billing` (`@fx/billing`) has `/health` and `/invoices`.
+- `apps/web` (`@fx/web`): `src/features/users.ts` calls through instances and `fetch` with bases from the environment, constants and wrappers (no `requests` edge yet); `src/lib/same-origin-http.ts` declares `rel`, `kyRel` and `kyRelAuth` with the base `/api`; `src/lib/index.ts` re-exports them; `src/features/same-origin.ts` and `src/features/reexport.ts` call them and link; `relFetch`, `relRequest` and `useRelFetch` in the same file are client wrappers (their bodies are `wrapper_body`), `getUser` is not; `src/lib/opaque.ts` holds `send`, listed in the recipe's `clientWrappers`; `src/features/same-origin-wrappers.ts` calls them and links.
+- `apps/legacy-web` (`@fx/legacy-web`) sets `axios.defaults.baseURL = "/api"` and calls the default `axios`; `apps/web` never sets it.
+
+## ts-references
+A repo with no workspace tool: no `pnpm-workspace.yaml`, no `workspaces` field, no `project.json`, no `node_modules`. The packages are tied together only by tsconfig project references.
+- Root: `package.json` (`ts-references-root`) and `tsconfig.json` with `"files": []` and `references` to `./packages/core`, `./packages/util` and `./apps/cli`.
+- `packages/core` (`@refs/core`, `main` `dist/index.js`, `types` `dist/index.d.ts`; tsconfig `composite`, `outDir: "dist"`, `rootDir: "src"`): `src/index.ts` exports `parseLine` and `formatLine`.
+- `packages/util` (no `package.json`, named by its directory; tsconfig `composite`): `src/strings.ts` exports `padLeft`.
+- `apps/cli` (`@refs/cli`, depends on `@refs/core`; tsconfig references `../../packages/core` and `../../packages/util`): `src/main.ts` imports `@refs/core` and `../../../packages/util/src/strings`.
+- Counts: four workspaces (`.`, `@refs/core`, `packages/util`, `@refs/cli`), four files in the dump, two `imports` edges (both from `main.ts`, both into `src/`), no edge into `dist/`.
+
+## no-workspace-tool
+A repo with several `package.json` files and no pnpm, npm, yarn, bun or Nx workspace config and no tsconfig references. Every directory holding a `package.json` is a workspace.
+- Root: `package.json` (`plain-root`, no `workspaces`).
+- `shared` (`@plain/shared`, `main` `src/index.ts`): `src/index.ts` exports `greet`.
+- `server` (`@plain/server`) and `web` (`@plain/web`): each depends on `@plain/shared` and imports it from `src/`.
+- `tools/scripts` (`@plain/scripts`, no dependencies): a nested folder.
+- Counts: five workspaces (`.` and the four packages), two `imports` edges into `shared/src/index.ts`, two `depends_on` edges.

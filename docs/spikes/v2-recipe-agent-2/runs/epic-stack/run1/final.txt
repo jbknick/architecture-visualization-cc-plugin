@@ -1,9 +1,0 @@
-I wrote the recipe to `.gantry/recipe.json`. It covers the tables and the reads and writes, but has no routes or endpoints. The check passes: all examples pass and the rules match 11, 59 and 69 sites.
-
-**Stack:** this is Epic Stack: React Router 7 with `react-router-auto-routes`, an Express 5 server, and Prisma.
-
-- **Tables:** 11, one per `model` in `prisma/schema.prisma`. This matches the 11 models I counted in the schema.
-- **Reads and writes:** two rules match `prisma.<model>.<method>(...)`. They match 59 read calls and 69 write calls, which is call sites, not files. I expect fewer file-level read and write edges, since the engine reports one per file per table and direction. I did not count files myself.
-- **Routes:** none. The URLs come from the folder layout under `app/routes`, which `autoRoutes` turns into routes. The `fs-routes` helper's only convention is `tanstack-router`, so it can't read this layout. I expect 0.
-- **Endpoints:** none. The Express server has no explicit route registrations beyond a catch-all `app.get(/.*/, ...)` and a regex-array `app.get([...])` for `/img` and `/favicons`. The app's own pages and resource routes are registered through the file layout, so I expect 0.
-- **Not expressed:** I only match calls on a variable literally named `prisma`. If a file imports it under another name or uses a transaction client, its calls won't be counted.

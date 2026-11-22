@@ -41,6 +41,8 @@ export interface LayoutInput {
   edges: LayoutEdge[];
   hint: string;
   focus: string | null;
+  /** Map layout: repo containers; each holds the boxes of the root nodes it names. */
+  groups?: { id: string; label: string; members: string[] }[];
   /** Map layout: the lifted (headerless) folders, as the scene decided them. Absent: decided from the counts. */
   transparent?: string[];
   /** Saved positions to keep. Unknown nodes are placed near their parent. Ignored by the map layout. */
@@ -72,6 +74,8 @@ export interface KeepLayout {
   boxes: Record<string, [number, number, number, number]>;
   /** Workspace title block heights. */
   heads: Record<string, number>;
+  /** Repo containers: x, y, w, h. */
+  groups?: Record<string, [number, number, number, number]>;
   /** The weight every node was laid out with. */
   weights: Record<string, number>;
 }
@@ -87,6 +91,8 @@ export interface MapGeometry {
   rects: Float64Array;
   /** Design height of a workspace's title block in layout units (roots only, 0 elsewhere); capped on screen. */
   heads: Float32Array;
+  /** Repo containers around the workspace boxes, in layout units. */
+  groups?: { id: string; label: string; x: number; y: number; w: number; h: number }[];
   /** Routed workspace links, keyed `srcId>dstId`: polylines in layout units. */
   routes: Record<string, [number, number][]>;
   /** Bounding box of the boxes and routes. */

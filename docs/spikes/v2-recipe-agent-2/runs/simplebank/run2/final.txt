@@ -1,9 +1,0 @@
-I wrote `.gantry/recipe.json`. The check passes: the schema is valid, both examples pass, and the one rule matches 6 times, which agrees with the 6 `CREATE TABLE` lines in `doc/schema.sql`.
-
-- **Stack:** this is a Go backend using gin, gRPC, grpc-gateway and sqlc on Postgres. It has a small Vue frontend that uses vue-router.
-- **Expected output:** 6 tables (`users`, `verify_emails`, `accounts`, `entries`, `transfers`, `sessions`), taken from `doc/schema.sql`. I expect no routes, endpoints, reads or writes.
-- **Not expressed:**
-  - **Go source:** the engine only parses TypeScript, so the gin routes in `api/server.go` and the gRPC gateway endpoints are out of reach. The sqlc query files in `db/sqlc` and `db/query` are also out, so I have no reads or writes.
-  - **Vue route:** the one route (`/`) is declared with vue-router's `createRouter`, which the `route` emit doesn't cover. I left it out rather than guess.
-
-The check also printed "skipped 1 file(s) larger than 1 MB". I didn't look into which file it was.

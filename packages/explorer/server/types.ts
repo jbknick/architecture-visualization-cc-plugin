@@ -32,6 +32,8 @@ export interface GraphNode {
   change?: string;
   /** Review view, rings mode: the changed symbol's signature differs between the two sides. */
   signatureChanged?: boolean;
+  /** Review view, rings mode: a hub node (`kind: "hub"`) stands for this many consumers. */
+  count?: number;
   /**
    * Cross-stack views (#48): the column or swimlane the node is drawn in (0 = leftmost). The `columns` and
    * `tree-lr` layouts place nodes by it; `elk-layered` keeps it as an ELK partition.
@@ -39,6 +41,8 @@ export interface GraphNode {
   lane?: number;
   /** Cross-stack views: order inside the lane (smaller first; ties by id). */
   rank?: number;
+  /** Endpoints view of a store with several repos: the repo the node's id names (absent with one repo). */
+  repo?: string;
   /** Endpoints view: the group the node is laid out in (`rpc`, `http`, `server fn`), stacked top to bottom. */
   band?: string;
   x?: number;
@@ -73,6 +77,8 @@ export interface GraphEdge {
   bindings?: number;
   /** Slices view: true when the edge crosses a slice boundary. */
   cross?: boolean;
+  /** Project map of a store with several repos: true when the two ends are in different repos. */
+  crossRepo?: boolean;
   /** Cross-stack views (#48): how many places the aggregated edge stands for (page -> API: the requesting code). */
   via?: number;
   /** Cross-stack views: up to 6 of those places, by label. */
@@ -93,7 +99,7 @@ export type LayoutHint =
   /** The review view (#167): the project map, 2D or 3D, with the review layer on it. */
   | "review";
 
-export type ViewLevel = "workspaces" | "dirs" | "files" | "symbols";
+export type ViewLevel = "repos" | "workspaces" | "dirs" | "files" | "symbols";
 
 export interface ViewResult {
   nodes: GraphNode[];

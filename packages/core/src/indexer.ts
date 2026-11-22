@@ -3,8 +3,8 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { Adapter } from "./adapters/framework.js";
-import { runAdapters } from "./adapters/index.js";
-import { loadConfig } from "./config/index.js";
+import { type ExternalRepos, runAdapters } from "./adapters/index.js";
+import { type GantryConfig, loadConfig } from "./config/index.js";
 import { discoverFiles, isIndexable } from "./discover/index.js";
 import { hashSymbol } from "./hash/index.js";
 import { fileId as makeFileId, pathOfFileId, repoOfId } from "./ids.js";
@@ -14,6 +14,7 @@ import type { ParsedFile } from "./parse/index.js";
 import { ensureDataDir, type GantryPaths } from "./paths/index.js";
 import { type LoadedRecipe, loadRecipe, recipeNotes } from "./recipe/load.js";
 import type { SpecifierClass } from "./resolve/index.js";
+import { SiblingFiles, type SiblingRepo } from "./resolve/sibling.js";
 import { refreshDescriptionFts } from "./search/descfts.js";
 import { openStore, type Store, splitIdentifier } from "./store/index.js";
 import type {
@@ -32,7 +33,14 @@ export interface IndexResult {
   symbols: number;
   functionLike: number;
   edges: number;
-  unresolved: { specifier: string; from: string }[];
+  unresolved: {
+    specifier: string;
+    from: string;
+    reason?: "alias_not_static";
+    alias?: string;
+    /** A specifier several repos publish: the workspaces that do. */
+    candidates?: string[];
+  }[];
   /** Distinct (file, specifier) pairs by resolution class, for the whole run (used by the M1 benchmark). */
   specifierCounts: Record<SpecifierClass, number>;
   parseErrors: { file: string; errors: string[] }[];
@@ -47,10 +55,17 @@ export interface IndexOptions {
   files?: string[];
   /** In-memory text per repo-relative path (for example staged blobs); wins over the working tree. */
   sources?: Map<string, string>;
+  /**
+   * Internal, set by `indexRepo` for the other repos of a targeted run: repo-relative paths of files to re-resolve
+   * because a file they import in a sibling repo changed. They go through the importer walk.
+   */
+  reresolve?: string[];
   /** Use an already open store (the caller keeps ownership and closes it). Default: open `paths.dbPath`. */
   store?: Store;
   /** The adapters to run; default `ADAPTERS`. Tests use it to run one adapter alone. */
   adapters?: readonly Adapter<unknown>[];
+  /** Index the whole tree of only the repo `paths` names, not every repo of the workspace (a per-repo heal). */
+  singleRepo?: boolean;
   /** A recipe to use instead of the one the layer reads (`gantry recipe check --nodes` applies a file it was given). */
   recipe?: LoadedRecipe;
 }
@@ -200,7 +215,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
   try {
     // A run over the whole tree indexes every repo of the workspace, in name order; a targeted run (`files` or
     // `sources`, relative to the repo the command runs in) indexes that repo only.
-    const whole = opts.files === undefined && opts.sources === undefined;
+    const whole = opts.files === undefined && opts.sources === undefined && !opts.singleRepo;
     const members = whole ? paths.workspace.repos : [{ name: paths.repo, root: paths.root }];
     // A repo that left the workspace file, or changed its name, loses its rows.
     if (whole && opts.layer === "main") {
@@ -209,10 +224,78 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     const cache = ParseCache.open(paths.dataDir);
     const seen = new Set<string>();
     const results: IndexResult[] = [];
+    // Every repo's workspaces are known before any repo is parsed, so an import in one repo can name a package of another.
+    const known = discoverRepos(paths);
     try {
+      // Client calls name endpoints of every repo, so a run that changes the endpoints of a repo re-links the others.
+      const endpointsBefore = endpointSignatures(store, opts.layer, known);
+      const changed = new Map<string, Set<string>>();
       for (const m of [...members].sort((a, b) => cmp(a.name, b.name))) {
-        const r = await indexOneRepo({ ...paths, root: m.root, repo: m.name }, opts, store, cache, seen);
+        const out = new Set<string>();
+        const r = await indexOneRepo(
+          { ...paths, root: m.root, repo: m.name },
+          opts,
+          store,
+          cache,
+          seen,
+          known,
+          out,
+        );
+        changed.set(m.name, out);
         results.push(r);
+      }
+      // A targeted run in one repo can change what files of the other repos resolve to (a renamed or removed export
+      // that a sibling imports): their importers are re-resolved the same way, and those repos' importers after them.
+      const done = new Set<string>();
+      while (!whole && changed.size > 0) {
+        const next = new Map<string, Set<string>>();
+        for (const [from, ids] of changed) {
+          const byRepo = new Map<string, string[]>();
+          for (const id of store.effectiveImporters([...ids])) {
+            const to = repoOfId(id);
+            if (to === undefined || to === from || done.has(id) || !known.has(to)) continue;
+            done.add(id);
+            byRepo.set(to, [...(byRepo.get(to) ?? []), pathOfFileId(id)]);
+          }
+          for (const [to, files] of [...byRepo].sort((a, b) => cmp(a[0], b[0]))) {
+            const k = known.get(to) as KnownRepo;
+            const out = new Set<string>();
+            const r = await indexOneRepo(
+              { ...paths, root: k.root, repo: to },
+              { layer: opts.layer, files: [], reresolve: files },
+              store,
+              cache,
+              new Set(),
+              known,
+              out,
+            );
+            results.push(r);
+            next.set(to, new Set([...(next.get(to) ?? []), ...out]));
+          }
+        }
+        changed.clear();
+        for (const [k, v] of next) if (v.size > 0) changed.set(k, v);
+      }
+      // A repo links its client calls against the endpoints the store holds for the other repos. Every repo whose
+      // siblings' endpoints differ from what it linked against is linked again (the endpoints themselves do not
+      // depend on the links, so one pass settles it).
+      if (known.size > 1) {
+        const after = endpointSignatures(store, opts.layer, known);
+        const moved = [...new Set([...endpointsBefore.keys(), ...after.keys()])].filter(
+          (r) => endpointsBefore.get(r) !== after.get(r),
+        );
+        for (const [name, k] of [...known].sort((a, b) => cmp(a[0], b[0]))) {
+          if (!moved.some((r) => r !== name)) continue;
+          await indexOneRepo(
+            { ...paths, root: k.root, repo: name },
+            { layer: opts.layer, files: [] },
+            store,
+            cache,
+            new Set(),
+            known,
+            new Set(),
+          );
+        }
       }
       // Cache entries of files that no longer exist are only pruned when this run saw the whole tree of every repo.
       if (whole) cache?.prune(seen);
@@ -225,6 +308,81 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
   } finally {
     if (ownStore) store.close();
   }
+}
+
+/**
+ * The endpoint nodes of the repos of the workspace that a run of `layer` links against: the main layer reads main rows
+ * only (a commit never links to another repo's uncommitted endpoints), the working layer reads both.
+ */
+function endpointsOf(store: Store, layer: Layer, known: Map<string, KnownRepo>): AdapterNodeRecord[] {
+  const nodes =
+    layer === "main" ? store.mainAdapterNodes("endpoint") : store.effectiveAdapterNodes({ kind: "endpoint" });
+  // A repo that left the workspace may still hold rows until a whole run drops them: they are not candidates.
+  return nodes.filter((n) => known.has(repoOfId(n.fileId) ?? ""));
+}
+
+/** Per repo, a text that changes when its endpoints do (id, label and data of every endpoint node). */
+function endpointSignatures(store: Store, layer: Layer, known: Map<string, KnownRepo>): Map<string, string> {
+  const by = new Map<string, string[]>();
+  for (const n of endpointsOf(store, layer, known)) {
+    const repo = repoOfId(n.fileId) ?? "";
+    by.set(repo, [...(by.get(repo) ?? []), `${n.id}\0${n.label}\0${JSON.stringify(n.data)}`]);
+  }
+  return new Map([...by].map(([repo, rows]) => [repo, rows.join("\n")]));
+}
+
+/** The endpoints and workspaces the other repos of the workspace stored. */
+function externalOf(store: Store, known: Map<string, KnownRepo>, repo: string, layer: Layer): ExternalRepos {
+  if (known.size < 2) return { nodes: [], workspaces: [] };
+  const nodes = endpointsOf(store, layer, known)
+    .filter((n) => repoOfId(n.fileId) !== repo && n.ws !== null)
+    .map((n) => ({ ...n, kind: "endpoint" as const, ws: n.ws as string }));
+  const workspaces = [...known].filter(([name]) => name !== repo).flatMap(([, k]) => k.workspaces);
+  return { nodes, workspaces };
+}
+
+interface KnownRepo {
+  root: string;
+  config: GantryConfig;
+  workspaces: WorkspaceRecord[];
+  /** The repo-relative paths its own index pass keeps, found when first asked for. */
+  discovered(paths: GantryPaths): ReadonlySet<string>;
+}
+
+/** The config and workspaces of every repo of the workspace (the repo the command runs in included). */
+function discoverRepos(paths: GantryPaths): Map<string, KnownRepo> {
+  const repos = paths.workspace.repos.some((r) => r.name === paths.repo)
+    ? paths.workspace.repos
+    : [...paths.workspace.repos, { name: paths.repo, root: paths.root }];
+  const known = new Map<string, KnownRepo>();
+  for (const r of repos) {
+    const config = loadConfig({ ...paths, root: r.root, repo: r.name });
+    const workspaces = detectAllWorkspaces(r.root, config, r.name);
+    let found: Set<string> | undefined;
+    known.set(r.name, {
+      root: r.root,
+      config,
+      workspaces,
+      discovered: (p) => {
+        found ??= new Set(
+          discoverFiles({ ...p, root: r.root, repo: r.name }, config, workspaces).map((d) => d.path),
+        );
+        return found;
+      },
+    });
+  }
+  return known;
+}
+
+function siblingsOf(paths: GantryPaths, repo: string, known: Map<string, KnownRepo>): SiblingRepo[] {
+  return [...known]
+    .filter(([name]) => name !== repo)
+    .map(([name, k]) => ({
+      repo: name,
+      root: k.root,
+      workspaces: k.workspaces,
+      parsed: new SiblingFiles(name, k.root, () => k.discovered(paths)),
+    }));
 }
 
 function mergeResults(parts: IndexResult[], ms: number): IndexResult {
@@ -259,6 +417,8 @@ async function indexOneRepo(
   store: Store,
   cache: ParseCache | undefined,
   seen: Set<string>,
+  known: Map<string, KnownRepo>,
+  changedOut: Set<string>,
 ): Promise<IndexResult> {
   const t0 = performance.now();
   const { layer, sources } = opts;
@@ -266,8 +426,7 @@ async function indexOneRepo(
   const repo = paths.repo;
   // Describe-side code (fact sheets, templates) reads file text and finds the repo's root in the store.
   store.upsertRepo(repo, root);
-  const config = loadConfig(paths);
-  const workspaces = detectAllWorkspaces(root, config, repo);
+  const { config, workspaces } = known.get(repo) as KnownRepo;
 
   // 1. Which files exist, and which of them are targets of this run.
   const discovered = discoverFiles(paths, config, workspaces);
@@ -329,7 +488,13 @@ async function indexOneRepo(
   }
   cache?.save(fresh);
 
-  const resolver = createLangResolver({ root, repo, workspaces, parsed });
+  const resolver = createLangResolver({
+    root,
+    repo,
+    workspaces,
+    parsed,
+    siblings: siblingsOf(paths, repo, known),
+  });
   store.upsertWorkspaces(workspaces);
 
   // Framework adapters (routes, server functions, Hono endpoints). Their results depend on other files (route
@@ -352,6 +517,7 @@ async function indexOneRepo(
       })),
       parsed,
       resolver,
+      external: externalOf(store, known, repo, layer),
     },
     opts.adapters,
   );
@@ -413,6 +579,7 @@ async function indexOneRepo(
       virtual: 0,
       generated: 0,
       excluded: 0,
+      ambiguous: 0,
       unresolved: 0,
     },
     parseErrors: [],
@@ -596,6 +763,7 @@ async function indexOneRepo(
       // A file whose working row was just dropped (its content is main's again) changed back, so its importers did too.
       const changedIds = [...written, ...markDeleted, ...clearWorking];
       for (const id of store.effectiveImporters(changedIds)) enqueue(id);
+      for (const id of opts.reresolve ?? []) enqueue(makeFileId(repo, id));
       for (const id of store.filesWithAdapterOutput()) enqueue(id);
       for (const id of [...routeEdges.keys(), ...routeNodes.keys()]) enqueue(id);
       const needles = importNeedles([...written, ...clearWorking].map(pathOfFileId), workspaces);
@@ -642,12 +810,18 @@ async function indexOneRepo(
     }
   });
 
+  for (const id of [...written, ...markDeleted, ...clearWorking]) changedOut.add(id);
   const pathOf = (id: string): string => pathOfFileId(id);
   const stats = resolver.stats();
   result.specifierCounts = stats.counts;
   result.unresolved = stats.unresolved
     .filter((u) => written.has(u.fromFileId) || full)
-    .map((u) => ({ specifier: u.specifier, from: pathOf(u.fromFileId) }));
+    .map((u) => ({
+      specifier: u.specifier,
+      from: pathOf(u.fromFileId),
+      ...(u.reason ? { reason: u.reason, alias: u.alias as string } : {}),
+      ...(u.candidates ? { candidates: u.candidates } : {}),
+    }));
   result.parseErrors.sort((a, b) => cmp(a.file, b.file));
   result.ms = Math.round(performance.now() - t0);
   return result;

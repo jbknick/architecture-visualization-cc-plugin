@@ -1,8 +1,0 @@
-The edit command needed approval, so I'm leaving the recipe as written. It passes the check.
-
-The recipe is at `.gantry/recipe.json`. It covers a React Router 7 app with Express and Prisma.
-
-- **Tables:** 11, one per `model` in `prisma/schema.prisma`. These come from a text rule.
-- **Reads and writes:** the read and write rules each match `prisma.<model>.<method>(...)`. The check reports 128 matches per rule, counted call by call. The engine reports one read or write per file and table, so expect fewer than that. Those 128 matches probably include test and script files, because I couldn't restrict the rules to `app/` and `server/`.
-- **Routes:** none. The app uses `react-router-auto-routes` (file-based), which the recipe format can't express.
-- **Endpoints:** none. `server/index.ts` only registers middleware and regex-path handlers (`/.*/`, `/^\/img\/.*/`).

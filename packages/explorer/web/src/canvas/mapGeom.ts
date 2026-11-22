@@ -10,6 +10,8 @@ import type { MapGeometry, Rect } from "./types.ts";
 
 /** Workspace title block, folder strip and file-name strip: the tallest they get on screen, in px. */
 export const WS_HEAD_MAX = 44;
+/** Room a repo container keeps around the workspace boxes in it (layout units): the name above, a margin around. */
+export const REPO_GROUP_PAD = { top: 36, side: 16, bottom: 16 } as const;
 export const DIR_STRIP_MAX = 34;
 /** A folder strip with one line of text, and with two (long names wrap before they are cut). */
 export const DIR_STRIP_ONE = 20;

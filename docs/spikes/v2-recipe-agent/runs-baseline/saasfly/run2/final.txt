@@ -1,8 +1,0 @@
-I wrote the recipe to `.gantry/recipe.json`. The dry-run says `ACCEPTED` and all examples pass.
-
-- **Stack:** Next.js app router and Prisma. tRPC is also present, but its procedures are skipped as instructed.
-- **Routes: 14.** They come from the `page.tsx` files, with route groups like `(marketing)` removed from the URL. Two of them are `/admin/login` and `/admin/dashboard`.
-- **Endpoints: 6.** These are GET and POST on `/api/auth/[...nextauth]`, `/api/trpc/edge/[trpc]` and `/api/webhooks/stripe`. Each `route.ts` exports its handlers with `export { handler as GET, handler as POST }`, so one rule matches that aliased export form.
-- **Tables: 6.** They come from the Prisma models: `Customer`, `Account`, `Session`, `User`, `VerificationToken` and `K8sClusterConfig`. The schema has no `@@map` names, and I left out its two enums.
-
-The aliased-export rule only matches `export { x as GET }`. A `route.ts` that uses `export function GET` or `export const GET` would not be picked up. The repo has none today, so I didn't add a rule for it.

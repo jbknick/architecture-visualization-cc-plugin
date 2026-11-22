@@ -16,6 +16,7 @@ import {
   headPx,
   mapChild,
   normInner,
+  REPO_GROUP_PAD,
   rectAt,
   rootRect,
   screenRectOf,
@@ -118,6 +119,8 @@ export interface EdgeHit {
   declared: boolean;
   declaredOnly: boolean;
   pts: [number, number][];
+  /** The two ends are in different repos: the line is dashed. */
+  crossRepo: boolean;
   /** The routed polyline itself (screen px, as drawn), for tests. */
   route: [number, number][];
   width: number;
@@ -130,6 +133,8 @@ export interface EdgeHit {
 
 export interface DrawResult {
   edgeHits: EdgeHit[];
+  /** Screen rectangle and label of every repo container that is on screen. */
+  groups: { id: string; label: string; x: number; y: number; w: number; h: number }[];
   /** Screen rectangle of every workspace box that is on screen. */
   boxes: { index: number; x: number; y: number; w: number; h: number }[];
   /** Workspaces whose title was neither inside nor beside the box. */
@@ -347,6 +352,7 @@ export function drawMap(env: DrawEnv): DrawResult {
   const light = theme.scheme === "light";
   const result: DrawResult = {
     edgeHits: [],
+    groups: [],
     boxes: [],
     hiddenTitles: new Set(),
     titles: new Map(),
@@ -658,6 +664,32 @@ export function drawMap(env: DrawEnv): DrawResult {
     if (container && pw >= 6 && ph >= 6) drawKids(i, r, root, tint, kidsTop);
     (stuckStrip as (() => void) | null)?.();
   };
+
+  // 0. Repo containers, behind the workspace boxes: a faint panel with the repo name on its top edge.
+  for (const g of geo.groups ?? []) {
+    const gx = g.x * cam.scale + cam.tx;
+    const gy = g.y * cam.scale + cam.ty;
+    const gw = g.w * cam.scale;
+    const gh = g.h * cam.scale;
+    if (gx > w || gy > h || gx + gw < 0 || gy + gh < 0) continue;
+    result.groups.push({ id: g.id, label: g.label, x: gx, y: gy, w: gw, h: gh });
+    ctx.globalAlpha = 1;
+    roundRect(ctx, gx, gy, gw, gh, Math.min(16, 16 * cam.scale + 2));
+    ctx.fillStyle = hexToRgba(theme.muted, light ? 0.07 : 0.1);
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = hexToRgba(theme.muted, 0.7);
+    ctx.stroke();
+    const font = Math.min(18, Math.max(12, 14 * cam.scale));
+    ctx.font = `600 ${font}px ${FONT}`;
+    ctx.fillStyle = theme.text;
+    const room = gw - 24;
+    let label = g.label;
+    while (label.length > 1 && measure(ctx.font, label) > room) label = `${label.slice(0, -2)}…`;
+    if (room > 20)
+      ctx.fillText(label, gx + 12, gy + Math.max(6, (REPO_GROUP_PAD.top * cam.scale - font) / 2));
+  }
+  ctx.globalAlpha = 1;
 
   // 1. Workspace boxes and their treemaps.
   const rootBoxes: Rect[] = [];
@@ -1235,7 +1267,7 @@ function drawWsEdges(
     ctx.lineWidth = width;
     ctx.lineCap = "butt";
     ctx.lineJoin = "round";
-    if (e.declaredOnly) ctx.setLineDash([5, 4]);
+    if (e.declaredOnly || e.crossRepo) ctx.setLineDash([5, 4]);
     strokeRounded(ctx, shaft, 14);
     ctx.setLineDash([]);
     // The arrowhead, with a hairline of the canvas colour so neighbouring heads and the box edge stay apart.
@@ -1259,6 +1291,7 @@ function drawWsEdges(
       noun: e.declaredOnly ? "declared dependency" : edgeNoun(e.kind, false),
       declared: e.declared,
       declaredOnly: e.declaredOnly,
+      crossRepo: e.crossRepo,
       pts: densify(pts, 12),
       route: pts,
       width,

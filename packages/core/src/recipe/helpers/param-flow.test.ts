@@ -5,13 +5,13 @@ import { recipeAdapter } from "../../adapters/recipe.js";
 import { endpointLabels, indexGraph, makeRepo } from "../testkit.js";
 
 const recipe = (name: string): string =>
-  readFileSync(join(import.meta.dirname, "../../../../../evals/oss/recipes", `${name}.recipe.json`), "utf8");
+  readFileSync(join(import.meta.dirname, "../testdata", `${name}.recipe.json`), "utf8");
 
 describe("param-flow: a router passed as an argument is the callee's parameter", () => {
   it("follows Fastify plugin functions registered with a prefix, also through an import", async () => {
     const repo = await makeRepo({
       "package.json": JSON.stringify({ name: "api", version: "0.0.0", dependencies: { fastify: "^5.0.0" } }),
-      ".gantry/recipe.json": recipe("fastify-typescript"),
+      ".gantry/recipe.json": recipe("fastify-typescript-prefixes"),
       "src/main.ts": `import fastify from "fastify";
 import userRouter from "./routes/user.router";
 import { postRouter } from "./routes/post.router";

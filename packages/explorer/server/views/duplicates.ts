@@ -3,6 +3,7 @@ import {
   type FileRecord,
   getVector,
   minhashJaccard,
+  repoOfId,
   type Store,
   type SymbolRecord,
   storedKeys,
@@ -25,6 +26,8 @@ export interface DupMember {
   id: string;
   name: string;
   kind: string;
+  /** The repo of the member; set only when the store holds more than one repo. */
+  repo?: string;
   path: string;
   line: number;
   endLine: number;
@@ -55,6 +58,8 @@ export interface DupCluster {
   keepReason: string;
   /** Distinct workspace ids of the members, sorted. */
   workspaces: string[];
+  /** Distinct repos of the members, sorted; set only when the store holds more than one repo. */
+  repos?: string[];
   members: DupMember[];
   /** The similar_to links that hold the group together (`a` < `b`), so a client knows which pairs to dismiss. */
   links: { a: string; b: string; tier: Tier }[];
@@ -83,7 +88,14 @@ export interface DupSplit {
 export interface DuplicatesResult extends ViewResult {
   layoutHint: "clusters";
   clusters: DupCluster[];
-  summary: { clusters: number; functions: number; duplicateLines: number; crossWorkspace: number };
+  summary: {
+    clusters: number;
+    functions: number;
+    duplicateLines: number;
+    crossWorkspace: number;
+    /** Groups whose members span more than one repo; set only when the store holds more than one repo. */
+    crossRepo?: number;
+  };
   splits: DupSplit[];
   workspaces: DupWorkspace[];
   skipped: DupSkipInfo[];
@@ -264,6 +276,7 @@ export function buildDuplicates(ctx: ApiContext, params: ViewParams): Duplicates
   const wsFilter = optList(params, "workspaces");
   const minSize = Math.max(2, optInt(params, "minSize") ?? 2);
 
+  const multiRepo = store.listRepos().length > 1;
   const workspaces = store.listWorkspaces();
   const wsById = new Map(workspaces.map((w) => [w.id, w]));
   const short = shortWorkspaceLabels(workspaces.map((w) => w.name));
@@ -360,6 +373,7 @@ export function buildDuplicates(ctx: ApiContext, params: ViewParams): Duplicates
         id: i.sym.id,
         name: i.sym.name,
         kind: i.sym.kind,
+        ...(multiRepo ? { repo: repoOfId(i.sym.id) as string } : {}),
         path: i.file.path,
         line: i.sym.startLine,
         endLine: i.sym.endLine,
@@ -387,6 +401,7 @@ export function buildDuplicates(ctx: ApiContext, params: ViewParams): Duplicates
       workspaces: [
         ...new Set(infos.map((i) => i.file.workspaceId).filter((w): w is string => w !== null)),
       ].sort(),
+      ...(multiRepo ? { repos: [...new Set(members.map((m) => m.repo as string))].sort() } : {}),
       members,
       links: [...(linksOf.get(root) ?? [])].sort((x, y) => cmp(x.a, y.a) || cmp(x.b, y.b)),
     });
@@ -399,16 +414,18 @@ export function buildDuplicates(ctx: ApiContext, params: ViewParams): Duplicates
   let functions = 0;
   let duplicateLines = 0;
   let crossWorkspace = 0;
+  let crossRepo = 0;
   for (const c of shown) {
     const keep = keepOf.get(c.id) as SymbolRecord;
     for (const m of c.members) {
       if (m.keep) continue;
-      const advice = adviceFor(store, config, m.path, keep);
+      const advice = adviceFor(store, config, m.path, repoOfId(m.id) as string, keep);
       if (advice) m.advice = advice;
       duplicateLines += m.loc;
     }
     functions += c.size;
     if (c.workspaces.length > 1) crossWorkspace += 1;
+    if ((c.repos?.length ?? 0) > 1) crossRepo += 1;
     const key = c.workspaces.join("|");
     const s = splitMap.get(key) ?? { workspaces: c.workspaces, clusters: 0, functions: 0 };
     s.clusters += 1;
@@ -454,7 +471,13 @@ export function buildDuplicates(ctx: ApiContext, params: ViewParams): Duplicates
     edges,
     layoutHint: "clusters",
     clusters: shown,
-    summary: { clusters: shown.length, functions, duplicateLines, crossWorkspace },
+    summary: {
+      clusters: shown.length,
+      functions,
+      duplicateLines,
+      crossWorkspace,
+      ...(multiRepo ? { crossRepo } : {}),
+    },
     splits,
     workspaces: workspaces
       .map((w) => ({ id: w.id, name: w.name, shortLabel: short.get(w.name) ?? w.name, kind: w.kind }))

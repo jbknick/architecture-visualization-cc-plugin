@@ -400,6 +400,21 @@ export const RecipeShellSchema = z.strictObject({
       write: z.array(z.string().min(1)).optional(),
     })
     .optional(),
+  /**
+   * Client wrappers (spec section 9): functions that make a request from their arguments where inference does not
+   * see the flow. `symbol` is the function's symbol id, `pathArg` the index of the argument that is the request path
+   * (after `prefix`), `methodArg` the index of the argument that is the method (default GET).
+   */
+  clientWrappers: z
+    .array(
+      z.strictObject({
+        symbol: z.string().min(1),
+        pathArg: z.number().int().min(0),
+        methodArg: z.number().int().min(0).optional(),
+        prefix: z.string().optional(),
+      }),
+    )
+    .optional(),
   /** Calls that stand for their first argument when read as a table (`alias(users, "a")`). */
   tablePassthrough: z.array(z.string().min(1)).optional(),
   /**

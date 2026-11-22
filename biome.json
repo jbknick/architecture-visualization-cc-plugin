@@ -7,7 +7,7 @@
       "!**/fixtures",
       "!action/testdata",
       "!**/evals/private",
-      "!docs/spikes/v2-recipe-agent-2/runs",
+      "!packages/core/src/recipe/testdata",
       "!**/dist",
       "!plugin/agents",
       "!plugin/skills",

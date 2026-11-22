@@ -49,6 +49,8 @@ export interface GraphNode {
   change?: ChangeKind;
   /** Review view, rings mode: the changed symbol's signature differs between the two sides. */
   signatureChanged?: boolean;
+  /** Review view, rings mode: a hub node (`kind: "hub"`) stands for this many consumers. */
+  count?: number;
   /** Cross-stack views (#48): the column or swimlane (0 = leftmost). */
   lane?: number;
   /** Cross-stack views: order inside the lane. */
@@ -72,6 +74,8 @@ export interface GraphEdge {
   bindings?: number;
   /** Slices view: true when the edge crosses a slice boundary. */
   cross?: boolean;
+  /** Project map of a store with several repos: true when the two ends are in different repos. */
+  crossRepo?: boolean;
   /** Cross-stack views: how many places the aggregated edge stands for (page -> API: the requesting code). */
   via?: number;
   /** Cross-stack views: some of those places, by name. */
@@ -131,6 +135,8 @@ export interface Stale {
 
 export interface Meta {
   repo: string;
+  /** Every repo of the store, sorted; one entry for a workspace of one. */
+  repos: string[];
   headSha: string | null;
   counts: { workspaces: number; files: number; symbols: number; edges: number } & Record<string, number>;
   views: ViewInfo[];
@@ -161,6 +167,8 @@ export interface DupMember {
   id: string;
   name: string;
   kind: string;
+  /** The member's repo; present only when the index holds more than one repo. */
+  repo?: string;
   path: string;
   line: number;
   endLine: number;
@@ -188,6 +196,8 @@ export interface DupCluster {
   keep: string;
   keepReason: string;
   workspaces: string[];
+  /** Distinct repos of the members; present only when the index holds more than one repo. */
+  repos?: string[];
   members: DupMember[];
   links: { a: string; b: string; tier: DupTier }[];
 }
@@ -216,6 +226,8 @@ export interface DupSummary {
   functions: number;
   duplicateLines: number;
   crossWorkspace: number;
+  /** Groups spanning several repos; present only when the index holds more than one repo. */
+  crossRepo?: number;
 }
 
 /** The duplicates view's own fields, next to the usual nodes/edges. */
@@ -277,13 +289,13 @@ export interface ReviewConsumer {
   path: string;
   line: number | null;
   workspace: string | null;
-  /** 1: directly affected; 2 or 3: potentially affected. */
+  /** 1: directly affected; 2 or 3: potentially affected; 4 or more: reachable. */
   hop: number;
   uses: UseKind[];
   crosses: ("workspace" | "app" | "client_server")[];
   /** Potential only: the direct consumer it reaches the change through. */
   via?: string;
-  /** Potential only: the node it uses, one step nearer the change. */
+  /** Potential and reachable only: the node it uses, one step nearer the change. */
   next?: string;
   /** The node of this map that shows it. */
   node?: string;
@@ -291,11 +303,33 @@ export interface ReviewConsumer {
   nextNode?: string;
 }
 
+/** One hub (a node with many consumers) and the consumers first reached through it. */
+export interface ReviewHub {
+  /** Node id of the hub. */
+  hub: string;
+  name: string;
+  kind: string;
+  path: string;
+  workspace: string | null;
+  /** Hop of the consumers it stands for. */
+  hop: number;
+  consumersTotal: number;
+  byWorkspace: { workspace: string | null; count: number }[];
+  /** The node of this map that shows the hub. */
+  node?: string;
+  members: ReviewConsumer[];
+}
+
 export interface ReviewConsumers {
   direct: ReviewConsumer[];
   directTotal: number;
   potential: ReviewConsumer[];
   potentialTotal: number;
+  /** Hop 4 and later, as listed. */
+  reachable: ReviewConsumer[];
+  /** Every reachable consumer, the hubs' included. */
+  reachableTotal: number;
+  hubs: ReviewHub[];
 }
 
 /** Who wrote a stored description: a model, a template (copied from the code), or Gantry's fallback (no model). */
@@ -385,6 +419,8 @@ export interface ReviewData {
   }[];
   changes: ReviewChange[];
   callersByHop: { hop: number; count: number }[];
+  /** Distinct consumers at hop 4 or more, the hubs' included. */
+  reachableTotal: number;
   crossings: { from: string; to: string; kind: "workspace" | "app" | "client_server" }[];
   risk: { score: number; level: "low" | "medium" | "high"; reasons: string[] };
   rules: ReviewRiskRule[];
@@ -612,7 +648,7 @@ export interface SourceSlice {
 /** Flat key/value filters. List values are `|` separated; booleans are "true" / "false". */
 export type Filters = Record<string, string>;
 
-export type ViewLevel = "workspaces" | "dirs" | "files" | "symbols";
+export type ViewLevel = "repos" | "workspaces" | "dirs" | "files" | "symbols";
 
 /** What the hash route can pass to /api/view/:id. */
 export interface ViewOptions {
@@ -805,6 +841,10 @@ export const api = {
   search: async (q: string, signal?: AbortSignal): Promise<SearchHit[]> =>
     (await getJson<{ hits: SearchHit[] }>("/api/search", { q }, signal)).hits,
 
-  source: (path: string, start: number, end: number, signal?: AbortSignal) =>
-    getJson<SourceSlice>("/api/source", { path, start, end }, signal),
+  source: (path: string, start: number, end: number, signal?: AbortSignal, repo?: string) =>
+    getJson<SourceSlice>(
+      "/api/source",
+      { path, start, end, ...(repo === undefined ? {} : { repo }) },
+      signal,
+    ),
 };

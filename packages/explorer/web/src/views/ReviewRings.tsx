@@ -7,6 +7,7 @@ import {
   focusedChange,
   labelRing,
   markKindOf,
+  REACHABLE_RING,
   RINGS_CAPTION,
   ringBounds,
   ringFocus,
@@ -14,12 +15,14 @@ import {
   ringPath,
   ringRadii,
   ringTitle,
+  withHubMembers,
 } from "./reviewModel.ts";
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 8;
 const R_CHANGED = 11;
 const R_CALLER = 7;
+const R_HUB = 10;
 
 /** Wheel zoom and drag pan over an SVG viewBox. */
 function useViewBox(bounds: { x: number; y: number; w: number; h: number }) {
@@ -72,6 +75,8 @@ function roleOf(n: GraphNode): string {
     const kind = n.change ?? "modified";
     return `${(CHANGE_WORDS[kind as keyof typeof CHANGE_WORDS]?.label ?? kind).toLowerCase()}${n.signatureChanged ? ", signature changed" : ""}`;
   }
+  if (n.kind === "hub") return `${n.count ?? 0} consumers`;
+  if (hop >= REACHABLE_RING) return `${REACHABLE_RING} or more calls away`;
   return hop === 1 ? "calls the changed code directly" : `${hop} calls away`;
 }
 
@@ -91,7 +96,25 @@ interface Tip {
  * fades by hop. Edges point from caller to callee; hovering or selecting a node keeps its own path through the rings
  * and fades the rest.
  */
-export function ReviewRings({ nodes, edges, focus, onSelect, onHover, data }: CanvasProps) {
+export function ReviewRings({
+  nodes: serverNodes,
+  edges: serverEdges,
+  focus,
+  onSelect,
+  onHover,
+  data,
+}: CanvasProps) {
+  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
+  const { nodes, edges } = useMemo(
+    () => withHubMembers(serverNodes, serverEdges, data?.review, open),
+    [serverNodes, serverEdges, data?.review, open],
+  );
+  const toggleHub = (id: string) =>
+    setOpen((cur) => {
+      const next = new Set(cur);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   const bounds = useMemo(() => ringBounds(nodes), [nodes]);
   const radii = useMemo(() => ringRadii(nodes), [nodes]);
   const groups = useMemo(() => ringGroups(nodes), [nodes]);
@@ -114,6 +137,9 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover, data }: Ca
     [changeFocus, active, edges],
   );
   const countByHop = new Map(radii.map((r) => [r.hop, r.count]));
+  // The outer ring counts every reachable consumer, the ones inside a collapsed hub included.
+  const countOf = (hop: number, drawn: number): number =>
+    hop === REACHABLE_RING ? (data?.review?.reachableTotal ?? drawn) : drawn;
   const centreR = radii.find((r) => r.hop === 0)?.r ?? 0;
 
   const hoverOn = (n: GraphNode | null, e?: { clientX: number; clientY: number }) => {
@@ -181,9 +207,15 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover, data }: Ca
             </text>
           ) : (
             <g key={r.hop}>
-              <circle className="rv-ring" cx={0} cy={0} r={r.r} />
+              <circle
+                className={`rv-ring${r.hop === REACHABLE_RING ? " rv-ring-reachable" : ""}`}
+                data-hop={r.hop === REACHABLE_RING ? r.hop : undefined}
+                cx={0}
+                cy={0}
+                r={r.r}
+              />
               <text className="rv-ring-label" data-hop={r.hop} x={0} y={-r.r - 12} textAnchor="middle">
-                {ringTitle(r.hop)} ({r.count})
+                {ringTitle(r.hop)} ({countOf(r.hop, r.count)})
               </text>
             </g>
           ),
@@ -232,7 +264,7 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover, data }: Ca
             const by = b.y ?? 0;
             const len = Math.hypot(bx - ax, by - ay) || 1;
             // Stop at the callee's rim so the arrowhead shows.
-            const stop = ((b.hop ?? 0) === 0 ? R_CHANGED : R_CALLER) + 2;
+            const stop = ((b.hop ?? 0) === 0 ? R_CHANGED : b.kind === "hub" ? R_HUB : R_CALLER) + 2;
             const ex = bx - ((bx - ax) / len) * stop;
             const ey = by - ((by - ay) / len) * stop;
             const strong = changeFocus?.strong.has(e.id) ?? false;
@@ -248,7 +280,7 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover, data }: Ca
                 y2={ey}
                 markerEnd={`url(#${hot ? "rv-arrow-hot" : "rv-arrow"})`}
                 data-tier={strong ? "direct" : soft ? "potential" : undefined}
-                className={`rv-edge${hot ? " rv-edge-hot" : soft ? " rv-edge-soft" : path || changeFocus ? " rv-dim" : ""}`}
+                className={`rv-edge${(a.hop ?? 0) >= REACHABLE_RING ? " rv-edge-reachable" : ""}${hot ? " rv-edge-hot" : soft ? " rv-edge-soft" : path || changeFocus ? " rv-dim" : ""}`}
               />
             );
           })}
@@ -269,32 +301,42 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover, data }: Ca
                     : null
               : undefined;
             const dim = (path !== null && !path.nodes.has(n.id)) || tier === null;
-            const label = labelRing(hop, countByHop.get(hop) ?? 0) || selected || hover === n.id;
+            const isHub = n.kind === "hub";
+            const isOpen = open.has(n.id);
+            const label = isHub || labelRing(hop, countByHop.get(hop) ?? 0) || selected || hover === n.id;
             const right = x >= 0;
             const cls =
               hop === 0
                 ? `rv-node rv-fill-${markKindOf({ kind: n.change ?? "modified", signatureChanged: n.signatureChanged === true })}`
-                : `rv-node rv-caller rv-caller-${Math.min(3, hop)}`;
+                : `rv-node rv-caller rv-caller-${Math.min(3, hop)}${isHub ? " rv-hub" : ""}`;
             return (
               // biome-ignore lint/a11y/useSemanticElements: an SVG node is a button for the keyboard and screen readers
               <g
                 key={n.id}
                 role="button"
                 tabIndex={0}
-                aria-label={`${n.label}, ${roleOf(n)}`}
-                aria-pressed={selected}
+                aria-label={
+                  isHub
+                    ? `${n.label}, ${n.count ?? 0} consumers, ${isOpen ? "expanded" : "collapsed"}`
+                    : `${n.label}, ${roleOf(n)}`
+                }
+                aria-pressed={isHub ? undefined : selected}
+                aria-expanded={isHub ? isOpen : undefined}
                 data-id={n.id}
                 data-hop={hop}
                 data-tier={tier ?? undefined}
                 className={`rv-node-g${dim ? " rv-dim" : ""}${tier === "direct" ? " rv-tier-direct" : tier === "potential" ? " rv-tier-potential" : ""}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!dragged()) onSelect(n.id);
+                  if (dragged()) return;
+                  if (isHub) toggleHub(n.id);
+                  else onSelect(n.id);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onSelect(n.id);
+                    if (isHub) toggleHub(n.id);
+                    else onSelect(n.id);
                   }
                 }}
                 onPointerEnter={(e) => hoverOn(n, e)}
@@ -306,7 +348,7 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover, data }: Ca
                 <circle
                   cx={x}
                   cy={y}
-                  r={hop === 0 ? R_CHANGED : R_CALLER}
+                  r={hop === 0 ? R_CHANGED : isHub ? R_HUB : R_CALLER}
                   className={`${cls}${selected ? " rv-sel" : ""}`}
                 />
                 {label && (
@@ -316,7 +358,7 @@ export function ReviewRings({ nodes, edges, focus, onSelect, onHover, data }: Ca
                     y={hop === 0 && x === 0 ? y + 28 : y + 4}
                     textAnchor={hop === 0 && x === 0 ? "middle" : right ? "start" : "end"}
                   >
-                    {n.label}
+                    {isHub ? `${n.label} (${n.count ?? 0})` : n.label}
                   </text>
                 )}
               </g>

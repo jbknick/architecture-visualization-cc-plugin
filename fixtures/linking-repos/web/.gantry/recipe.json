@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "dependencies": [
+    { "name": "@tanstack/react-router", "workspace": ".", "role": "framework", "note": "file-based page routes under src/routes" },
+    { "name": "axios", "workspace": ".", "role": "neither", "note": "HTTP client; read by the built-in client adapter" },
+    { "name": "hono", "workspace": ".", "role": "neither", "note": "Hono client types only, no app declared" },
+    { "name": "ky", "workspace": ".", "role": "neither", "note": "HTTP client; read by the built-in client adapter" },
+    { "name": "react", "workspace": ".", "role": "neither", "note": "UI library" }
+  ],
+  "helpers": ["resolve-names", "const-strings", "fs-routes"],
+  "rules": [
+    {
+      "id": "tanstack-file-route",
+      "language": "typescript",
+      "when": { "dependency": ["@tanstack/react-router"] },
+      "rule": { "pattern": "createFileRoute($ID)($OPTS)" },
+      "emit": { "kind": "fileRoute", "convention": "tanstack-router", "id": "$ID", "options": "$OPTS" },
+      "examples": {
+        "match": ["export const Route = createFileRoute(\"/posts/$postId\")({ component: PostPage });"],
+        "noMatch": ["const r = createRootRoute({ component: Root });"]
+      }
+    },
+    {
+      "id": "tanstack-root-route",
+      "language": "typescript",
+      "when": { "dependency": ["@tanstack/react-router"] },
+      "rule": { "pattern": "createRootRoute($OPTS)" },
+      "emit": { "kind": "fileRoute", "convention": "tanstack-router", "options": "$OPTS", "root": true },
+      "examples": {
+        "match": ["export const Route = createRootRoute({ component: RootLayout });"],
+        "noMatch": ["export const Route = createFileRoute(\"/\")({});"]
+      }
+    }
+  ]
+}

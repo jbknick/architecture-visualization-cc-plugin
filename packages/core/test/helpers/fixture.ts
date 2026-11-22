@@ -8,7 +8,12 @@ export type FixtureName =
   | "single-pkg"
   | "pnpm-turbo"
   | "nx"
+  | "ts-references"
+  | "tsconfig-extends-workspace"
+  | "no-workspace-tool"
+  | "bundler-aliases"
   | "adapters"
+  | "linking"
   | "go-basic"
   | "overlay-groups"
   | "deep-radius"
@@ -105,6 +110,36 @@ function commitAll(dir: string, cleanup: () => Promise<void>, fixedDates: boolea
   git(["add", "-A", "-f"]);
   git(["commit", "-q", "-m", "fixture"]);
   return { dir, git, cleanup };
+}
+
+export interface MaterializedLinkingRepos {
+  /** The temp directory that holds `gantry-workspace.json` and the three repos (it is not a repo itself). */
+  root: string;
+  repos: { web: string; "users-api": string; billing: string };
+  cleanup(): Promise<void>;
+}
+
+/**
+ * Copies `fixtures/linking-repos` to a temp dir, makes `web/`, `users-api/` and `billing/` three separate git repos on
+ * `main` (fixed author and dates) and writes the `gantry-workspace.json` that lists them, each named like its directory.
+ */
+export async function materializeLinkingRepos(): Promise<MaterializedLinkingRepos> {
+  const root = await mkdtemp(join(tmpdir(), "gantry-fixture-linking-repos-"));
+  const names = ["web", "users-api", "billing"] as const;
+  const dirs = {
+    web: join(root, "web"),
+    "users-api": join(root, "users-api"),
+    billing: join(root, "billing"),
+  };
+  for (const name of names) {
+    await cp(join(fixturesRoot, "linking-repos", name), dirs[name], { recursive: true });
+    commitAll(dirs[name], async () => {}, true);
+  }
+  await writeFile(
+    join(root, "gantry-workspace.json"),
+    JSON.stringify({ repos: names.map((name) => ({ path: `./${name}`, repo: name })) }),
+  );
+  return { root, repos: dirs, cleanup: () => rm(root, { recursive: true, force: true }) };
 }
 
 export interface MaterializedMultirepo {

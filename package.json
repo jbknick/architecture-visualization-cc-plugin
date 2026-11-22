@@ -13,8 +13,6 @@
     "build": "tsc -b && tsup && pnpm --filter @gantry/explorer build:web",
     "check": "biome check . && tsx scripts/check-toolchain.ts && tsx scripts/check-version.ts && tsc -b && tsc -p evals/tsconfig.json && vitest run && tsx scripts/describe-mutations.ts",
     "eval:clone": "tsx scripts/eval-clone.ts",
-    "eval:recipes": "tsx scripts/eval-recipes.ts",
-    "eval:score": "tsx scripts/eval-score.ts",
     "fmt": "biome check --write .",
     "perf": "GANTRY_PERF=1 vitest run -t performance packages/core/src/dup/engine.test.ts",
     "reattach:e2e": "tsx scripts/reattach-e2e.ts",

@@ -144,6 +144,9 @@ function consumersOn(id: string, place: MockPlacement): ReviewConsumers {
     directTotal: c.direct.length,
     potential: c.potential.map(row),
     potentialTotal: c.potential.length,
+    reachable: [],
+    reachableTotal: 0,
+    hubs: [],
   };
 }
 
@@ -352,6 +355,7 @@ export function reviewData(
         untrusted_description: null,
       },
     ],
+    reachableTotal: 0,
     callersByHop: [
       { hop: 1, count: 4 },
       { hop: 2, count: 1 },

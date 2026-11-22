@@ -1,0 +1,351 @@
+{
+  "repos": [
+    {
+      "name": "no-workspace-tool"
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "ws:no-workspace-tool:.",
+      "repo": "no-workspace-tool",
+      "name": "plain-root",
+      "dir": ".",
+      "kind": "unknown",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:no-workspace-tool:@plain/scripts",
+      "repo": "no-workspace-tool",
+      "name": "@plain/scripts",
+      "dir": "tools/scripts",
+      "kind": "unknown",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:no-workspace-tool:@plain/server",
+      "repo": "no-workspace-tool",
+      "name": "@plain/server",
+      "dir": "server",
+      "kind": "unknown",
+      "frameworks": [],
+      "deps": [
+        "@plain/shared"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:no-workspace-tool:@plain/shared",
+      "repo": "no-workspace-tool",
+      "name": "@plain/shared",
+      "dir": "shared",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:no-workspace-tool:@plain/web",
+      "repo": "no-workspace-tool",
+      "name": "@plain/web",
+      "dir": "web",
+      "kind": "unknown",
+      "frameworks": [],
+      "deps": [
+        "@plain/shared"
+      ],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:no-workspace-tool:server/package.json",
+      "repo": "no-workspace-tool",
+      "path": "server/package.json",
+      "lang": "typescript",
+      "workspaceId": "ws:no-workspace-tool:@plain/server",
+      "contentHash": "e19c7b5662c8816c01e308951bead5336362530ece449e7a13f2ae8c2dcb310e"
+    },
+    {
+      "id": "file:no-workspace-tool:server/src/main.ts",
+      "repo": "no-workspace-tool",
+      "path": "server/src/main.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:no-workspace-tool:@plain/server",
+      "contentHash": "3e09163b772a3e558a44d32c8452660622979d4b7fd8c7ea9ca9a171a318d77b"
+    },
+    {
+      "id": "file:no-workspace-tool:shared/src/index.ts",
+      "repo": "no-workspace-tool",
+      "path": "shared/src/index.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:no-workspace-tool:@plain/shared",
+      "contentHash": "58ee4e4b6b2719b0bc67f7a72c50d7d315069a24be996998d6dd6d40be92cfc7"
+    },
+    {
+      "id": "file:no-workspace-tool:tools/scripts/src/build.ts",
+      "repo": "no-workspace-tool",
+      "path": "tools/scripts/src/build.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:no-workspace-tool:@plain/scripts",
+      "contentHash": "67ea75bd00e5a2abc18dcc9fa1c831d415f948c094d0966c06f509195b96952c"
+    },
+    {
+      "id": "file:no-workspace-tool:web/package.json",
+      "repo": "no-workspace-tool",
+      "path": "web/package.json",
+      "lang": "typescript",
+      "workspaceId": "ws:no-workspace-tool:@plain/web",
+      "contentHash": "14fae4466cd6f5d4448534d18293923302b1f55636e8d62a3622f719f3578e40"
+    },
+    {
+      "id": "file:no-workspace-tool:web/src/page.ts",
+      "repo": "no-workspace-tool",
+      "path": "web/src/page.ts",
+      "lang": "typescript",
+      "workspaceId": "ws:no-workspace-tool:@plain/web",
+      "contentHash": "7406f392fee9f09511db8994a0d62a88dcbc1e00ad5b90f2286df846567e6062"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:no-workspace-tool:server/src/main.ts#serve",
+      "fileId": "file:no-workspace-tool:server/src/main.ts",
+      "name": "serve",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(name: string): string",
+      "startLine": 3,
+      "endLine": 5,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "b55b5f1808bd54169c9504f1b591ffcd",
+      "shapeHash": "52f58b682cb11f24529efca4e28af459"
+    },
+    {
+      "id": "sym:no-workspace-tool:shared/src/index.ts#greet",
+      "fileId": "file:no-workspace-tool:shared/src/index.ts",
+      "name": "greet",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(name: string): string",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "cd00aa4bb3066efecc18c02207468d8a",
+      "shapeHash": "dbc3a8565f8a91675a1a8fbd16461eb6"
+    },
+    {
+      "id": "sym:no-workspace-tool:tools/scripts/src/build.ts#banner",
+      "fileId": "file:no-workspace-tool:tools/scripts/src/build.ts",
+      "name": "banner",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(): string",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "08b0721ffe6b63b152f63b4e8cfb5350",
+      "shapeHash": "02ccdec3c7e847b226be235ce5b42ca6"
+    },
+    {
+      "id": "sym:no-workspace-tool:web/src/page.ts#render",
+      "fileId": "file:no-workspace-tool:web/src/page.ts",
+      "name": "render",
+      "kind": "function",
+      "lang": "typescript",
+      "exported": true,
+      "signature": "(name: string): string",
+      "startLine": 3,
+      "endLine": 5,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "5a6d5ff51b07ffb46f9ab4bcbc24eaa3",
+      "shapeHash": "dbc3a8565f8a91675a1a8fbd16461eb6"
+    }
+  ],
+  "edges": [
+    {
+      "src": "file:no-workspace-tool:server/src/main.ts",
+      "dst": "file:no-workspace-tool:shared/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "server/src/main.ts:1"
+      ],
+      "fileId": "file:no-workspace-tool:server/src/main.ts"
+    },
+    {
+      "src": "file:no-workspace-tool:server/src/main.ts",
+      "dst": "sym:no-workspace-tool:server/src/main.ts#serve",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:server/src/main.ts"
+    },
+    {
+      "src": "file:no-workspace-tool:server/src/main.ts",
+      "dst": "sym:no-workspace-tool:server/src/main.ts#serve",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:server/src/main.ts"
+    },
+    {
+      "src": "file:no-workspace-tool:shared/src/index.ts",
+      "dst": "sym:no-workspace-tool:shared/src/index.ts#greet",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:shared/src/index.ts"
+    },
+    {
+      "src": "file:no-workspace-tool:shared/src/index.ts",
+      "dst": "sym:no-workspace-tool:shared/src/index.ts#greet",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:shared/src/index.ts"
+    },
+    {
+      "src": "file:no-workspace-tool:tools/scripts/src/build.ts",
+      "dst": "sym:no-workspace-tool:tools/scripts/src/build.ts#banner",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:tools/scripts/src/build.ts"
+    },
+    {
+      "src": "file:no-workspace-tool:tools/scripts/src/build.ts",
+      "dst": "sym:no-workspace-tool:tools/scripts/src/build.ts#banner",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:tools/scripts/src/build.ts"
+    },
+    {
+      "src": "file:no-workspace-tool:web/src/page.ts",
+      "dst": "file:no-workspace-tool:shared/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "web/src/page.ts:1"
+      ],
+      "fileId": "file:no-workspace-tool:web/src/page.ts"
+    },
+    {
+      "src": "file:no-workspace-tool:web/src/page.ts",
+      "dst": "sym:no-workspace-tool:web/src/page.ts#render",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:web/src/page.ts"
+    },
+    {
+      "src": "file:no-workspace-tool:web/src/page.ts",
+      "dst": "sym:no-workspace-tool:web/src/page.ts#render",
+      "kind": "exports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:web/src/page.ts"
+    },
+    {
+      "src": "sym:no-workspace-tool:server/src/main.ts#serve",
+      "dst": "sym:no-workspace-tool:shared/src/index.ts#greet",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "server/src/main.ts:4"
+      ],
+      "fileId": "file:no-workspace-tool:server/src/main.ts"
+    },
+    {
+      "src": "sym:no-workspace-tool:web/src/page.ts#render",
+      "dst": "sym:no-workspace-tool:shared/src/index.ts#greet",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "web/src/page.ts:4"
+      ],
+      "fileId": "file:no-workspace-tool:web/src/page.ts"
+    },
+    {
+      "src": "ws:no-workspace-tool:@plain/scripts",
+      "dst": "file:no-workspace-tool:tools/scripts/src/build.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:tools/scripts/src/build.ts"
+    },
+    {
+      "src": "ws:no-workspace-tool:@plain/server",
+      "dst": "file:no-workspace-tool:server/src/main.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:server/src/main.ts"
+    },
+    {
+      "src": "ws:no-workspace-tool:@plain/server",
+      "dst": "ws:no-workspace-tool:@plain/shared",
+      "kind": "depends_on",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:server/package.json"
+    },
+    {
+      "src": "ws:no-workspace-tool:@plain/shared",
+      "dst": "file:no-workspace-tool:shared/src/index.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:shared/src/index.ts"
+    },
+    {
+      "src": "ws:no-workspace-tool:@plain/web",
+      "dst": "file:no-workspace-tool:web/src/page.ts",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:web/src/page.ts"
+    },
+    {
+      "src": "ws:no-workspace-tool:@plain/web",
+      "dst": "ws:no-workspace-tool:@plain/shared",
+      "kind": "depends_on",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:no-workspace-tool:web/package.json"
+    }
+  ]
+}

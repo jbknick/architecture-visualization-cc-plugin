@@ -1,17 +1,24 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { repoOfId } from "./ids.js";
 import { indexRepo } from "./indexer.js";
 import { resolvePaths } from "./paths/index.js";
 import { openStore, type Store } from "./store/index.js";
 import { resolveTraceTarget, type TraceResult, trace } from "./trace.js";
 
 const helperPath = "../test/helpers/fixture.js";
-const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as {
+const { materializeFixture, materializeLinkingRepos } = (await import(/* @vite-ignore */ helperPath)) as {
   materializeFixture: (name: string) => Promise<{ dir: string; cleanup(): Promise<void> }>;
+  materializeLinkingRepos: () => Promise<{
+    repos: { web: string };
+    cleanup(): Promise<void>;
+  }>;
 };
+const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), "../../../fixtures");
 
 const ROUTE = "route:adapters:@demo/web:/posts/$postId";
 const ROUTER = "sym:adapters:packages/api/src/routers/posts.ts#postsRouter";
@@ -79,8 +86,8 @@ describe("trace down from a page", () => {
       "ep:adapters:@demo/server:PATCH /api/posts/:id",
       "ep:adapters:@demo/web:fn savePost",
     ]);
-    // The fetch match is low confidence and says so.
-    expect(step(r, "ep:adapters:@demo/server:PATCH /api/posts/:id")?.confidence).toBe("low");
+    // The fetch match is unique and fully evaluated: high, so the step carries no confidence flag.
+    expect(step(r, "ep:adapters:@demo/server:PATCH /api/posts/:id")?.confidence).toBeUndefined();
     expect(r?.gaps).toContain(
       `unmatched client call "rpc posts.archive" (no_endpoint) in sym:adapters:apps/web/src/hooks/usePostActions.ts#usePostActions at apps/web/src/hooks/usePostActions.ts:12`,
     );
@@ -160,6 +167,70 @@ describe("limits", () => {
     const r = trace(store, ROUTE, { maxDepth: 1 });
     expect(ids(r)).not.toContain("ep:adapters:@demo/api:rpc posts.remove");
     expect(r?.gaps.some((g) => g.startsWith("depth limit (1 hops) reached at "))).toBe(true);
+  });
+});
+
+describe("cross-repo traces on fixtures/linking-repos", () => {
+  interface Expected {
+    route: string;
+    endpoints: string[];
+    handlers: string[];
+    tables: string[];
+  }
+  const expected = JSON.parse(
+    readFileSync(join(fixturesDir, "linking-repos/expected-traces.json"), "utf8"),
+  ) as Expected[];
+  let wsStore: Store;
+  beforeAll(async () => {
+    const fx = await materializeLinkingRepos();
+    const data = mkdtempSync(join(tmpdir(), "gantry-trace-ws-"));
+    cleanups.push(
+      () => fx.cleanup(),
+      () => rmSync(data, { recursive: true, force: true }),
+    );
+    const paths = resolvePaths(fx.repos.web, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
+    await indexRepo(paths, { layer: "main" });
+    wsStore = openStore(paths.dbPath, { repo: paths.repo });
+    cleanups.push(() => wsStore.close());
+  });
+
+  it("reaches exactly the expected endpoint, handler and table from each page", () => {
+    expect(expected).toHaveLength(3);
+    for (const e of expected) {
+      const r = trace(wsStore, e.route);
+      expect(r?.direction, e.route).toBe("down");
+      expect(r?.target).toBe(e.route);
+      expect(ids(r, "endpoint"), e.route).toEqual(e.endpoints);
+      expect(
+        (r?.chain ?? []).filter((s) => s.via === "handles").map((s) => s.id),
+        e.route,
+      ).toEqual(e.handlers);
+      expect(ids(r, "table"), e.route).toEqual(e.tables);
+      expect(r?.truncated).toBe(false);
+    }
+  });
+
+  it("names the repo of every step and crosses from web into the repo that serves the call", () => {
+    for (const e of expected) {
+      const r = trace(wsStore, e.route);
+      for (const s of r?.chain ?? []) expect(s.repo, s.id).toBe(repoOfId(s.id));
+      expect(step(r, e.route)?.repo).toBe("web");
+    }
+    const r = trace(wsStore, "route:web:.:/invoices/$id");
+    expect(step(r, "ep:billing:.:GET /invoices/:id")).toMatchObject({ via: "requests", repo: "billing" });
+    expect(step(r, "table:billing:invoices")).toMatchObject({ via: "reads", repo: "billing" });
+  });
+
+  it("goes up from a table in one repo to the page in another", () => {
+    const r = trace(wsStore, "table:billing:invoices");
+    expect(r?.direction).toBe("up");
+    expect(ids(r, "route")).toEqual(["route:web:.:/invoices/$id"]);
+    expect(ids(r, "endpoint")).toEqual(["ep:billing:.:GET /invoices/:id", "ep:billing:.:POST /invoices"]);
+    expect(step(r, "route:web:.:/invoices/$id")?.repo).toBe("web");
+  });
+
+  it("adds no repo to a store with one repo", () => {
+    for (const s of trace(store, ROUTE)?.chain ?? []) expect(s, s.id).not.toHaveProperty("repo");
   });
 });
 

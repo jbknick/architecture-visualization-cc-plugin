@@ -1,8 +1,0 @@
-I wrote the recipe to `.gantry/recipe.json`, and the dry-run says `ACCEPTED`. I checked the results against the code with Grep, not line by line.
-
-- **Stack:** Next.js app router and Prisma. The pages and API handlers are under `apps/nextjs/src/app`. The schema is `packages/db/prisma/schema.prisma`.
-- **Routes (14):** Every `page.tsx` is listed, with route groups like `(marketing)` stripped from the URL. Examples are `/[lang]/dashboard` and `/admin/login`.
-- **Endpoints (6):** `GET` and `POST` on `/api/auth/[...nextauth]`, `/api/trpc/edge/[trpc]` and `/api/webhooks/stripe`. Each route file exports `handler as GET, handler as POST`, so the recipe matches that export form. The tRPC route is listed because it is a Next.js route file, even though tRPC procedures themselves are skipped.
-- **Tables (6):** `Customer`, `Account`, `Session`, `User`, `VerificationToken` and `K8sClusterConfig`, all Prisma models. The `types.ts` file next to the schema is generated, so I left it out.
-
-There was nothing I couldn't express. `middleware.ts` registers no routes, so the recipe ignores it.

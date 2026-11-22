@@ -18,7 +18,17 @@ const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as 
   materializeFixture: (name: string) => Promise<MaterializedFixture>;
 };
 
-type Name = "single-pkg" | "pnpm-turbo" | "adapters" | "nx" | "react-router-fastify" | "go-basic";
+type Name =
+  | "single-pkg"
+  | "pnpm-turbo"
+  | "adapters"
+  | "nx"
+  | "react-router-fastify"
+  | "go-basic"
+  | "bundler-aliases"
+  | "ts-references"
+  | "tsconfig-extends-workspace"
+  | "no-workspace-tool";
 const fixtures: MaterializedFixture[] = [];
 const dataDirs: string[] = [];
 afterEach(async () => {
@@ -46,20 +56,28 @@ function dump(paths: GantryPaths) {
 }
 
 describe("indexRepo + dumpGraph snapshots", () => {
-  it.each(["single-pkg", "pnpm-turbo", "adapters", "nx", "react-router-fastify", "go-basic"] as const)(
-    "%s dump matches the committed snapshot",
-    async (name) => {
-      const { paths } = await setup(name);
-      const r = await indexRepo(paths, { layer: "main" });
-      expect(r.files).toBeGreaterThan(0);
-      expect(r.parseErrors).toEqual([]);
-      const json = JSON.stringify(dump(paths), null, 2);
-      await expect(`${json}\n`).toMatchFileSnapshot(`__snapshots__/dump-${name}.json`);
-      // Re-running changes nothing, byte for byte.
-      await indexRepo(paths, { layer: "main" });
-      expect(`${JSON.stringify(dump(paths), null, 2)}\n`).toBe(`${json}\n`);
-    },
-  );
+  it.each([
+    "single-pkg",
+    "pnpm-turbo",
+    "adapters",
+    "nx",
+    "react-router-fastify",
+    "go-basic",
+    "bundler-aliases",
+    "ts-references",
+    "tsconfig-extends-workspace",
+    "no-workspace-tool",
+  ] as const)("%s dump matches the committed snapshot", async (name) => {
+    const { paths } = await setup(name);
+    const r = await indexRepo(paths, { layer: "main" });
+    expect(r.files).toBeGreaterThan(0);
+    expect(r.parseErrors).toEqual([]);
+    const json = JSON.stringify(dump(paths), null, 2);
+    await expect(`${json}\n`).toMatchFileSnapshot(`__snapshots__/dump-${name}.json`);
+    // Re-running changes nothing, byte for byte.
+    await indexRepo(paths, { layer: "main" });
+    expect(`${JSON.stringify(dump(paths), null, 2)}\n`).toBe(`${json}\n`);
+  });
 
   it("dump has no timestamps and is sorted", async () => {
     const { paths } = await setup("pnpm-turbo");
@@ -284,6 +302,7 @@ describe("IndexResult.specifierCounts", () => {
       virtual: 1,
       generated: 1,
       excluded: 1,
+      ambiguous: 0,
       unresolved: 1,
     });
     expect(r.unresolved.map((u) => u.specifier).sort()).toEqual(["./data.json", "./dist/out", "./missing"]);

@@ -22,7 +22,9 @@ export interface RefreshResult {
 /** `{ files }` for view responses: how many files changed since the last refresh. Never throws. */
 export function staleInfo(paths: GantryPaths, store: Store): StaleInfo {
   try {
-    return { files: staleFiles(paths, store).files.length };
+    let files = 0;
+    for (const r of paths.workspace.repos) files += staleFiles(paths, store, r.name).files.length;
+    return { files };
   } catch {
     return { files: 0 }; // not a git repo, or git is missing: nothing to compare with
   }

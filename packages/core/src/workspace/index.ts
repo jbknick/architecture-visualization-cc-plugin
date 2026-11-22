@@ -1,6 +1,8 @@
-import { type Dirent, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { type Dirent, existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import picomatch from "picomatch";
+import { BUILTIN_EXCLUDES, matchesAny } from "../config/index.js";
 import { workspaceId } from "../ids.js";
 import type { ExportsEntry, WorkspaceRecord } from "../types.js";
 
@@ -40,6 +42,80 @@ function isDir(p: string): boolean {
   }
 }
 
+/** JSON with comments and trailing commas, the form tsconfig files use. Null when it does not parse to an object. */
+export function readJsonc(file: string): Json | null {
+  let text: string;
+  try {
+    text = readFileSync(file, "utf8");
+  } catch {
+    return null;
+  }
+  let out = "";
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charAt(i);
+    if (c === '"') {
+      let j = i + 1;
+      while (j < text.length && text.charAt(j) !== '"') j += text.charAt(j) === "\\" ? 2 : 1;
+      out += text.slice(i, j + 1);
+      i = j;
+    } else if (c === "/" && text.charAt(i + 1) === "/") {
+      while (i < text.length && text.charAt(i) !== "\n") i++;
+      out += "\n";
+    } else if (c === "/" && text.charAt(i + 1) === "*") {
+      const end = text.indexOf("*/", i + 2);
+      i = end < 0 ? text.length : end + 1;
+    } else {
+      out += c;
+    }
+  }
+  try {
+    const v: unknown = JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"));
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as Json) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Repo-relative dirs of the projects the root tsconfig.json references, followed transitively through each
+ * referenced tsconfig's own `references`. A `path` to a file names that tsconfig; a directory names its tsconfig.json.
+ * Paths outside the repo or inside SKIP_DIRS are dropped, and the root is never listed (its own workspace always exists); each tsconfig is read once, so cycles end.
+ */
+function tsconfigReferenceDirs(root: string): string[] {
+  const base = resolve(root);
+  const dirs = new Set<string>();
+  const seen = new Set<string>();
+  const visit = (tsconfig: string): void => {
+    if (seen.has(tsconfig)) return;
+    seen.add(tsconfig);
+    const refs = readJsonc(tsconfig)?.references;
+    if (!Array.isArray(refs)) return;
+    for (const ref of refs) {
+      const p = ref && typeof ref === "object" ? str((ref as Json).path) : undefined;
+      if (p === undefined) continue;
+      let target = resolve(dirname(tsconfig), p);
+      if (isDir(target)) target = join(target, "tsconfig.json");
+      if (!existsSync(target)) continue;
+      const rel = relative(base, dirname(target));
+      const dir = rel.split(sep).join("/");
+      if (
+        isAbsolute(rel) ||
+        dir === ".." ||
+        dir.startsWith("../") ||
+        dir.split("/").some((d) => SKIP_DIRS.has(d))
+      )
+        continue;
+      // A symlinked directory inside the repo that points outside it is outside too.
+      const real = relative(realpathSync(base), realpathSync(dirname(target)));
+      if (isAbsolute(real) || real === ".." || real.startsWith(`..${sep}`)) continue;
+      if (dir !== "") dirs.add(dir);
+      visit(target);
+    }
+  };
+  visit(join(base, "tsconfig.json"));
+  return [...dirs];
+}
+
 /** Minimal parser for the `packages:` list of pnpm-workspace.yaml. */
 function parsePnpmPackages(text: string): string[] {
   const out: string[] = [];
@@ -57,9 +133,12 @@ function parsePnpmPackages(text: string): string[] {
   return out;
 }
 
-/** All repo-relative posix dirs containing `file`, skipping node_modules, .git and nested worktrees. */
-function dirsContaining(root: string, file: string): string[] {
-  const found: string[] = [];
+/**
+ * One walk that lists, per marker file, the repo-relative posix dirs containing it. It skips node_modules, .git and
+ * nested worktrees; with `pruneExcluded` it also never enters a directory under the built-in excludes (spec section 5).
+ */
+function walkMarkers(root: string, files: string[], pruneExcluded: boolean): Map<string, string[]> {
+  const found = new Map<string, string[]>(files.map((f) => [f, []]));
   const walk = (rel: string): void => {
     const abs = rel === "." ? root : join(root, rel);
     let entries: Dirent[];
@@ -68,16 +147,39 @@ function dirsContaining(root: string, file: string): string[] {
     } catch {
       return;
     }
-    if (entries.some((e) => e.isFile() && e.name === file)) found.push(rel);
+    for (const f of files) {
+      if (entries.some((e) => e.isFile() && e.name === f)) found.get(f)?.push(rel);
+    }
     for (const e of entries) {
       if (!e.isDirectory() || SKIP_DIRS.has(e.name)) continue;
       const child = rel === "." ? e.name : `${rel}/${e.name}`;
       if (child === ".claude/worktrees" || child.endsWith("/.claude/worktrees")) continue;
+      if (pruneExcluded && matchesAny(BUILTIN_EXCLUDES, child)) continue;
       walk(child);
     }
   };
   walk(".");
   return found;
+}
+
+/** All repo-relative posix dirs containing `file`, skipping node_modules, .git and nested worktrees. */
+function dirsContaining(root: string, file: string): string[] {
+  return walkMarkers(root, [file], false).get(file) ?? [];
+}
+
+/** Drop the directories whose package.json git ignores. Outside a git repository nothing is ignored. */
+function dropGitIgnored(root: string, dirs: string[]): string[] {
+  const manifests = dirs.filter((d) => d !== ".").map((d) => `${d}/package.json`);
+  if (manifests.length === 0) return dirs;
+  const res = spawnSync("git", ["check-ignore", "-z", "--stdin"], {
+    cwd: root,
+    encoding: "utf8",
+    input: manifests.join("\0"),
+    stdio: ["pipe", "pipe", "ignore"],
+  });
+  if (res.status !== 0 && res.status !== 1) return dirs;
+  const ignored = new Set(res.stdout.split("\0").filter((p) => p !== ""));
+  return dirs.filter((d) => d === "." || !ignored.has(`${d}/package.json`));
 }
 
 function expandGlobs(root: string, globs: string[], marker: string): string[] {
@@ -219,7 +321,7 @@ function buildRecord(
 
 /**
  * Detect workspaces: pnpm-workspace.yaml, then package.json `workspaces`, then Nx
- * project.json files, else a single root workspace. The root is always `ws:<repo>:.`.
+ * project.json files, then the projects the root tsconfig.json references, then every directory holding a package.json (built-in excludes and git-ignored paths skipped), else a single root workspace. The root is always `ws:<repo>:.`.
  */
 export function detectWorkspaces(
   root: string,
@@ -235,7 +337,11 @@ export function detectWorkspaces(
   } else if (npmGlobs) {
     dirs = expandGlobs(root, npmGlobs, "package.json");
   } else {
-    dirs = dirsContaining(root, "project.json").filter((d) => d !== ".");
+    const found = walkMarkers(root, ["project.json", "package.json"], true);
+    dirs = (found.get("project.json") ?? []).filter((d) => d !== ".");
+    if (dirs.length === 0) dirs = tsconfigReferenceDirs(root);
+    if (dirs.length === 0)
+      dirs = dropGitIgnored(root, found.get("package.json") ?? []).filter((d) => d !== ".");
   }
   const all = [...new Set([".", ...dirs])].sort();
   const records = all.map((d) => buildRecord(root, repo, d, config));
