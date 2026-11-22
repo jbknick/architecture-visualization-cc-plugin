@@ -344,8 +344,9 @@ export const TextRuleSchema = z.strictObject({
     }),
     /**
      * A query: the Go function `fn` (a function name, or a method name without its type) runs the statements in
-     * `sql`. The tables the statements read and write become reads and writes of that function. `files` are
-     * repo-relative globs of the Go files that hold the function (default every Go file of the workspace).
+     * `sql`. The tables the statements read and write become reads and writes of that function, and the
+     * evidence of each is the line of the text file that holds the statement. `files` are repo-relative globs of
+     * the Go files that hold the function (default every Go file of the workspace).
      */
     z.strictObject({
       kind: z.literal("query"),

@@ -147,6 +147,24 @@ describe("Go recipes: raw SQL, a typed value and query files", () => {
       ].sort(),
     );
   });
+
+  it("shows a read or write written in a query file at that file, on the line of the table", async () => {
+    const { graph } = await fixture("sql");
+    const label = new Map(graph.nodes.map((n) => [n.id, n.label]));
+    const queried = graph.edges
+      .filter((e) => (e.kind === "reads" || e.kind === "writes") && symName(e.src).startsWith("Queries."))
+      .map((e) => {
+        expect(e.fileId.endsWith(":db/gen/posts.sql.go")).toBe(true);
+        return `${e.kind} ${symName(e.src)} ${label.get(e.dst)} ${e.evidence.join(",")}`;
+      })
+      .sort();
+    expect(queried).toEqual([
+      "reads Queries.ListAuthorPosts posts db/queries/posts.sql:10",
+      "reads Queries.ListAuthorPosts users db/queries/posts.sql:11",
+      "reads Queries.ListPosts posts db/queries/posts.sql:2",
+      "writes Queries.PublishPost posts db/queries/posts.sql:6",
+    ]);
+  });
 });
 
 describe("gantry recipe check on the Go fixtures", () => {
