@@ -6,9 +6,8 @@ import { checkRecipeText } from "./check.js";
 import { listRecipeNodes, type RecipeNodeEntry } from "./nodes.js";
 import { indexGraph, makeRepo, pathsFor } from "./testkit.js";
 
-const RUNS = join(import.meta.dirname, "../../../../docs/spikes/v2-recipe-agent-2/runs");
-const recipeOf = (repo: string, run: string): string =>
-  readFileSync(join(RUNS, repo, run, "recipe.json"), "utf8");
+const recipeOf = (name: string): string =>
+  readFileSync(join(import.meta.dirname, "testdata", `${name}.recipe.json`), "utf8");
 
 const pkg = (deps: string[]): string =>
   JSON.stringify({
@@ -70,22 +69,22 @@ const CASES: {
   {
     // Fastify and Prisma: text rules for the tables, and no `text-rules` in `helpers` (the case that scored 0). The
     // endpoint rule emits `handler: "$H"` for a `$$$H` capture, so the index makes no endpoint: the list shows that.
-    name: "fastify-typescript run 1",
-    recipe: recipeOf("fastify-typescript", "run1"),
+    name: "fastify-typescript, text rules for tables",
+    recipe: recipeOf("fastify-typescript-text-tables"),
     files: FASTIFY_FILES,
     expected: { table: 2, read: 1, write: 1 },
   },
   {
     // The same repository with a run that wrote the handler capture correctly: the endpoint of the server file is there.
-    name: "fastify-typescript run 3",
-    recipe: recipeOf("fastify-typescript", "run3"),
+    name: "fastify-typescript, endpoint rule",
+    recipe: recipeOf("fastify-typescript-endpoint"),
     files: FASTIFY_FILES,
     expected: { endpoint: 1, table: 2, read: 1, write: 1 },
   },
   {
     // Kysely: tables from a type in a text file, reads and writes by table name.
-    name: "saasfly run 3",
-    recipe: recipeOf("saasfly", "run3"),
+    name: "saasfly",
+    recipe: recipeOf("saasfly"),
     files: {
       "package.json": pkg(["next", "kysely"]),
       "packages/db/prisma/types.ts": "export type DB = {\n  User: User;\n  Account: Account;\n};\n",
@@ -100,8 +99,8 @@ const CASES: {
   },
   {
     // A route rule on the router file of a Vite app.
-    name: "bulletproof-react run 1",
-    recipe: recipeOf("bulletproof-react", "run1"),
+    name: "bulletproof-react",
+    recipe: recipeOf("bulletproof-react"),
     files: {
       "package.json": pkg(["react-router"]),
       "src/router.tsx": [
@@ -113,8 +112,8 @@ const CASES: {
   },
   {
     // The recipe lists `text-rules`; the tables are the same as without it.
-    name: "nestjs-boilerplate run 1",
-    recipe: recipeOf("nestjs-boilerplate", "run1"),
+    name: "nestjs-boilerplate",
+    recipe: recipeOf("nestjs-boilerplate"),
     files: {
       "package.json": pkg(["@nestjs/common", "typeorm"]),
       "src/roles/role.entity.ts": "@Entity({\n  name: 'role',\n})\nexport class RoleEntity {}\n",
@@ -138,7 +137,7 @@ describe("recipe check lists the nodes the index makes", () => {
   });
 
   it("lists nodes for a recipe file that is not the committed one", async () => {
-    const c = CASES.find((x) => x.name === "fastify-typescript run 3");
+    const c = CASES.find((x) => x.name === "fastify-typescript, endpoint rule");
     if (!c) throw new Error("no case");
     const repo = await makeRepo(c.files);
     const r = await listRecipeNodes(pathsFor(repo.dir), c.recipe, { limit: 1000 });
@@ -170,10 +169,10 @@ describe("a text rule works without the text-rules helper listed (#367)", () => 
   };
 
   it.each([
-    ["nestjs-boilerplate", "run1", { "src/a.entity.ts": "@Entity({ name: 'a' })\nexport class A {}\n" }],
-    ["saasfly", "run3", { "packages/db/prisma/types.ts": "export type DB = {\n  User: User;\n};\n" }],
-  ] as const)("%s %s: the index makes the tables with no text-rules helper", async (name, run, files) => {
-    const recipe = withoutHelper(recipeOf(name, run));
+    ["nestjs-boilerplate", { "src/a.entity.ts": "@Entity({ name: 'a' })\nexport class A {}\n" }],
+    ["saasfly", { "packages/db/prisma/types.ts": "export type DB = {\n  User: User;\n};\n" }],
+  ] as const)("%s: the index makes the tables with no text-rules helper", async (name, files) => {
+    const recipe = withoutHelper(recipeOf(name));
     expect(JSON.parse(recipe).helpers).not.toContain("text-rules");
     const repo = await makeRepo({ "package.json": pkg(["next"]), ...files, ".gantry/recipe.json": recipe });
     const g = await indexGraph(repo.dir, { adapters: [recipeAdapter] });

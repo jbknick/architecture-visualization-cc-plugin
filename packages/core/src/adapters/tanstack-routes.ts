@@ -27,8 +27,8 @@ export {
 
 /**
  * TanStack Router file-route detection (route detection only; server functions are M6). The file naming rules live in
- * `recipe/helpers/fs-routes.ts`, where the recipe adapter reads them too; this built-in adapter stays until agent-written
- * recipes are measured.
+ * `recipe/helpers/fs-routes.ts`, where the recipe adapter reads them too; this built-in adapter stays until recipes
+ * replace it.
  */
 
 const FRAMEWORKS = ["@tanstack/react-router", "@tanstack/react-start"];

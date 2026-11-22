@@ -1,5 +1,0 @@
-I wrote `.gantry/recipe.json`, but it is empty: version 1 with no rules. The check command passes ("recipe ok").
-
-The repository is a Go application using Gin, GORM and SQLite. It has no TypeScript, JavaScript, SQL or Prisma files. The recipe engine's rules only work on TypeScript syntax trees. Its text rules emit tables only, and a table found in a text file is attached to a TypeScript file in the same workspace. There is none here, so I couldn't write rules that would produce a correct graph.
-
-I expect 0 routes, 0 endpoints, 0 tables, 0 reads and 0 writes. The code does have about 19 Gin endpoints under `/api` and several GORM models, plus reads and writes against them. The engine has no Go parser, so none of that can be expressed.

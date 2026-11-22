@@ -1,6 +1,0 @@
-The recipe is at `.gantry/recipe.json`, and the dry-run says `ACCEPTED` with all examples passing.
-
-- **Stack:** Go with chi v5 and bun on Postgres. The tables come from raw `CREATE TABLE` SQL in the migrations. It is a backend only, so there are no frontend routes.
-- **Counts:** 0 routes, 19 endpoints and 3 tables (`accounts`, `tokens`, `profiles`). I checked the endpoint list by hand against the code.
-- **Endpoints:** They cover `/auth/*`, `/admin`, `/admin/accounts` and `/admin/accounts/{accountID}`. They also cover `/api/account`, `/api/account/token/{tokenID}`, `/api/profile`, `/healthz` and `/*`.
-- **What I couldn't express:** The mount-graph helper did not compose prefixes when a mount's child is a method call such as `r.Mount("/account", a.Account.router())`. A generic chi rule listed only the relative paths (for example `GET /`) and missed the `/api/profile` endpoints. I replaced it with per-file rules that carry the prefix as a literal. Those prefixes are hardcoded, so if the mounts in `api/api.go`, `api/app/api.go` or `api/admin/api.go` change, the rules need updating by hand.
