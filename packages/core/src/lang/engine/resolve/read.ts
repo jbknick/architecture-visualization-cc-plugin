@@ -294,12 +294,12 @@ export class Reader {
     return out;
   }
 
-  /** The declarations and calls of the top-level function or method that holds the offset range; null when none does. */
-  scopeAt(root: SyntaxNode, start: number, end: number): Decl[] | null {
+  /** The top-level function or method declaration that holds the offset range; null when none does. */
+  functionAt(root: SyntaxNode, start: number, end: number): SyntaxNode | null {
     for (const d of root.namedChildren()) {
       if (!this.rule(d)) continue;
       const r = d.range();
-      if (r.start.index <= start && end <= r.end.index) return this.decls(d);
+      if (r.start.index <= start && end <= r.end.index) return d;
     }
     return null;
   }

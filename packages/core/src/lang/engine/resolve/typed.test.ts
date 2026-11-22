@@ -1,15 +1,22 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fileId, symId } from "../../../ids.js";
 import type { ParsedFile } from "../../../parse/index.js";
 import type { ResolveContext, Resolver } from "../../../resolve/index.js";
 import type { EdgeRecord } from "../../../types.js";
 import { goPack } from "../../packs/index.js";
+import { parseTree } from "../grammar.js";
 import { buildLanguage } from "../module.js";
 import type { LanguagePack } from "../pack.js";
 import { typeCallResolver } from "./typed.js";
+
+// Counts the parses: the real parser, called through a spy.
+vi.mock("../grammar.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../grammar.js")>();
+  return { ...real, parseTree: vi.fn(real.parseTree) };
+});
 
 /**
  * A synthetic language that keeps the typing rules of the pack it is cut from: its own extension and manifest, reading
@@ -184,18 +191,41 @@ describe("the type resolver on a synthetic pack", () => {
     expect(resolver.targetAt?.(id, at, at + 1)).toBeNull();
   });
 
-  it("holds no syntax tree once the edges and the places are read", () => {
+  it("holds no syntax tree once the facts and the edges of the files are read", () => {
     const { ctx } = indexed(FILES);
     const calls = typeCallResolver(typedPack)(ctx);
     const id = fileId(REPO, "main.tt");
     const parsed = ctx.parsed.get(id) as ParsedFile;
     expect(calls.edgesForFile(id, parsed).length).toBeGreaterThan(0);
+    expect(holdsNode(calls)).toBe(false);
+    // The scan finds a node where one is held: a lookup by place keeps the tree of the last file it read.
     const at = (FILES["main.tt"] as string).indexOf("k.Run()");
     expect(calls.targetAt(id, at, at + "k.Run()".length)).toBe(sym("main.tt", "Job.Run"));
     expect(calls.typeNameAt(id, at, at + 1)).toBe("Job");
-    expect(holdsNode(calls)).toBe(false);
-    // The scan finds a node where one is held.
-    expect(holdsNode({ keep: [{ kind: () => "x", findAll: () => [] }] })).toBe(true);
+    expect(holdsNode(calls)).toBe(true);
+  });
+
+  it("parses a file once for any number of lookups by place, and again only after another file was asked for", () => {
+    const { ctx } = indexed(FILES);
+    const calls = typeCallResolver(typedPack)(ctx);
+    const main = fileId(REPO, "main.tt");
+    const util = fileId(REPO, "util/util.tt");
+    const source = FILES["main.tt"] as string;
+    const utilSource = FILES["util/util.tt"] as string;
+    const place = (text: string): [number, number] => {
+      const at = source.indexOf(text);
+      return [at, at + text.length];
+    };
+    // Builds the index, which reads every file once, and leaves the util file as the last one asked for.
+    const u = utilSource.indexOf("Make()");
+    calls.targetAt(util, u, u + "Make()".length);
+    vi.mocked(parseTree).mockClear();
+    for (const text of ["r.Run()", "t.Setup()", "t.job.Run()", "k.Run()", "util.Make().Hit()"])
+      expect(calls.targetAt(main, ...place(text))).not.toBeNull();
+    expect(calls.typeNameAt(main, ...place("t.job"))).toBe("Job");
+    expect(vi.mocked(parseTree)).toHaveBeenCalledTimes(1);
+    calls.targetAt(util, u, u + "Make()".length);
+    expect(vi.mocked(parseTree)).toHaveBeenCalledTimes(2);
   });
 
   it("dumps byte-equal edges from two fresh folders", () => {

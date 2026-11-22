@@ -7,7 +7,7 @@ import type { CallResolver } from "../module.js";
 import type { LanguagePack } from "../pack.js";
 import { EdgeSet } from "./edges.js";
 import { type FileEntry, ImportIndex } from "./imports.js";
-import { withTree } from "./source.js";
+import { LastTree, withTree } from "./source.js";
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -32,6 +32,8 @@ export class NameCalls implements CallResolver {
   private readonly imports = new Map<string, Map<string, string>>();
   private byName: Map<string, { symbol: ParsedSymbol; file: FileEntry }[]> | undefined;
   private readonly isTest: (rel: string) => boolean;
+  /** The expressions of the last file a lookup by place read, by exact range; one tree is alive at a time. */
+  private readonly last: LastTree<Map<string, SyntaxNode>>;
 
   constructor(
     private readonly pack: LanguagePack,
@@ -39,9 +41,10 @@ export class NameCalls implements CallResolver {
   ) {
     this.index = new ImportIndex(pack, ctx);
     this.isTest = picomatch([...pack.testPatterns], { dot: true });
+    this.last = new LastTree(pack, ctx.root);
   }
 
-  /** Reads and parses the file; the tree lives for the call only. */
+  /** Reads and parses the file for the edges of one file; the tree lives for the call only. */
   private withRoot<T>(entry: FileEntry, use: (root: SyntaxNode) => T): T | null {
     return withTree(this.pack, this.ctx.root, entry.rel, use);
   }
@@ -154,19 +157,22 @@ export class NameCalls implements CallResolver {
   targetAt(fileId: string, start: number, end: number): string | null {
     const entry = this.index.byFileId.get(fileId);
     if (!entry) return null;
-    return (
-      this.withRoot(entry, (root) => {
-        // The expressions a place can name: call sites, bare names and member names, by exact range.
-        const rule = this.pack.nodes;
-        const kinds = [...rule.call, ...rule.callee.names, rule.callee.member.kind];
-        const node = root
-          .findAll({ rule: { any: kinds.map((kind) => ({ kind })) } })
-          .find((n) => n.range().start.index === start && n.range().end.index === end);
-        if (!node) return null;
-        const callee = rule.call.includes(node.kind()) ? node.field(rule.callee.field) : node;
-        return this.resolve(entry, callee)?.symbol.id ?? null;
-      }) ?? null
-    );
+    const rule = this.pack.nodes;
+    const byRange = this.last.get(entry.rel, (root) => {
+      // The expressions a place can name: call sites, bare names and member names, by exact range.
+      const kinds = [...rule.call, ...rule.callee.names, rule.callee.member.kind];
+      const m = new Map<string, SyntaxNode>();
+      for (const n of root.findAll({ rule: { any: kinds.map((kind) => ({ kind })) } })) {
+        const r = n.range();
+        const key = `${r.start.index}:${r.end.index}`;
+        if (!m.has(key)) m.set(key, n);
+      }
+      return m;
+    });
+    const node = byRange?.get(`${start}:${end}`);
+    if (!node) return null;
+    const callee = rule.call.includes(node.kind()) ? node.field(rule.callee.field) : node;
+    return this.resolve(entry, callee)?.symbol.id ?? null;
   }
 
   /** Level 1 reads no types. */

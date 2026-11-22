@@ -7,7 +7,7 @@ import type { LanguagePack, TypingRules } from "../pack.js";
 import { EdgeSet } from "./edges.js";
 import { ImportIndex } from "./imports.js";
 import { Reader } from "./read.js";
-import { withTree } from "./source.js";
+import { LastTree, withTree } from "./source.js";
 import { type FileInfo, type Named, type Ty, TypeIndex, type VarInfo } from "./typeindex.js";
 import type { CallExpr, Callee, Decl, Expr, Results } from "./typing.js";
 
@@ -55,13 +55,20 @@ const named = (t: Ty | null): Named | null => (t?.k === "named" ? t : null);
  * preceding declaration of a name wins, and a function literal counts as the function around it). A call whose
  * receiver type is unknown gives no edge; nothing is guessed. `calls` edges are `high`; `extends` runs from a class to
  * each in-repo type it embeds (`high`) and `implements` from a type to each in-repo interface whose method names it
- * covers (`low`). A tree is read for the length of one call and dropped: the index and the scopes hold plain data.
+ * covers (`low`). The index and the scopes of the edges hold plain data and the tree of a file is dropped once its facts
+ * are read; only the lookups by place keep the tree of the last file they were asked about, one at a time.
  */
 export class TypeCalls implements CallResolver {
   private readonly typing: TypingRules;
   private readonly reader: Reader;
   private readonly imports: ImportIndex;
   private index: TypeIndex | undefined;
+  /** The tree of the last file a lookup by place read, with the expressions and scopes found in it. */
+  private readonly last: LastTree<{
+    root: SyntaxNode;
+    byRange: Map<string, SyntaxNode>;
+    scopes: Map<number, Scope>;
+  }>;
 
   constructor(
     private readonly pack: LanguagePack,
@@ -69,6 +76,7 @@ export class TypeCalls implements CallResolver {
   ) {
     if (!pack.nodes.typing) throw new Error(`${pack.id}: the pack has no typing rules`);
     this.typing = pack.nodes.typing;
+    this.last = new LastTree(pack, ctx.root);
     this.reader = new Reader(pack);
     this.imports = new ImportIndex(pack, ctx);
   }
@@ -131,15 +139,30 @@ export class TypeCalls implements CallResolver {
   ): T | null {
     const file = this.idx().byFileId.get(fileId);
     if (!file) return null;
-    return withTree(this.pack, this.ctx.root, file.rel, (root) => {
+    const place = this.last.get(file.rel, (root) => {
+      const byRange = new Map<string, SyntaxNode>();
       const kinds = this.typing.lookups.map((kind) => ({ kind }));
-      const node = root
-        .findAll({ rule: { any: kinds } })
-        .find((n) => n.range().start.index === start && n.range().end.index === end);
-      if (!node) return null;
-      const decls = this.reader.scopeAt(root, start, end) ?? [];
-      return use(node, { file, scope: this.scope(decls) }, this.reader);
+      for (const n of root.findAll({ rule: { any: kinds } })) {
+        const r = n.range();
+        const key = `${r.start.index}:${r.end.index}`;
+        if (!byRange.has(key)) byRange.set(key, n);
+      }
+      return { root, byRange, scopes: new Map<number, Scope>() };
     });
+    const node = place?.byRange.get(`${start}:${end}`);
+    if (!place || !node) return null;
+    const fd = this.reader.functionAt(place.root, start, end);
+    let scope: Scope = new Map();
+    if (fd) {
+      const key = fd.range().start.index;
+      const hit = place.scopes.get(key);
+      if (hit) scope = hit;
+      else {
+        scope = this.scope(this.reader.decls(fd));
+        place.scopes.set(key, scope);
+      }
+    }
+    return use(node, { file, scope }, this.reader);
   }
 
   /**

@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fileId, symId } from "../../../ids.js";
 import { encodeParsed, LazyParsedMap } from "../../../parse/cache.js";
 import type { ParsedFile } from "../../../parse/index.js";
@@ -9,9 +9,16 @@ import type { ResolveContext } from "../../../resolve/index.js";
 import type { EdgeRecord } from "../../../types.js";
 import type { LanguageModule } from "../../index.js";
 import { goPack } from "../../packs/index.js";
+import { parseTree } from "../grammar.js";
 import { buildLanguage } from "../module.js";
 import type { LanguagePack } from "../pack.js";
 import { type FileEntry, ImportIndex, type ImportResolution } from "./imports.js";
+
+// Counts the parses: the real parser, called through a spy.
+vi.mock("../grammar.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../grammar.js")>();
+  return { ...real, parseTree: vi.fn(real.parseTree) };
+});
 
 /**
  * A synthetic language: its own extension, manifest, name rules and import separator, reading its sources with a grammar
@@ -284,6 +291,19 @@ describe("the name resolver on a synthetic pack", () => {
     );
     expect(resolver.targetAt?.(fileId(REPO, "main.toy"), at, at + 1)).toBeNull();
     expect(resolver.typeNameAt?.(fileId(REPO, "main.toy"), at, at + "helper()".length)).toBeNull();
+  });
+
+  it("parses a file once for any number of lookups by place", () => {
+    const { ctx, lang } = indexed(FILES);
+    const resolver = lang.createResolver(ctx);
+    const source = FILES["main.toy"] as string;
+    const id = fileId(REPO, "main.toy");
+    vi.mocked(parseTree).mockClear();
+    for (const text of ["helper()\n\tutil", "util.Run()", "shared.Make()", "Remote()"]) {
+      const at = source.indexOf(text);
+      resolver.targetAt?.(id, at, at + text.replace(/\n.*/s, "").length);
+    }
+    expect(vi.mocked(parseTree)).toHaveBeenCalledTimes(1);
   });
 
   it("dumps byte-equal edges from two fresh folders", () => {
