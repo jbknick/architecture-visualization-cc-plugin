@@ -214,6 +214,7 @@ export function edgeTipLines(
         : `through ${e.via} ${e.via === 1 ? "function" : "functions"}`,
     );
   } else if (e.weight > 1) lines.push(`${e.weight} calls`);
+  if (e.textFile) lines.push(`written in ${e.textFile}`);
   if (e.confidence === "low") lines.push("uncertain match (dashed)");
   return { title, lines };
 }

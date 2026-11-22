@@ -144,5 +144,15 @@ describe("flow geometry", () => {
     const t = edgeTipLines(e, (id) => id.toUpperCase());
     expect(t.title).toBe("A requests B");
     expect(t.lines).toEqual(["via 3 places in the page", "Page, useX, …", "uncertain match (dashed)"]);
+    const q: GraphEdge = {
+      id: "a|reads|b",
+      src: "a",
+      dst: "b",
+      kind: "reads",
+      weight: 1,
+      confidence: "high",
+      textFile: "db/queries/posts.sql",
+    };
+    expect(edgeTipLines(q, (id) => id.toUpperCase()).lines).toEqual(["written in db/queries/posts.sql"]);
   });
 });
