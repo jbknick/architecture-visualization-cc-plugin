@@ -513,23 +513,24 @@
     },
     {
       "src": "file:web:src/pages/posts.tsx",
-      "dst": "ext:@mr/contracts",
-      "kind": "imports",
-      "confidence": "high",
-      "count": 1,
-      "evidence": [
-        "src/pages/posts.tsx:1"
-      ],
-      "fileId": "file:web:src/pages/posts.tsx"
-    },
-    {
-      "src": "file:web:src/pages/posts.tsx",
       "dst": "ext:react",
       "kind": "imports",
       "confidence": "high",
       "count": 2,
       "evidence": [
         "src/pages/posts.tsx:2"
+      ],
+      "fileId": "file:web:src/pages/posts.tsx"
+    },
+    {
+      "src": "file:web:src/pages/posts.tsx",
+      "dst": "file:acme/api:packages/contracts/src/index.ts",
+      "kind": "imports",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/pages/posts.tsx:1",
+        "sibling:acme/api"
       ],
       "fileId": "file:web:src/pages/posts.tsx"
     },
@@ -581,6 +582,18 @@
         "apps/server/src/posts.ts:10"
       ],
       "fileId": "file:acme/api:apps/server/src/posts.ts"
+    },
+    {
+      "src": "sym:web:src/pages/posts.tsx#PostsPage",
+      "dst": "sym:acme/api:packages/contracts/src/index.ts#formatDate",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/pages/posts.tsx:21",
+        "sibling:acme/api"
+      ],
+      "fileId": "file:web:src/pages/posts.tsx"
     },
     {
       "src": "ws:acme/api:@mr/contracts",

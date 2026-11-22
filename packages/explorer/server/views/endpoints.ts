@@ -52,10 +52,11 @@ const spanOf = (n: AdapterNodeRecord): Span | null => {
     : null;
 };
 /** Does a call leave the handler from inside the span (or can that not be told)? Same rule as `trace`. */
-const inSpan = (e: EdgeRecord, span: Span): boolean => {
-  const lines = e.evidence.map((x) => Number(x.slice(x.lastIndexOf(":") + 1)));
+export const inSpan = (e: EdgeRecord, span: Span): boolean => {
+  const entries = e.evidence.filter((x) => !x.startsWith("sibling:")); // `sibling:<repo>` is a note, not a line
+  const lines = entries.map((x) => Number(x.slice(x.lastIndexOf(":") + 1)));
   if (lines.some((l) => l >= span.start && l <= span.end)) return true;
-  return e.evidence.length < e.count; // capped evidence: the dropped lines may be inside
+  return entries.length < e.count; // capped evidence: the dropped lines may be inside
 };
 
 /**

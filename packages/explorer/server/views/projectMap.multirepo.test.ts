@@ -62,7 +62,16 @@ describe("project map of a workspace of two repos", () => {
     const ctx = await setup();
     const cross = get(ctx, "level=workspaces").edges.filter((e) => e.crossRepo);
     expect(cross.map((e) => `${e.src}>${e.dst}`)).toEqual(["ws:web:.>ws:acme/api:@mr/contracts"]);
-    expect(get(ctx, "level=files").edges.filter((e) => e.crossRepo).length).toBe(1);
+    // At the files level the file-to-file import the index stores comes with its workspace-to-workspace link.
+    expect(
+      get(ctx, "level=files")
+        .edges.filter((e) => e.crossRepo)
+        .map((e) => `${e.src}>${e.dst}`)
+        .sort(),
+    ).toEqual([
+      "file:web:src/pages/posts.tsx>file:acme/api:packages/contracts/src/index.ts",
+      "ws:web:.>ws:acme/api:@mr/contracts",
+    ]);
   });
 
   it("has a repos level of the two repos and one repo-to-repo edge", async () => {

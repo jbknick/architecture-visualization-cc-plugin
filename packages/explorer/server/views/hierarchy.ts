@@ -190,7 +190,7 @@ export function buildHierarchy(
 }
 
 /** The repo of a workspace id (a root workspace `ws:<repo>:.` included), file id or symbol id. */
-export const repoOfNodeId = (id: string): string | undefined => parseWorkspaceId(id)?.repo ?? repoOfId(id);
+const repoOfNodeId = (id: string): string | undefined => parseWorkspaceId(id)?.repo ?? repoOfId(id);
 
 /** The repo of a top-level node: its own id, or that of the first file below it (a folder outside every workspace). */
 function repoOfRoot(h: HNode): string | undefined {
