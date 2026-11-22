@@ -12,6 +12,7 @@ const ENDS = new Set(["route", "endpoint", "table"]);
 interface Step {
   id: string;
   kind: string;
+  repo?: string;
   via: string;
   depth: number;
   from?: string;
@@ -27,6 +28,7 @@ export function shapeTrace(r: TraceResult, budget: number = TRACE_LIMITS.budget)
   const steps: Step[] = r.chain.map((s) => ({
     id: s.id,
     kind: s.kind,
+    ...(s.repo !== undefined ? { repo: s.repo } : {}),
     via: s.via,
     depth: s.depth,
     ...(s.from !== undefined ? { from: s.from } : {}),
@@ -100,7 +102,7 @@ export const traceTool = defineTool({
   description:
     "Page → API → table chain. From a route (route:<ws>:<route id>, or a route path such as /posts/$postId) it follows the page's component, what it renders, calls and hooks, the endpoints those request (oRPC procedures, Hono routes, server functions), their handlers and the database tables they read or write; from a table (table:<name>) it goes up to the endpoints and pages that use it. " +
     "Also takes an endpoint id or label (ep:..., GET /api/posts/:id, rpc posts.list), a symbol id, a file path or path:line; direction defaults to up for a table and down otherwise. " +
-    "Returns {target, direction, routes, endpoints: [{id, low?}], tables, chain: [{id, kind, via, depth, from?, low?}], repeats?, gaps, omitted, truncated}: via is the edge kind a step was reached by, low marks a low-confidence match (fetch URL or name only), gaps lists where the chain stops (unmatched client calls, endpoints without a handler or table, limits). " +
+    "Returns {target, direction, routes, endpoints: [{id, low?}], tables, chain: [{id, kind, repo?, via, depth, from?, low?}], repeats?, gaps, omitted, truncated}: repo (only when the workspace has several repos) names the repo of a step, since a trace follows a page's request into the repo that serves it, via is the edge kind a step was reached by, low marks a low-confidence match (fetch URL or name only), gaps lists where the chain stops (unmatched client calls, endpoints without a handler or table, limits). " +
     "When the chain is long the steps between pages, endpoints and tables are summarised in repeats with counts; *_total fields count what was cut. No description text is returned.",
   inputSchema: {
     target: z

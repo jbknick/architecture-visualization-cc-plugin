@@ -1,1 +1,1 @@
-{ "name": "@fx/users-api", "private": true, "type": "module", "dependencies": { "hono": "^4.0.0" } }
+{ "name": "@fx/users-api", "private": true, "type": "module", "dependencies": { "drizzle-orm": "^0.44.0", "hono": "^4.0.0" } }

@@ -586,6 +586,38 @@ describe("client wrapper shapes", () => {
     expect(reqs(g, at("b2"))).toEqual([["ep:repo:@x/api:GET /api/users", "high"]]);
   });
 
+  it("a const base before a parameter: a wrapper only when a call passes a slash", async () => {
+    const g = await web({
+      "apps/web/src/consts.ts": 'export const USERS = "/api/users";\n',
+      "apps/web/src/c.ts": [
+        'import { USERS } from "./consts";',
+        "const ENV = process.env.API_URL;",
+        "export function byId(id: string) {\n  return fetch(`${USERS}/${id}`);\n}",
+        'export function i1() {\n  return byId("7");\n}',
+        "export function viaEnv(path: string) {\n  return fetch(`${ENV}/${path}`);\n}",
+        'export function e1() {\n  return viaEnv("api/users");\n}',
+      ].join("\n"),
+      "apps/web/src/d.ts": [
+        'const ROOT = "/api";',
+        "export function nested(path: string) {\n  return fetch(`${ROOT}/${path}`);\n}",
+        'export function n1() {\n  return nested("users/7");\n}',
+        'export function n2() {\n  return nested("users");\n}',
+      ].join("\n"),
+    });
+    // Callers pass ids: not a wrapper, the body links by itself to the `:id` endpoint, the call is no gap.
+    expect(reqs(g, at("byId"))).toEqual([["ep:repo:@x/api:GET /api/users/:id", "high"]]);
+    expect(gaps(g, at("byId"))).toEqual([]);
+    expect(reqs(g, at("i1"))).toEqual([]);
+    expect(gaps(g, at("i1"))).toEqual([]);
+    // A caller passes a path with a slash: a wrapper, the calls link.
+    expect(gaps(g, at("nested", "d.ts"))).toEqual([["wrapper", "wrapper_body", "wrapper nested"]]);
+    expect(reqs(g, at("n1", "d.ts"))).toEqual([["ep:repo:@x/api:GET /api/users/:id", "high"]]);
+    expect(reqs(g, at("n2", "d.ts"))).toEqual([["ep:repo:@x/api:GET /api/users", "high"]]);
+    // An environment base is skipped as before.
+    expect(gaps(g, at("viaEnv"))).toEqual([["wrapper", "wrapper_body", "wrapper viaEnv"]]);
+    expect(reqs(g, at("e1"))).toEqual([["ep:repo:@x/api:GET /api/users", "high"]]);
+  });
+
   it("a function whose qualifying requests disagree makes each of its calls a gap", async () => {
     const g = await web({
       "apps/web/src/c.ts": [
