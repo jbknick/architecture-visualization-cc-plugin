@@ -125,7 +125,7 @@ Reading the differences:
 
 - Every grammar package has a `queries/tags.scm`; none has an import capture (`hasImportCapture` is false for all five), none tags constructors, and Python's does not separate functions from methods. Imports are the main thing missing.
 - The ast-grep tables are 13 to 19 lines per language (lines of the table object in `tables.ts`, after formatting), plus 16 lines for the shared interpreter in `engines.ts`. Imports cost one kind per language (Ruby needs a method-name check).
-- The tables were not changed after the run. They were written after reading the grammars' node types and after the hand count, and before any sample file was parsed.
+- The tables were not changed after the run. They were written after reading the grammars' node types and after the rule-based count, and before any sample file was parsed.
 
 Time and memory over the whole repo (three runs, worst; milliseconds; megabytes):
 
