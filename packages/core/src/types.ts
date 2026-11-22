@@ -52,7 +52,7 @@ export type EdgeKind =
   | "reads"
   | "writes"
   | "similar_to";
-/** How a `calls` edge was resolved: 1 by names alone, 2 with types read from the syntax, 3 with a language's own tooling. */
+/** The resolver that produced a `calls` edge: 1 the engine's name resolver, 2 a resolver that reads declared types, 3 flow heuristics. */
 export type EdgeLevel = 1 | 2 | 3;
 export interface EdgeRecord {
   src: string;

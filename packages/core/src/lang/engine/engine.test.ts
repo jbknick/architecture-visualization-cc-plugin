@@ -7,7 +7,7 @@ import { z } from "zod";
 import { dumpGraph, indexRepo } from "../../indexer.js";
 import { type GantryPaths, resolvePaths } from "../../paths/index.js";
 import { openStore } from "../../store/index.js";
-import { LANG_IDS, languageModule } from "../index.js";
+import { LANG_IDS, languageModule, languageOfPath, languages } from "../index.js";
 import { PACKS } from "../packs/index.js";
 
 const helperPath = "../../../test/helpers/fixture.js";
@@ -136,6 +136,15 @@ describe("language packs", () => {
   it.each(PACKS.map((p) => [p.id, p] as const))("the %s pack has the pack shape", (_id, pack) => {
     expect(PackSchema.parse(pack)).toBeTruthy();
   });
+
+  it.each(PACKS.map((p) => [p.id, p] as const))(
+    "the %s pack is claimed by its extensions and has a module",
+    (_id, pack) => {
+      expect(languageModule(pack.id).id).toBe(pack.id);
+      expect(languages().map((m) => m.id)).toEqual(["typescript", ...PACKS.map((p) => p.id)]);
+      for (const ext of pack.extensions) expect(languageOfPath(`a/b${ext}`)?.id).toBe(pack.id);
+    },
+  );
 
   it("derives the language ids from the packs plus TypeScript", () => {
     expect(LANG_IDS).toEqual(["typescript", ...PACKS.map((p) => p.id)]);

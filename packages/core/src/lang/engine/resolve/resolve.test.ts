@@ -56,6 +56,9 @@ func main() {
 	y.Twice()
 	main()
 	nowhere()
+	Far()
+	Hidden()
+	Get()
 }
 
 func helper() {}
@@ -71,6 +74,19 @@ func Go() {}
 func (t T) Only() {}
 func (t T) Twice() {}
 func (u U) Twice() {}
+func Get() {}
+func (t T) Get() {}
+`,
+  "main_check.toy": `package main
+
+func Spec() {
+	Remote()
+	Hidden()
+}
+`,
+  "hidden_check.toy": `package main
+
+func Hidden() {}
 `,
   "util/util.toy": `package util
 
@@ -81,6 +97,7 @@ func Dup() {}
   "libs/shared/shared.toy": `package shared
 
 func Make() {}
+func Far() {}
 `,
 };
 
@@ -154,10 +171,34 @@ describe("the name resolver on a synthetic pack", () => {
       confidence: "low",
       level: 1,
     });
-    expect(edges.find((x) => x.dst === sym("other.toy", "T.Only"))).toMatchObject({
+  });
+
+  it("makes no edge for a name reached through a receiver that is not an import, even when one method has that name", () => {
+    const edges = from(indexed(FILES).edges, "main");
+    expect(edges.some((x) => x.dst === sym("other.toy", "T.Only"))).toBe(false);
+  });
+
+  it("counts functions and methods together: a clash of kinds gives no edge", () => {
+    const edges = from(indexed(FILES).edges, "main");
+    expect(edges.filter((x) => x.dst.endsWith("#Get") || x.dst.endsWith(".Get"))).toEqual([]);
+  });
+
+  it("reaches a name only in the caller's workspace or one it depends on", () => {
+    const far = sym("libs/shared/shared.toy", "Far");
+    expect(from(indexed(FILES).edges, "main").some((x) => x.dst === far)).toBe(false);
+    const files = { ...FILES, "toy.mod": "name app\nneeds libs\n" };
+    expect(from(indexed(files).edges, "main").find((x) => x.dst === far)).toMatchObject({
       confidence: "low",
       level: 1,
     });
+  });
+
+  it("names a symbol of a test file only from a test file", () => {
+    const { edges } = indexed(FILES);
+    const hidden = sym("hidden_check.toy", "Hidden");
+    expect(from(edges, "main").some((x) => x.dst === hidden)).toBe(false);
+    const spec = calls(edges).filter((x) => x.src === sym("main_check.toy", "Spec"));
+    expect(spec.map((x) => x.dst).sort()).toEqual([hidden, sym("other.toy", "Remote")]);
   });
 
   it("gives no edge to a name with several candidates", () => {
@@ -173,7 +214,6 @@ describe("the name resolver on a synthetic pack", () => {
         sym("libs/shared/shared.toy", "Make"),
         sym("main.toy", "helper"),
         sym("other.toy", "Remote"),
-        sym("other.toy", "T.Only"),
         sym("util/util.toy", "Run"),
       ].sort(),
     );

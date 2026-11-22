@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import picomatch from "picomatch";
 import type { ParsedFile } from "../../../parse/index.js";
 import { EVIDENCE_CAP, type ResolveContext } from "../../../resolve/index.js";
 import type { EdgeRecord, ParsedSymbol } from "../../../types.js";
@@ -42,16 +43,18 @@ class EdgeSet {
 
 /**
  * Level 1 call resolution (spec section 7): a call is resolved from names alone, with the node kinds and fields the pack
- * names. A bare name goes to the function of that name in the same file (`high`), else to the one function of that name in
- * the repo (`low`). A name reached through an operand that is an import goes to the one function of that name in the
- * files the import names (`high`), and to nothing when the import is external. Any other name reached through an operand
- * goes to the one method of that name in the repo (`low`). A name with several candidates gives no edge.
+ * names. A bare name goes to the function of that name in the same file (`high`), else to the only function or method of
+ * that name in the caller's workspace or one it depends on (`low`; test files only for a caller in a test file). A name
+ * reached through an operand that is an import goes to the one function of that name in the files the import names
+ * (`high`), and to nothing when the import is external. A name reached through any other operand gives no edge: receivers
+ * are for the levels that read types. A name with several candidates gives no edge.
  */
 export class NameCalls implements CallResolver {
   private readonly index: ImportIndex;
   private readonly roots = new Map<string, SyntaxNode>();
   private readonly imports = new Map<string, Map<string, string>>();
-  private byName: Map<string, ParsedSymbol[]> | undefined;
+  private byName: Map<string, { symbol: ParsedSymbol; file: FileEntry }[]> | undefined;
+  private readonly isTest: (rel: string) => boolean;
   private readonly at = new Map<string, Map<string, SyntaxNode>>();
 
   constructor(
@@ -59,6 +62,7 @@ export class NameCalls implements CallResolver {
     private readonly ctx: ResolveContext,
   ) {
     this.index = new ImportIndex(pack, ctx);
+    this.isTest = picomatch([...pack.testPatterns], { dot: true });
   }
 
   private root(entry: FileEntry): SyntaxNode | null {
@@ -84,21 +88,29 @@ export class NameCalls implements CallResolver {
     return m;
   }
 
-  /** Function and method symbols of the language by their bare name, in path order. */
-  private symbolsByName(): Map<string, ParsedSymbol[]> {
+  /** Function and method symbols of the language by their bare name, with their files, in path order. */
+  private symbolsByName(): Map<string, { symbol: ParsedSymbol; file: FileEntry }[]> {
     if (this.byName) return this.byName;
-    const out = new Map<string, ParsedSymbol[]>();
+    const out = new Map<string, { symbol: ParsedSymbol; file: FileEntry }[]>();
     for (const f of this.index.files) {
       for (const s of f.parsed.symbols) {
         if (s.kind !== "function" && s.kind !== "method") continue;
         const key = bareName(s.name);
         const list = out.get(key) ?? [];
-        list.push(s);
+        list.push({ symbol: s, file: f });
         out.set(key, list);
       }
     }
     this.byName = out;
     return out;
+  }
+
+  /** True when a symbol of `file` may be named by a bare name used in `from`: same workspace or one it depends on, and no test file unless `from` is one. */
+  private reachable(from: FileEntry, file: FileEntry): boolean {
+    if (this.isTest(file.rel) && !this.isTest(from.rel)) return false;
+    const a = from.workspace;
+    const b = file.workspace;
+    return a?.id === b?.id || (a !== undefined && b !== undefined && a.deps.includes(b.name));
   }
 
   /** The symbol a callee expression names, or null when it has no single candidate. */
@@ -112,30 +124,23 @@ export class NameCalls implements CallResolver {
       const name = callee.text();
       const here = entry.parsed.symbols.filter((s) => s.kind === "function" && s.name === name);
       if (here.length > 0) return only(here, "high");
-      return only(
-        (this.symbolsByName().get(name) ?? []).filter((s) => s.kind === "function"),
-        "low",
-      );
+      // Every function and method of that name counts: a clash of any kind gives no edge, and the one candidate must be a function.
+      const all = (this.symbolsByName().get(name) ?? [])
+        .filter((c) => this.reachable(entry, c.file))
+        .map((c) => c.symbol);
+      return only(all.length === 1 ? all.filter((s) => s.kind === "function") : [], "low");
     }
     if (kind !== rule.member.kind) return null;
     const name = callee.field(rule.member.name)?.text();
-    if (!name) return null;
     const operand = callee.field(rule.member.operand);
-    const specifier =
-      operand && rule.member.operands.includes(operand.kind())
-        ? this.importsOf(entry).get(operand.text())
-        : undefined;
-    if (specifier !== undefined) {
-      const r = this.index.resolve(entry, specifier);
-      if (r.kind === "external") return null;
-      return only(
-        r.files.flatMap((f) => f.parsed.symbols.filter((s) => s.kind === "function" && s.name === name)),
-        "high",
-      );
-    }
+    if (!name || !operand || !rule.member.operands.includes(operand.kind())) return null;
+    const specifier = this.importsOf(entry).get(operand.text());
+    if (specifier === undefined) return null;
+    const r = this.index.resolve(entry, specifier);
+    if (r.kind === "external") return null;
     return only(
-      (this.symbolsByName().get(name) ?? []).filter((s) => s.kind === "method"),
-      "low",
+      r.files.flatMap((f) => f.parsed.symbols.filter((s) => s.kind === "function" && s.name === name)),
+      "high",
     );
   }
 

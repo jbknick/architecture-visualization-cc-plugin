@@ -6,7 +6,8 @@ import type { ParsedFile } from "../parse/index.js";
 import type { ResolveContext, Resolver } from "../resolve/index.js";
 import type { Lang, SymbolKind, WorkspaceRecord } from "../types.js";
 import type { detectWorkspaces, WorkspaceDetectionConfig } from "../workspace/index.js";
-import { go } from "./go/index.js";
+import { buildLanguage, type CallResolverFactory } from "./engine/module.js";
+import { goCalls } from "./go/index.js";
 import { PACKS } from "./packs/index.js";
 import { typescript } from "./typescript/index.js";
 
@@ -70,7 +71,14 @@ export interface LanguageModule {
   thresholds: DupThresholds;
 }
 
-const MODULES: readonly LanguageModule[] = [typescript, go];
+/** Packs whose language resolves calls itself; every other pack gets the engine's name resolver. */
+const OWN_CALLS: Readonly<Record<string, CallResolverFactory>> = { go: goCalls };
+
+/** TypeScript first, then one module per pack in `PACKS` order. */
+const MODULES: readonly LanguageModule[] = [
+  typescript,
+  ...PACKS.map((p) => buildLanguage(p, OWN_CALLS[p.id])),
+];
 
 /** Every language module, in a fixed order. */
 export const languages = (): readonly LanguageModule[] => MODULES;
@@ -141,10 +149,12 @@ export function detectAllWorkspaces(
   repo: string,
 ): WorkspaceRecord[] {
   const ts = typescript.detectWorkspaces(root, config, repo);
-  const goWs = go.detectWorkspaces(root, config, repo);
-  if (goWs.length === 0) return ts;
+  const packWs = MODULES.filter((m) => m !== typescript).flatMap((m) =>
+    m.detectWorkspaces(root, config, repo),
+  );
+  if (packWs.length === 0) return ts;
   const tsKept = ts.length > 1 || existsSync(join(root, "package.json")) || hasTypeScriptFiles(root);
-  return [...(tsKept ? ts : []), ...goWs].sort((a, b) => cmp(a.dir, b.dir) || cmp(a.id, b.id));
+  return [...(tsKept ? ts : []), ...packWs].sort((a, b) => cmp(a.dir, b.dir) || cmp(a.id, b.id));
 }
 
 /** One resolver over the languages: each file goes to the resolver of its own language; workspace edges are concatenated. */
