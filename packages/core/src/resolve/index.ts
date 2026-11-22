@@ -6,7 +6,7 @@ import { BUILTIN_EXCLUDES } from "../config/index.js";
 import { fileId as makeFileId, pathOfFileId } from "../ids.js";
 import type { ParsedFile, ParsedImport, ParsedSite } from "../parse/index.js";
 import type { EdgeKind, EdgeRecord, WorkspaceRecord } from "../types.js";
-import { workspaceForPath } from "../workspace/index.js";
+import { readJsonc, workspaceForPath } from "../workspace/index.js";
 import { type BundlerAliases, readBundlerAliases } from "./bundlerAliases.js";
 
 export interface ResolveContext {
@@ -300,6 +300,48 @@ export function createResolver(ctx: ResolveContext): Resolver {
     return null;
   }
 
+  /**
+   * Built output mapped back to source. With a tsconfig.json in the workspace that sets `outDir`, a path under it maps to
+   * the same relative path under `rootDir` (when unset: the common directory of the static parts of `include`, else the
+   * workspace directory); without one, `dist`, `build`, `out` and `lib` map to `src`.
+   */
+  function sourceOfOutput(wsAbs: string, abs: string): string | null {
+    const opts = readJsonc(path.join(wsAbs, "tsconfig.json"))?.compilerOptions;
+    const o = opts && typeof opts === "object" ? (opts as Record<string, unknown>) : {};
+    const sourceOf = (rest: string): string => rest.replace(/\.d\.([cm]?ts)$/, ".$1");
+    if (typeof o.outDir === "string") {
+      const rest = posix(path.relative(path.resolve(wsAbs, o.outDir), abs));
+      if (rest.startsWith("..") || path.isAbsolute(rest)) return null;
+      return tryParsed(path.join(sourceRoot(wsAbs, o), sourceOf(rest)));
+    }
+    const m = /^(?:dist|build|out|lib)\/(.*)$/.exec(posix(path.relative(wsAbs, abs)));
+    return m ? tryParsed(path.join(wsAbs, "src", sourceOf(m[1] ?? ""))) : null;
+  }
+
+  function sourceRoot(wsAbs: string, o: Record<string, unknown>): string {
+    if (typeof o.rootDir === "string") return path.resolve(wsAbs, o.rootDir);
+    const include = readJsonc(path.join(wsAbs, "tsconfig.json"))?.include;
+    const prefixes = (Array.isArray(include) ? include : [])
+      .filter((x): x is string => typeof x === "string")
+      .map((g) =>
+        g
+          .split("/")
+          .filter((seg) => !/[*?[{]/.test(seg) && seg !== ".")
+          .join("/"),
+      );
+    // Static prefix of each include, cut at the first glob segment; a file pattern such as `src/a.ts` counts as its dir.
+    const dirs = prefixes.map((p) => (/\.[cm]?[jt]sx?$/.test(p) ? path.dirname(p) : p));
+    if (dirs.length === 0) return wsAbs;
+    let common = dirs[0]?.split("/").filter(Boolean) ?? [];
+    for (const d of dirs.slice(1)) {
+      const parts = d.split("/").filter(Boolean);
+      let i = 0;
+      while (i < common.length && common[i] === parts[i]) i++;
+      common = common.slice(0, i);
+    }
+    return path.join(wsAbs, ...common);
+  }
+
   /** Workspace package fallback (step 2): `<pkg name>[/sub]` -> workspace dir and its exports map. */
   function resolveWorkspacePackage(spec: string): string | null {
     const name = wsNamesByLength.find((n) => spec === n || spec.startsWith(`${n}/`));
@@ -323,13 +365,8 @@ export function createResolver(ctx: ResolveContext): Resolver {
       const abs = path.join(wsAbs, t);
       const hit = tryParsed(abs);
       if (hit) return hit;
-      // Built output mapped back to source: ./dist/x.js -> ./src/x.ts
-      const rel = posix(path.relative(wsAbs, abs));
-      const m = /^(?:dist|build|out|lib)\/(.*)$/.exec(rel);
-      if (m) {
-        const alt = tryParsed(path.join(wsAbs, "src", m[1] ?? ""));
-        if (alt) return alt;
-      }
+      const alt = sourceOfOutput(wsAbs, abs);
+      if (alt) return alt;
     }
     return null;
   }
