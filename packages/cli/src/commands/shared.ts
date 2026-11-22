@@ -33,6 +33,11 @@ export function summaryLines(r: IndexResult, dataDir: string): string[] {
     `  edges:         ${r.edges}`,
     `  unresolved:    ${r.unresolved.length}`,
     `  parse errors:  ${r.parseErrors.length}`,
+    ...(r.scip
+      ? [
+          `  scip:          ${r.scip.documents} documents, ${r.scip.edges} edges, ${r.scip.unmapped} unmapped, ${r.scip.otherRefs} other references, ${r.scip.stale} stale`,
+        ]
+      : []),
     `  data:          ${dataDir}`,
   ];
 }

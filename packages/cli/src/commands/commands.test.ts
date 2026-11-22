@@ -11,6 +11,7 @@ import {
   rmSync,
   statSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -250,7 +251,7 @@ describe("bundled CLI: vector tables and embeddings", () => {
     expect(r.code).toBe(0);
     const db = openBundleDb();
     try {
-      expect(db.getMeta("schema_version")).toBe("20");
+      expect(db.getMeta("schema_version")).toBe("21");
       expect(db.getMeta("vec_available")).toBe("1");
       expect(db.getMeta("embed_model")).toBe("jinaai/jina-embeddings-v2-base-code");
       expect(db.getMeta("embed_dim")).toBe("768");
@@ -339,6 +340,44 @@ describe("bundled CLI: vector tables and embeddings", () => {
     },
     120_000,
   );
+});
+
+describe("gantry index --scip", () => {
+  it("gives byte-identical dumps into two fresh data dirs and prints what it read", async () => {
+    const fx = await fixture("pnpm-turbo");
+    // The fixture is copied now, so a copy of the index dated an hour ahead stands for one made after the checkout.
+    const scip = join(mkdtempSync(join(tmpdir(), "gantry-scip-index-")), "pnpm-turbo.scip");
+    copyFileSync(join(repoRoot, "fixtures/scip/pnpm-turbo.scip"), scip);
+    const ahead = new Date(Date.now() + 3600 * 1000);
+    utimesSync(scip, ahead, ahead);
+    const dump = (flags: string[]) => {
+      const data = mkdtempSync(join(tmpdir(), "gantry-scip-data-"));
+      try {
+        const r = run(fx.dir, ["index", "--dump", ...flags], { CLAUDE_PLUGIN_DATA: data });
+        expect(r.code).toBe(0);
+        return r;
+      } finally {
+        rmSync(data, { recursive: true, force: true });
+      }
+    };
+    const a = dump(["--scip", scip]);
+    const b = dump(["--scip", scip]);
+    expect(a.out).toBe(b.out);
+    expect(a.err).toContain(
+      "  scip:          22 documents, 12 edges, 262 unmapped, 29 other references, 0 stale\n",
+    );
+    const edges = (JSON.parse(a.out) as { edges: { kind: string; fileId: string; source?: string }[] }).edges;
+    expect(edges.filter((e) => e.source === "scip")).toHaveLength(12);
+    const code = edges.filter(
+      (e) =>
+        ["calls", "renders", "uses_hook", "references_type"].includes(e.kind) && /\.tsx?$/.test(e.fileId),
+    );
+    expect(code.every((e) => e.source === "scip")).toBe(true);
+    // Without the flag nothing changes: no source field, no scip line.
+    const plain = dump([]);
+    expect(plain.out).not.toContain('"source"');
+    expect(plain.err).not.toContain("scip:");
+  });
 });
 
 describe("gantry index --dump", () => {

@@ -66,6 +66,8 @@ export interface EdgeRecord {
   level?: EdgeLevel;
   /** A `reads` / `writes` edge from a `query` text rule: the id of the text file that holds the statement (spec section 5). */
   textFileId?: string;
+  /** Present, as `"scip"`, only on an edge written from a SCIP index (precise mode, spec section 11); absent on an inferred edge. */
+  source?: "scip";
 }
 /**
  * A node contributed by a framework adapter (routes, endpoints, middleware; tables and procedures later), stored in

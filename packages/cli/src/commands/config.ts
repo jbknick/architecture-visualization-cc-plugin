@@ -8,7 +8,7 @@ const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !
 /** Keys below these paths are free-form records, so unknown names are allowed there. */
 const OPEN_RECORDS = new Set(["workspaces.overrides"]);
 /** Optional keys that have no default, so they are absent from the effective config until set. */
-const OPTIONAL_KEYS = new Set(["worker.binary"]);
+const OPTIONAL_KEYS = new Set(["worker.binary", "precise.scip"]);
 
 function lookup(cfg: unknown, parts: string[]): { found: boolean; value?: unknown } {
   let cur: unknown = cfg;

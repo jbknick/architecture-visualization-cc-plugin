@@ -122,3 +122,6 @@ A repo with several `package.json` files and no pnpm, npm, yarn, bun or Nx works
 - `server` (`@plain/server`) and `web` (`@plain/web`): each depends on `@plain/shared` and imports it from `src/`.
 - `tools/scripts` (`@plain/scripts`, no dependencies): a nested folder.
 - Counts: five workspaces (`.` and the four packages), two `imports` edges into `shared/src/index.ts`, two `depends_on` edges.
+
+## scip
+`pnpm-turbo.scip`, a SCIP index of `fixtures/pnpm-turbo` made once with scip-typescript, and a README with the command and the tool version. It is read by the precise-mode tests (`gantry index --scip`) and is not a repo of its own.
