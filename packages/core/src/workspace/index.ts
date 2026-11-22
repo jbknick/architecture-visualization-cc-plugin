@@ -1,5 +1,5 @@
-import { type Dirent, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, dirname, join, relative, resolve, sep } from "node:path";
+import { type Dirent, existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import picomatch from "picomatch";
 import { workspaceId } from "../ids.js";
 import type { ExportsEntry, WorkspaceRecord } from "../types.js";
@@ -41,7 +41,7 @@ function isDir(p: string): boolean {
 }
 
 /** JSON with comments and trailing commas, the form tsconfig files use. Null when it does not parse to an object. */
-function readJsonc(file: string): Json | null {
+export function readJsonc(file: string): Json | null {
   let text: string;
   try {
     text = readFileSync(file, "utf8");
@@ -93,9 +93,19 @@ function tsconfigReferenceDirs(root: string): string[] {
       if (p === undefined) continue;
       let target = resolve(dirname(tsconfig), p);
       if (isDir(target)) target = join(target, "tsconfig.json");
-      const dir = relative(base, dirname(target)).split(sep).join("/");
-      if (dir === ".." || dir.startsWith("../") || dir.split("/").some((d) => SKIP_DIRS.has(d))) continue;
       if (!existsSync(target)) continue;
+      const rel = relative(base, dirname(target));
+      const dir = rel.split(sep).join("/");
+      if (
+        isAbsolute(rel) ||
+        dir === ".." ||
+        dir.startsWith("../") ||
+        dir.split("/").some((d) => SKIP_DIRS.has(d))
+      )
+        continue;
+      // A symlinked directory inside the repo that points outside it is outside too.
+      const real = relative(realpathSync(base), realpathSync(dirname(target)));
+      if (isAbsolute(real) || real === ".." || real.startsWith(`..${sep}`)) continue;
       if (dir !== "") dirs.add(dir);
       visit(target);
     }

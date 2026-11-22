@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -125,6 +125,17 @@ describe("detectWorkspaces", () => {
       ["ws:repo:@acme/a", "packages/a"],
       ["ws:repo:packages/b", "packages/b"],
     ]);
+  });
+
+  it("ignores a reference through a symlink that points outside the repo", () => {
+    const outside = repo({ "tsconfig.json": {} });
+    const root = repo({
+      "package.json": { name: "root" },
+      "tsconfig.json": { references: [{ path: "./linked" }, { path: "./real" }] },
+      "real/tsconfig.json": {},
+    });
+    symlinkSync(outside, join(root, "linked"));
+    expect(detectWorkspaces(root, config, "repo").map((w) => w.dir)).toEqual([".", "real"]);
   });
 
   it("prefers Nx projects over tsconfig references", () => {

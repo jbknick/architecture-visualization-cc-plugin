@@ -697,3 +697,62 @@ module.exports = { resolve: { alias: { "~": __dirname + "/src" } } };`,
     expect(existsSync(marker)).toBe(false);
   });
 });
+
+describe("workspace package output mapped to source", () => {
+  const files = (pkg: Record<string, unknown>, tsconfig: Record<string, unknown>, src: string) => ({
+    "package.json": JSON.stringify({ name: "root", workspaces: ["packages/*"] }),
+    "packages/lib/package.json": JSON.stringify({ name: "@t/lib", ...pkg }),
+    "packages/lib/tsconfig.json": JSON.stringify({ compilerOptions: tsconfig.compilerOptions, ...tsconfig }),
+    [`packages/lib/${src}`]: "export const x = 1;",
+    "app.ts": "import { x } from '@t/lib';",
+  });
+  const hit = (f: Record<string, string>) =>
+    createResolver(repo(f)).resolveSpecifier("file:repo:app.ts", "@t/lib");
+
+  test("outDir dist with rootDir lib maps dist/index.js to lib/index.ts", () => {
+    const f = files(
+      { main: "dist/index.js" },
+      { compilerOptions: { outDir: "dist", rootDir: "lib" } },
+      "lib/index.ts",
+    );
+    expect(hit(f)).toEqual({ kind: "file", fileId: "file:repo:packages/lib/lib/index.ts" });
+  });
+
+  test("rootDir . with include src maps dist/src/index.js to src/index.ts", () => {
+    const f = files(
+      { main: "dist/src/index.js" },
+      { compilerOptions: { outDir: "dist", rootDir: "." }, include: ["src"] },
+      "src/index.ts",
+    );
+    expect(hit(f)).toEqual({ kind: "file", fileId: "file:repo:packages/lib/src/index.ts" });
+  });
+
+  test("without rootDir the root is the common directory of include", () => {
+    const f = files(
+      { main: "dist/index.js" },
+      { compilerOptions: { outDir: "dist" }, include: ["src/**/*"] },
+      "src/index.ts",
+    );
+    expect(hit(f)).toEqual({ kind: "file", fileId: "file:repo:packages/lib/src/index.ts" });
+  });
+
+  test("a custom outDir such as types maps a .d.ts target to source", () => {
+    const f = files(
+      { types: "types/index.d.ts" },
+      { compilerOptions: { outDir: "types", rootDir: "src" } },
+      "src/index.ts",
+    );
+    expect(hit(f)).toEqual({ kind: "file", fileId: "file:repo:packages/lib/src/index.ts" });
+  });
+
+  test("names dist, build, out and lib map to src only without an outDir", () => {
+    const withOut = files(
+      { main: "build/x.js" },
+      { compilerOptions: { outDir: "elsewhere", rootDir: "src" } },
+      "src/x.ts",
+    );
+    expect(hit(withOut)).toEqual({ kind: "unresolved" });
+    const without = files({ main: "build/x.js" }, { compilerOptions: {} }, "src/x.ts");
+    expect(hit(without)).toEqual({ kind: "file", fileId: "file:repo:packages/lib/src/x.ts" });
+  });
+});
