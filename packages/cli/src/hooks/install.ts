@@ -156,6 +156,36 @@ function wrapperDirOf(paths: GantryPaths): string {
   return paths.workspace.repos.length > 1 ? path.join(dir, paths.worktreeHash) : dir;
 }
 
+/**
+ * The wrapper dir a workspace of one repo used (`<dataDir>/hooks`), when the workspace has grown to several repos
+ * since: it is this tool's own earlier install of the repo, not a user's `core.hooksPath`. Moves its saved previous
+ * value to the per-repo meta keys and removes its scripts, so the install goes on as a re-install.
+ */
+function adoptSingleRepoInstall(paths: GantryPaths): void {
+  if (paths.workspace.repos.length < 2) return;
+  const legacy = path.join(paths.dataDir, "hooks");
+  withStore(paths, (s) => {
+    for (const key of [META_PREV, META_PREV_SCOPE]) {
+      const value = s.getMeta(key);
+      if (value === undefined) continue;
+      s.setMeta(metaKey(paths, key), value);
+      s.db.prepare("DELETE FROM meta WHERE key = ?").run(key);
+    }
+  });
+  try {
+    for (const f of fs.readdirSync(legacy)) {
+      const full = path.join(legacy, f);
+      if (fs.statSync(full).isFile()) fs.rmSync(full);
+    }
+  } catch {
+    // nothing to remove
+  }
+}
+
+function isSingleRepoWrapper(paths: GantryPaths, abs: string | undefined): boolean {
+  return paths.workspace.repos.length > 1 && abs === path.join(paths.dataDir, "hooks");
+}
+
 function withStore<T>(paths: GantryPaths, fn: (db: ReturnType<typeof openStore>) => T): T {
   const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
   try {
@@ -208,7 +238,8 @@ export function installHooks(
   }
 
   // core.hooksPath is set: husky, lefthook with a custom dir, or our own wrapper dir from a prior install.
-  if (currentAbs !== wrapperDir) {
+  if (isSingleRepoWrapper(paths, currentAbs)) adoptSingleRepoInstall(paths);
+  else if (currentAbs !== wrapperDir) {
     const scope = localHooksPath(root) === undefined ? "other" : "local";
     withStore(paths, (s) => {
       s.setMeta(metaPrev(paths), current);
@@ -265,7 +296,9 @@ export function uninstallHooks(paths: GantryPaths, _env: NodeJS.ProcessEnv = pro
   const wrapperDir = wrapperDirOf(paths);
   const local = localHooksPath(root);
 
-  if (local !== undefined && path.resolve(root, local) === wrapperDir) {
+  const localAbs = local === undefined ? undefined : path.resolve(root, local);
+  if (isSingleRepoWrapper(paths, localAbs)) adoptSingleRepoInstall(paths);
+  if (local !== undefined && (localAbs === wrapperDir || isSingleRepoWrapper(paths, localAbs))) {
     let prev: string | undefined;
     let scope: string | undefined;
     if (fs.existsSync(paths.dbPath)) {

@@ -143,4 +143,32 @@ describe("heal in a workspace", () => {
     const { web } = await setup();
     await expect(heal(web, { repo: "nope" })).rejects.toThrow(/no repo named nope/);
   });
+
+  it("a per-repo similar_to rebuild leaves the same edges touching the repo as a full rebuild", async () => {
+    const { web } = await setup();
+    const store = openStore(web.dbPath, { repo: web.repo });
+    try {
+      const touching = (repo: string): string => {
+        const p = `sym:${repo}:`;
+        return JSON.stringify(
+          store.db
+            .prepare(
+              `SELECT src, dst, confidence, evidence FROM edges WHERE kind = 'similar_to' AND layer = 'main'
+               AND (substr(src, 1, ?) = ? OR substr(dst, 1, ?) = ?) ORDER BY src, dst`,
+            )
+            .all(p.length, p, p.length, p),
+        );
+      };
+      for (const repo of ["web", "acme/api"]) {
+        const full = touching(repo);
+        expect(full).not.toBe("[]");
+        store.db.prepare("DELETE FROM edges WHERE kind = 'similar_to'").run();
+        await rebuildSimilarEdges(store, { repo });
+        expect(touching(repo)).toBe(full);
+        await rebuildSimilarEdges(store);
+      }
+    } finally {
+      store.close();
+    }
+  });
 });

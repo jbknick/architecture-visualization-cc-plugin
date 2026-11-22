@@ -617,8 +617,8 @@ export interface RebuildOptions {
   /** Candidates kept per symbol. Default 10. */
   perSymbolLimit?: number;
   /**
-   * Rebuild only the pairs that involve a symbol of this repo; edges between symbols of other repos are left alone, so
-   * a per-repo heal keeps cross-repo pairs right (spec section 11).
+   * Replace only the pairs that involve a symbol of this repo, with the pairs a full rebuild would find for them; edges
+   * between symbols of other repos are left alone (spec section 11).
    */
   repo?: string;
 }
@@ -666,7 +666,6 @@ export async function rebuildSimilarEdges(store: Store, opts: RebuildOptions = {
 
   const best = new Map<string, { src: Entry; dst: string; tier: Tier; score: number }>();
   for (const e of index.entries) {
-    if (!involved(e.id)) continue;
     if (!(e.exported || e.stmt >= floorsOf(e.lang).nearMinStmts)) continue;
     const dismissed = new Set<string>();
     const found = runTiers({
@@ -684,6 +683,8 @@ export async function rebuildSimilarEdges(store: Store, opts: RebuildOptions = {
     for (const c of found) {
       const key = pairKey(e.id, c.symbolId);
       if (dismissedPairs.has(key)) continue;
+      // Searches start from every symbol, as in a full rebuild, so a pair that only the other side finds is kept too.
+      if (!involved(e.id) && !involved(c.symbolId)) continue;
       const prev = best.get(key);
       if (
         !prev ||

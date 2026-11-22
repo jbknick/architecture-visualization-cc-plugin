@@ -79,8 +79,8 @@ describe("trace down from a page", () => {
       "ep:adapters:@demo/server:PATCH /api/posts/:id",
       "ep:adapters:@demo/web:fn savePost",
     ]);
-    // The fetch match is low confidence and says so.
-    expect(step(r, "ep:adapters:@demo/server:PATCH /api/posts/:id")?.confidence).toBe("low");
+    // The fetch match is unique and fully evaluated: high, so the step carries no confidence flag.
+    expect(step(r, "ep:adapters:@demo/server:PATCH /api/posts/:id")?.confidence).toBeUndefined();
     expect(r?.gaps).toContain(
       `unmatched client call "rpc posts.archive" (no_endpoint) in sym:adapters:apps/web/src/hooks/usePostActions.ts#usePostActions at apps/web/src/hooks/usePostActions.ts:12`,
     );

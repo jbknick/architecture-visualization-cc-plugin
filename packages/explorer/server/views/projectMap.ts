@@ -5,13 +5,12 @@ import {
   type Store,
   type SymbolKind,
   type SymbolRecord,
-  type WorkspaceRecord,
 } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { GraphEdge, GraphNode, ViewLevel, ViewModule, ViewParams, ViewResult } from "../types.js";
 import { addImportEdge, type ImportTally, importGraphEdge, newImportTally } from "./aggregate.js";
 import { buildBadgeIndex } from "./badges.js";
-import { addRepoTier, buildHierarchy, type HNode, repoOfNodeId, TIER } from "./hierarchy.js";
+import { addRepoTier, buildHierarchy, type HNode, TIER } from "./hierarchy.js";
 import { shortWorkspaceLabels } from "./labels.js";
 import { cmp, getOrInit, isTestPath, optBool, optList } from "./options.js";
 import { type MapPlacement, reviewFor, wantsReview } from "./review.js";
@@ -209,24 +208,6 @@ export function buildProjectMap(
     return undefined;
   };
   const wsLevel = !focusing && maxTier > TIER.workspace;
-  // Interim: the index stores an import of a package that a workspace of another repo publishes as an external
-  // (`ext:<name>`), so the view links the two workspaces from that import. Remove this (and `siblingOf` below) when
-  // the index resolves imports of sibling repos' packages to files.
-  const published = new Map<string, WorkspaceRecord[]>();
-  if (multiRepo)
-    for (const w of workspaces) getOrInit(published, w.name, () => [] as WorkspaceRecord[]).push(w);
-  const siblingOf = (specifier: string, fromRepo: string | undefined): WorkspaceRecord | undefined => {
-    const name = specifier.startsWith("@")
-      ? specifier.split("/").slice(0, 2).join("/")
-      : (specifier.split("/")[0] as string);
-    return published.get(name)?.find((w) => repoOfNodeId(w.id) !== fromRepo && byId.has(w.id));
-  };
-  /** The returned node standing for `id`: itself, or the nearest ancestor that is returned. */
-  const shownAs = (id: string): string | undefined => {
-    for (let h = byId.get(id); h; h = h.parent) if (repable.has(h.node.id)) return h.node.id;
-    return undefined;
-  };
-
   const dependsOn = new Map<string, GraphEdge>();
   for (const e of edges) {
     if (e.kind === "imports") {
@@ -239,12 +220,6 @@ export function buildProjectMap(
           ? repFile(e.dst)
           : undefined;
       add(repFile(e.src), dst, e, "imports");
-      // Interim, see `published` above: only while such imports are stored as externals.
-      if (multiRepo && e.dst.startsWith("ext:")) {
-        const sibling = siblingOf(e.dst.slice(4), repoOfId(e.src));
-        const from = wsOf(e.src);
-        if (sibling && from) add(shownAs(from), shownAs(sibling.id), e, "imports");
-      }
       if (wsLevel && fileIds.has(e.dst)) add(wsOf(e.src), wsOf(e.dst), e, "imports");
     } else if (USE_KINDS.has(e.kind)) {
       const sf = fileOfSym.get(e.src) ?? (isFileId(e.src) ? e.src : undefined);

@@ -683,7 +683,7 @@ describe("entry points", () => {
         st.close();
       }
     };
-    expect(versionOf()).toBe("14");
+    expect(versionOf()).toBe("15");
     setVersion("6");
     const input = JSON.stringify({
       session_id: "s",
@@ -723,15 +723,15 @@ describe("entry points", () => {
       err: "",
     });
     expect(versionOf()).toBe("6");
-    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 14)");
+    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 15)");
 
     // The next non-hook command rebuilds from scratch, with one message naming the reason.
     const init = gantry(fx.dir, ["init"]);
     expect(init.code).toBe(0);
     expect(
-      init.err.split("built by an older version of Gantry (schema 6, now 14); rebuilding it").length - 1,
+      init.err.split("built by an older version of Gantry (schema 6, now 15); rebuilding it").length - 1,
     ).toBe(1);
-    expect(versionOf()).toBe("14");
+    expect(versionOf()).toBe("15");
   });
 
   it("session-start and the git hooks create no data dir for a repository without an index (#147)", async () => {
@@ -1459,5 +1459,30 @@ describe("hooks in a workspace of two repos", () => {
     expect(r.code).toBe(0);
     expect(r.out).toBe("");
     expect(readFileSync(join(api.logsDir, "hooks.log"), "utf8")).toMatch(/post-checkout error:/);
+  });
+
+  it("a workspace that grows from one repo to two re-installs over its own wrapper dir and uninstalls cleanly", async () => {
+    const mr = await workspace();
+    const file = join(mr.root, "gantry-workspace.json");
+    const both = readFileSync(file, "utf8");
+    const parsed = JSON.parse(both) as { repos: { path: string }[] };
+    writeFileSync(file, JSON.stringify({ repos: parsed.repos.filter((r) => r.path.includes("web")) }));
+    const log = join(tmpRoot, "grow.log");
+    writeHook(join(mr.repos.web, ".husky/pre-commit"), `echo "husky" >> '${log}'`);
+    git(mr.repos.web, ["config", "core.hooksPath", ".husky"]);
+
+    installHooksInWorkspace(pathsOf(mr.repos.web), { cliPath: cli, env });
+    writeFileSync(file, both);
+    const grown = pathsOf(mr.repos.web);
+    expect(grown.workspace.repos).toHaveLength(2);
+    installHooksInWorkspace(grown, { cliPath: cli, env });
+
+    writeFileSync(grown.shimPath, `#!/bin/sh\necho "gantry $*" >> '${log}'\n`, { mode: 0o755 });
+    expect(commitFile(mr.repos.web).code).toBe(0);
+    const lines = readFileSync(log, "utf8").trim().split("\n").sort();
+    expect(lines).toEqual(["gantry hook pre-commit", "husky"]);
+
+    uninstallHooksInWorkspace(grown, env);
+    expect(hooksPathConfig(mr.repos.web).out.trim()).toBe(".husky");
   });
 });

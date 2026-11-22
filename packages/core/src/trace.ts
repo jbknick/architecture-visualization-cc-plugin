@@ -107,14 +107,19 @@ function spanOf(n: AdapterNodeRecord | undefined): Span | null {
     : null;
 }
 
+/** The `path:line` entries of an edge's evidence (an edge into another repo also carries a `sibling:<repo>` note). */
+const lineEntries = (e: EdgeRecord): string[] => e.evidence.filter((x) => !x.startsWith("sibling:"));
 const evidenceLines = (e: EdgeRecord): number[] =>
-  e.evidence.map((x) => Number(x.slice(x.lastIndexOf(":") + 1))).filter((n) => Number.isInteger(n) && n > 0);
+  lineEntries(e)
+    .map((x) => Number(x.slice(x.lastIndexOf(":") + 1)))
+    .filter((n) => Number.isInteger(n) && n > 0);
 
-/** Does an edge leave the handler from inside one of the spans? `capped` when that cannot be told. */
-function inSpans(e: EdgeRecord, spans: Span[]): "yes" | "no" | "capped" {
+/** Does an edge leave the handler from inside one of the spans? `capped` when that cannot be told. Exported for its test. */
+export function inSpans(e: EdgeRecord, spans: Span[]): "yes" | "no" | "capped" {
   const lines = evidenceLines(e);
   if (lines.some((l) => spans.some((s) => l >= s.start && l <= s.end))) return "yes";
-  return e.evidence.length >= EVIDENCE_CAP && e.count > e.evidence.length ? "capped" : "no";
+  const kept = lineEntries(e).length;
+  return kept >= EVIDENCE_CAP && e.count > kept ? "capped" : "no";
 }
 
 /** Resolves a target: an id (route, endpoint, table, middleware, symbol, file), a route path, an endpoint label, a table name, a file path or path:line. */
