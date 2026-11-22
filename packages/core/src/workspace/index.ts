@@ -133,9 +133,12 @@ function parsePnpmPackages(text: string): string[] {
   return out;
 }
 
-/** All repo-relative posix dirs containing `file`, skipping node_modules, .git and nested worktrees. */
-function dirsContaining(root: string, file: string): string[] {
-  const found: string[] = [];
+/**
+ * One walk that lists, per marker file, the repo-relative posix dirs containing it. It skips node_modules, .git and
+ * nested worktrees; with `pruneExcluded` it also never enters a directory under the built-in excludes (spec section 5).
+ */
+function walkMarkers(root: string, files: string[], pruneExcluded: boolean): Map<string, string[]> {
+  const found = new Map<string, string[]>(files.map((f) => [f, []]));
   const walk = (rel: string): void => {
     const abs = rel === "." ? root : join(root, rel);
     let entries: Dirent[];
@@ -144,11 +147,14 @@ function dirsContaining(root: string, file: string): string[] {
     } catch {
       return;
     }
-    if (entries.some((e) => e.isFile() && e.name === file)) found.push(rel);
+    for (const f of files) {
+      if (entries.some((e) => e.isFile() && e.name === f)) found.get(f)?.push(rel);
+    }
     for (const e of entries) {
       if (!e.isDirectory() || SKIP_DIRS.has(e.name)) continue;
       const child = rel === "." ? e.name : `${rel}/${e.name}`;
       if (child === ".claude/worktrees" || child.endsWith("/.claude/worktrees")) continue;
+      if (pruneExcluded && matchesAny(BUILTIN_EXCLUDES, child)) continue;
       walk(child);
     }
   };
@@ -156,14 +162,13 @@ function dirsContaining(root: string, file: string): string[] {
   return found;
 }
 
-/**
- * Every directory that holds a package.json, the root included, except those under the built-in excludes (spec
- * section 5) and those git ignores. Outside a git repository nothing is ignored.
- */
-function packageDirs(root: string): string[] {
-  const dirs = dirsContaining(root, "package.json").filter(
-    (d) => d === "." || !matchesAny(BUILTIN_EXCLUDES, d),
-  );
+/** All repo-relative posix dirs containing `file`, skipping node_modules, .git and nested worktrees. */
+function dirsContaining(root: string, file: string): string[] {
+  return walkMarkers(root, [file], false).get(file) ?? [];
+}
+
+/** Drop the directories whose package.json git ignores. Outside a git repository nothing is ignored. */
+function dropGitIgnored(root: string, dirs: string[]): string[] {
   const manifests = dirs.filter((d) => d !== ".").map((d) => `${d}/package.json`);
   if (manifests.length === 0) return dirs;
   const res = spawnSync("git", ["check-ignore", "-z", "--stdin"], {
@@ -332,9 +337,11 @@ export function detectWorkspaces(
   } else if (npmGlobs) {
     dirs = expandGlobs(root, npmGlobs, "package.json");
   } else {
-    dirs = dirsContaining(root, "project.json").filter((d) => d !== ".");
+    const found = walkMarkers(root, ["project.json", "package.json"], true);
+    dirs = (found.get("project.json") ?? []).filter((d) => d !== ".");
     if (dirs.length === 0) dirs = tsconfigReferenceDirs(root);
-    if (dirs.length === 0) dirs = packageDirs(root).filter((d) => d !== ".");
+    if (dirs.length === 0)
+      dirs = dropGitIgnored(root, found.get("package.json") ?? []).filter((d) => d !== ".");
   }
   const all = [...new Set([".", ...dirs])].sort();
   const records = all.map((d) => buildRecord(root, repo, d, config));

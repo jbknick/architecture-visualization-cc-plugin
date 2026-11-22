@@ -2,7 +2,20 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const visited: string[] = [];
+vi.mock("node:fs", async (orig) => {
+  const real = await orig<typeof import("node:fs")>();
+  return {
+    ...real,
+    readdirSync: ((p: string, ...rest: unknown[]) => {
+      visited.push(String(p));
+      return (real.readdirSync as (...a: unknown[]) => unknown)(p, ...rest);
+    }) as typeof real.readdirSync,
+  };
+});
+
 import { detectWorkspaces, flattenExports, workspaceForPath } from "./index.js";
 
 const config = { workspaces: { overrides: {} as Record<string, { kind?: "app" | "package" }> } };
@@ -163,6 +176,18 @@ describe("detectWorkspaces", () => {
       ["server", "@plain/server"],
       ["tools/scripts", "@plain/scripts"],
     ]);
+  });
+
+  it("does not descend into a directory under the built-in excludes", () => {
+    const root = repo({
+      "package.json": { name: "plain-root" },
+      "a/package.json": { name: "a" },
+      "dist/deep/er/package.json": { name: "built" },
+      "a/coverage/x/package.json": { name: "cov" },
+    });
+    visited.length = 0;
+    expect(detectWorkspaces(root, config, "repo").map((w) => w.dir)).toEqual([".", "a"]);
+    expect(visited.filter((p) => /[\\/](dist|coverage)([\\/]|$)/.test(p))).toEqual([]);
   });
 
   it("skips a package.json that git ignores", () => {
