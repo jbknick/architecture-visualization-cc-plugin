@@ -1,7 +1,21 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const visited: string[] = [];
+vi.mock("node:fs", async (orig) => {
+  const real = await orig<typeof import("node:fs")>();
+  return {
+    ...real,
+    readdirSync: ((p: string, ...rest: unknown[]) => {
+      visited.push(String(p));
+      return (real.readdirSync as (...a: unknown[]) => unknown)(p, ...rest);
+    }) as typeof real.readdirSync,
+  };
+});
+
 import { detectWorkspaces, flattenExports, workspaceForPath } from "./index.js";
 
 const config = { workspaces: { overrides: {} as Record<string, { kind?: "app" | "package" }> } };
@@ -146,6 +160,60 @@ describe("detectWorkspaces", () => {
       "libs/y/project.json": { name: "y" },
     });
     expect(detectWorkspaces(root, config, "repo").map((w) => w.dir)).toEqual([".", "libs/y"]);
+  });
+
+  it("makes every package.json directory a workspace when no tool names them", () => {
+    const root = repo({
+      "package.json": { name: "plain-root" },
+      "server/package.json": { name: "@plain/server" },
+      "tools/scripts/package.json": { name: "@plain/scripts" },
+      "node_modules/x/package.json": { name: "x" },
+      "dist/pkg/package.json": { name: "built" },
+      "server/build/package.json": { name: "built-too" },
+    });
+    expect(detectWorkspaces(root, config, "repo").map((w) => [w.dir, w.name])).toEqual([
+      [".", "plain-root"],
+      ["server", "@plain/server"],
+      ["tools/scripts", "@plain/scripts"],
+    ]);
+  });
+
+  it("does not descend into a directory under the built-in excludes", () => {
+    const root = repo({
+      "package.json": { name: "plain-root" },
+      "a/package.json": { name: "a" },
+      "dist/deep/er/package.json": { name: "built" },
+      "a/coverage/x/package.json": { name: "cov" },
+    });
+    visited.length = 0;
+    expect(detectWorkspaces(root, config, "repo").map((w) => w.dir)).toEqual([".", "a"]);
+    expect(visited.filter((p) => /[\\/](dist|coverage)([\\/]|$)/.test(p))).toEqual([]);
+  });
+
+  it("skips a package.json that git ignores", () => {
+    const root = repo({
+      "package.json": { name: "plain-root" },
+      ".gitignore": "scratch/\n",
+      "a/package.json": { name: "a" },
+      "scratch/b/package.json": { name: "b" },
+    });
+    execFileSync("git", ["init", "-q"], { cwd: root });
+    expect(detectWorkspaces(root, config, "repo").map((w) => w.dir)).toEqual([".", "a"]);
+  });
+
+  it("stays one workspace when only the root has a package.json", () => {
+    const root = repo({ "package.json": { name: "solo" }, "src/x.ts": "" });
+    expect(detectWorkspaces(root, config, "repo")).toHaveLength(1);
+  });
+
+  it("uses only the globs of a pnpm workspace file, not every package.json", () => {
+    const root = repo({
+      "package.json": { name: "root" },
+      "pnpm-workspace.yaml": "packages:\n  - 'apps/*'\n",
+      "apps/web/package.json": { name: "web" },
+      "tools/scripts/package.json": { name: "scripts" },
+    });
+    expect(detectWorkspaces(root, config, "repo").map((w) => w.dir)).toEqual([".", "apps/web"]);
   });
 
   it("falls back to a single root workspace", () => {

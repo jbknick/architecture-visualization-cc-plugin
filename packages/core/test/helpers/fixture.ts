@@ -9,6 +9,7 @@ export type FixtureName =
   | "pnpm-turbo"
   | "nx"
   | "ts-references"
+  | "no-workspace-tool"
   | "bundler-aliases"
   | "adapters"
   | "linking"

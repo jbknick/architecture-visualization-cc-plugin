@@ -1,6 +1,8 @@
+import { spawnSync } from "node:child_process";
 import { type Dirent, existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import picomatch from "picomatch";
+import { BUILTIN_EXCLUDES, matchesAny } from "../config/index.js";
 import { workspaceId } from "../ids.js";
 import type { ExportsEntry, WorkspaceRecord } from "../types.js";
 
@@ -131,9 +133,12 @@ function parsePnpmPackages(text: string): string[] {
   return out;
 }
 
-/** All repo-relative posix dirs containing `file`, skipping node_modules, .git and nested worktrees. */
-function dirsContaining(root: string, file: string): string[] {
-  const found: string[] = [];
+/**
+ * One walk that lists, per marker file, the repo-relative posix dirs containing it. It skips node_modules, .git and
+ * nested worktrees; with `pruneExcluded` it also never enters a directory under the built-in excludes (spec section 5).
+ */
+function walkMarkers(root: string, files: string[], pruneExcluded: boolean): Map<string, string[]> {
+  const found = new Map<string, string[]>(files.map((f) => [f, []]));
   const walk = (rel: string): void => {
     const abs = rel === "." ? root : join(root, rel);
     let entries: Dirent[];
@@ -142,16 +147,39 @@ function dirsContaining(root: string, file: string): string[] {
     } catch {
       return;
     }
-    if (entries.some((e) => e.isFile() && e.name === file)) found.push(rel);
+    for (const f of files) {
+      if (entries.some((e) => e.isFile() && e.name === f)) found.get(f)?.push(rel);
+    }
     for (const e of entries) {
       if (!e.isDirectory() || SKIP_DIRS.has(e.name)) continue;
       const child = rel === "." ? e.name : `${rel}/${e.name}`;
       if (child === ".claude/worktrees" || child.endsWith("/.claude/worktrees")) continue;
+      if (pruneExcluded && matchesAny(BUILTIN_EXCLUDES, child)) continue;
       walk(child);
     }
   };
   walk(".");
   return found;
+}
+
+/** All repo-relative posix dirs containing `file`, skipping node_modules, .git and nested worktrees. */
+function dirsContaining(root: string, file: string): string[] {
+  return walkMarkers(root, [file], false).get(file) ?? [];
+}
+
+/** Drop the directories whose package.json git ignores. Outside a git repository nothing is ignored. */
+function dropGitIgnored(root: string, dirs: string[]): string[] {
+  const manifests = dirs.filter((d) => d !== ".").map((d) => `${d}/package.json`);
+  if (manifests.length === 0) return dirs;
+  const res = spawnSync("git", ["check-ignore", "-z", "--stdin"], {
+    cwd: root,
+    encoding: "utf8",
+    input: manifests.join("\0"),
+    stdio: ["pipe", "pipe", "ignore"],
+  });
+  if (res.status !== 0 && res.status !== 1) return dirs;
+  const ignored = new Set(res.stdout.split("\0").filter((p) => p !== ""));
+  return dirs.filter((d) => d === "." || !ignored.has(`${d}/package.json`));
 }
 
 function expandGlobs(root: string, globs: string[], marker: string): string[] {
@@ -293,7 +321,7 @@ function buildRecord(
 
 /**
  * Detect workspaces: pnpm-workspace.yaml, then package.json `workspaces`, then Nx
- * project.json files, then the projects the root tsconfig.json references, else a single root workspace. The root is always `ws:<repo>:.`.
+ * project.json files, then the projects the root tsconfig.json references, then every directory holding a package.json (built-in excludes and git-ignored paths skipped), else a single root workspace. The root is always `ws:<repo>:.`.
  */
 export function detectWorkspaces(
   root: string,
@@ -309,8 +337,11 @@ export function detectWorkspaces(
   } else if (npmGlobs) {
     dirs = expandGlobs(root, npmGlobs, "package.json");
   } else {
-    dirs = dirsContaining(root, "project.json").filter((d) => d !== ".");
+    const found = walkMarkers(root, ["project.json", "package.json"], true);
+    dirs = (found.get("project.json") ?? []).filter((d) => d !== ".");
     if (dirs.length === 0) dirs = tsconfigReferenceDirs(root);
+    if (dirs.length === 0)
+      dirs = dropGitIgnored(root, found.get("package.json") ?? []).filter((d) => d !== ".");
   }
   const all = [...new Set([".", ...dirs])].sort();
   const records = all.map((d) => buildRecord(root, repo, d, config));
