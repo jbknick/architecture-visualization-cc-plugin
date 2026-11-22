@@ -88,6 +88,8 @@ export interface Store {
   effectiveEdges(filter?: { src?: string; dst?: string; kind?: EdgeKind[] }): EdgeRecord[];
   /** Adapter nodes of the effective view (working rows win per file, like symbols), ordered by id. */
   effectiveAdapterNodes(filter?: { kind?: string; ws?: string; fileId?: string }): AdapterNodeRecord[];
+  /** Adapter nodes of one kind as the main layer holds them (no working rows), of files that are not deleted there. */
+  mainAdapterNodes(kind: string): AdapterNodeRecord[];
   /** Effective edges stored on the given files (all kinds), ordered like `effectiveEdges`. One query for the lot. */
   effectiveEdgesOfFiles(fileIds: readonly string[]): EdgeRecord[];
   /** Effective adapter nodes stored on the given files, ordered by id. */
@@ -629,6 +631,11 @@ export function createStore(db: Database, entryRepo?: string): Store {
         WHERE f.deleted = 0${where.map((w) => ` AND ${w}`).join("")}
         ORDER BY n.id`;
       return (stmt(sql).all(...args) as AdapterNodeRow[]).map(toAdapterNode);
+    },
+    mainAdapterNodes(kind) {
+      const sql = `SELECT n.* FROM adapter_nodes n JOIN files f ON f.id = n.file_id AND f.layer = n.layer
+        WHERE n.layer = 'main' AND f.deleted = 0 AND n.kind = ? ORDER BY n.id`;
+      return (stmt(sql).all(kind) as AdapterNodeRow[]).map(toAdapterNode);
     },
     effectiveEdgesOfFiles(fileIds) {
       if (fileIds.length === 0) return [];

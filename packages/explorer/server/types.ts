@@ -39,6 +39,8 @@ export interface GraphNode {
   lane?: number;
   /** Cross-stack views: order inside the lane (smaller first; ties by id). */
   rank?: number;
+  /** Endpoints view of a store with several repos: the repo the node's id names (absent with one repo). */
+  repo?: string;
   /** Endpoints view: the group the node is laid out in (`rpc`, `http`, `server fn`), stacked top to bottom. */
   band?: string;
   x?: number;

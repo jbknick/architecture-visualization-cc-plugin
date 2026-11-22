@@ -1,4 +1,4 @@
-import type { AdapterNodeRecord, EdgeRecord } from "@gantry/core";
+import { type AdapterNodeRecord, type EdgeRecord, repoOfId } from "@gantry/core";
 import { HttpError } from "../errors.js";
 import type { ViewModule, ViewResult } from "../types.js";
 import {
@@ -165,6 +165,13 @@ export const endpointsView: ViewModule = {
       }
     }
     const { nodes, edges } = b.result();
+    // A workspace of several repos: every node says which repo it is in (`mwref:` nodes are names, not code).
+    if (store.listRepos().length > 1) {
+      for (const n of nodes) {
+        const repo = n.id.startsWith("mwref:") ? undefined : repoOfId(n.id);
+        if (repo !== undefined) n.repo = repo;
+      }
+    }
     for (let lane = 1; lane < SERVICE + depth; lane++) labelRanks(nodes, lane);
     const lanes: Lane[] = [
       { lane: 0, label: "Endpoint" },
