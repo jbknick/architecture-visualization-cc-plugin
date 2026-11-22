@@ -71,9 +71,15 @@ const PackSchema = z.strictObject({
       path: field,
       alias: field,
       quotes: z.string(),
-      localName: z.strictObject({ separator: field, skip: regexp }),
+      separator: field,
+      localName: z.strictObject({ skip: regexp }),
     }),
     call: strings,
+    callee: z.strictObject({
+      field,
+      names: strings,
+      member: z.strictObject({ kind: field, operand: field, name: field, operands: strings }),
+    }),
     exported: z.literal("capitalized"),
     signature: z.strictObject({ empty: z.string(), maxLength: z.number().int().positive() }),
     measure: z.strictObject({
@@ -140,8 +146,11 @@ describe("language packs", () => {
 describe("engine", () => {
   it("names no language", () => {
     const dir = dirname(fileURLToPath(import.meta.url));
-    const files = readdirSync(dir).filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"));
+    const files = readdirSync(dir, { recursive: true, encoding: "utf8" }).filter(
+      (f) => f.endsWith(".ts") && !f.endsWith(".test.ts"),
+    );
     expect(files.length).toBeGreaterThan(0);
+    expect(files).toContain(join("resolve", "calls.ts"));
     for (const f of files) {
       const text = readFileSync(join(dir, f), "utf8");
       for (const p of PACKS) {

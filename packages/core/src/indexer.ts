@@ -160,7 +160,7 @@ async function readEntry(root: string, e: Entry, sources?: Map<string, string>):
 }
 
 const edgeKey = (e: EdgeRecord): string =>
-  `${e.src}\0${e.dst}\0${e.kind}\0${e.confidence}\0${e.count}\0${JSON.stringify(e.evidence)}\0${e.fileId}\0${e.textFileId ?? ""}`;
+  `${e.src}\0${e.dst}\0${e.kind}\0${e.confidence}\0${e.count}\0${JSON.stringify(e.evidence)}\0${e.fileId}\0${e.level ?? ""}\0${e.textFileId ?? ""}`;
 
 function sameEdges(a: EdgeRecord[], b: EdgeRecord[]): boolean {
   if (a.length !== b.length) return false;

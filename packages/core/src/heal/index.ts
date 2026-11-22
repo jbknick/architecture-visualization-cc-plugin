@@ -129,7 +129,7 @@ function dropRedundantWorking(store: Store, repo: string): void {
     )
     .all(repo) as { id: string }[];
   const edges = store.db.prepare(
-    "SELECT src, dst, kind, confidence, count, evidence, text_file_id FROM edges WHERE layer = ? AND file_id = ? ORDER BY src, dst, kind",
+    "SELECT src, dst, kind, confidence, count, evidence, level, text_file_id FROM edges WHERE layer = ? AND file_id = ? ORDER BY src, dst, kind",
   );
   const nodes = store.db.prepare(
     "SELECT id, kind, ws, label, data FROM adapter_nodes WHERE layer = ? AND file_id = ? ORDER BY id",

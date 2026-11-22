@@ -75,9 +75,15 @@ export const goPack = {
       alias: "name",
       quotes: '"`',
       // `golang.org/x/text/v2` is imported as `text`.
-      localName: { separator: "/", skip: /^v\d+$/ },
+      separator: "/",
+      localName: { skip: /^v\d+$/ },
     },
     call: ["call_expression"],
+    callee: {
+      field: "function",
+      names: ["identifier"],
+      member: { kind: "selector_expression", operand: "operand", name: "field", operands: ["identifier"] },
+    },
     exported: "capitalized",
     signature: { empty: "()", maxLength: 200 },
     measure: {

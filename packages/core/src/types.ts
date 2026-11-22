@@ -52,6 +52,8 @@ export type EdgeKind =
   | "reads"
   | "writes"
   | "similar_to";
+/** How a `calls` edge was resolved: 1 by names alone, 2 with types read from the syntax, 3 with a language's own tooling. */
+export type EdgeLevel = 1 | 2 | 3;
 export interface EdgeRecord {
   src: string;
   dst: string;
@@ -60,6 +62,8 @@ export interface EdgeRecord {
   count: number;
   evidence: string[];
   fileId: string;
+  /** A `calls` edge from a language pack's resolver: the level that produced it (spec section 7). */
+  level?: EdgeLevel;
   /** A `reads` / `writes` edge from a `query` text rule: the id of the text file that holds the statement (spec section 5). */
   textFileId?: string;
 }

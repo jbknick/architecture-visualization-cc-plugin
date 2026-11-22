@@ -172,10 +172,10 @@ function measure(pack: LanguagePack, body: SyntaxNode | null): { complexity: num
 
 /** The local name of an import without an alias: `golang.org/x/text/v2` -> `text`. */
 function defaultImportName(pack: LanguagePack, path: string): string {
-  const rule = pack.nodes.import.localName;
-  const parts = path.split(rule.separator);
+  const parts = path.split(pack.nodes.import.separator);
   let last = parts[parts.length - 1] ?? path;
-  if (rule.skip.test(last) && parts.length > 1) last = parts[parts.length - 2] as string;
+  if (pack.nodes.import.localName.skip.test(last) && parts.length > 1)
+    last = parts[parts.length - 2] as string;
   return last;
 }
 

@@ -3,7 +3,8 @@ import type { DupThresholds } from "../index.js";
 
 /**
  * A language pack (spec section 3, `lang/engine/` and `lang/packs/`): everything the shared engine needs to know about a
- * language except call resolution. A pack is a typed constant; the engine holds no language name and no node kind.
+ * language except what a language's own call resolver adds. A pack is a typed constant; the engine holds no language name
+ * and no node kind.
  * Node kinds and field names are those of the tree-sitter grammar the pack names in `grammar`.
  */
 
@@ -93,11 +94,22 @@ export interface LanguagePack {
       alias: string;
       /** Quote characters around the path. */
       quotes: string;
+      /** Separates the segments of an imported path. The first segments are a workspace name, the rest a folder in it. */
+      separator: string;
       /** The local name of an import without an alias: the last path segment, skipping a segment that matches `skip`. */
-      localName: { separator: string; skip: RegExp };
+      localName: { skip: RegExp };
     };
     /** Kinds of a call site. */
     call: readonly string[];
+    /** What is called at a call site, read by the name resolver. */
+    callee: {
+      /** Field of a call site that holds the called expression. */
+      field: string;
+      /** Kinds of a bare name (`run`). */
+      names: readonly string[];
+      /** A name reached through an operand (`<operand>.<name>`): its kind, the fields of both parts, and the kinds an operand that is a plain name has. */
+      member: { kind: string; operand: string; name: string; operands: readonly string[] };
+    };
     /** Rule for `exported`: `capitalized` is an upper-case first letter. */
     exported: "capitalized";
     signature: { empty: string; maxLength: number };

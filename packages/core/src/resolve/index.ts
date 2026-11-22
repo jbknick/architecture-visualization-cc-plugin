@@ -67,11 +67,11 @@ export interface Resolver {
   /** All non-workspace edges whose source is this file or something inside it. Sorted by (src, dst, kind). */
   edgesForFile(fileId: string): EdgeRecord[];
   /**
-   * Go only: the symbol id of the function or method that the call, or the function named without a call, at this
-   * source range refers to (local type inference, no toolchain); null when it is not in the repository or unknown.
+   * Language packs only: the symbol id of the function or method that the call, or the function named without a call,
+   * at this source range refers to (no toolchain); null when it is not in the repository or unknown.
    */
   targetAt?(fileId: string, start: number, end: number): string | null;
-  /** Go only: the name of the named type of the expression at this source range; null when unknown. */
+  /** Language packs only: the name of the named type of the expression at this source range; null when unknown. */
   typeNameAt?(fileId: string, start: number, end: number): string | null;
   /** `depends_on` edges between workspaces, from package.json dependency names. Sorted. */
   workspaceEdges(): EdgeRecord[];
