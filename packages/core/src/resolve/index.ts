@@ -220,21 +220,30 @@ export function createResolver(ctx: ResolveContext): Resolver {
     return a;
   }
 
+  /** A key matches its specifier or the specifier plus `/` and a subpath; a trailing `$` means the exact specifier. */
+  function keyMatches(key: string, spec: string): boolean {
+    if (key.endsWith("$")) return spec === key.slice(0, -1);
+    return spec === key || spec.startsWith(`${key}/`);
+  }
+
   /** `alias_not_static` for a specifier that an alias the index could not read may have stood for. */
   function unreadableAlias(ws: WorkspaceRecord, spec: string): Classified {
-    const hit = aliasesOf(ws).unreadable.find(
-      (u) => u.key === "*" || spec.startsWith(u.key.endsWith("$") ? u.key.slice(0, -1) : u.key),
-    );
+    const hit = aliasesOf(ws).unreadable.find((u) => u.key === "*" || keyMatches(u.key, spec));
     return hit
       ? { class: "unresolved", reason: "alias_not_static", alias: hit.key }
       : { class: "unresolved" };
   }
 
-  function resolverFor(ws: WorkspaceRecord): ResolverFactory {
-    let r = resolvers.get(ws.id);
+  /**
+   * The resolver of a workspace. Bundlers apply their aliases before anything else, but oxc-resolver tries tsconfig
+   * `paths` before `alias`, so the aliases go to a second resolver without tsconfig that is asked first.
+   */
+  function resolverFor(ws: WorkspaceRecord, aliasOnly = false): ResolverFactory {
+    const cacheKey = aliasOnly ? `${ws.id}\0alias` : ws.id;
+    let r = resolvers.get(cacheKey);
     if (!r) {
-      const tsconfig = nearestTsconfig(ws.dir);
-      const aliases = aliasesOf(ws).aliases;
+      const tsconfig = aliasOnly ? null : nearestTsconfig(ws.dir);
+      const aliases = aliasOnly ? aliasesOf(ws).aliases : [];
       r = new ResolverFactory({
         extensions: EXTENSIONS,
         extensionAlias: {
@@ -251,7 +260,7 @@ export function createResolver(ctx: ResolveContext): Resolver {
           : {}),
         ...(tsconfig ? { tsconfig: { configFile: tsconfig, references: "auto" as const } } : {}),
       });
-      resolvers.set(ws.id, r);
+      resolvers.set(cacheKey, r);
     }
     return r;
   }
@@ -367,10 +376,14 @@ export function createResolver(ctx: ResolveContext): Resolver {
 
     // 3. oxc-resolver, passing the importing file so tsconfig discovery is per package.
     let result: { path?: string; error?: string; builtin?: unknown } = {};
-    try {
-      result = resolverFor(fromWs).resolveFileSync(fromAbs, spec);
-    } catch (e) {
-      result = { error: e instanceof Error ? e.message : String(e) };
+    const viaAlias = aliasesOf(fromWs).aliases.some((a) => keyMatches(a.find, spec));
+    for (const aliasOnly of viaAlias ? [true, false] : [false]) {
+      try {
+        result = resolverFor(fromWs, aliasOnly).resolveFileSync(fromAbs, spec);
+      } catch (e) {
+        result = { error: e instanceof Error ? e.message : String(e) };
+      }
+      if (result.path || result.builtin) break;
     }
     if (result.builtin) return { class: "builtin", pkg: spec };
     if (result.path) {

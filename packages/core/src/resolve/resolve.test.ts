@@ -640,6 +640,44 @@ export default ({ mode }) => {
     expect(r.resolveSpecifier(file("apps/b/src/m.ts"), "w/x")).toEqual({ kind: "unresolved" });
   });
 
+  test("an alias wins over tsconfig paths", () => {
+    const r = createResolver(
+      repo({
+        "package.json": JSON.stringify({ name: "root" }),
+        "tsconfig.json": JSON.stringify({
+          compilerOptions: { baseUrl: ".", paths: { "@/*": ["other/*"] } },
+        }),
+        "vite.config.ts": `export default { resolve: { alias: { "@": "/src" } } };`,
+        "src/a/x.ts": "export const x = 1;",
+        "other/a/x.ts": "export const x = 2;",
+        "src/m.ts": "export {};",
+      }),
+    );
+    expect(r.resolveSpecifier(file("src/m.ts"), "@/a/x")).toEqual({
+      kind: "file",
+      fileId: file("src/a/x.ts"),
+    });
+  });
+
+  test("an unreadable key marks its own specifier and subpaths, and a $ key only the exact one", () => {
+    const r = createResolver(
+      repo({
+        "package.json": JSON.stringify({ name: "root" }),
+        "vite.config.ts": `export default { resolve: { alias: { "@dyn": compute(), exact$: compute() } } };`,
+        "src/m.ts": "export {};",
+      }),
+    );
+    const from = file("src/m.ts");
+    for (const spec of ["@dyn", "@dyn/x", "@dynamo/x", "exact", "exact/x"]) r.resolveSpecifier(from, spec);
+    expect(r.stats().unresolved.map((u) => [u.specifier, u.reason, u.alias])).toEqual([
+      ["@dyn", "alias_not_static", "@dyn"],
+      ["@dyn/x", "alias_not_static", "@dyn"],
+      ["@dynamo/x", undefined, undefined],
+      ["exact", "alias_not_static", "exact$"],
+      ["exact/x", undefined, undefined],
+    ]);
+  });
+
   test("a config with a top-level side effect is never run", () => {
     const dir = mkTmp();
     const marker = join(dir, "ran.txt");
