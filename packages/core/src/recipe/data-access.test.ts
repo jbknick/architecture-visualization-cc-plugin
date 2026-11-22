@@ -76,7 +76,6 @@ describe("recipe adapter equals the built-in Drizzle adapter on the fixtures", (
 
 const baseRecipe = {
   version: 1,
-  dependencies: [{ name: "pg", role: "data-access", note: "driver" }],
   helpers: ["resolve-names", "const-strings", "sql-text", "call-return"],
   rules: [],
 };
@@ -154,7 +153,6 @@ describe("a table emit that cannot read its name", () => {
       "package.json": JSON.stringify({ name: "app", private: true, dependencies: { mongoose: "^8" } }),
       ".gantry/recipe.json": JSON.stringify({
         version: 1,
-        dependencies: [{ name: "mongoose", role: "data-access", note: "odm" }],
         helpers: ["resolve-names", "const-strings"],
         rules: [
           {
@@ -187,7 +185,6 @@ describe("text rules and model naming", () => {
       "package.json": JSON.stringify({ name: "app", private: true, dependencies: { "orm-client": "^1" } }),
       ".gantry/recipe.json": JSON.stringify({
         version: 1,
-        dependencies: [{ name: "orm-client", role: "data-access", note: "client" }],
         helpers: ["resolve-names", "const-strings", "text-rules", "model-naming", "method-classes"],
         methods: { read: ["findMany"], write: ["create"] },
         rules: [

@@ -1,24 +1,5 @@
 {
   "version": 1,
-  "dependencies": [
-    { "name": "@demo/api", "workspace": "@demo/server", "role": "neither", "note": "workspace package" },
-    { "name": "@demo/posts", "workspace": "@demo/server", "role": "neither", "note": "workspace package: its Hono app is mounted at /api" },
-    { "name": "@orpc/server", "workspace": "@demo/server", "role": "neither", "note": "oRPC handler; read by the built-in oRPC adapter" },
-    { "name": "hono", "workspace": "@demo/server", "role": "framework", "note": "HTTP framework: new Hono(), route, basePath, use" },
-    { "name": "@demo/api", "workspace": "@demo/web", "role": "neither", "note": "workspace package" },
-    { "name": "@orpc/client", "workspace": "@demo/web", "role": "neither", "note": "oRPC client" },
-    { "name": "@orpc/tanstack-query", "workspace": "@demo/web", "role": "neither", "note": "oRPC query utilities" },
-    { "name": "@tanstack/react-query", "workspace": "@demo/web", "role": "neither", "note": "data fetching hooks, no routes" },
-    { "name": "@tanstack/react-router", "workspace": "@demo/web", "role": "framework", "note": "file-based page routes under src/routes" },
-    { "name": "@tanstack/react-start", "workspace": "@demo/web", "role": "framework", "note": "server functions; routes come from the router" },
-    { "name": "hono", "workspace": "@demo/web", "role": "framework", "note": "Hono client types only, no app declared" },
-    { "name": "react", "workspace": "@demo/web", "role": "neither", "note": "UI library" },
-    { "name": "@demo/db", "workspace": "@demo/api", "role": "neither", "note": "workspace package" },
-    { "name": "@orpc/contract", "workspace": "@demo/api", "role": "neither", "note": "oRPC contract" },
-    { "name": "@orpc/server", "workspace": "@demo/api", "role": "neither", "note": "oRPC routers" },
-    { "name": "drizzle-orm", "workspace": "@demo/db", "role": "data-access", "note": "tables in src/schema.ts" },
-    { "name": "hono", "workspace": "@demo/posts", "role": "framework", "note": "sub-app mounted by @demo/server" }
-  ],
   "helpers": ["resolve-names", "const-strings", "mount-graph", "fs-routes"],
   "passthrough": ["basePath", "get", "post", "put", "patch", "delete", "options", "all", "on", "use", "route"],
   "rules": [

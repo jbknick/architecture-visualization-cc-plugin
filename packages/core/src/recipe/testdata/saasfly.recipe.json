@@ -1,9 +1,5 @@
 {
   "version": 1,
-  "dependencies": [
-    {"name": "next", "role": "framework", "note": "Next.js app router"},
-    {"name": "kysely", "role": "data-access", "note": "Kysely query builder"}
-  ],
   "helpers": ["fs-routes", "const-strings"],
   "rules": [
     {

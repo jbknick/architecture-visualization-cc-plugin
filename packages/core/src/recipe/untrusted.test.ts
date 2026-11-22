@@ -28,7 +28,6 @@ const textRule = (id: string, regex: string, extra: Record<string, unknown> = {}
 const good = textRule("good", "^table\\s+(\\w+)");
 const recipe = (rules: unknown[], extra: Record<string, unknown> = {}) => ({
   version: 1,
-  dependencies: [],
   helpers: ["text-rules"],
   rules,
   ...extra,

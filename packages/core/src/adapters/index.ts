@@ -23,7 +23,7 @@ export * from "./tanstack-start.js";
  */
 export const ADAPTERS: readonly Adapter<unknown>[] = [
   // The recipe adapter reads the repo's .gantry/recipe.json (spec section 5). The built-in TanStack Router and Hono
-  // adapters below stay registered until recipes replace them; a node both produce is stored once.
+  // adapters below are kept and stay registered beside it; a node both produce is stored once.
   recipeAdapter as Adapter<unknown>,
   tanstackRoutesAdapter,
   tanstackStartAdapter,

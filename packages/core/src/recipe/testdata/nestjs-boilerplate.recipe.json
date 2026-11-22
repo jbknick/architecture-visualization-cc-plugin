@@ -1,9 +1,5 @@
 {
   "version": 1,
-  "dependencies": [
-    { "name": "@nestjs/common", "role": "framework", "note": "NestJS" },
-    { "name": "typeorm", "role": "data-access", "note": "TypeORM" }
-  ],
   "helpers": ["text-rules"],
   "rules": [
     {

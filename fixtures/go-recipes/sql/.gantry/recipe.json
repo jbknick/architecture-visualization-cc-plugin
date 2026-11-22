@@ -1,6 +1,5 @@
 {
   "version": 1,
-  "dependencies": [],
   "helpers": ["resolve-names", "const-strings", "sql-text"],
   "methods": { "read": ["Find"], "write": ["Create"] },
   "sql": { "files": ["**/*.go"], "sqlFiles": ["db/migrations/*.up.sql"] },

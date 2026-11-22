@@ -58,7 +58,6 @@ describe("which rules apply to a file", () => {
   const recipe = parseRecipe(
     JSON.stringify({
       version: 1,
-      dependencies: [],
       helpers: [],
       rules: [
         rule({ id: "any" }),
