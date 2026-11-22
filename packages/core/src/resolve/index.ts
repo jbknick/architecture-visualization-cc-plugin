@@ -7,6 +7,7 @@ import { fileId as makeFileId, pathOfFileId } from "../ids.js";
 import type { ParsedFile, ParsedImport, ParsedSite } from "../parse/index.js";
 import type { EdgeKind, EdgeRecord, WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
+import { type BundlerAliases, readBundlerAliases } from "./bundlerAliases.js";
 
 export interface ResolveContext {
   root: string;
@@ -36,6 +37,10 @@ export interface UnresolvedSpecifier {
   fromFileId: string;
   specifier: string;
   class: "generated" | "excluded" | "unresolved";
+  /** Set when a bundler alias that the index cannot read statically may stand behind the specifier. */
+  reason?: "alias_not_static";
+  /** With `reason`: the alias key the specifier starts with, or `*` when the whole alias value is unreadable. */
+  alias?: string;
 }
 
 export interface ResolveStats {
@@ -159,6 +164,8 @@ interface Classified {
   class: SpecifierClass;
   fileId?: string;
   pkg?: string;
+  reason?: "alias_not_static";
+  alias?: string;
 }
 
 export function createResolver(ctx: ResolveContext): Resolver {
@@ -175,6 +182,7 @@ export function createResolver(ctx: ResolveContext): Resolver {
   const rootWs = ctx.workspaces.find((w) => w.dir === ".");
 
   const resolvers = new Map<string, ResolverFactory>();
+  const bundlerAliases = new Map<string, BundlerAliases>();
   const classCache = new Map<string, Classified>();
   const counted = new Map<string, UnresolvedSpecifier | null>();
   const counts: Record<SpecifierClass, number> = {
@@ -202,10 +210,40 @@ export function createResolver(ctx: ResolveContext): Resolver {
     }
   }
 
-  function resolverFor(ws: WorkspaceRecord): ResolverFactory {
-    let r = resolvers.get(ws.id);
+  /** The aliases of the Vite and webpack configs in the workspace directory (read, never run). */
+  function aliasesOf(ws: WorkspaceRecord): BundlerAliases {
+    let a = bundlerAliases.get(ws.id);
+    if (!a) {
+      a = readBundlerAliases(path.join(realRoot, ws.dir === "." ? "" : ws.dir));
+      bundlerAliases.set(ws.id, a);
+    }
+    return a;
+  }
+
+  /** A key matches its specifier or the specifier plus `/` and a subpath; a trailing `$` means the exact specifier. */
+  function keyMatches(key: string, spec: string): boolean {
+    if (key.endsWith("$")) return spec === key.slice(0, -1);
+    return spec === key || spec.startsWith(`${key}/`);
+  }
+
+  /** `alias_not_static` for a specifier that an alias the index could not read may have stood for. */
+  function unreadableAlias(ws: WorkspaceRecord, spec: string): Classified {
+    const hit = aliasesOf(ws).unreadable.find((u) => u.key === "*" || keyMatches(u.key, spec));
+    return hit
+      ? { class: "unresolved", reason: "alias_not_static", alias: hit.key }
+      : { class: "unresolved" };
+  }
+
+  /**
+   * The resolver of a workspace. Bundlers apply their aliases before anything else, but oxc-resolver tries tsconfig
+   * `paths` before `alias`, so the aliases go to a second resolver without tsconfig that is asked first.
+   */
+  function resolverFor(ws: WorkspaceRecord, aliasOnly = false): ResolverFactory {
+    const cacheKey = aliasOnly ? `${ws.id}\0alias` : ws.id;
+    let r = resolvers.get(cacheKey);
     if (!r) {
-      const tsconfig = nearestTsconfig(ws.dir);
+      const tsconfig = aliasOnly ? null : nearestTsconfig(ws.dir);
+      const aliases = aliasOnly ? aliasesOf(ws).aliases : [];
       r = new ResolverFactory({
         extensions: EXTENSIONS,
         extensionAlias: {
@@ -217,9 +255,12 @@ export function createResolver(ctx: ResolveContext): Resolver {
         conditionNames: ["import", "types", "default"],
         mainFields: ["types", "module", "main"],
         builtinModules: true,
+        ...(aliases.length > 0
+          ? { alias: Object.fromEntries(aliases.map((a) => [a.find, [a.target]] as const)) }
+          : {}),
         ...(tsconfig ? { tsconfig: { configFile: tsconfig, references: "auto" as const } } : {}),
       });
-      resolvers.set(ws.id, r);
+      resolvers.set(cacheKey, r);
     }
     return r;
   }
@@ -335,10 +376,14 @@ export function createResolver(ctx: ResolveContext): Resolver {
 
     // 3. oxc-resolver, passing the importing file so tsconfig discovery is per package.
     let result: { path?: string; error?: string; builtin?: unknown } = {};
-    try {
-      result = resolverFor(fromWs).resolveFileSync(fromAbs, spec);
-    } catch (e) {
-      result = { error: e instanceof Error ? e.message : String(e) };
+    const viaAlias = aliasesOf(fromWs).aliases.some((a) => keyMatches(a.find, spec));
+    for (const aliasOnly of viaAlias ? [true, false] : [false]) {
+      try {
+        result = resolverFor(fromWs, aliasOnly).resolveFileSync(fromAbs, spec);
+      } catch (e) {
+        result = { error: e instanceof Error ? e.message : String(e) };
+      }
+      if (result.path || result.builtin) break;
     }
     if (result.builtin) return { class: "builtin", pkg: spec };
     if (result.path) {
@@ -372,7 +417,7 @@ export function createResolver(ctx: ResolveContext): Resolver {
     if (pkg && (declaredDependency(fromWs, pkg) || hasTypesPackage(fromAbs, pkg))) {
       return { class: "external", pkg };
     }
-    return { class: "unresolved" };
+    return unreadableAlias(fromWs, spec);
   }
 
   function classified(fromFileId: string, spec: string): Classified {
@@ -385,7 +430,12 @@ export function createResolver(ctx: ResolveContext): Resolver {
       counted.set(
         key,
         c.class === "generated" || c.class === "excluded" || c.class === "unresolved"
-          ? { fromFileId, specifier: spec, class: c.class }
+          ? {
+              fromFileId,
+              specifier: spec,
+              class: c.class,
+              ...(c.reason ? { reason: c.reason, alias: c.alias as string } : {}),
+            }
           : null,
       );
     }

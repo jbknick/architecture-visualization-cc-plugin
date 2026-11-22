@@ -32,7 +32,7 @@ export interface IndexResult {
   symbols: number;
   functionLike: number;
   edges: number;
-  unresolved: { specifier: string; from: string }[];
+  unresolved: { specifier: string; from: string; reason?: "alias_not_static"; alias?: string }[];
   /** Distinct (file, specifier) pairs by resolution class, for the whole run (used by the M1 benchmark). */
   specifierCounts: Record<SpecifierClass, number>;
   parseErrors: { file: string; errors: string[] }[];
@@ -647,7 +647,11 @@ async function indexOneRepo(
   result.specifierCounts = stats.counts;
   result.unresolved = stats.unresolved
     .filter((u) => written.has(u.fromFileId) || full)
-    .map((u) => ({ specifier: u.specifier, from: pathOf(u.fromFileId) }));
+    .map((u) => ({
+      specifier: u.specifier,
+      from: pathOf(u.fromFileId),
+      ...(u.reason ? { reason: u.reason, alias: u.alias as string } : {}),
+    }));
   result.parseErrors.sort((a, b) => cmp(a.file, b.file));
   result.ms = Math.round(performance.now() - t0);
   return result;
