@@ -161,6 +161,8 @@ export interface DupMember {
   id: string;
   name: string;
   kind: string;
+  /** The member's repo; present only when the index holds more than one repo. */
+  repo?: string;
   path: string;
   line: number;
   endLine: number;
@@ -188,6 +190,8 @@ export interface DupCluster {
   keep: string;
   keepReason: string;
   workspaces: string[];
+  /** Distinct repos of the members; present only when the index holds more than one repo. */
+  repos?: string[];
   members: DupMember[];
   links: { a: string; b: string; tier: DupTier }[];
 }
@@ -216,6 +220,8 @@ export interface DupSummary {
   functions: number;
   duplicateLines: number;
   crossWorkspace: number;
+  /** Groups spanning several repos; present only when the index holds more than one repo. */
+  crossRepo?: number;
 }
 
 /** The duplicates view's own fields, next to the usual nodes/edges. */

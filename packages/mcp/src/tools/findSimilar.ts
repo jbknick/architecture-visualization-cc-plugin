@@ -13,6 +13,7 @@ import {
   type Lang,
   loadConfigForDb,
   pathOfFileId,
+  repoOfId,
   type Store,
   type SymbolKind,
   type SymbolRecord,
@@ -84,7 +85,8 @@ export const findSimilarTool = defineTool({
   description:
     "Call this before writing a new helper, hook or component: it looks for code that already does the same thing. " +
     "Give query (one sentence on what you are about to write), code (a draft), or both. " +
-    "Returns {matches: [{id, name, kind, lang, path, line, signature, import_path, tier, score, untrusted_description, advice: {situation, action, inline, untrusted_suggested_name?} | null}]}, best first: tier exact, near, code_vector (a draft matches in code), semantic (a query matches in meaning or words). " +
+    "Returns {matches: [{id, repo, name, kind, lang, path, line, signature, import_path, tier, score, untrusted_description, advice: {situation, action, inline, untrusted_suggested_name?} | null}]}, best first: tier exact, near, code_vector (a draft matches in code), semantic (a query matches in meaning or words). " +
+    "A match can be in another repo of the workspace (its repo says which; path is relative to that repo); the advice then says so, and is an import line only when the caller's workspace already depends on the package that holds the match. " +
     "advice.inline true means the match can be imported as is (advice.action has the import line); otherwise advice.action is a suggestion for the user. " +
     "Without description vectors meaning search is skipped and the payload says so in notes. Read the file before relying on a match. Responses are capped at 4,000 characters (truncated: true).",
   inputSchema: {
@@ -193,10 +195,12 @@ export const findSimilarTool = defineTool({
         sym,
         config.renameSuggestions ? descriptionOf(store, sym) : null,
         config,
+        paths.repo,
       )[0];
       const description = sym.exactHash === "" ? null : (behaviors.get(contentKey(sym.exactHash)) ?? null);
       return {
         id: sym.id,
+        repo: repoOfId(sym.id),
         name: sym.name,
         kind: sym.kind,
         lang: sym.lang,

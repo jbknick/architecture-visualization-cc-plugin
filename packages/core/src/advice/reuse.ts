@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import type { GantryConfig } from "../config/index.js";
-import { fileId as makeFileId, pathOfFileId, repoOfId, symIdOfFileId } from "../ids.js";
+import { fileId as makeFileId, parseWorkspaceId, pathOfFileId, repoOfId, symIdOfFileId } from "../ids.js";
 import type { Store } from "../store/index.js";
 import type { Description, SymbolRecord, WorkspaceRecord } from "../types.js";
 import { workspaceForPath } from "../workspace/index.js";
@@ -12,14 +12,16 @@ import { cmp, entryPoints, normPath, packageJsonPath, SCRIPT_EXTS, targetCandida
  * no network, no disk) and returns the same answer for the same store contents.
  *
  *   adviseReuse(store: Store, callerPath: string, match: SymbolRecord,
- *               description?: Description | null, config?: GantryConfig): Advice[]
+ *               description?: Description | null, config?: GantryConfig, callerRepo?: string): Advice[]
  *   importPathFor(ws: WorkspaceRecord, match: SymbolRecord, store?: Store): string | null
  *
- *   interface Advice { situation: 1 | 2 | 3 | 4 | 5 | 6; action: string; inline: boolean; importPath?: string;
+ *   interface Advice { situation: 1 | 2 | 3 | 4 | 5 | 6 | 7; action: string; inline: boolean; importPath?: string;
  *     untrusted_suggested_name?: string }
  *
- * `callerPath` is repo-relative (posix); the caller need not be indexed. The result is ordered: the
- * primary advice (situation 1, 2, 3 or 4) first, then the rename suggestion (5) when it applies. It is
+ * `callerPath` is repo-relative (posix) in `callerRepo` (default: the store's repo); the caller need not be
+ * indexed. A match in another repo of the workspace gets situation 7 (or situation 1 when the caller's workspace
+ * already depends on the package that holds it); situations 2 to 4 are never offered for it. The result is ordered: the
+ * primary advice (situation 1, 2, 3, 4 or 7) first, then the rename suggestion (5) when it applies. It is
  * empty when the match is in the caller's own file. `inline: true` is only set for situation 1 (import
  * it) and 6 (see `checkImports`); everything else belongs in the suggestions list.
  *
@@ -29,7 +31,7 @@ import { cmp, entryPoints, normPath, packageJsonPath, SCRIPT_EXTS, targetCandida
  * `store` only a direct export from the entry file is recognised.
  */
 export interface Advice {
-  situation: 1 | 2 | 3 | 4 | 5 | 6;
+  situation: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   action: string;
   inline: boolean;
   importPath?: string;
@@ -162,12 +164,16 @@ export function adviseReuse(
   match: SymbolRecord,
   description?: Description | null,
   config?: GantryConfig,
+  callerRepo: string = store.repo(),
 ): Advice[] {
   const out: Advice[] = [];
   const caller = normPath(callerPath);
   const matchRel = pathOfFileId(match.fileId);
-  if (matchRel !== caller) {
-    const all = store.listWorkspaces();
+  const matchRepo = repoOfId(match.fileId) as string;
+  if (matchRepo !== callerRepo) {
+    out.push(...otherRepo(store, caller, callerRepo, match, matchRepo));
+  } else if (matchRel !== caller) {
+    const all = store.listWorkspaces().filter((w) => parseWorkspaceId(w.id)?.repo === callerRepo);
     if (match.lang === "go") out.push(...adviseGo(store, all, caller, match));
     else {
       const callerWs = all.length > 0 ? workspaceForPath(all, caller) : undefined;
@@ -184,6 +190,45 @@ export function adviseReuse(
     });
   }
   return out;
+}
+
+/**
+ * Situation 7: the match lives in another repo of the workspace, so no relative import or workspace dependency can
+ * reach it. When the match sits in a package of that repo whose name the caller's workspace already depends on and
+ * the package exposes it, it is situation 1 with the package name; otherwise the advice says where the code is.
+ */
+function otherRepo(
+  store: Store,
+  caller: string,
+  callerRepo: string,
+  match: SymbolRecord,
+  matchRepo: string,
+): Advice[] {
+  const inRepo = (repo: string) =>
+    store.listWorkspaces().filter((w) => parseWorkspaceId(w.id)?.repo === repo);
+  const callerAll = inRepo(callerRepo);
+  const matchAll = inRepo(matchRepo);
+  if (match.lang !== "go" && callerAll.length > 0 && matchAll.length > 0) {
+    const callerWs = workspaceForPath(callerAll, caller);
+    const matchWs = workspaceForPath(matchAll, pathOfFileId(match.fileId));
+    const dependent =
+      matchWs.kind === "package" &&
+      (callerWs.deps.includes(matchWs.name) ||
+        (callerAll.find((w) => w.dir === ".")?.deps.includes(matchWs.name) ?? false));
+    const r = dependent ? reach(matchWs, match, store) : null;
+    if (r) {
+      return [
+        { situation: 1, action: `Import it: ${importLine(match, r.path)}`, inline: true, importPath: r.path },
+      ];
+    }
+  }
+  return [
+    {
+      situation: 7,
+      action: `It is in the ${matchRepo} repo: reuse it through a package that repo publishes, or move it to one`,
+      inline: false,
+    },
+  ];
 }
 
 function primary(
@@ -243,7 +288,7 @@ function primary(
       },
     ];
   }
-  const callerClient = isClientFile(store, makeFileId(store.repo(), caller));
+  const callerClient = isClientFile(store, makeFileId(repoOfId(match.fileId) as string, caller));
   const serverOnly = isServerOnlyFile(store, match.fileId) || isServerOnlyFile(store, r.entryFileId);
   if (callerClient && serverOnly) {
     return [

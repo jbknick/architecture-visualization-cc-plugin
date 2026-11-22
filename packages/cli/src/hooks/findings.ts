@@ -13,6 +13,7 @@ import {
   type ParsedFile,
   parseFile,
   pathOfFileId,
+  repoOfId,
   type Store,
   type SymbolRecord,
   workspaceForPath,
@@ -33,6 +34,8 @@ export interface DupFinding {
   existing: string;
   existingPath: string;
   existingLine: number;
+  /** The repo of the match when it is not the repo of the new function (printed as `<repo>:<path>:<line>`). */
+  existingRepo?: string;
   tier: string;
   score: number;
   action: string;
@@ -100,6 +103,7 @@ export async function duplicateFindings(
   const ordered = [...symbols].sort((a, b) => b.startLine - a.startLine || (a.id < b.id ? -1 : 1));
   for (const sym of ordered) {
     const callerPath = pathOfFileId(sym.fileId);
+    const callerRepo = repoOfId(sym.id) as string;
     const cands = await findDuplicates(
       store,
       { symbol: sym },
@@ -119,9 +123,10 @@ export async function duplicateFindings(
         existing: match.name,
         existingPath: pathOfFileId(match.fileId),
         existingLine: match.startLine,
+        ...(repoOfId(match.id) === callerRepo ? {} : { existingRepo: repoOfId(match.id) as string }),
         tier: c.tier,
         score: c.score,
-        ...pickAction(adviseReuse(store, callerPath, match, null, config)),
+        ...pickAction(adviseReuse(store, callerPath, match, null, config, callerRepo)),
       });
     }
     // One clear instruction beats a list: when a copy can simply be imported, do not also list the others.
@@ -179,16 +184,20 @@ export function verifyFindings(
 /** The double-check of `verifyFindings` as a predicate, with the files it reads cached for its lifetime. */
 export function diskCheck(root: string, store: Store, config: GantryConfig): (f: Finding) => boolean {
   const files = new Map<string, { parsed: ParsedFile; source: string } | null>();
-  const read = (rel: string): { parsed: ParsedFile; source: string } | null => {
-    let v = files.get(rel);
+  /** A file of this repo, or of the sibling repo `repo` (read from the root it was indexed from). */
+  const read = (rel: string, repo?: string): { parsed: ParsedFile; source: string } | null => {
+    const key = repo === undefined ? rel : `${repo}\0${rel}`;
+    let v = files.get(key);
     if (v === undefined) {
       try {
-        const source = fs.readFileSync(path.join(root, rel), "utf8");
-        v = { parsed: parseFile(store.repo(), rel, source), source };
+        const dir = repo === undefined ? root : store.repoRoot(repo);
+        if (dir === undefined) throw new Error(`no root for repo ${repo}`);
+        const source = fs.readFileSync(path.join(dir, rel), "utf8");
+        v = { parsed: parseFile(repo ?? store.repo(), rel, source), source };
       } catch {
         v = null;
       }
-      files.set(rel, v);
+      files.set(key, v);
     }
     return v;
   };
@@ -200,7 +209,7 @@ export function diskCheck(root: string, store: Store, config: GantryConfig): (f:
   return (f) => {
     if (f.kind === "crossing") return stillImports(read(f.srcPath), f.srcPath, f.dstPath);
     if (f.kind === "import") return !f.manifests.some((m) => declared(m)?.includes(f.pkg));
-    const disk = read(f.existingPath);
+    const disk = read(f.existingPath, f.existingRepo);
     const range = disk?.parsed.bodies.get(f.existingId);
     if (!disk || !range || !disk.parsed.symbols.some((s) => s.id === f.existingId)) return false;
     const fresh = hashSymbol(disk.source, range, f.existingPath);
@@ -253,7 +262,7 @@ export function formatFinding(f: Finding): string {
       : `Gantry: ${f.srcName} (${f.srcPath}:${f.srcLine}) in group ${f.srcGroup} uses ${f.dstName} (${f.dstPath}:${f.dstLine}) ${tail}`;
   }
   return (
-    `Gantry: ${f.name} (${f.path}:${f.line}) looks like ${f.existing} in ${f.existingPath}:${f.existingLine} ` +
+    `Gantry: ${f.name} (${f.path}:${f.line}) looks like ${f.existing} in ${f.existingRepo === undefined ? "" : `${f.existingRepo}:`}${f.existingPath}:${f.existingLine} ` +
     `[${f.tier} ${score(f.score)}]. ${f.action}`
   );
 }

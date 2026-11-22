@@ -87,12 +87,14 @@ export function DupCompare({ keep, other }: Props) {
             <div className="dup-cell dup-cell-title">
               <span className="dup-keep-tag">Keep this one</span> {keep.name}
               <code>
+                {keep.repo === undefined ? "" : `${keep.repo}:`}
                 {keep.path}:{keep.line}
               </code>
             </div>
             <div className="dup-cell dup-cell-title">
               {other.name}
               <code>
+                {other.repo === undefined ? "" : `${other.repo}:`}
                 {other.path}:{other.line}
               </code>
             </div>
