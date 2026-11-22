@@ -3,8 +3,9 @@ import { join } from "node:path";
 import { parse } from "@ast-grep/napi";
 import { loadConfig } from "../config/index.js";
 import { discoverFiles } from "../discover/index.js";
-import { goAvailable } from "../lang/go/index.js";
+import { grammarAvailable } from "../lang/engine/grammar.js";
 import { detectAllWorkspaces } from "../lang/index.js";
+import { goPack } from "../lang/packs/index.js";
 import type { GantryPaths } from "../paths/index.js";
 import { listTextFiles } from "./data-access.js";
 import { astLang, findRule, rulesFor, runExamples } from "./engine.js";
@@ -64,7 +65,7 @@ export function checkRecipeText(paths: GantryPaths, text: string): RecipeCheck {
     let root: ReturnType<ReturnType<typeof parse>["root"]>;
     try {
       const source = readFileSync(join(paths.root, f.path), "utf8");
-      if (isGo && !goAvailable()) continue;
+      if (isGo && !grammarAvailable(goPack)) continue;
       root = parse(isGo ? ("go" as never) : astLang(f.path), source).root();
     } catch {
       continue;

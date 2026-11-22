@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { fileId, symId } from "../../../ids.js";
+import { encodeParsed, LazyParsedMap } from "../../../parse/cache.js";
 import type { ParsedFile } from "../../../parse/index.js";
 import type { ResolveContext } from "../../../resolve/index.js";
 import type { EdgeRecord } from "../../../types.js";
@@ -14,15 +15,17 @@ import { type FileEntry, ImportIndex, type ImportResolution } from "./imports.js
 
 /**
  * A synthetic language: its own extension, manifest, name rules and import separator, reading its sources with a grammar
- * the engine already has loaded. The files below are written in that grammar's syntax.
+ * the engine already has loaded. The files below are written in that grammar's syntax. It has no typing rules, so its
+ * calls are resolved by names alone (level 1).
  */
+const { typing: _typing, ...nodesWithoutTyping } = goPack.nodes;
 const toyPack = {
   ...goPack,
   id: "toy",
   label: "Toy",
   extensions: [".toy"],
   testPatterns: ["**/*_check.toy"],
-  nodes: { ...goPack.nodes, import: { ...goPack.nodes.import, separator: "." } },
+  nodes: { ...nodesWithoutTyping, import: { ...goPack.nodes.import, separator: "." } },
   workspace: {
     manifest: "toy.mod",
     quotes: '"',
@@ -260,6 +263,15 @@ describe("the name resolver on a synthetic pack", () => {
       kind: "external",
       specifier: "elsewhere.thing",
     });
+  });
+
+  it("lists the files of a lazy parsed map that are not decoded yet", () => {
+    const { ctx } = indexed(FILES);
+    const lazy = new LazyParsedMap();
+    for (const [id, pf] of ctx.parsed) lazy.setRaw(id, encodeParsed(pf));
+    const rels = (c: ResolveContext): string[] => new ImportIndex(toyPack, c).files.map((f) => f.rel);
+    expect(rels({ ...ctx, parsed: lazy })).toEqual(rels(ctx));
+    expect(rels(ctx).length).toBeGreaterThan(3);
   });
 
   it("finds a target by place and reads no types", () => {

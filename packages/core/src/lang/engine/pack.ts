@@ -3,8 +3,8 @@ import type { DupThresholds } from "../index.js";
 
 /**
  * A language pack (spec section 3, `lang/engine/` and `lang/packs/`): everything the shared engine needs to know about a
- * language except what a language's own call resolver adds. A pack is a typed constant; the engine holds no language name
- * and no node kind.
+ * language: parsing, workspaces, token streams and both levels of call resolution. A pack is a typed constant; the engine
+ * holds no language name and no node kind.
  * Node kinds and field names are those of the tree-sitter grammar the pack names in `grammar`.
  */
 
@@ -34,6 +34,113 @@ export interface BaseTypeRule {
   generic: { kind: string; field: string };
   /** Name used when the shape is not recognised. */
   unknown: string;
+}
+
+/**
+ * Where the types of a language sit (level 2 of the call resolver, spec section 7). A pack that has this block resolves a
+ * call through the declared type of its receiver; a pack without it resolves by names alone (level 1). Every entry names
+ * node kinds and grammar fields: no entry is a function.
+ */
+export interface TypingRules {
+  /** How a type expression reads. */
+  type: {
+    /** Kinds of a plain type name. */
+    names: readonly string[];
+    /** A type name qualified by an import: its kind and the fields of the qualifier and of the name. */
+    qualified: { kind: string; qualifier: string; name: string };
+    /** Kinds that wrap a type and hold it as their first named child (pointer, parentheses). */
+    wrappers: readonly string[];
+    /** A generic instantiation: its kind and the field holding the generic type. */
+    generic: { kind: string; field: string };
+    /** Kinds that hold a run of values of one type, and the field holding that type. */
+    sequences: readonly { kind: string; element: string }[];
+    /** A map type: its kind and the fields of the key and of the value. */
+    maps: { kind: string; key: string; value: string };
+    /** Names of types the language provides itself: a type of the repo only where a package declares the name. */
+    predeclared: readonly string[];
+  };
+  /** The declaration that names the package of a file, and the ending of a name that makes a package of its own that no import reaches. */
+  package: { clause: string; separate: string };
+  /** Aliases of an import that bind no name. */
+  unboundAliases: readonly string[];
+  /** The shape of a list of result types: the list kind, and in each entry the field of the names, the kinds that are names and the field of the type. */
+  results: { list: string; name: string; nameKinds: readonly string[]; type: string };
+  /** The members of a class type: the node that holds them, its entries, and in each entry the field of the names, the kinds that are names and the field of the type. An entry without a name is an embedded (extended) type. */
+  members: {
+    container: string;
+    entries: readonly string[];
+    name: string;
+    nameKinds: readonly string[];
+    type: string;
+  };
+  /** The elements of an interface body that name another interface, and the kinds of such a name. Any other element makes the method set open. */
+  interfaces: { embeds: readonly string[]; embedKinds: readonly string[] };
+  /** Field of a type declaration that holds its type parameters. */
+  generics: string;
+  /** Package-level variables: declarations, specs, and the fields of a spec that hold its type and its values. */
+  vars: { declarations: readonly string[]; specs: readonly string[]; type: string; value: string };
+  /** Names of functions that are never called by name. */
+  unnamed: readonly string[];
+  /** What is called at a call site (the level 1 `callee` lists only the forms that need no type). */
+  callee: {
+    /** Kinds of a bare name. */
+    names: readonly string[];
+    /** A name reached through an operand: kind, and the fields of the operand and of the name. */
+    members: readonly { kind: string; operand: string; name: string }[];
+    /** Kinds an operand has when it is a plain name. */
+    operands: readonly string[];
+  };
+  /** A conversion written as a call: its kind and the field of the type it names. One whose type is a generic instantiation counts as a call site. */
+  conversion: { kind: string; type: string };
+  /** Functions the language provides that have a result type the call site gives: the field of the arguments, the names whose result has the type named by the first argument, and the names whose result has the type of the first argument. */
+  builtins: {
+    arguments: string;
+    typed: readonly string[];
+    first: readonly string[];
+  };
+  /** How an expression reads. */
+  expressions: {
+    /** Kinds that wrap an expression and hold it as their first named child. */
+    wrappers: readonly string[];
+    /** Kinds of a plain name. */
+    names: readonly string[];
+    /** An element of a value that has the type of the element: its kind and the field of the value. */
+    index: { kind: string; operand: string };
+    /** Expressions that have the type of their operand, optionally only for some operators. */
+    through: readonly {
+      kind: string;
+      operand: string;
+      operator?: { field: string; values: readonly string[] };
+    }[];
+    /** Expressions that have the type they name. */
+    typed: readonly { kind: string; type: string }[];
+  };
+  /** Where a name declared inside a function gets its type. `from` is where the name becomes visible: the `start` or the `end` of the declaration. */
+  locals: {
+    nameKinds: readonly string[];
+    /** Parameters: the field of the names and of the type; a `variadic` one holds a sequence of its type. */
+    parameters: readonly {
+      kind: string;
+      name: string;
+      type: string;
+      variadic: boolean;
+      from: "start" | "end";
+    }[];
+    /** Declarations of names with values and an optional type: the field of the names, of the type (if the declaration has one) and of the values. */
+    declarations: readonly {
+      kind: string;
+      names: string;
+      type?: string;
+      values: string;
+      from: "start" | "end";
+    }[];
+    /** Names that take the elements of a value: the field of the names and of the value ranged over. */
+    ranges: readonly { kind: string; names: string; source: string; from: "start" | "end" }[];
+    /** Names whose type is not read. They still hide a name of an outer scope. */
+    untyped: readonly { kind: string; names: string; from: "start" | "end" }[];
+  };
+  /** Kinds of the expressions a place in a file can name (`targetAt`, `typeNameAt`). */
+  lookups: readonly string[];
 }
 
 export interface LanguagePack {
@@ -110,6 +217,8 @@ export interface LanguagePack {
       /** A name reached through an operand (`<operand>.<name>`): its kind, the fields of both parts, and the kinds an operand that is a plain name has. */
       member: { kind: string; operand: string; name: string; operands: readonly string[] };
     };
+    /** Where the types sit; a pack that has it resolves calls at level 2. */
+    typing?: TypingRules;
     /** Rule for `exported`: `capitalized` is an upper-case first letter. */
     exported: "capitalized";
     signature: { empty: string; maxLength: number };

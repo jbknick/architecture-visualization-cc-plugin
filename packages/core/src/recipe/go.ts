@@ -1,7 +1,8 @@
 import { parse, type SgNode } from "@ast-grep/napi";
 import picomatch from "picomatch";
 import type { AdapterFileContext } from "../adapters/framework.js";
-import { goAvailable } from "../lang/go/index.js";
+import { grammarAvailable } from "../lang/engine/grammar.js";
+import { goPack } from "../lang/packs/index.js";
 import type { WorkspaceRecord } from "../types.js";
 import { type ExampleResult, findRule, whenApplies } from "./engine.js";
 import type { LoadedRecipe } from "./load.js";
@@ -9,7 +10,7 @@ import { type GoRecipeRule, isGoRule, type Recipe } from "./schema.js";
 
 /**
  * Go rules (spec section 5): ast-grep rules run on the tree-sitter Go grammar the indexer parses `.go` files with
- * (`lang/go/`, no Go toolchain). This file holds what the Go passes share: matching a file, the examples of a rule,
+ * (`lang/packs/go.ts`, no Go toolchain). This file holds what the Go passes share: matching a file, the examples of a rule,
  * and reading Go syntax (string values, constants, type names). No router, ORM or driver name appears here.
  */
 
@@ -37,7 +38,7 @@ const roots = new WeakMap<AdapterFileContext, SgNode | null>();
 export function goRootOf(file: AdapterFileContext): SgNode | null {
   if (!roots.has(file)) {
     try {
-      roots.set(file, goAvailable() ? parse("go" as never, file.source).root() : null);
+      roots.set(file, grammarAvailable(goPack) ? parse("go" as never, file.source).root() : null);
     } catch {
       roots.set(file, null);
     }
@@ -84,7 +85,7 @@ export function wrapGoSnippet(snippet: string): string {
 export function runGoExamples(rule: GoRecipeRule): ExampleResult {
   const res: ExampleResult = { passed: 0, failed: [] };
   const count = (snippet: string): number => {
-    if (!goAvailable()) {
+    if (!grammarAvailable(goPack)) {
       res.error ??= "the Go grammar is not available on this platform";
       return 0;
     }

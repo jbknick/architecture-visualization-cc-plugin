@@ -3,7 +3,7 @@ import { hashStreams } from "../../hash/index.js";
 import { parseWithPack } from "../engine/parse.js";
 import { embeddingTextWithPack, streamsWithPack } from "../engine/streams.js";
 import { parseGroupMembers, parseManifestDeps, parseManifestName } from "../engine/workspace.js";
-import { goPack } from "../packs/index.js";
+import { goPack } from "./index.js";
 
 type Range = { start: number; end: number };
 const parseGoSource = (repo: string, path: string, src: string) => parseWithPack(goPack, repo, path, src);

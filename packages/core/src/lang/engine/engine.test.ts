@@ -27,6 +27,65 @@ const declaration = z.object({
   receiver: field.optional(),
 });
 const specGroup = { declarations: strings, specs: strings, groups: strings };
+const from = z.enum(["start", "end"]);
+
+const TypingSchema = z.strictObject({
+  type: z.strictObject({
+    names: strings,
+    qualified: z.strictObject({ kind: field, qualifier: field, name: field }),
+    wrappers: strings,
+    generic: z.strictObject({ kind: field, field }),
+    sequences: z.array(z.strictObject({ kind: field, element: field })),
+    maps: z.strictObject({ kind: field, key: field, value: field }),
+    predeclared: strings,
+  }),
+  package: z.strictObject({ clause: field, separate: field }),
+  unboundAliases: strings,
+  results: z.strictObject({ list: field, name: field, nameKinds: strings, type: field }),
+  members: z.strictObject({
+    container: field,
+    entries: strings,
+    name: field,
+    nameKinds: strings,
+    type: field,
+  }),
+  interfaces: z.strictObject({ embeds: strings, embedKinds: strings }),
+  generics: field,
+  vars: z.strictObject({ declarations: strings, specs: strings, type: field, value: field }),
+  unnamed: strings,
+  callee: z.strictObject({
+    names: strings,
+    members: z.array(z.strictObject({ kind: field, operand: field, name: field })),
+    operands: strings,
+  }),
+  conversion: z.strictObject({ kind: field, type: field }),
+  builtins: z.strictObject({ arguments: field, typed: strings, first: strings }),
+  expressions: z.strictObject({
+    wrappers: strings,
+    names: strings,
+    index: z.strictObject({ kind: field, operand: field }),
+    through: z.array(
+      z.strictObject({
+        kind: field,
+        operand: field,
+        operator: z.strictObject({ field, values: strings }).optional(),
+      }),
+    ),
+    typed: z.array(z.strictObject({ kind: field, type: field })),
+  }),
+  locals: z.strictObject({
+    nameKinds: strings,
+    parameters: z.array(
+      z.strictObject({ kind: field, name: field, type: field, variadic: z.boolean(), from }),
+    ),
+    declarations: z.array(
+      z.strictObject({ kind: field, names: field, type: field.optional(), values: field, from }),
+    ),
+    ranges: z.array(z.strictObject({ kind: field, names: field, source: field, from })),
+    untyped: z.array(z.strictObject({ kind: field, names: field, from })),
+  }),
+  lookups: strings,
+});
 
 const PackSchema = z.strictObject({
   id: z.string().regex(/^[a-z][a-z0-9-]*$/),
@@ -80,6 +139,7 @@ const PackSchema = z.strictObject({
       names: strings,
       member: z.strictObject({ kind: field, operand: field, name: field, operands: strings }),
     }),
+    typing: TypingSchema.optional(),
     exported: z.literal("capitalized"),
     signature: z.strictObject({ empty: z.string(), maxLength: z.number().int().positive() }),
     measure: z.strictObject({

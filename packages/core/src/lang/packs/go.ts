@@ -84,6 +84,100 @@ export const goPack = {
       names: ["identifier"],
       member: { kind: "selector_expression", operand: "operand", name: "field", operands: ["identifier"] },
     },
+    typing: {
+      type: {
+        names: ["type_identifier"],
+        qualified: { kind: "qualified_type", qualifier: "package", name: "name" },
+        wrappers: ["pointer_type", "parenthesized_type"],
+        generic: { kind: "generic_type", field: "type" },
+        sequences: [
+          { kind: "slice_type", element: "element" },
+          { kind: "array_type", element: "element" },
+          { kind: "implicit_length_array_type", element: "element" },
+          { kind: "channel_type", element: "value" },
+        ],
+        maps: { kind: "map_type", key: "key", value: "value" },
+        predeclared: (
+          "any bool byte comparable complex64 complex128 error float32 float64 int int8 int16 int32 int64 " +
+          "rune string uint uint8 uint16 uint32 uint64 uintptr"
+        ).split(" "),
+      },
+      package: { clause: "package_clause", separate: "_test" },
+      unboundAliases: ["_", "."],
+      results: { list: "parameter_list", name: "name", nameKinds: ["identifier"], type: "type" },
+      members: {
+        container: "field_declaration_list",
+        entries: ["field_declaration"],
+        name: "name",
+        nameKinds: ["field_identifier"],
+        type: "type",
+      },
+      interfaces: { embeds: ["type_elem"], embedKinds: ["type_identifier", "qualified_type"] },
+      generics: "type_parameters",
+      vars: { declarations: ["var_declaration"], specs: ["var_spec"], type: "type", value: "value" },
+      unnamed: ["init", "_"],
+      callee: {
+        names: ["identifier", "type_identifier"],
+        members: [
+          { kind: "selector_expression", operand: "operand", name: "field" },
+          { kind: "qualified_type", operand: "package", name: "name" },
+        ],
+        operands: ["identifier", "package_identifier"],
+      },
+      conversion: { kind: "type_conversion_expression", type: "type" },
+      builtins: {
+        arguments: "arguments",
+        typed: ["new", "make"],
+        first: ["append"],
+      },
+      expressions: {
+        wrappers: ["parenthesized_expression"],
+        names: ["identifier"],
+        index: { kind: "index_expression", operand: "operand" },
+        through: [
+          {
+            kind: "unary_expression",
+            operand: "operand",
+            operator: { field: "operator", values: ["&", "*"] },
+          },
+          { kind: "slice_expression", operand: "operand" },
+        ],
+        typed: [
+          { kind: "composite_literal", type: "type" },
+          { kind: "type_assertion_expression", type: "type" },
+        ],
+      },
+      locals: {
+        nameKinds: ["identifier"],
+        parameters: [
+          { kind: "parameter_declaration", name: "name", type: "type", variadic: false, from: "start" },
+          {
+            kind: "variadic_parameter_declaration",
+            name: "name",
+            type: "type",
+            variadic: true,
+            from: "start",
+          },
+        ],
+        declarations: [
+          { kind: "short_var_declaration", names: "left", values: "right", from: "end" },
+          { kind: "var_spec", names: "name", type: "type", values: "value", from: "end" },
+          { kind: "const_spec", names: "name", type: "type", values: "value", from: "end" },
+        ],
+        ranges: [{ kind: "range_clause", names: "left", source: "right", from: "end" }],
+        untyped: [
+          { kind: "receive_statement", names: "left", from: "end" },
+          { kind: "type_switch_statement", names: "alias", from: "start" },
+        ],
+      },
+      lookups: [
+        "call_expression",
+        "selector_expression",
+        "identifier",
+        "composite_literal",
+        "unary_expression",
+      ],
+    },
     exported: "capitalized",
     signature: { empty: "()", maxLength: 200 },
     measure: {

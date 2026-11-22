@@ -6,8 +6,7 @@ import type { ParsedFile } from "../parse/index.js";
 import type { ResolveContext, Resolver } from "../resolve/index.js";
 import type { Lang, SymbolKind, WorkspaceRecord } from "../types.js";
 import type { detectWorkspaces, WorkspaceDetectionConfig } from "../workspace/index.js";
-import { buildLanguage, type CallResolverFactory } from "./engine/module.js";
-import { goCalls } from "./go/index.js";
+import { buildLanguage } from "./engine/module.js";
 import { PACKS } from "./packs/index.js";
 import { typescript } from "./typescript/index.js";
 
@@ -71,14 +70,8 @@ export interface LanguageModule {
   thresholds: DupThresholds;
 }
 
-/** Packs whose language resolves calls itself; every other pack gets the engine's name resolver. */
-const OWN_CALLS: Readonly<Record<string, CallResolverFactory>> = { go: goCalls };
-
 /** TypeScript first, then one module per pack in `PACKS` order. */
-const MODULES: readonly LanguageModule[] = [
-  typescript,
-  ...PACKS.map((p) => buildLanguage(p, OWN_CALLS[p.id])),
-];
+const MODULES: readonly LanguageModule[] = [typescript, ...PACKS.map((p) => buildLanguage(p))];
 
 /** Every language module, in a fixed order. */
 export const languages = (): readonly LanguageModule[] => MODULES;

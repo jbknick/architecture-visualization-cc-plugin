@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseTree } from "../engine/grammar.js";
-import { goPack } from "../packs/index.js";
-import { goAvailable } from "./index.js";
+import { grammarAvailable, parseTree } from "../engine/grammar.js";
+import { goPack } from "./index.js";
 
 const parseGo = (source: string) => parseTree(goPack, source);
 
@@ -35,7 +34,7 @@ func (s *S) M() {
 
 describe("tree-sitter Go grammar", () => {
   it("loads on this platform", () => {
-    expect(goAvailable()).toBe(true);
+    expect(grammarAvailable(goPack)).toBe(true);
   });
 
   it("names the node kinds the parser relies on", () => {
