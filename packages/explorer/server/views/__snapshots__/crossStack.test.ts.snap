@@ -2685,7 +2685,7 @@ exports[`determinism and containment > answers with the same JSON every time (sn
       "weight": 1,
     },
     {
-      "confidence": "low",
+      "confidence": "high",
       "dst": "ep:adapters:@demo/server:PATCH /api/posts/:id",
       "id": "sym:adapters:apps/web/src/hooks/usePostActions.ts#usePostActions|requests|ep:adapters:@demo/server:PATCH /api/posts/:id",
       "kind": "requests",
@@ -3066,7 +3066,7 @@ exports[`determinism and containment > answers with the same JSON every time (sn
       "weight": 1,
     },
     {
-      "confidence": "low",
+      "confidence": "high",
       "dst": "ep:adapters:@demo/server:PATCH /api/posts/:id",
       "id": "route:adapters:@demo/web:/posts/$postId|requests|ep:adapters:@demo/server:PATCH /api/posts/:id",
       "kind": "requests",

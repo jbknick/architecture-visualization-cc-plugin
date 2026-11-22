@@ -86,7 +86,9 @@ describe("gantry_trace", () => {
     expect(d.target).toBe(ROUTE);
     expect(d.direction).toBe("down");
     expect(d.endpoints.map((e) => e.id)).toContain("ep:adapters:@demo/api:rpc posts.get");
-    expect(d.endpoints.find((e) => e.id === "ep:adapters:@demo/server:PATCH /api/posts/:id")?.low).toBe(true);
+    expect(
+      d.endpoints.find((e) => e.id === "ep:adapters:@demo/server:PATCH /api/posts/:id")?.low,
+    ).toBeUndefined();
     expect(d.tables).toContain("table:adapters:posts");
 
     const up = await call(client, "gantry_trace", { target: "table:posts" });

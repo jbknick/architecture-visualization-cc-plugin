@@ -774,7 +774,7 @@ describe("gantry trace", () => {
     expect(text.code).toBe(0);
     expect(text.out.split("\n")[0]).toBe("Down from route:adapters:@demo/web:/posts/$postId");
     expect(text.out).toContain("requests → endpoint ep:adapters:@demo/api:rpc posts.get");
-    expect(text.out).toContain("(low confidence)");
+    expect(text.out).not.toContain("(low confidence)");
     expect(text.out).toContain('unmatched client call "rpc posts.archive"');
 
     const up = JSON.parse(run(fx.dir, ["trace", "table:posts", "--json"]).out);

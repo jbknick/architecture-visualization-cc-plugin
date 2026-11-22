@@ -2,13 +2,12 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { parseSync } from "oxc-parser";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { dumpGraph, indexRepo } from "../indexer.js";
 import { resolvePaths } from "../paths/index.js";
 import { openStore } from "../store/index.js";
 import type { AdapterNodeRecord, EdgeRecord } from "../types.js";
-import { joinUrl, pathScore, urlPath } from "./clients.js";
+import { joinUrl, pathScore } from "./clients.js";
 
 const helperPath = "../../test/helpers/fixture.js";
 const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as {
@@ -72,24 +71,7 @@ const requests = (g: Graph, src: string) =>
     .filter((e) => e.kind === "requests" && e.src === src)
     .map((e) => [e.dst, e.confidence, e.evidence.join(",")]);
 
-/** The first argument of the first call in `code`, as oxc parses it. */
-function arg(code: string): unknown {
-  const r = parseSync("x.ts", `f(${code})`, { sourceType: "module", lang: "ts" });
-  const st = (r.program as unknown as { body: { expression: { arguments: unknown[] } }[] }).body[0];
-  return st?.expression.arguments[0];
-}
-
 describe("URL helpers", () => {
-  it("reads literal and template URLs as paths, a template piece as :param", () => {
-    expect(urlPath(arg('"/api/posts"'))).toBe("/api/posts");
-    expect(urlPath(arg("`/api/posts/${id}`"))).toBe("/api/posts/:param");
-    expect(urlPath(arg("`${base}/api/posts/${id}/comments`"))).toBe("/api/posts/:param/comments");
-    expect(urlPath(arg('"/api/posts/?page=2#top"'))).toBe("/api/posts");
-    expect(urlPath(arg('"https://example.com/x?y=1"'))).toBe("https://example.com/x");
-    expect(urlPath(arg("url"))).toBeNull();
-    expect(urlPath(arg('"posts"'))).toBeNull();
-  });
-
   it("matches a call path to an endpoint path, counting parameter segments", () => {
     expect(pathScore("/api/posts/:param", "/api/posts/:id")).toBe(1);
     expect(pathScore("/api/posts/new", "/api/posts/:id")).toBe(1);
@@ -168,15 +150,13 @@ describe("client calls on fixtures/adapters", () => {
     ]);
   });
 
-  it("rule 4: fetch with a template URL and a method option, low (flagged)", () => {
+  it("rule 4: fetch with a template URL and a method option, high", () => {
     expect(requests(g, HOOK)).toContainEqual([
       "ep:adapters:@demo/server:PATCH /api/posts/:id",
-      "low",
+      "high",
       "apps/web/src/hooks/usePostActions.ts:16",
     ]);
-    // Only the fetch match is low.
-    const low = g.edges.filter((e) => e.kind === "requests" && e.confidence === "low").map((e) => e.dst);
-    expect(low).toEqual(["ep:adapters:@demo/server:PATCH /api/posts/:id"]);
+    expect(g.edges.some((e) => e.kind === "requests" && e.confidence === "low")).toBe(false);
   });
 
   it("rule 5: unmatched calls are reported as client_call nodes, never guessed", () => {
@@ -252,21 +232,21 @@ describe("client instances on fixtures/linking", () => {
       .filter((n) => n.kind === "client_call" && n.data.caller === caller)
       .map((n) => [n.data.rule, n.data.reason, n.label]);
 
-  it("links calls on axios and ky instances to the endpoint of the joined URL, low", () => {
+  it("links calls on axios and ky instances to the endpoint of the joined URL, high", () => {
     const f = "apps/web/src/features/same-origin.ts";
-    expect(requests(g, `${SO}instGet`)).toEqual([[ep("GET /api/users/:id"), "low", `${f}:4`]]);
-    expect(requests(g, `${SO}instPost`)).toEqual([[ep("POST /api/users"), "low", `${f}:8`]]);
+    expect(requests(g, `${SO}instGet`)).toEqual([[ep("GET /api/users/:id"), "high", `${f}:4`]]);
+    expect(requests(g, `${SO}instPost`)).toEqual([[ep("POST /api/users"), "high", `${f}:8`]]);
     // The literal `/users/me` beats `/users/:id`.
-    expect(requests(g, `${SO}instRequest`)).toEqual([[ep("GET /api/users/me"), "low", `${f}:12`]]);
-    expect(requests(g, `${SO}instCall`)).toEqual([[ep("GET /api/orders/:id"), "low", `${f}:16`]]);
-    expect(requests(g, `${SO}kyGet`)).toEqual([[ep("GET /api/users/:id"), "low", `${f}:20`]]);
+    expect(requests(g, `${SO}instRequest`)).toEqual([[ep("GET /api/users/me"), "high", `${f}:12`]]);
+    expect(requests(g, `${SO}instCall`)).toEqual([[ep("GET /api/orders/:id"), "high", `${f}:16`]]);
+    expect(requests(g, `${SO}kyGet`)).toEqual([[ep("GET /api/users/:id"), "high", `${f}:20`]]);
     // `kyRelAuth = kyRel.extend({ headers })` keeps the prefix of `kyRel`.
-    expect(requests(g, `${SO}kyExtended`)).toEqual([[ep("DELETE /api/users/:id"), "low", `${f}:24`]]);
+    expect(requests(g, `${SO}kyExtended`)).toEqual([[ep("DELETE /api/users/:id"), "high", `${f}:24`]]);
   });
 
   it("follows an instance through a re-export", () => {
     expect(requests(g, "sym:linking:apps/web/src/features/reexport.ts#viaReexport")).toEqual([
-      [ep("PUT /api/users/:id"), "low", "apps/web/src/features/reexport.ts:4"],
+      [ep("PUT /api/users/:id"), "high", "apps/web/src/features/reexport.ts:4"],
     ]);
   });
 
@@ -277,9 +257,9 @@ describe("client instances on fixtures/linking", () => {
 
   it("uses axios.defaults.baseURL of the workspace for the default axios import", () => {
     const f = "apps/legacy-web/src/calls.ts";
-    expect(requests(g, `${DEF}defGet`)).toEqual([[ep("GET /api/users/:id"), "low", `${f}:4`]]);
-    expect(requests(g, `${DEF}defConfig`)).toEqual([[ep("POST /api/users"), "low", `${f}:8`]]);
-    expect(requests(g, `${DEF}defRelative`)).toEqual([[ep("GET /api/users/me"), "low", `${f}:12`]]);
+    expect(requests(g, `${DEF}defGet`)).toEqual([[ep("GET /api/users/:id"), "high", `${f}:4`]]);
+    expect(requests(g, `${DEF}defConfig`)).toEqual([[ep("POST /api/users"), "high", `${f}:8`]]);
+    expect(requests(g, `${DEF}defRelative`)).toEqual([[ep("GET /api/users/me"), "high", `${f}:12`]]);
   });
 
   it("leaves the spike calls whose base comes from the environment unlinked", () => {
@@ -319,16 +299,16 @@ describe("client wrappers on fixtures/linking", () => {
       .filter((n) => n.kind === "client_call" && n.data.caller === caller)
       .map((n) => [n.data.rule, n.data.reason, n.label, n.data.wrapper]);
 
-  it("links each call of a wrapper to the endpoint its arguments reach, low", () => {
-    expect(requests(g, `${W}wGet`)).toEqual([[ep("GET /api/users/:id"), "low", `${f}:5`]]);
-    expect(requests(g, `${W}wPost`)).toEqual([[ep("POST /api/users"), "low", `${f}:9`]]);
-    expect(requests(g, `${W}wMethod`)).toEqual([[ep("DELETE /api/users/:id"), "low", `${f}:13`]]);
+  it("links each call of a wrapper to the endpoint its arguments reach, high", () => {
+    expect(requests(g, `${W}wGet`)).toEqual([[ep("GET /api/users/:id"), "high", `${f}:5`]]);
+    expect(requests(g, `${W}wPost`)).toEqual([[ep("POST /api/users"), "high", `${f}:9`]]);
+    expect(requests(g, `${W}wMethod`)).toEqual([[ep("DELETE /api/users/:id"), "high", `${f}:13`]]);
     // A wrapper of a wrapper; the literal `/users/me` beats `/users/:id`.
-    expect(requests(g, `${W}wHook`)).toEqual([[ep("GET /api/users/me"), "low", `${f}:17`]]);
+    expect(requests(g, `${W}wHook`)).toEqual([[ep("GET /api/users/me"), "high", `${f}:17`]]);
     // A function whose parameter only fills a later segment is no wrapper: the edge is its own.
     expect(requests(g, `${W}wUser`)).toEqual([]);
     expect(requests(g, `${LIB}getUser`)).toEqual([
-      [ep("GET /api/users/:id"), "low", "apps/web/src/lib/same-origin-http.ts:21"],
+      [ep("GET /api/users/:id"), "high", "apps/web/src/lib/same-origin-http.ts:21"],
     ]);
     expect(gaps(`${LIB}getUser`)).toEqual([]);
   });
@@ -341,7 +321,7 @@ describe("client wrappers on fixtures/linking", () => {
   });
 
   it("links a call of a wrapper the recipe lists, where inference does not see the flow", () => {
-    expect(requests(g, `${W}wSend`)).toEqual([[ep("GET /api/users"), "low", `${f}:25`]]);
+    expect(requests(g, `${W}wSend`)).toEqual([[ep("GET /api/users"), "high", `${f}:25`]]);
     const send = "sym:linking:apps/web/src/lib/opaque.ts#send";
     expect(gaps(send)).toEqual([["wrapper", "wrapper_body", "wrapper send", send]]);
   });
@@ -391,7 +371,7 @@ describe("client wrappers on fixtures/linking", () => {
     );
     const at = (fn: string) => `sym:repo:apps/web/src/c.ts#${fn}`;
     expect(requests(r, at("twice"))).toEqual([
-      ["ep:repo:@x/api:POST /api/users", "low", "apps/web/src/c.ts:16"],
+      ["ep:repo:@x/api:POST /api/users", "high", "apps/web/src/c.ts:16"],
     ]);
     expect(requests(r, at("viaVar"))).toEqual([]);
     // `chained` passes its parameter on, so it is a wrapper itself.
@@ -402,6 +382,149 @@ describe("client wrappers on fixtures/linking", () => {
     expect(gap("viaVar")).toEqual([["dynamic_url", "GET <dynamic>"]]);
     expect(gap("viaMethod")).toEqual([["dynamic_url", "<dynamic>"]]);
     expect(gap("chained")).toEqual([["wrapper_body", "wrapper chained"]]);
+  });
+});
+
+describe("constant URLs on fixtures/linking", () => {
+  let g: Graph;
+  beforeAll(async () => {
+    const fx = await materializeFixture("linking");
+    cleanups.push(() => fx.cleanup());
+    g = await indexDir(fx.dir);
+  });
+  const C = "sym:linking:apps/web/src/features/same-origin-consts.ts#";
+  const f = "apps/web/src/features/same-origin-consts.ts";
+  const ep = (route: string) => `ep:linking:@fx/users-api:${route}`;
+  const gaps = (caller: string) =>
+    g.nodes
+      .filter((n) => n.kind === "client_call" && n.data.caller === caller)
+      .map((n) => [n.data.rule, n.data.reason, n.label, n.data.candidates]);
+
+  it("links a URL built from consts, enums, `as const` members, `??` and conditionals, high", () => {
+    expect(requests(g, `${C}cConst`)).toEqual([[ep("GET /api/orders/:id"), "high", `${f}:6`]]);
+    expect(requests(g, `${C}cEnum`)).toEqual([[ep("GET /api/users"), "high", `${f}:10`]]);
+    expect(requests(g, `${C}cAsConst`)).toEqual([[ep("GET /api/users/me"), "high", `${f}:14`]]);
+    expect(requests(g, `${C}cConcat`)).toEqual([[ep("GET /api/users/:id"), "high", `${f}:18`]]);
+    expect(requests(g, `${C}cNullish`)).toEqual([[ep("GET /api/users"), "high", `${f}:22`]]);
+    expect(requests(g, `${C}cCond`)).toEqual([[ep("GET /api/users/:id"), "high", `${f}:26`]]);
+    for (const fn of ["cConst", "cEnum", "cAsConst", "cConcat", "cNullish", "cCond"])
+      expect(gaps(`${C}${fn}`), fn).toEqual([]);
+  });
+
+  it("`new URL` with an absolute path replaces the path of its base: no endpoint, a gap", () => {
+    expect(requests(g, `${C}cNewUrl`)).toEqual([]);
+    expect(gaps(`${C}cNewUrl`)).toEqual([["fetch", "no_endpoint", "GET /orders/:param", undefined]]);
+  });
+
+  it("a route of two backends is an ambiguous gap with both candidates, never an edge", () => {
+    expect(requests(g, `${C}cTwoBackends`)).toEqual([]);
+    expect(gaps(`${C}cTwoBackends`)).toEqual([
+      ["fetch", "ambiguous", "GET /health", ["ep:linking:@fx/billing:GET /health", ep("GET /health")]],
+    ]);
+    expect(g.edges.some((e) => e.kind === "requests" && e.dst.startsWith("call:"))).toBe(false);
+  });
+
+  it("leaves a URL that starts with an environment member a dynamic_url gap, a relative one a link", () => {
+    const users = "sym:linking:apps/web/src/features/users.ts#";
+    expect(requests(g, `${users}fullyDynamic`)).toEqual([]);
+    expect(gaps(`${users}sameRouteTwoBackends`)).toEqual([
+      ["fetch", "dynamic_url", "GET <dynamic>", undefined],
+    ]);
+    expect(requests(g, `${users}relativeProxy`)).toEqual([
+      [ep("GET /api/users"), "high", "apps/web/src/features/users.ts:63"],
+    ]);
+  });
+});
+
+describe("constant URL shapes", () => {
+  const web = (files: Record<string, string>) =>
+    indexDir(
+      repo({
+        "package.json": JSON.stringify({ name: "root", private: true }),
+        "pnpm-workspace.yaml": 'packages:\n  - "apps/*"\n',
+        "apps/api/package.json": JSON.stringify({ name: "@x/api", dependencies: { hono: "^4.0.0" } }),
+        "apps/api/src/app.ts":
+          'import { Hono } from "hono";\nexport const app = new Hono();\napp.get("/api/users", (c) => c.json([]));\napp.get("/api/users/:id", (c) => c.json({}));\napp.get("/api/orders/:id", (c) => c.json({}));\n',
+        "apps/web/package.json": JSON.stringify({ name: "@x/web", dependencies: { axios: "^1.7.0" } }),
+        ...files,
+      }),
+    );
+  const at = (fn: string) => `sym:repo:apps/web/src/c.ts#${fn}`;
+  const gaps = (g: Graph, src: string) =>
+    g.nodes
+      .filter((n) => n.kind === "client_call" && n.data.caller === src)
+      .map((n) => [n.data.reason, n.label, n.data.candidates]);
+
+  it("alternatives that fit different endpoints are ambiguous, ones that agree link", async () => {
+    const g = await web({
+      "apps/web/src/c.ts": [
+        'export function differ(a: boolean) {\n  return fetch(a ? "/api/users" : "/api/orders/1");\n}',
+        'export function agree(a: boolean) {\n  return fetch(a ? "/api/users" : "/nowhere");\n}',
+        'export function same(a: boolean, id: string) {\n  return fetch(a ? `/api/users/${id}` : "/api/users/7");\n}',
+      ].join("\n"),
+    });
+    expect(requests(g, at("differ"))).toEqual([]);
+    expect(gaps(g, at("differ"))).toEqual([
+      [
+        "ambiguous",
+        "GET /api/users",
+        ["ep:repo:@x/api:GET /api/orders/:id", "ep:repo:@x/api:GET /api/users"],
+      ],
+    ]);
+    expect(requests(g, at("agree")).map((r) => [r[0], r[1]])).toEqual([
+      ["ep:repo:@x/api:GET /api/users", "high"],
+    ]);
+    expect(requests(g, at("same")).map((r) => [r[0], r[1]])).toEqual([
+      ["ep:repo:@x/api:GET /api/users/:id", "high"],
+    ]);
+  });
+
+  it("a part that is not known keeps a unique match from being high: an ambiguous gap", async () => {
+    const g = await web({
+      "apps/web/src/c.ts":
+        'export function load(id: number) {\n  return fetch("/api/users/" + String(id));\n}\n',
+    });
+    expect(requests(g, at("load"))).toEqual([]);
+    expect(gaps(g, at("load"))).toEqual([
+      ["ambiguous", "GET /api/users/:param", ["ep:repo:@x/api:GET /api/users/:id"]],
+    ]);
+  });
+
+  it("evaluates the base of an instance, a const imported from another file", async () => {
+    const g = await web({
+      "apps/web/src/config.ts": 'export const PREFIX = "/api";\nexport const BASE = PREFIX;\n',
+      "apps/web/src/c.ts": [
+        'import axios from "axios";',
+        'import { BASE } from "./config";',
+        "export const rel = axios.create({ baseURL: BASE });",
+        'export function load() {\n  return rel.get("/users");\n}',
+      ].join("\n"),
+    });
+    expect(requests(g, at("load")).map((r) => [r[0], r[1]])).toEqual([
+      ["ep:repo:@x/api:GET /api/users", "high"],
+    ]);
+  });
+
+  it("a wrapper argument is evaluated: a const, a conditional", async () => {
+    const g = await web({
+      "apps/web/src/c.ts": [
+        'const USERS = "/users";',
+        "export function get(path: string) {\n  return fetch(`/api${path}`);\n}",
+        "export function viaConst() {\n  return get(USERS);\n}",
+        'export function viaCond(a: boolean) {\n  return get(a ? USERS : "/orders/1");\n}',
+      ].join("\n"),
+    });
+    expect(requests(g, at("viaConst")).map((r) => [r[0], r[1]])).toEqual([
+      ["ep:repo:@x/api:GET /api/users", "high"],
+    ]);
+    expect(requests(g, at("viaCond"))).toEqual([]);
+    expect(gaps(g, at("viaCond"))).toEqual([
+      [
+        "ambiguous",
+        "GET /api/users",
+        ["ep:repo:@x/api:GET /api/orders/:id", "ep:repo:@x/api:GET /api/users"],
+      ],
+    ]);
   });
 });
 
@@ -438,10 +561,10 @@ describe("client wrapper shapes", () => {
     // `api` is a wrapper: no rule 4 edge from its body, the calls link.
     expect(reqs(g, at("api"))).toEqual([]);
     expect(gaps(g, at("api"))).toEqual([["wrapper", "wrapper_body", "wrapper api"]]);
-    expect(reqs(g, at("a1"))).toEqual([["ep:repo:@x/api:GET /api/users", "low"]]);
-    expect(reqs(g, at("a2"))).toEqual([["ep:repo:@x/api:GET /api/users/:id", "low"]]);
+    expect(reqs(g, at("a1"))).toEqual([["ep:repo:@x/api:GET /api/users", "high"]]);
+    expect(reqs(g, at("a2"))).toEqual([["ep:repo:@x/api:GET /api/users/:id", "high"]]);
     // `getUser` is called with no slash: it stays a rule 4 link of its own.
-    expect(reqs(g, at("getUser"))).toEqual([["ep:repo:@x/api:GET /api/users/:id", "low"]]);
+    expect(reqs(g, at("getUser"))).toEqual([["ep:repo:@x/api:GET /api/users/:id", "high"]]);
     expect(gaps(g, at("getUser"))).toEqual([]);
     expect(reqs(g, at("g1"))).toEqual([]);
   });
@@ -459,8 +582,8 @@ describe("client wrapper shapes", () => {
     expect(reqs(g, at("viaBase"))).toEqual([]);
     expect(gaps(g, at("viaBase"))).toEqual([["wrapper", "wrapper_body", "wrapper viaBase"]]);
     expect(reqs(g, at("viaBase2"))).toEqual([]);
-    expect(reqs(g, at("b1"))).toEqual([["ep:repo:@x/api:GET /api/users", "low"]]);
-    expect(reqs(g, at("b2"))).toEqual([["ep:repo:@x/api:GET /api/users", "low"]]);
+    expect(reqs(g, at("b1"))).toEqual([["ep:repo:@x/api:GET /api/users", "high"]]);
+    expect(reqs(g, at("b2"))).toEqual([["ep:repo:@x/api:GET /api/users", "high"]]);
   });
 
   it("a function whose qualifying requests disagree makes each of its calls a gap", async () => {
@@ -493,8 +616,8 @@ describe("client wrapper shapes", () => {
         'export function n2() {\n  return other("/users");\n}',
       ].join("\n"),
     });
-    expect(reqs(g, at("n1", "use.ts"))).toEqual([["ep:repo:@x/api:POST /api/users", "low"]]);
-    expect(reqs(g, at("n2", "use.ts"))).toEqual([["ep:repo:@x/api:GET /api/users", "low"]]);
+    expect(reqs(g, at("n1", "use.ts"))).toEqual([["ep:repo:@x/api:POST /api/users", "high"]]);
+    expect(reqs(g, at("n2", "use.ts"))).toEqual([["ep:repo:@x/api:GET /api/users", "high"]]);
     expect(reqs(g, at("apiFetch", "named.ts"))).toEqual([]);
     expect(gaps(g, at("apiFetch", "named.ts"))).toEqual([["wrapper", "wrapper_body", "wrapper apiFetch"]]);
   });
@@ -522,7 +645,7 @@ describe("default axios base", () => {
       web(['axios.defaults.baseURL = "/api";', 'axios.defaults.baseURL = "/api/";']),
     );
     expect(requests(same, "sym:repo:apps/web/src/call.ts#load")).toEqual([
-      ["ep:repo:@x/api:GET /api/users", "low", "apps/web/src/call.ts:3"],
+      ["ep:repo:@x/api:GET /api/users", "high", "apps/web/src/call.ts:3"],
     ]);
   });
 
