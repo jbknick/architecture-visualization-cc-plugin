@@ -3833,7 +3833,7 @@
       "src": "sym:adapters:apps/web/src/hooks/usePostActions.ts#usePostActions",
       "dst": "ep:adapters:@demo/server:PATCH /api/posts/:id",
       "kind": "requests",
-      "confidence": "low",
+      "confidence": "high",
       "count": 1,
       "evidence": [
         "apps/web/src/hooks/usePostActions.ts:16"

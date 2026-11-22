@@ -180,7 +180,7 @@ describe("page -> API view", () => {
     const patch = r.edges.find(
       (e) => e.src === ROUTE && e.dst === "ep:adapters:@demo/server:PATCH /api/posts/:id",
     );
-    expect(patch?.confidence).toBe("low");
+    expect(patch?.confidence).toBe("high");
     expect(patch?.via).toBe(1);
     expect(patch?.viaSample).toEqual(["usePostActions"]);
     expect(r.nodes.find((n) => n.id === ROUTE)?.badges).toContain("2 unmatched");

@@ -1,4 +1,4 @@
-import { callId, fileId as makeFileId, symId } from "../ids.js";
+import { callId, fileId as makeFileId, parseId, symId } from "../ids.js";
 import { isNode, type Node, nodeArray, unwrap, visit } from "../parse/ast.js";
 import type { EdgeRecord, WorkspaceRecord } from "../types.js";
 import {
@@ -14,6 +14,15 @@ import {
   wsName,
 } from "./framework.js";
 import { START_PACKAGES } from "./tanstack-start.js";
+import {
+  altText,
+  type Binding,
+  evalUrl,
+  localScope,
+  type ModuleScope,
+  moduleScope,
+  type UrlScope,
+} from "./urlEval.js";
 
 /**
  * Client calls matched to the endpoints they request (spec section 9, #47). Registered last, so its `link` sees the
@@ -25,10 +34,20 @@ import { START_PACKAGES } from "./tanstack-start.js";
  * | 1    | `getPosts(...)`, `useServerFn(getPosts)` resolving to a server fn's const   | `ep:<ws>:fn getPosts`           | high           |
  * | 2    | `orpc.posts.list.queryOptions()`, `client.posts.list()` on an oRPC client   | `ep:*:rpc posts.list`           | high if unique |
  * | 3    | `client.api.posts[":id"].$get()` on a Hono `hc()` client                    | `ep:*:GET /api/posts/:id`       | high if unique |
- * | 4    | `fetch("/api/posts/${id}")`, `ky.post(...)`, `axios.get(...)` (literal URL)  | endpoint path, `${x}` as `:param` | low          |
- * | 4b   | `rel.get("/users")` on an `axios.create` / `ky.create` / `ky.extend` instance, or on `axios` with `axios.defaults.baseURL` set | endpoint path of the joined URL | low |
+ * | 4    | `fetch("/api/posts/${id}")`, `ky.post(...)`, `axios.get(...)` (a URL the evaluator reads)  | endpoint path, a run-time value as `:param` | high if unique |
+ * | 4b   | `rel.get("/users")` on an `axios.create` / `ky.create` / `ky.extend` instance, or on `axios` with `axios.defaults.baseURL` set | endpoint path of the joined URL | high if unique |
  *
- * | 4c   | `relFetch("/users")` where `relFetch(path, init)` is a client wrapper (inferred, or listed in the recipe)  | endpoint path of the substituted URL | low |
+ * | 4c   | `relFetch("/users")` where `relFetch(path, init)` is a client wrapper (inferred, or listed in the recipe)  | endpoint path of the substituted URL | high if unique |
+ *
+ * Every URL argument (fetch-like calls, instance bases, wrapper arguments) goes through `evalUrl` (`urlEval.ts`),
+ * which gives one or more alternatives (consts, enums, `as const` members, `??`, `||`, `+`, `new URL`, conditionals).
+ * An alternative that does not start with text (an environment member, a value that is not known, a parameter) is
+ * dropped; none left is a `dynamic_url` gap. Per alternative the candidates are the endpoints of the method whose path
+ * fits segment by segment (a call literal fits an endpoint parameter, a call parameter does not fit an endpoint
+ * literal), those with the fewest parameter segments, narrowed to the caller's workspace and its dependencies. The
+ * call links, `high`, when the alternatives that fit agree on one endpoint and each is fully evaluated (no
+ * environment member and no unknown part inside it); otherwise it is an `ambiguous` gap whose `data.candidates` are
+ * the sorted endpoint ids, and gets no edge.
  *
  * A wrapper is a top-level function (declaration, or arrow / function expression bound to a `const`) with a client
  * call (fetch, an instance, `axios` / `ky`) or a call of another wrapper in which a parameter flows unchanged into the
@@ -46,8 +65,8 @@ import { START_PACKAGES } from "./tanstack-start.js";
  * `<kyInstance>.extend({ prefixUrl? })` (`extend` without `prefixUrl` keeps the parent's base). Calls on it are
  * followed through imports and re-exports. The URL is joined by the library's own rule (`joinUrl`): axios puts the
  * base and the request path together with one `/`, an absolute request URL replaces the base; ky puts `prefixUrl`,
- * `/` and an input without a leading slash together. A base that is not a literal or template makes the call a gap
- * (`dynamic_url`). Calls on the default `axios` import use the one `axios.defaults.baseURL` assigned at the top level
+ * `/` and an input without a leading slash together. A base the evaluator does not read as a path or absolute URL
+ * makes the call a gap (`dynamic_url`). Calls on the default `axios` import use the one `axios.defaults.baseURL` assigned at the top level
  * of a file of the same workspace; two different assignments in a workspace make them gaps (`ambiguous`).
  *
  * An oRPC client is a top-level `const` initialised by `createORPCClient`, `createTanstackQueryUtils` (or the other
@@ -56,10 +75,11 @@ import { START_PACKAGES } from "./tanstack-start.js";
  * `hono/client`. Uses are followed through imports. Rule 2 strips one trailing helper (`queryOptions`,
  * `mutationOptions`, `key`, `call`, ...); a path that is a router prefix (`orpc.posts.key()`) is a cache helper,
  * not a request, and is skipped. Several candidates (the same path in two workspaces) narrow to the ones in the
- * caller's workspace or its dependencies; when more than one is left each gets a `low` edge.
+ * caller's workspace or its dependencies; when more than one is left each gets a `low` edge (a fetch-like call is an
+ * `ambiguous` gap instead).
  *
- * A client call that matches nothing (rule 2 or 3 without an endpoint, a fetch URL that is not a literal or
- * template or matches no route, `useServerFn` of something that is no server function) is not guessed: it becomes a
+ * A client call that matches nothing (rule 2 or 3 without an endpoint, a fetch URL the evaluator cannot read or that
+ * matches no route, `useServerFn` of something that is no server function) is not guessed: it becomes a
  * `client_call` node `call:<ws>:<label>` with `{ adapter: "clients", rule, reason, label, caller, file, line }`,
  * which `trace` reports as a gap. Calls in the definition of a route (`Route`'s loader) are left to the route's own
  * `requests` edge (TanStack Start adapter).
@@ -138,15 +158,16 @@ interface ClientDecl {
   kind: "orpc" | "hono";
 }
 /**
- * An `axios.create` / `ky.create` / `ky.extend` instance. `base` is the literal or template path (`""` for none)
- * or null when it is not static; with `inherits` (an `extend` without `prefixUrl`) it is the base of `parent`, the
- * local name of the instance extended, or of no instance when `parent` is null.
+ * An `axios.create` / `ky.create` / `ky.extend` instance. `base` is the offset of the expression that gives its base
+ * URL (the options argument when that is no object literal), null for none; with `inherits` (an `extend` without
+ * `prefixUrl`) the base is that of `parent`, the local name of the instance extended, or of no instance when
+ * `parent` is null.
  */
 interface InstanceDecl {
   symbol: string;
   /** Null for an `extend` of an instance of another file, whose library is the parent's. */
   lib: "axios" | "ky" | null;
-  base: string | null;
+  base: number | null;
   inherits: boolean;
   parent: string | null;
 }
@@ -176,8 +197,8 @@ export interface ClientFacts {
   aliases: { key: string; caller: string; name: string; root: string; keys: string[]; line: number }[];
   /** Top-level `axios.create` / `ky.create` / `ky.extend` instances declared in this file. */
   instances?: InstanceDecl[];
-  /** Top-level `<axios>.defaults.baseURL = <expr>` assignments of this file (`base` null when not static). */
-  defaults?: { base: string | null; line: number }[];
+  /** Top-level `<axios>.defaults.baseURL = <expr>` assignments of this file (`base` is the offset of `<expr>`). */
+  defaults?: { base: number }[];
   /** Top-level functions with calls whose arguments mention a parameter: the wrapper candidates. */
   wrappers?: WrapperFact[];
   /** Plain calls with an argument whose text contains a slash. */
@@ -306,22 +327,15 @@ function readInstances(ctx: AdapterFileContext): Pick<ClientFacts, "instances" |
   if (!program) return {};
   const local = (name: string) => ctx.parsed?.symbols.find((s) => s.name === name)?.id;
   const instances: InstanceDecl[] = [];
-  const defaults: { base: string | null; line: number }[] = [];
+  const defaults: { base: number }[] = [];
   const names = new Map<string, "axios" | "ky">();
-  const staticBase = (v: unknown): string | null => {
-    const t = urlText(v, false);
-    if (t === null) return null;
-    const p = stripQuery(t);
-    return p === "" || p.startsWith("/") || /^[a-z][a-z0-9+.-]*:\/\//i.test(p) ? p : null;
-  };
-  const line = lineTable(ctx.source);
   for (const st of program) {
     if (st.type === "ExpressionStatement") {
       const e = unwrap(st.expression);
       if (!isNode(e) || e.type !== "AssignmentExpression" || e.operator !== "=") continue;
       const left = memberChain(e.left);
       if (left?.keys.join(".") !== "defaults.baseURL" || libs.get(left.root) !== "axios") continue;
-      defaults.push({ base: staticBase(e.right), line: line(st.start as number) });
+      if (isNode(e.right)) defaults.push({ base: e.right.start });
       continue;
     }
     const decl = st.type === "ExportNamedDeclaration" ? unwrap(st.declaration) : st;
@@ -343,18 +357,11 @@ function readInstances(ctx: AdapterFileContext): Pick<ClientFacts, "instances" |
       const isObject = isNode(opts) && opts.type === "ObjectExpression";
       const own = propOf(opts, lib === "axios" ? "baseURL" : "prefixUrl");
       const inherits = verb === "extend" && isObject && own === undefined;
+      const baseNode = inherits ? undefined : isObject ? own : opts;
       instances.push({
         symbol,
         lib,
-        base: inherits
-          ? null
-          : opts === undefined
-            ? ""
-            : own !== undefined
-              ? staticBase(own)
-              : isObject
-                ? ""
-                : null,
+        base: isNode(baseNode) ? baseNode.start : null,
         inherits,
         parent: rootLib === undefined ? chain.root : null,
       });
@@ -519,45 +526,10 @@ function memberChain(expr: unknown): { root: string; keys: string[]; computed: b
   return null;
 }
 
-/**
- * A string or template URL as text, `${x}` as `:param`. With `dropBase` a leading `${base}` before a `/` is dropped
- * (a URL argument whose base the call site does not show); without it such a template is not static (null).
- */
-function urlText(arg: unknown, dropBase: boolean): string | null {
-  const v = unwrap(arg);
-  if (!isNode(v)) return null;
-  if (v.type === "Literal" && typeof v.value === "string") return v.value;
-  if (v.type !== "TemplateLiteral") return null;
-  const quasis = nodeArray(v.quasis).map((q) => {
-    const cooked = (q.value as { cooked?: unknown } | undefined)?.cooked;
-    return typeof cooked === "string" ? cooked : "";
-  });
-  let s = "";
-  for (let i = 0; i < quasis.length; i++) {
-    const q = quasis[i] as string;
-    if (i === 0 && q === "" && quasis.length > 1) {
-      if (!dropBase) return null;
-      if ((quasis[1] as string).startsWith("/")) continue;
-    }
-    s += q;
-    if (i < quasis.length - 1) s += ":param";
-  }
-  return s;
-}
-
 const stripQuery = (u: string): string => {
   const p = u.replace(/[?#].*$/, "");
   return p.length > 1 ? p.replace(/\/+$/, "") : p;
 };
-
-/**
- * A URL argument as a path: literal or template (`${x}` becomes `:param`, a leading `${base}` is dropped), query
- * and hash dropped. An absolute URL (`https://host/...`) is returned whole; anything else is null.
- */
-export function urlPath(arg: unknown): string | null {
-  const raw = urlText(arg, true);
-  return raw === null ? null : plainPath(raw);
-}
 
 /** A URL text that no instance joins: an absolute URL whole, a path with query and hash dropped, else null. */
 function plainPath(raw: string): string | null {
@@ -637,12 +609,21 @@ interface Hit {
     | "wrapper_body";
   /** The wrapper whose body holds the call (reason `wrapper_body`). */
   wrapper?: string;
+  /** The endpoints a call may reach (reason `ambiguous` of a fetch-like call), sorted. */
+  candidates?: string[];
+}
+
+/** A URL alternative as text (`:param` for a value known at run time), and whether nothing in it is unknown. */
+interface UrlText {
+  text: string;
+  full: boolean;
 }
 
 type MethodSrc = { fixed: string } | { param: number } | { init: number } | { unknown: true };
 interface Via {
   lib: "axios" | "ky";
-  base: string | null;
+  /** The alternatives of the base URL; none when it is not static. */
+  bases: UrlText[];
 }
 /** A client wrapper: the request its body makes, with the function's parameters as slots. */
 interface Wrapper {
@@ -723,6 +704,23 @@ function leadSlot(url: Piece[]): { slot: number; ambiguous: boolean } | null {
   }
   return null;
 }
+
+/** The outermost node of a program that starts at `start`. */
+function nodeAt(program: Node[] | null, start: number): Node | null {
+  const found: { node: Node | null } = { node: null };
+  visit(program, (n) => {
+    if (found.node || n.end <= start || n.start > start) return false;
+    if (n.start === start) {
+      found.node = n;
+      return false;
+    }
+    return undefined;
+  });
+  return found.node;
+}
+
+const FUNCTION_TYPES = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"]);
+const MAX_URL_COMBINATIONS = 16;
 
 export const clientsAdapter: Adapter<ClientFacts> = {
   id: "clients",
@@ -832,13 +830,73 @@ export const clientsAdapter: Adapter<ClientFacts> = {
     /** Aliases some call went through; the others are reported, since their calls happen out of sight. */
     const usedAliases = new Set<string>();
 
+    // Constant evaluation (urlEval.ts): a file's top level with its imports followed, and the functions around a call.
+    const moduleScopes = new Map<string, ModuleScope>();
+    function moduleScopeOf(file: AdapterFileContext): ModuleScope | null {
+      const known = moduleScopes.get(file.fileId);
+      if (known) return known;
+      const program = file.program();
+      if (!program) return null;
+      const scope = moduleScope(program, (name) => importBinding(file, name));
+      moduleScopes.set(file.fileId, scope);
+      return scope;
+    }
+    /** A const or enum another file exports, found through the import (and its re-exports) of `name`. */
+    function importBinding(file: AdapterFileContext, name: string): Binding | null {
+      const sym = symbolForName(file.parsed, file.fileId, name, ctx.resolver);
+      const id = sym ? parseId(sym) : undefined;
+      if (!id || id.kind !== "sym") return null;
+      const target = ctx.file(makeFileId(ctx.repo, id.path as string));
+      if (!target || target.fileId === file.fileId) return null;
+      return moduleScopeOf(target)?.own((id.name as string).replace(/~\d+$/, "")) ?? null;
+    }
+    const functionsOf = new Map<string, Node[]>();
+    /** The scope at an offset of a file: its top level, then each function around the offset, outermost first. */
+    const scopeAt = (file: AdapterFileContext, offset: number): UrlScope | null => {
+      let scope: UrlScope | null = moduleScopeOf(file);
+      if (!scope) return null;
+      let fns = functionsOf.get(file.fileId);
+      if (!fns) {
+        const list: Node[] = [];
+        visit(file.program(), (n) => {
+          if (FUNCTION_TYPES.has(n.type)) list.push(n);
+          return undefined;
+        });
+        fns = list;
+        functionsOf.set(file.fileId, list);
+      }
+      for (const fn of fns) if (fn.start <= offset && offset < fn.end) scope = localScope(scope, fn);
+      return scope;
+    };
+    /** The alternatives of a URL expression as text; none when it is not an expression or no alternative starts with text. */
+    const urlTexts = (scope: UrlScope | null, expr: unknown): UrlText[] => {
+      const out: UrlText[] = [];
+      for (const alt of (scope ? evalUrl(expr, scope) : null) ?? []) {
+        const t = altText(alt);
+        if (t && !out.some((o) => o.text === t.text && o.full === t.full)) out.push(t);
+      }
+      return out;
+    };
+    /** The alternatives of an instance's base URL (written at `at`, or none): a path, an absolute URL or empty. */
+    const baseTexts = (file: AdapterFileContext, at: number | null): UrlText[] => {
+      if (at === null) return [{ text: "", full: true }];
+      const scope = moduleScopeOf(file);
+      const out: UrlText[] = [];
+      for (const t of urlTexts(scope, nodeAt(file.program(), at))) {
+        const text = stripQuery(t.text);
+        if (text !== "" && !text.startsWith("/") && !/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) continue;
+        if (!out.some((o) => o.text === text && o.full === t.full)) out.push({ text, full: t.full });
+      }
+      return out;
+    };
+
     // Instances, `extend` of an instance of another file resolved through the imports.
-    const instances = new Map<string, { lib: "axios" | "ky"; base: string | null }>();
+    const instances = new Map<string, Via>();
     const instList = ctx.files.flatMap(({ file, facts }) =>
       (facts?.instances ?? []).map((i) => ({ i, file })),
     );
-    for (const { i } of instList) {
-      if (i.lib && !i.inherits) instances.set(i.symbol, { lib: i.lib, base: i.base });
+    for (const { i, file } of instList) {
+      if (i.lib && !i.inherits) instances.set(i.symbol, { lib: i.lib, bases: baseTexts(file, i.base) });
     }
     for (let pass = 0; pass < 4; pass++) {
       let added = false;
@@ -850,17 +908,21 @@ export const clientsAdapter: Adapter<ClientFacts> = {
         if (i.parent && !parent) continue;
         const lib = i.lib ?? parent?.lib;
         if (!lib) continue;
-        instances.set(i.symbol, { lib, base: i.inherits ? (parent ? parent.base : "") : i.base });
+        instances.set(i.symbol, {
+          lib,
+          bases: i.inherits ? (parent ? parent.bases : baseTexts(file, null)) : baseTexts(file, i.base),
+        });
         added = true;
       }
       if (!added) break;
     }
     // The base set on the default `axios` of each workspace: the distinct assignments of its files.
-    const defaultBases = new Map<string, Set<string | null>>();
+    const defaultBases = new Map<string, Map<string, UrlText[]>>();
     for (const { file, facts } of ctx.files) {
       for (const d of facts?.defaults ?? []) {
-        const set = defaultBases.get(file.ws.id) ?? new Set<string | null>();
-        set.add(d.base);
+        const bases = baseTexts(file, d.base);
+        const set = defaultBases.get(file.ws.id) ?? new Map<string, UrlText[]>();
+        set.set(JSON.stringify(bases), bases);
         defaultBases.set(file.ws.id, set);
       }
     }
@@ -906,7 +968,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
       if (!via && libs.axios.has(root)) {
         const bases = defaultBases.get(file.ws.id);
         if (bases && bases.size > 1) ambiguous = true;
-        else if (bases) via = { lib: "axios", base: [...bases][0] as string | null };
+        else if (bases) via = { lib: "axios", bases: [...bases.values()][0] as UrlText[] };
       }
       return { via, member, ambiguous };
     };
@@ -1162,46 +1224,79 @@ export const clientsAdapter: Adapter<ClientFacts> = {
           wrapper: (own as Wrapper).symbol,
         });
 
-        /** Matches a method and URL text to the endpoints; `raw` is the text as the call writes it (null: not static). */
-        const finish = (rule: ClientRule, via: Via | null, method: string, raw: string | null) => {
-          let path: string | null;
-          if (via) {
-            const full = raw === null || via.base === null ? null : joinUrl(via.lib, via.base, raw);
-            if (raw !== null && via.base !== null && full === null) {
-              push({ rule, label: `${method} ${raw}`, dsts: [], confidence: "low", reason: "no_endpoint" });
-              return;
+        /**
+         * Matches a method and the alternatives of a URL to the endpoints. Per alternative the candidates are the
+         * endpoints of that method whose path fits with the fewest parameter segments; the call links, at `high`,
+         * when the alternatives that fit agree on one endpoint and every one of them is fully evaluated, else it is an
+         * `ambiguous` gap with the candidates.
+         */
+        const finish = (rule: ClientRule, via: Via | null, method: string, urls: UrlText[]) => {
+          const gap = (label: string, reason: NonNullable<Hit["reason"]>) =>
+            push({ rule, label, dsts: [], confidence: "low", reason });
+          /** Each path the call may request, and whether it is fully evaluated. */
+          const paths = new Map<string, boolean>();
+          let refused: string | null = null;
+          for (const u of urls) {
+            for (const b of via ? via.bases : [null]) {
+              const path = via && b ? joinUrl(via.lib, b.text, u.text) : plainPath(u.text);
+              if (path === null) {
+                if (via) refused ??= u.text;
+                continue;
+              }
+              paths.set(path, (paths.get(path) ?? true) && u.full && (b?.full ?? true));
             }
-            path = full;
-          } else path = raw === null ? null : plainPath(raw);
-          if (path === null) {
-            push({ rule, label: `${method} <dynamic>`, dsts: [], confidence: "low", reason: "dynamic_url" });
+          }
+          if (paths.size === 0) {
+            if (refused !== null) gap(`${method} ${refused}`, "no_endpoint");
+            else gap(`${method} <dynamic>`, "dynamic_url");
             return;
           }
-          if (!path.startsWith("/")) {
+          const matchable = [...paths].filter(([path]) => path.startsWith("/"));
+          if (matchable.length === 0) {
+            const [path] = [...paths.keys()] as [string];
+            gap(
+              `${method} ${path}`,
+              via && !/^([a-z][a-z\d+\-.]*:)?\/\//i.test(path) ? "no_endpoint" : "external_url",
+            );
+            return;
+          }
+          const found = new Set<string>();
+          let matched: string | null = null;
+          let full = true;
+          for (const [path, isFull] of matchable) {
+            let best: number | null = null;
+            let cands: AdapterNode[] = [];
+            for (const ep of http) {
+              const m = ep.data.method as string;
+              if (m !== method && m !== "ALL") continue;
+              const s = pathScore(path, ep.data.path as string);
+              if (s === null) continue;
+              if (best === null || s < best) {
+                best = s;
+                cands = [ep];
+              } else if (s === best) cands.push(ep);
+            }
+            if (cands.length === 0) continue;
+            for (const d of narrow(cands, file.ws).dsts) found.add(d);
+            matched ??= path;
+            full &&= isFull;
+          }
+          if (matched === null) {
+            gap(`${method} ${(matchable[0] as [string, boolean])[0]}`, "no_endpoint");
+            return;
+          }
+          const label = `${method} ${matched}`;
+          const [only] = [...found];
+          if (found.size === 1 && full && only) push({ rule, label, dsts: [only], confidence: "high" });
+          else
             push({
               rule,
-              label: `${method} ${path}`,
+              label,
               dsts: [],
               confidence: "low",
-              reason: via && !/^([a-z][a-z\d+\-.]*:)?\/\//i.test(path) ? "no_endpoint" : "external_url",
+              reason: "ambiguous",
+              candidates: [...found].sort(cmp),
             });
-            return;
-          }
-          let best: number | null = null;
-          let cands: AdapterNode[] = [];
-          for (const ep of http) {
-            const m = ep.data.method as string;
-            if (m !== method && m !== "ALL") continue;
-            const s = pathScore(path, ep.data.path as string);
-            if (s === null) continue;
-            if (best === null || s < best) {
-              best = s;
-              cands = [ep];
-            } else if (s === best) cands.push(ep);
-          }
-          const label = `${method} ${path}`;
-          if (cands.length === 0) push({ rule, label, dsts: [], confidence: "low", reason: "no_endpoint" });
-          else push({ rule, label, dsts: narrow(cands, file.ws).dsts, confidence: "low" });
         };
 
         // A call of a wrapper: its arguments go into the wrapper's URL template and method.
@@ -1219,22 +1314,47 @@ export const clientsAdapter: Adapter<ClientFacts> = {
           }
           const given = args.map((a) => argFact(a, NO_PARAMS));
           const method = methodAt(wrapper.method, given);
-          const lead = leadSlot(wrapper.url);
-          const url = substitute(wrapper.url, given);
-          if (
-            "unknown" in method ||
-            url[0] === null ||
-            (lead !== null && (given[lead.slot]?.text?.[0] ?? null) === null)
-          ) {
-            dynamic("fixed" in method ? `${method.fixed} <dynamic>` : "<dynamic>");
+          const dynamicLabel = "fixed" in method ? `${method.fixed} <dynamic>` : "<dynamic>";
+          if (!("fixed" in method)) {
+            dynamic(dynamicLabel);
             return undefined;
           }
-          finish(
-            "wrapper",
-            wrapper.via,
-            (method as { fixed: string }).fixed,
-            url.map((p) => p ?? ":param").join(""),
-          );
+          // Each argument that fills a slot of the URL template stands for its alternatives.
+          const scope = scopeAt(file, n.start);
+          let combos: { given: ArgFact[]; full: boolean }[] = [{ given, full: true }];
+          for (const slot of new Set(wrapper.url.filter((p): p is number => typeof p === "number"))) {
+            const alts = (scope ? evalUrl(args[slot], scope) : null) ?? [];
+            const options = alts.map((alt) => ({
+              text: joinPieces(alt.parts.map((p): Piece => (typeof p === "string" ? p : null))),
+              full: alt.parts.every((p) => typeof p === "string" || "param" in p),
+            }));
+            if (options.length === 0) options.push({ text: [null], full: false });
+            combos = combos.flatMap((c) =>
+              options.map((o) => {
+                const next = [...c.given];
+                next[slot] = { text: o.text };
+                return { given: next, full: c.full && o.full };
+              }),
+            );
+            if (combos.length > MAX_URL_COMBINATIONS) {
+              combos = [];
+              break;
+            }
+          }
+          const lead = leadSlot(wrapper.url);
+          const urls: UrlText[] = [];
+          for (const c of combos) {
+            const url = substitute(wrapper.url, c.given);
+            if (url[0] === null || (lead !== null && (c.given[lead.slot]?.text?.[0] ?? null) === null))
+              continue;
+            const text = url.map((p) => p ?? ":param").join("");
+            if (!urls.some((u) => u.text === text && u.full === c.full)) urls.push({ text, full: c.full });
+          }
+          if (urls.length === 0) {
+            dynamic(dynamicLabel);
+            return undefined;
+          }
+          finish("wrapper", wrapper.via, method.fixed, urls);
           return undefined;
         }
 
@@ -1269,7 +1389,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
           }
           // The base the call is made with: its instance, or the default `axios` of a workspace that sets one.
           const via = cc.via;
-          finish(via ? "instance" : "fetch", via, method, urlText(urlArg, via === null));
+          finish(via ? "instance" : "fetch", via, method, urlTexts(scopeAt(file, n.start), urlArg));
           return undefined;
         }
 
@@ -1401,6 +1521,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
           line: lines[0],
           ...(lines.length > 1 ? { lines: [...new Set(lines)].sort((x, y) => x - y) } : {}),
           ...(hit.wrapper ? { wrapper: hit.wrapper } : {}),
+          ...(hit.candidates ? { candidates: hit.candidates } : {}),
         },
       });
     }
