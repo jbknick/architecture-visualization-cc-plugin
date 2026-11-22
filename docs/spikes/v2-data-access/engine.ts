@@ -1,5 +1,5 @@
-// Spike engine (data access): a copy of ../v2-recipes/engine.ts extended with four generic helpers (SQL text,
-// text rules, model naming, method classes) and the `table` and `access` emits. It runs an agent-written recipe
+// Spike engine (data access): a copy of the route spike's engine (since removed) extended with four generic
+// helpers (SQL text, text rules, model naming, method classes) and the `table` and `access` emits. It runs a recipe
 // over a repo and returns tables, reads and writes (and, as before, routes and endpoints). It holds no ORM name:
 // every ORM word lives in a recipe. Not production code; see ../v2-data-access.md.
 import { readdirSync, readFileSync, statSync } from "node:fs";
