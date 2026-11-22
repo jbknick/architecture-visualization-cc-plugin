@@ -33,8 +33,10 @@ import { START_PACKAGES } from "./tanstack-start.js";
  * A wrapper is a top-level function (declaration, or arrow / function expression bound to a `const`) with a client
  * call (fetch, an instance, `axios` / `ky`) or a call of another wrapper in which a parameter flows unchanged into the
  * start of the request path, or into the method (the method argument, or `init.method` of an `init` argument). A
- * parameter that only fills a later segment (`/users/${id}`) makes an ordinary call. Inference runs to a fixpoint
- * (8 passes), so a wrapper of a wrapper is one. Each call of a wrapper substitutes its arguments into the URL
+ * parameter that only fills a later segment (`/users/${id}`) makes an ordinary call; after fixed text ending in a
+ * slash (`/api/${path}`) the calls decide: a wrapper when one passes an argument with a slash in it. A leading base
+ * (`${API_URL}`) is skipped. Qualifying calls that disagree make each call of the function a gap. Inference runs to a
+ * fixpoint (8 passes), so a wrapper of a wrapper is one. Each call of a wrapper substitutes its arguments into the URL
  * template and the method; an argument that fills only a segment becomes `:param`, one that fills the start is a
  * `dynamic_url` gap. The client calls in a wrapper's body are not requests: each wrapper has one `client_call` node
  * with reason `wrapper_body` and `data.wrapper` its symbol id. The recipe's `clientWrappers` list wrappers by symbol
@@ -178,6 +180,8 @@ export interface ClientFacts {
   defaults?: { base: string | null; line: number }[];
   /** Top-level functions with calls whose arguments mention a parameter: the wrapper candidates. */
   wrappers?: WrapperFact[];
+  /** Plain calls with an argument whose text contains a slash. */
+  slashCalls?: { callee: string; slash: number[] }[];
   /** Local names that root a member call (`orpc.posts.list(...)`): the cheap filter before the AST walk. */
   roots: string[];
   /** Plain identifier calls (`getPosts(...)`), for rule 1. */
@@ -418,6 +422,18 @@ function readWrapperFacts(ctx: AdapterFileContext): WrapperFact[] {
   const out: WrapperFact[] = [];
   const fns: { name: string; fn: Node }[] = [];
   for (const st of program) {
+    if (st.type === "ExportDefaultDeclaration") {
+      // `export default function name() {}` is the symbol `name`; an anonymous function or arrow is `default`.
+      const d = unwrap(st.declaration);
+      if (
+        isNode(d) &&
+        (d.type === "FunctionDeclaration" ||
+          d.type === "FunctionExpression" ||
+          d.type === "ArrowFunctionExpression")
+      )
+        fns.push({ name: isNode(d.id) ? (d.id.name as string) : "default", fn: d });
+      continue;
+    }
     const decl = st.type === "ExportNamedDeclaration" ? unwrap(st.declaration) : st;
     if (!isNode(decl)) continue;
     if (decl.type === "FunctionDeclaration" && isNode(decl.id))
@@ -457,6 +473,28 @@ function readWrapperFacts(ctx: AdapterFileContext): WrapperFact[] {
     });
     if (calls.length > 0) out.push({ symbol, calls });
   }
+  return out;
+}
+
+/**
+ * Plain calls (`api("users/1")`) with an argument whose static text contains a slash: the call sites that tell a
+ * function with fixed text ending in a slash before its parameter (`/api/${path}`) from one that fills a segment.
+ */
+function readSlashCalls(ctx: AdapterFileContext): { callee: string; slash: number[] }[] {
+  const program = ctx.parsed && ctx.source.includes("/") ? ctx.program() : null;
+  if (!program) return [];
+  const out: { callee: string; slash: number[] }[] = [];
+  visit(program, (n) => {
+    if (n.type !== "CallExpression") return undefined;
+    const callee = unwrap(n.callee);
+    if (!isNode(callee) || callee.type !== "Identifier") return undefined;
+    const slash: number[] = [];
+    (Array.isArray(n.arguments) ? (n.arguments as unknown[]) : []).forEach((a, i) => {
+      if (argFact(a, NO_PARAMS).text?.some((p) => typeof p === "string" && p.includes("/"))) slash.push(i);
+    });
+    if (slash.length > 0) out.push({ callee: callee.name as string, slash });
+    return undefined;
+  });
   return out;
 }
 
@@ -618,6 +656,10 @@ interface Wrapper {
   all: boolean;
   /** Start offsets of the calls of its body that pass a parameter on. */
   starts: Set<number>;
+  /** The request its first qualifying call makes, to compare with the others. */
+  sig: string;
+  /** Its qualifying calls disagree on URL, method or client: each call of it is a gap. */
+  conflict: boolean;
 }
 const GET: MethodSrc = { fixed: "GET" };
 const MAX_WRAPPER_PASSES = 8;
@@ -641,21 +683,45 @@ const methodOfInit = (a: ArgFact | undefined): MethodSrc => {
 /** A wrapper's method seen from a call: the argument it names. */
 const methodAt = (m: MethodSrc, args: ArgFact[]): MethodSrc =>
   "param" in m ? methodOfArg(args[m.param]) : "init" in m ? methodOfInit(args[m.init]) : m;
-/** A wrapper's URL template with the arguments of a call in place of its parameters. */
+/**
+ * A wrapper's URL template with the arguments of a call in place of its parameters. An argument that starts with a
+ * slash after template text that ends in one loses it (`/api/` and `/users` make `/api/users`).
+ */
 const substitute = (url: Piece[], args: ArgFact[]): Piece[] =>
-  joinPieces(url.flatMap((p) => (typeof p === "number" ? (args[p]?.text ?? [null]) : [p])));
+  joinPieces(
+    url.flatMap((p, i): Piece[] => {
+      if (typeof p !== "number") return [p];
+      const text = args[p]?.text ?? [null];
+      const before = url[i - 1];
+      const first = text[0];
+      if (
+        typeof before === "string" &&
+        before.endsWith("/") &&
+        typeof first === "string" &&
+        first.startsWith("/")
+      )
+        return [first.replace(/^\/+/, ""), ...text.slice(1)];
+      return text;
+    }),
+  );
 
 /**
- * The index of the parameter that supplies the start of the path, or -1. Fixed text before it must be empty, only
- * slashes, or not end in a slash (`/api${path}`): text that ends in a slash fills a segment (`/users/${id}`).
+ * The parameter that supplies the start of the path, after leading base parts (`${BASE}`). Fixed text before it
+ * must be empty, only slashes, or not end in a slash (`/api${path}`); text that ends in a slash (`/api/${path}`,
+ * `/users/${id}`) is `ambiguous`: the parameter fills a segment unless a call passes it more than one.
  */
-function leadSlot(url: Piece[]): number {
+function leadSlot(url: Piece[]): { slot: number; ambiguous: boolean } | null {
+  let i = 0;
+  while (url[i] === null) i++;
   let prefix = "";
-  for (const p of url) {
+  for (; i < url.length; i++) {
+    const p = url[i] as Piece;
     if (typeof p === "string") prefix += p;
-    else return typeof p === "number" && (/^\/*$/.test(prefix) || !prefix.endsWith("/")) ? p : -1;
+    else if (typeof p === "number")
+      return { slot: p, ambiguous: !(/^\/*$/.test(prefix) || !prefix.endsWith("/")) };
+    else return null;
   }
-  return -1;
+  return null;
 }
 
 export const clientsAdapter: Adapter<ClientFacts> = {
@@ -686,6 +752,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
     const decls = readDecls(ctx);
     const { instances, defaults } = readInstances(ctx);
     const wrappers = readWrapperFacts(ctx);
+    const slashCalls = readSlashCalls(ctx);
     const aliases: ClientFacts["aliases"] = [];
     for (const m of ctx.source.matchAll(ALIAS_RE)) {
       const name = m[1] as string;
@@ -705,6 +772,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
       !instances &&
       !defaults &&
       wrappers.length === 0 &&
+      slashCalls.length === 0 &&
       aliases.length === 0 &&
       roots.size === 0 &&
       idCalls.length === 0 &&
@@ -719,6 +787,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
         ...(instances ? { instances } : {}),
         ...(defaults ? { defaults } : {}),
         ...(wrappers.length > 0 ? { wrappers } : {}),
+        ...(slashCalls.length > 0 ? { slashCalls } : {}),
         aliases,
         roots: [...roots].sort(cmp),
         idCalls,
@@ -854,6 +923,8 @@ export const clientsAdapter: Adapter<ClientFacts> = {
         via: null,
         all: true,
         starts: new Set(),
+        sig: "",
+        conflict: false,
       });
     }
     const candidates = ctx.files.flatMap(({ file, facts }) =>
@@ -869,8 +940,11 @@ export const clientsAdapter: Adapter<ClientFacts> = {
         const opts = first?.obj ? first : c.args[1];
         const verb = client.member !== null && HTTP_VERBS.has(client.member);
         const m = verb ? { fixed: (client.member as string).toUpperCase() } : methodOfInit(opts);
+        let url = (first?.obj ? first.obj.url : first?.text) ?? [null];
+        // Without an instance a leading base is dropped, as for rule 4.
+        if (client.via === null) while (url.length > 1 && url[0] === null) url = url.slice(1);
         return {
-          url: (first?.obj ? first.obj.url : first?.text) ?? [null],
+          url,
           // An unreadable method is GET, as for a call outside a wrapper.
           method: "unknown" in m ? GET : m,
           via: client.via,
@@ -879,27 +953,50 @@ export const clientsAdapter: Adapter<ClientFacts> = {
       const sym =
         callee.length === 1 ? symbolForName(file.parsed, file.fileId, c.callee, ctx.resolver) : null;
       const callee2 = sym && sym !== own ? wrappers.get(sym) : undefined;
-      if (!callee2) return null;
+      if (!callee2 || callee2.conflict) return null;
       return {
         url: substitute(callee2.url, c.args),
         method: methodAt(callee2.method, c.args),
         via: callee2.via,
       };
     };
+    // Calls that pass a slash on, by the function they call: what decides `/api/${path}` against `/users/${id}`.
+    const slashSlots = new Map<string, Set<number>>();
+    for (const { file, facts } of ctx.files) {
+      for (const c of facts?.slashCalls ?? []) {
+        const sym = symbolForName(file.parsed, file.fileId, c.callee, ctx.resolver);
+        if (!sym) continue;
+        const set = slashSlots.get(sym) ?? new Set<number>();
+        for (const i of c.slash) set.add(i);
+        slashSlots.set(sym, set);
+      }
+    }
     for (let pass = 0; pass < MAX_WRAPPER_PASSES; pass++) {
       let added = false;
       for (const { file, w } of candidates) {
         if (wrappers.get(w.symbol)?.all) continue;
         for (const c of w.calls) {
           const req = requestOfCall(file, w.symbol, c);
-          if (!req || (leadSlot(req.url) < 0 && !("param" in req.method) && !("init" in req.method)))
-            continue;
+          if (!req) continue;
+          const lead = leadSlot(req.url);
+          const leads =
+            lead !== null && (!lead.ambiguous || slashSlots.get(w.symbol)?.has(lead.slot) === true);
+          if (!leads && !("param" in req.method) && !("init" in req.method)) continue;
+          const sig = JSON.stringify([req.url, req.method, req.via]);
           let found = wrappers.get(w.symbol);
           if (!found) {
-            found = { symbol: w.symbol, name: nameOf(w.symbol), ...req, all: false, starts: new Set() };
+            found = {
+              symbol: w.symbol,
+              name: nameOf(w.symbol),
+              ...req,
+              all: false,
+              starts: new Set(),
+              sig,
+              conflict: false,
+            };
             wrappers.set(w.symbol, found);
             added = true;
-          }
+          } else if (found.sig !== sig && !found.all) found.conflict = true;
           found.starts.add(c.start);
         }
       }
@@ -1114,18 +1211,22 @@ export const clientsAdapter: Adapter<ClientFacts> = {
             push(bodyHit());
             return undefined;
           }
+          const dynamic = (label: string) =>
+            push({ rule: "wrapper", label, dsts: [], confidence: "low", reason: "dynamic_url" });
+          if (wrapper.conflict) {
+            dynamic(`${wrapper.name} <dynamic>`);
+            return undefined;
+          }
           const given = args.map((a) => argFact(a, NO_PARAMS));
           const method = methodAt(wrapper.method, given);
           const lead = leadSlot(wrapper.url);
           const url = substitute(wrapper.url, given);
-          if ("unknown" in method || (lead >= 0 && (given[lead]?.text?.[0] ?? null) === null)) {
-            push({
-              rule: "wrapper",
-              label: "fixed" in method ? `${method.fixed} <dynamic>` : "<dynamic>",
-              dsts: [],
-              confidence: "low",
-              reason: "dynamic_url",
-            });
+          if (
+            "unknown" in method ||
+            url[0] === null ||
+            (lead !== null && (given[lead.slot]?.text?.[0] ?? null) === null)
+          ) {
+            dynamic("fixed" in method ? `${method.fixed} <dynamic>` : "<dynamic>");
             return undefined;
           }
           finish(

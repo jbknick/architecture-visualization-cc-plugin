@@ -405,6 +405,101 @@ describe("client wrappers on fixtures/linking", () => {
   });
 });
 
+describe("client wrapper shapes", () => {
+  const web = (files: Record<string, string>) =>
+    indexDir(
+      repo({
+        "package.json": JSON.stringify({ name: "root", private: true }),
+        "pnpm-workspace.yaml": 'packages:\n  - "apps/*"\n',
+        "apps/api/package.json": JSON.stringify({ name: "@x/api", dependencies: { hono: "^4.0.0" } }),
+        "apps/api/src/app.ts":
+          'import { Hono } from "hono";\nexport const app = new Hono();\napp.get("/api/users", (c) => c.json([]));\napp.get("/api/users/:id", (c) => c.json({}));\napp.post("/api/users", (c) => c.json({}));\n',
+        "apps/web/package.json": JSON.stringify({ name: "@x/web" }),
+        ...files,
+      }),
+    );
+  const at = (fn: string, file = "c.ts") => `sym:repo:apps/web/src/${file}#${fn}`;
+  const reqs = (g: Graph, src: string) => requests(g, src).map((r) => [r[0], r[1]]);
+  const gaps = (g: Graph, src: string) =>
+    g.nodes
+      .filter((n) => n.kind === "client_call" && n.data.caller === src)
+      .map((n) => [n.data.rule, n.data.reason, n.label]);
+
+  it("text ending in a slash: a wrapper when a call passes a slash, else the parameter fills a segment", async () => {
+    const g = await web({
+      "apps/web/src/c.ts": [
+        "export function api(path: string) {\n  return fetch(`/api/${path}`);\n}",
+        'export function a1() {\n  return api("users");\n}',
+        'export function a2() {\n  return api("/users/7");\n}',
+        "export function getUser(id: string) {\n  return fetch(`/api/users/${id}`);\n}",
+        'export function g1() {\n  return getUser("7");\n}',
+      ].join("\n"),
+    });
+    // `api` is a wrapper: no rule 4 edge from its body, the calls link.
+    expect(reqs(g, at("api"))).toEqual([]);
+    expect(gaps(g, at("api"))).toEqual([["wrapper", "wrapper_body", "wrapper api"]]);
+    expect(reqs(g, at("a1"))).toEqual([["ep:repo:@x/api:GET /api/users", "low"]]);
+    expect(reqs(g, at("a2"))).toEqual([["ep:repo:@x/api:GET /api/users/:id", "low"]]);
+    // `getUser` is called with no slash: it stays a rule 4 link of its own.
+    expect(reqs(g, at("getUser"))).toEqual([["ep:repo:@x/api:GET /api/users/:id", "low"]]);
+    expect(gaps(g, at("getUser"))).toEqual([]);
+    expect(reqs(g, at("g1"))).toEqual([]);
+  });
+
+  it("skips a leading base and drops it at the calls", async () => {
+    const g = await web({
+      "apps/web/src/c.ts": [
+        "const BASE = process.env.API_URL;",
+        "export function viaBase(path: string) {\n  return fetch(`${BASE}/${path}`);\n}",
+        "export function viaBase2(path: string) {\n  return fetch(`${BASE}${path}`);\n}",
+        'export function b1() {\n  return viaBase("api/users");\n}',
+        'export function b2() {\n  return viaBase2("/api/users");\n}',
+      ].join("\n"),
+    });
+    expect(reqs(g, at("viaBase"))).toEqual([]);
+    expect(gaps(g, at("viaBase"))).toEqual([["wrapper", "wrapper_body", "wrapper viaBase"]]);
+    expect(reqs(g, at("viaBase2"))).toEqual([]);
+    expect(reqs(g, at("b1"))).toEqual([["ep:repo:@x/api:GET /api/users", "low"]]);
+    expect(reqs(g, at("b2"))).toEqual([["ep:repo:@x/api:GET /api/users", "low"]]);
+  });
+
+  it("a function whose qualifying requests disagree makes each of its calls a gap", async () => {
+    const g = await web({
+      "apps/web/src/c.ts": [
+        'import axios from "axios";',
+        'export const rel = axios.create({ baseURL: "/api" });',
+        "export function pick(path: string, method?: string) {\n  if (method) return rel.request({ url: path, method });\n  return rel.get(path);\n}",
+        'export function p1() {\n  return pick("/users");\n}',
+        'export function p2() {\n  return pick("/users", "POST");\n}',
+      ].join("\n"),
+    });
+    expect(reqs(g, at("p1"))).toEqual([]);
+    expect(reqs(g, at("p2"))).toEqual([]);
+    expect(gaps(g, at("p1"))).toEqual([["wrapper", "dynamic_url", "pick <dynamic>"]]);
+    expect(gaps(g, at("p2"))).toEqual([["wrapper", "dynamic_url", "pick <dynamic>"]]);
+    expect(reqs(g, at("pick"))).toEqual([]);
+    expect(gaps(g, at("pick"))).toEqual([["wrapper", "wrapper_body", "wrapper pick"]]);
+  });
+
+  it("finds a default-exported wrapper, named or anonymous, imported under another name", async () => {
+    const g = await web({
+      "apps/web/src/named.ts":
+        "export default function apiFetch(path: string, init?: RequestInit) {\n  return fetch(`/api${path}`, init);\n}\n",
+      "apps/web/src/anon.ts": "export default (path: string) => fetch(`/api${path}`);\n",
+      "apps/web/src/use.ts": [
+        'import call from "./named";',
+        'import other from "./anon";',
+        'export function n1() {\n  return call("/users", { method: "POST" });\n}',
+        'export function n2() {\n  return other("/users");\n}',
+      ].join("\n"),
+    });
+    expect(reqs(g, at("n1", "use.ts"))).toEqual([["ep:repo:@x/api:POST /api/users", "low"]]);
+    expect(reqs(g, at("n2", "use.ts"))).toEqual([["ep:repo:@x/api:GET /api/users", "low"]]);
+    expect(reqs(g, at("apiFetch", "named.ts"))).toEqual([]);
+    expect(gaps(g, at("apiFetch", "named.ts"))).toEqual([["wrapper", "wrapper_body", "wrapper apiFetch"]]);
+  });
+});
+
 describe("default axios base", () => {
   const web = (assignments: string[]) =>
     repo({
