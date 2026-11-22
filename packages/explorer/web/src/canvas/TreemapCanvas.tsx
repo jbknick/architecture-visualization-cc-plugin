@@ -163,6 +163,8 @@ export function TreemapCanvas({
       ? baseScene
       : buildScene([...baseScene.nodes, ...files], edges, layoutHint, {
           mosaic: true,
+          repos: baseScene.repos,
+          repoLevel: baseScene.repoLevel,
           ...(baseScene.sticky ? { sticky: baseScene.sticky } : {}),
         });
   }, [baseScene, mosaicFiles, edges, layoutHint]);
@@ -414,6 +416,7 @@ export function TreemapCanvas({
     let userMoved = false;
     let last: DrawResult = {
       edgeHits: [],
+      groups: [],
       boxes: [],
       hiddenTitles: new Set(),
       titles: new Map(),
@@ -823,6 +826,7 @@ export function TreemapCanvas({
             route: e.route,
             width: e.width,
             colour: e.colour,
+            crossRepo: e.crossRepo,
           };
         }),
         badged: last.badged,
@@ -835,6 +839,17 @@ export function TreemapCanvas({
           return [{ id: n.id, x: r.x, y: r.y, w: r.w, h: r.h }];
         }),
         regions: last.boxes.map((b) => ({ id: scene.nodes[b.index]?.id, x: b.x, y: b.y, w: b.w, h: b.h })),
+        // The repos on screen: containers around their workspaces, or, at the Repos level, the boxes themselves.
+        groups: scene.repoLevel
+          ? last.boxes.map((b) => ({
+              id: scene.nodes[b.index]?.id,
+              label: scene.nodes[b.index]?.label,
+              x: b.x,
+              y: b.y,
+              w: b.w,
+              h: b.h,
+            }))
+          : last.groups,
       });
     };
     box.addEventListener("gantry:probe", onProbe);

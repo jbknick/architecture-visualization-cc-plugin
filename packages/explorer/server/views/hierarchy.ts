@@ -1,10 +1,10 @@
-import type { FileRecord, SymbolRecord, WorkspaceRecord } from "@gantry/core";
+import { type FileRecord, repoOfId, type SymbolRecord, type WorkspaceRecord } from "@gantry/core";
 import type { GraphNode } from "../types.js";
 import { type BadgeIndex, symbolBadges } from "./badges.js";
 import { cmp, getOrInit } from "./options.js";
 
-/** Hierarchy tiers, shallowest first. `ext:*` nodes sit outside the hierarchy. */
-export const TIER = { workspace: 0, dir: 1, file: 2, symbol: 3 } as const;
+/** Hierarchy tiers, shallowest first. `ext:*` nodes sit outside the hierarchy. `repo` exists only in a store of several repos. */
+export const TIER = { repo: -1, workspace: 0, dir: 1, file: 2, symbol: 3 } as const;
 
 export interface HNode {
   node: GraphNode;
@@ -170,4 +170,49 @@ export function buildHierarchy(
   };
   for (const r of roots) roll(r);
   return { byId, roots };
+}
+
+/** The repo of a top-level node: its own id, or that of the first file below it (a folder outside every workspace). */
+function repoOfRoot(h: HNode): string | undefined {
+  for (let cur: HNode | undefined = h; cur; cur = cur.children[0]) {
+    const repo = repoOfId(cur.node.id);
+    if (repo !== undefined) return repo;
+  }
+  return undefined;
+}
+
+/**
+ * A store of several repos: puts a `repo:<name>` node above every top-level node of that repo and makes those the
+ * roots. Counts are summed from the children, so call it after `buildHierarchy`.
+ */
+export function addRepoTier(h: Hierarchy): void {
+  const byRepo = new Map<string, HNode[]>();
+  for (const r of h.roots) {
+    const repo = repoOfRoot(r);
+    if (repo !== undefined) getOrInit(byRepo, repo, () => [] as HNode[]).push(r);
+  }
+  const roots: HNode[] = [];
+  for (const [repo, kids] of [...byRepo].sort((a, b) => cmp(a[0], b[0]))) {
+    const stats = { files: 0, functions: 0, loc: 0 };
+    for (const k of kids) {
+      stats.files += k.node.stats?.files ?? 0;
+      stats.functions += k.node.stats?.functions ?? 0;
+      stats.loc += k.node.stats?.loc ?? 0;
+    }
+    const node: GraphNode = {
+      id: `repo:${repo}`,
+      kind: "repo",
+      label: repo,
+      size: Math.max(1, stats.functions),
+      stats,
+    };
+    const rh: HNode = { node, tier: TIER.repo, children: kids };
+    for (const k of kids) {
+      k.parent = rh;
+      k.node.parent = node.id;
+    }
+    h.byId.set(node.id, rh);
+    roots.push(rh);
+  }
+  h.roots = roots;
 }

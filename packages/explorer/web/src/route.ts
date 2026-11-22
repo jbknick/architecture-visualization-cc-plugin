@@ -31,7 +31,7 @@ export const emptyRoute: Route = {
   filters: {},
 };
 
-export const VIEW_LEVELS: readonly ViewLevel[] = ["workspaces", "dirs", "files", "symbols"];
+export const VIEW_LEVELS: readonly ViewLevel[] = ["repos", "workspaces", "dirs", "files", "symbols"];
 
 const isLevel = (v: string): v is ViewLevel => (VIEW_LEVELS as readonly string[]).includes(v);
 

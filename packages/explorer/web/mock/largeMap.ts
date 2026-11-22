@@ -471,7 +471,7 @@ function shortLabels(names: string[]): Map<string, string> {
 
 let cache: Data | undefined;
 
-const LEVEL_TIER: Record<ViewLevel, number> = { workspaces: 0, dirs: 1, files: 2, symbols: 3 };
+const LEVEL_TIER: Record<ViewLevel, number> = { repos: -1, workspaces: 0, dirs: 1, files: 2, symbols: 3 };
 
 export interface LargeQuery {
   focus: string | null;

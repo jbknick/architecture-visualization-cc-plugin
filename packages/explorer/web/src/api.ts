@@ -72,6 +72,8 @@ export interface GraphEdge {
   bindings?: number;
   /** Slices view: true when the edge crosses a slice boundary. */
   cross?: boolean;
+  /** Project map of a store with several repos: true when the two ends are in different repos. */
+  crossRepo?: boolean;
   /** Cross-stack views: how many places the aggregated edge stands for (page -> API: the requesting code). */
   via?: number;
   /** Cross-stack views: some of those places, by name. */
@@ -131,6 +133,8 @@ export interface Stale {
 
 export interface Meta {
   repo: string;
+  /** Every repo of the store, sorted; one entry for a workspace of one. */
+  repos: string[];
   headSha: string | null;
   counts: { workspaces: number; files: number; symbols: number; edges: number } & Record<string, number>;
   views: ViewInfo[];
@@ -618,7 +622,7 @@ export interface SourceSlice {
 /** Flat key/value filters. List values are `|` separated; booleans are "true" / "false". */
 export type Filters = Record<string, string>;
 
-export type ViewLevel = "workspaces" | "dirs" | "files" | "symbols";
+export type ViewLevel = "repos" | "workspaces" | "dirs" | "files" | "symbols";
 
 /** What the hash route can pass to /api/view/:id. */
 export interface ViewOptions {

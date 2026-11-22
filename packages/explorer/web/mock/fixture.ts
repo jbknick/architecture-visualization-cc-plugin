@@ -23,6 +23,7 @@ import { checkRange, reviewData, ringsView } from "./review.ts";
 
 export const meta: Meta = {
   repo: "pnpm-turbo",
+  repos: ["pnpm-turbo"],
   headSha: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
   counts: { workspaces: 5, files: 9, symbols: 9, edges: 31 },
   views: [
@@ -338,7 +339,7 @@ function edges(kind: string): GraphEdge[] {
 // ---------- view: project-map ----------
 
 const TIER = { workspace: 0, dir: 1, file: 2, symbol: 3 } as const;
-const LEVEL_TIER: Record<ViewLevel, number> = { workspaces: 0, dirs: 1, files: 2, symbols: 3 };
+const LEVEL_TIER: Record<ViewLevel, number> = { repos: -1, workspaces: 0, dirs: 1, files: 2, symbols: 3 };
 const FUNCTION_LIKE = ["function", "method", "component", "hook"];
 
 function projectMap(q: ParsedQuery): ViewData | { error: string; status: number } {
