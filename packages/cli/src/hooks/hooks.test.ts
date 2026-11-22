@@ -27,7 +27,14 @@ import {
 import { build } from "tsup";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { preCommit, runHook } from "./entry.js";
-import { hookScript, installHooks, shimScript, uninstallHooks } from "./install.js";
+import {
+  hookScript,
+  installHooks,
+  installHooksInWorkspace,
+  shimScript,
+  uninstallHooks,
+  uninstallHooksInWorkspace,
+} from "./install.js";
 import { recordEdit, settleBatch } from "./postToolUse.js";
 import { assertTempHome } from "./testkit.js";
 
@@ -39,6 +46,16 @@ interface MaterializedFixture {
 const helperPath = "../../../core/test/helpers/fixture.js";
 const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as {
   materializeFixture: (name: string) => Promise<MaterializedFixture>;
+};
+
+interface MaterializedMultirepo {
+  root: string;
+  repos: { web: string; api: string };
+  git: (repo: "web" | "api", args: string[]) => string;
+  cleanup(): Promise<void>;
+}
+const { materializeMultirepo } = (await import(/* @vite-ignore */ helperPath)) as {
+  materializeMultirepo: () => Promise<MaterializedMultirepo>;
 };
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -666,7 +683,7 @@ describe("entry points", () => {
         st.close();
       }
     };
-    expect(versionOf()).toBe("14");
+    expect(versionOf()).toBe("15");
     setVersion("6");
     const input = JSON.stringify({
       session_id: "s",
@@ -706,15 +723,15 @@ describe("entry points", () => {
       err: "",
     });
     expect(versionOf()).toBe("6");
-    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 14)");
+    expect(readFileSync(join(p.logsDir, "hooks.log"), "utf8")).toContain("stale store (schema 6, now 15)");
 
     // The next non-hook command rebuilds from scratch, with one message naming the reason.
     const init = gantry(fx.dir, ["init"]);
     expect(init.code).toBe(0);
     expect(
-      init.err.split("built by an older version of Gantry (schema 6, now 14); rebuilding it").length - 1,
+      init.err.split("built by an older version of Gantry (schema 6, now 15); rebuilding it").length - 1,
     ).toBe(1);
-    expect(versionOf()).toBe("14");
+    expect(versionOf()).toBe("15");
   });
 
   it("session-start and the git hooks create no data dir for a repository without an index (#147)", async () => {
@@ -1385,5 +1402,87 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
       '[ "$GANTRY_WORKER" = 1 ] || "$HOME/.gantry/bin/gantry" hook pre-commit "$@" </dev/null || true',
     );
     expect(hookScript("pre-commit", false, "/d/it's")).toContain(`CLAUDE_PLUGIN_DATA='/d/it'\\''s' "$HOME`);
+  });
+});
+
+describe("hooks in a workspace of two repos", () => {
+  async function workspace() {
+    assertTempHome();
+    const mr = await materializeMultirepo();
+    fixtures.push({ dir: mr.root, git: () => "", cleanup: () => mr.cleanup() });
+    return mr;
+  }
+
+  it("install writes the hooks into every repo with the same data dir, and uninstall removes them all", async () => {
+    const mr = await workspace();
+    const web = pathsOf(mr.repos.web);
+    const api = pathsOf(mr.repos.api);
+    expect(web.dataDir).toBe(api.dataDir);
+    const before = [mr.repos.web, mr.repos.api].map((d) => snapshot(join(d, ".git/hooks")));
+    const results = installHooksInWorkspace(web, { cliPath: cli, env });
+    expect(results.map((r) => r.dir).sort()).toEqual(
+      web.workspace.repos.map((r) => join(r.root, ".git/hooks")).sort(),
+    );
+    for (const dir of [mr.repos.web, mr.repos.api]) {
+      for (const name of ["pre-commit", "pre-push", "post-checkout", "post-merge", "post-rewrite"]) {
+        const text = readFileSync(join(dir, ".git/hooks", name), "utf8");
+        expect(text).toContain(`hook ${name} `);
+        expect(text).toContain(`CLAUDE_PLUGIN_DATA='${dataRoot}'`);
+      }
+    }
+    uninstallHooksInWorkspace(api, env);
+    expect([mr.repos.web, mr.repos.api].map((d) => snapshot(join(d, ".git/hooks")))).toEqual(before);
+  });
+
+  it("with core.hooksPath set in both repos, each repo gets its own wrapper dir and gets its value back", async () => {
+    const mr = await workspace();
+    for (const dir of [mr.repos.web, mr.repos.api]) {
+      writeHook(join(dir, ".husky/pre-commit"), "true");
+      git(dir, ["config", "core.hooksPath", ".husky"]);
+    }
+    const web = pathsOf(mr.repos.web);
+    const results = installHooksInWorkspace(web, { cliPath: cli, env });
+    expect(new Set(results.map((r) => r.dir)).size).toBe(2);
+    uninstallHooksInWorkspace(web, env);
+    for (const dir of [mr.repos.web, mr.repos.api]) {
+      expect(hooksPathConfig(dir).out.trim()).toBe(".husky");
+    }
+  });
+
+  it("a hook that throws still exits 0 and logs", async () => {
+    const mr = await workspace();
+    const api = pathsOf(mr.repos.api);
+    installHooksInWorkspace(api, { cliPath: cli, env });
+    mkdirSync(api.dataDir, { recursive: true });
+    writeFileSync(api.dbPath, "this is not a sqlite database");
+    const r = gantry(mr.repos.api, ["hook", "post-checkout"]);
+    expect(r.code).toBe(0);
+    expect(r.out).toBe("");
+    expect(readFileSync(join(api.logsDir, "hooks.log"), "utf8")).toMatch(/post-checkout error:/);
+  });
+
+  it("a workspace that grows from one repo to two re-installs over its own wrapper dir and uninstalls cleanly", async () => {
+    const mr = await workspace();
+    const file = join(mr.root, "gantry-workspace.json");
+    const both = readFileSync(file, "utf8");
+    const parsed = JSON.parse(both) as { repos: { path: string }[] };
+    writeFileSync(file, JSON.stringify({ repos: parsed.repos.filter((r) => r.path.includes("web")) }));
+    const log = join(tmpRoot, "grow.log");
+    writeHook(join(mr.repos.web, ".husky/pre-commit"), `echo "husky" >> '${log}'`);
+    git(mr.repos.web, ["config", "core.hooksPath", ".husky"]);
+
+    installHooksInWorkspace(pathsOf(mr.repos.web), { cliPath: cli, env });
+    writeFileSync(file, both);
+    const grown = pathsOf(mr.repos.web);
+    expect(grown.workspace.repos).toHaveLength(2);
+    installHooksInWorkspace(grown, { cliPath: cli, env });
+
+    writeFileSync(grown.shimPath, `#!/bin/sh\necho "gantry $*" >> '${log}'\n`, { mode: 0o755 });
+    expect(commitFile(mr.repos.web).code).toBe(0);
+    const lines = readFileSync(log, "utf8").trim().split("\n").sort();
+    expect(lines).toEqual(["gantry hook pre-commit", "husky"]);
+
+    uninstallHooksInWorkspace(grown, env);
+    expect(hooksPathConfig(mr.repos.web).out.trim()).toBe(".husky");
   });
 });

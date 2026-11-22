@@ -17,8 +17,8 @@ CREATE INDEX edges_file ON edges(file_id, layer);
 CREATE TABLE adapter_nodes(id TEXT, layer TEXT CHECK(layer IN ('main','working')), kind TEXT, ws TEXT,
   label TEXT, file_id TEXT, data TEXT, PRIMARY KEY(id, layer));
 CREATE INDEX adapter_nodes_file ON adapter_nodes(file_id, layer);
-CREATE TABLE pending_files(session_id TEXT, path TEXT, baseline TEXT, created_at TEXT,
-  reindexed INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(session_id, path));
+CREATE TABLE pending_files(session_id TEXT, repo TEXT NOT NULL, path TEXT, baseline TEXT, created_at TEXT,
+  reindexed INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(session_id, repo, path));
 CREATE TABLE descriptions(content_key TEXT PRIMARY KEY, behavior TEXT, search_terms TEXT, name_fits INTEGER,
   suggested_name TEXT, provenance TEXT, model TEXT, prompt_version TEXT, created_at TEXT);
 CREATE TABLE backlog(content_key TEXT PRIMARY KEY, symbol_id TEXT, priority INTEGER, status TEXT

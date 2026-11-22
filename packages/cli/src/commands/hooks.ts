@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { resetStaleStore, resolvePaths } from "@gantry/core";
 import type { Command } from "commander";
-import { hookDataBase, installHooks, uninstallHooks } from "../hooks/install.js";
+import { hookDataBase, installHooksInWorkspace, uninstallHooksInWorkspace } from "../hooks/install.js";
 import { EXIT_OK, fail } from "./shared.js";
 
 // Bundled to plugin/dist/cli.js, so this file is the CLI the shim must point at.
@@ -10,7 +10,7 @@ const cliPath = fileURLToPath(import.meta.url);
 export function registerHooks(program: Command): void {
   const hooks = program
     .command("hooks")
-    .description("Install or remove Gantry's git hooks in the current repo");
+    .description("Install or remove Gantry's git hooks in every repo of the current workspace");
   hooks
     .command("install")
     .description("Write ~/.gantry/bin/gantry and the git hooks, chaining any existing hooks")
@@ -18,15 +18,17 @@ export function registerHooks(program: Command): void {
       try {
         const paths = resolvePaths(process.cwd());
         resetStaleStore(paths);
-        const r = installHooks(paths, { cliPath });
+        const results = installHooksInWorkspace(paths, { cliPath });
         if (hookDataBase(paths) === undefined) {
           process.stderr.write(
             `gantry: warning: no plugin data directory found; the git hooks will read ${paths.dataDir}. Run this from /gantry:init or set CLAUDE_PLUGIN_DATA.\n`,
           );
         }
-        process.stdout.write(`Installed Gantry hooks in ${r.dir}\n`);
-        for (const n of r.chained) process.stdout.write(`  chained existing ${n}\n`);
-        for (const w of r.warnings) process.stderr.write(`gantry: ${w}\n`);
+        for (const r of results) {
+          process.stdout.write(`Installed Gantry hooks in ${r.dir}\n`);
+          for (const n of r.chained) process.stdout.write(`  chained existing ${n}\n`);
+          for (const w of r.warnings) process.stderr.write(`gantry: ${w}\n`);
+        }
         process.exitCode = EXIT_OK;
       } catch (err) {
         process.exitCode = fail(err);
@@ -39,8 +41,8 @@ export function registerHooks(program: Command): void {
       try {
         const paths = resolvePaths(process.cwd());
         resetStaleStore(paths);
-        const r = uninstallHooks(paths);
-        process.stdout.write(`Removed Gantry hooks (${r.restored.length} restored)\n`);
+        const restored = uninstallHooksInWorkspace(paths).reduce((n, r) => n + r.restored.length, 0);
+        process.stdout.write(`Removed Gantry hooks (${restored} restored)\n`);
         process.exitCode = EXIT_OK;
       } catch (err) {
         process.exitCode = fail(err);

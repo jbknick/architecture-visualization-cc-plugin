@@ -64,6 +64,8 @@ export interface IndexOptions {
   store?: Store;
   /** The adapters to run; default `ADAPTERS`. Tests use it to run one adapter alone. */
   adapters?: readonly Adapter<unknown>[];
+  /** Index the whole tree of only the repo `paths` names, not every repo of the workspace (a per-repo heal). */
+  singleRepo?: boolean;
   /** A recipe to use instead of the one the layer reads (`gantry recipe check --nodes` applies a file it was given). */
   recipe?: LoadedRecipe;
 }
@@ -213,7 +215,7 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
   try {
     // A run over the whole tree indexes every repo of the workspace, in name order; a targeted run (`files` or
     // `sources`, relative to the repo the command runs in) indexes that repo only.
-    const whole = opts.files === undefined && opts.sources === undefined;
+    const whole = opts.files === undefined && opts.sources === undefined && !opts.singleRepo;
     const members = whole ? paths.workspace.repos : [{ name: paths.repo, root: paths.root }];
     // A repo that left the workspace file, or changed its name, loses its rows.
     if (whole && opts.layer === "main") {
