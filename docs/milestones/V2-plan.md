@@ -23,7 +23,7 @@ The work is groundwork (M7) and then two paths. Path B is self-contained: it nee
 | **M9 Recipes**                   | Path A | Write a recipe by hand for whatever frameworks and ORMs the repo uses, check it with `gantry recipe check --nodes`, and commit it; every index re-runs it unchanged. Routes, endpoints, tables, reads and writes come from recipes. No hand-written adapters remain. |
 | **M10 Call linking in one repo** | Path A | Calls through client instances, wrappers, constants and env-var base URLs link to their handlers in the same repo.                                                                                                                                                   |
 | **M8 Any TypeScript project**    | Path A | Index any TypeScript layout: one package, any workspace tool, project references only, or no workspace tool; bundler aliases resolve; a 10,000-file repo is ready in about a minute.                                                                                 |
-| **M15 V2 release**               | Path A | Trace a TypeScript page to the Go handler and tables that serve it in another repo; linking is measured on unseen public repos; V2 is tagged.                                                                                                                        |
+| **M15 V2 release**               | Path A | Trace a TypeScript page to the Go handler and tables that serve it in another repo; V2 is tagged.                                                                                                                                                                    |
 | **M12 Go backends**              | Path B | Index Go modules with symbols, callers, duplicate warnings and descriptions.                                                                                                                                                                                         |
 | **M11 Multirepo workspaces**     | Path B | List related repos once; search, duplicates, the map and go-to-source span all of them, and each repo stays up to date on its own.                                                                                                                                   |
 | **M13 Cross-repo call linking**  | Path B | A frontend call links to the handler in another repo, and a page in one repo traces to its handler and tables in another.                                                                                                                                            |
@@ -37,7 +37,6 @@ The work is groundwork (M7) and then two paths. Path B is self-contained: it nee
 | Path A work                                                               | Needs from Path B               |
 | ------------------------------------------------------------------------- | ------------------------------- |
 | M15: Trace a TypeScript page to the Go handler and tables in another repo | Trace a page across repos (M13) |
-| M15: Call linking measured on public repos it has not seen                | Cross-repo linking (M13)        |
 
 Touch points, not waits: M11's first issue adds a repo part to stable IDs (section 6) and M12's first adds a `lang` field; Path A rebases its snapshots onto both. M8 and M11 both touch workspace discovery. M10 and M13 both extend `clients.ts`: M10 widens what counts as a call, M13 widens where its handler can be. Recipes reach languages only through the existing adapter resolver contract (`resolveSpecifier`, `resolveSymbol`), so the recipe engine and the language interface are built without waiting on each other. Path B's linking work runs on endpoints from the shipped adapters until M9 replaces them with recipes that emit the same node kinds.
 
@@ -106,7 +105,7 @@ Spec sections touched: 1 (no framework or ORM code; the committed recipe file), 
 
 Runs straight after M9, before M8 (#242): it is what a frontend calling an API through a client instance, a wrapper or an env-var base URL needs next.
 
-Today `clients.ts` matches literal `fetch`/`ky`/`axios` URLs by method and path. On public full-stack repos it linked 1 of 70 linkable calls; the spike prototype linked 70 of 70 with no wrong links, but only 35% on a held-out repo before one fix, so the numbers below are targets to measure on held-out repos. Everything here works and is tested inside one repo.
+Today `clients.ts` matches literal `fetch`/`ky`/`axios` URLs by method and path. On public full-stack repos it linked 1 of 70 linkable calls; the spike prototype linked 70 of 70 with no wrong links, but only 35% on a held-out repo before one fix, so the numbers below are targets, not measured results. Everything here works and is tested inside one repo.
 
 - **Client instances.** `axios.create`, `ky.create` and `ky.extend`, and the default instance configured through `axios.defaults.baseURL`, are followed through imports, with each library's own URL joining rules.
 - **Wrappers.** A function whose parameter supplies the start of the path or the method is inferred as a client wrapper; a recipe can list wrappers as an override.
@@ -163,7 +162,6 @@ Spec sections touched: 9, 15.
 
 ## M15 V2 release (Path A)
 
-- Call linking measured on held-out public full-stack repos (needs M9's recipes, M10 and M13).
 - The end-to-end case on public code: a TypeScript frontend repo and a Go backend repo in one workspace; a page traces to the Go handler that serves it and the tables it reads and writes (#231).
 - README, install guide and Status table describe V2. Tag the release.
 

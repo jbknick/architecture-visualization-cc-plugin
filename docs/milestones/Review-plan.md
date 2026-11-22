@@ -43,7 +43,7 @@ M17 waits for the repo part in stable IDs so that overlay entries are not re-key
 - The Action is something Gantry ships for users' repos. It is not CI for this repo, which keeps its rule of no hosted CI (section 1). Gantry never writes the workflow file into a target repo: the user adds it.
 - **Install in a runner.** `pnpm release` builds a tarball that a tagged GitHub release carries (#281); the Action downloads it by tag and checksum. The tarball holds the bundled CLI and a lockfile for its native dependencies (`better-sqlite3`, `sqlite-vec`, the parsers), which the runner installs with `npm ci`; there is one tarball, not one per platform. No package registry for Gantry itself.
 - **Issues:** #279 (spike), #280, #281, #282, #283 (report).
-- **Unverified:** cold index plus review time on a hosted runner; the comment size limit on large PRs; pull requests from forks, whose token cannot comment.
+- **Unverified:** cold index plus review time on GitHub's runner; the comment size limit on large PRs; pull requests from forks, whose token cannot comment.
 
 ## UI kit (side work, #252)
 
@@ -87,7 +87,7 @@ Each is a report under `docs/spikes/<name>.md` with a verdict, on public repos p
 
 | Spike              | Question                                                                                                                                                                                                         | Bar                                                                                                                  | Blocks |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------ |
-| ci-install (#279)  | Does the release tarball install in a hosted runner? Cold index, review and comment time at 1,000, 5,000 and 10,000 files.                                                                                       | Install, index, review and comment in 5 minutes or less at 5,000 files on `ubuntu-latest`, in a public sandbox repo. | M16    |
+| ci-install (#279)  | Does the release tarball install in GitHub's runner? Cold index, review and comment time at 1,000, 5,000 and 10,000 files.                                                                                       | Install, index, review and comment in 5 minutes or less at 5,000 files on `ubuntu-latest`, in a public sandbox repo. | M16    |
 | overlay-ids (#284) | Replaying at least 500 commits of a pinned repo, what share of id-keyed overlay entries on symbols that still exist survive renames and moves, with and without re-attaching by `exactHash`?                     | At least 90% survive with re-attaching.                                                                              | M17    |
 | blast-depth (#292) | On at least 50 merged PRs from two pinned repos: radius size per hop when the walk runs to the end; time on a 10,000-file repo; the hub threshold and node cap; where the consumers a follow-up fix edited rank. | The walk takes 2 s or less at 10,000 files; the report fixes the hub threshold and node cap as numbers.              | M18    |
 
