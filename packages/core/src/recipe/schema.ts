@@ -371,17 +371,9 @@ export const ruleSchemaFor = (raw: unknown) => {
   return language === "text" ? TextRuleSchema : language === "go" ? GoRuleSchema : TsRuleSchema;
 };
 
-export const DependencySchema = z.strictObject({
-  name: z.string().min(1),
-  workspace: z.string().min(1).optional(),
-  role: z.enum(["framework", "data-access", "neither"]),
-  note: z.string(),
-});
-
 /** The top level without its rules; load.ts checks each rule on its own so one bad rule does not drop the rest. */
 export const RecipeShellSchema = z.strictObject({
   version: z.literal(1),
-  dependencies: z.array(DependencySchema),
   helpers: z.array(z.enum(HELPER_NAMES)),
   rules: z.array(z.unknown()),
   /** Chain methods that return the same router (`r.With(mw).Get`, `new Hono().basePath(..).get(..)`). */

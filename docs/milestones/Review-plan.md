@@ -1,6 +1,6 @@
 # Review plan
 
-Status: draft plan, not yet contracts. Nothing here has been spiked; each milestone starts with a spike, and its issues start only when that spike meets its bar ("Spike first"). Each issue edits `docs/SPEC.md` in its own PR where it changes a contract; "Contract changes by spec section" says where. How every issue is verified is in "Verification". Read with `docs/milestones/V2-plan.md`.
+Status: draft plan, not yet contracts. Each milestone starts with a spike, and its issues start only when that spike meets its bar ("Spike first"). Each issue edits `docs/SPEC.md` in its own PR where it changes a contract; "Contract changes by spec section" says where. How every issue is verified is in "Verification". Read with `docs/milestones/V2-plan.md`.
 
 ## Goals
 
@@ -40,9 +40,9 @@ M17 waits for the repo part in stable IDs so that overlay entries are not re-key
 
 - **`gantry duplicates [--json] [--since <ref>] [--workspace <w>]`.** The ranked groups of the Duplicates view from the same engine (section 17), with the totals strip. `--since` keeps only groups with a member added or changed after `<ref>`. Exits 0. This is the command the README Status table lists as not built.
 - **PR comment.** A composite GitHub Action that indexes the checkout, runs `gantry review <base>...<head> --json` and the duplicate check on the symbols that are new or changed against the base (the pre-commit check, section 14), and posts one comment, updated in place on each push. No model calls. Exact and near tiers by default; the code-vector tier only when the workflow opts into `gantry embed`.
-- The Action is something Gantry ships for users' repos. It is not CI for this repo, which keeps its rule of no hosted CI (section 1). Gantry never writes the workflow file into a target repo: the user adds it.
+- The Action is something Gantry ships for users' repos. It is not CI for this repo, which keeps its rule of no CI service (section 1). Gantry never writes the workflow file into a target repo: the user adds it.
 - **Install in a runner.** `pnpm release` builds a tarball that a tagged GitHub release carries (#281); the Action downloads it by tag and checksum. The tarball holds the bundled CLI and a lockfile for its native dependencies (`better-sqlite3`, `sqlite-vec`, the parsers), which the runner installs with `npm ci`; there is one tarball, not one per platform. No package registry for Gantry itself.
-- **Issues:** #279 (spike), #280, #281, #282, #283 (report).
+- **Issues:** #279 (spike), #280, #281, #282.
 - **Unverified:** cold index plus review time on GitHub's runner; the comment size limit on large PRs; pull requests from forks, whose token cannot comment.
 
 ## UI kit (side work, #252)
@@ -78,7 +78,7 @@ Today `computeImpact` stops at 3 hops or 500 callers (section 11, #43 and #169),
 - **Hubs collapse.** A node whose fan-in is above a threshold (fitted by the spike) is a hub. The walk goes through it, but its consumers are listed as one entry, `{ hub, consumers_total, by_workspace }`, which the explorer expands on click.
 - **Where it shows.** `gantry review` prints the reachable tier's total and its top entries; `--json` has it in full, capped like the other tiers. `gantry_impact` adds totals per workspace and the collapsed hubs, inside its 4,000 characters. The review view gains an outer ring. The M16 comment shows the reachable total and the hubs.
 - **Risk is unchanged** until the spike shows that a rule on the reachable tier predicts something.
-- **Issues:** #292 (spike), #293 to #296, #297 (report).
+- **Issues:** #292 (spike), #293 to #296.
 - **Unverified:** whether the walk to the end stays fast on a 10,000-file repo; where the hub threshold sits; whether the ranking puts the consumers that mattered near the top.
 
 ## Spike first
@@ -91,13 +91,13 @@ Each is a report under `docs/spikes/<name>.md` with a verdict, on public repos p
 | overlay-ids (#284) | Replaying at least 500 commits of a pinned repo, what share of id-keyed overlay entries on symbols that still exist survive renames and moves, with and without re-attaching by `exactHash`?                     | At least 90% survive with re-attaching.                                                                              | M17    |
 | blast-depth (#292) | On at least 50 merged PRs from two pinned repos: radius size per hop when the walk runs to the end; time on a 10,000-file repo; the hub threshold and node cap; where the consumers a follow-up fix edited rank. | The walk takes 2 s or less at 10,000 files; the report fixes the hub threshold and node cap as numbers.              | M18    |
 
-The sandbox repo for `ci-install` is created by the maintainer; this repo keeps its rule of no hosted CI.
+The sandbox repo for `ci-install` is created by the maintainer; this repo keeps its rule of no CI service.
 
 ## Verification
 
 The V2 plan's rules apply: a Verify block in every issue, pinned inputs, byte-stable output compared by sha256, UI through Playwright with reduced motion against the built CLI, timings in the milestone report and never in `pnpm check`. Each milestone adds:
 
-- **M16.** `gantry duplicates --json` on `fixtures/pnpm-turbo` matches a committed snapshot, and two runs give the same sha256. The Action's script runs in vitest against a fake GitHub API (`node:http`) that asserts one comment is created, then updated in place on a second run. One real run in the sandbox repo is recorded in `docs/milestones/M16.md`.
+- **M16.** `gantry duplicates --json` on `fixtures/pnpm-turbo` matches a committed snapshot, and two runs give the same sha256. The Action's script runs in vitest against a fake GitHub API (`node:http`) that asserts one comment is created, then updated in place on a second run.
 - **M17.** Unit tests for the overlay schema and selectors. Rebuilding the index leaves `overlay.db` byte-identical (sha256 before and after). A Playwright spec renames, hides and groups a node on `fixtures/pnpm-turbo`, saves a view, reloads and finds all four. A fixture with two groups and one crossing makes the Stop hook print one exact line.
 - **M18.** A new fixture, `fixtures/deep-radius`, has a six-hop chain and one hub; `gantry review <range> --json` on its committed branch matches a snapshot holding the reachable tier, the ranking and the collapsed hub. A Playwright spec finds the outer ring and expands the hub.
 
@@ -115,20 +115,20 @@ The V2 plan's rules apply: a Verify block in every issue, pinned inputs, byte-st
 
 ## Contract changes by spec section
 
-| Section                | Change                                                                                                                                                                | Milestone |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| 1 Ground rules         | The shipped GitHub Action is not CI for this repo.                                                                                                                    | M16       |
-| 3 Repo layout          | `action/`.                                                                                                                                                            | M16       |
-| 2 Dependencies         | The UI kit's packages (see "UI kit").                                                                                                                                 | UI kit    |
-| 4 Paths and data       | `overlay.db` in the data dir.                                                                                                                                         | M17       |
-| 5 Config               | `views.slices` replaced by overlay groups. No `block` mode for boundaries.                                                                                            | M17       |
-| 7 Core types           | `Selector`, `FilterSpec`, `Group`, `SavedView`. Tier `reachable`.                                                                                                     | M17, M18  |
-| 9 Store schema         | Overlay schema: labels, hidden, groups, group rules, views, dismissals (moved), layouts (moved).                                                                      | M17       |
-| 10 CLI                 | `gantry duplicates`.                                                                                                                                                  | M16       |
-| 11 Lifecycle, explorer | Overlay applied at view time. Impact walk to the end, ranking, hubs. Explorer API: overlay read and write, review view outer ring.                                    | M17, M18  |
-| 13 Fixtures and evals  | Public fixtures for overlays and deep radius. Evals on public repos' PR and issue history only.                                                                       | all       |
-| 14 Hook contracts      | Stop and pre-commit notes gain boundary crossings, inside the existing 600 characters and budget.                                                                     | M17       |
-| 15 MCP                 | New: `gantry_propose_change`. `gantry_open_view` accepts a saved view. `gantry_impact` gains the reachable tier and hubs. Every answer stays within 4,000 characters. | M17, M18  |
+| Section                | Change                                                                                                                                  | Milestone |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| 1 Ground rules         | The shipped GitHub Action is not CI for this repo.                                                                                      | M16       |
+| 3 Repo layout          | `action/`.                                                                                                                              | M16       |
+| 2 Dependencies         | The UI kit's packages (see "UI kit").                                                                                                   | UI kit    |
+| 4 Paths and data       | `overlay.db` in the data dir.                                                                                                           | M17       |
+| 5 Config               | `views.slices` replaced by overlay groups. No `block` mode for boundaries.                                                              | M17       |
+| 7 Core types           | `Selector`, `FilterSpec`, `Group`, `SavedView`. Tier `reachable`.                                                                       | M17, M18  |
+| 9 Store schema         | Overlay schema: labels, hidden, groups, group rules, views, dismissals (moved), layouts (moved).                                        | M17       |
+| 10 CLI                 | `gantry duplicates`.                                                                                                                    | M16       |
+| 11 Lifecycle, explorer | Overlay applied at view time. Impact walk to the end, ranking, hubs. Explorer API: overlay read and write, review view outer ring.      | M17, M18  |
+| 13 Fixtures and evals  | Public fixtures for overlays and deep radius. Evals on public repos' PR and issue history only.                                         | all       |
+| 14 Hook contracts      | Stop and pre-commit notes gain boundary crossings, inside the existing 600 characters and budget.                                       | M17       |
+| 15 MCP                 | `gantry_open_view` accepts a saved view. `gantry_impact` gains the reachable tier and hubs. Every answer stays within 4,000 characters. | M17, M18  |
 
 ## Conflicts with the V2 plan and the spec
 
@@ -139,6 +139,5 @@ The V2 plan's rules apply: a Verify block in every issue, pinned inputs, byte-st
 
 ## Still unverified
 
-- Everything in M16 to M18. Nothing here was spiked.
 - That hooks stay inside 1,500 ms with the boundary and scope checks added.
 - That one comment per PR stays readable once it carries duplicates, the three tiers and hubs.

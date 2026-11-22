@@ -1,17 +1,5 @@
 {
   "version": 1,
-  "dependencies": [
-    { "name": "@acme/db", "workspace": "@acme/api", "role": "neither", "note": "workspace package" },
-    { "name": "@orpc/server", "workspace": "@acme/api", "role": "neither", "note": "oRPC router; read by the built-in oRPC adapter" },
-    { "name": "hono", "workspace": "@acme/api", "role": "framework", "note": "HTTP framework: new Hono() in src/app.ts" },
-    { "name": "@acme/ui", "workspace": "@acme/web", "role": "neither", "note": "workspace package" },
-    { "name": "@acme/utils", "workspace": "@acme/web", "role": "neither", "note": "workspace package" },
-    { "name": "@tanstack/react-router", "workspace": "@acme/web", "role": "framework", "note": "file-based page routes under src/routes" },
-    { "name": "react", "workspace": "@acme/web", "role": "neither", "note": "UI library" },
-    { "name": "drizzle-orm", "workspace": "@acme/db", "role": "data-access", "note": "tables in src/schema.ts" },
-    { "name": "react", "workspace": "@acme/ui", "role": "neither", "note": "UI library" },
-    { "name": "turbo", "role": "neither", "note": "task runner at the repo root" }
-  ],
   "helpers": ["resolve-names", "const-strings", "mount-graph", "fs-routes"],
   "passthrough": ["basePath", "get", "post", "put", "patch", "delete", "options", "all", "on", "use", "route"],
   "rules": [

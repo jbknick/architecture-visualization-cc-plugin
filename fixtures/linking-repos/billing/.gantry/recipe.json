@@ -1,9 +1,5 @@
 {
   "version": 1,
-  "dependencies": [
-    { "name": "drizzle-orm", "workspace": ".", "role": "data-access", "note": "tables in src/db/schema.ts" },
-    { "name": "hono", "workspace": ".", "role": "framework", "note": "HTTP framework; read by the built-in Hono adapter" }
-  ],
   "helpers": ["resolve-names", "const-strings"],
   "rules": [
     {

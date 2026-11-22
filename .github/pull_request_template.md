@@ -10,7 +10,7 @@ Closes #
 
 ## Checklist
 
-- [ ] `pnpm check` passes locally (there is no hosted CI)
+- [ ] `pnpm check` passes locally (there is no CI service)
 - [ ] If the PR touches the explorer: `pnpm build && pnpm --filter @gantry/explorer e2e` reports 0 failed
 - [ ] Follows `docs/SPEC.md`, or the spec is updated in this PR and the change is called out above
 - [ ] No code, descriptions, graph dumps or screenshots from a private repository

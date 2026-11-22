@@ -1,6 +1,5 @@
 {
   "version": 1,
-  "dependencies": [],
   "helpers": ["resolve-names", "const-strings", "mount-graph", "param-flow"],
   "rules": [
     {

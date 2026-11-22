@@ -9,7 +9,7 @@ and this README are committed. Never commit, paste or screenshot the output.
 
 ```sh
 # 1. Sample 200 symbols (seed 42) and build fact sheets -> candidates.jsonl
-DEVPRENTICE_PATH=/path/to/devprentice pnpm tsx evals/labelled/sample.ts
+DEVPRENTICE_PATH=/path/to/private-project pnpm tsx evals/labelled/sample.ts
 #    the repo is read-only, never written; also set LABELLED_SERVER_DIRS to its server-side
 #    workspace dirs, comma-separated with trailing slashes (the real values are recorded in
 #    evals/private/labelled/sample-meta.json, not here)
@@ -17,14 +17,14 @@ DEVPRENTICE_PATH=/path/to/devprentice pnpm tsx evals/labelled/sample.ts
 # 2. Draft labels (a model, then the operator) as evals/private/labelled/draft-labels-*.json:
 #    arrays of [candidateIndex, behavior (<= 25 words), nameFits, suggestedName?]
 
-# 3. Merge -> devprentice.jsonl and review.md (scan table for the operator)
+# 3. Merge -> the labelled JSONL file and review.md (scan table for the operator)
 pnpm tsx evals/labelled/merge.ts
 
 # 4. Validate
 pnpm tsx evals/labelled/check.ts      # prints "200 valid"
 ```
 
-Env: `DEVPRENTICE_PATH` (or first argument) selects the repo; `LABELLED_OUT` overrides the output directory.
+Env: the local path to the private evaluation project is supplied through an environment variable (the one `sample.ts` reads, shown above) or as the first argument; `LABELLED_OUT` overrides the output directory.
 
 ## Sampling rules
 
@@ -39,4 +39,4 @@ callees are called identifiers, doc is the leading JSDoc).
 ## Human gate
 
 `review.md` is reviewed and corrected by the operator before the issue closes; corrections are applied to
-`devprentice.jsonl`.
+the merged JSONL file.
