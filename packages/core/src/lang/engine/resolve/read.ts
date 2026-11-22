@@ -1,7 +1,14 @@
 import type { SyntaxNode } from "../grammar.js";
 import type { DeclarationRule, LanguagePack, TypingRules } from "../pack.js";
 import { baseTypeName, rawImportsOf, specsOf } from "../parse.js";
-import { bodiedName, bodiedRule, membersOf, walkDeclarations } from "../walk.js";
+import {
+  bodiedName,
+  bodiedRule,
+  type HangingBody,
+  hangingRanges,
+  membersOf,
+  walkDeclarations,
+} from "../walk.js";
 import type {
   Arity,
   CallExpr,
@@ -22,6 +29,15 @@ import type {
 const MAX_DEPTH = 40;
 /** A type nested deeper than this is not read. */
 const MAX_TYPE_DEPTH = 8;
+
+/** A span of source offsets `[start, end)`. */
+interface Range {
+  start: number;
+  end: number;
+}
+
+const inside = (ranges: readonly Range[], at: number): boolean =>
+  ranges.some((r) => at >= r.start && at < r.end);
 
 const unparen = (typing: TypingRules, n: SyntaxNode | null): SyntaxNode | null => {
   let cur = n;
@@ -44,6 +60,17 @@ export interface FunctionNode {
   node: SyntaxNode;
   rule: DeclarationRule;
   owner: string | null;
+  /**
+   * For a method of a hanging body: the members the bodies around it were created in, outermost first. Their
+   * parameters and locals are visible in the method.
+   */
+  hosts: Host[];
+}
+
+/** A member of a type body that a hanging body was created in, with the type whose body holds the member. */
+export interface Host {
+  node: SyntaxNode;
+  owner: string | null;
 }
 
 /**
@@ -56,6 +83,8 @@ export class Reader {
   private owner: string | null = null;
   /** The function or method whose body is being read; null outside one. */
   private fn: SyntaxNode | null = null;
+  /** The type parameters of the function being read and of the functions around it: a name among them is no type. */
+  private tparams: readonly string[] = [];
 
   constructor(private readonly pack: LanguagePack) {
     if (!pack.nodes.typing) throw new Error(`${pack.id}: the pack has no typing rules`);
@@ -69,16 +98,27 @@ export class Reader {
     const t = this.typing.type;
     if (!node || depth > MAX_TYPE_DEPTH) return null;
     let b: SyntaxNode | null = node;
+    let args: (TypeRef | null)[] | undefined;
     while (b) {
       const k = b.kind();
       if (t.wrappers.includes(k)) b = b.namedChildren()[0] ?? null;
-      else if (k === t.generic.kind)
+      else if (k === t.generic.kind) {
+        const list = t.generic.arguments
+          ? b.namedChildren().find((c) => c.kind() === t.generic.arguments)
+          : undefined;
+        // The arguments of the outermost instantiation; a diamond (`<>`) has none.
+        if (!args && list && list.namedChildren().length > 0)
+          args = list.namedChildren().map((c) => this.typeRef(c, depth + 1));
         b = t.generic.field ? b.field(t.generic.field) : (b.namedChildren()[0] ?? null);
-      else break;
+      } else break;
     }
     if (!b) return null;
     const k = b.kind();
-    if (t.names.includes(k)) return { k: "name", name: b.text(), owner: this.owner };
+    if (t.names.includes(k)) {
+      const name = b.text();
+      if (!args && this.tparams.includes(name)) return { k: "name", name, param: true };
+      return { k: "name", name, owner: this.owner, ...(args ? { args } : {}) };
+    }
     if (t.qualified && k === t.qualified.kind)
       return {
         k: "qual",
@@ -322,16 +362,62 @@ export class Reader {
     return { callee: this.callee(node, node, false, 0), args: null };
   }
 
-  /** Sets the type body the types read next sit in (a lookup by place reads inside a function of a type). */
-  setOwner(owner: string | null, fn: SyntaxNode | null = null): void {
-    this.owner = owner;
-    this.fn = fn;
+  /** Sets the function the expressions read next sit in (a lookup by place reads inside a function of a type); null for none. */
+  setFunction(f: FunctionNode | null): void {
+    this.owner = f?.owner ?? null;
+    this.fn = f?.node ?? null;
+    this.tparams = f ? this.paramsIn(f.node, f.owner, f.hosts) : [];
+  }
+
+  /** The type parameters in scope in a member of a type body: its own and those of the members the bodies around it were created in. */
+  private paramsIn(node: SyntaxNode, owner: string | null, hosts: readonly Host[]): string[] {
+    return [...hosts, { node, owner }].flatMap((h) =>
+      this.typeParams(h.node, this.rule(h.node, h.owner)?.generics),
+    );
+  }
+
+  /**
+   * The names visible in a member of a type body: those it declares and, for a member of a hanging body, those of the
+   * members the bodies around it were created in (their parameters and locals), each read in its own type body.
+   */
+  private scopeOf(node: SyntaxNode, owner: string | null, hosts: readonly Host[]): Decl[] {
+    const out: Decl[] = [];
+    const chain = [...hosts, { node, owner }];
+    chain.forEach((h, i) => {
+      this.owner = h.owner;
+      this.fn = h.node;
+      this.tparams = this.paramsIn(h.node, h.owner, chain.slice(0, i));
+      const own = i === chain.length - 1;
+      for (const d of this.decls(h.node)) out.push(own ? d : { ...d, outer: { owner: h.owner } });
+    });
+    return out;
+  }
+
+  /** The names visible in a function: `scopeOf` for it. */
+  declsOf(f: FunctionNode): Decl[] {
+    const out = this.scopeOf(f.node, f.owner, f.hosts);
+    this.setFunction(null);
+    return out;
   }
 
   // --- function bodies ----------------------------------------------------------------------
 
-  /** The names a function declares (parameters, results, locals) with where each gets its type. */
-  decls(fd: SyntaxNode): Decl[] {
+  /** The names of the type parameters a declaration holds in the field `field`. */
+  private typeParams(d: SyntaxNode, field: string | undefined): string[] {
+    const p = this.typing.type.parameters;
+    const list = field ? d.field(field) : null;
+    if (!p || !list) return [];
+    return list
+      .namedChildren()
+      .filter((c) => c.kind() === p.entry)
+      .flatMap((c) => {
+        const name = c.namedChildren().find((x) => p.names.includes(x.kind()));
+        return name ? [name.text()] : [];
+      });
+  }
+
+  /** The names a function declares (parameters, results, locals) with where each gets its type; those inside a range of `skip` belong to the body found there. */
+  decls(fd: SyntaxNode, skip: readonly Range[] = hangingRanges(this.pack, fd)): Decl[] {
     const t = this.typing;
     const l = t.locals;
     const kinds = [
@@ -348,6 +434,7 @@ export class Reader {
     for (const d of fd.findAll({ rule: { any: kinds.map((kind) => ({ kind })) } })) {
       const kind = d.kind();
       const start = d.range().start.index;
+      if (inside(skip, start)) continue;
       const end = d.range().end.index;
       const at = (from: "start" | "end"): number => (from === "start" ? start : end);
       const param = l.parameters.find((r) => r.kind === kind);
@@ -399,17 +486,20 @@ export class Reader {
     return out;
   }
 
-  /** The call sites inside a node, in source order. */
-  calls(body: SyntaxNode): CallSite[] {
+  /** The call sites inside a node, in source order; those inside a range of `skip` belong to the body found there. */
+  calls(body: SyntaxNode, skip: readonly Range[] = []): CallSite[] {
     const t = this.typing;
     const any: Record<string, unknown>[] = this.pack.nodes.call.map((kind) => ({ kind }));
     if (t.conversion)
       any.push({ kind: t.conversion.kind, has: { field: t.conversion.type, kind: t.type.generic.kind } });
     if (t.construct) any.push({ kind: t.construct.kind });
-    return body.findAll({ rule: { any } }).map((site) => ({
-      call: this.call(site, 0),
-      line: site.range().start.line + 1,
-    }));
+    return body
+      .findAll({ rule: { any } })
+      .filter((site) => !inside(skip, site.range().start.index))
+      .map((site) => ({
+        call: this.call(site, 0),
+        line: site.range().start.line + 1,
+      }));
   }
 
   /** The rule of a function or method declaration found where `owner` says (a top-level function, a method with a receiver, a member of a type body), or undefined. */
@@ -424,47 +514,70 @@ export class Reader {
   /** Every function and method declaration of a file, in source order, with the type body around it. */
   functions(root: SyntaxNode): FunctionNode[] {
     const out: FunctionNode[] = [];
-    walkDeclarations(this.pack, root, ({ node, owner }) => {
+    const hostsOf = new Map<string, Host[]>();
+    walkDeclarations(this.pack, root, ({ node, owner, body: hanging }) => {
+      if (hanging) {
+        hostsOf.set(hanging.name, [...(hostsOf.get(owner ?? "") ?? []), { node: hanging.host, owner }]);
+        return;
+      }
       const rule = this.rule(node, owner);
-      if (rule) out.push({ node, rule, owner });
+      if (rule) out.push({ node, rule, owner, hosts: hostsOf.get(owner ?? "") ?? [] });
     });
     return out;
   }
 
-  /** The functions and methods of a file with their bodies' declarations and call sites. */
+  /**
+   * The code of a file with its declarations and call sites, each part with the offset of the symbol that holds it: the
+   * functions and methods, and, for a language whose code sits in type bodies, what runs outside a method (field
+   * initializers, initializer blocks, the arguments of an enumeration element), which belongs to the type around it, or
+   * to the method a hanging body was created in when the code is in that body. Code inside a hanging body belongs to the
+   * members of that body, not to the member the body hangs from.
+   */
   bodies(root: SyntaxNode): FunctionBody[] {
     const out: FunctionBody[] = [];
-    for (const f of this.functions(root)) {
-      const body = f.rule.body ? f.node.field(f.rule.body) : null;
-      if (!body) continue;
-      this.owner = f.owner;
-      this.fn = f.node;
-      out.push({
-        start: f.node.range().start.index,
-        owner: f.owner,
-        decls: this.decls(f.node),
-        calls: this.calls(body),
-      });
-    }
-    this.owner = null;
-    this.fn = null;
+    /** Offset of the symbol that stands for the code of a type body, by the dotted name of the type. */
+    const holder = new Map<string, number>();
+    const hostsOf = new Map<string, Host[]>();
+    walkDeclarations(this.pack, root, ({ node, owner, body: hanging }) => {
+      if (hanging) {
+        const host = hanging.host;
+        hostsOf.set(hanging.name, [...(hostsOf.get(owner ?? "") ?? []), { node: host, owner }]);
+        const start =
+          owner !== null && this.rule(host, owner) ? host.range().start.index : holder.get(owner ?? "");
+        if (start !== undefined) holder.set(hanging.name, start);
+        return;
+      }
+      const bodied = bodiedRule(this.pack, node.kind());
+      if (bodied) {
+        const name = bodiedName(bodied, node, owner);
+        if (name) holder.set(name, node.range().start.index);
+        return;
+      }
+      const rule = this.rule(node, owner);
+      if (!rule && (owner === null || !this.typing.enclosing)) return;
+      const body = rule ? (rule.body ? node.field(rule.body) : null) : node;
+      if (!body) return;
+      const start = rule ? node.range().start.index : holder.get(owner ?? "");
+      if (start === undefined) return;
+      const hosts = hostsOf.get(owner ?? "") ?? [];
+      const decls = this.scopeOf(node, owner, hosts);
+      // `scopeOf` leaves the reader in this member, with its type parameters in scope.
+      const calls = this.calls(body, hangingRanges(this.pack, node));
+      if (calls.length > 0 || rule) out.push({ start, owner, decls, calls });
+    });
+    this.setFunction(null);
     return out;
   }
 
   /** The innermost function or method declaration that holds the offset range, with the type body around it; null when none does. */
-  functionAt(
-    root: SyntaxNode,
-    start: number,
-    end: number,
-  ): { node: SyntaxNode; owner: string | null } | null {
-    let best: { node: SyntaxNode; owner: string | null; size: number } | null = null;
+  functionAt(root: SyntaxNode, start: number, end: number): FunctionNode | null {
+    let best: { f: FunctionNode; size: number } | null = null;
     for (const f of this.functions(root)) {
       const r = f.node.range();
       const size = r.end.index - r.start.index;
-      if (r.start.index <= start && end <= r.end.index && (!best || size < best.size))
-        best = { node: f.node, owner: f.owner, size };
+      if (r.start.index <= start && end <= r.end.index && (!best || size < best.size)) best = { f, size };
     }
-    return best ? { node: best.node, owner: best.owner } : null;
+    return best?.f ?? null;
   }
 
   // --- declarations -------------------------------------------------------------------------
@@ -488,17 +601,35 @@ export class Reader {
       types: [],
       vars: [],
     };
-    walkDeclarations(this.pack, root, ({ node: d, owner }) => {
+    /** The type parameters of the functions around a hanging body, by the name of the body. */
+    const paramsOf = new Map<string, string[]>();
+    walkDeclarations(this.pack, root, ({ node: d, owner, body: hanging }) => {
       this.owner = owner;
+      const around = paramsOf.get(owner ?? "") ?? [];
+      this.tparams = around;
+      if (hanging) {
+        const host = hanging.host;
+        this.tparams = [...around, ...this.typeParams(host, this.rule(host, owner)?.generics)];
+        paramsOf.set(hanging.name, [...this.tparams]);
+        out.types.push(this.hangingDecl(d, hanging, owner));
+        return;
+      }
       const kind = d.kind();
       const start = d.range().start.index;
       const rule = this.rule(d, owner);
+      if (rule) this.tparams = [...around, ...this.typeParams(d, rule.generics)];
       const fn = owner === null ? n.function.find((r) => r.kind === kind) : undefined;
       const bodied = bodiedRule(this.pack, kind);
       if (rule && fn) {
         const name = d.field(fn.name)?.text();
         if (name && !t.unnamed.includes(name))
-          out.funcs.push({ name, results: this.results(d, fn.result), start, arity: this.arityOf(d, fn) });
+          out.funcs.push({
+            name,
+            results: this.results(d, fn.result),
+            start,
+            arity: this.arityOf(d, fn),
+            tparams: this.typeParams(d, fn.generics),
+          });
       } else if (rule) {
         const name = d.field(rule.name)?.text();
         let key: string | null = null;
@@ -518,6 +649,7 @@ export class Reader {
             results: this.results(d, rule.result),
             start,
             arity: this.arityOf(d, rule),
+            tparams: this.typeParams(d, rule.generics),
           });
       } else if (bodied) {
         const name = bodiedName(bodied, d, owner);
@@ -546,16 +678,20 @@ export class Reader {
       }
     });
     this.owner = null;
+    this.tparams = [];
     return out;
   }
 
-  private emptyDecl(name: string, line: number, start: number, generic: boolean): TypeDecl {
+  /** A type declaration with nothing read yet; the type around it is the one being read (`this.owner`). */
+  private emptyDecl(name: string, line: number, start: number, generic: boolean, params: string[]): TypeDecl {
     return {
       name,
       kind: "other",
       line,
       start,
       generic,
+      outer: this.owner,
+      params,
       fields: new Map(),
       embedded: [],
       supers: [],
@@ -570,7 +706,13 @@ export class Reader {
   private bodiedDecl(node: SyntaxNode, as: string, name: string, owner: string | null): TypeDecl {
     const t = this.typing;
     const start = node.range().start;
-    const decl = this.emptyDecl(name, start.line + 1, start.index, node.field(t.generics) !== null);
+    const decl = this.emptyDecl(
+      name,
+      start.line + 1,
+      start.index,
+      node.field(t.generics) !== null,
+      this.typeParams(node, t.generics),
+    );
     decl.kind = as === "interface" ? "interface" : "class";
     // The supertypes are written where the declaration is, not inside its body.
     for (const s of t.supertypes) {
@@ -585,6 +727,29 @@ export class Reader {
     const body = rule ? node.field(rule.body) : null;
     this.owner = name;
     for (const m of body ? membersOf(this.pack, body) : []) {
+      if (!t.members.entries.includes(m.kind())) continue;
+      const mt = m.field(t.members.type);
+      if (!mt) continue;
+      for (const nm of this.memberNames(m)) decl.fields.set(nm, this.typeRef(mt));
+    }
+    this.owner = owner;
+    return decl;
+  }
+
+  /**
+   * A hanging body (spec section 7): a type of its own with the fields its body declares, extending the type its creating
+   * expression names, or, for an element of an enumeration, the enumeration. No symbol stands for it, so the offset
+   * `start` of the node that makes it names none and it makes no `extends` edge.
+   */
+  private hangingDecl(creator: SyntaxNode, h: HangingBody, owner: string | null): TypeDecl {
+    const t = this.typing;
+    const start = creator.range().start;
+    const decl = this.emptyDecl(h.name, start.line + 1, start.index, false, []);
+    decl.kind = "class";
+    const sup: TypeRef | null = h.type ? this.typeRef(h.type) : owner ? { k: "name", name: owner } : null;
+    decl.supers.push({ type: sup, edge: "extends", line: start.line + 1 });
+    this.owner = h.name;
+    for (const m of membersOf(this.pack, h.node)) {
       if (!t.members.entries.includes(m.kind())) continue;
       const mt = m.field(t.members.type);
       if (!mt) continue;
@@ -610,7 +775,13 @@ export class Reader {
     const n = this.pack.nodes;
     const t = this.typing;
     const start = spec.range().start;
-    const decl = this.emptyDecl(name, start.line + 1, start.index, spec.field(t.generics) !== null);
+    const decl = this.emptyDecl(
+      name,
+      start.line + 1,
+      start.index,
+      spec.field(t.generics) !== null,
+      this.typeParams(spec, t.generics),
+    );
     decl.kind = n.types.aliases.includes(spec.kind()) ? "alias" : "other";
     decl.target = this.typeRef(type);
     if (decl.kind === "alias") return decl;

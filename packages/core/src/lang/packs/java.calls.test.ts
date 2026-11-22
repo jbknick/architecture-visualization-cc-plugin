@@ -53,6 +53,24 @@ async function edgesOf(dir: string): Promise<Edge[]> {
   }
 }
 
+/** Indexes a repo directory and returns the names of the stored symbols that carry `anonymous`, as the dump shows them. */
+async function anonymousOf(dir: string): Promise<{ marked: string[]; plain: number }> {
+  const data = mkdtempSync(join(tmpdir(), "gantry-data-"));
+  cleanups.push(() => rmSync(data, { recursive: true, force: true }));
+  const paths = resolvePaths(dir, { HOME: join(data, "home"), CLAUDE_PLUGIN_DATA: data });
+  await indexRepo(paths, { layer: "main" });
+  const s = openStore(paths.dbPath);
+  try {
+    const symbols = dumpGraph(s).symbols as { name: string; anonymous?: boolean }[];
+    return {
+      marked: symbols.filter((x) => x.anonymous === true).map((x) => x.name),
+      plain: symbols.filter((x) => !("anonymous" in x)).length,
+    };
+  } finally {
+    s.close();
+  }
+}
+
 const CORE = "core/src/main/java/com/acme/core";
 const APP = "app/src/main/java/com/acme/app";
 
@@ -224,10 +242,11 @@ class Outer {
 }
 `,
     });
-    expect(callsOf(edges)).toEqual(["A.java#Outer.make -> A.java#Adapter.flush high"]);
+    // The call is in the anonymous body's own method, which is the caller.
+    expect(callsOf(edges)).toEqual(["A.java#Outer.make.$1.write -> A.java#Adapter.flush high"]);
   });
 
-  it("gives no edge for a method an anonymous class declares itself, or for one of a type outside the repo", async () => {
+  it("a method an anonymous class declares itself is a target; one of a type outside the repo gives no edge", async () => {
     const edges = await repo({
       "A.java": `package p;
 interface Adapter { void flush(); }
@@ -242,7 +261,8 @@ class Outer {
 }
 `,
     });
-    expect(callsOf(edges)).toEqual([]);
+    // `Outer.own.$1` is the first anonymous body in `Outer.own`: `flush` is the body's own method, not `Outer.flush`.
+    expect(callsOf(edges)).toEqual(["A.java#Outer.own.$1.go -> A.java#Outer.own.$1.flush high"]);
   });
 
   it("looks outward from an anonymous body only when every type it extends is known", async () => {
@@ -255,7 +275,88 @@ class Outer {
 }
 `,
     });
-    expect(callsOf(edges)).toEqual(["A.java#Outer.make -> A.java#Outer.log high"]);
+    expect(callsOf(edges)).toEqual(["A.java#Outer.make.$1.write -> A.java#Outer.log high"]);
+  });
+
+  it("sees the parameters and locals of the method an anonymous body was created in, before the fields of the type", async () => {
+    const edges = await repo({
+      "A.java": `package p;
+interface Adapter { void write(); }
+class Sink { void flush() {} }
+class Other { void flush() {} void close() {} }
+class Outer {
+  Other s;
+  Other t;
+  Adapter make(final Sink s) {
+    Sink local = s;
+    return new Adapter() {
+      public void write() { s.flush(); local.flush(); t.close(); }
+    };
+  }
+  Adapter field(final Sink s) {
+    return new Adapter() {
+      Other s;
+      public void write() { s.flush(); }
+    };
+  }
+  Adapter nested(final Sink s) {
+    return new Adapter() {
+      public void write() { new Adapter() { public void write() { s.flush(); } }; }
+    };
+  }
+}
+`,
+    });
+    expect(callsOf(edges).sort()).toEqual([
+      // A field the body declares itself hides the captured parameter.
+      "A.java#Outer.field.$1.write -> A.java#Other.flush high",
+      // The captured parameter and local win over the field `s` of `Outer`; `t` is only a field.
+      "A.java#Outer.make.$1.write -> A.java#Other.close high",
+      "A.java#Outer.make.$1.write -> A.java#Sink.flush high",
+      // A body in a body still sees the parameter of the method around both.
+      "A.java#Outer.nested.$1.write.$1.write -> A.java#Sink.flush high",
+    ]);
+  });
+
+  it("stores `anonymous` on the symbols of anonymous and enum-constant bodies only, and the dump shows it only there", async () => {
+    const fx = await materializeFiles({
+      "pom.xml": POM("m"),
+      "A.java": `package p;
+class A { Runnable r = new Runnable() { public void run() {} }; void go() {} }
+enum Color { RED { void describe() {} }; void use() {} }
+`,
+    });
+    cleanups.push(() => fx.cleanup());
+    expect(await anonymousOf(fx.dir)).toEqual({ marked: ["A.r.$1.run", "Color.RED.describe"], plain: 4 });
+  });
+
+  it("numbers anonymous bodies within the member that holds them, with the overload suffix of its symbol", async () => {
+    const edges = await repo({
+      "A.java": `package p;
+interface Task { void run(); }
+class A {
+  static void work() {}
+  static { new Task() { public void run() { work(); } }; }
+  Task a = new Task() { public void run() { work(); } }, b = new Task() { public void run() { work(); } };
+  void go() { new Task() { public void run() { work(); } }; new Task() { public void run() { work(); } }; }
+  void go(int n) { new Task() { public void run() { work(); } }; }
+}
+enum E {
+  ONE(new Task() { public void run() { A.work(); } });
+  E(Task t) {}
+}
+`,
+    });
+    const callers = callsOf(edges).map((e) => e.split(" -> ")[0]);
+    expect(callers.sort()).toEqual([
+      "A.java#A.$1.run",
+      "A.java#A.a.$1.run",
+      "A.java#A.b.$1.run",
+      "A.java#A.go.$1.run",
+      "A.java#A.go.$2.run",
+      "A.java#A.go~2.$1.run",
+      "A.java#E.ONE.$1.run",
+    ]);
   });
 
   it("gives a bare name no edge when the class extends a type outside the repo and does not declare it", async () => {
@@ -297,5 +398,293 @@ class Outer {
         "package p;\nclass H { void go() {} }\nclass T { void a() { var h = new H(); h.go(); } void b() { H h = null; h.go(); } }\n",
     });
     expect(edges.map((e) => e.src).sort()).toEqual(["T.java#T.a", "T.java#T.b"]);
+  });
+
+  describe("callers outside methods", () => {
+    it("gives the type around a field initializer, an initializer block and an enum constant's arguments as caller", async () => {
+      const edges = await repo({
+        "A.java": `package p;
+class A {
+  static int make() { return 1; }
+  int field = make();
+  static int shared = make();
+  static { make(); }
+  { make(); }
+}
+enum Color {
+  RED(Color.size()), GREEN(size());
+  Color(int n) {}
+  static int size() { return 3; }
+}
+`,
+      });
+      expect(callsOf(edges)).toEqual([
+        "A.java#A -> A.java#A.make high",
+        "A.java#Color -> A.java#Color.size high",
+      ]);
+    });
+
+    it("makes the methods of an anonymous body symbols named after the member that holds the body", async () => {
+      const edges = await repo({
+        "A.java": `package p;
+interface Task { void run(); }
+class A {
+  void work() {}
+  Task field = new Task() { public void run() { work(); } };
+  Task make() {
+    return new Task() {
+      public void run() { work(); }
+    };
+  }
+  class In {
+    void in() {}
+    Task make() { return new Task() { public void run() { in(); work(); } }; }
+  }
+}
+`,
+      });
+      expect(callsOf(edges).sort()).toEqual([
+        "A.java#A.In.make.$1.run -> A.java#A.In.in high",
+        "A.java#A.In.make.$1.run -> A.java#A.work high",
+        "A.java#A.field.$1.run -> A.java#A.work high",
+        "A.java#A.make.$1.run -> A.java#A.work high",
+      ]);
+    });
+
+    it("names a body nested in a body after it, and gives a body's own initializer the method it was made in", async () => {
+      const edges = await repo({
+        "A.java": `package p;
+interface Task { void run(); }
+class A {
+  void work() {}
+  void make() {
+    new Task() {
+      int v = work();
+      public void run() { new Task() { public void run() { work(); } }; }
+    };
+  }
+}
+`,
+      });
+      expect(callsOf(edges).sort()).toEqual([
+        "A.java#A.make -> A.java#A.work high",
+        "A.java#A.make.$1.run.$1.run -> A.java#A.work high",
+      ]);
+    });
+
+    it("types the body of an enum constant by the enum and names it after the constant", async () => {
+      const edges = await repo({
+        "A.java": `package p;
+enum Color {
+  RED { void describe() { help(); } },
+  GREEN;
+  static void help() {}
+  void use() { help(); }
+}
+`,
+      });
+      expect(callsOf(edges)).toEqual([
+        "A.java#Color.RED.describe -> A.java#Color.help high",
+        "A.java#Color.use -> A.java#Color.help high",
+      ]);
+    });
+
+    it("gives a body of a type outside the repo no edge for a name it may inherit", async () => {
+      const edges = await repo({
+        "A.java": `package p;
+class A {
+  void work() {}
+  Object field = new Thread() { public void run() { work(); } };
+}
+`,
+      });
+      expect(callsOf(edges)).toEqual([]);
+    });
+  });
+
+  describe("generic type arguments", () => {
+    const ORDER = "class Order { double total() { return 0; } }\n";
+
+    it("follows the type argument of a JDK list, map and optional", async () => {
+      const edges = await repo({
+        "Order.java": `package p;\n${ORDER}`,
+        "Use.java": `package p;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+class Use {
+  List<Order> orders;
+  Optional<Order> find() { return null; }
+  void a() { orders.get(0).total(); }
+  void b(Map<String, Order> byId) { byId.get("x").total(); }
+  void c() { find().get().total(); find().orElse(null).total(); }
+}
+`,
+      });
+      expect(callsOf(edges)).toEqual([
+        "Use.java#Use.a -> Order.java#Order.total high",
+        "Use.java#Use.b -> Order.java#Order.total high",
+        "Use.java#Use.c -> Order.java#Order.total high",
+        "Use.java#Use.c -> Use.java#Use.find high",
+      ]);
+    });
+
+    it("reads a package imported with .* and a diamond with a declared type, and a var typed by its arguments", async () => {
+      const edges = await repo({
+        "Order.java": `package p;\n${ORDER}`,
+        "Use.java": `package p;
+import java.util.*;
+class Use {
+  void a() { List<Order> xs = new ArrayList<>(); xs.get(0).total(); }
+  void b() { var xs = new ArrayList<Order>(); xs.get(0).total(); }
+  void c() { var xs = new ArrayList<>(); xs.get(0).total(); }
+}
+`,
+      });
+      expect(callsOf(edges)).toEqual([
+        "Use.java#Use.a -> Order.java#Order.total high",
+        "Use.java#Use.b -> Order.java#Order.total high",
+      ]);
+    });
+
+    it("substitutes the type arguments of a class of the repo, also through its supertypes and a returned map", async () => {
+      const edges = await repo({
+        "Order.java": `package p;\n${ORDER}`,
+        "Box.java": `package p;
+import java.util.Map;
+class Box<T> { T item; T get() { return item; } }
+class OrderBox extends Box<Order> {}
+class Repo<K, V> { Map<K, V> all() { return null; } V one(K key) { return null; } }
+class Use {
+  Box<Order> box;
+  void a() { box.get().total(); box.item.total(); new Box<Order>().get().total(); }
+  void b() { new OrderBox().get().total(); }
+  void c(Repo<String, Order> repo) { repo.all().get("k").total(); repo.one("k").total(); }
+}
+`,
+      });
+      expect(callsOf(edges)).toEqual([
+        "Box.java#Use.a -> Box.java#Box.get high",
+        "Box.java#Use.a -> Order.java#Order.total high",
+        "Box.java#Use.b -> Box.java#Box.get high",
+        "Box.java#Use.b -> Order.java#Order.total high",
+        "Box.java#Use.c -> Box.java#Repo.all high",
+        "Box.java#Use.c -> Box.java#Repo.one high",
+        "Box.java#Use.c -> Order.java#Order.total high",
+      ]);
+    });
+
+    it("gives no edge when the type argument is not known", async () => {
+      const edges = await repo({
+        "Order.java": `package p;\n${ORDER}`,
+        "Use.java": `package p;
+import java.util.List;
+class Box<T> { T get() { return null; } }
+class Use<E> {
+  List raw;
+  List<E> unbound;
+  List<? extends Order> wild;
+  Box rawBox;
+  static <T> T pick(List<T> xs) { return null; }
+  void a() {
+    raw.get(0).total();
+    unbound.get(0).total();
+    wild.get(0).total();
+    rawBox.get().total();
+    pick(null).total();
+  }
+}
+`,
+      });
+      // The calls of `get` and `pick` are edges; what they return is not known, so `total` has none.
+      expect(callsOf(edges)).toEqual([
+        "Use.java#Use.a -> Use.java#Box.get high",
+        "Use.java#Use.a -> Use.java#Use.pick high",
+      ]);
+    });
+
+    it("knows a container only by its package: a List of the repo, an unimported one and one of another library give no guess", async () => {
+      const edges = await repo({
+        "Order.java": `package p;\n${ORDER}`,
+        "Mine.java": `package q;
+public class List<T> { public Object get(int i) { return null; } }
+`,
+        "Use.java": `package p;
+import q.List;
+class Use {
+  List<Order> a;
+  void go() { a.get(0).total(); }
+}
+`,
+        "Other.java": `package p;
+import com.other.List;
+class Other {
+  List<Order> a;
+  void go() { a.get(0).total(); }
+}
+`,
+        "Plain.java": `package p;
+class Plain {
+  List<Order> b;
+  java.util.List<Order> c;
+  void go() { b.get(0).total(); c.get(0).total(); }
+}
+`,
+      });
+      // `q.List.get` returns an Object, so only the call of `get` itself is an edge.
+      expect(callsOf(edges)).toEqual(["Use.java#Use.go -> Mine.java#List.get high"]);
+    });
+
+    it("lets a type imported by name hide a type of the package with the same name", async () => {
+      const edges = await repo({
+        "Order.java": `package p;\n${ORDER}`,
+        "Optional.java": `package p;
+class Optional<T> { Thing get() { return null; } }
+class Thing { void total() {} }
+`,
+        "Use.java": `package p;
+import java.util.Optional;
+class Use {
+  Optional<Order> x;
+  void go() { x.get().total(); }
+}
+`,
+        "Own.java": `package p;
+class Own {
+  Optional<Order> x;
+  void go() { x.get().total(); }
+}
+`,
+      });
+      expect(callsOf(edges).sort()).toEqual([
+        // Without the import the name is the package's own type.
+        "Own.java#Own.go -> Optional.java#Optional.get high",
+        "Own.java#Own.go -> Optional.java#Thing.total high",
+        // With it, `x` is a `java.util.Optional<Order>`: no edge to the package's `Optional.get`.
+        "Use.java#Use.go -> Order.java#Order.total high",
+      ]);
+    });
+
+    it("reads a type parameter of the method, or of a method around an anonymous body, as no type of the repo", async () => {
+      const edges = await repo({
+        "Order.java": `package p;\n${ORDER}`,
+        "Use.java": `package p;
+interface Task { void run(); }
+class Use {
+  <Order> void gen(Order o) { o.total(); }
+  <Order> Order made() { return null; }
+  void use() { made().total(); }
+  <Order> Task around(Order o) {
+    return new Task() { Order kept; public void run() { o.total(); kept.total(); } };
+  }
+  void plain(Order o) { o.total(); }
+}
+`,
+      });
+      expect(callsOf(edges)).toEqual([
+        "Use.java#Use.plain -> Order.java#Order.total high",
+        "Use.java#Use.use -> Use.java#Use.made high",
+      ]);
+    });
   });
 });

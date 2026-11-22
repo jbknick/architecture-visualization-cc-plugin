@@ -85,6 +85,39 @@ record Point(int x, int y) {
     expect(m.get("Outer.Outer")?.kind).toBe("method");
   });
 
+  it("names the methods of anonymous and enum-constant bodies after the member that holds the body, and marks them", () => {
+    const symbols = parse(`package p;
+class A {
+  Runnable field = new Runnable() { public void run() {} };
+  void go() {
+    new Runnable() { public void run() { new Runnable() { public void run() {} }; } };
+    new Runnable() { public void run() {} };
+  }
+  void go(int n) { new Runnable() { public void run() {} class In { void m() {} } }; }
+  static { new Runnable() { public void run() {} }; }
+}
+enum Color { RED { void describe() {} }, GREEN; void use() {} }
+`).symbols;
+    expect(symbols.map((s) => `${s.id.replace(/^.*#/, "")}${s.anonymous ? " anonymous" : ""}`)).toEqual([
+      "A",
+      "A.field.$1.run anonymous",
+      "A.go",
+      "A.go.$1.run anonymous",
+      "A.go.$1.run.$1.run anonymous",
+      "A.go.$2.run anonymous",
+      "A.go~2",
+      "A.go~2.$1.run anonymous",
+      "A.go~2.$1.In anonymous",
+      "A.go~2.$1.In.m anonymous",
+      "A.$1.run anonymous",
+      "Color",
+      "Color.RED.describe anonymous",
+      "Color.use",
+    ]);
+    // A symbol outside such a body carries no flag at all.
+    expect(symbols.filter((s) => !s.anonymous).every((s) => !("anonymous" in s))).toBe(true);
+  });
+
   it("is exported by the `public` modifier, and by being a member of an interface", () => {
     const m = byName(src);
     expect(m.get("Outer")?.exported).toBe(true);

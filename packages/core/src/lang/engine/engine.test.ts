@@ -25,6 +25,7 @@ const declaration = z.object({
   result: field,
   body: field.optional(),
   receiver: field.optional(),
+  generics: field.optional(),
 });
 const specGroup = { declarations: strings, specs: strings, groups: strings };
 const from = z.enum(["start", "end"]);
@@ -34,7 +35,17 @@ const TypingSchema = z.strictObject({
     names: strings,
     qualified: z.strictObject({ kind: field, qualifier: field, name: field }).optional(),
     wrappers: strings,
-    generic: z.strictObject({ kind: field, field: field.optional() }),
+    generic: z.strictObject({ kind: field, field: field.optional(), arguments: field.optional() }),
+    parameters: z.strictObject({ entry: field, names: strings }).optional(),
+    library: z
+      .array(
+        z.strictObject({
+          package: field,
+          types: strings,
+          returns: z.record(z.string(), z.number().int().nonnegative()),
+        }),
+      )
+      .optional(),
     sequences: z.array(z.strictObject({ kind: field, element: field })),
     maps: z.strictObject({ kind: field, key: field, value: field }).optional(),
     predeclared: strings,
@@ -166,6 +177,8 @@ const PackSchema = z.strictObject({
         }),
       ),
       bodies: strings,
+      anonymous: z.strictObject({ kind: field, type: field, body: field, prefix: field }).optional(),
+      constants: z.strictObject({ kind: field, name: field, body: field }).optional(),
     }),
     values: z.strictObject({ ...specGroup, name: field, nameKinds: strings }),
     import: z.strictObject({

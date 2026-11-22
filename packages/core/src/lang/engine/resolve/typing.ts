@@ -4,9 +4,14 @@
  * of the file they were written in.
  */
 
-/** A type as written; null (where a type is optional) is a type the resolver does not read. `owner` is the dotted name of the type whose body holds the reference, for a language whose types nest. */
+/**
+ * A type as written; null (where a type is optional) is a type the resolver does not read. `owner` is the dotted name of
+ * the type whose body holds the reference, for a language whose types nest. `args` are the type arguments written after
+ * the name, one per argument (null for one that is not read); absent when there are none. `param` marks a name that is a
+ * type parameter of the function the reference is written in (or of a function around it), which is no type.
+ */
 export type TypeRef =
-  | { k: "name"; name: string; owner?: string | null }
+  | { k: "name"; name: string; owner?: string | null; args?: (TypeRef | null)[]; param?: true }
   | { k: "qual"; qualifier: string; name: string }
   | { k: "seq"; elem: TypeRef | null }
   | { k: "map"; key: TypeRef | null; elem: TypeRef | null };
@@ -68,6 +73,8 @@ export interface Decl {
   name: string;
   pos: number;
   source: DeclSource;
+  /** Set on a name declared outside the type body the function is in: the type body it was declared in, where its type and value are read. */
+  outer?: { owner: string | null };
 }
 
 /** A call site of a function body. */
@@ -98,6 +105,8 @@ export interface FuncDecl {
   results: Results;
   start: number;
   arity: Arity | null;
+  /** The names of the type parameters the declaration has of its own. */
+  tparams: string[];
 }
 
 export interface TypeDecl {
@@ -108,6 +117,10 @@ export interface TypeDecl {
   /** Offset of the declaration, which names its symbol. */
   start: number;
   generic: boolean;
+  /** The name of the type whose body holds it (for a body no declaration holds, the type whose member it was created in); null at the top of a file. */
+  outer: string | null;
+  /** The names of its type parameters, in order. */
+  params: string[];
   fields: Map<string, TypeRef | null>;
   /** Embedded (extended) types of a class, with the line each is written on. */
   embedded: { type: TypeRef | null; line: number }[];

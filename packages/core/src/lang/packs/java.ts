@@ -24,6 +24,7 @@ export const javaPack = {
         parameters: "parameters",
         result: "type",
         body: "body",
+        generics: "type_parameters",
       },
       {
         kind: "constructor_declaration",
@@ -58,6 +59,9 @@ export const javaPack = {
       ],
       // The members of an enum follow its constants in a node of their own.
       bodies: ["enum_body_declarations"],
+      // `new T() { ... }` and `RED { ... }` have a body of members that no declaration holds; each is `<type>.$<n>` or `<enum>.<constant>`.
+      anonymous: { kind: "object_creation_expression", type: "type", body: "class_body", prefix: "$" },
+      constants: { kind: "enum_constant", name: "name", body: "body" },
     },
     values: { declarations: [], specs: [], groups: [], name: "name", nameKinds: [] },
     import: {
@@ -81,7 +85,77 @@ export const javaPack = {
       type: {
         names: ["type_identifier"],
         wrappers: [],
-        generic: { kind: "generic_type" },
+        generic: { kind: "generic_type", arguments: "type_arguments" },
+        parameters: { entry: "type_parameter", names: ["type_identifier"] },
+        // The accessors of the JDK's containers return one of their type arguments (the index in the list of arguments).
+        // A method that is not listed (`remove`, `set`, `stream`) says nothing about the type of its result.
+        library: [
+          {
+            package: "java.util",
+            types: (
+              "List ArrayList LinkedList Vector Stack Collection Set HashSet LinkedHashSet TreeSet SortedSet " +
+              "NavigableSet Queue Deque ArrayDeque PriorityQueue Iterator ListIterator Optional"
+            ).split(" "),
+            returns: {
+              get: 0,
+              getFirst: 0,
+              getLast: 0,
+              removeFirst: 0,
+              removeLast: 0,
+              first: 0,
+              last: 0,
+              peek: 0,
+              peekFirst: 0,
+              peekLast: 0,
+              poll: 0,
+              pollFirst: 0,
+              pollLast: 0,
+              pop: 0,
+              element: 0,
+              next: 0,
+              previous: 0,
+              orElse: 0,
+              orElseGet: 0,
+              orElseThrow: 0,
+              floor: 0,
+              ceiling: 0,
+              higher: 0,
+              lower: 0,
+            },
+          },
+          {
+            package: "java.util",
+            types: "Map HashMap LinkedHashMap TreeMap SortedMap NavigableMap".split(" "),
+            returns: {
+              get: 1,
+              getOrDefault: 1,
+              put: 1,
+              putIfAbsent: 1,
+              computeIfAbsent: 1,
+              computeIfPresent: 1,
+              compute: 1,
+              merge: 1,
+              firstKey: 0,
+              lastKey: 0,
+              floorKey: 0,
+              ceilingKey: 0,
+              higherKey: 0,
+              lowerKey: 0,
+            },
+          },
+          {
+            package: "java.util.concurrent",
+            types: "ConcurrentMap ConcurrentHashMap".split(" "),
+            returns: { get: 1, getOrDefault: 1, put: 1, putIfAbsent: 1, computeIfAbsent: 1 },
+          },
+          {
+            package: "java.util.concurrent",
+            types: "Future CompletableFuture Callable".split(" "),
+            returns: { get: 0, join: 0, getNow: 0, call: 0 },
+          },
+          { package: "java.util.function", types: ["Supplier"], returns: { get: 0 } },
+          { package: "java.util.concurrent.atomic", types: ["AtomicReference"], returns: { get: 0 } },
+        ],
         sequences: [{ kind: "array_type", element: "element" }],
         predeclared: (
           "Object String Integer Long Short Byte Character Boolean Double Float Number Void Class Enum Record " +
