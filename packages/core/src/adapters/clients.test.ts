@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { parseSync } from "oxc-parser";
@@ -12,7 +12,9 @@ import { joinUrl, pathScore, urlPath } from "./clients.js";
 
 const helperPath = "../../test/helpers/fixture.js";
 const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as {
-  materializeFixture: (name: string) => Promise<{ dir: string; cleanup(): Promise<void> }>;
+  materializeFixture: (
+    name: string,
+  ) => Promise<{ dir: string; git(args: string[]): string; cleanup(): Promise<void> }>;
 };
 
 interface Graph {
@@ -298,6 +300,108 @@ describe("client instances on fixtures/linking", () => {
       ["instance", "dynamic_url", "GET <dynamic>"],
       ["instance", "dynamic_url", "PUT <dynamic>"],
     ]);
+  });
+});
+
+describe("client wrappers on fixtures/linking", () => {
+  let g: Graph;
+  beforeAll(async () => {
+    const fx = await materializeFixture("linking");
+    cleanups.push(() => fx.cleanup());
+    g = await indexDir(fx.dir);
+  });
+  const W = "sym:linking:apps/web/src/features/same-origin-wrappers.ts#";
+  const LIB = "sym:linking:apps/web/src/lib/same-origin-http.ts#";
+  const f = "apps/web/src/features/same-origin-wrappers.ts";
+  const ep = (route: string) => `ep:linking:@fx/users-api:${route}`;
+  const gaps = (caller: string) =>
+    g.nodes
+      .filter((n) => n.kind === "client_call" && n.data.caller === caller)
+      .map((n) => [n.data.rule, n.data.reason, n.label, n.data.wrapper]);
+
+  it("links each call of a wrapper to the endpoint its arguments reach, low", () => {
+    expect(requests(g, `${W}wGet`)).toEqual([[ep("GET /api/users/:id"), "low", `${f}:5`]]);
+    expect(requests(g, `${W}wPost`)).toEqual([[ep("POST /api/users"), "low", `${f}:9`]]);
+    expect(requests(g, `${W}wMethod`)).toEqual([[ep("DELETE /api/users/:id"), "low", `${f}:13`]]);
+    // A wrapper of a wrapper; the literal `/users/me` beats `/users/:id`.
+    expect(requests(g, `${W}wHook`)).toEqual([[ep("GET /api/users/me"), "low", `${f}:17`]]);
+    // A function whose parameter only fills a later segment is no wrapper: the edge is its own.
+    expect(requests(g, `${W}wUser`)).toEqual([]);
+    expect(requests(g, `${LIB}getUser`)).toEqual([
+      [ep("GET /api/users/:id"), "low", "apps/web/src/lib/same-origin-http.ts:21"],
+    ]);
+    expect(gaps(`${LIB}getUser`)).toEqual([]);
+  });
+
+  it("reports the body of a wrapper as wrapper_body, never as a request", () => {
+    for (const fn of ["relFetch", "relRequest", "useRelFetch"]) {
+      expect(requests(g, `${LIB}${fn}`), fn).toEqual([]);
+      expect(gaps(`${LIB}${fn}`), fn).toEqual([["wrapper", "wrapper_body", `wrapper ${fn}`, `${LIB}${fn}`]]);
+    }
+  });
+
+  it("links a call of a wrapper the recipe lists, where inference does not see the flow", () => {
+    expect(requests(g, `${W}wSend`)).toEqual([[ep("GET /api/users"), "low", `${f}:25`]]);
+    const send = "sym:linking:apps/web/src/lib/opaque.ts#send";
+    expect(gaps(send)).toEqual([["wrapper", "wrapper_body", "wrapper send", send]]);
+  });
+
+  it("without the recipe entry the call in send is a dynamic_url gap and wSend links nothing", async () => {
+    const fx = await materializeFixture("linking");
+    cleanups.push(() => fx.cleanup());
+    const file = join(fx.dir, ".gantry/recipe.json");
+    const recipe = JSON.parse(readFileSync(file, "utf8"));
+    delete recipe.clientWrappers;
+    writeFileSync(file, `${JSON.stringify(recipe, null, 2)}\n`);
+    fx.git(["commit", "-qam", "drop the wrapper entry"]);
+    const bare = await indexDir(fx.dir);
+    expect(requests(bare, `${W}wSend`)).toEqual([]);
+    const send = "sym:linking:apps/web/src/lib/opaque.ts#send";
+    expect(
+      bare.nodes
+        .filter((n) => n.kind === "client_call" && n.data.caller === send)
+        .map((n) => [n.data.rule, n.data.reason]),
+    ).toEqual([["fetch", "dynamic_url"]]);
+  });
+
+  it("gives the same graph on every run", async () => {
+    const fx = await materializeFixture("linking");
+    cleanups.push(() => fx.cleanup());
+    const again = await indexDir(fx.dir);
+    expect(JSON.stringify(again)).toBe(JSON.stringify(g));
+  });
+
+  it("gaps: an argument that fills the start, or a method that is not static", async () => {
+    const code = [
+      "export function get(path: string, init?: RequestInit) {\n  return fetch(`/api${path}`, init);\n}",
+      "export function viaVar() {\n  const base = process.env.API;\n  return get(`${base}/users`);\n}",
+      'export function viaMethod() {\n  const init = makeInit();\n  return get("/users", init);\n}',
+      "export function chained(path: string) {\n  return get(path);\n}",
+      'export function twice() {\n  return get("/users", { method: "POST" });\n}',
+    ].join("\n");
+    const r = await indexDir(
+      repo({
+        "package.json": JSON.stringify({ name: "root", private: true }),
+        "pnpm-workspace.yaml": 'packages:\n  - "apps/*"\n',
+        "apps/api/package.json": JSON.stringify({ name: "@x/api", dependencies: { hono: "^4.0.0" } }),
+        "apps/api/src/app.ts": `import { Hono } from "hono";\nexport const app = new Hono();\napp.post("/api/users", (c) => c.json([]));\n`,
+        "apps/web/package.json": JSON.stringify({ name: "@x/web" }),
+        "apps/web/src/c.ts": `${code}\n`,
+      }),
+    );
+    const at = (fn: string) => `sym:repo:apps/web/src/c.ts#${fn}`;
+    expect(requests(r, at("twice"))).toEqual([
+      ["ep:repo:@x/api:POST /api/users", "low", "apps/web/src/c.ts:16"],
+    ]);
+    expect(requests(r, at("viaVar"))).toEqual([]);
+    // `chained` passes its parameter on, so it is a wrapper itself.
+    const gap = (fn: string) =>
+      r.nodes
+        .filter((n) => n.kind === "client_call" && n.data.caller === at(fn))
+        .map((n) => [n.data.reason, n.label]);
+    expect(gap("viaVar")).toEqual([["dynamic_url", "GET <dynamic>"]]);
+    expect(gap("viaMethod")).toEqual([["dynamic_url", "<dynamic>"]]);
+    expect(gap("chained")).toEqual([["wrapper_body", "wrapper chained"]]);
   });
 });
 
