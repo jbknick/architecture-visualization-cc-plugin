@@ -270,5 +270,12 @@
         ]
       }
     }
+  ],
+  "clientWrappers": [
+    {
+      "symbol": "sym:linking:apps/web/src/lib/opaque.ts#send",
+      "pathArg": 0,
+      "prefix": "/api"
+    }
   ]
 }

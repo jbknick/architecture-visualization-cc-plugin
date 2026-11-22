@@ -28,6 +28,20 @@ import { START_PACKAGES } from "./tanstack-start.js";
  * | 4    | `fetch("/api/posts/${id}")`, `ky.post(...)`, `axios.get(...)` (literal URL)  | endpoint path, `${x}` as `:param` | low          |
  * | 4b   | `rel.get("/users")` on an `axios.create` / `ky.create` / `ky.extend` instance, or on `axios` with `axios.defaults.baseURL` set | endpoint path of the joined URL | low |
  *
+ * | 4c   | `relFetch("/users")` where `relFetch(path, init)` is a client wrapper (inferred, or listed in the recipe)  | endpoint path of the substituted URL | low |
+ *
+ * A wrapper is a top-level function (declaration, or arrow / function expression bound to a `const`) with a client
+ * call (fetch, an instance, `axios` / `ky`) or a call of another wrapper in which a parameter flows unchanged into the
+ * start of the request path, or into the method (the method argument, or `init.method` of an `init` argument). A
+ * parameter that only fills a later segment (`/users/${id}`) makes an ordinary call; after fixed text ending in a
+ * slash (`/api/${path}`) the calls decide: a wrapper when one passes an argument with a slash in it. A leading base
+ * (`${API_URL}`) is skipped. Qualifying calls that disagree make each call of the function a gap. Inference runs to a
+ * fixpoint (8 passes), so a wrapper of a wrapper is one. Each call of a wrapper substitutes its arguments into the URL
+ * template and the method; an argument that fills only a segment becomes `:param`, one that fills the start is a
+ * `dynamic_url` gap. The client calls in a wrapper's body are not requests: each wrapper has one `client_call` node
+ * with reason `wrapper_body` and `data.wrapper` its symbol id. The recipe's `clientWrappers` list wrappers by symbol
+ * where inference does not see the flow (every client call of such a body is then `wrapper_body`).
+ *
  * An instance is a top-level `const` initialised by `<axios>.create({ baseURL })`, `<ky>.create({ prefixUrl })` or
  * `<kyInstance>.extend({ prefixUrl? })` (`extend` without `prefixUrl` keeps the parent's base). Calls on it are
  * followed through imports and re-exports. The URL is joined by the library's own rule (`joinUrl`): axios puts the
@@ -98,7 +112,7 @@ const CLIENT_DEPS = [
 ];
 const FETCH_CALLEES = new Set(["fetch", "window.fetch", "globalThis.fetch", "self.fetch"]);
 
-export type ClientRule = "server-fn" | "orpc" | "hono" | "fetch" | "instance";
+export type ClientRule = "server-fn" | "orpc" | "hono" | "fetch" | "instance" | "wrapper";
 
 /** A client binding: its kind, and for a sub-client alias the keys it starts with. */
 interface Client {
@@ -136,6 +150,25 @@ interface InstanceDecl {
   inherits: boolean;
   parent: string | null;
 }
+
+/** A piece of request text: literal text, a parameter of the enclosing function (its index), or anything else (null). */
+type Piece = string | number | null;
+/** An argument of a call: its text (null for an object literal), or for an object literal its `url` and `method`. */
+interface ArgFact {
+  text: Piece[] | null;
+  obj?: { url?: Piece[] | null; method?: Piece[] | null };
+}
+/** A call in the body of a function, with arguments that mention one of its parameters. */
+interface ParamCall {
+  /** Dotted callee (`fetch`, `rel.get`, `relFetch`). */
+  callee: string;
+  start: number;
+  args: ArgFact[];
+}
+interface WrapperFact {
+  symbol: string;
+  calls: ParamCall[];
+}
 export interface ClientFacts {
   /** Top-level client bindings declared in this file. */
   decls: ClientDecl[];
@@ -145,6 +178,10 @@ export interface ClientFacts {
   instances?: InstanceDecl[];
   /** Top-level `<axios>.defaults.baseURL = <expr>` assignments of this file (`base` null when not static). */
   defaults?: { base: string | null; line: number }[];
+  /** Top-level functions with calls whose arguments mention a parameter: the wrapper candidates. */
+  wrappers?: WrapperFact[];
+  /** Plain calls with an argument whose text contains a slash. */
+  slashCalls?: { callee: string; slash: number[] }[];
   /** Local names that root a member call (`orpc.posts.list(...)`): the cheap filter before the AST walk. */
   roots: string[];
   /** Plain identifier calls (`getPosts(...)`), for rule 1. */
@@ -330,6 +367,137 @@ function readInstances(ctx: AdapterFileContext): Pick<ClientFacts, "instances" |
   };
 }
 
+const joinPieces = (pieces: Piece[]): Piece[] => {
+  const out: Piece[] = [];
+  for (const p of pieces) {
+    const last = out[out.length - 1];
+    if (typeof p === "string" && typeof last === "string") out[out.length - 1] = last + p;
+    else if (p !== "") out.push(p);
+  }
+  return out;
+};
+
+/** A string, template or `+` concatenation as pieces; a parameter by its index, anything else null. */
+function textPieces(expr: unknown, params: Map<string, number>): Piece[] {
+  const v = unwrap(expr);
+  if (!isNode(v)) return [null];
+  if (v.type === "Literal" && typeof v.value === "string") return [v.value];
+  if (v.type === "Identifier") return [params.get(v.name as string) ?? null];
+  if (v.type === "BinaryExpression" && v.operator === "+")
+    return joinPieces([...textPieces(v.left, params), ...textPieces(v.right, params)]);
+  if (v.type !== "TemplateLiteral") return [null];
+  const exprs = Array.isArray(v.expressions) ? v.expressions : [];
+  const out: Piece[] = [];
+  nodeArray(v.quasis).forEach((q, i) => {
+    const cooked = (q.value as { cooked?: unknown } | undefined)?.cooked;
+    out.push(typeof cooked === "string" ? cooked : null);
+    if (i < exprs.length) out.push(...textPieces(exprs[i], params));
+  });
+  return joinPieces(out);
+}
+
+function argFact(expr: unknown, params: Map<string, number>): ArgFact {
+  const v = unwrap(expr);
+  if (isNode(v) && v.type === "ObjectExpression") {
+    const url = propOf(v, "url");
+    const method = propOf(v, "method");
+    return {
+      text: null,
+      obj: {
+        ...(url !== undefined ? { url: textPieces(url, params) } : {}),
+        ...(method !== undefined ? { method: textPieces(method, params) } : {}),
+      },
+    };
+  }
+  return { text: textPieces(v, params) };
+}
+
+const usesParam = (a: ArgFact): boolean =>
+  [a.text, a.obj?.url, a.obj?.method].some((p) => p?.some((x) => typeof x === "number"));
+
+/** Top-level functions with their parameters, and the calls in their bodies that pass a parameter on. */
+function readWrapperFacts(ctx: AdapterFileContext): WrapperFact[] {
+  const program = ctx.parsed ? ctx.program() : null;
+  if (!program) return [];
+  const out: WrapperFact[] = [];
+  const fns: { name: string; fn: Node }[] = [];
+  for (const st of program) {
+    if (st.type === "ExportDefaultDeclaration") {
+      // `export default function name() {}` is the symbol `name`; an anonymous function or arrow is `default`.
+      const d = unwrap(st.declaration);
+      if (
+        isNode(d) &&
+        (d.type === "FunctionDeclaration" ||
+          d.type === "FunctionExpression" ||
+          d.type === "ArrowFunctionExpression")
+      )
+        fns.push({ name: isNode(d.id) ? (d.id.name as string) : "default", fn: d });
+      continue;
+    }
+    const decl = st.type === "ExportNamedDeclaration" ? unwrap(st.declaration) : st;
+    if (!isNode(decl)) continue;
+    if (decl.type === "FunctionDeclaration" && isNode(decl.id))
+      fns.push({ name: decl.id.name as string, fn: decl });
+    if (decl.type !== "VariableDeclaration") continue;
+    for (const d of nodeArray(decl.declarations)) {
+      const id = unwrap(d.id);
+      const init = unwrap(d.init);
+      if (
+        isNode(id) &&
+        id.type === "Identifier" &&
+        isNode(init) &&
+        (init.type === "ArrowFunctionExpression" || init.type === "FunctionExpression")
+      )
+        fns.push({ name: id.name as string, fn: init });
+    }
+  }
+  for (const { name, fn } of fns) {
+    const symbol = ctx.parsed?.symbols.find((s) => s.name === name)?.id;
+    const params = new Map<string, number>();
+    nodeArray(fn.params).forEach((p, i) => {
+      const id = p.type === "AssignmentPattern" ? unwrap(p.left) : p;
+      if (isNode(id) && id.type === "Identifier") params.set(id.name as string, i);
+    });
+    if (!symbol || params.size === 0) continue;
+    const calls: ParamCall[] = [];
+    visit(fn.body, (n) => {
+      if (n.type !== "CallExpression") return undefined;
+      const chain = memberChain(n.callee);
+      if (!chain || chain.computed) return undefined;
+      const args = (Array.isArray(n.arguments) ? (n.arguments as unknown[]) : []).map((a) =>
+        argFact(a, params),
+      );
+      if (args.some(usesParam))
+        calls.push({ callee: [chain.root, ...chain.keys].join("."), start: n.start, args });
+      return undefined;
+    });
+    if (calls.length > 0) out.push({ symbol, calls });
+  }
+  return out;
+}
+
+/**
+ * Plain calls (`api("users/1")`) with an argument whose static text contains a slash: the call sites that tell a
+ * function with fixed text ending in a slash before its parameter (`/api/${path}`) from one that fills a segment.
+ */
+function readSlashCalls(ctx: AdapterFileContext): { callee: string; slash: number[] }[] {
+  const program = ctx.parsed && ctx.source.includes("/") ? ctx.program() : null;
+  if (!program) return [];
+  const out: { callee: string; slash: number[] }[] = [];
+  visit(program, (n) => {
+    if (n.type !== "CallExpression") return undefined;
+    const callee = unwrap(n.callee);
+    if (!isNode(callee) || callee.type !== "Identifier") return undefined;
+    const slash: number[] = [];
+    (Array.isArray(n.arguments) ? (n.arguments as unknown[]) : []).forEach((a, i) => {
+      if (argFact(a, NO_PARAMS).text?.some((p) => typeof p === "string" && p.includes("/"))) slash.push(i);
+    });
+    if (slash.length > 0) out.push({ callee: callee.name as string, slash });
+    return undefined;
+  });
+  return out;
+}
+
 /** A member chain `root.a["b"].c` as its root identifier and keys (computed keys only when string literals). */
 function memberChain(expr: unknown): { root: string; keys: string[]; computed: boolean } | null {
   const keys: string[] = [];
@@ -388,7 +556,11 @@ const stripQuery = (u: string): string => {
  */
 export function urlPath(arg: unknown): string | null {
   const raw = urlText(arg, true);
-  if (raw === null) return null;
+  return raw === null ? null : plainPath(raw);
+}
+
+/** A URL text that no instance joins: an absolute URL whole, a path with query and hash dropped, else null. */
+function plainPath(raw: string): string | null {
   // An absolute URL names another origin: kept whole, so it is reported as external and never matched.
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)) return raw.replace(/[?#].*$/, "");
   if (!raw.replace(/[?#].*$/, "").startsWith("/")) return null;
@@ -445,6 +617,8 @@ function methodOf(opts: unknown, member: string | null): string {
   return "GET";
 }
 
+const NO_PARAMS = new Map<string, number>();
+
 interface Hit {
   rule: ClientRule;
   from: string;
@@ -453,7 +627,101 @@ interface Hit {
   /** Candidate endpoint ids (empty when unmatched). */
   dsts: string[];
   confidence: "high" | "low";
-  reason?: "no_endpoint" | "dynamic_url" | "external_url" | "not_a_server_fn" | "client_alias" | "ambiguous";
+  reason?:
+    | "no_endpoint"
+    | "dynamic_url"
+    | "external_url"
+    | "not_a_server_fn"
+    | "client_alias"
+    | "ambiguous"
+    | "wrapper_body";
+  /** The wrapper whose body holds the call (reason `wrapper_body`). */
+  wrapper?: string;
+}
+
+type MethodSrc = { fixed: string } | { param: number } | { init: number } | { unknown: true };
+interface Via {
+  lib: "axios" | "ky";
+  base: string | null;
+}
+/** A client wrapper: the request its body makes, with the function's parameters as slots. */
+interface Wrapper {
+  symbol: string;
+  name: string;
+  /** URL template: literal text and parameter indexes. */
+  url: Piece[];
+  method: MethodSrc;
+  via: Via | null;
+  /** Listed in the recipe: every client call of its body is the wrapper's own. */
+  all: boolean;
+  /** Start offsets of the calls of its body that pass a parameter on. */
+  starts: Set<number>;
+  /** The request its first qualifying call makes, to compare with the others. */
+  sig: string;
+  /** Its qualifying calls disagree on URL, method or client: each call of it is a gap. */
+  conflict: boolean;
+}
+const GET: MethodSrc = { fixed: "GET" };
+const MAX_WRAPPER_PASSES = 8;
+
+const methodOfPieces = (p: Piece[] | null | undefined): MethodSrc => {
+  if (p === undefined) return GET;
+  if (p === null) return { unknown: true };
+  if (p.length === 1 && typeof p[0] === "number") return { param: p[0] };
+  const text = p.every((x) => typeof x === "string") ? (p as string[]).join("") : "";
+  return text === "" ? { unknown: true } : { fixed: text.toUpperCase() };
+};
+/** The method an argument that is the method itself stands for. */
+const methodOfArg = (a: ArgFact | undefined): MethodSrc =>
+  !a ? GET : a.obj ? { unknown: true } : methodOfPieces(a.text);
+/** The method an `init` argument stands for: its `method` property, or itself when it is a parameter passed on. */
+const methodOfInit = (a: ArgFact | undefined): MethodSrc => {
+  if (!a) return GET;
+  if (a.obj) return methodOfPieces(a.obj.method);
+  return a.text?.length === 1 && typeof a.text[0] === "number" ? { init: a.text[0] } : { unknown: true };
+};
+/** A wrapper's method seen from a call: the argument it names. */
+const methodAt = (m: MethodSrc, args: ArgFact[]): MethodSrc =>
+  "param" in m ? methodOfArg(args[m.param]) : "init" in m ? methodOfInit(args[m.init]) : m;
+/**
+ * A wrapper's URL template with the arguments of a call in place of its parameters. An argument that starts with a
+ * slash after template text that ends in one loses it (`/api/` and `/users` make `/api/users`).
+ */
+const substitute = (url: Piece[], args: ArgFact[]): Piece[] =>
+  joinPieces(
+    url.flatMap((p, i): Piece[] => {
+      if (typeof p !== "number") return [p];
+      const text = args[p]?.text ?? [null];
+      const before = url[i - 1];
+      const first = text[0];
+      if (
+        typeof before === "string" &&
+        before.endsWith("/") &&
+        typeof first === "string" &&
+        first.startsWith("/")
+      )
+        return [first.replace(/^\/+/, ""), ...text.slice(1)];
+      return text;
+    }),
+  );
+
+/**
+ * The parameter that supplies the start of the path, after leading base parts (`${BASE}`). Fixed text before it
+ * must be empty, only slashes, or not end in a slash (`/api${path}`); text that ends in a slash (`/api/${path}`,
+ * `/users/${id}`) is `ambiguous`: the parameter fills a segment unless a call passes it more than one.
+ */
+function leadSlot(url: Piece[]): { slot: number; ambiguous: boolean } | null {
+  let i = 0;
+  while (url[i] === null) i++;
+  let prefix = "";
+  for (; i < url.length; i++) {
+    const p = url[i] as Piece;
+    if (typeof p === "string") prefix += p;
+    else if (typeof p === "number")
+      return { slot: p, ambiguous: !(/^\/*$/.test(prefix) || !prefix.endsWith("/")) };
+    else return null;
+  }
+  return null;
 }
 
 export const clientsAdapter: Adapter<ClientFacts> = {
@@ -483,6 +751,8 @@ export const clientsAdapter: Adapter<ClientFacts> = {
     const dollar = /\.\$(?:get|post|put|patch|delete|options)\s*\(/.test(ctx.source);
     const decls = readDecls(ctx);
     const { instances, defaults } = readInstances(ctx);
+    const wrappers = readWrapperFacts(ctx);
+    const slashCalls = readSlashCalls(ctx);
     const aliases: ClientFacts["aliases"] = [];
     for (const m of ctx.source.matchAll(ALIAS_RE)) {
       const name = m[1] as string;
@@ -501,6 +771,8 @@ export const clientsAdapter: Adapter<ClientFacts> = {
       decls.length === 0 &&
       !instances &&
       !defaults &&
+      wrappers.length === 0 &&
+      slashCalls.length === 0 &&
       aliases.length === 0 &&
       roots.size === 0 &&
       idCalls.length === 0 &&
@@ -514,6 +786,8 @@ export const clientsAdapter: Adapter<ClientFacts> = {
         decls,
         ...(instances ? { instances } : {}),
         ...(defaults ? { defaults } : {}),
+        ...(wrappers.length > 0 ? { wrappers } : {}),
+        ...(slashCalls.length > 0 ? { slashCalls } : {}),
         aliases,
         roots: [...roots].sort(cmp),
         idCalls,
@@ -589,6 +863,144 @@ export const clientsAdapter: Adapter<ClientFacts> = {
         set.add(d.base);
         defaultBases.set(file.ws.id, set);
       }
+    }
+
+    const libCache = new Map<string, { http: Set<string>; axios: Set<string> }>();
+    /** The local names a file imports `ky` / `axios` under, and the `axios` ones alone. */
+    const libsOf = (file: AdapterFileContext) => {
+      let l = libCache.get(file.fileId);
+      if (!l) {
+        const imps = (file.parsed?.imports ?? []).filter(
+          (i) => i.local && (i.specifier === "ky" || i.specifier === "axios"),
+        );
+        l = {
+          http: new Set(imps.map((i) => i.local)),
+          axios: new Set(
+            imps.filter((i) => i.specifier === "axios" && i.imported === "default").map((i) => i.local),
+          ),
+        };
+        libCache.set(file.fileId, l);
+      }
+      return l;
+    };
+    const instOf = (file: AdapterFileContext, name: string): Via | undefined => {
+      const ref = instances.size > 0 ? refOf(file, name) : null;
+      return ref ? instances.get(ref) : undefined;
+    };
+    /**
+     * The client a callee (`fetch`, `rel.get`, `axios.post`) is: the instance or default-`axios` base it goes through
+     * (null for none), the verb or `request` it is called by, and whether two default bases make it ambiguous. Null
+     * when the callee is no client.
+     */
+    const clientCall = (file: AdapterFileContext, callee: string[]) => {
+      const [root = "", ...keys] = callee;
+      const inst = instOf(file, root);
+      const libs = libsOf(file);
+      const isFetch = FETCH_CALLEES.has(callee.join("."));
+      const isLib = (inst !== undefined || libs.http.has(root)) && keys.length <= 1;
+      if (!isFetch && !isLib) return null;
+      const member = isLib ? (keys[0] ?? null) : null;
+      if (member !== null && !HTTP_VERBS.has(member) && member !== "request") return null;
+      let via: Via | null = inst ?? null;
+      let ambiguous = false;
+      if (!via && libs.axios.has(root)) {
+        const bases = defaultBases.get(file.ws.id);
+        if (bases && bases.size > 1) ambiguous = true;
+        else if (bases) via = { lib: "axios", base: [...bases][0] as string | null };
+      }
+      return { via, member, ambiguous };
+    };
+
+    // Client wrappers: those the recipe lists, then the inferred ones, to a fixpoint.
+    const wrappers = new Map<string, Wrapper>();
+    const nameOf = (symbol: string) => symbol.slice(symbol.lastIndexOf("#") + 1);
+    for (const w of ctx.recipe?.recipe?.clientWrappers ?? []) {
+      wrappers.set(w.symbol, {
+        symbol: w.symbol,
+        name: nameOf(w.symbol),
+        url: w.prefix ? [w.prefix, w.pathArg] : [w.pathArg],
+        method: w.methodArg === undefined ? GET : { param: w.methodArg },
+        via: null,
+        all: true,
+        starts: new Set(),
+        sig: "",
+        conflict: false,
+      });
+    }
+    const candidates = ctx.files.flatMap(({ file, facts }) =>
+      (facts?.wrappers ?? []).map((w) => ({ file, w })),
+    );
+    /** What a call of a function's body requests, in the function's parameters: null when it is no request. */
+    const requestOfCall = (file: AdapterFileContext, own: string, c: ParamCall) => {
+      const callee = c.callee.split(".");
+      const client = clientCall(file, callee);
+      if (client) {
+        if (client.ambiguous) return null;
+        const first = c.args[0];
+        const opts = first?.obj ? first : c.args[1];
+        const verb = client.member !== null && HTTP_VERBS.has(client.member);
+        const m = verb ? { fixed: (client.member as string).toUpperCase() } : methodOfInit(opts);
+        let url = (first?.obj ? first.obj.url : first?.text) ?? [null];
+        // Without an instance a leading base is dropped, as for rule 4.
+        if (client.via === null) while (url.length > 1 && url[0] === null) url = url.slice(1);
+        return {
+          url,
+          // An unreadable method is GET, as for a call outside a wrapper.
+          method: "unknown" in m ? GET : m,
+          via: client.via,
+        };
+      }
+      const sym =
+        callee.length === 1 ? symbolForName(file.parsed, file.fileId, c.callee, ctx.resolver) : null;
+      const callee2 = sym && sym !== own ? wrappers.get(sym) : undefined;
+      if (!callee2 || callee2.conflict) return null;
+      return {
+        url: substitute(callee2.url, c.args),
+        method: methodAt(callee2.method, c.args),
+        via: callee2.via,
+      };
+    };
+    // Calls that pass a slash on, by the function they call: what decides `/api/${path}` against `/users/${id}`.
+    const slashSlots = new Map<string, Set<number>>();
+    for (const { file, facts } of ctx.files) {
+      for (const c of facts?.slashCalls ?? []) {
+        const sym = symbolForName(file.parsed, file.fileId, c.callee, ctx.resolver);
+        if (!sym) continue;
+        const set = slashSlots.get(sym) ?? new Set<number>();
+        for (const i of c.slash) set.add(i);
+        slashSlots.set(sym, set);
+      }
+    }
+    for (let pass = 0; pass < MAX_WRAPPER_PASSES; pass++) {
+      let added = false;
+      for (const { file, w } of candidates) {
+        if (wrappers.get(w.symbol)?.all) continue;
+        for (const c of w.calls) {
+          const req = requestOfCall(file, w.symbol, c);
+          if (!req) continue;
+          const lead = leadSlot(req.url);
+          const leads =
+            lead !== null && (!lead.ambiguous || slashSlots.get(w.symbol)?.has(lead.slot) === true);
+          if (!leads && !("param" in req.method) && !("init" in req.method)) continue;
+          const sig = JSON.stringify([req.url, req.method, req.via]);
+          let found = wrappers.get(w.symbol);
+          if (!found) {
+            found = {
+              symbol: w.symbol,
+              name: nameOf(w.symbol),
+              ...req,
+              all: false,
+              starts: new Set(),
+              sig,
+              conflict: false,
+            };
+            wrappers.set(w.symbol, found);
+            added = true;
+          } else if (found.sig !== sig && !found.all) found.conflict = true;
+          found.starts.add(c.start);
+        }
+      }
+      if (!added) break;
     }
 
     // Endpoints by what a client call names.
@@ -686,27 +1098,26 @@ export const clientsAdapter: Adapter<ClientFacts> = {
           if (k?.kind === "hono") rootKinds.set(name, k);
         }
       }
-      // Calls on an instance (`rel.get(...)`, `rel({ ... })`), through imports and re-exports.
-      const instRoots = new Map<string, { lib: "axios" | "ky"; base: string | null }>();
-      for (const r of new Set([...facts.roots, ...facts.idCalls.map((c) => c.name)])) {
-        const ref = instances.size > 0 ? refOf(file, r) : null;
-        const i = ref ? instances.get(ref) : undefined;
-        if (i) instRoots.set(r, i);
+      // Calls on an instance (`rel.get(...)`, `rel({ ... })`), through imports and re-exports, and of wrappers.
+      const roots = new Set([...facts.roots, ...facts.idCalls.map((c) => c.name)]);
+      const hasInstance = [...roots].some((r) => instOf(file, r) !== undefined);
+      const wrapperCalls = new Map<string, Wrapper>();
+      for (const c of facts.idCalls) {
+        const sym = symbolForName(pf, file.fileId, c.name, ctx.resolver);
+        const w = sym ? wrappers.get(sym) : undefined;
+        if (w) wrapperCalls.set(c.name, w);
       }
-      const axiosLocals = new Set(
-        (pf?.imports ?? [])
-          .filter((i) => i.local && i.specifier === "axios" && i.imported === "default")
-          .map((i) => i.local),
-      );
-      if (rootKinds.size === 0 && instRoots.size === 0 && !facts.fetchLike && !facts.useServerFn) continue;
+      if (
+        rootKinds.size === 0 &&
+        !hasInstance &&
+        wrapperCalls.size === 0 &&
+        !facts.fetchLike &&
+        !facts.useServerFn
+      )
+        continue;
       const program = file.program();
       if (!program) continue;
       const line = lineTable(file.source);
-      const httpLibs = new Set(
-        (pf?.imports ?? [])
-          .filter((i) => i.local && (i.specifier === "ky" || i.specifier === "axios"))
-          .map((i) => i.local),
-      );
       const useServerFnLocals = importedLocals(
         file,
         (s) => START_PACKAGES.includes(s),
@@ -739,56 +1150,32 @@ export const clientsAdapter: Adapter<ClientFacts> = {
           return undefined;
         }
 
-        // fetch / ky / axios, and calls on instances
-        const dotted = [chain.root, ...chain.keys].join(".");
-        const isFetch = FETCH_CALLEES.has(dotted);
-        const inst = instRoots.get(chain.root);
-        const lib = (inst || httpLibs.has(chain.root)) && chain.keys.length <= 1 ? chain.root : null;
-        if (isFetch || lib) {
-          const member = lib ? (chain.keys[0] ?? null) : null;
-          if (member !== null && !HTTP_VERBS.has(member) && member !== "request") return undefined;
-          let urlArg = args[0];
-          let opts = args[1];
-          const first = unwrap(args[0]);
-          if (isNode(first) && first.type === "ObjectExpression") {
-            // axios({ url, method })
-            opts = first;
-            urlArg = nodeArray(first.properties).find((p) => {
-              const k = unwrap(p.key);
-              return p.type === "Property" && isNode(k) && k.name === "url";
-            })?.value;
-          }
-          const method = methodOf(opts, member);
-          // The base the call is made with: its instance, or the default `axios` of a workspace that sets one.
-          let via = inst ?? null;
-          if (!via && axiosLocals.has(chain.root)) {
-            const bases = defaultBases.get(file.ws.id);
-            if (bases && bases.size > 1) {
-              push({
-                rule: "instance",
-                label: `${method} <default axios>`,
-                dsts: [],
-                confidence: "low",
-                reason: "ambiguous",
-              });
-              return undefined;
-            }
-            if (bases) via = { lib: "axios", base: [...bases][0] as string | null };
-          }
-          const rule = via ? "instance" : "fetch";
+        // The body of a wrapper makes the request its callers make: no edge of its own.
+        const own = wrappers.get(from);
+        const inBody = own !== undefined && (own.all || own.starts.has(n.start));
+        const bodyHit = (): Omit<Hit, "from" | "line"> => ({
+          rule: "wrapper",
+          label: `wrapper ${(own as Wrapper).name}`,
+          dsts: [],
+          confidence: "low",
+          reason: "wrapper_body",
+          wrapper: (own as Wrapper).symbol,
+        });
+
+        /** Matches a method and URL text to the endpoints; `raw` is the text as the call writes it (null: not static). */
+        const finish = (rule: ClientRule, via: Via | null, method: string, raw: string | null) => {
           let path: string | null;
           if (via) {
-            const raw = via.base === null ? null : urlText(urlArg, false);
-            const full = raw === null ? null : joinUrl(via.lib, via.base as string, raw);
-            if (raw === null) path = null;
-            else if (full === null) {
+            const full = raw === null || via.base === null ? null : joinUrl(via.lib, via.base, raw);
+            if (raw !== null && via.base !== null && full === null) {
               push({ rule, label: `${method} ${raw}`, dsts: [], confidence: "low", reason: "no_endpoint" });
-              return undefined;
-            } else path = full;
-          } else path = urlPath(urlArg);
+              return;
+            }
+            path = full;
+          } else path = raw === null ? null : plainPath(raw);
           if (path === null) {
             push({ rule, label: `${method} <dynamic>`, dsts: [], confidence: "low", reason: "dynamic_url" });
-            return undefined;
+            return;
           }
           if (!path.startsWith("/")) {
             push({
@@ -798,7 +1185,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
               confidence: "low",
               reason: via && !/^([a-z][a-z\d+\-.]*:)?\/\//i.test(path) ? "no_endpoint" : "external_url",
             });
-            return undefined;
+            return;
           }
           let best: number | null = null;
           let cands: AdapterNode[] = [];
@@ -815,6 +1202,74 @@ export const clientsAdapter: Adapter<ClientFacts> = {
           const label = `${method} ${path}`;
           if (cands.length === 0) push({ rule, label, dsts: [], confidence: "low", reason: "no_endpoint" });
           else push({ rule, label, dsts: narrow(cands, file.ws).dsts, confidence: "low" });
+        };
+
+        // A call of a wrapper: its arguments go into the wrapper's URL template and method.
+        const wrapper = chain.keys.length === 0 ? wrapperCalls.get(chain.root) : undefined;
+        if (wrapper && wrapper.symbol !== from) {
+          if (inBody) {
+            push(bodyHit());
+            return undefined;
+          }
+          const dynamic = (label: string) =>
+            push({ rule: "wrapper", label, dsts: [], confidence: "low", reason: "dynamic_url" });
+          if (wrapper.conflict) {
+            dynamic(`${wrapper.name} <dynamic>`);
+            return undefined;
+          }
+          const given = args.map((a) => argFact(a, NO_PARAMS));
+          const method = methodAt(wrapper.method, given);
+          const lead = leadSlot(wrapper.url);
+          const url = substitute(wrapper.url, given);
+          if (
+            "unknown" in method ||
+            url[0] === null ||
+            (lead !== null && (given[lead.slot]?.text?.[0] ?? null) === null)
+          ) {
+            dynamic("fixed" in method ? `${method.fixed} <dynamic>` : "<dynamic>");
+            return undefined;
+          }
+          finish(
+            "wrapper",
+            wrapper.via,
+            (method as { fixed: string }).fixed,
+            url.map((p) => p ?? ":param").join(""),
+          );
+          return undefined;
+        }
+
+        // fetch / ky / axios, and calls on instances
+        const cc = clientCall(file, [chain.root, ...chain.keys]);
+        if (cc) {
+          if (inBody) {
+            push(bodyHit());
+            return undefined;
+          }
+          let urlArg = args[0];
+          let opts = args[1];
+          const first = unwrap(args[0]);
+          if (isNode(first) && first.type === "ObjectExpression") {
+            // axios({ url, method })
+            opts = first;
+            urlArg = nodeArray(first.properties).find((p) => {
+              const k = unwrap(p.key);
+              return p.type === "Property" && isNode(k) && k.name === "url";
+            })?.value;
+          }
+          const method = methodOf(opts, cc.member);
+          if (cc.ambiguous) {
+            push({
+              rule: "instance",
+              label: `${method} <default axios>`,
+              dsts: [],
+              confidence: "low",
+              reason: "ambiguous",
+            });
+            return undefined;
+          }
+          // The base the call is made with: its instance, or the default `axios` of a workspace that sets one.
+          const via = cc.via;
+          finish(via ? "instance" : "fetch", via, method, urlText(urlArg, via === null));
           return undefined;
         }
 
@@ -945,6 +1400,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
           file: file.path,
           line: lines[0],
           ...(lines.length > 1 ? { lines: [...new Set(lines)].sort((x, y) => x - y) } : {}),
+          ...(hit.wrapper ? { wrapper: hit.wrapper } : {}),
         },
       });
     }
