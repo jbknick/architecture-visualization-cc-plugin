@@ -8,7 +8,7 @@ import { dumpGraph, indexRepo } from "../indexer.js";
 import { resolvePaths } from "../paths/index.js";
 import { openStore } from "../store/index.js";
 import type { AdapterNodeRecord, EdgeRecord } from "../types.js";
-import { pathScore, urlPath } from "./clients.js";
+import { joinUrl, pathScore, urlPath } from "./clients.js";
 
 const helperPath = "../../test/helpers/fixture.js";
 const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as {
@@ -94,6 +94,25 @@ describe("URL helpers", () => {
     expect(pathScore("/api/posts/new", "/api/posts/new")).toBe(0);
     expect(pathScore("/api/posts", "/api/posts/:id")).toBeNull();
     expect(pathScore("/api/users", "/api/posts")).toBeNull();
+  });
+});
+
+describe("join rules", () => {
+  it("axios: base and path with one slash, an absolute URL replaces the base", () => {
+    expect(joinUrl("axios", "/api", "/users")).toBe("/api/users");
+    expect(joinUrl("axios", "/api/", "/users")).toBe("/api/users");
+    expect(joinUrl("axios", "/api/", "users/me")).toBe("/api/users/me");
+    expect(joinUrl("axios", "/api", "/users/:param?x=1#top")).toBe("/api/users/:param");
+    expect(joinUrl("axios", "/api", "https://other.example/x")).toBe("https://other.example/x");
+    expect(joinUrl("axios", "/api", "//other.example/x")).toBe("//other.example/x");
+    expect(joinUrl("axios", "", "/users")).toBe("/users");
+  });
+
+  it("ky: prefixUrl, a slash and an input without a leading slash", () => {
+    expect(joinUrl("ky", "/api", "users/:param")).toBe("/api/users/:param");
+    expect(joinUrl("ky", "/api/", "users")).toBe("/api/users");
+    expect(joinUrl("ky", "/api", "/users")).toBeNull();
+    expect(joinUrl("ky", "", "/users")).toBe("/users");
   });
 });
 
@@ -212,6 +231,169 @@ describe("narrowing candidates", () => {
     expect(requests(g, "sym:repo:apps/other/src/client.ts#load")).toEqual([
       ["ep:repo:@x/one:rpc posts.list", "low", "apps/other/src/client.ts:4"],
       ["ep:repo:@x/two:rpc posts.list", "low", "apps/other/src/client.ts:4"],
+    ]);
+  });
+});
+
+describe("client instances on fixtures/linking", () => {
+  let g: Graph;
+  beforeAll(async () => {
+    const fx = await materializeFixture("linking");
+    cleanups.push(() => fx.cleanup());
+    g = await indexDir(fx.dir);
+  });
+  const SO = "sym:linking:apps/web/src/features/same-origin.ts#";
+  const DEF = "sym:linking:apps/legacy-web/src/calls.ts#";
+  const ep = (route: string) => `ep:linking:@fx/users-api:${route}`;
+  const gap = (caller: string) =>
+    g.nodes
+      .filter((n) => n.kind === "client_call" && n.data.caller === caller)
+      .map((n) => [n.data.rule, n.data.reason, n.label]);
+
+  it("links calls on axios and ky instances to the endpoint of the joined URL, low", () => {
+    const f = "apps/web/src/features/same-origin.ts";
+    expect(requests(g, `${SO}instGet`)).toEqual([[ep("GET /api/users/:id"), "low", `${f}:4`]]);
+    expect(requests(g, `${SO}instPost`)).toEqual([[ep("POST /api/users"), "low", `${f}:8`]]);
+    // The literal `/users/me` beats `/users/:id`.
+    expect(requests(g, `${SO}instRequest`)).toEqual([[ep("GET /api/users/me"), "low", `${f}:12`]]);
+    expect(requests(g, `${SO}instCall`)).toEqual([[ep("GET /api/orders/:id"), "low", `${f}:16`]]);
+    expect(requests(g, `${SO}kyGet`)).toEqual([[ep("GET /api/users/:id"), "low", `${f}:20`]]);
+    // `kyRelAuth = kyRel.extend({ headers })` keeps the prefix of `kyRel`.
+    expect(requests(g, `${SO}kyExtended`)).toEqual([[ep("DELETE /api/users/:id"), "low", `${f}:24`]]);
+  });
+
+  it("follows an instance through a re-export", () => {
+    expect(requests(g, "sym:linking:apps/web/src/features/reexport.ts#viaReexport")).toEqual([
+      [ep("PUT /api/users/:id"), "low", "apps/web/src/features/reexport.ts:4"],
+    ]);
+  });
+
+  it("reports an instance call that matches no endpoint as a gap", () => {
+    expect(requests(g, `${SO}instMissing`)).toEqual([]);
+    expect(gap(`${SO}instMissing`)).toEqual([["instance", "no_endpoint", "GET /api/nope"]]);
+  });
+
+  it("uses axios.defaults.baseURL of the workspace for the default axios import", () => {
+    const f = "apps/legacy-web/src/calls.ts";
+    expect(requests(g, `${DEF}defGet`)).toEqual([[ep("GET /api/users/:id"), "low", `${f}:4`]]);
+    expect(requests(g, `${DEF}defConfig`)).toEqual([[ep("POST /api/users"), "low", `${f}:8`]]);
+    expect(requests(g, `${DEF}defRelative`)).toEqual([[ep("GET /api/users/me"), "low", `${f}:12`]]);
+  });
+
+  it("leaves the spike calls whose base comes from the environment unlinked", () => {
+    const users = "sym:linking:apps/web/src/features/users.ts#";
+    for (const fn of [
+      "axiosInstance",
+      "kyPrefix",
+      "wrapperWithMethodArg",
+      "enumPath",
+      "constObjectPath",
+      "nestedParams",
+      "axiosConfig",
+    ]) {
+      expect(requests(g, `${users}${fn}`), fn).toEqual([]);
+    }
+    expect(gap(`${users}axiosInstance`)).toEqual([
+      ["instance", "dynamic_url", "DELETE <dynamic>"],
+      ["instance", "dynamic_url", "GET <dynamic>"],
+      ["instance", "dynamic_url", "PUT <dynamic>"],
+    ]);
+  });
+});
+
+describe("default axios base", () => {
+  const web = (assignments: string[]) =>
+    repo({
+      "package.json": JSON.stringify({ name: "root", private: true }),
+      "pnpm-workspace.yaml": 'packages:\n  - "apps/*"\n',
+      "apps/web/package.json": JSON.stringify({ name: "@x/web", dependencies: { axios: "^1.7.0" } }),
+      "apps/web/src/set.ts": `import axios from "axios";\n${assignments.join("\n")}\n`,
+      "apps/web/src/call.ts": `import axios from "axios";\nexport function load() {\n  return axios.get("/users");\n}\n`,
+      "apps/api/package.json": JSON.stringify({ name: "@x/api", dependencies: { hono: "^4.0.0" } }),
+      "apps/api/src/app.ts": `import { Hono } from "hono";\nexport const app = new Hono();\napp.get("/api/users", (c) => c.json([]));\napp.get("/v2/users", (c) => c.json([]));\n`,
+    });
+
+  it("two different assignments in a workspace make the calls gaps, the same one twice does not", async () => {
+    const two = await indexDir(web(['axios.defaults.baseURL = "/api";', 'axios.defaults.baseURL = "/v2";']));
+    expect(requests(two, "sym:repo:apps/web/src/call.ts#load")).toEqual([]);
+    expect(
+      two.nodes.filter((n) => n.kind === "client_call").map((n) => [n.data.rule, n.data.reason]),
+    ).toEqual([["instance", "ambiguous"]]);
+    const same = await indexDir(
+      web(['axios.defaults.baseURL = "/api";', 'axios.defaults.baseURL = "/api/";']),
+    );
+    expect(requests(same, "sym:repo:apps/web/src/call.ts#load")).toEqual([
+      ["ep:repo:@x/api:GET /api/users", "low", "apps/web/src/call.ts:3"],
+    ]);
+  });
+
+  it("a base that is not static makes the calls gaps", async () => {
+    const g = await indexDir(web(["axios.defaults.baseURL = import.meta.env.VITE_API;"]));
+    expect(requests(g, "sym:repo:apps/web/src/call.ts#load")).toEqual([]);
+    expect(g.nodes.filter((n) => n.kind === "client_call").map((n) => [n.data.rule, n.data.reason])).toEqual([
+      ["instance", "dynamic_url"],
+    ]);
+  });
+});
+
+describe("rule 3 reads Hono endpoints only", () => {
+  it("does not link an hc chain to an endpoint another framework made", async () => {
+    const recipe = {
+      version: 1,
+      dependencies: [
+        { name: "express", workspace: "@x/api", role: "framework", note: "HTTP framework" },
+        { name: "hono", workspace: "@x/web", role: "neither", note: "client types" },
+      ],
+      helpers: [],
+      passthrough: [],
+      rules: [
+        {
+          id: "express-app",
+          language: "typescript",
+          when: { dependency: ["express"] },
+          rule: { pattern: "express($$$A)" },
+          emit: { kind: "router", data: { adapter: "express" } },
+          examples: { match: ["const app = express();"], noMatch: ["const app = new Map();"] },
+        },
+        {
+          id: "express-route",
+          language: "typescript",
+          when: { dependency: ["express"] },
+          rule: { pattern: "$APP.$M($P, $$$H)" },
+          constraints: {
+            M: { regex: "^(get|post)$" },
+            P: { kind: "string" },
+          },
+          emit: {
+            kind: "endpoint",
+            receiver: "$APP",
+            method: "$M",
+            path: "$P",
+            handler: "$$$H",
+            data: { adapter: "express" },
+          },
+          examples: { match: ['app.get("/api/posts", list);'], noMatch: ["cache.has(k);"] },
+        },
+      ],
+    };
+    const g = await indexDir(
+      repo({
+        "package.json": JSON.stringify({ name: "root", private: true }),
+        "pnpm-workspace.yaml": 'packages:\n  - "apps/*"\n',
+        ".gantry/recipe.json": JSON.stringify(recipe),
+        "apps/api/package.json": JSON.stringify({ name: "@x/api", dependencies: { express: "^4.0.0" } }),
+        "apps/api/src/app.ts": 'const app = express();\napp.get("/api/posts", (req, res) => res.json([]));\n',
+        "apps/web/package.json": JSON.stringify({ name: "@x/web", dependencies: { hono: "^4.0.0" } }),
+        "apps/web/src/client.ts":
+          'import { hc } from "hono/client";\nexport const client = hc("/");\nexport function load() {\n  return client.api.posts.$get();\n}\n',
+      }),
+    );
+    expect(g.nodes.filter((n) => n.kind === "endpoint").map((n) => [n.data.adapter, n.label])).toEqual([
+      ["express", "GET /api/posts"],
+    ]);
+    expect(requests(g, "sym:repo:apps/web/src/client.ts#load")).toEqual([]);
+    expect(g.nodes.filter((n) => n.kind === "client_call").map((n) => [n.data.rule, n.data.reason])).toEqual([
+      ["hono", "no_endpoint"],
     ]);
   });
 });

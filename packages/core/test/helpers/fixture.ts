@@ -11,6 +11,7 @@ export type FixtureName =
   | "ts-references"
   | "bundler-aliases"
   | "adapters"
+  | "linking"
   | "go-basic"
   | "overlay-groups"
   | "deep-radius"

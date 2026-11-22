@@ -1,0 +1,1 @@
+{ "name": "@fx/legacy-web", "private": true, "type": "module", "dependencies": { "axios": "^1.7.0" } }
