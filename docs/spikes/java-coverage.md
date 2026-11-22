@@ -16,15 +16,17 @@ numbers below for main code: the 119 `.java` files under a `src/main/` folder. N
 - `calls`: the sum of the `count` of those edges (constructor calls included).
 
 Run it from the repo root with `pnpm exec tsx docs/spikes/java-coverage/count.ts`; `--core <checkout>` counts with
-the indexer of another checkout of this repo.
+the indexer of another checkout of this repo, and `--lines <file>` writes the `path:line` of every site with an edge,
+sorted, so two runs can be compared.
 
 ## Numbers
 
 |                                                 | sites | sitesWithEdge | share | high | low | calls | capped |
 | ----------------------------------------------- | ----- | ------------- | ----- | ---- | --- | ----- | ------ |
 | before (the Java pack as first merged)          | 3053  | 1595          | 52.2% | 1226 | 621 | 2160  | 4      |
-| after (type arguments, callers outside methods) | 3053  | 1842          | 60.3% | 1399 | 853 | 2668  | 11     |
+| after (type arguments, callers outside methods) | 3053  | 1860          | 60.9% | 1413 | 853 | 2683  | 11     |
 
-The share of main-code sites with an edge rose by 8.1 points (247 sites). The sites without an edge were not
+The share of main-code sites with an edge rose by 8.7 points (265 sites). Compared by line (`--lines`), no site that
+had an edge before is without one after. The sites without an edge were not
 sorted by cause here; calls of JDK and library methods have no symbol to point at, and lambda parameters and method
 references make no edge.

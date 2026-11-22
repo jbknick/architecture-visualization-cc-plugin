@@ -1,6 +1,6 @@
 /**
  * Java call coverage, a sanity count. Usage (from the repo root):
- *   pnpm exec tsx docs/spikes/java-coverage/count.ts [--core <checkout>]
+ *   pnpm exec tsx docs/spikes/java-coverage/count.ts [--core <checkout>] [--lines <file>]
  * Clones the pinned public repo into a temp directory (nothing of it is committed), indexes it with the indexer of
  * `<checkout>` (default: the checkout this script is in; pass another checkout of this repo to count with its code) and
  * prints, for main code (the `.java` files under a `src/main/` folder):
@@ -10,10 +10,11 @@
  *   calls           the sum of the `count` of those edges
  *   capped          calls whose line is not kept because an edge keeps at most 20 evidence lines
  * `sitesWithEdge` is by line: two calls on one line count together, and a call past the evidence cap is not seen, so it
- * is a little high for chained calls on one line and low by at most `capped`.
+ * is a little high for chained calls on one line and low by at most `capped`. With `--lines`, the `path:line` of every
+ * site with an edge is also written to `<file>`, sorted, one per line, so that two runs can be compared line by line.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -83,6 +84,7 @@ try {
   let files = 0;
   let sites = 0;
   let sitesWithEdge = 0;
+  const covered = new Set<string>();
   for (const f of dump.files) {
     if (!isMain(f.path) || !existsSync(join(repo, f.path))) continue;
     files++;
@@ -90,9 +92,14 @@ try {
     for (const site of root.findAll({ rule: { kind: "method_invocation" } })) {
       sites++;
       const line = (site.field("name") ?? site).range().start.line + 1;
-      if (lines.has(`${f.path}:${line}`)) sitesWithEdge++;
+      if (!lines.has(`${f.path}:${line}`)) continue;
+      sitesWithEdge++;
+      covered.add(`${f.path}:${line}`);
     }
   }
+  const out = process.argv.indexOf("--lines");
+  if (out > 0 && process.argv[out + 1])
+    writeFileSync(resolve(process.argv[out + 1] as string), `${[...covered].sort().join("\n")}\n`);
   const sum = (list: Edge[], of: (e: Edge) => number): number => list.reduce((n, e) => n + of(e), 0);
   const result = {
     repo: REPO,

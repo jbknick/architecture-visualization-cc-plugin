@@ -68,6 +68,8 @@ interface Draft {
   signature: string;
   /** The body, when the declaration has one. */
   body: SyntaxNode | null;
+  /** True for a declaration inside a body that has no name of its own. */
+  anonymous?: boolean;
 }
 
 const collapse = (pack: LanguagePack, text: string): string => {
@@ -109,7 +111,7 @@ function typeKind(pack: LanguagePack, spec: SyntaxNode): SymbolKind {
 function draftsOf(pack: LanguagePack, root: SyntaxNode): Draft[] {
   const n = pack.nodes;
   const out: Draft[] = [];
-  walkDeclarations(pack, root, ({ node: d, owner, container, body: hanging }) => {
+  walkDeclarations(pack, root, ({ node: d, owner, container, body: hanging, anonymous }) => {
     // A hanging body is no symbol itself; its methods are, named after it.
     if (hanging) return;
     const kind = d.kind();
@@ -150,6 +152,7 @@ function draftsOf(pack: LanguagePack, root: SyntaxNode): Draft[] {
         node: d,
         signature: signatureOf(pack, rule, d),
         body,
+        anonymous,
       });
     } else if (bodied) {
       const name = bodiedName(bodied, d, owner);
@@ -161,6 +164,7 @@ function draftsOf(pack: LanguagePack, root: SyntaxNode): Draft[] {
           node: d,
           signature: "",
           body: null,
+          anonymous,
         });
     } else if (owner === null && n.types.declarations.includes(kind)) {
       for (const s of specsOf(d, n.types.specs, n.types.groups)) {
@@ -358,6 +362,7 @@ export function parseWithPack(
         loc: endLine - startLine + 1,
         complexity: m.complexity,
         stmtCount: m.stmtCount,
+        ...(d.anonymous ? { anonymous: true } : {}),
       };
       result.symbols.push(sym);
       result.bodies.set(id, { start: r.start.index, end: r.end.index });

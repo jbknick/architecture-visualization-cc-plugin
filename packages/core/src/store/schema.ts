@@ -9,7 +9,7 @@ CREATE TABLE files(id TEXT, layer TEXT CHECK(layer IN ('main','working')), repo 
   content_hash TEXT, mtime_ms INTEGER, deleted INTEGER DEFAULT 0, directives TEXT, lang TEXT NOT NULL, PRIMARY KEY(id, layer));
 CREATE TABLE symbols(id TEXT, layer TEXT, file_id TEXT, name TEXT, kind TEXT, exported INTEGER, signature TEXT,
   start_line INTEGER, end_line INTEGER, loc INTEGER, complexity INTEGER, stmt_count INTEGER,
-  exact_hash TEXT, shape_hash TEXT, minhash BLOB, near_minhash BLOB, renamed_hash TEXT, lang TEXT NOT NULL, PRIMARY KEY(id, layer));
+  exact_hash TEXT, shape_hash TEXT, minhash BLOB, near_minhash BLOB, renamed_hash TEXT, lang TEXT NOT NULL, anonymous INTEGER, PRIMARY KEY(id, layer));
 CREATE TABLE edges(src TEXT, dst TEXT, kind TEXT, layer TEXT, confidence TEXT, count INTEGER, evidence TEXT, file_id TEXT, level INTEGER, text_file_id TEXT, source TEXT,
   PRIMARY KEY(src, dst, kind, layer));
 CREATE INDEX symbols_file ON symbols(file_id, layer);            -- per-file replace without a table scan

@@ -41,7 +41,6 @@ const TypingSchema = z.strictObject({
       .array(
         z.strictObject({
           package: field,
-          implicit: z.boolean().optional(),
           types: strings,
           returns: z.record(z.string(), z.number().int().nonnegative()),
         }),

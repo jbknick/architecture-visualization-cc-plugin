@@ -193,20 +193,20 @@ export class TypeCalls implements CallResolver {
     if (!place || !node) return null;
     const fd = this.reader.functionAt(place.root, start, end);
     let scope: Scope = new Map();
-    this.reader.setOwner(fd?.owner ?? null, fd?.node ?? null);
     if (fd) {
       const key = fd.node.range().start.index;
       const hit = place.scopes.get(key);
       if (hit) scope = hit;
       else {
-        scope = this.scope(this.reader.decls(fd.node));
+        scope = this.scope(this.reader.declsOf(fd));
         place.scopes.set(key, scope);
       }
     }
+    this.reader.setFunction(fd);
     try {
       return use(node, { file, scope, owner: this.ownerOf(file, fd?.owner ?? null) }, this.reader);
     } finally {
-      this.reader.setOwner(null);
+      this.reader.setFunction(null);
     }
   }
 
@@ -248,12 +248,31 @@ export class TypeCalls implements CallResolver {
     return scope;
   }
 
+  /**
+   * The declaration a name at `pos` refers to; null when it is no local. A local declared outside a type body the code
+   * is in (a parameter of the method a hanging body was created in) is hidden by a field of that name that the body
+   * declares or inherits.
+   */
+  private local(env: Env, name: string, pos: number): Local | null {
+    const l = lookupLocal(env.scope, name, pos);
+    if (!l || !env.owner) return l;
+    const index = this.idx();
+    for (const o of index.chain(env.owner)) {
+      const ti = index.typeInfo(o);
+      // A type that starts before the declaration holds it: the local is the nearer name from here outward.
+      if (!ti || ti.file !== env.file || ti.start <= l.pos) return l;
+      if (index.fieldType(o, name)) return null;
+    }
+    return l;
+  }
+
   /** The type a declared name has; a name that depends on itself has none. */
   private typeOfLocal(l: Local, env: Env): Ty | null {
     if (l.memo !== undefined) return l.memo;
     if (l.busy) return null;
     l.busy = true;
-    l.memo = this.declType(l.decl, env);
+    const outer = l.decl.outer;
+    l.memo = this.declType(l.decl, outer ? { ...env, owner: this.ownerOf(env.file, outer.owner) } : env);
     l.busy = false;
     return l.memo;
   }
@@ -328,7 +347,7 @@ export class TypeCalls implements CallResolver {
     const index = this.idx();
     switch (e.k) {
       case "name": {
-        const l = lookupLocal(env.scope, e.name, e.pos);
+        const l = this.local(env, e.name, e.pos);
         if (l) return this.typeOfLocal(l, env);
         if (e.body) {
           // In a local body only what its supertypes declare is known; the type around it is not searched.
@@ -358,7 +377,7 @@ export class TypeCalls implements CallResolver {
       }
       case "member": {
         const op = e.of;
-        const plain = op?.k === "name" && !lookupLocal(env.scope, op.name, op.pos);
+        const plain = op?.k === "name" && !this.local(env, op.name, op.pos);
         if (op?.k === "name" && plain) {
           const path = env.file.imports.get(op.name);
           if (path) {
@@ -384,7 +403,7 @@ export class TypeCalls implements CallResolver {
     const index = this.idx();
     const c = call.callee;
     const b = this.typing.builtins;
-    if (b && call.builtin && c.k === "name" && !lookupLocal(env.scope, c.name, c.pos)) {
+    if (b && call.builtin && c.k === "name" && !this.local(env, c.name, c.pos)) {
       if (b.typed.includes(c.name) && !env.file.pkg.funcs.has(c.name))
         return call.first && idx === 0 ? index.resolveType(call.first.type, env.file) : null;
       if (b.first.includes(c.name) && !env.file.pkg.funcs.has(c.name))
@@ -461,7 +480,7 @@ export class TypeCalls implements CallResolver {
       if (this.typing.enclosing) {
         const hits = this.bareHits(callee.name, args, env, callee.body);
         if (hits.length > 0) return this.fromHits(hits, callee.line, env);
-      } else if (lookupLocal(env.scope, callee.name, callee.pos)) return none(callee.line);
+      } else if (this.local(env, callee.name, callee.pos)) return none(callee.line);
       const f = pkg.funcs.get(callee.name);
       if (f)
         return {
@@ -477,7 +496,7 @@ export class TypeCalls implements CallResolver {
     const op = callee.operand;
     // `this.m()` in a local body that declares `m` itself calls a method that has no symbol.
     if (op?.k === "self" && op.body?.members.includes(callee.name)) return none(callee.line);
-    const plain = op?.k === "name" && !lookupLocal(env.scope, op.name, op.pos);
+    const plain = op?.k === "name" && !this.local(env, op.name, op.pos);
     if (op?.k === "name" && plain) {
       const path = env.file.imports.get(op.name);
       if (path) {

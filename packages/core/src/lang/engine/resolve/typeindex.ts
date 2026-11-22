@@ -81,14 +81,13 @@ export interface MethodHit {
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
-/** `A.B.C` -> `A.B.C`, `A.B`, `A`: the types around a nested type, innermost first. */
-const chainOf = (owner: string | null | undefined): string[] => {
+/** The types around a type of a package, innermost first, the type itself included: each is the `outer` of the one before. */
+const chainOf = (pkg: Pkg, owner: string | null | undefined): string[] => {
   const out: string[] = [];
-  let cur = owner ?? "";
-  while (cur !== "") {
+  let cur = owner ?? null;
+  while (cur !== null && out.length < 32) {
     out.push(cur);
-    const cut = cur.lastIndexOf(".");
-    cur = cut < 0 ? "" : cur.slice(0, cut);
+    cur = pkg.types.get(cur)?.outer ?? null;
   }
   return out;
 };
@@ -276,6 +275,8 @@ export class TypeIndex {
     if (!t) return null;
     switch (t.k) {
       case "name": {
+        // A type parameter of the function around hides any type of that name.
+        if (t.param) return bound?.get(t.name) ?? null;
         if (!t.args && bound?.has(t.name)) return bound.get(t.name) ?? null;
         const base = this.resolveName(t, file);
         if (!t.args || base?.k !== "named") return base;
@@ -298,21 +299,23 @@ export class TypeIndex {
 
   /** The type a plain name written in `file` stands for, without its type arguments. */
   private resolveName(t: Extract<TypeRef, { k: "name" }>, file: FileInfo): Named | null {
+    const around = chainOf(file.pkg, t.owner);
     // A type parameter of an enclosing type is not a type of the repo; nothing is known of it.
-    for (const o of chainOf(t.owner)) if (file.pkg.types.get(o)?.params.includes(t.name)) return null;
-    // A type of the enclosing types first, then the package, the names the file imports, and the packages it imports whole.
-    for (const o of chainOf(t.owner)) {
+    for (const o of around) if (file.pkg.types.get(o)?.params.includes(t.name)) return null;
+    // A type of the enclosing types first, then a name the file imports (it hides a type of the package), the package,
+    // and the packages the file imports whole.
+    for (const o of around) {
       const nested = `${o}.${t.name}`;
       if (file.pkg.types.has(nested)) return { k: "named", pkg: file.pkg.path, name: nested };
     }
-    if (file.pkg.types.has(t.name)) return { k: "named", pkg: file.pkg.path, name: t.name };
     const imported = file.named.get(t.name);
     if (imported) return imported;
+    if (file.pkg.types.has(t.name)) return { k: "named", pkg: file.pkg.path, name: t.name };
     for (const p of file.demand)
       if (this.pkgs.get(p)?.types.has(t.name)) return { k: "named", pkg: p, name: t.name };
-    // A type of a library the pack knows, brought in by a package import or by the language itself.
+    // A type of a library the pack knows, brought in by an import of its whole package.
     for (const e of this.typing.type.library ?? [])
-      if (e.types.includes(t.name) && (e.implicit || file.demand.includes(e.package)))
+      if (e.types.includes(t.name) && file.demand.includes(e.package))
         return { k: "named", pkg: e.package, name: t.name };
     if (this.predeclared.has(t.name)) return null;
     return { k: "named", pkg: file.pkg.path, name: t.name };
@@ -345,7 +348,8 @@ export class TypeIndex {
 
   /** The types around a type, innermost first, the type itself included. */
   chain(owner: Named): Named[] {
-    return chainOf(owner.name).map((name) => ({ k: "named", pkg: owner.pkg, name }));
+    const pkg = this.pkgs.get(owner.pkg);
+    return pkg ? chainOf(pkg, owner.name).map((name) => ({ k: "named", pkg: owner.pkg, name })) : [owner];
   }
 
   /** True when the type, or a type in its chain of supertypes, is not a type of the repo: what it inherits is not known. */

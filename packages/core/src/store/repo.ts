@@ -150,6 +150,7 @@ interface SymbolRow {
   near_minhash?: Buffer | null;
   renamed_hash?: string | null;
   lang: string;
+  anonymous?: number | null;
 }
 interface AdapterNodeRow {
   id: string;
@@ -204,6 +205,7 @@ const toSymbol = (r: SymbolRow): SymbolRecord => ({
   minhash: decodeMinhash(r.minhash),
   ...(r.near_minhash ? { nearMinhash: decodeMinhash(r.near_minhash) } : {}),
   ...(r.renamed_hash ? { renamedHash: r.renamed_hash } : {}),
+  ...(r.anonymous === 1 ? { anonymous: true } : {}),
 });
 
 const toAdapterNode = (r: AdapterNodeRow): AdapterNodeRecord => {
@@ -469,14 +471,16 @@ export function createStore(db: Database, entryRepo?: string): Store {
         putFile(layer, file);
         const si = stmt(
           `INSERT INTO symbols(id, layer, file_id, name, kind, exported, signature, start_line, end_line,
-             loc, complexity, stmt_count, exact_hash, shape_hash, minhash, near_minhash, renamed_hash, lang)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             loc, complexity, stmt_count, exact_hash, shape_hash, minhash, near_minhash, renamed_hash, lang,
+             anonymous)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id, layer) DO UPDATE SET file_id = excluded.file_id, name = excluded.name,
              kind = excluded.kind, exported = excluded.exported, signature = excluded.signature,
              start_line = excluded.start_line, end_line = excluded.end_line, loc = excluded.loc,
              complexity = excluded.complexity, stmt_count = excluded.stmt_count,
              exact_hash = excluded.exact_hash, shape_hash = excluded.shape_hash, minhash = excluded.minhash,
-             near_minhash = excluded.near_minhash, renamed_hash = excluded.renamed_hash, lang = excluded.lang`,
+             near_minhash = excluded.near_minhash, renamed_hash = excluded.renamed_hash, lang = excluded.lang,
+             anonymous = excluded.anonymous`,
         );
         for (const s of symbols) {
           si.run(
@@ -498,6 +502,7 @@ export function createStore(db: Database, entryRepo?: string): Store {
             s.nearMinhash && s.nearMinhash.length > 0 ? encodeMinhash(s.nearMinhash) : null,
             s.renamedHash ? s.renamedHash : null,
             s.lang,
+            s.anonymous ? 1 : null,
           );
         }
         const ei = stmt(

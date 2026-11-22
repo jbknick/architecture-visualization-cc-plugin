@@ -34,6 +34,8 @@ export interface SymbolRecord {
   minhash: Uint32Array; // 64 permutations
   /** MinHash (64) of the near tier's literal-aware token stream (spec section 17); empty on rows from before schema v5. */
   nearMinhash?: Uint32Array;
+  /** True for a symbol declared inside a body that has no name of its own (an anonymous class or enum-constant body); absent otherwise. */
+  anonymous?: boolean;
 }
 export type EdgeKind =
   | "contains"

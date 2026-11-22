@@ -60,6 +60,17 @@ export interface FunctionNode {
   node: SyntaxNode;
   rule: DeclarationRule;
   owner: string | null;
+  /**
+   * For a method of a hanging body: the members the bodies around it were created in, outermost first. Their
+   * parameters and locals are visible in the method.
+   */
+  hosts: Host[];
+}
+
+/** A member of a type body that a hanging body was created in, with the type whose body holds the member. */
+export interface Host {
+  node: SyntaxNode;
+  owner: string | null;
 }
 
 /**
@@ -72,6 +83,8 @@ export class Reader {
   private owner: string | null = null;
   /** The function or method whose body is being read; null outside one. */
   private fn: SyntaxNode | null = null;
+  /** The type parameters of the function being read and of the functions around it: a name among them is no type. */
+  private tparams: readonly string[] = [];
 
   constructor(private readonly pack: LanguagePack) {
     if (!pack.nodes.typing) throw new Error(`${pack.id}: the pack has no typing rules`);
@@ -101,8 +114,11 @@ export class Reader {
     }
     if (!b) return null;
     const k = b.kind();
-    if (t.names.includes(k))
-      return { k: "name", name: b.text(), owner: this.owner, ...(args ? { args } : {}) };
+    if (t.names.includes(k)) {
+      const name = b.text();
+      if (!args && this.tparams.includes(name)) return { k: "name", name, param: true };
+      return { k: "name", name, owner: this.owner, ...(args ? { args } : {}) };
+    }
     if (t.qualified && k === t.qualified.kind)
       return {
         k: "qual",
@@ -346,10 +362,42 @@ export class Reader {
     return { callee: this.callee(node, node, false, 0), args: null };
   }
 
-  /** Sets the type body the types read next sit in (a lookup by place reads inside a function of a type). */
-  setOwner(owner: string | null, fn: SyntaxNode | null = null): void {
-    this.owner = owner;
-    this.fn = fn;
+  /** Sets the function the expressions read next sit in (a lookup by place reads inside a function of a type); null for none. */
+  setFunction(f: FunctionNode | null): void {
+    this.owner = f?.owner ?? null;
+    this.fn = f?.node ?? null;
+    this.tparams = f ? this.paramsIn(f.node, f.owner, f.hosts) : [];
+  }
+
+  /** The type parameters in scope in a member of a type body: its own and those of the members the bodies around it were created in. */
+  private paramsIn(node: SyntaxNode, owner: string | null, hosts: readonly Host[]): string[] {
+    return [...hosts, { node, owner }].flatMap((h) =>
+      this.typeParams(h.node, this.rule(h.node, h.owner)?.generics),
+    );
+  }
+
+  /**
+   * The names visible in a member of a type body: those it declares and, for a member of a hanging body, those of the
+   * members the bodies around it were created in (their parameters and locals), each read in its own type body.
+   */
+  private scopeOf(node: SyntaxNode, owner: string | null, hosts: readonly Host[]): Decl[] {
+    const out: Decl[] = [];
+    const chain = [...hosts, { node, owner }];
+    chain.forEach((h, i) => {
+      this.owner = h.owner;
+      this.fn = h.node;
+      this.tparams = this.paramsIn(h.node, h.owner, chain.slice(0, i));
+      const own = i === chain.length - 1;
+      for (const d of this.decls(h.node)) out.push(own ? d : { ...d, outer: { owner: h.owner } });
+    });
+    return out;
+  }
+
+  /** The names visible in a function: `scopeOf` for it. */
+  declsOf(f: FunctionNode): Decl[] {
+    const out = this.scopeOf(f.node, f.owner, f.hosts);
+    this.setFunction(null);
+    return out;
   }
 
   // --- function bodies ----------------------------------------------------------------------
@@ -466,9 +514,14 @@ export class Reader {
   /** Every function and method declaration of a file, in source order, with the type body around it. */
   functions(root: SyntaxNode): FunctionNode[] {
     const out: FunctionNode[] = [];
-    walkDeclarations(this.pack, root, ({ node, owner }) => {
+    const hostsOf = new Map<string, Host[]>();
+    walkDeclarations(this.pack, root, ({ node, owner, body: hanging }) => {
+      if (hanging) {
+        hostsOf.set(hanging.name, [...(hostsOf.get(owner ?? "") ?? []), { node: hanging.host, owner }]);
+        return;
+      }
       const rule = this.rule(node, owner);
-      if (rule) out.push({ node, rule, owner });
+      if (rule) out.push({ node, rule, owner, hosts: hostsOf.get(owner ?? "") ?? [] });
     });
     return out;
   }
@@ -484,9 +537,11 @@ export class Reader {
     const out: FunctionBody[] = [];
     /** Offset of the symbol that stands for the code of a type body, by the dotted name of the type. */
     const holder = new Map<string, number>();
+    const hostsOf = new Map<string, Host[]>();
     walkDeclarations(this.pack, root, ({ node, owner, body: hanging }) => {
       if (hanging) {
         const host = hanging.host;
+        hostsOf.set(hanging.name, [...(hostsOf.get(owner ?? "") ?? []), { node: host, owner }]);
         const start =
           owner !== null && this.rule(host, owner) ? host.range().start.index : holder.get(owner ?? "");
         if (start !== undefined) holder.set(hanging.name, start);
@@ -504,31 +559,25 @@ export class Reader {
       if (!body) return;
       const start = rule ? node.range().start.index : holder.get(owner ?? "");
       if (start === undefined) return;
-      const skip = hangingRanges(this.pack, node);
-      this.owner = owner;
-      this.fn = node;
-      const calls = this.calls(body, skip);
-      if (calls.length > 0 || rule) out.push({ start, owner, decls: this.decls(node, skip), calls });
+      const hosts = hostsOf.get(owner ?? "") ?? [];
+      const decls = this.scopeOf(node, owner, hosts);
+      // `scopeOf` leaves the reader in this member, with its type parameters in scope.
+      const calls = this.calls(body, hangingRanges(this.pack, node));
+      if (calls.length > 0 || rule) out.push({ start, owner, decls, calls });
     });
-    this.owner = null;
-    this.fn = null;
+    this.setFunction(null);
     return out;
   }
 
   /** The innermost function or method declaration that holds the offset range, with the type body around it; null when none does. */
-  functionAt(
-    root: SyntaxNode,
-    start: number,
-    end: number,
-  ): { node: SyntaxNode; owner: string | null } | null {
-    let best: { node: SyntaxNode; owner: string | null; size: number } | null = null;
+  functionAt(root: SyntaxNode, start: number, end: number): FunctionNode | null {
+    let best: { f: FunctionNode; size: number } | null = null;
     for (const f of this.functions(root)) {
       const r = f.node.range();
       const size = r.end.index - r.start.index;
-      if (r.start.index <= start && end <= r.end.index && (!best || size < best.size))
-        best = { node: f.node, owner: f.owner, size };
+      if (r.start.index <= start && end <= r.end.index && (!best || size < best.size)) best = { f, size };
     }
-    return best ? { node: best.node, owner: best.owner } : null;
+    return best?.f ?? null;
   }
 
   // --- declarations -------------------------------------------------------------------------
@@ -552,15 +601,23 @@ export class Reader {
       types: [],
       vars: [],
     };
+    /** The type parameters of the functions around a hanging body, by the name of the body. */
+    const paramsOf = new Map<string, string[]>();
     walkDeclarations(this.pack, root, ({ node: d, owner, body: hanging }) => {
       this.owner = owner;
+      const around = paramsOf.get(owner ?? "") ?? [];
+      this.tparams = around;
       if (hanging) {
+        const host = hanging.host;
+        this.tparams = [...around, ...this.typeParams(host, this.rule(host, owner)?.generics)];
+        paramsOf.set(hanging.name, [...this.tparams]);
         out.types.push(this.hangingDecl(d, hanging, owner));
         return;
       }
       const kind = d.kind();
       const start = d.range().start.index;
       const rule = this.rule(d, owner);
+      if (rule) this.tparams = [...around, ...this.typeParams(d, rule.generics)];
       const fn = owner === null ? n.function.find((r) => r.kind === kind) : undefined;
       const bodied = bodiedRule(this.pack, kind);
       if (rule && fn) {
@@ -621,9 +678,11 @@ export class Reader {
       }
     });
     this.owner = null;
+    this.tparams = [];
     return out;
   }
 
+  /** A type declaration with nothing read yet; the type around it is the one being read (`this.owner`). */
   private emptyDecl(name: string, line: number, start: number, generic: boolean, params: string[]): TypeDecl {
     return {
       name,
@@ -631,6 +690,7 @@ export class Reader {
       line,
       start,
       generic,
+      outer: this.owner,
       params,
       fields: new Map(),
       embedded: [],

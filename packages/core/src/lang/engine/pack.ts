@@ -111,14 +111,12 @@ export interface TypingRules {
     /** The type parameters of a declaration (the field named by `generics`): the kind of each entry and the kinds of its child that is the parameter's name. */
     parameters?: { entry: string; names: readonly string[] };
     /**
-     * Types outside the repo whose accessors return one of their type arguments: the package, whether the language brings
-     * its names in without an import, the simple names of the types, and for each method name the index of the type
-     * argument it returns. A type is known by its package (an import or a package imported whole), so a type of the repo
-     * or of another library with the same name is not one.
+     * Types outside the repo whose accessors return one of their type arguments: the package, the simple names of
+     * the types, and for each method name the index of the type argument it returns. A type is known by its package (an
+     * import or a package imported whole), so a type of the repo or of another library with the same name is not one.
      */
     library?: readonly {
       package: string;
-      implicit?: boolean;
       types: readonly string[];
       returns: Readonly<Record<string, number>>;
     }[];
@@ -312,8 +310,8 @@ export interface LanguagePack {
       /**
        * An expression that creates a value of a type with a body of members of its own, outside any declaration of a type:
        * its kind, the field of the type it names, the kind of its child that holds the body, and the prefix of the name the
-       * body gets (`<enclosing type>.<prefix><n>`, `n` counting from 1 in source order among the bodies of that type).
-       * The members of such a body are symbols, named by that name.
+       * body gets (`<enclosing type>.<member>.<prefix><n>`: the member of the type that holds the expression, and `n`
+       * counting from 1 in source order within that member). The members of such a body are symbols, named by that name.
        */
       anonymous?: { kind: string; type: string; body: string; prefix: string };
       /** An element of an enumeration's body that may carry a body of members: its kind and the fields of its name and its body. The body is named `<enclosing type>.<name>`. */
