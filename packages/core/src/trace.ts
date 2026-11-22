@@ -1,4 +1,13 @@
-import { fileIdOfSymId, isFileId, isSymId, pathOfFileId, qualifyId, symIdOfFileId, tableId } from "./ids.js";
+import {
+  fileIdOfSymId,
+  isFileId,
+  isSymId,
+  pathOfFileId,
+  qualifyId,
+  repoOfId,
+  symIdOfFileId,
+  tableId,
+} from "./ids.js";
 import { EVIDENCE_CAP } from "./resolve/index.js";
 import { nodeInfo } from "./search/node.js";
 import { type Store, safeRepo } from "./store/index.js";
@@ -22,6 +31,10 @@ import type { AdapterNodeRecord, EdgeKind, EdgeRecord } from "./types.js";
  * The walk visits at most `maxNodes` (2,000) nodes, each once (cycles are common), in sorted edge order. The chain
  * keeps only the nodes on a path to an endpoint or table (down) or to an endpoint or route (up); `omitted` counts
  * the rest. Chain order: depth, then id.
+ *
+ * The walk has no repo filter: a `requests` edge whose endpoint is in another repo of the workspace, and the
+ * handler's calls and table edges there, are followed like any other. When the store holds more than one repo each
+ * step names its repo.
  */
 
 export type TraceDirection = "down" | "up";
@@ -31,6 +44,8 @@ export interface TraceStep {
   /** Symbol kind, `file`, or the adapter node kind (`route`, `endpoint`, `table`). */
   kind: string;
   label: string;
+  /** The repo the node is in; present only when the store holds more than one repo. */
+  repo?: string;
   /** The edge kind it was reached by (`target` for the start node). */
   via: string;
   depth: number;
@@ -391,13 +406,16 @@ export function trace(store: Store, target: string, opts: TraceOptions = {}): Tr
     }
   }
 
+  const multiRepo = store.listRepos().length > 1;
   const chain: TraceStep[] = [...keep]
     .map((id) => {
       const v = visits.get(id) as Visit;
+      const repo = multiRepo ? repoOfId(id) : undefined;
       return {
         id,
         kind: kindOf(id),
         label: labelOf(id),
+        ...(repo !== undefined ? { repo } : {}),
         via: v.via,
         depth: v.depth,
         ...(v.from !== undefined ? { from: v.from } : {}),

@@ -1,0 +1,20 @@
+[
+  {
+    "route": "route:web:.:/users/$id",
+    "endpoints": ["ep:users-api:.:GET /api/users/:id"],
+    "handlers": ["sym:users-api:src/handlers.ts#getUserHandler"],
+    "tables": ["table:users-api:users"]
+  },
+  {
+    "route": "route:web:.:/orders/$id",
+    "endpoints": ["ep:users-api:.:GET /api/orders/:id"],
+    "handlers": ["sym:users-api:src/handlers.ts#getOrderHandler"],
+    "tables": ["table:users-api:orders"]
+  },
+  {
+    "route": "route:web:.:/invoices/$id",
+    "endpoints": ["ep:billing:.:GET /invoices/:id"],
+    "handlers": ["sym:billing:src/handlers.ts#getInvoiceHandler"],
+    "tables": ["table:billing:invoices"]
+  }
+]
