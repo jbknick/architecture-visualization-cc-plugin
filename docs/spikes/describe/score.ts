@@ -203,10 +203,10 @@ if (aCalls.length > 0) {
     console.log(`Path A grade counts: 0=${counts[0]}, 1=${counts[1]}, 2=${counts[2]}.`);
   }
 
-  // gantry init --estimate style projection. DEVPRENTICE_FUNCTIONS is the number of non-trivial functions in the
-  // sampling strata of the Devprentice test bed (pool sizes printed by evals/labelled/sample.ts), a lower bound on
+  // gantry init --estimate style projection. TESTBED_FUNCTIONS is the number of non-trivial functions in the
+  // sampling strata of the private test bed (pool sizes printed by evals/labelled/sample.ts), a lower bound on
   // what `gantry init --estimate` will report as needing a model.
-  const fns = Number(process.env.DEVPRENTICE_FUNCTIONS ?? 2217);
+  const fns = Number(process.env.TESTBED_FUNCTIONS ?? 2217);
   const a0 = reports[0];
   if (a0?.inPerFn != null && a0.outPerFn != null && a0.secPerFn != null) {
     const batches = Math.ceil(fns / 40);

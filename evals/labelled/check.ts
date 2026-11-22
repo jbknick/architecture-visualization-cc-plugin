@@ -1,7 +1,7 @@
 /**
  * Validates the private labelled set against the contract in issue #5 and spec sections 7 and 8.
  *
- * Usage: pnpm tsx evals/labelled/check.ts [path]   (default evals/private/labelled/devprentice.jsonl)
+ * Usage: pnpm tsx evals/labelled/check.ts [path]   (default evals/private/labelled/testbed.jsonl)
  * Prints `200 valid` on success; exits 1 with the problems otherwise. Prints counts only, never content.
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const file = resolve(process.argv[2] ?? join(here, "..", "private", "labelled", "devprentice.jsonl"));
+const file = resolve(process.argv[2] ?? join(here, "..", "private", "labelled", "testbed.jsonl"));
 
 const EXPECTED: Record<string, number> = { component: 40, hook: 30, util: 50, server: 40, helper: 40 };
 const IDENT = /^[A-Za-z_$][\w$]*$/;

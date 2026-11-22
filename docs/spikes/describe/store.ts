@@ -9,7 +9,7 @@ import type { LabelledRow } from "./lib.js";
 export const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, "..", "..", "..");
 export const privateDir = process.env.GANTRY_PRIVATE_DIR ?? join(repoRoot, "evals", "private");
-export const labelledFile = join(privateDir, "labelled", "devprentice.jsonl");
+export const labelledFile = join(privateDir, "labelled", "testbed.jsonl");
 export const outDir = process.env.DESCRIBE_OUT ?? join(privateDir, "describe-out");
 
 export function loadLabelled(file = labelledFile): LabelledRow[] {
