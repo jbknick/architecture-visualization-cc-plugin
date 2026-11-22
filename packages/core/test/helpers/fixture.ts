@@ -10,6 +10,7 @@ export type FixtureName =
   | "nx"
   | "bundler-aliases"
   | "adapters"
+  | "linking"
   | "go-basic"
   | "overlay-groups"
   | "deep-radius"

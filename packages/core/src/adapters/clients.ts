@@ -25,7 +25,16 @@ import { START_PACKAGES } from "./tanstack-start.js";
  * | 1    | `getPosts(...)`, `useServerFn(getPosts)` resolving to a server fn's const   | `ep:<ws>:fn getPosts`           | high           |
  * | 2    | `orpc.posts.list.queryOptions()`, `client.posts.list()` on an oRPC client   | `ep:*:rpc posts.list`           | high if unique |
  * | 3    | `client.api.posts[":id"].$get()` on a Hono `hc()` client                    | `ep:*:GET /api/posts/:id`       | high if unique |
- * | 4    | `fetch("/api/posts/${id}")`, `ky.post(...)`, `axios.get(...)` (literal URL)  | Hono path, `${x}` as a `:param` | low            |
+ * | 4    | `fetch("/api/posts/${id}")`, `ky.post(...)`, `axios.get(...)` (literal URL)  | endpoint path, `${x}` as `:param` | low          |
+ * | 5    | `rel.get("/users")` on an `axios.create` / `ky.create` / `ky.extend` instance, or on `axios` with `axios.defaults.baseURL` set | endpoint path of the joined URL | low |
+ *
+ * An instance is a top-level `const` initialised by `<axios>.create({ baseURL })`, `<ky>.create({ prefixUrl })` or
+ * `<kyInstance>.extend({ prefixUrl? })` (`extend` without `prefixUrl` keeps the parent's base). Calls on it are
+ * followed through imports and re-exports. The URL is joined by the library's own rule (`joinUrl`): axios puts the
+ * base and the request path together with one `/`, an absolute request URL replaces the base; ky puts `prefixUrl`,
+ * `/` and an input without a leading slash together. A base that is not a literal or template makes the call a gap
+ * (`dynamic_url`). Calls on the default `axios` import use the one `axios.defaults.baseURL` assigned at the top level
+ * of a file of the same workspace; two different assignments in a workspace make them gaps (`ambiguous`).
  *
  * An oRPC client is a top-level `const` initialised by `createORPCClient`, `createTanstackQueryUtils` (or the other
  * `@orpc/*-query` utils), or by a function of the same file that returns one of those calls
@@ -89,7 +98,7 @@ const CLIENT_DEPS = [
 ];
 const FETCH_CALLEES = new Set(["fetch", "window.fetch", "globalThis.fetch", "self.fetch"]);
 
-export type ClientRule = "server-fn" | "orpc" | "hono" | "fetch";
+export type ClientRule = "server-fn" | "orpc" | "hono" | "fetch" | "instance";
 
 /** A client binding: its kind, and for a sub-client alias the keys it starts with. */
 interface Client {
@@ -114,11 +123,28 @@ interface ClientDecl {
   symbol: string;
   kind: "orpc" | "hono";
 }
+/**
+ * An `axios.create` / `ky.create` / `ky.extend` instance. `base` is the literal or template path (`""` for none)
+ * or null when it is not static; with `inherits` (an `extend` without `prefixUrl`) it is the base of `parent`, the
+ * local name of the instance extended, or of no instance when `parent` is null.
+ */
+interface InstanceDecl {
+  symbol: string;
+  /** Null for an `extend` of an instance of another file, whose library is the parent's. */
+  lib: "axios" | "ky" | null;
+  base: string | null;
+  inherits: boolean;
+  parent: string | null;
+}
 export interface ClientFacts {
   /** Top-level client bindings declared in this file. */
   decls: ClientDecl[];
   /** Top-level `const x = <name>.a.b` member aliases (a sub-client when `<name>` is a client), read from the text. */
   aliases: { key: string; caller: string; name: string; root: string; keys: string[]; line: number }[];
+  /** Top-level `axios.create` / `ky.create` / `ky.extend` instances declared in this file. */
+  instances?: InstanceDecl[];
+  /** Top-level `<axios>.defaults.baseURL = <expr>` assignments of this file (`base` null when not static). */
+  defaults?: { base: string | null; line: number }[];
   /** Local names that root a member call (`orpc.posts.list(...)`): the cheap filter before the AST walk. */
   roots: string[];
   /** Plain identifier calls (`getPosts(...)`), for rule 1. */
@@ -217,6 +243,93 @@ function readDecls(ctx: AdapterFileContext): ClientDecl[] {
   return out;
 }
 
+/** The value of property `name` of an object expression (undefined when absent or computed away). */
+function propOf(obj: unknown, name: string): unknown {
+  const o = unwrap(obj);
+  if (!isNode(o) || o.type !== "ObjectExpression") return undefined;
+  for (const p of nodeArray(o.properties)) {
+    const k = unwrap(p.key);
+    if (p.type === "Property" && p.computed !== true && isNode(k) && (k.name === name || k.value === name))
+      return p.value;
+  }
+  return undefined;
+}
+
+/**
+ * Instances and default-instance base URLs of a file: top-level `const x = <axios>.create({ baseURL })`,
+ * `<ky>.create({ prefixUrl })`, `<ky | kyInstance>.extend({ prefixUrl? })`, and `<axios>.defaults.baseURL = <expr>`.
+ */
+function readInstances(ctx: AdapterFileContext): Pick<ClientFacts, "instances" | "defaults"> {
+  const libs = new Map<string, "axios" | "ky">();
+  for (const i of ctx.parsed?.imports ?? []) {
+    if (!i.local || i.typeOnly || i.imported !== "default") continue;
+    if (i.specifier === "axios" || i.specifier === "ky") libs.set(i.local, i.specifier);
+  }
+  const program = libs.size > 0 || ctx.source.includes("extend(") ? ctx.program() : null;
+  if (!program) return {};
+  const local = (name: string) => ctx.parsed?.symbols.find((s) => s.name === name)?.id;
+  const instances: InstanceDecl[] = [];
+  const defaults: { base: string | null; line: number }[] = [];
+  const names = new Map<string, "axios" | "ky">();
+  const staticBase = (v: unknown): string | null => {
+    const t = urlText(v, false);
+    if (t === null) return null;
+    const p = stripQuery(t);
+    return p === "" || p.startsWith("/") || /^[a-z][a-z0-9+.-]*:\/\//i.test(p) ? p : null;
+  };
+  const line = lineTable(ctx.source);
+  for (const st of program) {
+    if (st.type === "ExpressionStatement") {
+      const e = unwrap(st.expression);
+      if (!isNode(e) || e.type !== "AssignmentExpression" || e.operator !== "=") continue;
+      const left = memberChain(e.left);
+      if (left?.keys.join(".") !== "defaults.baseURL" || libs.get(left.root) !== "axios") continue;
+      defaults.push({ base: staticBase(e.right), line: line(st.start as number) });
+      continue;
+    }
+    const decl = st.type === "ExportNamedDeclaration" ? unwrap(st.declaration) : st;
+    if (!isNode(decl) || decl.type !== "VariableDeclaration") continue;
+    for (const d of nodeArray(decl.declarations)) {
+      const id = unwrap(d.id);
+      const init = unwrap(d.init);
+      if (!isNode(id) || id.type !== "Identifier" || !isNode(init) || init.type !== "CallExpression")
+        continue;
+      const chain = memberChain(init.callee);
+      const verb = chain?.keys[0];
+      if (!chain || chain.keys.length !== 1 || (verb !== "create" && verb !== "extend")) continue;
+      const symbol = local(id.name as string);
+      const rootLib = libs.get(chain.root);
+      if (!symbol || (verb === "create" && rootLib === undefined)) continue;
+      if (rootLib === "axios" && verb === "extend") continue;
+      const lib = rootLib ?? names.get(chain.root) ?? null;
+      const opts = unwrap((Array.isArray(init.arguments) ? init.arguments : [])[0]);
+      const isObject = isNode(opts) && opts.type === "ObjectExpression";
+      const own = propOf(opts, lib === "axios" ? "baseURL" : "prefixUrl");
+      const inherits = verb === "extend" && isObject && own === undefined;
+      instances.push({
+        symbol,
+        lib,
+        base: inherits
+          ? null
+          : opts === undefined
+            ? ""
+            : own !== undefined
+              ? staticBase(own)
+              : isObject
+                ? ""
+                : null,
+        inherits,
+        parent: rootLib === undefined ? chain.root : null,
+      });
+      if (lib) names.set(id.name as string, lib);
+    }
+  }
+  return {
+    ...(instances.length > 0 ? { instances } : {}),
+    ...(defaults.length > 0 ? { defaults } : {}),
+  };
+}
+
 /** A member chain `root.a["b"].c` as its root identifier and keys (computed keys only when string literals). */
 function memberChain(expr: unknown): { root: string; keys: string[]; computed: boolean } | null {
   const keys: string[] = [];
@@ -239,37 +352,63 @@ function memberChain(expr: unknown): { root: string; keys: string[]; computed: b
 }
 
 /**
+ * A string or template URL as text, `${x}` as `:param`. With `dropBase` a leading `${base}` before a `/` is dropped
+ * (a URL argument whose base the call site does not show); without it such a template is not static (null).
+ */
+function urlText(arg: unknown, dropBase: boolean): string | null {
+  const v = unwrap(arg);
+  if (!isNode(v)) return null;
+  if (v.type === "Literal" && typeof v.value === "string") return v.value;
+  if (v.type !== "TemplateLiteral") return null;
+  const quasis = nodeArray(v.quasis).map((q) => {
+    const cooked = (q.value as { cooked?: unknown } | undefined)?.cooked;
+    return typeof cooked === "string" ? cooked : "";
+  });
+  let s = "";
+  for (let i = 0; i < quasis.length; i++) {
+    const q = quasis[i] as string;
+    if (i === 0 && q === "" && quasis.length > 1) {
+      if (!dropBase) return null;
+      if ((quasis[1] as string).startsWith("/")) continue;
+    }
+    s += q;
+    if (i < quasis.length - 1) s += ":param";
+  }
+  return s;
+}
+
+const stripQuery = (u: string): string => {
+  const p = u.replace(/[?#].*$/, "");
+  return p.length > 1 ? p.replace(/\/+$/, "") : p;
+};
+
+/**
  * A URL argument as a path: literal or template (`${x}` becomes `:param`, a leading `${base}` is dropped), query
  * and hash dropped. An absolute URL (`https://host/...`) is returned whole; anything else is null.
  */
 export function urlPath(arg: unknown): string | null {
-  const v = unwrap(arg);
-  if (!isNode(v)) return null;
-  let raw: string | null = null;
-  if (v.type === "Literal" && typeof v.value === "string") raw = v.value;
-  else if (v.type === "TemplateLiteral") {
-    const quasis = nodeArray(v.quasis).map((q) => {
-      const cooked = (q.value as { cooked?: unknown } | undefined)?.cooked;
-      return typeof cooked === "string" ? cooked : "";
-    });
-    let s = "";
-    for (let i = 0; i < quasis.length; i++) {
-      const q = quasis[i] as string;
-      // A leading `${base}` before a path is the base URL, not a path parameter: skip it and its empty quasi.
-      if (i === 0 && q === "" && quasis.length > 1 && (quasis[1] as string).startsWith("/")) continue;
-      s += q;
-      if (i < quasis.length - 1) s += ":param";
-    }
-    raw = s;
-  }
+  const raw = urlText(arg, true);
   if (raw === null) return null;
   // An absolute URL names another origin: kept whole, so it is reported as external and never matched.
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(raw)) return raw.replace(/[?#].*$/, "");
-  let p = raw;
-  p = p.replace(/[?#].*$/, "");
-  if (!p.startsWith("/")) return null;
-  if (p.length > 1) p = p.replace(/\/+$/, "");
-  return p;
+  if (!raw.replace(/[?#].*$/, "").startsWith("/")) return null;
+  return stripQuery(raw);
+}
+
+/**
+ * The URL a call on an instance requests, by the library's join rule, query and hash dropped; null when the library
+ * refuses it (ky with a leading slash on a prefixed input). axios: base and path with one `/` between, an absolute
+ * (or protocol-relative) request URL replaces the base. ky: `prefixUrl`, `/`, then the input, which has no leading
+ * slash. An empty base is no base. The result is a path, or an absolute URL for another origin.
+ */
+export function joinUrl(lib: "axios" | "ky", base: string, input: string): string | null {
+  if (lib === "axios") {
+    if (/^([a-z][a-z\d+\-.]*:)?\/\//i.test(input) || base === "") return stripQuery(input);
+    return stripQuery(input === "" ? base : `${base.replace(/\/?\/$/, "")}/${input.replace(/^\/+/, "")}`);
+  }
+  if (base === "") return stripQuery(input);
+  if (input.startsWith("/")) return null;
+  return stripQuery(`${base.replace(/\/+$/, "")}/${input}`);
 }
 
 /** How a call path matches a Hono endpoint path: null for no match, else the number of parameter segments used. */
@@ -314,7 +453,7 @@ interface Hit {
   /** Candidate endpoint ids (empty when unmatched). */
   dsts: string[];
   confidence: "high" | "low";
-  reason?: "no_endpoint" | "dynamic_url" | "external_url" | "not_a_server_fn" | "client_alias";
+  reason?: "no_endpoint" | "dynamic_url" | "external_url" | "not_a_server_fn" | "client_alias" | "ambiguous";
 }
 
 export const clientsAdapter: Adapter<ClientFacts> = {
@@ -343,6 +482,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
     const useServerFn = ctx.source.includes("useServerFn");
     const dollar = /\.\$(?:get|post|put|patch|delete|options)\s*\(/.test(ctx.source);
     const decls = readDecls(ctx);
+    const { instances, defaults } = readInstances(ctx);
     const aliases: ClientFacts["aliases"] = [];
     for (const m of ctx.source.matchAll(ALIAS_RE)) {
       const name = m[1] as string;
@@ -359,6 +499,8 @@ export const clientsAdapter: Adapter<ClientFacts> = {
     }
     if (
       decls.length === 0 &&
+      !instances &&
+      !defaults &&
       aliases.length === 0 &&
       roots.size === 0 &&
       idCalls.length === 0 &&
@@ -368,7 +510,17 @@ export const clientsAdapter: Adapter<ClientFacts> = {
     )
       return {};
     return {
-      facts: { decls, aliases, roots: [...roots].sort(cmp), idCalls, fetchLike, useServerFn, dollar },
+      facts: {
+        decls,
+        ...(instances ? { instances } : {}),
+        ...(defaults ? { defaults } : {}),
+        aliases,
+        roots: [...roots].sort(cmp),
+        idCalls,
+        fetchLike,
+        useServerFn,
+        dollar,
+      },
     };
   },
   link(ctx) {
@@ -406,13 +558,47 @@ export const clientsAdapter: Adapter<ClientFacts> = {
     /** Aliases some call went through; the others are reported, since their calls happen out of sight. */
     const usedAliases = new Set<string>();
 
+    // Instances, `extend` of an instance of another file resolved through the imports.
+    const instances = new Map<string, { lib: "axios" | "ky"; base: string | null }>();
+    const instList = ctx.files.flatMap(({ file, facts }) =>
+      (facts?.instances ?? []).map((i) => ({ i, file })),
+    );
+    for (const { i } of instList) {
+      if (i.lib && !i.inherits) instances.set(i.symbol, { lib: i.lib, base: i.base });
+    }
+    for (let pass = 0; pass < 4; pass++) {
+      let added = false;
+      for (const { i, file } of instList) {
+        if (instances.has(i.symbol)) continue;
+        // An `extend` of the `ky` import itself has no instance to inherit from: no base.
+        const ref = i.parent ? refOf(file, i.parent) : null;
+        const parent = ref ? instances.get(ref) : undefined;
+        if (i.parent && !parent) continue;
+        const lib = i.lib ?? parent?.lib;
+        if (!lib) continue;
+        instances.set(i.symbol, { lib, base: i.inherits ? (parent ? parent.base : "") : i.base });
+        added = true;
+      }
+      if (!added) break;
+    }
+    // The base set on the default `axios` of each workspace: the distinct assignments of its files.
+    const defaultBases = new Map<string, Set<string | null>>();
+    for (const { file, facts } of ctx.files) {
+      for (const d of facts?.defaults ?? []) {
+        const set = defaultBases.get(file.ws.id) ?? new Set<string | null>();
+        set.add(d.base);
+        defaultBases.set(file.ws.id, set);
+      }
+    }
+
     // Endpoints by what a client call names.
     const fnBySym = new Map<string, string>();
     const fnByName = new Map<string, string[]>();
     const fnByLocal = new Map<string, string>();
     const rpcByPath = new Map<string, AdapterNode[]>();
     const rpcPrefixes = new Set<string>();
-    const hono: AdapterNode[] = [];
+    /** Endpoints with a method and a path, whatever made them. */
+    const http: AdapterNode[] = [];
     for (const n of ctx.nodes) {
       if (n.kind !== "endpoint") continue;
       const d = n.data;
@@ -428,7 +614,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
         rpcByPath.set(d.path, [...(rpcByPath.get(d.path) ?? []), n]);
         const parts = d.path.split(".");
         for (let i = 1; i < parts.length; i++) rpcPrefixes.add(parts.slice(0, i).join("."));
-      } else if (d.adapter === "hono" && typeof d.path === "string") hono.push(n);
+      } else if (typeof d.method === "string" && typeof d.path === "string") http.push(n);
     }
     const wsByName = new Map(ctx.workspaces.map((w) => [w.id, w]));
     /** Narrows several candidates to the caller's workspace and its dependencies. */
@@ -495,7 +681,19 @@ export const clientsAdapter: Adapter<ClientFacts> = {
           if (k?.kind === "hono") rootKinds.set(name, k);
         }
       }
-      if (rootKinds.size === 0 && !facts.fetchLike && !facts.useServerFn) continue;
+      // Calls on an instance (`rel.get(...)`, `rel({ ... })`), through imports and re-exports.
+      const instRoots = new Map<string, { lib: "axios" | "ky"; base: string | null }>();
+      for (const r of new Set([...facts.roots, ...facts.idCalls.map((c) => c.name)])) {
+        const ref = instances.size > 0 ? refOf(file, r) : null;
+        const i = ref ? instances.get(ref) : undefined;
+        if (i) instRoots.set(r, i);
+      }
+      const axiosLocals = new Set(
+        (pf?.imports ?? [])
+          .filter((i) => i.local && i.specifier === "axios" && i.imported === "default")
+          .map((i) => i.local),
+      );
+      if (rootKinds.size === 0 && instRoots.size === 0 && !facts.fetchLike && !facts.useServerFn) continue;
       const program = file.program();
       if (!program) continue;
       const line = lineTable(file.source);
@@ -536,10 +734,11 @@ export const clientsAdapter: Adapter<ClientFacts> = {
           return undefined;
         }
 
-        // fetch / ky / axios
+        // fetch / ky / axios, and calls on instances
         const dotted = [chain.root, ...chain.keys].join(".");
         const isFetch = FETCH_CALLEES.has(dotted);
-        const lib = httpLibs.has(chain.root) && chain.keys.length <= 1 ? chain.root : null;
+        const inst = instRoots.get(chain.root);
+        const lib = (inst || httpLibs.has(chain.root)) && chain.keys.length <= 1 ? chain.root : null;
         if (isFetch || lib) {
           const member = lib ? (chain.keys[0] ?? null) : null;
           if (member !== null && !HTTP_VERBS.has(member) && member !== "request") return undefined;
@@ -555,30 +754,50 @@ export const clientsAdapter: Adapter<ClientFacts> = {
             })?.value;
           }
           const method = methodOf(opts, member);
-          const path = urlPath(urlArg);
+          // The base the call is made with: its instance, or the default `axios` of a workspace that sets one.
+          let via = inst ?? null;
+          if (!via && axiosLocals.has(chain.root)) {
+            const bases = defaultBases.get(file.ws.id);
+            if (bases && bases.size > 1) {
+              push({
+                rule: "instance",
+                label: `${method} <default axios>`,
+                dsts: [],
+                confidence: "low",
+                reason: "ambiguous",
+              });
+              return undefined;
+            }
+            if (bases) via = { lib: "axios", base: [...bases][0] as string | null };
+          }
+          const rule = via ? "instance" : "fetch";
+          let path: string | null;
+          if (via) {
+            const raw = via.base === null ? null : urlText(urlArg, false);
+            const full = raw === null ? null : joinUrl(via.lib, via.base as string, raw);
+            if (raw === null) path = null;
+            else if (full === null) {
+              push({ rule, label: `${method} ${raw}`, dsts: [], confidence: "low", reason: "no_endpoint" });
+              return undefined;
+            } else path = full;
+          } else path = urlPath(urlArg);
           if (path === null) {
-            push({
-              rule: "fetch",
-              label: `${method} <dynamic>`,
-              dsts: [],
-              confidence: "low",
-              reason: "dynamic_url",
-            });
+            push({ rule, label: `${method} <dynamic>`, dsts: [], confidence: "low", reason: "dynamic_url" });
             return undefined;
           }
           if (!path.startsWith("/")) {
             push({
-              rule: "fetch",
+              rule,
               label: `${method} ${path}`,
               dsts: [],
               confidence: "low",
-              reason: "external_url",
+              reason: via && !/^([a-z][a-z\d+\-.]*:)?\/\//i.test(path) ? "no_endpoint" : "external_url",
             });
             return undefined;
           }
           let best: number | null = null;
           let cands: AdapterNode[] = [];
-          for (const ep of hono) {
+          for (const ep of http) {
             const m = ep.data.method as string;
             if (m !== method && m !== "ALL") continue;
             const s = pathScore(path, ep.data.path as string);
@@ -589,9 +808,8 @@ export const clientsAdapter: Adapter<ClientFacts> = {
             } else if (s === best) cands.push(ep);
           }
           const label = `${method} ${path}`;
-          if (cands.length === 0)
-            push({ rule: "fetch", label, dsts: [], confidence: "low", reason: "no_endpoint" });
-          else push({ rule: "fetch", label, dsts: narrow(cands, file.ws).dsts, confidence: "low" });
+          if (cands.length === 0) push({ rule, label, dsts: [], confidence: "low", reason: "no_endpoint" });
+          else push({ rule, label, dsts: narrow(cands, file.ws).dsts, confidence: "low" });
           return undefined;
         }
 
@@ -626,7 +844,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
           if (!method) return undefined;
           const segs = allKeys.slice(0, -1).filter((k) => k !== "index" && k !== "");
           const path = `/${segs.join("/")}`;
-          const cands = hono.filter(
+          const cands = http.filter(
             (ep) => (ep.data.method === method || ep.data.method === "ALL") && ep.data.path === path,
           );
           const label = `${method} ${path}`;

@@ -92,3 +92,10 @@ A pnpm workspace (`apps/*`, `packages/*`) with no `node_modules` and no tsconfig
 - `apps/webpack-app/webpack.config.js`: `module.exports` with `"@app"` (`path.resolve(__dirname, "src/")`) and `components$` (`path.join(__dirname, "src/components/index.ts")`, an exact alias).
 - `apps/dynamic/vite.config.ts`: `alias: makeAliases()`, a computed value that cannot be read statically. Its two imports (`@dyn/one`, `@dyn/two`) are unresolved with reason `alias_not_static`.
 - Counts: the three readable apps hold 10 import edges (`imports` edges whose source is in `apps/vite-app`, `apps/vite-array` or `apps/webpack-app`): 4 + 1 in `vite-app`, 2 + 1 in `vite-array`, 2 in `webpack-app`; the `+ 1` is each Vite config's import of `vite`. Imports of `node:` modules make no edge and are not counted. `gantry init` prints `unresolved:    2`, the two imports of `apps/dynamic/src/main.ts`.
+
+## linking
+Workspace (`apps/*`) for client calls through axios and ky instances (spec section 9, rule 4b), with a Hono recipe in `.gantry/recipe.json`.
+
+- `apps/users-api` (`@fx/users-api`) mounts its `users` app at `/api`; `apps/billing` (`@fx/billing`) has `/health` and `/invoices`.
+- `apps/web` (`@fx/web`): `src/features/users.ts` calls through instances and `fetch` with bases from the environment, constants and wrappers (no `requests` edge yet); `src/lib/same-origin-http.ts` declares `rel`, `kyRel` and `kyRelAuth` with the base `/api`; `src/lib/index.ts` re-exports them; `src/features/same-origin.ts` and `src/features/reexport.ts` call them and link.
+- `apps/legacy-web` (`@fx/legacy-web`) sets `axios.defaults.baseURL = "/api"` and calls the default `axios`; `apps/web` never sets it.
