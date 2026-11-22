@@ -1,6 +1,6 @@
 import { parse, type SgNode } from "@ast-grep/napi";
 import { describe, expect, it } from "vitest";
-import { goAvailable } from "../lang/go/grammar.js";
+import { goAvailable } from "../lang/go/index.js";
 import {
   concatOperands,
   declsNamed,

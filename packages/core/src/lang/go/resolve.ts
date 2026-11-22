@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathOfFileId, symId } from "../../ids.js";
 import type { ResolveContext } from "../../resolve/index.js";
-import { type GoNode, parseGo } from "./grammar.js";
+import { type SyntaxNode as GoNode, parseTree } from "../engine/grammar.js";
+import { goPack } from "../packs/index.js";
 
 /**
  * The package index behind Go call, `extends` and `implements` edges (spec section 7): one `Pkg` per package path over
@@ -181,7 +182,7 @@ export class GoIndex {
       }
       let root: GoNode;
       try {
-        root = parseGo(source);
+        root = parseTree(goPack, source);
       } catch {
         continue;
       }
