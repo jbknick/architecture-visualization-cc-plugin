@@ -1,3 +1,3 @@
 const ORDERS = "/api/orders";
 
-export const loadCurrentOrder = () => fetch(`${ORDERS}/current`);
+export const loadOrder = (id: string) => fetch(`${ORDERS}/${id}`);
