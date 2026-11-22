@@ -1043,7 +1043,8 @@
       "evidence": [
         "cmd/server/main.go:11"
       ],
-      "fileId": "file:go-basic:cmd/server/main.go"
+      "fileId": "file:go-basic:cmd/server/main.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:cmd/server/main.go#main",
@@ -1054,7 +1055,8 @@
       "evidence": [
         "cmd/server/main.go:13"
       ],
-      "fileId": "file:go-basic:cmd/server/main.go"
+      "fileId": "file:go-basic:cmd/server/main.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:cmd/server/main.go#main",
@@ -1065,7 +1067,8 @@
       "evidence": [
         "cmd/server/main.go:12"
       ],
-      "fileId": "file:go-basic:cmd/server/main.go"
+      "fileId": "file:go-basic:cmd/server/main.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:cmd/server/main.go#main",
@@ -1076,7 +1079,8 @@
       "evidence": [
         "cmd/server/main.go:18"
       ],
-      "fileId": "file:go-basic:cmd/server/main.go"
+      "fileId": "file:go-basic:cmd/server/main.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/app/app.go#App.Run",
@@ -1087,7 +1091,8 @@
       "evidence": [
         "internal/app/app.go:28"
       ],
-      "fileId": "file:go-basic:internal/app/app.go"
+      "fileId": "file:go-basic:internal/app/app.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/app/app.go#App.Run",
@@ -1098,7 +1103,8 @@
       "evidence": [
         "internal/app/app.go:27"
       ],
-      "fileId": "file:go-basic:internal/app/app.go"
+      "fileId": "file:go-basic:internal/app/app.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/app/app.go#App.Run",
@@ -1109,7 +1115,8 @@
       "evidence": [
         "internal/app/app.go:26"
       ],
-      "fileId": "file:go-basic:internal/app/app.go"
+      "fileId": "file:go-basic:internal/app/app.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/app/app.go#App.Run",
@@ -1120,7 +1127,8 @@
       "evidence": [
         "internal/app/app.go:26"
       ],
-      "fileId": "file:go-basic:internal/app/app.go"
+      "fileId": "file:go-basic:internal/app/app.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/app/app.go#New",
@@ -1131,7 +1139,8 @@
       "evidence": [
         "internal/app/app.go:21"
       ],
-      "fileId": "file:go-basic:internal/app/app.go"
+      "fileId": "file:go-basic:internal/app/app.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/app/app.go#clean",
@@ -1142,7 +1151,8 @@
       "evidence": [
         "internal/app/app.go:32"
       ],
-      "fileId": "file:go-basic:internal/app/app.go"
+      "fileId": "file:go-basic:internal/app/app.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/store/store.go#Cache",
@@ -1175,7 +1185,8 @@
       "evidence": [
         "internal/store/store.go:68"
       ],
-      "fileId": "file:go-basic:internal/store/store.go"
+      "fileId": "file:go-basic:internal/store/store.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/store/store.go#Lookup",
@@ -1186,7 +1197,8 @@
       "evidence": [
         "internal/store/store.go:60"
       ],
-      "fileId": "file:go-basic:internal/store/store.go"
+      "fileId": "file:go-basic:internal/store/store.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/store/store.go#Mirror",
@@ -1219,7 +1231,8 @@
       "evidence": [
         "internal/store/store.go:55"
       ],
-      "fileId": "file:go-basic:internal/store/store.go"
+      "fileId": "file:go-basic:internal/store/store.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/store/store_test.go#TestPutGet",
@@ -1230,7 +1243,8 @@
       "evidence": [
         "internal/store/store_test.go:6"
       ],
-      "fileId": "file:go-basic:internal/store/store_test.go"
+      "fileId": "file:go-basic:internal/store/store_test.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/store/store_test.go#TestPutGet",
@@ -1241,7 +1255,8 @@
       "evidence": [
         "internal/store/store_test.go:8"
       ],
-      "fileId": "file:go-basic:internal/store/store_test.go"
+      "fileId": "file:go-basic:internal/store/store_test.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/store/store_test.go#TestPutGet",
@@ -1252,7 +1267,8 @@
       "evidence": [
         "internal/store/store_test.go:7"
       ],
-      "fileId": "file:go-basic:internal/store/store_test.go"
+      "fileId": "file:go-basic:internal/store/store_test.go",
+      "level": 2
     },
     {
       "src": "sym:go-basic:internal/text/slug.go#Slugify",
@@ -1263,7 +1279,8 @@
       "evidence": [
         "internal/text/slug.go:16"
       ],
-      "fileId": "file:go-basic:internal/text/slug.go"
+      "fileId": "file:go-basic:internal/text/slug.go",
+      "level": 2
     },
     {
       "src": "ws:go-basic:example.com/gobasic",

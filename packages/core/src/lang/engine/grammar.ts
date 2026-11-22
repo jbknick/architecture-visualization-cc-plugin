@@ -53,24 +53,24 @@ function load(): Map<string, boolean> {
   try {
     registerDynamicLanguage(registrations);
   } catch {
-    available = new Map(known.map((p) => [p.id, false]));
+    available = new Map(known.map((p) => [p.grammar.name, false]));
     return available;
   }
   for (const p of known) {
     try {
       if (!(p.grammar.name in registrations)) throw new Error("not loaded");
       parse(p.grammar.name as never, "");
-      ok.set(p.id, true);
+      ok.set(p.grammar.name, true);
     } catch {
-      ok.set(p.id, false);
+      ok.set(p.grammar.name, false);
     }
   }
   available = ok;
   return ok;
 }
 
-/** True when the grammar of `pack` loaded on this platform. */
-export const grammarAvailable = (pack: LanguagePack): boolean => load().get(pack.id) === true;
+/** True when the grammar `pack` names loaded on this platform (a pack that shares a registered grammar shares its answer). */
+export const grammarAvailable = (pack: LanguagePack): boolean => load().get(pack.grammar.name) === true;
 
 const warned = new Set<string>();
 

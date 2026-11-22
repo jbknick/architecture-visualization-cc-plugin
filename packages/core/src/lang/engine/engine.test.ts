@@ -7,7 +7,7 @@ import { z } from "zod";
 import { dumpGraph, indexRepo } from "../../indexer.js";
 import { type GantryPaths, resolvePaths } from "../../paths/index.js";
 import { openStore } from "../../store/index.js";
-import { LANG_IDS, languageModule } from "../index.js";
+import { LANG_IDS, languageModule, languageOfPath, languages } from "../index.js";
 import { PACKS } from "../packs/index.js";
 
 const helperPath = "../../../test/helpers/fixture.js";
@@ -71,9 +71,15 @@ const PackSchema = z.strictObject({
       path: field,
       alias: field,
       quotes: z.string(),
-      localName: z.strictObject({ separator: field, skip: regexp }),
+      separator: field,
+      localName: z.strictObject({ skip: regexp }),
     }),
     call: strings,
+    callee: z.strictObject({
+      field,
+      names: strings,
+      member: z.strictObject({ kind: field, operand: field, name: field, operands: strings }),
+    }),
     exported: z.literal("capitalized"),
     signature: z.strictObject({ empty: z.string(), maxLength: z.number().int().positive() }),
     measure: z.strictObject({
@@ -131,6 +137,15 @@ describe("language packs", () => {
     expect(PackSchema.parse(pack)).toBeTruthy();
   });
 
+  it.each(PACKS.map((p) => [p.id, p] as const))(
+    "the %s pack is claimed by its extensions and has a module",
+    (_id, pack) => {
+      expect(languageModule(pack.id).id).toBe(pack.id);
+      expect(languages().map((m) => m.id)).toEqual(["typescript", ...PACKS.map((p) => p.id)]);
+      for (const ext of pack.extensions) expect(languageOfPath(`a/b${ext}`)?.id).toBe(pack.id);
+    },
+  );
+
   it("derives the language ids from the packs plus TypeScript", () => {
     expect(LANG_IDS).toEqual(["typescript", ...PACKS.map((p) => p.id)]);
     for (const p of PACKS) expect(languageModule(p.id).label).toBe(p.label);
@@ -140,8 +155,11 @@ describe("language packs", () => {
 describe("engine", () => {
   it("names no language", () => {
     const dir = dirname(fileURLToPath(import.meta.url));
-    const files = readdirSync(dir).filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"));
+    const files = readdirSync(dir, { recursive: true, encoding: "utf8" }).filter(
+      (f) => f.endsWith(".ts") && !f.endsWith(".test.ts"),
+    );
     expect(files.length).toBeGreaterThan(0);
+    expect(files).toContain(join("resolve", "calls.ts"));
     for (const f of files) {
       const text = readFileSync(join(dir, f), "utf8");
       for (const p of PACKS) {

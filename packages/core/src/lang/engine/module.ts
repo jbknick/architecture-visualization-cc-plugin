@@ -2,15 +2,16 @@ import picomatch from "picomatch";
 import { pathOfFileId } from "../../ids.js";
 import type { ParsedFile } from "../../parse/index.js";
 import type { ResolveContext, Resolver } from "../../resolve/index.js";
-import type { EdgeRecord, Lang, WorkspaceRecord } from "../../types.js";
+import type { EdgeRecord, Lang } from "../../types.js";
 import type { LanguageModule } from "../index.js";
 import { grammarAvailable } from "./grammar.js";
 import type { LanguagePack } from "./pack.js";
 import { parseWithPack } from "./parse.js";
+import { nameCallResolver, workspaceOfPath } from "./resolve/index.js";
 import { embeddingTextWithPack, streamsWithPack } from "./streams.js";
 import { detectPackWorkspaces, packDependsOnEdges } from "./workspace.js";
 
-/** What a language adds to the engine: the call, `extends` and `implements` edges and the targets behind them. */
+/** What resolves calls: the `calls` edges (and, for a language that has them, `extends` and `implements`) and the targets behind them. */
 export interface CallResolver {
   targetAt: NonNullable<Resolver["targetAt"]>;
   typeNameAt: NonNullable<Resolver["typeNameAt"]>;
@@ -24,7 +25,7 @@ const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 /**
  * The resolver of a pack: file and symbol `contains` edges and the `depends_on` edges between workspaces come from the
  * pack; call edges and targets come from `calls`. Imports are not specifiers of a file, so `resolveSpecifier` has
- * nothing to resolve.
+ * nothing to resolve; the call resolver reads them itself.
  */
 function createPackResolver(pack: LanguagePack, calls: CallResolverFactory, ctx: ResolveContext): Resolver {
   let callResolver: CallResolver | undefined;
@@ -41,14 +42,7 @@ function createPackResolver(pack: LanguagePack, calls: CallResolverFactory, ctx:
       const pf = ctx.parsed.get(fileId);
       if (!pf) return [];
       const rel = pathOfFileId(fileId);
-      let best: WorkspaceRecord | undefined;
-      for (const w of ctx.workspaces) {
-        if (w.lang !== pack.id) continue;
-        if (w.dir === "." || rel.startsWith(`${w.dir}/`)) {
-          if (!best || (w.dir === "." ? 0 : w.dir.length) > (best.dir === "." ? 0 : best.dir.length))
-            best = w;
-        }
-      }
+      const best = workspaceOfPath(pack, ctx.workspaces, rel);
       const edge = (src: string, dst: string): EdgeRecord => ({
         src,
         dst,
@@ -83,10 +77,14 @@ function createPackResolver(pack: LanguagePack, calls: CallResolverFactory, ctx:
 
 /**
  * The language module of a pack: file rules, workspace discovery, parsing, token streams, embedding text and the data
- * of the pack (labels, hints, thresholds). Only call resolution comes from the caller. On a platform where the grammar
- * does not load the module claims no extension, so its files are skipped and the other languages are indexed.
+ * of the pack (labels, hints, thresholds). Calls are resolved by names alone (level 1, `resolve/`) unless the caller
+ * supplies a resolver of its own. On a platform where the grammar does not load the module claims no extension, so its
+ * files are skipped and the other languages are indexed.
  */
-export function buildLanguage(pack: LanguagePack, calls: CallResolverFactory): LanguageModule {
+export function buildLanguage(
+  pack: LanguagePack,
+  calls: CallResolverFactory = nameCallResolver(pack),
+): LanguageModule {
   const skip = picomatch([...pack.skipPaths], { dot: true });
   return {
     id: pack.id as Lang,

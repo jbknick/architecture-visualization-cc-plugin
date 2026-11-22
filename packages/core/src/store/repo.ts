@@ -5,6 +5,7 @@ import { restoreMainFts } from "../search/descfts.js";
 import type {
   AdapterNodeRecord,
   EdgeKind,
+  EdgeLevel,
   EdgeRecord,
   FileRecord,
   FtsRow,
@@ -166,6 +167,7 @@ interface EdgeRow {
   count: number;
   evidence: string;
   file_id: string;
+  level: EdgeLevel | null;
   text_file_id: string | null;
 }
 
@@ -222,6 +224,7 @@ const toEdge = (r: EdgeRow): EdgeRecord => ({
   count: r.count,
   evidence: JSON.parse(r.evidence ?? "[]") as string[],
   fileId: r.file_id,
+  ...(r.level ? { level: r.level } : {}),
   ...(r.text_file_id ? { textFileId: r.text_file_id } : {}),
 });
 
@@ -496,11 +499,11 @@ export function createStore(db: Database, entryRepo?: string): Store {
           );
         }
         const ei = stmt(
-          `INSERT INTO edges(src, dst, kind, layer, confidence, count, evidence, file_id, text_file_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO edges(src, dst, kind, layer, confidence, count, evidence, file_id, level, text_file_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(src, dst, kind, layer) DO UPDATE SET confidence = excluded.confidence,
              count = excluded.count, evidence = excluded.evidence, file_id = excluded.file_id,
-             text_file_id = excluded.text_file_id`,
+             level = excluded.level, text_file_id = excluded.text_file_id`,
         );
         for (const e of edges) {
           ei.run(
@@ -512,6 +515,7 @@ export function createStore(db: Database, entryRepo?: string): Store {
             e.count,
             JSON.stringify(e.evidence),
             e.fileId,
+            e.level ?? null,
             e.textFileId ?? null,
           );
         }
