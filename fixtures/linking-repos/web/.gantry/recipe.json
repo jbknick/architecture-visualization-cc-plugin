@@ -1,12 +1,5 @@
 {
   "version": 1,
-  "dependencies": [
-    { "name": "@tanstack/react-router", "workspace": ".", "role": "framework", "note": "file-based page routes under src/routes" },
-    { "name": "axios", "workspace": ".", "role": "neither", "note": "HTTP client; read by the built-in client adapter" },
-    { "name": "hono", "workspace": ".", "role": "neither", "note": "Hono client types only, no app declared" },
-    { "name": "ky", "workspace": ".", "role": "neither", "note": "HTTP client; read by the built-in client adapter" },
-    { "name": "react", "workspace": ".", "role": "neither", "note": "UI library" }
-  ],
   "helpers": ["resolve-names", "const-strings", "fs-routes"],
   "rules": [
     {

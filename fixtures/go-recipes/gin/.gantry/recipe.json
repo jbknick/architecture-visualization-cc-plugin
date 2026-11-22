@@ -1,8 +1,5 @@
 {
   "version": 1,
-  "dependencies": [
-    { "name": "github.com/gin-gonic/gin", "role": "framework", "note": "router: gin.Default(), Group, GET and the other verbs" }
-  ],
   "helpers": ["resolve-names", "const-strings", "mount-graph", "param-flow"],
   "rules": [
     {

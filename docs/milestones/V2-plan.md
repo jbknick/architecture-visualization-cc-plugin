@@ -20,7 +20,7 @@ The work is groundwork (M7) and then two paths. Path B is self-contained: it nee
 | Milestone                        | Owner  | What a user can do at the end                                                                                                                                                                                                                                        |
 | -------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **M7 V2 groundwork**             | First  | Nothing new; the legacy data dir, store migrations and index-format re-index are gone.                                                                                                                                                                               |
-| **M9 Recipes**                   | Path A | Write a recipe by hand for whatever frameworks and ORMs the repo uses, check it with `gantry recipe check --nodes`, and commit it; every index re-runs it unchanged. Routes, endpoints, tables, reads and writes come from recipes. No hand-written adapters remain. |
+| **M9 Recipes**                   | Path A | Write a recipe by hand for whatever frameworks and ORMs the repo uses, check it with `gantry recipe check --nodes`, and commit it; every index re-runs it unchanged. Routes, endpoints, tables, reads and writes come from recipes. The built-in adapters also stay. |
 | **M10 Call linking in one repo** | Path A | Calls through client instances, wrappers and constant URLs link to their handlers in the same repo.                                                                                                                                                                  |
 | **M8 Any TypeScript project**    | Path A | Index any TypeScript layout: one package, any workspace tool, project references only, or no workspace tool; bundler aliases resolve; a 10,000-file repo is ready in about a minute.                                                                                 |
 | **M15 V2 release**               | Path A | Trace a TypeScript page to the Go handler and tables that serve it in another repo; V2 is tagged.                                                                                                                                                                    |
@@ -75,8 +75,8 @@ No framework- or ORM-specific code. Framework and data-access knowledge lives on
 - **Recipe, not live inference.** Spec section 1 requires deterministic output. The recipe is written once, and the indexer applies the same recipe with `@ast-grep/napi` on every index, like a workflow. Same repo and same recipe give the same graph.
 - **Committed to the repo.** The recipe is `.gantry/recipe.json` at the repo root, one per repo, covering every workspace in it. The user writes it and commits it; Gantry never writes or commits it. A commit's graph depends only on that commit's tree, recipe included, so CI, teammates and every machine build the same graph, and `gantry review <base>...<head>` reads each side's recipe from its own ref. Git history is the recipe's version log.
 - **A recipe is data, never code.** Rules, examples and helper names, checked by zod; it cannot run anything, so a recipe from an untrusted pull request is safe to apply. A repo with no recipe gets the structural graph only.
-- **Recipes run inside the existing adapter framework.** One generic recipe adapter implements the current `Adapter` interface (`extract`/`link`) and is registered where the hand-written adapters are today. The hand-written TanStack Router, TanStack Start, Hono, oRPC and Drizzle adapters are deleted once recipes reproduce `fixtures/adapters` and `fixtures/pnpm-turbo` (#203, #206, #247). `clients.ts` stays as the shared client-call matcher (it is not framework-specific) and is extended in M10 and M13.
-- **What a recipe holds.** The dependencies it has classified (what each is, or that it is neither a framework nor data access); rules that emit route, page, router, mount, endpoint, client-call and table nodes and the existing `serves`, `handles`, `requests`, `reads`, `writes` and `contains` edges (sections 7, 9). Each rule names its language. No framework versions. A collection counts as a table.
+- **Recipes run inside the existing adapter framework.** One generic recipe adapter implements the current `Adapter` interface (`extract`/`link`) and is registered where the hand-written adapters are today. The built-in TanStack Router, TanStack Start, Hono, oRPC and Drizzle adapters are kept, and recipes add to them; the reference recipes of `fixtures/adapters` and `fixtures/pnpm-turbo` give the same nodes (#203, #247). `clients.ts` stays as the shared client-call matcher (it is not framework-specific) and is extended in M10 and M13.
+- **What a recipe holds.** The helpers it uses and rules that emit route, page, router, mount, endpoint, client-call and table nodes and the existing `serves`, `handles`, `requests`, `reads`, `writes` and `contains` edges (sections 7, 9). Each rule names its language. No framework versions. A collection counts as a table.
 - **Validation.** Each rule carries example snippets that must and must not match; a recipe is accepted only when all examples pass. A rule that matches nothing in the repo is a warning, not a rejection. `gantry recipe check` validates the file, runs every example and counts each rule's matches; with `--nodes` it also lists the nodes the index would store, so the author sees what the recipe produces before committing it.
 - **Unresolved sites stay visible** as low-confidence nodes with a reason.
 
@@ -91,9 +91,9 @@ A table named only at runtime is a low-confidence node with a reason, never a gu
 
 ### Spike first
 
-| Spike                   | Question                                                                                                                                                                                                     | Blocks     |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
-| `v2-data-access` (#246) | Do the four data-access helpers, with the existing ones, find tables, reads and writes for Drizzle, Prisma, TypeORM, Kysely, Sequelize, MikroORM, Mongoose, raw SQL, database/sql, sqlx, sqlc, GORM and ent? | #247, #249 |
+| Spike                   | Question                                                                                                                                                                                                     | Blocks |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| `v2-data-access` (#246) | Do the four data-access helpers, with the existing ones, find tables, reads and writes for Drizzle, Prisma, TypeORM, Kysely, Sequelize, MikroORM, Mongoose, raw SQL, database/sql, sqlx, sqlc, GORM and ent? | #247   |
 
 Dependency: `@ast-grep/napi` 0.51.3, pinned exactly (section 2). Prebuilds cover macOS arm64 and x64, Linux arm64 and x64, and Windows x64; there is none for Windows arm64.
 
@@ -159,7 +159,9 @@ Spec sections touched: 9, 15.
 
 ## Languages after V2
 
-TypeScript and Go are hand-written language modules today. No further language gets a module of its own. After V2 a language is added as data. One shared engine on `@ast-grep/napi` reads symbols, imports and calls through a pack per language, whose node-kind tables say which syntax nodes are which (the approach `docs/spikes/parser-check.md` compared). Resolution has three levels; a precise mode, which the user turns on, reads a SCIP index of the repo. Java and Python come first, then C#, Rust and Ruby.
+A language is added as data, not as a module of its own. The shared engine (`core/src/lang/engine/`) exists: it reads symbols, imports and calls on `@ast-grep/napi` through a pack per language, whose node-kind tables say which syntax nodes are which (the approach `docs/spikes/parser-check.md` compared). Go is served by its pack (`lang/packs/go.ts`). Call edges carry a resolver `level`: level 1, resolution by name, works for every pack language; Go keeps its own typed resolver until level 2 lands in the engine. TypeScript keeps its own module.
+
+What remains: levels 2 and 3 in the engine; the Java and Python packs; the opt-in precise mode, which reads a SCIP index of the repo; a measurement of the Java and Python packs against that precise mode; then C#, Rust and Ruby.
 
 ## M15 V2 release (Path A)
 
@@ -188,8 +190,7 @@ Blocked-by relations between issues are kept in the tracker. These contracts and
 Other order that the milestone order does not show:
 
 - #260 (corpus) comes before any measurement on public repos.
-- #246 blocks #247 and #249.
-- #247 deletes the Drizzle adapter; #206 deletes the oRPC and TanStack Start ones.
+- #246 blocks #247.
 - M10's issues follow #203.
 
 ## Lost or at risk

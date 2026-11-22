@@ -1,6 +1,5 @@
 {
  "version":1,
- "dependencies":[{"name":"fastify","role":"framework","note":"http"},{"name":"@prisma/client","role":"data-access","note":"orm"}],
  "helpers":["resolve-names","const-strings","mount-graph","model-naming"],
  "passthrough":[],
  "models":{"explicit":{"user":"users","post":"Post"}},

@@ -1,17 +1,5 @@
 {
   "version": 1,
-  "dependencies": [
-    {
-      "name": "fastify",
-      "role": "framework",
-      "note": "HTTP framework: fastify(), register(plugin, { prefix }), server.get/post"
-    },
-    { "name": "@fastify/cors", "role": "neither", "note": "plugin, registers no route" },
-    { "name": "@fastify/formbody", "role": "neither", "note": "plugin, registers no route" },
-    { "name": "@fastify/helmet", "role": "neither", "note": "plugin, registers no route" },
-    { "name": "@prisma/client", "role": "data-access", "note": "ORM client" },
-    { "name": "pino", "role": "neither", "note": "logger" }
-  ],
   "helpers": [
     "resolve-names",
     "const-strings",

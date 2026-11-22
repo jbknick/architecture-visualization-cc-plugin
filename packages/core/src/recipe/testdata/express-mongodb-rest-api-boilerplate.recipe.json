@@ -1,15 +1,5 @@
 {
   "version": 1,
-  "dependencies": [
-    {
-      "name": "express",
-      "role": "framework",
-      "note": "HTTP framework: express(), Router(), app.use, router.get/post"
-    },
-    { "name": "express-rate-limit", "role": "neither", "note": "middleware, mounted but registers no route" },
-    { "name": "mongodb", "role": "data-access", "note": "document store driver" },
-    { "name": "zod", "role": "neither", "note": "request schemas" }
-  ],
   "helpers": ["resolve-names", "const-strings", "mount-graph", "call-return", "method-classes"],
   "methods": {
     "read": [

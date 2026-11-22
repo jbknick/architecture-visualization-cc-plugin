@@ -1,9 +1,5 @@
 {
   "version": 1,
-  "dependencies": [
-    {"name": "next", "role": "framework", "note": "Next.js apps (app and pages router)"},
-    {"name": "react-router", "role": "framework", "note": "react-vite router"}
-  ],
   "helpers": ["fs-routes", "resolve-names", "const-strings"],
   "rules": [
     {

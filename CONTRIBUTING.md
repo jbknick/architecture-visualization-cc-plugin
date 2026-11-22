@@ -9,9 +9,9 @@ Thanks for wanting to help. The project is at an early stage and its contracts s
 - For anything larger than a small fix, comment on the issue (or open one) first so we can agree on the approach before you write code. Issues labelled `good first issue` or `help wanted` are good places to start.
 - Report security problems privately as described in [`SECURITY.md`](SECURITY.md), not in a public issue.
 
-## Contributing through Devprentice
+## Contributing through a guided program
 
-If you joined through a Devprentice guided program, follow the program's steps alongside this page. The rules here apply the same way: one issue per PR, `pnpm check` passing locally, and review by the code owner before merge. Ask questions about the program in the program itself, and questions about this project in Discussions or on the issue you are working on.
+If you joined through a guided program, follow the program's steps alongside this page. The rules here apply the same way: one issue per PR, `pnpm check` passing locally, and review by the code owner before merge. Ask questions about the program in the program itself, and questions about this project in Discussions or on the issue you are working on.
 
 ## Set up
 

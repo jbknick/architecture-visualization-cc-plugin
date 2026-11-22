@@ -20,7 +20,6 @@ const rule = {
 };
 const recipe = (over: Record<string, unknown> = {}) => ({
   version: 1,
-  dependencies: [{ name: "hono", role: "framework", note: "HTTP framework" }],
   helpers: ["resolve-names", "mount-graph"],
   rules: [rule],
   ...over,
@@ -89,22 +88,16 @@ describe("RecipeSchema", () => {
     expect(RuleSchema.safeParse({ ...rule, emit: { kind: "table", name: "plain" } }).success).toBe(false);
   });
 
-  it("rejects an unknown key at the top, in a rule, in an emit and in a dependency", () => {
+  it("rejects an unknown key at the top, in a rule and in an emit", () => {
     expect(RecipeSchema.safeParse(recipe({ extra: 1 })).success).toBe(false);
+    expect(RecipeSchema.safeParse(recipe({ dependencies: [] })).success).toBe(false);
     expect(RuleSchema.safeParse({ ...rule, extra: 1 }).success).toBe(false);
     expect(RuleSchema.safeParse({ ...rule, emit: { ...rule.emit, extra: 1 } }).success).toBe(false);
-    expect(
-      RecipeSchema.safeParse(recipe({ dependencies: [{ name: "x", role: "neither", note: "", extra: 1 }] }))
-        .success,
-    ).toBe(false);
   });
 
-  it("rejects an unknown emit kind, helper, dependency role and convention", () => {
+  it("rejects an unknown emit kind, helper and convention", () => {
     expect(RuleSchema.safeParse({ ...rule, emit: { kind: "exec", run: "rm -rf /" } }).success).toBe(false);
     expect(RecipeSchema.safeParse(recipe({ helpers: ["eval"] })).success).toBe(false);
-    expect(
-      RecipeSchema.safeParse(recipe({ dependencies: [{ name: "x", role: "admin", note: "" }] })).success,
-    ).toBe(false);
     expect(
       RuleSchema.safeParse({ ...rule, emit: { kind: "fileRoute", convention: "next-app" } }).success,
     ).toBe(false);
