@@ -194,7 +194,7 @@ describe("renamed copies of short functions (#151)", () => {
     expect(sym(store, original).exactHash).not.toBe(sym(store, copy).exactHash);
     expect(sym(store, original).renamedHash).toBe(sym(store, copy).renamedHash);
     expect(await findDuplicates(store, { symbol: sym(store, copy) })).toEqual([
-      { symbolId: original, tier: "exact", score: 1 },
+      { symbolId: original, repo: "repo", tier: "exact", score: 1 },
     ]);
     const unsaved = await findDuplicates(store, { code: { source: short("brandNewName"), lang: "ts" } });
     expect(unsaved.map((c) => [c.symbolId, c.tier]).sort()).toEqual([
@@ -237,10 +237,10 @@ describe("fixture pnpm-turbo", () => {
     const slug = sym(store, "sym:pnpm-turbo:packages/utils/src/slug.ts#slugify");
     const copy = "sym:pnpm-turbo:apps/web/src/lib/slug.ts#slugify";
     const s = await findDuplicates(store, { symbol: slug });
-    expect(s).toEqual([{ symbolId: copy, tier: "exact", score: 1 }]);
+    expect(s).toEqual([{ symbolId: copy, repo: "pnpm-turbo", tier: "exact", score: 1 }]);
     // and the other way round
     expect(await findDuplicates(store, { symbol: sym(store, copy) })).toEqual([
-      { symbolId: slug.id, tier: "exact", score: 1 },
+      { symbolId: slug.id, repo: "pnpm-turbo", tier: "exact", score: 1 },
     ]);
   });
 
@@ -339,7 +339,7 @@ describe("tiers and filters (synthetic hashes)", () => {
       { name: "mid", stmtCount: 4, exactHash: "E-mid", shapeHash: "S-target", minhash: base },
     ]);
     const found = await findDuplicates(store, { symbol: target });
-    expect(found).toEqual([{ symbolId: "sym:repo:src/b.ts#dupe", tier: "exact", score: 1 }]);
+    expect(found).toEqual([{ symbolId: "sym:repo:src/b.ts#dupe", repo: "repo", tier: "exact", score: 1 }]);
   });
 
   it("near: same shape hash or Jaccard at the threshold, nothing below it, parameters within one", async () => {

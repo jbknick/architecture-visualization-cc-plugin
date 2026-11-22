@@ -42,6 +42,7 @@ const NO_VECTORS =
   "meaning search unavailable (no description vectors or embedding model); showing code and keyword matches only";
 
 interface Found {
+  repo: string;
   tier: Tier;
   score: number;
   /** Inside the semantic tier a measured cosine ranks above a keyword-only hit. */
@@ -144,7 +145,8 @@ export const findSimilarTool = defineTool({
         { code: { source: code, lang: dialect, ...(isGo ? { path: "scratch.go" } : {}) } },
         { limit: POOL },
       );
-      for (const c of r.candidates) add(c.symbolId, { tier: c.tier, score: c.score, measured: true });
+      for (const c of r.candidates)
+        add(c.symbolId, { repo: c.repo, tier: c.tier, score: c.score, measured: true });
       for (const s of r.skipped) if (!notes.includes(s.message)) notes.push(s.message);
     }
 
@@ -160,7 +162,8 @@ export const findSimilarTool = defineTool({
             const byKey = new Map(near.map((n) => [n.contentKey, n.cosine]));
             for (const s of store.effectiveSymbols({ kind: [...FUNCTION_LIKE_KINDS] })) {
               const cos = s.exactHash === "" ? undefined : byKey.get(contentKey(s.exactHash));
-              if (cos !== undefined) add(s.id, { tier: "semantic", score: cos, measured: true });
+              if (cos !== undefined)
+                add(s.id, { repo: repoOfId(s.id) as string, tier: "semantic", score: cos, measured: true });
             }
           }
         } catch {
@@ -175,7 +178,7 @@ export const findSimilarTool = defineTool({
         limit: POOL,
         ...(embedder ? { embedder } : {}),
       });
-      for (const h of hits) add(h.id, { tier: "semantic", score: h.score, measured: false });
+      for (const h of hits) add(h.id, { repo: h.repo, tier: "semantic", score: h.score, measured: false });
     }
 
     const behaviors = behaviorMap(store);
@@ -200,7 +203,7 @@ export const findSimilarTool = defineTool({
       const description = sym.exactHash === "" ? null : (behaviors.get(contentKey(sym.exactHash)) ?? null);
       return {
         id: sym.id,
-        repo: repoOfId(sym.id),
+        repo: f.repo,
         name: sym.name,
         kind: sym.kind,
         lang: sym.lang,

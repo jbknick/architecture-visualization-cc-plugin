@@ -112,9 +112,14 @@ export function useOverview(id: string | null): Loadable<OverviewDetail> {
   };
 }
 
-export function useSource(path: string | null, start: number, end: number): Loadable<SourceSlice> {
-  const key = useFreshKey(path === null ? null : `${path}:${start}:${end}`);
-  return useLoad(key, (signal) => api.source(path ?? "", start, end, signal));
+export function useSource(
+  path: string | null,
+  start: number,
+  end: number,
+  repo?: string,
+): Loadable<SourceSlice> {
+  const key = useFreshKey(path === null ? null : `${repo ?? ""}:${path}:${start}:${end}`);
+  return useLoad(key, (signal) => api.source(path ?? "", start, end, signal, repo));
 }
 
 /** Debounced search. An empty query clears the hits without a request. */

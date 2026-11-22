@@ -811,6 +811,10 @@ export const api = {
   search: async (q: string, signal?: AbortSignal): Promise<SearchHit[]> =>
     (await getJson<{ hits: SearchHit[] }>("/api/search", { q }, signal)).hits,
 
-  source: (path: string, start: number, end: number, signal?: AbortSignal) =>
-    getJson<SourceSlice>("/api/source", { path, start, end }, signal),
+  source: (path: string, start: number, end: number, signal?: AbortSignal, repo?: string) =>
+    getJson<SourceSlice>(
+      "/api/source",
+      { path, start, end, ...(repo === undefined ? {} : { repo }) },
+      signal,
+    ),
 };

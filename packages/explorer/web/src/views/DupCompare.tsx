@@ -37,8 +37,8 @@ function Code({ tokens }: { tokens: Token[] | undefined }) {
  * its counterpart. Lines that differ are tinted; indentation does not count as a difference.
  */
 export function DupCompare({ keep, other }: Props) {
-  const left = useSource(keep.path, keep.line, clampEnd(keep));
-  const right = useSource(other.path, other.line, clampEnd(other));
+  const left = useSource(keep.path, keep.line, clampEnd(keep), keep.repo);
+  const right = useSource(other.path, other.line, clampEnd(other), other.repo);
   const leftLines = left.data?.lines;
   const rightLines = right.data?.lines;
   const rows = useMemo(

@@ -123,7 +123,7 @@ export async function duplicateFindings(
         existing: match.name,
         existingPath: pathOfFileId(match.fileId),
         existingLine: match.startLine,
-        ...(repoOfId(match.id) === callerRepo ? {} : { existingRepo: repoOfId(match.id) as string }),
+        ...(c.repo === callerRepo ? {} : { existingRepo: c.repo }),
         tier: c.tier,
         score: c.score,
         ...pickAction(adviseReuse(store, callerPath, match, null, config, callerRepo)),
