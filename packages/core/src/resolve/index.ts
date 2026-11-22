@@ -4,6 +4,7 @@ import { ResolverFactory } from "oxc-resolver";
 import picomatch from "picomatch";
 import { BUILTIN_EXCLUDES } from "../config/index.js";
 import { fileId as makeFileId, pathOfFileId, repoOfId } from "../ids.js";
+import { isPackLang } from "../lang/packs/index.js";
 import type { ParsedFile, ParsedImport, ParsedSite } from "../parse/index.js";
 import type { EdgeKind, EdgeRecord, WorkspaceRecord } from "../types.js";
 import { readJsonc, workspaceForPath } from "../workspace/index.js";
@@ -214,7 +215,7 @@ export function createResolver(ctx: ResolveContext): TypeScriptResolver {
   const publishers = new Map<string, { repo: string; ws: WorkspaceRecord }[]>();
   for (const s of siblings.values()) {
     for (const w of s.workspaces) {
-      if (w.lang === "go") continue;
+      if (w.lang && isPackLang(w.lang)) continue;
       const list = publishers.get(w.name) ?? [];
       list.push({ repo: s.repo, ws: w });
       publishers.set(w.name, list);
@@ -779,10 +780,10 @@ export function createResolver(ctx: ResolveContext): TypeScriptResolver {
 /** `depends_on` edges: workspace -> workspace for each package.json dependency that names a workspace. */
 export function dependsOnEdges(repo: string, workspaces: WorkspaceRecord[]): EdgeRecord[] {
   const byName = new Map<string, WorkspaceRecord>();
-  for (const w of workspaces) if (w.dir !== "." && w.lang !== "go") byName.set(w.name, w);
+  for (const w of workspaces) if (w.dir !== "." && !(w.lang && isPackLang(w.lang))) byName.set(w.name, w);
   const edges: EdgeRecord[] = [];
   for (const w of workspaces) {
-    if (w.lang === "go") continue; // Go modules have their own edges (lang/engine/workspace.ts)
+    if (w.lang && isPackLang(w.lang)) continue; // the workspaces of a language pack have their own edges (lang/engine/workspace.ts)
     const pkgFile = makeFileId(repo, `${w.dir === "." ? "" : `${w.dir}/`}package.json`);
     for (const dep of w.deps) {
       const target = byName.get(dep);

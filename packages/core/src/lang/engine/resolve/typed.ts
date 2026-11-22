@@ -8,8 +8,8 @@ import { EdgeSet } from "./edges.js";
 import { ImportIndex } from "./imports.js";
 import { Reader } from "./read.js";
 import { LastTree, withTree } from "./source.js";
-import { type FileInfo, type Named, type Ty, TypeIndex, type VarInfo } from "./typeindex.js";
-import type { CallExpr, Callee, Decl, Expr, Results } from "./typing.js";
+import { type FileInfo, type MethodHit, type Named, type Ty, TypeIndex, type VarInfo } from "./typeindex.js";
+import type { CallExpr, Callee, Decl, Expr, LocalBody, Results, TypeRef } from "./typing.js";
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -28,11 +28,22 @@ type Scope = Map<string, Local[]>;
 interface Env {
   file: FileInfo;
   scope: Scope;
+  /** The type whose body the code is in; null outside a type body. */
+  owner: Named | null;
 }
 
-/** What a callee resolves to. `target` is the callee symbol (`file` + `name`) when it is a function or method of the repo. */
+/** A function or method of the repo: the file that declares it and the offset of its declaration, which names its symbol. */
+interface Target {
+  file: FileInfo;
+  start: number;
+}
+
+/**
+ * What a callee resolves to. `targets` are the functions or methods it may be: one for a call that is certain, several
+ * for overloads that the number of arguments does not tell apart.
+ */
 interface Resolved {
-  target?: { file: string; name: string };
+  targets: Target[];
   results: Results;
   /** The file the result types are written in. */
   file: FileInfo;
@@ -53,10 +64,12 @@ const named = (t: Ty | null): Named | null => (t?.k === "named" ? t : null);
  * field, a typed local, a constructor result or a declared result type, found with the node kinds and fields the pack's
  * `typing` names. Per function the declared names are collected with their types (scopes are flattened: the nearest
  * preceding declaration of a name wins, and a function literal counts as the function around it). A call whose
- * receiver type is unknown gives no edge; nothing is guessed. `calls` edges are `high`; `extends` runs from a class to
- * each in-repo type it embeds (`high`) and `implements` from a type to each in-repo interface whose method names it
- * covers (`low`). The index and the scopes of the edges hold plain data and the tree of a file is dropped once its facts
- * are read; only the lookups by place keep the tree of the last file they were asked about, one at a time.
+ * receiver type is unknown gives no edge; nothing is guessed. `calls` edges are `high`, unless the number of arguments
+ * leaves several overloads: then each is a `low` edge. `extends` runs from a class to each in-repo type it embeds or
+ * names as its superclass (`high`); `implements` runs from a type to each in-repo interface whose method names it
+ * covers (`low`), or, for a pack that says `nominal`, to each in-repo interface its declaration names (`high`). The index
+ * and the scopes of the edges hold plain data and the tree of a file is dropped once its facts are read; only the lookups
+ * by place keep the tree of the last file they were asked about, one at a time.
  */
 export class TypeCalls implements CallResolver {
   private readonly typing: TypingRules;
@@ -86,6 +99,10 @@ export class TypeCalls implements CallResolver {
     return this.index;
   }
 
+  private ownerOf(file: FileInfo, owner: string | null): Named | null {
+    return owner === null ? null : { k: "named", pkg: file.pkg.path, name: owner };
+  }
+
   /** The `calls`, `extends` and `implements` edges whose source is in this file, sorted by (src, dst, kind). */
   edgesForFile(fileId: string, pf: ParsedFile): EdgeRecord[] {
     const idx = this.idx();
@@ -102,29 +119,39 @@ export class TypeCalls implements CallResolver {
     for (const b of bodies) {
       const src = idByStart.get(b.start);
       if (!src) continue;
-      const env: Env = { file, scope: this.scope(b.decls) };
+      const env: Env = { file, scope: this.scope(b.decls), owner: this.ownerOf(file, b.owner) };
       for (const site of b.calls) {
         const r = this.resolveCall(site.call, env, 0);
-        if (!r.target) continue;
-        const dst = idx.symbolId(r.target.file, r.target.name);
-        if (dst === src || !idx.symbolIds.has(dst)) continue;
-        calls.add(src, dst, "calls", "high", `${file.rel}:${r.line}`);
+        // Overloads the number of arguments does not tell apart are each a guess.
+        const confidence = r.targets.length === 1 ? "high" : "low";
+        for (const t of r.targets) {
+          const dst = idx.symbolAt(t.file.fileId, t.start);
+          if (!dst || dst === src) continue;
+          calls.add(src, dst, "calls", confidence, `${file.rel}:${r.line}`);
+        }
       }
     }
     const extended = new EdgeSet(fileId);
     for (const t of idx.typesOf(fileId)) {
-      if (t.kind !== "class") continue;
-      const src = idx.symbolId(file.rel, t.name);
-      for (const e of t.embedded) {
-        const ty = named(idx.resolveType(e.type, file));
+      const src = idx.symbolAt(fileId, t.start);
+      if (!src) continue;
+      const to = (type: TypeRef | null): string | null => {
+        const ty = named(idx.resolveType(type, file));
         const target = ty ? idx.typeInfo(ty) : undefined;
-        if (!ty || !target) continue;
-        const dst = idx.symbolId(target.file.rel, ty.name);
-        if (dst === src || !idx.symbolIds.has(dst)) continue;
-        extended.add(src, dst, "extends", "high", `${file.rel}:${e.line}`);
+        return target ? idx.symbolAt(target.file.fileId, target.start) : null;
+      };
+      if (t.kind === "class")
+        for (const e of t.embedded) {
+          const dst = to(e.type);
+          if (dst && dst !== src) extended.add(src, dst, "extends", "high", `${file.rel}:${e.line}`);
+        }
+      for (const s of t.supers) {
+        const dst = to(s.type);
+        if (dst && dst !== src) extended.add(src, dst, s.edge, "high", `${file.rel}:${s.line}`);
       }
     }
-    const out = [...calls.edges(), ...extended.edges(), ...(idx.implementers().get(fileId) ?? [])];
+    const implemented = this.typing.implements === "structural" ? (idx.implementers().get(fileId) ?? []) : [];
+    const out = [...calls.edges(), ...extended.edges(), ...implemented];
     return out.sort((a, b) => cmp(a.src, b.src) || cmp(a.dst, b.dst) || cmp(a.kind, b.kind));
   }
 
@@ -153,31 +180,36 @@ export class TypeCalls implements CallResolver {
     if (!place || !node) return null;
     const fd = this.reader.functionAt(place.root, start, end);
     let scope: Scope = new Map();
+    this.reader.setOwner(fd?.owner ?? null, fd?.node ?? null);
     if (fd) {
-      const key = fd.range().start.index;
+      const key = fd.node.range().start.index;
       const hit = place.scopes.get(key);
       if (hit) scope = hit;
       else {
-        scope = this.scope(this.reader.decls(fd));
+        scope = this.scope(this.reader.decls(fd.node));
         place.scopes.set(key, scope);
       }
     }
-    return use(node, { file, scope }, this.reader);
+    try {
+      return use(node, { file, scope, owner: this.ownerOf(file, fd?.owner ?? null) }, this.reader);
+    } finally {
+      this.reader.setOwner(null);
+    }
   }
 
   /**
    * The symbol id of the function or method that the call, or the function named without a call (`rs.login`,
-   * `pkg.Handler`, `handler`), at this source range refers to; null when it is not a function of the repository or
-   * the type of its receiver is unknown.
+   * `pkg.Handler`, `handler`), at this source range refers to; null when it is not a function of the repository, the
+   * type of its receiver is unknown or several overloads fit.
    */
   targetAt(fileId: string, start: number, end: number): string | null {
     const idx = this.idx();
-    const r = this.at(fileId, start, end, (node, env, reader) =>
-      this.resolveCallee(reader.calleeAt(node), env, 0),
-    );
-    if (!r?.target) return null;
-    const dst = idx.symbolId(r.target.file, r.target.name);
-    return idx.symbolIds.has(dst) ? dst : null;
+    const r = this.at(fileId, start, end, (node, env, reader) => {
+      const c = reader.calleeAt(node);
+      return this.resolveCallee(c.callee, c.args, env, 0);
+    });
+    const t = r?.targets.length === 1 ? r.targets[0] : undefined;
+    return t ? idx.symbolAt(t.file.fileId, t.start) : null;
   }
 
   /** The name of the named type of the expression at this range (a sequence or map reads as its element); null when unknown. */
@@ -239,6 +271,43 @@ export class TypeCalls implements CallResolver {
 
   // --- expressions --------------------------------------------------------------------------
 
+  /** The type of a field a bare name can mean inside a type body: of the type itself or of a type around it. */
+  private fieldInScope(name: string, env: Env): Ty | null {
+    if (!env.owner) return null;
+    const index = this.idx();
+    for (const o of index.chain(env.owner)) {
+      const t = index.fieldType(o, name);
+      if (t) return t;
+      // A name the type may inherit from a type outside the repo is not one of the types around it.
+      if (index.hasUnknownSupers(o)) return null;
+    }
+    return null;
+  }
+
+  /** The types of the repo a local body extends; null when it extends one that is not (what it inherits is not known). */
+  private bodySupers(body: LocalBody, env: Env): Named[] | null {
+    const index = this.idx();
+    const out: Named[] = [];
+    for (const ref of body.supers) {
+      const t = named(index.canon(index.resolveType(ref, env.file)));
+      if (!t || !index.typeInfo(t)) return null;
+      out.push(t);
+    }
+    return out;
+  }
+
+  /** The type `this` has in a local body: the one type it extends; unknown when it extends none or several. */
+  private bodySelf(body: LocalBody, env: Env): Ty | null {
+    const supers = this.bodySupers(body, env);
+    return supers?.length === 1 ? (supers[0] ?? null) : null;
+  }
+
+  /** The type a bare name denotes when it is not a variable (`Helper.make()`): a type of the repo, for a pack whose code sits in type bodies. */
+  private typeByName(name: string, env: Env): Named | null {
+    if (!this.typing.enclosing) return null;
+    return this.idx().typeNamed(name, env.file, env.owner?.name ?? null);
+  }
+
   private typeOf(e: Expr | null, env: Env, idx: number, depth: number): Ty | null {
     if (!e || depth > MAX_DEPTH) return null;
     if (e.k === "call") return this.typeOfCall(e.call, env, idx, depth);
@@ -248,8 +317,23 @@ export class TypeCalls implements CallResolver {
       case "name": {
         const l = lookupLocal(env.scope, e.name, e.pos);
         if (l) return this.typeOfLocal(l, env);
+        if (e.body) {
+          // In a local body only what its supertypes declare is known; the type around it is not searched.
+          const t = this.bodySelf(e.body, env);
+          return t?.k === "named" ? index.fieldType(t, e.name) : null;
+        }
+        const f = this.fieldInScope(e.name, env);
+        if (f) return f;
         const v = env.file.pkg.vars.get(e.name);
         return v ? this.typeOfVar(v, depth) : null;
+      }
+      case "self":
+        return e.body ? this.bodySelf(e.body, env) : env.owner;
+      case "parent": {
+        if (e.body) return this.bodySelf(e.body, env);
+        const ti = env.owner ? index.typeInfo(env.owner) : undefined;
+        const sup = ti?.supers.find((s) => s.edge === "extends");
+        return ti && sup ? index.resolveType(sup.type, ti.file) : null;
       }
       case "through":
         return this.typeOf(e.of, env, 0, depth + 1);
@@ -261,14 +345,16 @@ export class TypeCalls implements CallResolver {
       }
       case "member": {
         const op = e.of;
-        if (op?.k === "name" && !lookupLocal(env.scope, op.name, op.pos)) {
+        const plain = op?.k === "name" && !lookupLocal(env.scope, op.name, op.pos);
+        if (op?.k === "name" && plain) {
           const path = env.file.imports.get(op.name);
           if (path) {
             const v = index.pkgs.get(path)?.vars.get(e.name);
             return v ? this.typeOfVar(v, depth) : null;
           }
         }
-        const t = named(index.canon(this.typeOf(op, env, 0, depth + 1)));
+        let t = named(index.canon(this.typeOf(op, env, 0, depth + 1)));
+        if (!t && op?.k === "name" && plain) t = this.typeByName(op.name, env);
         return t ? index.fieldType(t, e.name) : null;
       }
     }
@@ -276,14 +362,16 @@ export class TypeCalls implements CallResolver {
 
   private typeOfVar(v: VarInfo, depth: number): Ty | null {
     if (v.declared) return this.idx().resolveType(v.declared.type, v.file);
-    return v.value ? this.typeOf(v.value, { file: v.file, scope: new Map() }, 0, depth + 1) : null;
+    return v.value
+      ? this.typeOf(v.value, { file: v.file, scope: new Map(), owner: null }, 0, depth + 1)
+      : null;
   }
 
   private typeOfCall(call: CallExpr, env: Env, idx: number, depth: number): Ty | null {
     const index = this.idx();
     const c = call.callee;
-    if (call.builtin && c.k === "name" && !lookupLocal(env.scope, c.name, c.pos)) {
-      const b = this.typing.builtins;
+    const b = this.typing.builtins;
+    if (b && call.builtin && c.k === "name" && !lookupLocal(env.scope, c.name, c.pos)) {
       if (b.typed.includes(c.name) && !env.file.pkg.funcs.has(c.name))
         return call.first && idx === 0 ? index.resolveType(call.first.type, env.file) : null;
       if (b.first.includes(c.name) && !env.file.pkg.funcs.has(c.name))
@@ -295,21 +383,74 @@ export class TypeCalls implements CallResolver {
   }
 
   private resolveCall(call: CallExpr, env: Env, depth: number): Resolved {
-    return this.resolveCallee(call.callee, env, depth);
+    return this.resolveCallee(call.callee, call.args, env, depth);
   }
 
-  /** What the callee of a call refers to (also used for a function named without a call). */
-  private resolveCallee(callee: Callee, env: Env, depth: number): Resolved {
+  /** The overloads that fit as a resolution: one when the call is certain; the type of the result is known when every one agrees on it. */
+  private fromHits(hits: MethodHit[], line: number, env: Env): Resolved {
+    const real = hits.filter((h) => h.kind !== "func-field");
+    const first = real[0];
+    if (!first || real.length < hits.length) return { targets: [], results: [], file: env.file, line };
+    const same = real.every((h) => JSON.stringify(h.results) === JSON.stringify(first.results));
+    return {
+      targets: real.map((h) => ({ file: h.file, start: h.start })),
+      results: same ? first.results : [],
+      file: first.file,
+      line,
+    };
+  }
+
+  /** The methods a bare name can mean inside a type body: of the type itself or one around it, else a static import. */
+  private bareHits(name: string, args: number | null, env: Env, body?: LocalBody): MethodHit[] {
     const idx = this.idx();
-    const none = (line: number): Resolved => ({ results: [], file: env.file, line });
+    if (body) {
+      // A method the body declares has no symbol; what its supertypes declare comes next, and only when all are known.
+      if (body.members.includes(name)) return [];
+      for (const ref of body.supers) {
+        const t = named(idx.canon(idx.resolveType(ref, env.file)));
+        if (!t || !idx.typeInfo(t)) return [];
+        const hits = idx.lookupMethods(t, name, args);
+        if (hits.length > 0) return hits;
+        if (idx.hasUnknownSupers(t)) return [];
+      }
+    }
+    if (env.owner) {
+      for (const o of idx.chain(env.owner)) {
+        const hits = idx.lookupMethods(o, name, args);
+        if (hits.length > 0) return hits;
+        // A name the type may inherit from a type outside the repo is not a member of the types around it.
+        if (idx.hasUnknownSupers(o)) return [];
+      }
+    }
+    for (const t of [...(env.file.statics.get(name) ?? []), ...env.file.staticDemand]) {
+      const hits = idx.lookupMethods(t, name, args);
+      if (hits.length > 0) return hits;
+    }
+    return [];
+  }
+
+  /** What the callee of a call refers to (also used for a function named without a call). `args` is the number of arguments, when known. */
+  private resolveCallee(callee: Callee, args: number | null, env: Env, depth: number): Resolved {
+    const idx = this.idx();
+    const none = (line: number): Resolved => ({ targets: [], results: [], file: env.file, line });
     if (callee.k === "none") return none(callee.line);
     const { pkg } = env.file;
+    if (callee.k === "new") {
+      const t = named(idx.canon(idx.resolveType(callee.type, env.file)));
+      if (!t) return none(callee.line);
+      // A constructor is named like its type and is not inherited.
+      const hits = idx.lookupMethods(t, t.name.slice(t.name.lastIndexOf(".") + 1), args, false);
+      return this.fromHits(hits, callee.line, env);
+    }
     if (callee.k === "name") {
-      if (lookupLocal(env.scope, callee.name, callee.pos)) return none(callee.line);
+      if (this.typing.enclosing) {
+        const hits = this.bareHits(callee.name, args, env, callee.body);
+        if (hits.length > 0) return this.fromHits(hits, callee.line, env);
+      } else if (lookupLocal(env.scope, callee.name, callee.pos)) return none(callee.line);
       const f = pkg.funcs.get(callee.name);
       if (f)
         return {
-          target: { file: f.file.rel, name: callee.name },
+          targets: [{ file: f.file, start: f.start }],
           results: f.results,
           file: f.file,
           line: callee.line,
@@ -319,7 +460,10 @@ export class TypeCalls implements CallResolver {
       return none(callee.line);
     }
     const op = callee.operand;
-    if (op?.k === "name" && !lookupLocal(env.scope, op.name, op.pos)) {
+    // `this.m()` in a local body that declares `m` itself calls a method that has no symbol.
+    if (op?.k === "self" && op.body?.members.includes(callee.name)) return none(callee.line);
+    const plain = op?.k === "name" && !lookupLocal(env.scope, op.name, op.pos);
+    if (op?.k === "name" && plain) {
       const path = env.file.imports.get(op.name);
       if (path) {
         const p = idx.pkgs.get(path);
@@ -329,7 +473,7 @@ export class TypeCalls implements CallResolver {
         const f = p.funcs.get(callee.name);
         if (f)
           return {
-            target: { file: f.file.rel, name: callee.name },
+            targets: [{ file: f.file, start: f.start }],
             results: f.results,
             file: f.file,
             line: callee.line,
@@ -337,16 +481,10 @@ export class TypeCalls implements CallResolver {
         return none(callee.line);
       }
     }
-    const t = named(idx.canon(this.typeOf(op, env, 0, depth + 1)));
+    let t = named(idx.canon(this.typeOf(op, env, 0, depth + 1)));
+    if (!t && op?.k === "name" && plain) t = this.typeByName(op.name, env);
     if (!t) return none(callee.line);
-    const hit = idx.lookupMethod(t, callee.name);
-    if (!hit || hit.kind === "func-field") return none(callee.line);
-    return {
-      target: { file: hit.file.rel, name: hit.name },
-      results: hit.results,
-      file: hit.file,
-      line: callee.line,
-    };
+    return this.fromHits(idx.lookupMethods(t, callee.name, args), callee.line, env);
   }
 }
 

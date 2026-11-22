@@ -15,15 +15,29 @@ describe("language registry", () => {
     }
   });
 
-  it("holds TypeScript and Go", () => {
-    expect(languages().map((m) => m.id)).toEqual(["typescript", "go"]);
-    expect(LANG_IDS).toEqual(["typescript", "go"]);
+  it("picks Java for .java", () => {
+    expect(languageOfPath("src/main/java/a/App.java")?.id).toBe("java");
+  });
+
+  it("holds TypeScript, Go and Java", () => {
+    expect(languages().map((m) => m.id)).toEqual(["typescript", "go", "java"]);
+    expect(LANG_IDS).toEqual(["typescript", "go", "java"]);
     expect(isLang("typescript")).toBe(true);
     expect(isLang("go")).toBe(true);
+    expect(isLang("java")).toBe(true);
     expect(isLang("rust")).toBe(false);
     expect(langLabel("typescript")).toBe("TypeScript");
     expect(langLabel("go")).toBe("Go");
+    expect(langLabel("java")).toBe("Java");
     expect(languageModule("go").label).toBe("Go");
+  });
+
+  it("skips target, build and .gradle folders for Java", () => {
+    const skip = languageModule("java").skipPath;
+    expect(skip?.("core/target/classes/A.java")).toBe(true);
+    expect(skip?.("build/generated/A.java")).toBe(true);
+    expect(skip?.(".gradle/x/A.java")).toBe(true);
+    expect(skip?.("core/src/main/java/A.java")).toBe(false);
   });
 
   it("labels every symbol kind", () => {

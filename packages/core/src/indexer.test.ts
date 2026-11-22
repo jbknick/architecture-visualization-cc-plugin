@@ -25,6 +25,7 @@ type Name =
   | "nx"
   | "react-router-fastify"
   | "go-basic"
+  | "java-basic"
   | "bundler-aliases"
   | "ts-references"
   | "tsconfig-extends-workspace"
@@ -63,6 +64,7 @@ describe("indexRepo + dumpGraph snapshots", () => {
     "nx",
     "react-router-fastify",
     "go-basic",
+    "java-basic",
     "bundler-aliases",
     "ts-references",
     "tsconfig-extends-workspace",

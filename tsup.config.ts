@@ -24,6 +24,7 @@ export default defineConfig({
     "oxc-resolver",
     "@ast-grep/napi",
     "@ast-grep/lang-go",
+    "@ast-grep/lang-java",
     "@huggingface/transformers",
     "onnxruntime-node",
   ],

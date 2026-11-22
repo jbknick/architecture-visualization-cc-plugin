@@ -54,6 +54,10 @@ export interface LanguageModule {
   skipPath?: (repoRelPath: string) => boolean;
   /** Workspace discovery from manifests. */
   detectWorkspaces: typeof detectWorkspaces;
+  /** File names of the manifests that mark a workspace of this language. */
+  manifestFiles: readonly string[];
+  /** Names of symbols that are never offered as duplicates of one another (many per package, never reused). */
+  unreusable: readonly string[];
   /** Parsing to symbols, imports and exports. */
   parseSource: (repo: string, repoRelPath: string, source: string) => ParsedFile;
   /** Import resolution, the adapter resolver, and call and type edges with confidence. */

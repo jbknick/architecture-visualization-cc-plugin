@@ -8,7 +8,13 @@ import { type GantryConfig, loadConfig } from "./config/index.js";
 import { discoverFiles, isIndexable } from "./discover/index.js";
 import { hashSymbol } from "./hash/index.js";
 import { fileId as makeFileId, pathOfFileId, repoOfId } from "./ids.js";
-import { createLangResolver, detectAllWorkspaces, langOfPath, parseFile } from "./lang/index.js";
+import {
+  createLangResolver,
+  detectAllWorkspaces,
+  langOfPath,
+  languageModule,
+  parseFile,
+} from "./lang/index.js";
 import { encodeParsed, LazyParsedMap, ParseCache } from "./parse/cache.js";
 import type { ParsedFile } from "./parse/index.js";
 import { ensureDataDir, type GantryPaths } from "./paths/index.js";
@@ -953,10 +959,10 @@ function writeDependsOn(
     a.push(e);
     byFile.set(e.fileId, a);
   }
-  const manifestOf = (w: WorkspaceRecord): string => (w.lang === "go" ? "go.mod" : "package.json");
-  const wsOfDir = new Map(
-    workspaces.map((w) => [makeFileId(repo, `${w.dir === "." ? "" : `${w.dir}/`}${manifestOf(w)}`), w]),
-  );
+  const wsOfDir = new Map<string, WorkspaceRecord>();
+  for (const w of workspaces)
+    for (const file of languageModule(w.lang ?? "typescript").manifestFiles)
+      wsOfDir.set(makeFileId(repo, `${w.dir === "." ? "" : `${w.dir}/`}${file}`), w);
   for (const [fileId, es] of [...byFile].sort((a, b) => cmp(a[0], b[0]))) {
     const rel = pathOfFileId(fileId);
     const { hash, mtimeMs } = readJsonHash(root, rel);

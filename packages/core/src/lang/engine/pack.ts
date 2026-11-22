@@ -24,6 +24,56 @@ export interface DeclarationRule {
   receiver?: string;
 }
 
+/**
+ * Where the name of a workspace comes from: `pattern` (the first group of a match in the manifest, or in the first of
+ * `files` that exists in the workspace's folder), `path` (the text of an element of an XML manifest, a slash-separated
+ * path from the root element) or `directory` (the name of the folder; of the repo for the root).
+ */
+export type NameSource =
+  | { pattern: RegExp; files?: readonly string[] }
+  | { path: string }
+  | { directory: true };
+
+/** The dependency names a manifest lists: a directive (single and block form) with the tokens its entries have, a global `pattern` (the first group of every match), or an XML element `path`. */
+export type DepsSource = { directive: string; tokens: number } | { pattern: RegExp } | { path: string };
+
+/** One kind of manifest: the file names that have it, how it is read and what is read from it. */
+export interface ManifestRule {
+  /** File names (one workspace per folder that has one of them). */
+  files: readonly string[];
+  /** `text` is read with the patterns and directives below, `xml` with element paths. */
+  format: "text" | "xml";
+  /** Quote characters around a value of a text manifest. */
+  quotes: string;
+  /** Removed from a text manifest before it is read. */
+  comment: RegExp;
+  /** Sources of the workspace name, tried in order; a manifest that gives no name is skipped. */
+  name: readonly NameSource[];
+  deps: DepsSource;
+}
+
+/** A declaration that is a type with a body of members of its own (a class, an interface, an enum, a record). */
+export interface BodiedTypeRule {
+  /** Node kind of the declaration. */
+  kind: string;
+  /** The symbol kind the declaration makes. */
+  as: "class" | "interface" | "enum" | "type";
+  /** Field holding the declared name. */
+  name: string;
+  /** Field holding the body that holds its members. */
+  body: string;
+}
+
+/**
+ * The rule for `exported`: `capital` is an upper-case first letter; `modifier` is a keyword among the modifiers of the
+ * declaration (`node` is the kind of the child that holds them, `implicit` the kinds of the bodies whose members are
+ * exported without one); `underscore` is a name that does not start with `_`.
+ */
+export type ExportedRule =
+  | { by: "capital" }
+  | { by: "modifier"; node: string; keywords: readonly string[]; implicit: readonly string[] }
+  | { by: "underscore" };
+
 /** How the type a receiver or type expression names is found: `*S[T]` names `S`. */
 export interface BaseTypeRule {
   /** Kinds of the node that holds the type's name. */
@@ -46,35 +96,74 @@ export interface TypingRules {
   type: {
     /** Kinds of a plain type name. */
     names: readonly string[];
-    /** A type name qualified by an import: its kind and the fields of the qualifier and of the name. */
-    qualified: { kind: string; qualifier: string; name: string };
+    /** A type name qualified by an import: its kind and the fields of the qualifier and of the name. A language that has no such form leaves it out. */
+    qualified?: { kind: string; qualifier: string; name: string };
     /** Kinds that wrap a type and hold it as their first named child (pointer, parentheses). */
     wrappers: readonly string[];
-    /** A generic instantiation: its kind and the field holding the generic type. */
-    generic: { kind: string; field: string };
+    /** A generic instantiation: its kind and the field holding the generic type (the first named child when there is no field). */
+    generic: { kind: string; field?: string };
     /** Kinds that hold a run of values of one type, and the field holding that type. */
     sequences: readonly { kind: string; element: string }[];
     /** A map type: its kind and the fields of the key and of the value. */
-    maps: { kind: string; key: string; value: string };
+    maps?: { kind: string; key: string; value: string };
     /** Names of types the language provides itself: a type of the repo only where a package declares the name. */
     predeclared: readonly string[];
+    /** Kinds of type expressions that hold other types but are not read as one (a qualified name the pack has no rule for). */
+    unread: readonly string[];
   };
-  /** The declaration that names the package of a file, and the ending of a name that makes a package of its own that no import reaches. */
-  package: { clause: string; separate: string };
+  /**
+   * The declaration that names the package of a file, how the package is identified (`directory`: the workspace name and
+   * the folder below it; `clause`: the name the declaration gives, whatever the folder), and the ending of a name that
+   * makes a package of its own that no import reaches.
+   */
+  package: { clause: string; path: "directory" | "clause"; separate?: string };
   /** Aliases of an import that bind no name. */
   unboundAliases: readonly string[];
-  /** The shape of a list of result types: the list kind, and in each entry the field of the names, the kinds that are names and the field of the type. */
-  results: { list: string; name: string; nameKinds: readonly string[]; type: string };
-  /** The members of a class type: the node that holds them, its entries, and in each entry the field of the names, the kinds that are names and the field of the type. An entry without a name is an embedded (extended) type. */
+  /** The shape of a list of result types: the list kind, and in each entry the field of the names, the kinds that are names and the field of the type. A language with one result type leaves it out. */
+  results?: { list: string; name: string; nameKinds: readonly string[]; type: string };
+  /**
+   * The members of a class type: the node that holds them (for a type with a body, its entries are read from the body),
+   * its entries, and in each entry the field of the names, the kinds that are names and the field of the type. An entry
+   * without a name is an embedded (extended) type. With `declarator`, the field holds declarators and the name is the
+   * `declarator` field of each. `callable` says that a member holding a function may be called by its name.
+   */
   members: {
     container: string;
     entries: readonly string[];
     name: string;
     nameKinds: readonly string[];
     type: string;
+    declarator?: string;
+    callable: boolean;
   };
   /** The elements of an interface body that name another interface, and the kinds of such a name. Any other element makes the method set open. */
   interfaces: { embeds: readonly string[]; embedKinds: readonly string[] };
+  /**
+   * Supertypes written in the declaration of a type: each entry names the field (or, when the grammar has none, the kind
+   * of the child) that holds them and the edge they make (`extends` for a class or interface, `implements` for an
+   * interface a class declares).
+   */
+  supertypes: readonly { field?: string; kind?: string; edge: "extends" | "implements" }[];
+  /** How a type comes to implement an interface: `structural` when its method names cover the interface's, `nominal` when it declares it. */
+  implements: "structural" | "nominal";
+  /**
+   * A language whose code sits in type bodies: a bare name or call inside a body names a member of the enclosing type,
+   * of a type it extends, or of a type around it; a local never hides a method; a name that is a type reaches its static
+   * members. `self` and `parent` are the kinds of the expressions that stand for the enclosing type and for its
+   * superclass.
+   */
+  enclosing?: { self: readonly string[]; parent: readonly string[] };
+  /**
+   * Overloads: methods of one name are told apart by the number of their parameters. `arguments` is the field of a call
+   * site that holds the arguments, `parameters` the kinds of the entries of a parameter list and `variadic` those among
+   * them that take any number of arguments.
+   */
+  arity?: { arguments: string; parameters: readonly string[]; variadic: readonly string[] };
+  /**
+   * An expression that creates a value by calling a constructor: its kind, the field of the type and of the arguments,
+   * and the kind of its child that holds a body of members, which makes the value an instance of a subtype of the type.
+   */
+  construct?: { kind: string; type: string; arguments: string; body?: string };
   /** Field of a type declaration that holds its type parameters. */
   generics: string;
   /** Package-level variables: declarations, specs, and the fields of a spec that hold its type and its values. */
@@ -91,9 +180,9 @@ export interface TypingRules {
     operands: readonly string[];
   };
   /** A conversion written as a call: its kind and the field of the type it names. One whose type is a generic instantiation counts as a call site. */
-  conversion: { kind: string; type: string };
+  conversion?: { kind: string; type: string };
   /** Functions the language provides that have a result type the call site gives: the field of the arguments, the names whose result has the type named by the first argument, and the names whose result has the type of the first argument. */
-  builtins: {
+  builtins?: {
     arguments: string;
     typed: readonly string[];
     first: readonly string[];
@@ -126,14 +215,23 @@ export interface TypingRules {
       variadic: boolean;
       from: "start" | "end";
     }[];
-    /** Declarations of names with values and an optional type: the field of the names, of the type (if the declaration has one) and of the values. */
+    /**
+     * Declarations of names with values and an optional type: the field of the names, of the type (if the declaration has
+     * one; `parentType` is the field of the parent node that holds it, for a declarator that shares one type) and of the
+     * values.
+     */
     declarations: readonly {
       kind: string;
       names: string;
       type?: string;
+      parentType?: string;
       values: string;
       from: "start" | "end";
     }[];
+    /** Type names that say the type is the one of the value (`var x = ...`). */
+    inferred: readonly string[];
+    /** Kinds of the node that holds the several values of a declaration; any other node in the values field is one value. */
+    valueLists: readonly string[];
     /** Names that take the elements of a value: the field of the names and of the value ranged over. */
     ranges: readonly { kind: string; names: string; source: string; from: "start" | "end" }[];
     /** Names whose type is not read. They still hide a name of an outer scope. */
@@ -155,6 +253,8 @@ export interface LanguagePack {
   testPatterns: readonly string[];
   /** Patterns a generated file's text matches; such a file carries the `generated` directive. */
   generatedPatterns: readonly RegExp[];
+  /** Globs (on repo-relative paths) of generated files; such a file carries the `generated` directive too. */
+  generatedPaths: readonly string[];
   /** The tree-sitter grammar: the `@ast-grep` language package and the name it is registered under. */
   grammar: { package: string; name: string };
   nodes: {
@@ -162,8 +262,8 @@ export interface LanguagePack {
     errorKind: string;
     function: readonly DeclarationRule[];
     method: readonly DeclarationRule[];
-    /** The receiver of a method: its parameter node, the field holding the type, and how the base type is found. */
-    receiver: { parameter: string; type: string; baseType: BaseTypeRule };
+    /** The receiver of a method: its parameter node, the field holding the type, and how the base type is found. A language whose methods sit in type bodies leaves it out. */
+    receiver?: { parameter: string; type: string; baseType: BaseTypeRule };
     /** Type declarations: `class` and `interface` are kinds of the type node, any other type is `type`. */
     types: {
       declarations: readonly string[];
@@ -177,11 +277,18 @@ export interface LanguagePack {
       class: readonly string[];
       interface: readonly string[];
       /** Methods declared in the body of an interface type are symbols named `<interface>.<method>`. */
-      interfaceMethods: {
+      interfaceMethods?: {
         container: string;
         members: readonly string[];
         rule: Omit<DeclarationRule, "kind">;
       };
+      /**
+       * Declarations that are types with a body of members. Their symbols are named by the chain of types around them
+       * (`Outer.Inner`), and the methods in their bodies `<type>.<method>`.
+       */
+      bodied: readonly BodiedTypeRule[];
+      /** Kinds of body nodes that hold members, or hold nodes that do (they are walked through). */
+      bodies: readonly string[];
     };
     /** Constants and variables: every name is a `const` symbol. */
     values: {
@@ -196,22 +303,30 @@ export interface LanguagePack {
       declarations: readonly string[];
       specs: readonly string[];
       groups: readonly string[];
-      /** Fields holding the imported path and the optional local alias. */
-      path: string;
-      alias: string;
+      /** Field holding the imported path, or the kinds of the child that holds it when the grammar has no field. */
+      path?: string;
+      pathKinds?: readonly string[];
+      /** Field holding the optional local alias. */
+      alias?: string;
       /** Quote characters around the path. */
       quotes: string;
       /** Separates the segments of an imported path. The first segments are a workspace name, the rest a folder in it. */
       separator: string;
       /** The local name of an import without an alias: the last path segment, skipping a segment that matches `skip`. */
       localName: { skip: RegExp };
+      /**
+       * Imports that name what they bring in: the last segment of the path is a type (or, with `static`, a member of a
+       * type) and the rest its package. `onDemand` is the kind of the child that stands for every name of the path,
+       * `static` the kind of the child that makes the names members. Without it every import brings in a package.
+       */
+      named?: { onDemand: string; static: string };
     };
     /** Kinds of a call site. */
     call: readonly string[];
     /** What is called at a call site, read by the name resolver. */
     callee: {
-      /** Field of a call site that holds the called expression. */
-      field: string;
+      /** Field of a call site that holds the called expression; null when the call site itself holds the operand and the name (a member node without an operand is a bare name). */
+      field: string | null;
       /** Kinds of a bare name (`run`). */
       names: readonly string[];
       /** A name reached through an operand (`<operand>.<name>`): its kind, the fields of both parts, and the kinds an operand that is a plain name has. */
@@ -219,8 +334,8 @@ export interface LanguagePack {
     };
     /** Where the types sit; a pack that has it resolves calls at level 2. */
     typing?: TypingRules;
-    /** Rule for `exported`: `capitalized` is an upper-case first letter. */
-    exported: "capitalized";
+    /** Rule for `exported`. */
+    exported: ExportedRule;
     signature: { empty: string; maxLength: number };
     measure: {
       /** Kinds that add one to the complexity. */
@@ -232,22 +347,14 @@ export interface LanguagePack {
     };
   };
   workspace: {
-    /** File name of the manifest that marks a workspace (one per directory). */
-    manifest: string;
-    /** Quote characters around a manifest value. */
-    quotes: string;
-    /** Removed from a manifest before it is read. */
-    comment: RegExp;
-    /** The workspace name: the first group of this pattern. */
-    name: RegExp;
+    /** The manifests that mark a workspace. A directory with files of several rules is a workspace of the first rule. */
+    manifests: readonly ManifestRule[];
     /** Directory names a manifest search never enters (dot folders are never entered). */
     skipDirs: readonly string[];
-    /** Directive of the manifest that lists dependencies (single and block form), and the tokens its entries have. */
-    deps: { directive: string; tokens: number };
     /** A workspace is an `app` when a source file that is not a test matches `main`, a `package` otherwise. */
     main: RegExp;
-    /** Manifest of the repo that lists the workspaces that belong together, and its directive. */
-    group: { file: string; directive: string; tokens: number };
+    /** Manifest of the repo that lists the workspaces that belong together, and its directive; without one every workspace of the language in the repo belongs together. */
+    group?: { file: string; directive: string; tokens: number };
   };
   tokens: {
     /** Kinds that are identifiers; only `local` ones are renamed. */

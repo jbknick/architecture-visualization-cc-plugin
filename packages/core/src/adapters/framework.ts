@@ -1,11 +1,12 @@
 import { parseSync } from "oxc-parser";
 import { isTestPath } from "../dup/filters.js";
 import { workspaceNameOfId } from "../ids.js";
+import { PACKS } from "../lang/packs/index.js";
 import { isNode, type Node, nodeArray, unwrap } from "../parse/ast.js";
 import type { ParsedFile } from "../parse/index.js";
 import type { LoadedRecipe } from "../recipe/load.js";
 import type { Resolver } from "../resolve/index.js";
-import type { AdapterNodeRecord, EdgeRecord, WorkspaceRecord } from "../types.js";
+import type { AdapterNodeRecord, EdgeRecord, Lang, WorkspaceRecord } from "../types.js";
 
 /**
  * The adapter framework (spec section 9a): framework patterns become adapter nodes (`adapter_nodes`) and edges.
@@ -104,8 +105,8 @@ export interface Adapter<F = unknown> {
   mayMatch?(file: AdapterFileContext): boolean;
   /** Test files (`*.test.*`, `*.spec.*`, `__tests__/`) are skipped unless this is true: test harness apps are not endpoints. */
   includeTests?: boolean;
-  /** The languages whose files the adapter reads; default TypeScript only (Go files are the recipe adapter's alone). */
-  languages?: readonly ("typescript" | "go")[];
+  /** The languages whose files the adapter reads; default TypeScript only (the files of a language pack are the recipe adapter's alone). */
+  languages?: readonly Lang[];
   extract?(ctx: AdapterFileContext): AdapterExtract<F>;
   link?(ctx: AdapterLinkContext<F>): Partial<AdapterOutput>;
 }
@@ -308,8 +309,8 @@ export function runAdapterList(ctx: AdapterRunContext, adapters: readonly Adapte
     if (wsIds.size > 0) {
       for (const f of files) {
         if (!wsIds.has(f.workspaceId)) continue;
-        if (!(adapter.languages ?? ["typescript"]).includes(f.path.endsWith(".go") ? "go" : "typescript"))
-          continue;
+        const pack = PACKS.find((pk) => pk.extensions.some((x) => f.path.endsWith(x)));
+        if (!(adapter.languages ?? ["typescript"]).includes(pack?.id ?? "typescript")) continue;
         if (!adapter.includeTests && isTestPath(f.path)) continue;
         const fc = contextOf(f);
         if (!fc) continue;

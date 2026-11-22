@@ -13,6 +13,7 @@ export const goPack = {
   testPatterns: ["**/*_test.go"],
   // A generated Go file announces itself in a header comment (`go generate` convention).
   generatedPatterns: [/^\/\/ Code generated .* DO NOT EDIT\.$/m],
+  generatedPaths: [],
   grammar: { package: "@ast-grep/lang-go", name: "go" },
   nodes: {
     errorKind: "ERROR",
@@ -59,6 +60,8 @@ export const goPack = {
         members: ["method_elem"],
         rule: { name: "name", parameters: "parameters", result: "result" },
       },
+      bodied: [],
+      bodies: [],
     },
     values: {
       declarations: ["const_declaration", "var_declaration"],
@@ -101,8 +104,9 @@ export const goPack = {
           "any bool byte comparable complex64 complex128 error float32 float64 int int8 int16 int32 int64 " +
           "rune string uint uint8 uint16 uint32 uint64 uintptr"
         ).split(" "),
+        unread: [],
       },
-      package: { clause: "package_clause", separate: "_test" },
+      package: { clause: "package_clause", path: "directory", separate: "_test" },
       unboundAliases: ["_", "."],
       results: { list: "parameter_list", name: "name", nameKinds: ["identifier"], type: "type" },
       members: {
@@ -111,8 +115,11 @@ export const goPack = {
         name: "name",
         nameKinds: ["field_identifier"],
         type: "type",
+        callable: true,
       },
       interfaces: { embeds: ["type_elem"], embedKinds: ["type_identifier", "qualified_type"] },
+      supertypes: [],
+      implements: "structural",
       generics: "type_parameters",
       vars: { declarations: ["var_declaration"], specs: ["var_spec"], type: "type", value: "value" },
       unnamed: ["init", "_"],
@@ -164,6 +171,8 @@ export const goPack = {
           { kind: "var_spec", names: "name", type: "type", values: "value", from: "end" },
           { kind: "const_spec", names: "name", type: "type", values: "value", from: "end" },
         ],
+        inferred: [],
+        valueLists: ["expression_list"],
         ranges: [{ kind: "range_clause", names: "left", source: "right", from: "end" }],
         untyped: [
           { kind: "receive_statement", names: "left", from: "end" },
@@ -178,7 +187,7 @@ export const goPack = {
         "unary_expression",
       ],
     },
-    exported: "capitalized",
+    exported: { by: "capital" },
     signature: { empty: "()", maxLength: 200 },
     measure: {
       branches: ["if_statement", "for_statement", "expression_case", "type_case", "communication_case"],
@@ -210,12 +219,17 @@ export const goPack = {
     },
   },
   workspace: {
-    manifest: "go.mod",
-    quotes: '"`',
-    comment: /\/\/.*$/gm,
-    name: /^\s*module\s+(\S+)/m,
+    manifests: [
+      {
+        files: ["go.mod"],
+        format: "text",
+        quotes: '"`',
+        comment: /\/\/.*$/gm,
+        name: [{ pattern: /^\s*module\s+(\S+)/m }],
+        deps: { directive: "require", tokens: 2 },
+      },
+    ],
     skipDirs: ["vendor", "testdata", "node_modules"],
-    deps: { directive: "require", tokens: 2 },
     main: /^package main\b/m,
     group: { file: "go.work", directive: "use", tokens: 1 },
   },

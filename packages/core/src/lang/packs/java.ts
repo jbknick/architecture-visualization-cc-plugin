@@ -1,0 +1,277 @@
+import type { LanguagePack } from "../engine/pack.js";
+
+/**
+ * The Java pack (spec section 3, `lang/packs/`): tree-sitter Java through `@ast-grep/napi` (no JDK), Maven modules and
+ * Gradle projects as workspaces. The node kinds and field names are those of the tree-sitter Java grammar.
+ */
+export const javaPack = {
+  id: "java",
+  label: "Java",
+  extensions: [".java"],
+  skipPaths: ["**/target/**", "**/build/**", "**/.gradle/**"],
+  testPatterns: ["**/src/test/**", "**/*Test.java", "**/*IT.java"],
+  // The `@Generated` annotation (`javax.annotation` and `jakarta.annotation`, written plain or in full) that generators add.
+  generatedPatterns: [/^\s*@(?:(?:javax|jakarta)\.annotation\.(?:processing\.)?)?Generated\b/m],
+  generatedPaths: ["**/generated/**", "**/generated-sources/**"],
+  grammar: { package: "@ast-grep/lang-java", name: "java" },
+  nodes: {
+    errorKind: "ERROR",
+    function: [],
+    method: [
+      {
+        kind: "method_declaration",
+        name: "name",
+        parameters: "parameters",
+        result: "type",
+        body: "body",
+      },
+      {
+        kind: "constructor_declaration",
+        name: "name",
+        parameters: "parameters",
+        result: "type",
+        body: "body",
+      },
+      {
+        kind: "compact_constructor_declaration",
+        name: "name",
+        parameters: "parameters",
+        result: "type",
+        body: "body",
+      },
+    ],
+    types: {
+      declarations: [],
+      specs: [],
+      groups: [],
+      aliases: [],
+      name: "name",
+      type: "type",
+      class: [],
+      interface: [],
+      bodied: [
+        { kind: "class_declaration", as: "class", name: "name", body: "body" },
+        { kind: "record_declaration", as: "class", name: "name", body: "body" },
+        { kind: "interface_declaration", as: "interface", name: "name", body: "body" },
+        { kind: "annotation_type_declaration", as: "interface", name: "name", body: "body" },
+        { kind: "enum_declaration", as: "enum", name: "name", body: "body" },
+      ],
+      // The members of an enum follow its constants in a node of their own.
+      bodies: ["enum_body_declarations"],
+    },
+    values: { declarations: [], specs: [], groups: [], name: "name", nameKinds: [] },
+    import: {
+      declarations: ["import_declaration"],
+      specs: ["import_declaration"],
+      groups: [],
+      pathKinds: ["scoped_identifier", "identifier"],
+      quotes: "",
+      separator: ".",
+      localName: { skip: /^$/ },
+      named: { onDemand: "asterisk", static: "static" },
+    },
+    call: ["method_invocation"],
+    callee: {
+      // A call site holds its own operand (`object`) and name; without an operand it is a bare name.
+      field: null,
+      names: [],
+      member: { kind: "method_invocation", operand: "object", name: "name", operands: ["identifier"] },
+    },
+    typing: {
+      type: {
+        names: ["type_identifier"],
+        wrappers: [],
+        generic: { kind: "generic_type" },
+        sequences: [{ kind: "array_type", element: "element" }],
+        predeclared: (
+          "Object String Integer Long Short Byte Character Boolean Double Float Number Void Class Enum Record " +
+          "Exception RuntimeException Error Throwable Iterable Comparable CharSequence Runnable Override Deprecated"
+        ).split(" "),
+        unread: ["scoped_type_identifier", "annotated_type"],
+      },
+      package: { clause: "package_declaration", path: "clause" },
+      unboundAliases: [],
+      members: {
+        container: "class_body",
+        entries: ["field_declaration"],
+        name: "declarator",
+        nameKinds: ["variable_declarator"],
+        type: "type",
+        declarator: "name",
+        callable: false,
+      },
+      interfaces: { embeds: [], embedKinds: [] },
+      supertypes: [
+        { field: "superclass", edge: "extends" },
+        { field: "interfaces", edge: "implements" },
+        { kind: "extends_interfaces", edge: "extends" },
+      ],
+      implements: "nominal",
+      enclosing: { self: ["this"], parent: ["super"] },
+      arity: {
+        arguments: "arguments",
+        parameters: ["formal_parameter", "spread_parameter"],
+        variadic: ["spread_parameter"],
+      },
+      construct: {
+        kind: "object_creation_expression",
+        type: "type",
+        arguments: "arguments",
+        body: "class_body",
+      },
+      generics: "type_parameters",
+      vars: { declarations: [], specs: [], type: "type", value: "value" },
+      unnamed: [],
+      callee: {
+        names: [],
+        members: [
+          { kind: "method_invocation", operand: "object", name: "name" },
+          { kind: "field_access", operand: "object", name: "field" },
+        ],
+        operands: ["identifier"],
+      },
+      expressions: {
+        wrappers: ["parenthesized_expression"],
+        names: ["identifier"],
+        index: { kind: "array_access", operand: "array" },
+        through: [],
+        typed: [
+          { kind: "object_creation_expression", type: "type" },
+          { kind: "cast_expression", type: "type" },
+        ],
+      },
+      locals: {
+        nameKinds: ["identifier"],
+        parameters: [
+          { kind: "formal_parameter", name: "name", type: "type", variadic: false, from: "start" },
+          { kind: "enhanced_for_statement", name: "name", type: "type", variadic: false, from: "start" },
+        ],
+        declarations: [
+          { kind: "variable_declarator", names: "name", parentType: "type", values: "value", from: "end" },
+          { kind: "resource", names: "name", type: "type", values: "value", from: "end" },
+        ],
+        inferred: ["var"],
+        valueLists: [],
+        ranges: [],
+        untyped: [
+          { kind: "catch_formal_parameter", names: "name", from: "start" },
+          { kind: "lambda_expression", names: "parameters", from: "start" },
+        ],
+      },
+      lookups: ["method_invocation", "identifier", "field_access", "object_creation_expression"],
+    },
+    // A `public` member is exported, and so is any member of an interface body.
+    exported: { by: "modifier", node: "modifiers", keywords: ["public"], implicit: ["interface_body"] },
+    signature: { empty: "()", maxLength: 200 },
+    measure: {
+      branches: [
+        "if_statement",
+        "for_statement",
+        "enhanced_for_statement",
+        "while_statement",
+        "do_statement",
+        "switch_block_statement_group",
+        "switch_rule",
+        "catch_clause",
+        "ternary_expression",
+      ],
+      binary: { kind: "binary_expression", operator: "operator", operators: ["&&", "||"] },
+      statements: [
+        "expression_statement",
+        "local_variable_declaration",
+        "return_statement",
+        "if_statement",
+        "for_statement",
+        "enhanced_for_statement",
+        "while_statement",
+        "do_statement",
+        "switch_expression",
+        "try_statement",
+        "try_with_resources_statement",
+        "throw_statement",
+        "break_statement",
+        "continue_statement",
+        "synchronized_statement",
+        "assert_statement",
+        "labeled_statement",
+        "yield_statement",
+      ],
+    },
+  },
+  workspace: {
+    manifests: [
+      {
+        files: ["pom.xml"],
+        format: "xml",
+        quotes: "",
+        comment: /<!--[\s\S]*?-->/g,
+        // The artifactId of the project itself, not of its parent or of a dependency.
+        name: [{ path: "project/artifactId" }],
+        deps: { path: "project/dependencies/dependency/artifactId" },
+      },
+      {
+        files: ["build.gradle", "build.gradle.kts"],
+        format: "text",
+        quotes: "\"'",
+        comment: /\/\/.*$|\/\*[\s\S]*?\*\//gm,
+        // The root project is named in the settings file; any other project by its folder.
+        name: [
+          {
+            files: ["settings.gradle", "settings.gradle.kts"],
+            pattern: /rootProject\.name\s*=\s*["']([^"']+)["']/,
+          },
+          { directory: true },
+        ],
+        // `project(":core")` and `project(':libs:core')` name a project by its last segment.
+        deps: { pattern: /project\(\s*["']:?(?:[^"':]+:)*([^"':]+)["']\s*\)/g },
+      },
+    ],
+    skipDirs: ["target", "build", "node_modules"],
+    main: /\bstatic\s+void\s+main\s*\(/,
+  },
+  tokens: {
+    identifiers: ["identifier", "type_identifier"],
+    local: "identifier",
+    strings: ["string_literal", "character_literal"],
+    numbers: [
+      "decimal_integer_literal",
+      "hex_integer_literal",
+      "octal_integer_literal",
+      "binary_integer_literal",
+      "decimal_floating_point_literal",
+      "hex_floating_point_literal",
+    ],
+    comments: ["line_comment", "block_comment"],
+    punctuation: ["(", ")", "{", "}", "[", "]", ",", ";"],
+    ownName: "name",
+    locals: {
+      parameters: { kinds: ["formal_parameter"], field: "name" },
+      bindings: [
+        { kind: "variable_declarator", field: "name" },
+        { kind: "enhanced_for_statement", field: "name" },
+        { kind: "catch_formal_parameter", field: "name" },
+        { kind: "lambda_expression", field: "parameters" },
+      ],
+      specs: { kinds: [], field: "name" },
+      blank: "_",
+    },
+    embedding: {
+      strings: ["string_literal"],
+      stringText: '"s"',
+      localPrefix: "v",
+    },
+  },
+  kindLabels: {
+    function: "method",
+    method: "method",
+    component: "component",
+    hook: "hook",
+    class: "class",
+    type: "type",
+    interface: "interface",
+    enum: "enum",
+    const: "constant",
+  },
+  factSheetHints: [],
+  thresholds: { exactMinStmts: 3, nearMinStmts: 6 },
+} as const satisfies LanguagePack;

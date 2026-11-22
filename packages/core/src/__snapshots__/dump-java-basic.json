@@ -1,0 +1,1155 @@
+{
+  "repos": [
+    {
+      "name": "java-basic"
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "ws:java-basic:app",
+      "repo": "java-basic",
+      "name": "app",
+      "dir": "app",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [
+        "core"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:java-basic:core",
+      "repo": "java-basic",
+      "name": "core",
+      "dir": "core",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [
+        "junit-jupiter"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:java-basic:java-basic",
+      "repo": "java-basic",
+      "name": "java-basic",
+      "dir": ".",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:java-basic:app/pom.xml",
+      "repo": "java-basic",
+      "path": "app/pom.xml",
+      "lang": "java",
+      "workspaceId": "ws:java-basic:app",
+      "contentHash": "fd52c6c9b5a9be0a162bb103141936d507679d17c4eed9b9a789e29eb4d804fe"
+    },
+    {
+      "id": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "repo": "java-basic",
+      "path": "app/src/main/java/com/acme/app/App.java",
+      "lang": "java",
+      "workspaceId": "ws:java-basic:app",
+      "contentHash": "f2f01d7d87a9240f0e1d1fc67727d0171f2ee81c04ef1f9f8be13990ce1cd0ed"
+    },
+    {
+      "id": "file:java-basic:app/src/main/java/com/acme/app/Main.java",
+      "repo": "java-basic",
+      "path": "app/src/main/java/com/acme/app/Main.java",
+      "lang": "java",
+      "workspaceId": "ws:java-basic:app",
+      "contentHash": "ebedc2c95c88351c031e6801bfd62654818bc329d5edbf036d1b34c1485087fd"
+    },
+    {
+      "id": "file:java-basic:app/src/main/java/com/acme/app/generated/Version.java",
+      "repo": "java-basic",
+      "path": "app/src/main/java/com/acme/app/generated/Version.java",
+      "lang": "java",
+      "workspaceId": "ws:java-basic:app",
+      "contentHash": "6044fde29161fbeb3fe2683b086ed986877e28aa959e496afd006f40a998b1f6",
+      "directives": [
+        "generated"
+      ]
+    },
+    {
+      "id": "file:java-basic:app/src/main/java/com/acme/app/model/Person.java",
+      "repo": "java-basic",
+      "path": "app/src/main/java/com/acme/app/model/Person.java",
+      "lang": "java",
+      "workspaceId": "ws:java-basic:app",
+      "contentHash": "4b9d95589190364a95aaa8ce98e97e239d90ea28ec9cdecb963acaf589966f6e"
+    },
+    {
+      "id": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "repo": "java-basic",
+      "path": "core/src/main/java/com/acme/core/Formatter.java",
+      "lang": "java",
+      "workspaceId": "ws:java-basic:core",
+      "contentHash": "d5fca435f2e8db4fb027dea2819bfc12ffc91b32fbdf2ecf66124e2fae4f3eae"
+    },
+    {
+      "id": "file:java-basic:core/src/main/java/com/acme/core/Greeter.java",
+      "repo": "java-basic",
+      "path": "core/src/main/java/com/acme/core/Greeter.java",
+      "lang": "java",
+      "workspaceId": "ws:java-basic:core",
+      "contentHash": "1abb9940aa15193408bf4e71d9b503a3af17e1d9c3a00329548c4b5ecaa30e41"
+    },
+    {
+      "id": "file:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java",
+      "repo": "java-basic",
+      "path": "core/src/main/java/com/acme/core/LoudGreeter.java",
+      "lang": "java",
+      "workspaceId": "ws:java-basic:core",
+      "contentHash": "4fed4db7a31b7f3c8899790414b23a10d6c767ab95979ae4076d1709a06d05c6"
+    },
+    {
+      "id": "file:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java",
+      "repo": "java-basic",
+      "path": "core/src/main/java/com/acme/core/PoliteGreeter.java",
+      "lang": "java",
+      "workspaceId": "ws:java-basic:core",
+      "contentHash": "7bf75461b45735496850568dd216d71a1e5d435f86781891b57a2a917df60e6f"
+    },
+    {
+      "id": "file:java-basic:core/src/main/java/com/acme/core/Strings.java",
+      "repo": "java-basic",
+      "path": "core/src/main/java/com/acme/core/Strings.java",
+      "lang": "java",
+      "workspaceId": "ws:java-basic:core",
+      "contentHash": "34c72b0794282f99eab23e1a2168832ae260f65a4e014e5592193e3f3a086966"
+    },
+    {
+      "id": "file:java-basic:core/src/test/java/com/acme/core/StringsTest.java",
+      "repo": "java-basic",
+      "path": "core/src/test/java/com/acme/core/StringsTest.java",
+      "lang": "java",
+      "workspaceId": "ws:java-basic:core",
+      "contentHash": "759e016ebb04649d02a2e8c7f6a58a1aff30b75bbee53f89a8e9f109306711b1"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "name": "App",
+      "kind": "class",
+      "lang": "java",
+      "exported": true,
+      "signature": "",
+      "startLine": 8,
+      "endLine": 37,
+      "loc": 30,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "3209c0f424478622fdc503c2bb3418db",
+      "shapeHash": "2a52e6beecf546945d62ce32de2499d0"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.App",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "name": "App.App",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "(Greeter greeter)",
+      "startLine": 12,
+      "endLine": 14,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "25ce753f1c0cd0bc6ce80d49540f9026",
+      "shapeHash": "d15e7c5347e5e8de56213de8e8629f7c"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.Counter",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "name": "App.Counter",
+      "kind": "class",
+      "lang": "java",
+      "exported": false,
+      "signature": "",
+      "startLine": 32,
+      "endLine": 36,
+      "loc": 5,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "3f859cc4485c569fbe6dedc4ceecc9ba",
+      "shapeHash": "4ea5e52cb624f26cdee2c1f75ff7a7a8"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.Counter.next",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "name": "App.Counter.next",
+      "kind": "method",
+      "lang": "java",
+      "exported": false,
+      "signature": "() int",
+      "startLine": 33,
+      "endLine": 35,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "b22b6661ffa4eed109bd46b93859be60",
+      "shapeHash": "bb11f8c0cc1395e1a6c9ebd64f686677"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.Inner",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "name": "App.Inner",
+      "kind": "class",
+      "lang": "java",
+      "exported": true,
+      "signature": "",
+      "startLine": 26,
+      "endLine": 30,
+      "loc": 5,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "9abfd6ebf13f985380ab20ad85aed68d",
+      "shapeHash": "2a910d4946260aa3527a8ede4e036b0a"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.Inner.ping",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "name": "App.Inner.ping",
+      "kind": "method",
+      "lang": "java",
+      "exported": false,
+      "signature": "() void",
+      "startLine": 27,
+      "endLine": 29,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "d55dc3c05f8935600498f6db5b28cb7f",
+      "shapeHash": "d51256d04903e8e4bd0d3a73ec1e938c"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.log",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "name": "App.log",
+      "kind": "method",
+      "lang": "java",
+      "exported": false,
+      "signature": "(String line) void",
+      "startLine": 22,
+      "endLine": 24,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "ae91d53a45c80669fb07d3a74f07a9a3",
+      "shapeHash": "004ba6ea00d1987e456d6b3eb8dd93d4"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.run",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "name": "App.run",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "(String name) String",
+      "startLine": 16,
+      "endLine": 20,
+      "loc": 5,
+      "complexity": 1,
+      "stmtCount": 3,
+      "exactHash": "fedf1f37ffae52a90b295e6aa1ed07e5",
+      "shapeHash": "71d8f104f7e56040e522622f43d502b1"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/Main.java#Main",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/Main.java",
+      "name": "Main",
+      "kind": "class",
+      "lang": "java",
+      "exported": true,
+      "signature": "",
+      "startLine": 5,
+      "endLine": 10,
+      "loc": 6,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "fcb3f11cc8db5b945c08e9aae8b82f64",
+      "shapeHash": "2d5b6db1dc2fa4d39bc3ef5ce5a9de9f"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/Main.java#Main.main",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/Main.java",
+      "name": "Main.main",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "(String[] args) void",
+      "startLine": 6,
+      "endLine": 9,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "260d65f4974e8dfba5c9fa848fcfa86d",
+      "shapeHash": "e65cc4d7dd3b48fdd162b314f61ed873"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/generated/Version.java#Version",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/generated/Version.java",
+      "name": "Version",
+      "kind": "class",
+      "lang": "java",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 7,
+      "loc": 5,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "0afbae0749bced24d4e32a3406bf6ddd",
+      "shapeHash": "1fe584ccc4c7af8949fdfe7df5077b15"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/generated/Version.java#Version.value",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/generated/Version.java",
+      "name": "Version.value",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "() String",
+      "startLine": 4,
+      "endLine": 6,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "ef74c201f81c97833281e76ed63dd95f",
+      "shapeHash": "73fb0baac4d76a58b7b214b2649b6c53"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/model/Person.java#Person",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/model/Person.java",
+      "name": "Person",
+      "kind": "class",
+      "lang": "java",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 7,
+      "loc": 5,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "1656cc9683737fefe83f49c163e208a4",
+      "shapeHash": "83437658e654562283aaff310130c8fb"
+    },
+    {
+      "id": "sym:java-basic:app/src/main/java/com/acme/app/model/Person.java#Person.label",
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/model/Person.java",
+      "name": "Person.label",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "() String",
+      "startLine": 4,
+      "endLine": 6,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "770516bbb8deda8fdf4cf6706d6dd0a9",
+      "shapeHash": "3c03a27c6b9924e82af3123ec6def788"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "name": "Formatter",
+      "kind": "class",
+      "lang": "java",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 19,
+      "loc": 17,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "83bc92baffebe6701629bb4e20a82bce",
+      "shapeHash": "9847766a31c746f752b86b8a2dc71838"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.format",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "name": "Formatter.format",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "(String text) String",
+      "startLine": 4,
+      "endLine": 6,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "6a3c49ee708a3758a387bf6b18ad20db",
+      "shapeHash": "6e7ebefd303b1164dbcf8a65bef116f5"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.format~2",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "name": "Formatter.format",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "(String text, int times) String",
+      "startLine": 8,
+      "endLine": 10,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "c8c706a029c66121a251a58c02bb6945",
+      "shapeHash": "68cc61db1f6f435b587f87f1bf81daef"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.pad",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "name": "Formatter.pad",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "(String text) String",
+      "startLine": 12,
+      "endLine": 14,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "44dbfabb05d1d499143d9dc6263c7c5c",
+      "shapeHash": "b53e00d3b68b4ee7d2d989d1c985b188"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.pad~2",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "name": "Formatter.pad",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "(int width) String",
+      "startLine": 16,
+      "endLine": 18,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "0106e388bf8317e0b65d6e57680d9730",
+      "shapeHash": "fd1f8748599853e2040e642cb4c932f8"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/Greeter.java#Greeter",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Greeter.java",
+      "name": "Greeter",
+      "kind": "interface",
+      "lang": "java",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 5,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "472ec148ea17f6f377e524a96c4832e6",
+      "shapeHash": "33658387ba163a0e5da1328c9e4b8fcb"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/Greeter.java#Greeter.greet",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Greeter.java",
+      "name": "Greeter.greet",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "(String name) String",
+      "startLine": 4,
+      "endLine": 4,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "d3dce584d242498cf4d29b2c8cd107cd",
+      "shapeHash": "aedd1ce95befdd942a7b0d6ca2d436a3"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java#LoudGreeter",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java",
+      "name": "LoudGreeter",
+      "kind": "class",
+      "lang": "java",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 8,
+      "loc": 6,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "85b7049675084a7732099ed5df3363ad",
+      "shapeHash": "1e66f88390fbaba9ba3f855b86174871"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java#LoudGreeter.greet",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java",
+      "name": "LoudGreeter.greet",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "(String name) String",
+      "startLine": 4,
+      "endLine": 7,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "a602b082bad33fcf4b2654cab08e52d8",
+      "shapeHash": "1c8dd210a5a40acbf080efe64a58638f"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java#PoliteGreeter",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java",
+      "name": "PoliteGreeter",
+      "kind": "class",
+      "lang": "java",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 8,
+      "loc": 6,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "47c8d23a60b2ece79bc6121737d88024",
+      "shapeHash": "96cfaade0601a13dacf5bad5a40e8abf"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java#PoliteGreeter.greet",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java",
+      "name": "PoliteGreeter.greet",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "(String name) String",
+      "startLine": 4,
+      "endLine": 7,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "b229fa0d129f87113e4224ad855f8b10",
+      "shapeHash": "182079003be432b8b6a98fc71392f134"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/Strings.java#Strings",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Strings.java",
+      "name": "Strings",
+      "kind": "class",
+      "lang": "java",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 9,
+      "loc": 7,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "67a7a9a041b710d4a0df95ca75b8e83c",
+      "shapeHash": "f0f04d67fb286e154c0274753d7cc52b"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/Strings.java#Strings.Strings",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Strings.java",
+      "name": "Strings.Strings",
+      "kind": "method",
+      "lang": "java",
+      "exported": false,
+      "signature": "()",
+      "startLine": 4,
+      "endLine": 4,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "1964670e44c9ab48d1801089cad9b7e5",
+      "shapeHash": "680a146a9c734e6beab7fa8fefdbeca7"
+    },
+    {
+      "id": "sym:java-basic:core/src/main/java/com/acme/core/Strings.java#Strings.shout",
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Strings.java",
+      "name": "Strings.shout",
+      "kind": "method",
+      "lang": "java",
+      "exported": true,
+      "signature": "(String text) String",
+      "startLine": 6,
+      "endLine": 8,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "e2e83b9736e79e8187c4da6d3f569d0b",
+      "shapeHash": "71a1d214d8aa8f6c89525cb26162e0ed"
+    },
+    {
+      "id": "sym:java-basic:core/src/test/java/com/acme/core/StringsTest.java#StringsTest",
+      "fileId": "file:java-basic:core/src/test/java/com/acme/core/StringsTest.java",
+      "name": "StringsTest",
+      "kind": "class",
+      "lang": "java",
+      "exported": false,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 7,
+      "loc": 5,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "226e02d2d4bb39e3fb3863170384ceef",
+      "shapeHash": "1b6a6ef26301faef854fc52adfc6a055"
+    },
+    {
+      "id": "sym:java-basic:core/src/test/java/com/acme/core/StringsTest.java#StringsTest.shoutsInUpperCase",
+      "fileId": "file:java-basic:core/src/test/java/com/acme/core/StringsTest.java",
+      "name": "StringsTest.shoutsInUpperCase",
+      "kind": "method",
+      "lang": "java",
+      "exported": false,
+      "signature": "() void",
+      "startLine": 4,
+      "endLine": 6,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "9f673c11ca67fc960f1998df777b8164",
+      "shapeHash": "b878b8a67317f02c990e706014a8baad"
+    }
+  ],
+  "edges": [
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.App",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.Counter",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.Counter.next",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.Inner",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.Inner.ping",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.log",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.run",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/Main.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/Main.java#Main",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/Main.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/Main.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/Main.java#Main.main",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/Main.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/generated/Version.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/generated/Version.java#Version",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/generated/Version.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/generated/Version.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/generated/Version.java#Version.value",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/generated/Version.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/model/Person.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/model/Person.java#Person",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/model/Person.java"
+    },
+    {
+      "src": "file:java-basic:app/src/main/java/com/acme/app/model/Person.java",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/model/Person.java#Person.label",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/model/Person.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.format",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.format~2",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.pad",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.pad~2",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/Greeter.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Greeter.java#Greeter",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Greeter.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/Greeter.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Greeter.java#Greeter.greet",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Greeter.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java#LoudGreeter",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java#LoudGreeter.greet",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java#PoliteGreeter",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java#PoliteGreeter.greet",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/Strings.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Strings.java#Strings",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Strings.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/Strings.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Strings.java#Strings.Strings",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Strings.java"
+    },
+    {
+      "src": "file:java-basic:core/src/main/java/com/acme/core/Strings.java",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Strings.java#Strings.shout",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Strings.java"
+    },
+    {
+      "src": "file:java-basic:core/src/test/java/com/acme/core/StringsTest.java",
+      "dst": "sym:java-basic:core/src/test/java/com/acme/core/StringsTest.java#StringsTest",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/test/java/com/acme/core/StringsTest.java"
+    },
+    {
+      "src": "file:java-basic:core/src/test/java/com/acme/core/StringsTest.java",
+      "dst": "sym:java-basic:core/src/test/java/com/acme/core/StringsTest.java#StringsTest.shoutsInUpperCase",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/test/java/com/acme/core/StringsTest.java"
+    },
+    {
+      "src": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.Inner.ping",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.log",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/main/java/com/acme/app/App.java:28"
+      ],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "level": 2
+    },
+    {
+      "src": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.run",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.format",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/main/java/com/acme/app/App.java:18"
+      ],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "level": 2
+    },
+    {
+      "src": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.run",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Greeter.java#Greeter.greet",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/main/java/com/acme/app/App.java:17"
+      ],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "level": 2
+    },
+    {
+      "src": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.run",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Strings.java#Strings.shout",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/main/java/com/acme/app/App.java:19"
+      ],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "level": 2
+    },
+    {
+      "src": "sym:java-basic:app/src/main/java/com/acme/app/Main.java#Main.main",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.App",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/main/java/com/acme/app/Main.java:7"
+      ],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/Main.java",
+      "level": 2
+    },
+    {
+      "src": "sym:java-basic:app/src/main/java/com/acme/app/Main.java#Main.main",
+      "dst": "sym:java-basic:app/src/main/java/com/acme/app/App.java#App.run",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/main/java/com/acme/app/Main.java:8"
+      ],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/Main.java",
+      "level": 2
+    },
+    {
+      "src": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.format",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.format~2",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/main/java/com/acme/core/Formatter.java:5"
+      ],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "level": 2
+    },
+    {
+      "src": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.format~2",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.pad",
+      "kind": "calls",
+      "confidence": "low",
+      "count": 1,
+      "evidence": [
+        "core/src/main/java/com/acme/core/Formatter.java:9"
+      ],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "level": 2
+    },
+    {
+      "src": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.format~2",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Formatter.java#Formatter.pad~2",
+      "kind": "calls",
+      "confidence": "low",
+      "count": 1,
+      "evidence": [
+        "core/src/main/java/com/acme/core/Formatter.java:9"
+      ],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "level": 2
+    },
+    {
+      "src": "sym:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java#LoudGreeter",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java#PoliteGreeter",
+      "kind": "extends",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/main/java/com/acme/core/LoudGreeter.java:3"
+      ],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java"
+    },
+    {
+      "src": "sym:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java#LoudGreeter.greet",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java#PoliteGreeter.greet",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/main/java/com/acme/core/LoudGreeter.java:6"
+      ],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java",
+      "level": 2
+    },
+    {
+      "src": "sym:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java#LoudGreeter.greet",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Strings.java#Strings.shout",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/main/java/com/acme/core/LoudGreeter.java:6"
+      ],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java",
+      "level": 2
+    },
+    {
+      "src": "sym:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java#PoliteGreeter",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Greeter.java#Greeter",
+      "kind": "implements",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/main/java/com/acme/core/PoliteGreeter.java:3"
+      ],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java"
+    },
+    {
+      "src": "sym:java-basic:core/src/test/java/com/acme/core/StringsTest.java#StringsTest.shoutsInUpperCase",
+      "dst": "sym:java-basic:core/src/main/java/com/acme/core/Strings.java#Strings.shout",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/test/java/com/acme/core/StringsTest.java:5"
+      ],
+      "fileId": "file:java-basic:core/src/test/java/com/acme/core/StringsTest.java",
+      "level": 2
+    },
+    {
+      "src": "ws:java-basic:app",
+      "dst": "file:java-basic:app/src/main/java/com/acme/app/App.java",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/App.java"
+    },
+    {
+      "src": "ws:java-basic:app",
+      "dst": "file:java-basic:app/src/main/java/com/acme/app/Main.java",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/Main.java"
+    },
+    {
+      "src": "ws:java-basic:app",
+      "dst": "file:java-basic:app/src/main/java/com/acme/app/generated/Version.java",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/generated/Version.java"
+    },
+    {
+      "src": "ws:java-basic:app",
+      "dst": "file:java-basic:app/src/main/java/com/acme/app/model/Person.java",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/src/main/java/com/acme/app/model/Person.java"
+    },
+    {
+      "src": "ws:java-basic:app",
+      "dst": "ws:java-basic:core",
+      "kind": "depends_on",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:app/pom.xml"
+    },
+    {
+      "src": "ws:java-basic:core",
+      "dst": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Formatter.java"
+    },
+    {
+      "src": "ws:java-basic:core",
+      "dst": "file:java-basic:core/src/main/java/com/acme/core/Greeter.java",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Greeter.java"
+    },
+    {
+      "src": "ws:java-basic:core",
+      "dst": "file:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/LoudGreeter.java"
+    },
+    {
+      "src": "ws:java-basic:core",
+      "dst": "file:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/PoliteGreeter.java"
+    },
+    {
+      "src": "ws:java-basic:core",
+      "dst": "file:java-basic:core/src/main/java/com/acme/core/Strings.java",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/main/java/com/acme/core/Strings.java"
+    },
+    {
+      "src": "ws:java-basic:core",
+      "dst": "file:java-basic:core/src/test/java/com/acme/core/StringsTest.java",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:java-basic:core/src/test/java/com/acme/core/StringsTest.java"
+    }
+  ]
+}

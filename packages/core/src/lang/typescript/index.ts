@@ -23,6 +23,8 @@ export const typescript: LanguageModule = {
   label: "TypeScript",
   extensions: [".ts", ".tsx", ".mts", ".cts"],
   detectWorkspaces,
+  manifestFiles: ["package.json"],
+  unreusable: [],
   parseSource,
   createResolver,
   streams: typescriptStreams,

@@ -18,6 +18,7 @@ export interface SyntaxNode {
   kind(): string;
   text(): string;
   isNamed(): boolean;
+  parent(): SyntaxNode | null;
   range(): { start: { line: number; index: number }; end: { line: number; index: number } };
   children(): SyntaxNode[];
   namedChildren(): SyntaxNode[];

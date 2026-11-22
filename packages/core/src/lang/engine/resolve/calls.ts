@@ -92,8 +92,14 @@ export class NameCalls implements CallResolver {
     const only = (list: ParsedSymbol[], confidence: "high" | "low"): Target | null =>
       list.length === 1 && list[0] ? { symbol: list[0], confidence } : null;
     const kind = callee.kind();
-    if (rule.names.includes(kind)) {
-      const name = callee.text();
+    // A member node with no operand names something in scope: a bare name.
+    const bare = rule.names.includes(kind)
+      ? callee.text()
+      : kind === rule.member.kind && !callee.field(rule.member.operand)
+        ? (callee.field(rule.member.name)?.text() ?? null)
+        : null;
+    if (bare !== null) {
+      const name = bare;
       const here = entry.parsed.symbols.filter((s) => s.kind === "function" && s.name === name);
       if (here.length > 0) return only(here, "high");
       // Every function and method of that name counts: a clash of any kind gives no edge, and the one candidate must be a function.
@@ -138,7 +144,7 @@ export class NameCalls implements CallResolver {
     this.withRoot(entry, (root) => {
       const sites = root.findAll({ rule: { any: this.pack.nodes.call.map((kind) => ({ kind })) } });
       for (const site of sites) {
-        const callee = site.field(this.pack.nodes.callee.field);
+        const callee = this.calleeOf(site);
         const target = this.resolve(entry, callee);
         const caller = this.callerAt(parsed, site.range().start.index);
         if (!target || !caller || target.symbol.id === caller.id) continue;
@@ -171,8 +177,14 @@ export class NameCalls implements CallResolver {
     });
     const node = byRange?.get(`${start}:${end}`);
     if (!node) return null;
-    const callee = rule.call.includes(node.kind()) ? node.field(rule.callee.field) : node;
+    const callee = rule.call.includes(node.kind()) ? this.calleeOf(node) : node;
     return this.resolve(entry, callee)?.symbol.id ?? null;
+  }
+
+  /** The called expression of a call site: the field the pack names, or the call site itself when the pack names none. */
+  private calleeOf(site: SyntaxNode): SyntaxNode | null {
+    const field = this.pack.nodes.callee.field;
+    return field === null ? site : site.field(field);
   }
 
   /** Level 1 reads no types. */

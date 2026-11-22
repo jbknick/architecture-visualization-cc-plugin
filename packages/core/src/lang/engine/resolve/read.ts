@@ -1,7 +1,9 @@
 import type { SyntaxNode } from "../grammar.js";
 import type { DeclarationRule, LanguagePack, TypingRules } from "../pack.js";
 import { baseTypeName, rawImportsOf, specsOf } from "../parse.js";
+import { bodiedName, bodiedRule, membersOf, walkDeclarations } from "../walk.js";
 import type {
+  Arity,
   CallExpr,
   Callee,
   CallSite,
@@ -10,6 +12,7 @@ import type {
   Expr,
   FileDecls,
   FunctionBody,
+  LocalBody,
   Results,
   TypeDecl,
   TypeRef,
@@ -36,12 +39,23 @@ function namesIn(d: SyntaxNode, field: string, kinds: readonly string[]): Syntax
   return out;
 }
 
+/** A function or method found in a file: its node, its rule and the type body around it. */
+export interface FunctionNode {
+  node: SyntaxNode;
+  rule: DeclarationRule;
+  owner: string | null;
+}
+
 /**
  * Turns the tree of a file into plain data (`typing.ts`) with the node kinds and fields a pack's `typing` names. Every
  * method returns data; no result holds a node.
  */
 export class Reader {
   private readonly typing: TypingRules;
+  /** The dotted name of the type whose body the types being read sit in; null at the top of a file. */
+  private owner: string | null = null;
+  /** The function or method whose body is being read; null outside one. */
+  private fn: SyntaxNode | null = null;
 
   constructor(private readonly pack: LanguagePack) {
     if (!pack.nodes.typing) throw new Error(`${pack.id}: the pack has no typing rules`);
@@ -58,13 +72,14 @@ export class Reader {
     while (b) {
       const k = b.kind();
       if (t.wrappers.includes(k)) b = b.namedChildren()[0] ?? null;
-      else if (k === t.generic.kind) b = b.field(t.generic.field);
+      else if (k === t.generic.kind)
+        b = t.generic.field ? b.field(t.generic.field) : (b.namedChildren()[0] ?? null);
       else break;
     }
     if (!b) return null;
     const k = b.kind();
-    if (t.names.includes(k)) return { k: "name", name: b.text() };
-    if (k === t.qualified.kind)
+    if (t.names.includes(k)) return { k: "name", name: b.text(), owner: this.owner };
+    if (t.qualified && k === t.qualified.kind)
       return {
         k: "qual",
         qualifier: b.field(t.qualified.qualifier)?.text() ?? "",
@@ -72,7 +87,7 @@ export class Reader {
       };
     const seq = t.sequences.find((s) => s.kind === k);
     if (seq) return { k: "seq", elem: this.typeRef(b.field(seq.element), depth + 1) };
-    if (k === t.maps.kind)
+    if (t.maps && k === t.maps.kind)
       return {
         k: "map",
         key: this.typeRef(b.field(t.maps.key), depth + 1),
@@ -81,12 +96,28 @@ export class Reader {
     return null;
   }
 
+  /** The type expressions inside a node that lists types (`implements A, B` holds a list holding both). */
+  private typesIn(n: SyntaxNode, out: SyntaxNode[] = [], depth = 0): SyntaxNode[] {
+    const t = this.typing.type;
+    const k = n.kind();
+    if (t.unread.includes(k)) return out;
+    if (
+      t.names.includes(k) ||
+      k === t.generic.kind ||
+      t.wrappers.includes(k) ||
+      (t.qualified && k === t.qualified.kind)
+    )
+      out.push(n);
+    else if (depth < MAX_TYPE_DEPTH) for (const c of n.namedChildren()) this.typesIn(c, out, depth + 1);
+    return out;
+  }
+
   /** Result types of a declaration: the result field is one type, or a list with one entry per name (at least one). */
   private results(decl: SyntaxNode, field: string): Results {
     const r = decl.field(field);
     if (!r) return [];
     const rule = this.typing.results;
-    if (r.kind() !== rule.list) return [this.typeRef(r)];
+    if (!rule || r.kind() !== rule.list) return [this.typeRef(r)];
     const out: Results = [];
     for (const p of r.namedChildren()) {
       const t = p.field(rule.type);
@@ -97,6 +128,27 @@ export class Reader {
     return out;
   }
 
+  /** The number of arguments a call site passes; null for a language that does not tell overloads apart. */
+  private argCount(site: SyntaxNode): number | null {
+    const a = this.typing.arity;
+    if (!a) return null;
+    const comments = this.pack.tokens.comments;
+    return (site.field(a.arguments)?.namedChildren() ?? []).filter((c) => !comments.includes(c.kind()))
+      .length;
+  }
+
+  /** The number of arguments a declaration takes; null when the language does not tell overloads apart or the declaration has no parameter list. */
+  private arityOf(d: SyntaxNode, rule: { parameters: string }): Arity | null {
+    const a = this.typing.arity;
+    const list = a ? d.field(rule.parameters) : null;
+    if (!a || !list) return null;
+    const params = list.namedChildren().filter((c) => a.parameters.includes(c.kind()));
+    const variadic = params.some((c) => a.variadic.includes(c.kind()));
+    return variadic
+      ? { min: params.length - 1, max: Number.POSITIVE_INFINITY }
+      : { min: params.length, max: params.length };
+  }
+
   // --- expressions --------------------------------------------------------------------------
 
   /** An expression as far as its type is read; null for a form that is not read. */
@@ -105,9 +157,11 @@ export class Reader {
     if (!x || depth > MAX_DEPTH) return null;
     const e = this.typing.expressions;
     const kind = x.kind();
-    if (this.pack.nodes.call.includes(kind) || kind === this.typing.conversion.kind)
-      return { k: "call", call: this.call(x, depth + 1) };
-    if (e.names.includes(kind)) return { k: "name", name: x.text(), pos: x.range().start.index };
+    if (this.isCall(kind)) return { k: "call", call: this.call(x, depth + 1) };
+    if (this.typing.enclosing?.self.includes(kind)) return { k: "self", ...this.bodyOf(x) };
+    if (this.typing.enclosing?.parent.includes(kind)) return { k: "parent", ...this.bodyOf(x) };
+    if (e.names.includes(kind))
+      return { k: "name", name: x.text(), pos: x.range().start.index, ...this.bodyOf(x) };
     const through = e.through.find((r) => r.kind === kind);
     if (through) {
       if (
@@ -133,12 +187,52 @@ export class Reader {
     return null;
   }
 
+  /** True for the kind of a call site read as a call: a call, or a conversion written as one. */
+  private isCall(kind: string): boolean {
+    return this.pack.nodes.call.includes(kind) || kind === this.typing.conversion?.kind;
+  }
+
   /** The operand of a member: a plain name keeps its place, anything else reads as an expression. */
   private operand(node: SyntaxNode | null, depth: number): Expr | null {
     const x = unparen(this.typing, node);
     if (x && this.typing.callee.operands.includes(x.kind()))
-      return { k: "name", name: x.text(), pos: x.range().start.index };
+      return { k: "name", name: x.text(), pos: x.range().start.index, ...this.bodyOf(x) };
     return this.expr(x, depth);
+  }
+
+  /**
+   * The body of a construction expression or of a type declared inside the function that holds `x`, when `x` is inside
+   * one (the innermost): its code is not in the type around the function. Empty otherwise.
+   */
+  private bodyOf(x: SyntaxNode): { body?: LocalBody } {
+    const t = this.typing;
+    const fn = this.fn;
+    if (!fn || !t.enclosing) return {};
+    const same = (a: SyntaxNode, b: SyntaxNode): boolean =>
+      a.range().start.index === b.range().start.index && a.range().end.index === b.range().end.index;
+    const names = (body: SyntaxNode): string[] =>
+      membersOf(this.pack, body).flatMap((m) => {
+        const rule = this.pack.nodes.method.find((r) => r.kind === m.kind());
+        const name = rule ? m.field(rule.name)?.text() : undefined;
+        return name ? [name] : [];
+      });
+    let child = x;
+    for (let p = x.parent(); p && !same(p, fn); child = p, p = p.parent()) {
+      const created = t.construct;
+      if (created?.body && p.kind() === created.kind && child.kind() === created.body)
+        return { body: { supers: [this.typeRef(p.field(created.type))], members: names(child) } };
+      const rule = bodiedRule(this.pack, p.kind());
+      const body = rule ? p.field(rule.body) : null;
+      if (body && same(body, child)) {
+        const supers = t.supertypes.flatMap((s) =>
+          (s.field ? p.fieldChildren(s.field) : p.namedChildren().filter((c) => c.kind() === s.kind)).flatMap(
+            (h) => this.typesIn(h).map((ty) => this.typeRef(ty)),
+          ),
+        );
+        return { body: { supers, members: names(body) } };
+      }
+    }
+    return {};
   }
 
   /** What an expression calls. With `strip`, an instantiation (`f[T]`) stands for what it instantiates. */
@@ -151,7 +245,9 @@ export class Reader {
           t,
           fn.kind() === t.expressions.index.kind
             ? fn.field(t.expressions.index.operand)
-            : fn.field(t.type.generic.field),
+            : t.type.generic.field
+              ? fn.field(t.type.generic.field)
+              : (fn.namedChildren()[0] ?? null),
         );
       }
     }
@@ -159,13 +255,23 @@ export class Reader {
     if (!fn) return { k: "none", line };
     const kind = fn.kind();
     if (t.callee.names.includes(kind))
-      return { k: "name", name: fn.text(), pos: fn.range().start.index, line };
+      return { k: "name", name: fn.text(), pos: fn.range().start.index, line, ...this.bodyOf(fn) };
     const member = t.callee.members.find((r) => r.kind === kind);
     if (member) {
       const nameNode = fn.field(member.name);
+      const operand = fn.field(member.operand);
+      // A member node without an operand names something in scope: a bare name.
+      if (!operand && nameNode)
+        return {
+          k: "name",
+          name: nameNode.text(),
+          pos: nameNode.range().start.index,
+          line,
+          ...this.bodyOf(fn),
+        };
       return {
         k: "member",
-        operand: this.operand(fn.field(member.operand), depth + 1),
+        operand: this.operand(operand, depth + 1),
         name: nameNode?.text() ?? "",
         line: (nameNode ?? fn).range().start.line + 1,
       };
@@ -173,27 +279,53 @@ export class Reader {
     return { k: "none", line };
   }
 
-  /** A call site (or a conversion written as one). */
+  /** A call site (or a conversion written as one, or a construction). */
   private call(x: SyntaxNode, depth: number): CallExpr {
     const t = this.typing;
-    const isConversion = x.kind() === t.conversion.kind;
-    const fnNode = isConversion ? x.field(t.conversion.type) : x.field(this.pack.nodes.callee.field);
+    if (t.construct && x.kind() === t.construct.kind)
+      return {
+        callee: { k: "new", type: this.typeRef(x.field(t.construct.type)), line: x.range().start.line + 1 },
+        builtin: false,
+        first: null,
+        args: this.argCount(x),
+      };
+    const isConversion = x.kind() === t.conversion?.kind;
+    const calleeField = this.pack.nodes.callee.field;
+    const fnNode =
+      t.conversion && isConversion
+        ? x.field(t.conversion.type)
+        : calleeField === null
+          ? x
+          : x.field(calleeField);
     const callee = this.callee(fnNode, x, true, depth);
     const raw = unparen(t, fnNode);
     const builtin = !isConversion && raw !== null && t.expressions.names.includes(raw.kind());
     let first: CallExpr["first"] = null;
-    if (builtin && (t.builtins.typed.includes(raw.text()) || t.builtins.first.includes(raw.text()))) {
+    if (
+      builtin &&
+      t.builtins &&
+      (t.builtins.typed.includes(raw.text()) || t.builtins.first.includes(raw.text()))
+    ) {
       const arg = x.field(t.builtins.arguments)?.namedChildren()[0] ?? null;
       if (arg) first = { type: this.typeRef(arg), expr: this.expr(arg, depth + 1) };
     }
-    return { callee, builtin, first };
+    return { callee, builtin, first, args: this.argCount(x) };
   }
 
   /** The callee of the function, or of a function named without a call, at a node (`targetAt`). */
-  calleeAt(node: SyntaxNode): Callee {
-    const isCall = this.pack.nodes.call.includes(node.kind()) || node.kind() === this.typing.conversion.kind;
-    if (!isCall) return this.callee(node, node, false, 0);
-    return this.call(node, 0).callee;
+  calleeAt(node: SyntaxNode): { callee: Callee; args: number | null } {
+    const kind = node.kind();
+    if (this.isCall(kind) || kind === this.typing.construct?.kind) {
+      const c = this.call(node, 0);
+      return { callee: c.callee, args: c.args };
+    }
+    return { callee: this.callee(node, node, false, 0), args: null };
+  }
+
+  /** Sets the type body the types read next sit in (a lookup by place reads inside a function of a type). */
+  setOwner(owner: string | null, fn: SyntaxNode | null = null): void {
+    this.owner = owner;
+    this.fn = fn;
   }
 
   // --- function bodies ----------------------------------------------------------------------
@@ -232,8 +364,15 @@ export class Reader {
       const decl = l.declarations.find((r) => r.kind === kind);
       if (decl) {
         const names = namesIn(d, decl.names, l.nameKinds);
-        const typeNode = decl.type ? d.field(decl.type) : null;
-        const values = (d.field(decl.values)?.namedChildren() ?? []).map((v) => this.expr(v));
+        let typeNode = decl.type
+          ? d.field(decl.type)
+          : decl.parentType
+            ? (d.parent()?.field(decl.parentType) ?? null)
+            : null;
+        if (typeNode && l.inferred.includes(typeNode.text())) typeNode = null;
+        const list = d.field(decl.values);
+        const nodes = list ? (l.valueLists.includes(list.kind()) ? list.namedChildren() : [list]) : [];
+        const values = nodes.map((v) => this.expr(v));
         for (const [index, n] of names.entries())
           add(n.text(), at(decl.from), {
             k: "values",
@@ -263,45 +402,69 @@ export class Reader {
   /** The call sites inside a node, in source order. */
   calls(body: SyntaxNode): CallSite[] {
     const t = this.typing;
-    const any = [
-      ...this.pack.nodes.call.map((kind) => ({ kind })),
-      { kind: t.conversion.kind, has: { field: t.conversion.type, kind: t.type.generic.kind } },
-    ];
+    const any: Record<string, unknown>[] = this.pack.nodes.call.map((kind) => ({ kind }));
+    if (t.conversion)
+      any.push({ kind: t.conversion.kind, has: { field: t.conversion.type, kind: t.type.generic.kind } });
+    if (t.construct) any.push({ kind: t.construct.kind });
     return body.findAll({ rule: { any } }).map((site) => ({
       call: this.call(site, 0),
       line: site.range().start.line + 1,
     }));
   }
 
-  /** A top-level function or method declaration of the pack (the rule it matches), or undefined. */
-  rule(d: SyntaxNode): DeclarationRule | undefined {
+  /** The rule of a function or method declaration found where `owner` says (a top-level function, a method with a receiver, a member of a type body), or undefined. */
+  rule(d: SyntaxNode, owner: string | null): DeclarationRule | undefined {
     const kind = d.kind();
-    return (
-      this.pack.nodes.function.find((r) => r.kind === kind) ??
-      this.pack.nodes.method.find((r) => r.kind === kind)
-    );
+    const n = this.pack.nodes;
+    if (owner === null)
+      return n.function.find((r) => r.kind === kind) ?? n.method.find((r) => r.kind === kind && r.receiver);
+    return n.method.find((r) => r.kind === kind && !r.receiver);
+  }
+
+  /** Every function and method declaration of a file, in source order, with the type body around it. */
+  functions(root: SyntaxNode): FunctionNode[] {
+    const out: FunctionNode[] = [];
+    walkDeclarations(this.pack, root, ({ node, owner }) => {
+      const rule = this.rule(node, owner);
+      if (rule) out.push({ node, rule, owner });
+    });
+    return out;
   }
 
   /** The functions and methods of a file with their bodies' declarations and call sites. */
   bodies(root: SyntaxNode): FunctionBody[] {
     const out: FunctionBody[] = [];
-    for (const d of root.namedChildren()) {
-      const rule = this.rule(d);
-      const body = rule?.body ? d.field(rule.body) : null;
-      if (!rule || !body) continue;
-      out.push({ start: d.range().start.index, decls: this.decls(d), calls: this.calls(body) });
+    for (const f of this.functions(root)) {
+      const body = f.rule.body ? f.node.field(f.rule.body) : null;
+      if (!body) continue;
+      this.owner = f.owner;
+      this.fn = f.node;
+      out.push({
+        start: f.node.range().start.index,
+        owner: f.owner,
+        decls: this.decls(f.node),
+        calls: this.calls(body),
+      });
     }
+    this.owner = null;
+    this.fn = null;
     return out;
   }
 
-  /** The top-level function or method declaration that holds the offset range; null when none does. */
-  functionAt(root: SyntaxNode, start: number, end: number): SyntaxNode | null {
-    for (const d of root.namedChildren()) {
-      if (!this.rule(d)) continue;
-      const r = d.range();
-      if (r.start.index <= start && end <= r.end.index) return d;
+  /** The innermost function or method declaration that holds the offset range, with the type body around it; null when none does. */
+  functionAt(
+    root: SyntaxNode,
+    start: number,
+    end: number,
+  ): { node: SyntaxNode; owner: string | null } | null {
+    let best: { node: SyntaxNode; owner: string | null; size: number } | null = null;
+    for (const f of this.functions(root)) {
+      const r = f.node.range();
+      const size = r.end.index - r.start.index;
+      if (r.start.index <= start && end <= r.end.index && (!best || size < best.size))
+        best = { node: f.node, owner: f.owner, size };
     }
-    return null;
+    return best ? { node: best.node, owner: best.owner } : null;
   }
 
   // --- declarations -------------------------------------------------------------------------
@@ -310,41 +473,62 @@ export class Reader {
   declarations(root: SyntaxNode): FileDecls {
     const n = this.pack.nodes;
     const t = this.typing;
+    const clause = root.namedChildren().find((c) => c.kind() === t.package.clause);
     const out: FileDecls = {
-      packageName:
-        root
-          .namedChildren()
-          .find((c) => c.kind() === t.package.clause)
-          ?.namedChildren()[0]
-          ?.text() ?? "?",
-      imports: rawImportsOf(this.pack, root).map((i) => ({ alias: i.alias, specifier: i.specifier })),
+      packageName: clause?.namedChildren().at(-1)?.text() ?? "?",
+      packaged: clause !== undefined,
+      imports: rawImportsOf(this.pack, root).map((i) => ({
+        alias: i.alias,
+        specifier: i.specifier,
+        name: i.name,
+        static: i.static,
+      })),
       funcs: [],
       methods: [],
       types: [],
       vars: [],
     };
-    for (const d of root.namedChildren()) {
+    walkDeclarations(this.pack, root, ({ node: d, owner }) => {
+      this.owner = owner;
       const kind = d.kind();
-      const fn = n.function.find((r) => r.kind === kind);
-      const method = n.method.find((r) => r.kind === kind);
-      if (fn) {
+      const start = d.range().start.index;
+      const rule = this.rule(d, owner);
+      const fn = owner === null ? n.function.find((r) => r.kind === kind) : undefined;
+      const bodied = bodiedRule(this.pack, kind);
+      if (rule && fn) {
         const name = d.field(fn.name)?.text();
-        if (name && !t.unnamed.includes(name)) out.funcs.push({ name, results: this.results(d, fn.result) });
-      } else if (method) {
-        const name = d.field(method.name)?.text();
-        const recv = (method.receiver ? d.field(method.receiver) : null)
-          ?.namedChildren()
-          .find((c) => c.kind() === n.receiver.parameter);
-        const base = baseTypeName(n.receiver.baseType, recv?.field(n.receiver.type) ?? null);
-        if (name && recv)
-          out.methods.push({ key: `${base}.${name}`, results: this.results(d, method.result) });
-      } else if (n.types.declarations.includes(kind)) {
+        if (name && !t.unnamed.includes(name))
+          out.funcs.push({ name, results: this.results(d, fn.result), start, arity: this.arityOf(d, fn) });
+      } else if (rule) {
+        const name = d.field(rule.name)?.text();
+        let key: string | null = null;
+        const r = n.receiver;
+        if (rule.receiver && r) {
+          const recv = d
+            .field(rule.receiver)
+            ?.namedChildren()
+            .find((c) => c.kind() === r.parameter);
+          const base = baseTypeName(r.baseType, recv?.field(r.type) ?? null);
+          if (name && recv) key = `${base}.${name}`;
+        } else if (name && owner !== null) key = `${owner}.${name}`;
+        if (key !== null)
+          out.methods.push({
+            key,
+            owner,
+            results: this.results(d, rule.result),
+            start,
+            arity: this.arityOf(d, rule),
+          });
+      } else if (bodied) {
+        const name = bodiedName(bodied, d, owner);
+        if (name) out.types.push(this.bodiedDecl(d, bodied.as, name, owner));
+      } else if (owner === null && n.types.declarations.includes(kind)) {
         for (const s of specsOf(d, n.types.specs, n.types.groups)) {
           const name = s.field(n.types.name)?.text();
           const type = s.field(n.types.type);
           if (name && type) out.types.push(this.typeDecl(s, name, type));
         }
-      } else if (t.vars.declarations.includes(kind)) {
+      } else if (owner === null && t.vars.declarations.includes(kind)) {
         for (const s of specsOf(d, t.vars.specs, n.values.groups)) {
           const names = s.fieldChildren(n.values.name).filter((x) => n.values.nameKinds.includes(x.kind()));
           const values = s.field(t.vars.value)?.namedChildren() ?? [];
@@ -360,6 +544,64 @@ export class Reader {
           });
         }
       }
+    });
+    this.owner = null;
+    return out;
+  }
+
+  private emptyDecl(name: string, line: number, start: number, generic: boolean): TypeDecl {
+    return {
+      name,
+      kind: "other",
+      line,
+      start,
+      generic,
+      fields: new Map(),
+      embedded: [],
+      supers: [],
+      methods: new Map(),
+      embeds: [],
+      open: false,
+      target: null,
+    };
+  }
+
+  /** A type with a body of members: its fields and the supertypes its declaration names. `owner` is the type around it. */
+  private bodiedDecl(node: SyntaxNode, as: string, name: string, owner: string | null): TypeDecl {
+    const t = this.typing;
+    const start = node.range().start;
+    const decl = this.emptyDecl(name, start.line + 1, start.index, node.field(t.generics) !== null);
+    decl.kind = as === "interface" ? "interface" : "class";
+    // The supertypes are written where the declaration is, not inside its body.
+    for (const s of t.supertypes) {
+      const holders = s.field
+        ? node.fieldChildren(s.field)
+        : node.namedChildren().filter((c) => c.kind() === s.kind);
+      for (const h of holders)
+        for (const ty of this.typesIn(h))
+          decl.supers.push({ type: this.typeRef(ty), edge: s.edge, line: ty.range().start.line + 1 });
+    }
+    const rule = bodiedRule(this.pack, node.kind());
+    const body = rule ? node.field(rule.body) : null;
+    this.owner = name;
+    for (const m of body ? membersOf(this.pack, body) : []) {
+      if (!t.members.entries.includes(m.kind())) continue;
+      const mt = m.field(t.members.type);
+      if (!mt) continue;
+      for (const nm of this.memberNames(m)) decl.fields.set(nm, this.typeRef(mt));
+    }
+    this.owner = owner;
+    return decl;
+  }
+
+  /** The names a member entry declares. */
+  private memberNames(m: SyntaxNode): string[] {
+    const t = this.typing.members;
+    const out: string[] = [];
+    for (const x of m.fieldChildren(t.name)) {
+      if (!t.nameKinds.includes(x.kind())) continue;
+      const id = t.declarator ? x.field(t.declarator) : x;
+      if (id) out.push(id.text());
     }
     return out;
   }
@@ -367,18 +609,10 @@ export class Reader {
   private typeDecl(spec: SyntaxNode, name: string, type: SyntaxNode): TypeDecl {
     const n = this.pack.nodes;
     const t = this.typing;
-    const decl: TypeDecl = {
-      name,
-      kind: n.types.aliases.includes(spec.kind()) ? "alias" : "other",
-      line: spec.range().start.line + 1,
-      generic: spec.field(t.generics) !== null,
-      fields: new Map(),
-      embedded: [],
-      methods: new Map(),
-      embeds: [],
-      open: false,
-      target: this.typeRef(type),
-    };
+    const start = spec.range().start;
+    const decl = this.emptyDecl(name, start.line + 1, start.index, spec.field(t.generics) !== null);
+    decl.kind = n.types.aliases.includes(spec.kind()) ? "alias" : "other";
+    decl.target = this.typeRef(type);
     if (decl.kind === "alias") return decl;
     if (n.types.class.includes(type.kind())) {
       decl.kind = "class";
@@ -387,18 +621,19 @@ export class Reader {
         if (!t.members.entries.includes(m.kind())) continue;
         const mt = m.field(t.members.type);
         if (!mt) continue;
-        const names = m.fieldChildren(t.members.name).filter((x) => t.members.nameKinds.includes(x.kind()));
+        const names = this.memberNames(m);
         if (names.length === 0)
           decl.embedded.push({ type: this.typeRef(mt), line: mt.range().start.line + 1 });
-        for (const nm of names) decl.fields.set(nm.text(), this.typeRef(mt));
+        for (const nm of names) decl.fields.set(nm, this.typeRef(mt));
       }
     } else if (n.types.interface.includes(type.kind())) {
       decl.kind = "interface";
       const im = n.types.interfaceMethods;
       for (const c of type.namedChildren()) {
-        if (im.members.includes(c.kind())) {
+        if (im?.members.includes(c.kind())) {
           const mn = c.field(im.rule.name)?.text();
-          if (mn) decl.methods.set(mn, this.results(c, im.rule.result));
+          if (mn)
+            decl.methods.set(mn, { results: this.results(c, im.rule.result), start: c.range().start.index });
         } else if (t.interfaces.embeds.includes(c.kind())) {
           const parts = c.namedChildren();
           const e = parts[0];

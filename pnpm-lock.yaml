@@ -11,6 +11,9 @@ importers:
       '@ast-grep/lang-go':
         specifier: 0.0.6
         version: 0.0.6
+      '@ast-grep/lang-java':
+        specifier: 0.0.7
+        version: 0.0.7
       '@ast-grep/napi':
         specifier: 0.51.3
         version: 0.51.3
@@ -72,6 +75,9 @@ importers:
       '@ast-grep/lang-go':
         specifier: 0.0.6
         version: 0.0.6
+      '@ast-grep/lang-java':
+        specifier: 0.0.7
+        version: 0.0.7
       '@ast-grep/napi':
         specifier: 0.51.3
         version: 0.51.3
@@ -218,6 +224,14 @@ packages:
 
   '@ast-grep/lang-go@0.0.6':
     resolution: {integrity: sha512-PZap9Rp6t+YKbLjRnFRF5aGBX3/HV9s5Rp7ZPsCM+o3tlTZDo1IqDYnFu+Oeh5Razs2U8K8ccPSJ+GBxalVhWg==}
+    peerDependencies:
+      tree-sitter-cli: 0.25.8
+    peerDependenciesMeta:
+      tree-sitter-cli:
+        optional: true
+
+  '@ast-grep/lang-java@0.0.7':
+    resolution: {integrity: sha512-7muXd2MqUxJ8SrLrXU+JbvU6qSASZ5BZqH/eCDkIIjXge5wMl7kIYxKEgP375W8lnTXQYjM+VgeOkYSU9EexJg==}
     peerDependencies:
       tree-sitter-cli: 0.25.8
     peerDependenciesMeta:
@@ -2938,6 +2952,10 @@ snapshots:
       - preact-render-to-string
 
   '@ast-grep/lang-go@0.0.6':
+    dependencies:
+      '@ast-grep/setup-lang': 0.0.6
+
+  '@ast-grep/lang-java@0.0.7':
     dependencies:
       '@ast-grep/setup-lang': 0.0.6
 

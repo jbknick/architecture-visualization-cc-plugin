@@ -57,6 +57,14 @@ Two Go modules, no TypeScript (`go.work` uses `.` and `./tools`). Used by the `g
 - `vendor/example.com/dep/dep.go`: skipped.
 - `tools/go.mod` (`example.com/gobasic/tools`, requires the first module): a second workspace and a `depends_on` edge.
 
+## java-basic
+A two-module Maven project, no TypeScript (`pom.xml` at the root lists `core` and `app`). Used by the `java-basic` dump snapshot, the Java parser tests and the Java call-edge tests (`packages/core/src/lang/packs/java.*.test.ts`).
+- `pom.xml` (`java-basic`): the parent. `core/pom.xml` (`core`) and `app/pom.xml` (`app`, which depends on `core`: a `depends_on` edge on `app/pom.xml`). `app` holds `Main.main`, so it is an app.
+- `core` (`com.acme.core`): the interface `Greeter`; `PoliteGreeter` implements it and `LoudGreeter` extends `PoliteGreeter` (`extends` and `implements` edges from the declarations, `super.greet` and a call through the type name `Strings.shout`); `Strings` with a static `shout`; `Formatter` with two overloads of `format` (one and two parameters) and two of `pad` (`String` and `int`, both with one parameter). `src/test/` holds `StringsTest`, a test file.
+- `app` (`com.acme.app`): `App` has a field typed by the interface `Greeter`, a `Formatter` field, a static import of `Strings.shout`, a private `log`, an inner class `Inner` that calls `log`, and a static nested class `Counter`; `Main` uses an on-demand import (`com.acme.core.*`) and a constructor call; `model/Person.java` is a record; `generated/Version.java` is a generated file by its path.
+- The four call cases the snapshot shows, all level 2: an interface call (`App.run` to `Greeter.greet`, `high`); an overload (`Formatter.format` to `pad`, both overloads, `low` each, because both take one argument, while `format(text, 1)` and `formatter.format(hello)` pick their overload by the number of arguments, `high`); a static import (`App.run` to `Strings.shout`, `high`); an inner class (`App.Inner.ping` to the `App.log` of the class around it, `high`).
+- `core/target/classes/.../Stale.java`: build output, skipped.
+
 ## go-recipes
 Four small Go modules (#368), each a repo of its own with a committed `.gantry/recipe.json` of Go rules. Used by `packages/core/src/recipe/go-recipes.test.ts`, which asserts the exact endpoints (method, full path, handler), tables, reads and writes of each and that `recipe check --nodes` lists the nodes the index stores.
 - `nethttp`: a `ServeMux` app. Patterns with a method (`"GET /health"`) and without (`"/"`, which is `ALL`); a host pattern (`shop.example.com/`) that the rule's constraint leaves out; `registerUsers(mux)` called from `main`; a method value (`h.get`) and an inline handler; `registerLegacy`, which no call names; the rules set `uncalled`, so its route keeps the path it writes.
