@@ -60,9 +60,12 @@ export class ImportIndex {
     ctx: ResolveContext,
   ) {
     this.workspaces = ctx.workspaces.filter((w) => w.lang === pack.id);
-    for (const [fileId, parsed] of ctx.parsed) {
+    // `keys()` and `get()`, not iteration: a lazy map lists (and decodes) every file only through these.
+    for (const fileId of ctx.parsed.keys()) {
       const rel = pathOfFileId(fileId);
       if (!pack.extensions.some((x) => rel.endsWith(x))) continue;
+      const parsed = ctx.parsed.get(fileId);
+      if (!parsed) continue;
       const slash = rel.lastIndexOf("/");
       this.files.push({
         fileId,

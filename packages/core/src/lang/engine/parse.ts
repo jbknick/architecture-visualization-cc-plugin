@@ -50,7 +50,7 @@ function signatureOf(pack: LanguagePack, rule: Omit<DeclarationRule, "kind">, d:
 }
 
 /** Specs of a declaration, also those inside a grouping node. */
-function specsOf(
+export function specsOf(
   decl: SyntaxNode,
   specs: readonly string[],
   groups: readonly string[],
@@ -170,8 +170,8 @@ function measure(pack: LanguagePack, body: SyntaxNode | null): { complexity: num
   return { complexity, stmtCount };
 }
 
-/** The local name of an import without an alias: `golang.org/x/text/v2` -> `text`. */
-function defaultImportName(pack: LanguagePack, path: string): string {
+/** The local name of an import without an alias: `example.org/x/text/v2` -> `text`. */
+export function defaultImportName(pack: LanguagePack, path: string): string {
   const parts = path.split(pack.nodes.import.separator);
   let last = parts[parts.length - 1] ?? path;
   if (pack.nodes.import.localName.skip.test(last) && parts.length > 1)
@@ -179,9 +179,17 @@ function defaultImportName(pack: LanguagePack, path: string): string {
   return last;
 }
 
-function importsOf(pack: LanguagePack, root: SyntaxNode): ParsedImport[] {
+/** An import as written: the optional alias and the path without its quotes. */
+export interface RawImport {
+  alias: string | null;
+  specifier: string;
+  line: number;
+}
+
+/** The imports of a file in source order, as written. */
+export function rawImportsOf(pack: LanguagePack, root: SyntaxNode): RawImport[] {
   const rule = pack.nodes.import;
-  const out: ParsedImport[] = [];
+  const out: RawImport[] = [];
   const unquote = (s: string): string => {
     const head = s.length > 0 && rule.quotes.includes(s.charAt(0)) ? s.slice(1) : s;
     return head.length > 0 && rule.quotes.includes(head.charAt(head.length - 1)) ? head.slice(0, -1) : head;
@@ -191,13 +199,9 @@ function importsOf(pack: LanguagePack, root: SyntaxNode): ParsedImport[] {
       if (rule.specs.includes(c.kind())) {
         const path = c.field(rule.path);
         if (!path) continue;
-        const specifier = unquote(path.text());
-        const alias = c.field(rule.alias)?.text();
         out.push({
-          local: alias ?? defaultImportName(pack, specifier),
-          imported: "*",
-          specifier,
-          typeOnly: false,
+          alias: c.field(rule.alias)?.text() ?? null,
+          specifier: unquote(path.text()),
           line: c.range().start.line + 1,
         });
       } else if (rule.groups.includes(c.kind())) specs(c);
@@ -205,6 +209,16 @@ function importsOf(pack: LanguagePack, root: SyntaxNode): ParsedImport[] {
   };
   for (const d of root.namedChildren()) if (rule.declarations.includes(d.kind())) specs(d);
   return out;
+}
+
+function importsOf(pack: LanguagePack, root: SyntaxNode): ParsedImport[] {
+  return rawImportsOf(pack, root).map((i) => ({
+    local: i.alias ?? defaultImportName(pack, i.specifier),
+    imported: "*",
+    specifier: i.specifier,
+    typeOnly: false,
+    line: i.line,
+  }));
 }
 
 /**

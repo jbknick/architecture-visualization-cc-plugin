@@ -1,13 +1,13 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import picomatch from "picomatch";
 import type { ParsedFile } from "../../../parse/index.js";
-import { EVIDENCE_CAP, type ResolveContext } from "../../../resolve/index.js";
+import type { ResolveContext } from "../../../resolve/index.js";
 import type { EdgeRecord, ParsedSymbol } from "../../../types.js";
-import { parseTree, type SyntaxNode } from "../grammar.js";
+import type { SyntaxNode } from "../grammar.js";
 import type { CallResolver } from "../module.js";
 import type { LanguagePack } from "../pack.js";
+import { EdgeSet } from "./edges.js";
 import { type FileEntry, ImportIndex } from "./imports.js";
+import { LastTree, withTree } from "./source.js";
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -17,28 +17,6 @@ const bareName = (name: string): string => name.slice(name.lastIndexOf(".") + 1)
 interface Target {
   symbol: ParsedSymbol;
   confidence: "high" | "low";
-}
-
-/** Accumulates edges by (src, dst): counts add up, evidence is capped, `high` wins. */
-class EdgeSet {
-  private readonly map = new Map<string, EdgeRecord>();
-  constructor(private readonly fileId: string) {}
-
-  add(src: string, dst: string, confidence: "high" | "low", evidence: string): void {
-    const key = `${src}\0${dst}`;
-    let e = this.map.get(key);
-    if (!e) {
-      e = { src, dst, kind: "calls", confidence, count: 0, evidence: [], fileId: this.fileId, level: 1 };
-      this.map.set(key, e);
-    }
-    e.count++;
-    if (confidence === "high") e.confidence = "high";
-    if (e.evidence.length < EVIDENCE_CAP && !e.evidence.includes(evidence)) e.evidence.push(evidence);
-  }
-
-  edges(): EdgeRecord[] {
-    return [...this.map.values()];
-  }
 }
 
 /**
@@ -51,11 +29,11 @@ class EdgeSet {
  */
 export class NameCalls implements CallResolver {
   private readonly index: ImportIndex;
-  private readonly roots = new Map<string, SyntaxNode>();
   private readonly imports = new Map<string, Map<string, string>>();
   private byName: Map<string, { symbol: ParsedSymbol; file: FileEntry }[]> | undefined;
   private readonly isTest: (rel: string) => boolean;
-  private readonly at = new Map<string, Map<string, SyntaxNode>>();
+  /** The expressions of the last file a lookup by place read, by exact range; one tree is alive at a time. */
+  private readonly last: LastTree<Map<string, SyntaxNode>>;
 
   constructor(
     private readonly pack: LanguagePack,
@@ -63,18 +41,12 @@ export class NameCalls implements CallResolver {
   ) {
     this.index = new ImportIndex(pack, ctx);
     this.isTest = picomatch([...pack.testPatterns], { dot: true });
+    this.last = new LastTree(pack, ctx.root);
   }
 
-  private root(entry: FileEntry): SyntaxNode | null {
-    const hit = this.roots.get(entry.fileId);
-    if (hit) return hit;
-    try {
-      const root = parseTree(this.pack, readFileSync(join(this.ctx.root, entry.rel), "utf8"));
-      this.roots.set(entry.fileId, root);
-      return root;
-    } catch {
-      return null;
-    }
+  /** Reads and parses the file for the edges of one file; the tree lives for the call only. */
+  private withRoot<T>(entry: FileEntry, use: (root: SyntaxNode) => T): T | null {
+    return withTree(this.pack, this.ctx.root, entry.rel, use);
   }
 
   /** Local import name to import path, first import of a name wins. */
@@ -161,51 +133,45 @@ export class NameCalls implements CallResolver {
 
   edgesForFile(fileId: string, parsed: ParsedFile): EdgeRecord[] {
     const entry = this.index.byFileId.get(fileId);
-    const root = entry ? this.root(entry) : null;
-    if (!entry || !root) return [];
-    const set = new EdgeSet(fileId);
-    const sites = root.findAll({ rule: { any: this.pack.nodes.call.map((kind) => ({ kind })) } });
-    for (const site of sites) {
-      const callee = site.field(this.pack.nodes.callee.field);
-      const target = this.resolve(entry, callee);
-      const caller = this.callerAt(parsed, site.range().start.index);
-      if (!target || !caller || target.symbol.id === caller.id) continue;
-      set.add(
-        caller.id,
-        target.symbol.id,
-        target.confidence,
-        `${entry.rel}:${(callee ?? site).range().start.line + 1}`,
-      );
-    }
+    if (!entry) return [];
+    const set = new EdgeSet(fileId, 1);
+    this.withRoot(entry, (root) => {
+      const sites = root.findAll({ rule: { any: this.pack.nodes.call.map((kind) => ({ kind })) } });
+      for (const site of sites) {
+        const callee = site.field(this.pack.nodes.callee.field);
+        const target = this.resolve(entry, callee);
+        const caller = this.callerAt(parsed, site.range().start.index);
+        if (!target || !caller || target.symbol.id === caller.id) continue;
+        set.add(
+          caller.id,
+          target.symbol.id,
+          "calls",
+          target.confidence,
+          `${entry.rel}:${(callee ?? site).range().start.line + 1}`,
+        );
+      }
+    });
     return set.edges().sort((a, b) => cmp(a.src, b.src) || cmp(a.dst, b.dst) || cmp(a.kind, b.kind));
   }
 
-  /** The expressions of a file a place can name: call sites, bare names and member names, by exact range. */
-  private expressionsOf(entry: FileEntry, root: SyntaxNode): Map<string, SyntaxNode> {
-    let m = this.at.get(entry.fileId);
-    if (!m) {
-      m = new Map();
-      const rule = this.pack.nodes;
+  targetAt(fileId: string, start: number, end: number): string | null {
+    const entry = this.index.byFileId.get(fileId);
+    if (!entry) return null;
+    const rule = this.pack.nodes;
+    const byRange = this.last.get(entry.rel, (root) => {
+      // The expressions a place can name: call sites, bare names and member names, by exact range.
       const kinds = [...rule.call, ...rule.callee.names, rule.callee.member.kind];
+      const m = new Map<string, SyntaxNode>();
       for (const n of root.findAll({ rule: { any: kinds.map((kind) => ({ kind })) } })) {
         const r = n.range();
         const key = `${r.start.index}:${r.end.index}`;
         if (!m.has(key)) m.set(key, n);
       }
-      this.at.set(entry.fileId, m);
-    }
-    return m;
-  }
-
-  targetAt(fileId: string, start: number, end: number): string | null {
-    const entry = this.index.byFileId.get(fileId);
-    const root = entry ? this.root(entry) : null;
-    if (!entry || !root) return null;
-    const node = this.expressionsOf(entry, root).get(`${start}:${end}`);
+      return m;
+    });
+    const node = byRange?.get(`${start}:${end}`);
     if (!node) return null;
-    const callee = this.pack.nodes.call.includes(node.kind())
-      ? node.field(this.pack.nodes.callee.field)
-      : node;
+    const callee = rule.call.includes(node.kind()) ? node.field(rule.callee.field) : node;
     return this.resolve(entry, callee)?.symbol.id ?? null;
   }
 

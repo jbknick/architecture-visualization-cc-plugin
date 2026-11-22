@@ -1,6 +1,7 @@
 import { parse, type SgNode } from "@ast-grep/napi";
 import { describe, expect, it } from "vitest";
-import { goAvailable } from "../lang/go/index.js";
+import { grammarAvailable } from "../lang/engine/grammar.js";
+import { goPack } from "../lang/packs/index.js";
 import {
   concatOperands,
   declsNamed,
@@ -13,7 +14,7 @@ import {
   wrapGoSnippet,
 } from "./go.js";
 
-goAvailable();
+grammarAvailable(goPack);
 const root = (src: string): SgNode => parse("go" as never, src).root();
 const first = (src: string, kind: string): SgNode => {
   const n = root(src).find({ rule: { kind } } as never);
