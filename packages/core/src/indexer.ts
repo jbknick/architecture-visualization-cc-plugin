@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { Adapter } from "./adapters/framework.js";
-import { runAdapters } from "./adapters/index.js";
+import { type ExternalRepos, runAdapters } from "./adapters/index.js";
 import { type GantryConfig, loadConfig } from "./config/index.js";
 import { discoverFiles, isIndexable } from "./discover/index.js";
 import { hashSymbol } from "./hash/index.js";
@@ -227,6 +227,8 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
     // Every repo's workspaces are known before any repo is parsed, so an import in one repo can name a package of another.
     const known = discoverRepos(paths);
     try {
+      // Client calls name endpoints of every repo, so a run that changes the endpoints of a repo re-links the others.
+      const endpointsBefore = endpointSignatures(store, opts.layer, known);
       const changed = new Map<string, Set<string>>();
       for (const m of [...members].sort((a, b) => cmp(a.name, b.name))) {
         const out = new Set<string>();
@@ -274,6 +276,27 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
         changed.clear();
         for (const [k, v] of next) if (v.size > 0) changed.set(k, v);
       }
+      // A repo links its client calls against the endpoints the store holds for the other repos. Every repo whose
+      // siblings' endpoints differ from what it linked against is linked again (the endpoints themselves do not
+      // depend on the links, so one pass settles it).
+      if (known.size > 1) {
+        const after = endpointSignatures(store, opts.layer, known);
+        const moved = [...new Set([...endpointsBefore.keys(), ...after.keys()])].filter(
+          (r) => endpointsBefore.get(r) !== after.get(r),
+        );
+        for (const [name, k] of [...known].sort((a, b) => cmp(a[0], b[0]))) {
+          if (!moved.some((r) => r !== name)) continue;
+          await indexOneRepo(
+            { ...paths, root: k.root, repo: name },
+            { layer: opts.layer, files: [] },
+            store,
+            cache,
+            new Set(),
+            known,
+            new Set(),
+          );
+        }
+      }
       // Cache entries of files that no longer exist are only pruned when this run saw the whole tree of every repo.
       if (whole) cache?.prune(seen);
       // A repo that left the workspace and came back has no search rows: put its stored descriptions back into them.
@@ -285,6 +308,37 @@ export async function indexRepo(paths: GantryPaths, opts: IndexOptions): Promise
   } finally {
     if (ownStore) store.close();
   }
+}
+
+/**
+ * The endpoint nodes of the repos of the workspace that a run of `layer` links against: the main layer reads main rows
+ * only (a commit never links to another repo's uncommitted endpoints), the working layer reads both.
+ */
+function endpointsOf(store: Store, layer: Layer, known: Map<string, KnownRepo>): AdapterNodeRecord[] {
+  const nodes =
+    layer === "main" ? store.mainAdapterNodes("endpoint") : store.effectiveAdapterNodes({ kind: "endpoint" });
+  // A repo that left the workspace may still hold rows until a whole run drops them: they are not candidates.
+  return nodes.filter((n) => known.has(repoOfId(n.fileId) ?? ""));
+}
+
+/** Per repo, a text that changes when its endpoints do (id, label and data of every endpoint node). */
+function endpointSignatures(store: Store, layer: Layer, known: Map<string, KnownRepo>): Map<string, string> {
+  const by = new Map<string, string[]>();
+  for (const n of endpointsOf(store, layer, known)) {
+    const repo = repoOfId(n.fileId) ?? "";
+    by.set(repo, [...(by.get(repo) ?? []), `${n.id}\0${n.label}\0${JSON.stringify(n.data)}`]);
+  }
+  return new Map([...by].map(([repo, rows]) => [repo, rows.join("\n")]));
+}
+
+/** The endpoints and workspaces the other repos of the workspace stored. */
+function externalOf(store: Store, known: Map<string, KnownRepo>, repo: string, layer: Layer): ExternalRepos {
+  if (known.size < 2) return { nodes: [], workspaces: [] };
+  const nodes = endpointsOf(store, layer, known)
+    .filter((n) => repoOfId(n.fileId) !== repo && n.ws !== null)
+    .map((n) => ({ ...n, kind: "endpoint" as const, ws: n.ws as string }));
+  const workspaces = [...known].filter(([name]) => name !== repo).flatMap(([, k]) => k.workspaces);
+  return { nodes, workspaces };
 }
 
 interface KnownRepo {
@@ -463,6 +517,7 @@ async function indexOneRepo(
       })),
       parsed,
       resolver,
+      external: externalOf(store, known, repo, layer),
     },
     opts.adapters,
   );
