@@ -3,11 +3,12 @@ import path from "node:path";
 import { ResolverFactory } from "oxc-resolver";
 import picomatch from "picomatch";
 import { BUILTIN_EXCLUDES } from "../config/index.js";
-import { fileId as makeFileId, pathOfFileId } from "../ids.js";
+import { fileId as makeFileId, pathOfFileId, repoOfId } from "../ids.js";
 import type { ParsedFile, ParsedImport, ParsedSite } from "../parse/index.js";
 import type { EdgeKind, EdgeRecord, WorkspaceRecord } from "../types.js";
 import { readJsonc, workspaceForPath } from "../workspace/index.js";
 import { type BundlerAliases, readBundlerAliases } from "./bundlerAliases.js";
+import type { SiblingRepo } from "./sibling.js";
 
 export interface ResolveContext {
   root: string;
@@ -16,6 +17,12 @@ export interface ResolveContext {
   workspaces: WorkspaceRecord[];
   /** Parsed files keyed by file id (`file:<repo>:<repo-relative posix path>`). */
   parsed: Map<string, ParsedFile>;
+  /**
+   * The other repos of the workspace, whose packages a bare specifier can name. A name that a workspace package of this
+   * repo provides stays this repo's; a name that exactly one sibling repo provides resolves to that package's source;
+   * a name that several provide is `ambiguous`.
+   */
+  siblings?: SiblingRepo[];
 }
 
 export type SpecifierResolution =
@@ -23,7 +30,7 @@ export type SpecifierResolution =
   | { kind: "external"; pkg: string }
   | { kind: "unresolved" };
 
-/** How a specifier was classified internally. `generated` and `excluded` are reported as `unresolved`. */
+/** How a specifier was classified internally. `generated`, `excluded` and `ambiguous` are reported as `unresolved`. */
 export type SpecifierClass =
   | "file"
   | "external"
@@ -31,12 +38,15 @@ export type SpecifierClass =
   | "virtual"
   | "generated"
   | "excluded"
+  | "ambiguous"
   | "unresolved";
 
 export interface UnresolvedSpecifier {
   fromFileId: string;
   specifier: string;
-  class: "generated" | "excluded" | "unresolved";
+  class: "generated" | "excluded" | "ambiguous" | "unresolved";
+  /** With `ambiguous`: the ids of the workspaces of other repos that all publish the package, sorted. */
+  candidates?: string[];
   /** Set when a bundler alias that the index cannot read statically may stand behind the specifier. */
   reason?: "alias_not_static";
   /** With `reason`: the alias key the specifier starts with, or `*` when the whole alias value is unreadable. */
@@ -132,7 +142,11 @@ export const EVIDENCE_CAP = 20;
 /** Accumulates edges by (src, dst, kind): sums counts, keeps up to EVIDENCE_CAP evidence strings, `high` wins. */
 class EdgeBuilder {
   private readonly map = new Map<string, EdgeRecord>();
-  constructor(private readonly fileId: string) {}
+  private readonly sibling = new Map<string, string>();
+  constructor(
+    private readonly fileId: string,
+    private readonly repo: string,
+  ) {}
 
   add(
     src: string,
@@ -143,6 +157,8 @@ class EdgeBuilder {
     count = 1,
   ): void {
     const key = `${src}\0${dst}\0${kind}`;
+    const dstRepo = dst.startsWith("ext:") ? undefined : repoOfId(dst);
+    if (dstRepo !== undefined && dstRepo !== this.repo) this.sibling.set(key, dstRepo);
     let e = this.map.get(key);
     if (!e) {
       e = { src, dst, kind, confidence, count: 0, evidence: [], fileId: this.fileId };
@@ -155,7 +171,9 @@ class EdgeBuilder {
     }
   }
 
+  /** An edge into another repo of the workspace notes it as the last evidence entry, past the cap. */
   build(): EdgeRecord[] {
+    for (const [key, repo] of this.sibling) this.map.get(key)?.evidence.push(`sibling:${repo}`);
     return sortEdges([...this.map.values()]);
   }
 }
@@ -166,9 +184,16 @@ interface Classified {
   pkg?: string;
   reason?: "alias_not_static";
   alias?: string;
+  candidates?: string[];
 }
 
-export function createResolver(ctx: ResolveContext): Resolver {
+/** The resolver of TypeScript and JavaScript files, which also answers which file a package of its workspaces names. */
+export interface TypeScriptResolver extends Resolver {
+  /** The file id a bare specifier names through a workspace package of this repo, or null. */
+  workspacePackage(spec: string): string | null;
+}
+
+export function createResolver(ctx: ResolveContext): TypeScriptResolver {
   let realRoot: string;
   try {
     realRoot = fs.realpathSync(ctx.root);
@@ -180,6 +205,38 @@ export function createResolver(ctx: ResolveContext): Resolver {
   for (const w of ctx.workspaces) if (w.dir !== ".") wsByName.set(w.name, w);
   const wsNamesByLength = [...wsByName.keys()].sort((a, b) => b.length - a.length || cmp(a, b));
   const rootWs = ctx.workspaces.find((w) => w.dir === ".");
+  const published = new Map<string, WorkspaceRecord>(ctx.workspaces.map((w) => [w.name, w]));
+  const publishedNames = [...published.keys()].sort((a, b) => b.length - a.length || cmp(a, b));
+
+  // Packages of the other repos by name, with the resolver that follows each one's `exports` map into its own files.
+  const siblings = new Map<string, SiblingRepo>((ctx.siblings ?? []).map((s) => [s.repo, s]));
+  const publishers = new Map<string, { repo: string; ws: WorkspaceRecord }[]>();
+  for (const s of siblings.values()) {
+    for (const w of s.workspaces) {
+      if (w.lang === "go") continue;
+      const list = publishers.get(w.name) ?? [];
+      list.push({ repo: s.repo, ws: w });
+      publishers.set(w.name, list);
+    }
+  }
+  const siblingResolvers = new Map<string, TypeScriptResolver>();
+  const siblingResolver = (repo: string): TypeScriptResolver | undefined => {
+    const s = siblings.get(repo);
+    if (!s) return undefined;
+    let r = siblingResolvers.get(repo);
+    if (!r) {
+      r = createResolver({ root: s.root, repo: s.repo, workspaces: s.workspaces, parsed: s.parsed });
+      siblingResolvers.set(repo, r);
+    }
+    return r;
+  };
+  /** The parsed file of this repo or of a sibling. */
+  const parsedOf = (fileId: string): ParsedFile | undefined => {
+    const repo = repoOfId(fileId);
+    return repo === ctx.repo || repo === undefined
+      ? ctx.parsed.get(fileId)
+      : siblings.get(repo)?.parsed.get(fileId);
+  };
 
   const resolvers = new Map<string, ResolverFactory>();
   const bundlerAliases = new Map<string, BundlerAliases>();
@@ -192,6 +249,7 @@ export function createResolver(ctx: ResolveContext): Resolver {
     virtual: 0,
     generated: 0,
     excluded: 0,
+    ambiguous: 0,
     unresolved: 0,
   };
 
@@ -343,10 +401,14 @@ export function createResolver(ctx: ResolveContext): Resolver {
   }
 
   /** Workspace package fallback (step 2): `<pkg name>[/sub]` -> workspace dir and its exports map. */
-  function resolveWorkspacePackage(spec: string): string | null {
-    const name = wsNamesByLength.find((n) => spec === n || spec.startsWith(`${n}/`));
+  function resolveWorkspacePackage(
+    spec: string,
+    names: string[] = wsNamesByLength,
+    byName: Map<string, WorkspaceRecord> = wsByName,
+  ): string | null {
+    const name = names.find((n) => spec === n || spec.startsWith(`${n}/`));
     if (name === undefined) return null;
-    const ws = wsByName.get(name);
+    const ws = byName.get(name);
     if (!ws) return null;
     const sub = spec === name ? "." : `.${spec.slice(name.length)}`;
     const wsAbs = path.join(realRoot, ws.dir);
@@ -369,6 +431,20 @@ export function createResolver(ctx: ResolveContext): Resolver {
       if (alt) return alt;
     }
     return null;
+  }
+
+  /**
+   * A bare specifier through a package that other repos of the workspace publish. One publisher: that package's source,
+   * by the same rules as a package of this repo. Several: ambiguous, with every publisher named and nothing chosen.
+   */
+  function resolveSiblingPackage(spec: string): Classified | null {
+    const name = packageName(spec);
+    const found = name === null ? undefined : publishers.get(name);
+    if (!found) return null;
+    const only = found.length === 1 ? found[0] : undefined;
+    if (!only) return { class: "ambiguous", candidates: found.map((f) => f.ws.id).sort(cmp) };
+    const hit = siblingResolver(only.repo)?.workspacePackage(spec) ?? null;
+    return hit ? { class: "file", fileId: hit } : { class: "unresolved" };
   }
 
   function declaredDependency(ws: WorkspaceRecord, name: string): boolean {
@@ -405,10 +481,15 @@ export function createResolver(ctx: ResolveContext): Resolver {
     const fromAbs = path.join(realRoot, fromRel);
     const fromWs = workspaceForPath(ctx.workspaces, fromRel);
 
-    // 2. Workspace package names map to workspace source before the resolver is asked.
+    // 2. Workspace package names map to workspace source before the resolver is asked: first the packages of this
+    // repo, then the ones the other repos of the workspace publish.
     if (isBare(spec)) {
       const hit = resolveWorkspacePackage(spec);
       if (hit) return { class: "file", fileId: hit };
+      if (!wsNamesByLength.some((n) => spec === n || spec.startsWith(`${n}/`))) {
+        const sibling = resolveSiblingPackage(spec);
+        if (sibling) return sibling;
+      }
     }
 
     // 3. oxc-resolver, passing the importing file so tsconfig discovery is per package.
@@ -466,11 +547,15 @@ export function createResolver(ctx: ResolveContext): Resolver {
       counts[c.class]++;
       counted.set(
         key,
-        c.class === "generated" || c.class === "excluded" || c.class === "unresolved"
+        c.class === "generated" ||
+          c.class === "excluded" ||
+          c.class === "ambiguous" ||
+          c.class === "unresolved"
           ? {
               fromFileId,
               specifier: spec,
               class: c.class,
+              ...(c.candidates ? { candidates: c.candidates } : {}),
               ...(c.reason ? { reason: c.reason, alias: c.alias as string } : {}),
             }
           : null,
@@ -489,7 +574,12 @@ export function createResolver(ctx: ResolveContext): Resolver {
   }
 
   function targetFile(fromFileId: string, spec: string): string | null {
-    const r = resolveSpecifier(fromFileId, spec);
+    // A file of a sibling repo resolves its own specifiers by that repo's rules.
+    const repo = repoOfId(fromFileId);
+    const r =
+      repo !== undefined && repo !== ctx.repo
+        ? (siblingResolver(repo)?.resolveSpecifier(fromFileId, spec) ?? { kind: "unresolved" as const })
+        : resolveSpecifier(fromFileId, spec);
     return r.kind === "file" ? r.fileId : null;
   }
 
@@ -511,7 +601,7 @@ export function createResolver(ctx: ResolveContext): Resolver {
     const key = `${fileId}\0${name}`;
     if (visited.has(key)) return null;
     visited.add(key);
-    const pf = ctx.parsed.get(fileId);
+    const pf = parsedOf(fileId);
     if (!pf) return null;
 
     for (const e of pf.exports) {
@@ -548,7 +638,7 @@ export function createResolver(ctx: ResolveContext): Resolver {
   function exportedNames(fileId: string, depth: number, visited: Set<string>): string[] {
     if (depth > MAX_DEPTH || visited.has(fileId)) return [];
     visited.add(fileId);
-    const pf = ctx.parsed.get(fileId);
+    const pf = parsedOf(fileId);
     if (!pf) return [];
     const names = new Set<string>();
     for (const e of pf.exports) {
@@ -607,7 +697,7 @@ export function createResolver(ctx: ResolveContext): Resolver {
   function edgesForFile(fileId: string): EdgeRecord[] {
     const pf = ctx.parsed.get(fileId);
     if (!pf) return [];
-    const b = new EdgeBuilder(fileId);
+    const b = new EdgeBuilder(fileId, ctx.repo);
     const rel = relOf(fileId);
     const ws = workspaceForPath(ctx.workspaces, rel);
 
@@ -661,7 +751,15 @@ export function createResolver(ctx: ResolveContext): Resolver {
     return { counts: { ...counts }, unresolved };
   }
 
-  return { resolveSpecifier, resolveSymbol, edgesForFile, workspaceEdges, stats };
+  return {
+    resolveSpecifier,
+    resolveSymbol,
+    edgesForFile,
+    workspaceEdges,
+    stats,
+    // What another repo's import of this repo's package reaches: the root package counts too, unlike for a repo's own imports.
+    workspacePackage: (spec) => resolveWorkspacePackage(spec, publishedNames, published),
+  };
 }
 
 /** `depends_on` edges: workspace -> workspace for each package.json dependency that names a workspace. */

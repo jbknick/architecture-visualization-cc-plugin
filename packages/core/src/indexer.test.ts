@@ -300,6 +300,7 @@ describe("IndexResult.specifierCounts", () => {
       virtual: 1,
       generated: 1,
       excluded: 1,
+      ambiguous: 0,
       unresolved: 1,
     });
     expect(r.unresolved.map((u) => u.specifier).sort()).toEqual(["./data.json", "./dist/out", "./missing"]);

@@ -76,7 +76,16 @@ function createGoResolver(ctx: ResolveContext): Resolver {
     },
     workspaceEdges: () => goDependsOnEdges(ctx.repo, ctx.root, ctx.workspaces),
     stats: () => ({
-      counts: { file: 0, external: 0, builtin: 0, virtual: 0, generated: 0, excluded: 0, unresolved: 0 },
+      counts: {
+        file: 0,
+        external: 0,
+        builtin: 0,
+        virtual: 0,
+        generated: 0,
+        excluded: 0,
+        ambiguous: 0,
+        unresolved: 0,
+      },
       unresolved: [],
     }),
   };
