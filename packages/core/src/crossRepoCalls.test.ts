@@ -93,6 +93,11 @@ describe("cross-repo calls on fixtures/linking-repos", () => {
       "ambiguous: GET /health [ep:billing:.:GET /health, ep:users-api:.:GET /health]",
     );
     expect(at("typed")).toBe("-> ep:users-api:.:GET /api/users (high)");
+    expect(at("viaAxios")).toBe("-> ep:users-api:.:GET /api/users (high)");
+    expect(at("viaKy")).toBe("-> ep:users-api:.:POST /api/users (high)");
+    expect(at("viaWrapper")).toBe("-> ep:billing:.:GET /invoices/:id (high)");
+    expect(at("viaConst")).toBe("-> ep:users-api:.:GET /api/users/:id (high)");
+    expect(at("viaEnum")).toBe("-> ep:billing:.:POST /invoices (high)");
     expect(at("nothing")).toBe("no_endpoint: GET /api/nothing");
     expect(at("fromEnv")).toBe("dynamic_url: GET <dynamic>");
     expect(at("outside")).toBe("external_url: GET https://example.com/api/users");
@@ -139,6 +144,52 @@ describe("cross-repo calls on fixtures/linking-repos", () => {
     expect(outcomes(dump(paths("web")), "web").get("sym:web:src/calls.ts#listUsers")).toBe(
       `-> ${target} (high)`,
     );
+  });
+
+  it("gives byte-equal graphs from two fresh data dirs", async () => {
+    const one = workspaceOf("linking-repos", NAMES);
+    const two = workspaceOf("linking-repos", NAMES);
+    await indexRepo(one.paths("web"), { layer: "main" });
+    await indexRepo(two.paths("web"), { layer: "main" });
+    expect(one.paths("web").dataDir).not.toBe(two.paths("web").dataDir);
+    expect(JSON.stringify(dump(one.paths("web")))).toBe(JSON.stringify(dump(two.paths("web"))));
+  });
+
+  it("links a main-layer run against the committed endpoints of the other repos only", async () => {
+    const { root, paths } = workspaceOf("linking-repos", NAMES);
+    await indexRepo(paths("web"), { layer: "main" });
+    const app = join(root, "users-api/src/app.ts");
+    writeFileSync(app, `${readFileSync(app, "utf8")}app.get("/api/nothing", (c) => c.text("new"));\n`);
+    await indexRepo(paths("users-api"), { layer: "working", files: ["src/app.ts"] });
+    const edgesTo = (layer: string): string[] => {
+      const s = openStore(paths("web").dbPath, { repo: "web" });
+      try {
+        return (
+          s.db.prepare("SELECT dst FROM edges WHERE kind = 'requests' AND layer = ?").all(layer) as {
+            dst: string;
+          }[]
+        ).map((r) => r.dst);
+      } finally {
+        s.close();
+      }
+    };
+    expect(edgesTo("working")).toContain("ep:users-api:.:GET /api/nothing");
+    await indexRepo(paths("web"), { layer: "main", files: ["src/calls.ts"] });
+    expect(edgesTo("main")).not.toContain("ep:users-api:.:GET /api/nothing");
+  });
+
+  it("does not link to a repo that left the workspace file, even before a whole run drops its rows", async () => {
+    const { root, paths } = workspaceOf("linking-repos", NAMES);
+    await indexRepo(paths("web"), { layer: "main" });
+    expect(requests(dump(paths("web"))).some((e) => e.dst.startsWith("ep:billing:"))).toBe(true);
+    writeFileSync(
+      join(root, "gantry-workspace.json"),
+      JSON.stringify({ repos: [{ path: "./web" }, { path: "./users-api" }] }),
+    );
+    await indexRepo(paths("web"), { layer: "main", files: ["src/calls.ts"] });
+    const d = dump(paths("web"));
+    expect(requests(d).some((e) => e.dst.startsWith("ep:billing:"))).toBe(false);
+    expect(outcomes(d, "web").get("sym:web:src/calls.ts#createInvoice")).toBe("no_endpoint: POST /invoices");
   });
 
   it("prefers the caller's own repo when it serves the same method and path", async () => {
