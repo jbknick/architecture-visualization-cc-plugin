@@ -212,7 +212,8 @@ function importsOf(pack: LanguagePack, root: SyntaxNode): ParsedImport[] {
  * Calls and type references are not extracted (no `sites`).
  *
  * Ids follow spec section 6: `sym:<repo>:<path>#<name>`; a method is `#<Recv>.<name>` with the receiver's base type;
- * repeated names in one file get `~2`, `~3` in source order. The tree is released as soon as the result is built.
+ * repeated names in one file get `~2`, `~3` in source order. The result holds no node, so nothing keeps the tree alive after
+ * the call; it is freed later by the library's finalizer, not at once.
  */
 export function parseWithPack(
   pack: LanguagePack,

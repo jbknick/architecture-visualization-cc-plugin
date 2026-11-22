@@ -17,14 +17,19 @@ const read = (file: string): string | null => {
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
-const unquote = (s: string): string => s.replace(/^["`]|["`]$/g, "");
+/** Removes the quote characters the pack names from the ends of a manifest value. */
+const unquote = (pack: LanguagePack, s: string): string => {
+  const q = pack.workspace.quotes;
+  const head = s.length > 0 && q.includes(s.charAt(0)) ? s.slice(1) : s;
+  return head.length > 0 && q.includes(head.charAt(head.length - 1)) ? head.slice(0, -1) : head;
+};
 
 const strip = (pack: LanguagePack, text: string): string => text.replace(pack.workspace.comment, "");
 
 /** The workspace name a manifest declares; null when it declares none. */
 export function parseManifestName(pack: LanguagePack, manifest: string): string | null {
   const m = pack.workspace.name.exec(strip(pack, manifest));
-  return m?.[1] ? unquote(m[1]) : null;
+  return m?.[1] ? unquote(pack, m[1]) : null;
 }
 
 /**
@@ -45,14 +50,14 @@ function directiveEntries(pack: LanguagePack, manifest: string, directive: strin
       if (line.startsWith(")")) inBlock = false;
       else {
         const m = block.exec(line);
-        if (m?.[1]) out.push(unquote(m[1]));
+        if (m?.[1]) out.push(unquote(pack, m[1]));
       }
       continue;
     }
     if (open.test(line)) inBlock = true;
     else {
       const m = single.exec(line);
-      if (m?.[1]) out.push(unquote(m[1]));
+      if (m?.[1]) out.push(unquote(pack, m[1]));
     }
   }
   return out;

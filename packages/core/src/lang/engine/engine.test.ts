@@ -84,6 +84,7 @@ const PackSchema = z.strictObject({
   }),
   workspace: z.strictObject({
     manifest: field,
+    quotes: z.string(),
     comment: regexp,
     name: regexp,
     skipDirs: strings,

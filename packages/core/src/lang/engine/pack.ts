@@ -113,6 +113,8 @@ export interface LanguagePack {
   workspace: {
     /** File name of the manifest that marks a workspace (one per directory). */
     manifest: string;
+    /** Quote characters around a manifest value. */
+    quotes: string;
     /** Removed from a manifest before it is read. */
     comment: RegExp;
     /** The workspace name: the first group of this pattern. */

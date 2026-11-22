@@ -111,6 +111,7 @@ export const goPack = {
   },
   workspace: {
     manifest: "go.mod",
+    quotes: '"`',
     comment: /\/\/.*$/gm,
     name: /^\s*module\s+(\S+)/m,
     skipDirs: ["vendor", "testdata", "node_modules"],
