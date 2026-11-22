@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { ensureDataDir, type GantryPaths, openStore } from "@gantry/core";
+import { ensureDataDir, type GantryPaths, openStore, pathsForRepo } from "@gantry/core";
 
 /** The five hooks Gantry installs (spec section 12). */
 export const GANTRY_HOOKS = [
@@ -39,6 +39,11 @@ const STANDARD_HOOKS = [
 const PREV_SUFFIX = ".gantry-prev";
 const META_PREV = "prev_hooks_path";
 const META_PREV_SCOPE = "prev_hooks_path_scope";
+/** In a workspace of several repos the meta keys carry the repo (`<key>:<repo>`): each repo has its own `core.hooksPath` to restore. */
+const metaKey = (paths: GantryPaths, key: string): string =>
+  paths.workspace.repos.length > 1 ? `${key}:${paths.repo}` : key;
+const metaPrev = (paths: GantryPaths): string => metaKey(paths, META_PREV);
+const metaPrevScope = (paths: GantryPaths): string => metaKey(paths, META_PREV_SCOPE);
 /** Marks a script as ours; it is part of the call line in every script we write. */
 const MARKER = '.gantry/bin/gantry" hook ';
 
@@ -145,8 +150,10 @@ function effectiveHooksPath(root: string): string | undefined {
   return r.ok ? r.out : undefined;
 }
 
+/** `<dataDir>/hooks`; in a workspace of several repos each repo has its own subdirectory, since each has its own original. */
 function wrapperDirOf(paths: GantryPaths): string {
-  return path.join(paths.dataDir, "hooks");
+  const dir = path.join(paths.dataDir, "hooks");
+  return paths.workspace.repos.length > 1 ? path.join(dir, paths.worktreeHash) : dir;
 }
 
 function withStore<T>(paths: GantryPaths, fn: (db: ReturnType<typeof openStore>) => T): T {
@@ -204,11 +211,11 @@ export function installHooks(
   if (currentAbs !== wrapperDir) {
     const scope = localHooksPath(root) === undefined ? "other" : "local";
     withStore(paths, (s) => {
-      s.setMeta(META_PREV, current);
-      s.setMeta(META_PREV_SCOPE, scope);
+      s.setMeta(metaPrev(paths), current);
+      s.setMeta(metaPrevScope(paths), scope);
     });
   }
-  const prevRaw = withStore(paths, (s) => s.getMeta(META_PREV));
+  const prevRaw = withStore(paths, (s) => s.getMeta(metaPrev(paths)));
   if (prevRaw === undefined)
     throw new Error("core.hooksPath points at the Gantry wrapper dir but no previous value is recorded");
   const origDir = path.resolve(root, expandHome(prevRaw, home));
@@ -234,6 +241,22 @@ export function installHooks(
   return { mode: "hooks-path", dir: wrapperDir, chained, warnings };
 }
 
+/** `installHooks` in every repo of the workspace (spec section 12); each repo's hooks carry the same data dir. */
+export function installHooksInWorkspace(
+  paths: GantryPaths,
+  opts: { cliPath: string; nodePath?: string; env?: NodeJS.ProcessEnv },
+): InstallResult[] {
+  return paths.workspace.repos.map((r) => installHooks(pathsForRepo(paths, r.name), opts));
+}
+
+/** `uninstallHooks` in every repo of the workspace. */
+export function uninstallHooksInWorkspace(
+  paths: GantryPaths,
+  env: NodeJS.ProcessEnv = process.env,
+): UninstallResult[] {
+  return paths.workspace.repos.map((r) => uninstallHooks(pathsForRepo(paths, r.name), env));
+}
+
 /** Reverses `installHooks` exactly: removes our scripts, renames `.gantry-prev` back, restores `core.hooksPath`. */
 export function uninstallHooks(paths: GantryPaths, _env: NodeJS.ProcessEnv = process.env): UninstallResult {
   const root = paths.root;
@@ -247,9 +270,9 @@ export function uninstallHooks(paths: GantryPaths, _env: NodeJS.ProcessEnv = pro
     let scope: string | undefined;
     if (fs.existsSync(paths.dbPath)) {
       withStore(paths, (s) => {
-        prev = s.getMeta(META_PREV);
-        scope = s.getMeta(META_PREV_SCOPE);
-        s.db.prepare("DELETE FROM meta WHERE key IN (?, ?)").run(META_PREV, META_PREV_SCOPE);
+        prev = s.getMeta(metaPrev(paths));
+        scope = s.getMeta(metaPrevScope(paths));
+        s.db.prepare("DELETE FROM meta WHERE key IN (?, ?)").run(metaPrev(paths), metaPrevScope(paths));
       });
     }
     if (prev !== undefined && scope === "local") {

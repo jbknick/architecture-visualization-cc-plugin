@@ -6,8 +6,10 @@ import { EXIT_OK, fail, resolveCliPaths, WORKSPACE_FLAG } from "./shared.js";
 export function registerHeal(program: Command): void {
   program
     .command("heal")
-    .description("Reconcile the main graph to HEAD (incremental, or a full re-index for huge diffs)")
-    .option("--from <sha>", "diff from this commit instead of the recorded head_sha")
+    .description(
+      "Reconcile the main graph to HEAD, repo by repo (incremental, or a full re-index of a repo for huge diffs)",
+    )
+    .option("--from <sha>", "diff the repo you are in from this commit instead of the recorded head_sha")
     .option(...WORKSPACE_FLAG)
     .action(async (opts: { from?: string; workspace?: string }) => {
       try {
@@ -22,7 +24,11 @@ export function registerHeal(program: Command): void {
           process.exitCode = EXIT_OK;
           return;
         }
-        const r = await heal(paths, { from: opts.from, reattach: true });
+        const r = await heal(paths, {
+          from: opts.from,
+          reattach: true,
+          repo: opts.from === undefined ? undefined : paths.repo,
+        });
         process.stdout.write(
           `Healed ${r.changed} file${r.changed === 1 ? "" : "s"} (${r.full ? "full re-index" : "incremental"}) in ${r.ms} ms\n`,
         );
