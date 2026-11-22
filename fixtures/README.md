@@ -99,3 +99,11 @@ Workspace (`apps/*`) for client calls through axios and ky instances (spec secti
 - `apps/users-api` (`@fx/users-api`) mounts its `users` app at `/api`; `apps/billing` (`@fx/billing`) has `/health` and `/invoices`.
 - `apps/web` (`@fx/web`): `src/features/users.ts` calls through instances and `fetch` with bases from the environment, constants and wrappers (no `requests` edge yet); `src/lib/same-origin-http.ts` declares `rel`, `kyRel` and `kyRelAuth` with the base `/api`; `src/lib/index.ts` re-exports them; `src/features/same-origin.ts` and `src/features/reexport.ts` call them and link.
 - `apps/legacy-web` (`@fx/legacy-web`) sets `axios.defaults.baseURL = "/api"` and calls the default `axios`; `apps/web` never sets it.
+
+## ts-references
+A repo with no workspace tool: no `pnpm-workspace.yaml`, no `workspaces` field, no `project.json`, no `node_modules`. The packages are tied together only by tsconfig project references.
+- Root: `package.json` (`ts-references-root`) and `tsconfig.json` with `"files": []` and `references` to `./packages/core`, `./packages/util` and `./apps/cli`.
+- `packages/core` (`@refs/core`, `main` `dist/index.js`, `types` `dist/index.d.ts`; tsconfig `composite`, `outDir: "dist"`, `rootDir: "src"`): `src/index.ts` exports `parseLine` and `formatLine`.
+- `packages/util` (no `package.json`, named by its directory; tsconfig `composite`): `src/strings.ts` exports `padLeft`.
+- `apps/cli` (`@refs/cli`, depends on `@refs/core`; tsconfig references `../../packages/core` and `../../packages/util`): `src/main.ts` imports `@refs/core` and `../../../packages/util/src/strings`.
+- Counts: four workspaces (`.`, `@refs/core`, `packages/util`, `@refs/cli`), four files in the dump, two `imports` edges (both from `main.ts`, both into `src/`), no edge into `dist/`.

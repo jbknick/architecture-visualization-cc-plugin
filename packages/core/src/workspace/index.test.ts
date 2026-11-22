@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -101,6 +101,51 @@ describe("detectWorkspaces", () => {
       ["ws:repo:shop", "app"],
       ["ws:repo:@acme/core", "package"],
     ]);
+  });
+
+  it("follows tsconfig project references transitively, once each, inside the repo", () => {
+    const root = repo({
+      "package.json": { name: "root" },
+      "tsconfig.json": `{
+        // comments and trailing commas are allowed
+        "files": [],
+        "references": [{ "path": "./packages/a" }, { "path": "./tsconfig.web.json", }, { "path": "../outside" }],
+      }`,
+      "tsconfig.web.json": { references: [{ path: "./apps/web/tsconfig.app.json" }] },
+      "packages/a/package.json": { name: "@acme/a" },
+      "packages/a/tsconfig.json": { references: [{ path: "../b" }] },
+      "packages/b/tsconfig.json": { references: [{ path: "../a" }, { path: "../../node_modules/x" }] },
+      "apps/web/tsconfig.app.json": {},
+      "node_modules/x/tsconfig.json": {},
+    });
+    const ws = detectWorkspaces(root, config, "repo");
+    expect(ws.map((w) => [w.id, w.dir])).toEqual([
+      ["ws:repo:.", "."],
+      ["ws:repo:apps/web", "apps/web"],
+      ["ws:repo:@acme/a", "packages/a"],
+      ["ws:repo:packages/b", "packages/b"],
+    ]);
+  });
+
+  it("ignores a reference through a symlink that points outside the repo", () => {
+    const outside = repo({ "tsconfig.json": {} });
+    const root = repo({
+      "package.json": { name: "root" },
+      "tsconfig.json": { references: [{ path: "./linked" }, { path: "./real" }] },
+      "real/tsconfig.json": {},
+    });
+    symlinkSync(outside, join(root, "linked"));
+    expect(detectWorkspaces(root, config, "repo").map((w) => w.dir)).toEqual([".", "real"]);
+  });
+
+  it("prefers Nx projects over tsconfig references", () => {
+    const root = repo({
+      "package.json": { name: "root" },
+      "tsconfig.json": { references: [{ path: "./libs/x" }] },
+      "libs/x/tsconfig.json": {},
+      "libs/y/project.json": { name: "y" },
+    });
+    expect(detectWorkspaces(root, config, "repo").map((w) => w.dir)).toEqual([".", "libs/y"]);
   });
 
   it("falls back to a single root workspace", () => {

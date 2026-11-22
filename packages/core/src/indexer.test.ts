@@ -25,7 +25,8 @@ type Name =
   | "nx"
   | "react-router-fastify"
   | "go-basic"
-  | "bundler-aliases";
+  | "bundler-aliases"
+  | "ts-references";
 const fixtures: MaterializedFixture[] = [];
 const dataDirs: string[] = [];
 afterEach(async () => {
@@ -61,6 +62,7 @@ describe("indexRepo + dumpGraph snapshots", () => {
     "react-router-fastify",
     "go-basic",
     "bundler-aliases",
+    "ts-references",
   ] as const)("%s dump matches the committed snapshot", async (name) => {
     const { paths } = await setup(name);
     const r = await indexRepo(paths, { layer: "main" });

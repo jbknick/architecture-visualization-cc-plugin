@@ -1,6 +1,6 @@
 # Claude Code Architecture Visualisation Plugin
 
-A Claude Code plugin that indexes a TypeScript repository into a structural graph (workspaces, folders, files, functions, and the imports, calls and renders between them) and shows it in a local browser app: a 2D project map, a caller graph for any function, a list of duplicated code, the blast radius of a branch or pull request, and (just for fun) a 3D landscape of settlements joined by roads. Monorepos come first (pnpm, npm/yarn workspaces, Nx, Turborepo).
+A Claude Code plugin that indexes a TypeScript repository into a structural graph (workspaces, folders, files, functions, and the imports, calls and renders between them) and shows it in a local browser app: a 2D project map, a caller graph for any function, a list of duplicated code, the blast radius of a branch or pull request, and (just for fun) a 3D landscape of settlements joined by roads. Monorepos come first (pnpm, npm/yarn workspaces, Nx, Turborepo, or packages linked only by tsconfig project references).
 
 ![The 2D project map at Workspaces level: boxes are workspaces, arrows are imports between them](docs/readme/project-map-workspaces.png)
 

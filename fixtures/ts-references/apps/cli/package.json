@@ -1,0 +1,4 @@
+{
+  "name": "@refs/cli",
+  "dependencies": { "@refs/core": "*" }
+}
