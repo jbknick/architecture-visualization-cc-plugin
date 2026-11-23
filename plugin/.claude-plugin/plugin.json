@@ -1,6 +1,6 @@
 {
   "name": "gantry",
   "version": "0.1.0",
-  "description": "Claude Code Architecture Visualisation Plugin: a codebase map, function index and reuse guard for TypeScript repos",
+  "description": "Claude Code Architecture Visualisation Plugin: a codebase map, function index and reuse guard for TypeScript, Go, Java, Python, C# and Rust repos",
   "author": { "name": "jbknick" }
 }
