@@ -39,8 +39,24 @@ const TypingSchema = z.strictObject({
     builtin: strings.optional(),
     byParameterCount: z.literal(true).optional(),
     wrappers: strings,
+    fielded: z.array(z.strictObject({ kind: field, field })).optional(),
+    self: field.optional(),
     generic: z.strictObject({ kind: field, field: field.optional(), arguments: field.optional() }),
-    parameters: z.strictObject({ entry: field, names: strings }).optional(),
+    parameters: z
+      .strictObject({
+        entry: field,
+        names: strings,
+        bare: strings.optional(),
+        bounds: z
+          .strictObject({
+            name: field,
+            field,
+            ignore: strings,
+            where: z.strictObject({ kind: field, predicate: field, name: field, bounds: field }).optional(),
+          })
+          .optional(),
+      })
+      .optional(),
     library: z
       .array(
         z.strictObject({
@@ -83,7 +99,9 @@ const TypingSchema = z.strictObject({
     separate: field.optional(),
     roots: strings.optional(),
     index: field.optional(),
+    entries: strings.optional(),
     reexports: z.number().int().positive().optional(),
+    paths: z.strictObject({ root: field, self: field, parent: field }).optional(),
   }),
   decorators: z.strictObject({ wrapper: field, entry: field, overloads: strings }).optional(),
   construction: z.strictObject({ initializer: field, creators: strings, special: strings }).optional(),
@@ -128,6 +146,7 @@ const TypingSchema = z.strictObject({
   enclosing: z
     .strictObject({ self: strings, parent: strings, callableLocals: z.literal(true).optional() })
     .optional(),
+  self: strings.optional(),
   arity: z
     .strictObject({
       arguments: field,
@@ -148,6 +167,8 @@ const TypingSchema = z.strictObject({
     names: strings,
     members: z.array(z.strictObject({ kind: field, operand: field, name: field })),
     operands: strings,
+    paths: z.array(z.strictObject({ kind: field, path: field, name: field, segments: strings })).optional(),
+    operandsAreValues: z.literal(true).optional(),
   }),
   conversion: z.strictObject({ kind: field, type: field }).optional(),
   builtins: z.strictObject({ arguments: field, typed: strings, first: strings }).optional(),
@@ -241,6 +262,21 @@ const PackSchema = z.strictObject({
       bodies: strings,
       anonymous: z.strictObject({ kind: field, type: field, body: field, prefix: field }).optional(),
       constants: z.strictObject({ kind: field, name: field, body: field }).optional(),
+      impls: z
+        .strictObject({
+          kind: field,
+          type: field,
+          interface: field,
+          body: field,
+          baseType: z.strictObject({
+            names: strings,
+            wrappers: strings,
+            generic: z.strictObject({ kind: field, field }),
+            unknown: field,
+          }),
+          generics: field,
+        })
+        .optional(),
     }),
     values: z.strictObject({ ...specGroup, name: field, nameKinds: strings }),
     import: z.strictObject({
@@ -277,6 +313,18 @@ const PackSchema = z.strictObject({
           through: strings,
         })
         .optional(),
+      trees: z
+        .strictObject({
+          declarations: strings,
+          argument: field,
+          scoped: z.strictObject({ kind: field, path: field, list: field }),
+          list: field,
+          aliased: z.strictObject({ kind: field, path: field, alias: field }),
+          onDemand: field,
+          self: field,
+        })
+        .optional(),
+      submodules: z.strictObject({ kind: field, name: field, body: field, parent: field }).optional(),
     }),
     call: strings,
     callee: z.strictObject({
@@ -418,6 +466,7 @@ describe.each([
   ["Java", "java-basic"],
   ["Python", "python-basic"],
   ["C#", "csharp-basic"],
+  ["Rust", "rust-basic"],
 ] as const)("%s index determinism", (_label, name) => {
   it("dumps byte-equal output from two fresh data dirs", async () => {
     const fx = await materializeFixture(name);

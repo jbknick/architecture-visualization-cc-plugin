@@ -1,12 +1,15 @@
 import type { SyntaxNode } from "../grammar.js";
 import type { DeclarationRule, LanguagePack, TypingRules } from "../pack.js";
-import { baseTypeName, rawImportsOf, specsOf } from "../parse.js";
+import { rawImportsOf, specsOf } from "../parse.js";
 import {
+  baseTypeName,
   bodiedName,
   bodiedRule,
   type HangingBody,
   hangingRanges,
+  implRule,
   membersOf,
+  parameterNames,
   walkDeclarations,
 } from "../walk.js";
 import type {
@@ -94,8 +97,14 @@ export class Reader {
   private owner: string | null = null;
   /** The function or method whose body is being read; null outside one. */
   private fn: SyntaxNode | null = null;
-  /** The type parameters of the function being read and of the functions around it: a name among them is no type. */
-  private tparams: readonly string[] = [];
+  /**
+   * The type parameters of the function being read and of the functions and blocks of members around it: a name among
+   * them is no type. A parameter with one bound (`typing.type.parameters.bounds`) reads as the type of that bound, except
+   * in a result type.
+   */
+  private tparams: ReadonlyMap<string, TypeRef | null> = new Map();
+  /** False while a result type is read: the parameter of a generic function is then the type the caller gives it, not its bound. */
+  private bounded = true;
 
   constructor(private readonly pack: LanguagePack) {
     if (!pack.nodes.typing) throw new Error(`${pack.id}: the pack has no typing rules`);
@@ -113,7 +122,9 @@ export class Reader {
     while (b) {
       const k = b.kind();
       const nullable = this.nullable(b);
+      const fielded = t.fielded?.find((f) => f.kind === k);
       if (nullable) b = nullable.inner;
+      else if (fielded) b = b.field(fielded.field);
       else if (t.wrappers.includes(k)) b = b.namedChildren()[0] ?? null;
       else if (k === t.generic.kind) {
         const list = t.generic.arguments
@@ -129,7 +140,15 @@ export class Reader {
     const k = b.kind();
     if (t.names.includes(k)) {
       const name = b.text();
-      if (!args && this.tparams.includes(name)) return { k: "name", name, param: true };
+      // The name for the type around the code is that type; with no type around, it is no type.
+      if (t.self !== undefined && name === t.self)
+        return this.owner === null || this.owner === this.pack.nodes.types.impls?.baseType.unknown
+          ? null
+          : { k: "name", name: this.owner, owner: this.owner };
+      if (!args && this.tparams.has(name)) {
+        const bound = this.bounded ? this.tparams.get(name) : null;
+        return bound ?? { k: "name", name, param: true };
+      }
       return { k: "name", name, owner: this.owner, ...(args ? { args } : {}) };
     }
     if (t.quoted && k === t.quoted.kind) return this.quoted(b, t.quoted);
@@ -195,7 +214,7 @@ export class Reader {
     const name = segments.pop() ?? "";
     if (segments.length > 0)
       return { k: "qual", qualifier: segments.join(this.pack.nodes.import.separator), name };
-    if (this.tparams.includes(name)) return { k: "name", name, param: true };
+    if (this.tparams.has(name)) return { k: "name", name, param: true };
     return { k: "name", name, owner: this.owner };
   }
 
@@ -235,7 +254,12 @@ export class Reader {
   private resultsOf(decl: SyntaxNode, field: string): Results {
     const deferred = this.typing.deferred;
     if (deferred && decl.children().some((c) => c.kind() === deferred)) return [];
-    return this.results(decl, field);
+    this.bounded = false;
+    try {
+      return this.results(decl, field);
+    } finally {
+      this.bounded = true;
+    }
   }
 
   /** The number of arguments a call site passes; null for a language that does not tell overloads apart. */
@@ -272,7 +296,8 @@ export class Reader {
     const kind = x.kind();
     if (this.isParentCall(x)) return { k: "base" };
     if (this.isCall(kind)) return { k: "call", call: this.call(x, depth + 1) };
-    if (this.typing.enclosing?.self.includes(kind)) return { k: "self", ...this.bodyOf(x) };
+    if (this.typing.enclosing?.self.includes(kind) || this.typing.self?.includes(kind))
+      return { k: "self", ...this.bodyOf(x) };
     if (this.typing.enclosing?.parent.includes(kind)) return { k: "parent", ...this.bodyOf(x) };
     if (e.names.includes(kind))
       return { k: "name", name: x.text(), pos: x.range().start.index, ...this.bodyOf(x) };
@@ -367,6 +392,23 @@ export class Reader {
     return {};
   }
 
+  /** The segments of a path of names (`typing.callee.paths`); null when a segment is not a plain name or a word of the pack. */
+  private segments(
+    n: SyntaxNode,
+    rule: { kind: string; path: string; name: string; segments: readonly string[] },
+    depth: number,
+  ): string[] | null {
+    if (depth > MAX_TYPE_DEPTH) return null;
+    const name = n.field(rule.name);
+    const head = n.field(rule.path);
+    if (!name || !head || !rule.segments.includes(name.kind())) return null;
+    if (head.kind() === rule.kind) {
+      const before = this.segments(head, rule, depth + 1);
+      return before && [...before, name.text()];
+    }
+    return rule.segments.includes(head.kind()) ? [head.text(), name.text()] : null;
+  }
+
   /** What an expression calls. With `strip`, an instantiation (`f[T]`) stands for what it instantiates. */
   private callee(fnNode: SyntaxNode | null, at: SyntaxNode, strip: boolean, depth: number): Callee {
     const t = this.typing;
@@ -388,6 +430,13 @@ export class Reader {
     const kind = fn.kind();
     if (t.callee.names.includes(kind))
       return { k: "name", name: fn.text(), pos: fn.range().start.index, line, ...this.bodyOf(fn) };
+    const path = t.callee.paths?.find((r) => r.kind === kind);
+    if (path) {
+      const segments = this.segments(fn, path, 0);
+      // A type parameter in front of the name stands for a type no one knows here.
+      if (!segments || this.tparams.has(segments[0] ?? "")) return { k: "none", line };
+      return { k: "path", segments, pos: fn.range().start.index, line };
+    }
     const member = t.callee.members.find((r) => r.kind === kind);
     if (member) {
       const nameNode = fn.field(member.name);
@@ -458,14 +507,31 @@ export class Reader {
   setFunction(f: FunctionNode | null): void {
     this.owner = f?.owner ?? null;
     this.fn = f?.node ?? null;
-    this.tparams = f ? this.paramsIn(f.node, f.owner, f.hosts) : [];
+    this.tparams = f ? this.paramsIn(f.node, f.owner, f.hosts) : new Map();
   }
 
-  /** The type parameters in scope in a member of a type body: its own and those of the members the bodies around it were created in. */
-  private paramsIn(node: SyntaxNode, owner: string | null, hosts: readonly Host[]): string[] {
-    return [...hosts, { node, owner }].flatMap((h) =>
-      this.typeParams(h.node, this.rule(h.node, h.owner)?.generics),
-    );
+  /**
+   * The type parameters in scope in a member of a type body: those of the block of members it is in, its own and those
+   * of the members the bodies around it were created in. An inner one hides an outer one of the same name.
+   */
+  private paramsIn(
+    node: SyntaxNode,
+    owner: string | null,
+    hosts: readonly Host[],
+  ): Map<string, TypeRef | null> {
+    const out = new Map<string, TypeRef | null>();
+    for (const h of [...hosts, { node, owner }]) {
+      for (const [k, v] of this.implParams(h.node)) out.set(k, v);
+      for (const [k, v] of this.typeBounds(h.node, this.rule(h.node, h.owner)?.generics)) out.set(k, v);
+    }
+    return out;
+  }
+
+  /** The type parameters of the block of members (`types.impls`) that holds a member; none for a member of any other body. */
+  private implParams(member: SyntaxNode): Map<string, TypeRef | null> {
+    const block = member.parent()?.parent();
+    const impl = block ? implRule(this.pack, block) : undefined;
+    return block && impl ? this.typeBounds(block, impl.generics) : new Map();
   }
 
   /**
@@ -502,16 +568,45 @@ export class Reader {
 
   /** The names of the type parameters a declaration holds in the field `field`. */
   private typeParams(d: SyntaxNode, field: string | undefined): string[] {
+    return parameterNames(this.pack, this.genericList(d, field));
+  }
+
+  /**
+   * The type parameters of a declaration with the type of their one bound (`typing.type.parameters.bounds`), read in
+   * the parameters and locals of the declaration; null for a parameter with no bound or several. The bounds are those
+   * written with the parameter and, in the clause the pack names, apart from it; kinds in `ignore` count for none.
+   */
+  private typeBounds(d: SyntaxNode, field: string | undefined): Map<string, TypeRef | null> {
+    const out = new Map<string, TypeRef | null>();
+    for (const name of this.typeParams(d, field)) out.set(name, null);
     const p = this.typing.type.parameters;
+    const rule = p?.bounds;
     const list = this.genericList(d, field);
-    if (!p || !list) return [];
-    return list
-      .namedChildren()
-      .filter((c) => c.kind() === p.entry)
-      .flatMap((c) => {
-        const name = c.namedChildren().find((x) => p.names.includes(x.kind()));
-        return name ? [name.text()] : [];
-      });
+    if (!p || !rule || !list || out.size === 0) return out;
+    const found = new Map<string, SyntaxNode[]>();
+    const add = (name: string | undefined, bounds: SyntaxNode | null): void => {
+      if (!name || !bounds || !out.has(name)) return;
+      const nodes = found.get(name) ?? [];
+      for (const b of bounds.namedChildren())
+        if (!rule.ignore.includes(b.kind()) && !this.pack.tokens.comments.includes(b.kind())) nodes.push(b);
+      found.set(name, nodes);
+    };
+    for (const c of list.namedChildren())
+      if (c.kind() === p.entry) add(c.field(rule.name)?.text(), c.field(rule.field));
+    const clause = rule.where;
+    if (clause)
+      for (const w of d.namedChildren().filter((c) => c.kind() === clause.kind))
+        for (const pred of w.namedChildren().filter((c) => c.kind() === clause.predicate))
+          add(pred.field(clause.name)?.text(), pred.field(clause.bounds));
+    // A bound is read as any type is, outside the parameters it may be written with.
+    const saved = this.tparams;
+    this.tparams = new Map();
+    for (const [name, nodes] of found) {
+      const only = nodes.length === 1 ? nodes[0] : undefined;
+      if (only) out.set(name, this.typeRef(only));
+    }
+    this.tparams = saved;
+    return out;
   }
 
   /** The names a function declares (parameters, results, locals) with where each gets its type; those inside a range of `skip` belong to the body found there. */
@@ -537,6 +632,8 @@ export class Reader {
       const start = d.range().start.index;
       if (inside(skip, start)) continue;
       const end = d.range().end.index;
+      // The function the names are collected for is not one of them.
+      if (start === fnStart && end === fnEnd) continue;
       const at = (from: "start" | "end"): number => (from === "start" ? start : end);
       const param = l.parameters.find((r) => r.kind === kind);
       if (param) {
@@ -779,24 +876,43 @@ export class Reader {
       methods: [],
       types: [],
       vars: [],
+      impls: [],
     };
     /** The type parameters of the functions around a hanging body, by the name of the body. */
-    const paramsOf = new Map<string, string[]>();
-    walkDeclarations(this.pack, root, ({ node: d, owner, body: hanging }) => {
+    const paramsOf = new Map<string, ReadonlyMap<string, TypeRef | null>>();
+    walkDeclarations(this.pack, root, ({ node: d, owner, body: hanging, impl: viaImpl }) => {
       this.owner = owner;
-      const around = paramsOf.get(owner ?? "") ?? [];
+      const around = paramsOf.get(owner ?? "") ?? new Map<string, TypeRef | null>();
       this.tparams = around;
       if (hanging) {
         const host = hanging.host;
-        this.tparams = [...around, ...this.typeParams(host, this.rule(host, owner)?.generics)];
-        paramsOf.set(hanging.name, [...this.tparams]);
+        this.tparams = new Map([...around, ...this.typeBounds(host, this.rule(host, owner)?.generics)]);
+        paramsOf.set(hanging.name, this.tparams);
         out.types.push(this.hangingDecl(d, hanging, owner));
         return;
       }
       const kind = d.kind();
       const start = d.range().start.index;
+      const block = implRule(this.pack, d);
+      if (block) {
+        // The type and the interface a block of members names are read where the block's own type parameters are not types.
+        this.tparams = this.typeBounds(d, block.generics);
+        const type = d.field(block.type);
+        const interfaceType = d.field(block.interface);
+        // A block for a reference to a type, or for any other type that wraps one, is not a block of the wrapped type.
+        const wraps = type && (this.typing.type.fielded ?? []).some((f) => f.kind === type.kind());
+        out.impls.push({
+          type:
+            wraps || (type && this.typing.type.wrappers.includes(type.kind())) ? null : this.typeRef(type),
+          interface: interfaceType ? this.typeRef(interfaceType) : null,
+          line: d.range().start.line + 1,
+        });
+        this.tparams = new Map();
+        return;
+      }
       const rule = this.rule(d, owner);
-      if (rule) this.tparams = [...around, ...this.typeParams(d, rule.generics)];
+      if (rule)
+        this.tparams = new Map([...around, ...this.implParams(d), ...this.typeBounds(d, rule.generics)]);
       const fn = owner === null ? n.function.find((r) => r.kind === kind) : undefined;
       const bodied = bodiedRule(this.pack, kind);
       if (rule && fn) {
@@ -825,7 +941,7 @@ export class Reader {
         if (key !== null)
           out.methods.push({
             key,
-            owner,
+            owner: viaImpl ? null : owner,
             results: this.resultsOf(d, rule.result),
             start,
             arity: this.arityOf(d, rule),
@@ -869,7 +985,7 @@ export class Reader {
       }
     });
     this.owner = null;
-    this.tparams = [];
+    this.tparams = new Map();
     return out;
   }
 
@@ -930,7 +1046,7 @@ export class Reader {
       }
     }
     this.fn = null;
-    this.tparams = [];
+    this.tparams = new Map();
     return out;
   }
 

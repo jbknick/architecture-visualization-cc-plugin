@@ -30,21 +30,34 @@ describe("language registry", () => {
     expect(languageOfPath("src/Core/Core.csproj")).toBeUndefined();
   });
 
-  it("holds TypeScript, Go, Java, Python and C#", () => {
-    expect(languages().map((m) => m.id)).toEqual(["typescript", "go", "java", "python", "csharp"]);
-    expect(LANG_IDS).toEqual(["typescript", "go", "java", "python", "csharp"]);
+  it("picks Rust for .rs", () => {
+    expect(languageOfPath("crates/core/src/lib.rs")?.id).toBe("rust");
+    expect(languageOfPath("crates/core/Cargo.toml")).toBeUndefined();
+  });
+
+  it("holds TypeScript, Go, Java, Python, C# and Rust", () => {
+    expect(languages().map((m) => m.id)).toEqual(["typescript", "go", "java", "python", "csharp", "rust"]);
+    expect(LANG_IDS).toEqual(["typescript", "go", "java", "python", "csharp", "rust"]);
     expect(isLang("typescript")).toBe(true);
     expect(isLang("go")).toBe(true);
     expect(isLang("java")).toBe(true);
     expect(isLang("python")).toBe(true);
     expect(isLang("csharp")).toBe(true);
-    expect(isLang("rust")).toBe(false);
+    expect(isLang("rust")).toBe(true);
+    expect(isLang("ruby")).toBe(false);
     expect(langLabel("typescript")).toBe("TypeScript");
     expect(langLabel("go")).toBe("Go");
     expect(langLabel("java")).toBe("Java");
     expect(langLabel("python")).toBe("Python");
     expect(langLabel("csharp")).toBe("C#");
+    expect(langLabel("rust")).toBe("Rust");
     expect(languageModule("go").label).toBe("Go");
+  });
+
+  it("skips target folders for Rust", () => {
+    const skip = languageModule("rust").skipPath;
+    expect(skip?.("crates/core/target/debug/build/a.rs")).toBe(true);
+    expect(skip?.("crates/core/src/lib.rs")).toBe(false);
   });
 
   it("skips bin and obj folders for C#", () => {

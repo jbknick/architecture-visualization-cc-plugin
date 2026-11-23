@@ -28,6 +28,7 @@ type Name =
   | "java-basic"
   | "python-basic"
   | "csharp-basic"
+  | "rust-basic"
   | "bundler-aliases"
   | "ts-references"
   | "tsconfig-extends-workspace"
@@ -69,6 +70,7 @@ describe("indexRepo + dumpGraph snapshots", () => {
     "java-basic",
     "python-basic",
     "csharp-basic",
+    "rust-basic",
     "bundler-aliases",
     "ts-references",
     "tsconfig-extends-workspace",

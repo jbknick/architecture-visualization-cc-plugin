@@ -3,8 +3,8 @@ import { fileId as makeFileId, symId } from "../../ids.js";
 import type { ParsedFile, ParsedImport } from "../../parse/index.js";
 import type { ParsedSymbol, SymbolKind } from "../../types.js";
 import { parseTree, type SyntaxNode } from "./grammar.js";
-import type { BaseTypeRule, DeclarationRule, LanguagePack, ModuleImportRules } from "./pack.js";
-import { bodiedName, bodiedRule, walkDeclarations } from "./walk.js";
+import type { DeclarationRule, LanguagePack, ModuleImportRules } from "./pack.js";
+import { baseTypeName, bodiedName, bodiedRule, walkDeclarations } from "./walk.js";
 
 /** File directive recorded on a generated file; the duplicate engine skips files that carry it. */
 export const GENERATED_DIRECTIVE = "generated";
@@ -53,19 +53,6 @@ export function isExportedName(
       );
     }
   }
-}
-
-/** Base type name of a receiver or type expression: `*S[T]` -> `S`. The pack's `unknown` when the shape is not recognised. */
-export function baseTypeName(rule: BaseTypeRule, n: SyntaxNode | null): string {
-  let cur = n;
-  while (cur) {
-    const k = cur.kind();
-    if (rule.names.includes(k)) return cur.text();
-    if (rule.wrappers.includes(k)) cur = cur.namedChildren()[0] ?? null;
-    else if (k === rule.generic.kind) cur = cur.field(rule.generic.field);
-    else return rule.unknown;
-  }
-  return rule.unknown;
 }
 
 interface Draft {
@@ -340,7 +327,53 @@ export function rawImportsOf(pack: LanguagePack, root: SyntaxNode): RawImport[] 
     }
   };
   if (modules) search(root, modules);
+  const sep = rule.separator;
+  const joined = (a: string, b: string): string => (a === "" ? b : b === "" ? a : `${a}${sep}${b}`);
+  /** The path a node spells, without spaces and without a leading separator (a path from the root of everything). */
+  const written = (x: SyntaxNode): string => {
+    const t = x.text().replace(/\s+/g, "");
+    return t.startsWith(sep) ? t.slice(sep.length) : t;
+  };
+  /** One import of the path `full` (its last segment is the name brought in) from the tree below `from`. */
+  const pushPath = (full: string, alias: string | null, line: number, onDemand = false): void => {
+    const cut = full.lastIndexOf(sep);
+    out.push({
+      alias,
+      specifier: onDemand ? full : cut < 0 ? "" : full.slice(0, cut),
+      name: onDemand ? "*" : cut < 0 ? full : full.slice(cut + sep.length),
+      static: false,
+      line,
+    });
+  };
+  /** The imports of a tree of paths (the pack's `import.trees`) below the prefix `from`. */
+  const tree = (n: SyntaxNode, from: string, line: number, t: NonNullable<typeof rule.trees>): void => {
+    const kind = n.kind();
+    if (kind === t.scoped.kind) {
+      const head = n.field(t.scoped.path);
+      const prefix = joined(from, head ? written(head) : "");
+      for (const c of n.field(t.scoped.list)?.namedChildren() ?? []) tree(c, prefix, line, t);
+    } else if (kind === t.list) {
+      for (const c of n.namedChildren()) tree(c, from, line, t);
+    } else if (kind === t.aliased.kind) {
+      const head = n.field(t.aliased.path);
+      const alias = n.field(t.aliased.alias)?.text() ?? null;
+      if (head) pushPath(head.kind() === t.self ? from : joined(from, written(head)), alias, line);
+    } else if (kind === t.onDemand) {
+      const own = written(n).replace(/\*$/, "");
+      pushPath(joined(from, own.endsWith(sep) ? own.slice(0, -sep.length) : own), null, line, true);
+    } else if (kind === t.self) pushPath(from, null, line);
+    else if (!pack.tokens.comments.includes(kind)) pushPath(joined(from, written(n)), null, line);
+  };
   for (const d of root.namedChildren()) {
+    const line = d.range().start.line + 1;
+    if (rule.trees?.declarations.includes(d.kind())) {
+      const arg = d.field(rule.trees.argument);
+      if (arg) tree(arg, "", line, rule.trees);
+    } else if (rule.submodules && d.kind() === rule.submodules.kind) {
+      const name = d.field(rule.submodules.name)?.text();
+      if (name && !d.field(rule.submodules.body))
+        out.push({ alias: null, specifier: rule.submodules.parent, name, static: false, line });
+    }
     if (!rule.declarations.includes(d.kind())) continue;
     if (rule.specs.includes(d.kind())) add(d);
     else specs(d);

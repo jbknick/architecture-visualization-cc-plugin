@@ -1,5 +1,47 @@
 import type { SyntaxNode } from "./grammar.js";
-import type { BodiedTypeRule, LanguagePack } from "./pack.js";
+import type { BaseTypeRule, BodiedTypeRule, LanguagePack } from "./pack.js";
+
+/** Base type name of a receiver or type expression: `*S[T]` -> `S`. The pack's `unknown` when the shape is not recognised. */
+export function baseTypeName(rule: BaseTypeRule, n: SyntaxNode | null): string {
+  let cur = n;
+  while (cur) {
+    const k = cur.kind();
+    if (rule.names.includes(k)) return cur.text();
+    if (rule.wrappers.includes(k)) cur = cur.namedChildren()[0] ?? null;
+    else if (k === rule.generic.kind) cur = cur.field(rule.generic.field);
+    else return rule.unknown;
+  }
+  return rule.unknown;
+}
+
+/** The names of the type parameters a list of them holds (`typing.type.parameters`); none for a pack without the rule. */
+export function parameterNames(pack: LanguagePack, list: SyntaxNode | null): string[] {
+  const p = pack.nodes.typing?.type.parameters;
+  if (!p || !list) return [];
+  return list.namedChildren().flatMap((c) => {
+    if (p.bare?.includes(c.kind())) return [c.text()];
+    if (c.kind() !== p.entry) return [];
+    const name = c.namedChildren().find((x) => p.names.includes(x.kind()));
+    return name ? [name.text()] : [];
+  });
+}
+
+/** The rule of a block of members of a type declared elsewhere, when the node is one. */
+export const implRule = (
+  pack: LanguagePack,
+  node: SyntaxNode,
+): NonNullable<LanguagePack["nodes"]["types"]["impls"]> | undefined => {
+  const rule = pack.nodes.types.impls;
+  return rule && rule.kind === node.kind() ? rule : undefined;
+};
+
+/** The name of the type a block of members belongs to; `unknown` when it is not read or is one of the block's own type parameters. */
+export function implOwner(pack: LanguagePack, node: SyntaxNode): string {
+  const rule = pack.nodes.types.impls;
+  if (!rule) return "";
+  const base = baseTypeName(rule.baseType, node.field(rule.type));
+  return parameterNames(pack, node.field(rule.generics)).includes(base) ? rule.baseType.unknown : base;
+}
 
 /**
  * A body of members that no declaration of a type holds: the body of an expression that creates a value of a type
@@ -27,6 +69,8 @@ export interface Found {
   anonymous: boolean;
   /** Set when the node is the expression or element that makes a hanging body; its members follow. */
   body?: HangingBody;
+  /** True for a member of a block of members of a type declared elsewhere (`types.impls`): the owner is that type's name, which no body of this file holds. */
+  impl?: true;
 }
 
 /** The rule of a bodied type declaration of this kind. */
@@ -140,6 +184,12 @@ export function walkDeclarations(pack: LanguagePack, root: SyntaxNode, visit: (f
   /** How many declarations (methods, types) each dotted name has had so far, as the symbol ids count them. */
   const seen = new Map<string, number>();
   const descend = (node: SyntaxNode, owner: string | null, inBody: boolean): void => {
+    const impl = implRule(pack, node);
+    if (impl) {
+      const block = node.field(impl.body);
+      if (block) members(block, implOwner(pack, node), block.kind(), inBody, true);
+      return;
+    }
     const rule = bodiedRule(pack, node.kind());
     if (!rule) return;
     const name = bodiedName(rule, node, owner);
@@ -189,15 +239,21 @@ export function walkDeclarations(pack: LanguagePack, root: SyntaxNode, visit: (f
       members(h.body, name, h.body.kind(), true);
     }
   };
-  const members = (body: SyntaxNode, owner: string, container: string, inBody: boolean): void => {
+  const members = (
+    body: SyntaxNode,
+    owner: string,
+    container: string,
+    inBody: boolean,
+    viaImpl = false,
+  ): void => {
     for (const c of body.namedChildren()) {
       if (through.has(c.kind())) {
-        members(c, owner, c.kind(), inBody);
+        members(c, owner, c.kind(), inBody, viaImpl);
         continue;
       }
       const suffix = repeat(c, owner);
-      visit({ node: c, owner, container, anonymous: inBody });
-      if (bodiedRule(pack, c.kind())) descend(c, owner, inBody);
+      visit({ node: c, owner, container, anonymous: inBody, ...(viaImpl ? { impl: true as const } : {}) });
+      if (bodiedRule(pack, c.kind()) || implRule(pack, c)) descend(c, owner, inBody);
       else hang(c, owner, container, suffix, inBody);
     }
   };
