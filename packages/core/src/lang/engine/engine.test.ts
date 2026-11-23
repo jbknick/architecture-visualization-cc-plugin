@@ -37,6 +37,7 @@ const TypingSchema = z.strictObject({
       .strictObject({ kind: field, qualifier: field, name: field, packages: z.literal(true).optional() })
       .optional(),
     builtin: strings.optional(),
+    byParameterCount: z.literal(true).optional(),
     wrappers: strings,
     generic: z.strictObject({ kind: field, field: field.optional(), arguments: field.optional() }),
     parameters: z.strictObject({ entry: field, names: strings }).optional(),
@@ -175,7 +176,7 @@ const TypingSchema = z.strictObject({
         names: field,
         type: field.optional(),
         parentType: field.optional(),
-        values: z.string(),
+        values: field.optional(),
         from,
       }),
     ),

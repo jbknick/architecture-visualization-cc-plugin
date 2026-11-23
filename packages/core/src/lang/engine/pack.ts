@@ -110,7 +110,7 @@ export interface BodiedTypeRule {
 
 /**
  * The rule for `exported`: `capital` is an upper-case first letter; `modifier` is a keyword among the modifiers of the
- * declaration (`node` is the kind of the children that hold them, each one holding the keyword or being it; `implicit` the
+ * declaration (`node` is the kind of the children that hold them, the keyword being one of the children of each; `implicit` the
  * kinds of the bodies whose members are exported without one, `owners` the kinds of the declarations whose members are);
  * `underscore` is a name that does not start with `_`.
  */
@@ -213,6 +213,12 @@ export interface TypingRules {
      * package too (`a.b.T`), not only a name an import binds.
      */
     qualified?: { kind: string; qualifier: string; name: string; packages?: true };
+    /**
+     * The number of type parameters is part of the identity of a type: a name that a package declares with different
+     * numbers (`Foo` and `Foo<T>`) is several types, which the index does not tell apart at a use site, so such a name is no
+     * type (its methods are no target either). Parts of one type merge only when their numbers are equal.
+     */
+    byParameterCount?: true;
     /** Names of types the language provides that have no declaration in the repo: each is a type of its own that nothing else declares, so an extension method of it can be found. */
     builtin?: readonly string[];
     /** Kinds that wrap a type and hold it as their first named child (pointer, parentheses). */
@@ -443,14 +449,14 @@ export interface TypingRules {
     /**
      * Declarations of names with values and an optional type: the field of the names, of the type (if the declaration has
      * one; `parentType` is the field of the parent node that holds it, for a declarator that shares one type) and of the
-     * values. An empty `values` says the value is the last named child of the declaration that is not a name.
+     * values. Without `values`, the value is the last named child of the declaration that is not a name.
      */
     declarations: readonly {
       kind: string;
       names: string;
       type?: string;
       parentType?: string;
-      values: string;
+      values?: string;
       from: "start" | "end";
     }[];
     /** Type names that say the type is the one of the value (`var x = ...`). */

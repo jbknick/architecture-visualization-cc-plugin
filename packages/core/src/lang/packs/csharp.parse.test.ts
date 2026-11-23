@@ -80,6 +80,29 @@ namespace Acme.App
     expect([...m.keys()]).toEqual(["C", "C.M", "D"]);
   });
 
+  it("reads the declarations of every branch of a conditional block, at the top, in a namespace and in a type", () => {
+    const m = byName(`#if A
+public class Top { }
+#endif
+namespace N
+{
+#if A
+    public class Inner
+    {
+#if B
+        public void One() { }
+#elif C
+        public void Two() { }
+#else
+        public void Three() { }
+#endif
+    }
+#endif
+}
+`);
+    expect([...m.keys()]).toEqual(["Top", "Inner", "Inner.One", "Inner.Two", "Inner.Three"]);
+  });
+
   it("maps declarations to symbol kinds", () => {
     const m = byName(src);
     expect(m.get("Outer")?.kind).toBe("class");

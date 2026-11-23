@@ -560,7 +560,7 @@ export class Reader {
         if (typeNode && l.inferred.includes(typeNode.text())) typeNode = null;
         // Without a field for the value, it is the last child of the declaration that is no name (and no comment).
         const list =
-          decl.values === ""
+          decl.values === undefined
             ? (d
                 .namedChildren()
                 .filter(

@@ -215,6 +215,74 @@ public class Use { void Go(Mine m, Clean c) { m.Poke(); c.Poke(); } }
     expect(show(edges)).toEqual([]);
   });
 
+  it("an extension method whose first parameter is not read leaves a call it could mean with no edge", async () => {
+    const edges = await repo({
+      "A.cs": `namespace X;
+public class Thing {}
+public static class Exts {
+  public static void Pick(this Thing t) {}
+  public static void Pick<TB>(this TB b, int x) {}
+  public static void Fold(this Thing t, int x) {}
+  public static void Fold(this System.Collections.Generic.List<Thing> t, int x) {}
+}
+public class Use {
+  void Fits(Thing t) { t.Pick(); }
+  void Undecided(Thing t) { t.Pick(1); }
+  void Constructed(Thing t) { t.Fold(1); }
+}
+`,
+    });
+    expect(show(edges)).toEqual(["A.cs#Use.Fits -> A.cs#Exts.Pick high"]);
+  });
+
+  it("a name declared with and without type parameters is no type, whichever way it is written", async () => {
+    const edges = await repo({
+      "Foo.cs": "namespace X;\npublic class Foo { public Foo() {} public void M() {} }\n",
+      "FooT.cs": "namespace X;\npublic class Foo<T> { public Foo() {} public void M() {} }\n",
+      "Bar.cs": "namespace X;\npublic class Bar<T> { public void N() {} }\n",
+      "Use.cs": `namespace X;
+public class Use {
+  void Plain(Foo f) { f.M(); }
+  void Generic(Foo<int> g) { g.M(); }
+  void NewPlain() { new Foo(); }
+  void NewGeneric() { new Foo<int>(); }
+  void Alone(Bar<int> b) { b.N(); }
+}
+`,
+    });
+    expect(show(edges)).toEqual(["Use.cs#Use.Alone -> Bar.cs#Bar.N high"]);
+  });
+
+  it("reads the members and types inside conditional blocks", async () => {
+    const edges = await repo({
+      "A.cs": `namespace X;
+public class Svc {
+#if NET8
+  public void Work() {}
+#elif NET6
+  public void Old() {}
+#else
+  public void Other() {}
+#endif
+  public void Sure() {}
+}
+#if NET8
+public class Extra { public void Go() {} }
+#endif
+public class Use {
+  void Go(Svc s, Extra e) { s.Work(); s.Sure(); s.Old(); s.Other(); e.Go(); }
+}
+`,
+    });
+    expect(show(edges)).toEqual([
+      "A.cs#Use.Go -> A.cs#Extra.Go high",
+      "A.cs#Use.Go -> A.cs#Svc.Old high",
+      "A.cs#Use.Go -> A.cs#Svc.Other high",
+      "A.cs#Use.Go -> A.cs#Svc.Sure high",
+      "A.cs#Use.Go -> A.cs#Svc.Work high",
+    ]);
+  });
+
   it("a method of the type wins over an extension method of that name, and a static call names the method", async () => {
     const edges = await repo({
       "A.cs": `namespace X;

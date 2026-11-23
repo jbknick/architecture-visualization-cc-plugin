@@ -63,6 +63,8 @@ export interface Pkg {
   /** Names a file declares as a function twice: which one a call means is not known, so none is in `funcs`. */
   redefined: Set<string>;
   types: Map<string, TypeInfo>;
+  /** Names the package declares with different numbers of type parameters (`typing.type.byParameterCount`): no type of it, nor any member, is kept. */
+  mixed: Set<string>;
   /** Keyed `Recv.Name` with the receiver's base type (the dotted name of the type for a method in a type body). Overloads share a key. */
   methods: Map<string, FuncInfo[]>;
   /** Extension methods by name. */
@@ -194,6 +196,7 @@ export class TypeIndex {
           funcs: new Map(),
           redefined: new Set(),
           types: new Map(),
+          mixed: new Set(),
           methods: new Map(),
           extensions: new Map(),
           vars: new Map(),
@@ -239,6 +242,11 @@ export class TypeIndex {
         const earlier = pkg.types.get(t.name);
         const info: TypeInfo = { ...t, file, parts: [] };
         if (earlier) {
+          // The same name with another number of type parameters is another type, which no use site is matched to.
+          if (this.typing.type.byParameterCount && earlier.params.length !== t.params.length) {
+            pkg.mixed.add(t.name);
+            continue;
+          }
           // A part of a type another file declared too is read in its own file; any other repeated name is left out.
           if (!earlier.partial || !t.partial) continue;
           earlier.parts.push(info);
@@ -295,6 +303,13 @@ export class TypeIndex {
           ...(v.flow ? { flow: true as const } : {}),
           file,
         });
+      }
+    }
+    for (const pkg of this.pkgs.values()) {
+      for (const name of pkg.mixed) {
+        const inside = (key: string): boolean => key === name || key.startsWith(`${name}.`);
+        for (const key of [...pkg.types.keys()]) if (inside(key)) pkg.types.delete(key);
+        for (const key of [...pkg.methods.keys()]) if (key.startsWith(`${name}.`)) pkg.methods.delete(key);
       }
     }
     for (const f of this.files) this.mapImports(f);
@@ -581,11 +596,17 @@ export class TypeIndex {
     }
     const imported = file.named.get(t.name);
     if (imported) return imported;
+    // A name the package declares with several numbers of type parameters is no type, and hides the same name further out.
+    if (file.pkg.mixed.has(t.name)) return null;
     if (file.pkg.types.has(t.name)) return { k: "named", pkg: file.pkg.path, name: t.name };
-    for (const p of this.enclosingPkgs(file.pkg))
+    for (const p of this.enclosingPkgs(file.pkg)) {
+      if (p.mixed.has(t.name)) return null;
       if (p.types.has(t.name)) return { k: "named", pkg: p.path, name: t.name };
-    for (const p of file.demand)
+    }
+    for (const p of file.demand) {
+      if (this.pkgs.get(p)?.mixed.has(t.name)) return null;
       if (this.pkgs.get(p)?.types.has(t.name)) return { k: "named", pkg: p, name: t.name };
+    }
     // A type of a library the pack knows, brought in by an import of its whole package.
     for (const e of this.typing.type.library ?? [])
       if (e.types.includes(t.name) && file.demand.includes(e.package))
@@ -759,7 +780,8 @@ export class TypeIndex {
   /**
    * The extension methods (`typing.extensions`) named `m` that a call with `args` arguments on a value of type `r`, written
    * in `file`, may mean: those of the packages the file sees (its own, those it is nested in, those it imports whole) whose
-   * first parameter has the type `r` or one of its supertypes in the repo. A parameter type with type arguments is not matched.
+   * first parameter has the type `r` or one of its supertypes in the repo. When a fitting one has a first parameter that
+   * is not read (a type parameter, a type with type arguments), which of them the call means is not known: none.
    */
   extensionHits(r: Named, file: FileInfo, m: string, args: number | null): MethodHit[] {
     const seen = new Set<string>();
@@ -775,7 +797,8 @@ export class TypeIndex {
       for (const e of pkg.extensions.get(m) ?? []) {
         if (args !== null && e.arity && (args < e.arity.min || args > e.arity.max)) continue;
         const recv = this.canon(this.resolveType(e.receiver, e.func.file));
-        if (recv?.k !== "named" || recv.args || !this.isSubtype(r, recv)) continue;
+        if (recv?.k !== "named" || recv.args) return [];
+        if (!this.isSubtype(r, recv)) continue;
         hits.push({
           kind: "method",
           file: e.func.file,

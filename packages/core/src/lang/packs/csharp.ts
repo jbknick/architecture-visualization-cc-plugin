@@ -51,8 +51,8 @@ export const csharpPack = {
       ],
       // `partial class A` in several files is one type.
       partial: { node: "modifier", keyword: "partial" },
-      // A namespace holds declarations the way the top of the file does (a file-scoped one holds none: its declarations follow it).
-      bodies: ["namespace_declaration", "declaration_list"],
+      // A namespace holds declarations the way the top of the file does (a file-scoped one holds none: its declarations follow it), and so does each branch of a conditional block (`#if`).
+      bodies: ["namespace_declaration", "declaration_list", "preproc_if", "preproc_elif", "preproc_else"],
     },
     values: { declarations: [], specs: [], groups: [], name: "name", nameKinds: [] },
     import: {
@@ -87,6 +87,8 @@ export const csharpPack = {
           "bool byte char decimal double float int long object sbyte short string uint ulong ushort".split(
             " ",
           ),
+        // `Foo` and `Foo<T>` are two types.
+        byParameterCount: true,
         wrappers: ["nullable_type"],
         generic: { kind: "generic_name", arguments: "type_argument_list" },
         parameters: { entry: "type_parameter", names: ["identifier"] },
@@ -157,9 +159,7 @@ export const csharpPack = {
           { kind: "declaration_pattern", name: "name", type: "type", variadic: false, from: "start" },
           { kind: "declaration_expression", name: "name", type: "type", variadic: false, from: "start" },
         ],
-        declarations: [
-          { kind: "variable_declarator", names: "name", parentType: "type", values: "", from: "end" },
-        ],
+        declarations: [{ kind: "variable_declarator", names: "name", parentType: "type", from: "end" }],
         inferred: ["var"],
         valueLists: [],
         ranges: [],
