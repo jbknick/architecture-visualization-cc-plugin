@@ -81,7 +81,6 @@ const DEF_KINDS: readonly DefKind[] = ["function", "method", "class", "interface
 
 interface TruthDef {
   symbol: string;
-  path: string;
   line: number;
   kind: DefKind;
   /** The graph symbol it maps onto, or null. */
@@ -107,11 +106,9 @@ export interface TruthCall {
   /** Every graph symbol that defines the target (the stubs and the implementation of an overloaded function). */
   alts: string[];
   reason: TargetReason | null;
-  targetName: string;
   local: boolean;
   /** The target is declared inside a function or method. */
   inFunction: boolean;
-  path: string;
   lines: number[];
   shape: Shape;
 }
@@ -120,7 +117,6 @@ export interface TruthCall {
 export interface SiteRef {
   ours: string | null;
   external: boolean;
-  name: string;
 }
 
 export interface Truth {
@@ -201,7 +197,6 @@ export interface TruthInput {
 interface Candidate {
   path: string;
   line: number;
-  col: number;
   symbol: string;
   local: boolean;
   caller: string | null;
@@ -295,7 +290,7 @@ export async function buildTruth(input: TruthInput): Promise<Truth> {
         }
         const sym = innermost(file.syms, line, () => true);
         const ours = sym && spelledAs(sym, name) ? sym.id : null;
-        const def: TruthDef = { symbol: o.symbol, path: doc.path, line, kind, ours, local: isLocal };
+        const def: TruthDef = { symbol: o.symbol, line, kind, ours, local: isLocal };
         // Declared in a body: the symbol says so, or the innermost symbol of the graph that holds the line is a function.
         if (
           declaredInFunction(o.symbol) ||
@@ -321,11 +316,6 @@ export async function buildTruth(input: TruthInput): Promise<Truth> {
       const before = text.slice(0, o.startCharacter);
       const called = /^\s*(?:\?\.)?\s*\(/.test(after);
       let construct = false;
-      // A Java name followed by `=` is an element of an annotation (`@Column(name = "x")`), which no call names.
-      if (lang === "java" && /^\s*=(?!=)/.test(after)) {
-        annotationElementRefs++;
-        continue;
-      }
       if (!isLocal) {
         const d = scipDescriptor(o.symbol);
         if (!d) continue;
@@ -334,6 +324,11 @@ export async function buildTruth(input: TruthInput): Promise<Truth> {
           construct = true;
         } else if (d.suffix !== "method") continue;
         else if (lang === "python" && !called) continue;
+        // A Java method name followed by `=` is an element of an annotation (`@Column(name = "x")`), which no call names.
+        if (lang === "java" && /^\s*=(?!=)/.test(after)) {
+          annotationElementRefs++;
+          continue;
+        }
       } else if (lang === "python" && !called) continue;
       const shape: Shape = /::\s*$/.test(before)
         ? "method-reference"
@@ -346,7 +341,6 @@ export async function buildTruth(input: TruthInput): Promise<Truth> {
       cands.push({
         path: doc.path,
         line,
-        col: o.startCharacter,
         symbol: o.symbol,
         local: isLocal,
         caller: callerSym?.id ?? null,
@@ -363,7 +357,6 @@ export async function buildTruth(input: TruthInput): Promise<Truth> {
   const sites: Record<string, SiteRef[]> = {};
   const exemptSites = new Set<string>();
   let classCallsWithoutInit = 0;
-  const nameOf = (symbol: string): string => scipDescriptor(symbol)?.name ?? symbol;
   for (const c of cands) {
     let symbol = c.symbol;
     let ours: string | null = null;
@@ -404,7 +397,7 @@ export async function buildTruth(input: TruthInput): Promise<Truth> {
     const siteKey = `${c.path}:${c.line}`;
     if (wantedLines.has(siteKey)) {
       const list = sites[siteKey] ?? [];
-      list.push({ ours, external, name: nameOf(symbol) });
+      list.push({ ours, external });
       sites[siteKey] = list;
     }
     if (exempt) {
@@ -420,10 +413,8 @@ export async function buildTruth(input: TruthInput): Promise<Truth> {
         ours,
         alts,
         reason,
-        targetName: nameOf(symbol),
         local: c.local,
         inFunction: nestedDefs.has(symbol),
-        path: c.path,
         lines: [],
         shape: c.shape,
       };
@@ -480,7 +471,6 @@ export function scoreSymbols(dump: Dump, truth: Truth): SymbolScore {
   let localDefs = 0;
   let localDefsMapped = 0;
   const truthByKind = new Map<DefKind, number>();
-  const hitByKind = new Map<DefKind, number>();
   for (const d of truth.defs) {
     truthByKind.set(d.kind, (truthByKind.get(d.kind) ?? 0) + 1);
     if (d.local) {
@@ -488,7 +478,6 @@ export function scoreSymbols(dump: Dump, truth: Truth): SymbolScore {
       if (d.ours) localDefsMapped++;
     }
     if (d.ours && ourKind.get(d.ours) === d.kind) {
-      hitByKind.set(d.kind, (hitByKind.get(d.kind) ?? 0) + 1);
       const set = matchedKinds.get(d.ours) ?? new Set<DefKind>();
       set.add(d.kind);
       matchedKinds.set(d.ours, set);
@@ -512,7 +501,8 @@ export function scoreSymbols(dump: Dump, truth: Truth): SymbolScore {
     if (t === 0 && f === 0) continue;
     perKind[k] = {
       precision: frac(correctByKind.get(k) ?? 0, f),
-      recall: frac(hitByKind.get(k) ?? 0, t),
+      // Distinct graph symbols: two definitions that map onto one symbol find it once.
+      recall: frac(correctByKind.get(k) ?? 0, t),
     };
   }
   return { perKind, misses, implicitDefs: truth.implicitDefs, localDefs, localDefsMapped };

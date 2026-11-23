@@ -106,6 +106,8 @@ describe("java", () => {
         occ(0, 6, 7, s("pkg/A#`<init>`()."), 1),
         occ(1, 4, 5, s("pkg/A#f()."), 1),
         occ(3, 4, 8, s("pkg/A#name()."), 0),
+        // An assigned field is no annotation element: it is not counted.
+        occ(4, 4, 9, s("pkg/A#count."), 0),
         occ(5, 4, 5, s("pkg/A#g()."), 1),
         occ(6, 4, 5, s("pkg/A#f()."), 0),
         occ(8, 8, 9, s("pkg/A#`<init>`()."), 0),
@@ -117,7 +119,13 @@ describe("java", () => {
     ),
     doc("Other.java", [occ(0, 0, 1, s("pkg/Other#"), 1)], "java"),
   ];
-  const lines = linesOf(25, { 3: "    name = 1", 6: "    f();", 8: "    new A();", 12: "    rec();" });
+  const lines = linesOf(25, {
+    3: "    name = 1",
+    4: "    count = 2",
+    6: "    f();",
+    8: "    new A();",
+    12: "    rec();",
+  });
 
   it("scores symbols and calls with the maintainer's rules", async () => {
     const truth = await buildTruth({
@@ -247,6 +255,26 @@ describe("python", () => {
     const calls = scoreCalls(overloaded, truth);
     expect(calls.recall).toEqual(frac(1, 1));
     expect(calls.precision.high).toEqual(frac(1, 1));
+  });
+
+  it("counts a graph symbol once when two definitions map onto it", async () => {
+    // g (1-3) holds the lines of both definitions of one SCIP symbol; the other symbol, h (5-6), is not defined.
+    const twice: Dump = {
+      ...head("t.py", "python"),
+      symbols: [sym("s:g", "g", "function", "python", 1, 3), sym("s:h", "h", "function", "python", 5, 6)],
+      edges: [],
+    };
+    const truth = await buildTruth({
+      lang: "python",
+      dump: twice,
+      documents: [doc("t.py", [occ(0, 4, 5, s("t/g()."), 1), occ(1, 4, 5, s("t/g()."), 1)], "python")],
+      fileLines: () => linesOf(8, {}),
+      wantedLines: new Set(),
+    });
+    expect(scoreSymbols(twice, truth).perKind.function).toEqual({
+      precision: frac(1, 2),
+      recall: frac(1, 2),
+    });
   });
 
   it("takes the worst value of each metric over the runs", () => {

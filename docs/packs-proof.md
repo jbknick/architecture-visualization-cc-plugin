@@ -84,8 +84,10 @@ prints the report text below; `--report` and `--json` write it and the results t
 - Scored files: those the graph holds and the index has a document for. The report counts the others.
 - Symbols: precision and recall of functions, methods and classes (also interfaces and enums for Java, which are
   reported but are not part of the bar) against SCIP definitions. A definition is mapped onto the innermost symbol of
-  its file that holds its line and is spelled like it. A definition that no source text declares (an implicit default
-  constructor, an enum's `values`) is not a definition of the truth and is counted apart.
+  its file that holds its line and is spelled like it. Recall counts distinct graph symbols found, over the
+  definitions of the truth, so two definitions that map onto one graph symbol find it once. A definition that no
+  source text declares (an implicit default constructor, an enum's `values`) is not a definition of the truth and is
+  counted apart.
 - Calls: a truth call is a SCIP reference to a function, method or constructor of the repo, from the innermost symbol
   that holds the line. Recall is over unique (caller, target) pairs against the graph's `calls` edges of any
   confidence. High-confidence precision is per edge. Low-confidence precision is per call site. Edges are split by
@@ -93,19 +95,22 @@ prints the report text below; `--report` and `--json` write it and the results t
 - Python calls need a `(` after the name. A class called as `Foo(...)` is a call of `Foo.__init__` when `Foo` declares
   it; when it does not, the index names no callee, the site is not in the truth, and an edge of the graph at that
   site is not scored (both counted).
-- A Java name followed by `=` is an element of an annotation, not a call; it is left out and counted.
+- A reference to a Java method whose name is followed by `=` is an element of an annotation, not a call; it is left
+  out and counted.
 - Worst of three runs: the smallest ratio of each metric. Ratios are shown cut, never rounded up, with their counts,
   and compared with the bar as integers.
 
 ### Changes to the scorer after a first result
 
-Three bugs of the scorer were found by reading the first results, before the runs below. Every run below was taken
-after the last of them.
+Bugs of the scorer were found by reading results. Every run below was taken after the last of them.
 
 - Java annotation elements counted as calls. A reference to an element of an annotation (`name = ...` inside
   `@Annotation(...)`) names a method of an annotation type and was counted as a call to a symbol the pack does not
   have. They are now left out of the truth and counted. mybatis-3 call recall went from 85.24% (13269/15566) to 88.64%
-  (13269/14968); precision did not change. This change raises recall, which is stated here so it is visible.
+  (13269/14968); precision did not change. This change raises recall, which is stated here so it is visible. In a
+  later review the count of these references was found to include assigned fields and locals, because the `=` test
+  ran before the test that the reference is a method; the test now runs after it. The count went from 13,750 to 3,348
+  on jackson-databind and from 4,022 to 982 on mybatis-3, and no score moved.
 - Python symbols defined more than once kept only the first definition. The index defines an overloaded function once
   and gives each later `def` as a read of the same symbol. The scorer now takes a `def` or `class` right before a name
   as a definition whatever role the index gives it, and a call matches any of the definitions of its target. On
@@ -113,6 +118,10 @@ after the last of them.
   (27717/42995), function symbol precision 98.99% (10075/10177) and method precision 99.39% (16693/16795); after, 99.38%
   (22525/22665), 66.60% (28468/42741), 99.99% (10176/10177) and 99.96% (16789/16795). On django, recall went from
   64.91% (28279/43560) to 65.02% (28279/43489).
+- Symbol recall counted a graph symbol twice when two definitions of the truth mapped onto it, which is in the pack's
+  favour. It now counts distinct graph symbols. Recall moved down: django classes 72.86% (8122/11146) to 72.86%
+  (8121/11146), prefect functions 86.02% (10177/11830) to 86.01% (10176/11830), prefect methods 80.37%
+  (16791/20890) to 80.36% (16789/20890). No verdict changed.
 - The wording of the causes for symbols declared inside a function (no change of any number).
 
 ## Java
@@ -128,11 +137,11 @@ Every bar is met on this repo. The closest is class recall at 97.71% (bar 97%); 
 ```
 mybatis-3 (java) at e988edd61fa44489f256c6d497e3d013305e93ad
   files indexed 1407; scored 1406; without a document in the index 1; documents of the index for files not indexed 0
-  truth definitions 10452; implicit definitions left out of them 850; annotation elements left out of the calls 4022; class calls with no initializer, not in the truth 0
+  truth definitions 10452; implicit definitions left out of them 850; annotation elements left out of the calls 982; class calls with no initializer, not in the truth 0
   the runs gave the same scores: yes
   run 1
-    without --scip: 15.1 s, peak 1008 MB
-    with --scip: 15.3 s, peak 1116 MB; 1406 documents, 22562 edges, 104159 unmapped, 5823 other references, 0 stale
+    without --scip: 15.2 s, peak 1009 MB
+    with --scip: 15.2 s, peak 1118 MB; 1406 documents, 22562 edges, 104159 unmapped, 5823 other references, 0 stale
     precise-mode call edges that are calls of the truth: 12302/12553
     symbols
       method: precision 100.00% (8663/8663), recall 98.16% (8663/8825)
@@ -151,8 +160,8 @@ mybatis-3 (java) at e988edd61fa44489f256c6d497e3d013305e93ad
       precision, level 2, low 38.28% (1404/3667)
       edges not scored (a class called with no initializer to name): 0
   run 2
-    without --scip: 15.1 s, peak 1010 MB
-    with --scip: 15.4 s, peak 1114 MB; 1406 documents, 22562 edges, 104159 unmapped, 5823 other references, 0 stale
+    without --scip: 15.0 s, peak 1008 MB
+    with --scip: 15.2 s, peak 1113 MB; 1406 documents, 22562 edges, 104159 unmapped, 5823 other references, 0 stale
     precise-mode call edges that are calls of the truth: 12302/12553
     symbols
       method: precision 100.00% (8663/8663), recall 98.16% (8663/8825)
@@ -171,7 +180,7 @@ mybatis-3 (java) at e988edd61fa44489f256c6d497e3d013305e93ad
       precision, level 2, low 38.28% (1404/3667)
       edges not scored (a class called with no initializer to name): 0
   run 3
-    without --scip: 15.1 s, peak 1008 MB
+    without --scip: 15.2 s, peak 1015 MB
     with --scip: 15.3 s, peak 1114 MB; 1406 documents, 22562 edges, 104159 unmapped, 5823 other references, 0 stale
     precise-mode call edges that are calls of the truth: 12302/12553
     symbols
@@ -190,7 +199,7 @@ mybatis-3 (java) at e988edd61fa44489f256c6d497e3d013305e93ad
       precision, level 2, high 99.80% (11865/11888)
       precision, level 2, low 38.28% (1404/3667)
       edges not scored (a class called with no initializer to name): 0
-  worst of 3 runs: wall time 15.4 s, peak 1116 MB
+  worst of 3 runs: wall time 15.3 s, peak 1118 MB
     symbol precision, method: 100.00% (8663/8663), bar 97%, met
     symbol recall, method: 98.16% (8663/8825), bar 97%, met
     symbol precision, class: 100.00% (1197/1197), bar 97%, met
@@ -227,11 +236,11 @@ One bar is missed on this repo: call recall is 83.79% (38723/46209) against 85%.
 ```
 jackson-databind (java) at 949188f567b60b88851f4898eeb9bc82d098cfbe
   files indexed 1440; scored 1439; without a document in the index 1; documents of the index for files not indexed 1
-  truth definitions 29910; implicit definitions left out of them 3884; annotation elements left out of the calls 13750; class calls with no initializer, not in the truth 0
+  truth definitions 29910; implicit definitions left out of them 3884; annotation elements left out of the calls 3348; class calls with no initializer, not in the truth 0
   the runs gave the same scores: yes
   run 1
-    without --scip: 49.4 s, peak 2767 MB
-    with --scip: 49.1 s, peak 2794 MB; 1439 documents, 65762 edges, 262667 unmapped, 11980 other references, 26 stale
+    without --scip: 49.4 s, peak 2966 MB
+    with --scip: 49.1 s, peak 2638 MB; 1439 documents, 65762 edges, 262667 unmapped, 11980 other references, 26 stale
     precise-mode call edges that are calls of the truth: 36082/37710
     symbols
       method: precision 99.97% (23057/23063), recall 99.64% (23057/23140)
@@ -250,8 +259,8 @@ jackson-databind (java) at 949188f567b60b88851f4898eeb9bc82d098cfbe
       precision, level 2, low 8.48% (9505/112064)
       edges not scored (a class called with no initializer to name): 0
   run 2
-    without --scip: 49.6 s, peak 2852 MB
-    with --scip: 49.2 s, peak 2964 MB; 1439 documents, 65762 edges, 262667 unmapped, 11980 other references, 26 stale
+    without --scip: 49.1 s, peak 2262 MB
+    with --scip: 49.3 s, peak 2730 MB; 1439 documents, 65762 edges, 262667 unmapped, 11980 other references, 26 stale
     precise-mode call edges that are calls of the truth: 36082/37710
     symbols
       method: precision 99.97% (23057/23063), recall 99.64% (23057/23140)
@@ -270,8 +279,8 @@ jackson-databind (java) at 949188f567b60b88851f4898eeb9bc82d098cfbe
       precision, level 2, low 8.48% (9505/112064)
       edges not scored (a class called with no initializer to name): 0
   run 3
-    without --scip: 49.0 s, peak 2503 MB
-    with --scip: 49.2 s, peak 2620 MB; 1439 documents, 65762 edges, 262667 unmapped, 11980 other references, 26 stale
+    without --scip: 49.7 s, peak 2704 MB
+    with --scip: 48.7 s, peak 3160 MB; 1439 documents, 65762 edges, 262667 unmapped, 11980 other references, 26 stale
     precise-mode call edges that are calls of the truth: 36082/37710
     symbols
       method: precision 99.97% (23057/23063), recall 99.64% (23057/23140)
@@ -289,7 +298,7 @@ jackson-databind (java) at 949188f567b60b88851f4898eeb9bc82d098cfbe
       precision, level 2, high 99.78% (29218/29282)
       precision, level 2, low 8.48% (9505/112064)
       edges not scored (a class called with no initializer to name): 0
-  worst of 3 runs: wall time 49.6 s, peak 2964 MB
+  worst of 3 runs: wall time 49.7 s, peak 3160 MB
     symbol precision, method: 99.97% (23057/23063), bar 97%, met
     symbol recall, method: 99.64% (23057/23140), bar 97%, met
     symbol precision, class: 99.98% (6224/6225), bar 97%, met
@@ -367,13 +376,13 @@ django (python) at f14af5a88472ca10e2e94b37d6c17ee48cbdeb4d
   truth definitions 44188; implicit definitions left out of them 0; annotation elements left out of the calls 0; class calls with no initializer, not in the truth 11472
   the runs gave the same scores: yes
   run 1
-    without --scip: 79.3 s, peak 3862 MB
-    with --scip: 79.5 s, peak 3428 MB; 2941 documents, 63027 edges, 355820 unmapped, 39651 other references, 1 stale
+    without --scip: 79.1 s, peak 3336 MB
+    with --scip: 79.8 s, peak 3347 MB; 2941 documents, 63027 edges, 355820 unmapped, 39651 other references, 1 stale
     precise-mode call edges that are calls of the truth: 32033/32734
     symbols
       function: precision 100.00% (1927/1927), recall 90.72% (1927/2124)
       method: precision 100.00% (29294/29294), recall 94.74% (29294/30918)
-      class: precision 100.00% (8121/8121), recall 72.86% (8122/11146)
+      class: precision 100.00% (8121/8121), recall 72.86% (8121/11146)
     calls
       truth calls 43489: self-recursive 80, through a local symbol 0 (no symbol of ours: 0), reachable by the graph 42562
       recall 65.02% (28279/43489)
@@ -387,13 +396,13 @@ django (python) at f14af5a88472ca10e2e94b37d6c17ee48cbdeb4d
       precision, level 3, low 96.64% (14960/15479)
       edges not scored (a class called with no initializer to name): 412
   run 2
-    without --scip: 78.2 s, peak 2776 MB
-    with --scip: 80.5 s, peak 3040 MB; 2941 documents, 63027 edges, 355820 unmapped, 39651 other references, 1 stale
+    without --scip: 78.9 s, peak 2994 MB
+    with --scip: 79.6 s, peak 3496 MB; 2941 documents, 63027 edges, 355820 unmapped, 39651 other references, 1 stale
     precise-mode call edges that are calls of the truth: 32033/32734
     symbols
       function: precision 100.00% (1927/1927), recall 90.72% (1927/2124)
       method: precision 100.00% (29294/29294), recall 94.74% (29294/30918)
-      class: precision 100.00% (8121/8121), recall 72.86% (8122/11146)
+      class: precision 100.00% (8121/8121), recall 72.86% (8121/11146)
     calls
       truth calls 43489: self-recursive 80, through a local symbol 0 (no symbol of ours: 0), reachable by the graph 42562
       recall 65.02% (28279/43489)
@@ -407,13 +416,13 @@ django (python) at f14af5a88472ca10e2e94b37d6c17ee48cbdeb4d
       precision, level 3, low 96.64% (14960/15479)
       edges not scored (a class called with no initializer to name): 412
   run 3
-    without --scip: 78.5 s, peak 2956 MB
-    with --scip: 80.4 s, peak 3291 MB; 2941 documents, 63027 edges, 355820 unmapped, 39651 other references, 1 stale
+    without --scip: 79.1 s, peak 2560 MB
+    with --scip: 80.4 s, peak 3315 MB; 2941 documents, 63027 edges, 355820 unmapped, 39651 other references, 1 stale
     precise-mode call edges that are calls of the truth: 32033/32734
     symbols
       function: precision 100.00% (1927/1927), recall 90.72% (1927/2124)
       method: precision 100.00% (29294/29294), recall 94.74% (29294/30918)
-      class: precision 100.00% (8121/8121), recall 72.86% (8122/11146)
+      class: precision 100.00% (8121/8121), recall 72.86% (8121/11146)
     calls
       truth calls 43489: self-recursive 80, through a local symbol 0 (no symbol of ours: 0), reachable by the graph 42562
       recall 65.02% (28279/43489)
@@ -426,13 +435,13 @@ django (python) at f14af5a88472ca10e2e94b37d6c17ee48cbdeb4d
       precision, level 2, high 99.35% (13319/13405)
       precision, level 3, low 96.64% (14960/15479)
       edges not scored (a class called with no initializer to name): 412
-  worst of 3 runs: wall time 80.5 s, peak 3862 MB
+  worst of 3 runs: wall time 80.4 s, peak 3496 MB
     symbol precision, function: 100.00% (1927/1927), bar 97%, met
     symbol recall, function: 90.72% (1927/2124), bar 97%, MISSED
     symbol precision, method: 100.00% (29294/29294), bar 97%, met
     symbol recall, method: 94.74% (29294/30918), bar 97%, MISSED
     symbol precision, class: 100.00% (8121/8121), bar 97%, met
-    symbol recall, class: 72.86% (8122/11146), bar 97%, MISSED
+    symbol recall, class: 72.86% (8121/11146), bar 97%, MISSED
     high-confidence call precision: 99.35% (13319/13405), bar 99%, met
     low-confidence call precision (per site): 96.64% (19938/20630), bar 90%, met
     call recall: 65.02% (28279/43489), bar 70%, MISSED
@@ -469,7 +478,7 @@ django (python) at f14af5a88472ca10e2e94b37d6c17ee48cbdeb4d
 
 ### prefect
 
-Missed on this repo: recall of functions (86.02%), methods (80.37%) and classes (82.78%), and call recall (66.60%).
+Missed on this repo: recall of functions (86.01%), methods (80.36%) and classes (82.78%), and call recall (66.60%).
 Both precision bars are met.
 
 ```
@@ -478,12 +487,12 @@ prefect (python) at ba45ac194f5aa918935b86388ee9651950fb06d6
   truth definitions 37414; implicit definitions left out of them 0; annotation elements left out of the calls 0; class calls with no initializer, not in the truth 11242
   the runs gave the same scores: yes
   run 1
-    without --scip: 85.6 s, peak 3910 MB
-    with --scip: 86.9 s, peak 3500 MB; 1940 documents, 64378 edges, 414805 unmapped, 23036 other references, 0 stale
+    without --scip: 85.4 s, peak 3974 MB
+    with --scip: 86.5 s, peak 3844 MB; 1940 documents, 64378 edges, 414805 unmapped, 23036 other references, 0 stale
     precise-mode call edges that are calls of the truth: 36453/37025
     symbols
-      function: precision 99.99% (10176/10177), recall 86.02% (10177/11830)
-      method: precision 99.96% (16789/16795), recall 80.37% (16791/20890)
+      function: precision 99.99% (10176/10177), recall 86.01% (10176/11830)
+      method: precision 99.96% (16789/16795), recall 80.36% (16789/20890)
       class: precision 100.00% (3886/3886), recall 82.78% (3886/4694)
     calls
       truth calls 42741: self-recursive 70, through a local symbol 0 (no symbol of ours: 0), reachable by the graph 39578
@@ -498,12 +507,12 @@ prefect (python) at ba45ac194f5aa918935b86388ee9651950fb06d6
       precision, level 3, low 99.01% (5943/6002)
       edges not scored (a class called with no initializer to name): 110
   run 2
-    without --scip: 85.7 s, peak 3367 MB
-    with --scip: 86.7 s, peak 3407 MB; 1940 documents, 64378 edges, 414805 unmapped, 23036 other references, 0 stale
+    without --scip: 85.1 s, peak 3788 MB
+    with --scip: 86.1 s, peak 3836 MB; 1940 documents, 64378 edges, 414805 unmapped, 23036 other references, 0 stale
     precise-mode call edges that are calls of the truth: 36453/37025
     symbols
-      function: precision 99.99% (10176/10177), recall 86.02% (10177/11830)
-      method: precision 99.96% (16789/16795), recall 80.37% (16791/20890)
+      function: precision 99.99% (10176/10177), recall 86.01% (10176/11830)
+      method: precision 99.96% (16789/16795), recall 80.36% (16789/20890)
       class: precision 100.00% (3886/3886), recall 82.78% (3886/4694)
     calls
       truth calls 42741: self-recursive 70, through a local symbol 0 (no symbol of ours: 0), reachable by the graph 39578
@@ -518,12 +527,12 @@ prefect (python) at ba45ac194f5aa918935b86388ee9651950fb06d6
       precision, level 3, low 99.01% (5943/6002)
       edges not scored (a class called with no initializer to name): 110
   run 3
-    without --scip: 85.4 s, peak 3370 MB
-    with --scip: 86.5 s, peak 3592 MB; 1940 documents, 64378 edges, 414805 unmapped, 23036 other references, 0 stale
+    without --scip: 85.4 s, peak 3962 MB
+    with --scip: 86.0 s, peak 3960 MB; 1940 documents, 64378 edges, 414805 unmapped, 23036 other references, 0 stale
     precise-mode call edges that are calls of the truth: 36453/37025
     symbols
-      function: precision 99.99% (10176/10177), recall 86.02% (10177/11830)
-      method: precision 99.96% (16789/16795), recall 80.37% (16791/20890)
+      function: precision 99.99% (10176/10177), recall 86.01% (10176/11830)
+      method: precision 99.96% (16789/16795), recall 80.36% (16789/20890)
       class: precision 100.00% (3886/3886), recall 82.78% (3886/4694)
     calls
       truth calls 42741: self-recursive 70, through a local symbol 0 (no symbol of ours: 0), reachable by the graph 39578
@@ -537,11 +546,11 @@ prefect (python) at ba45ac194f5aa918935b86388ee9651950fb06d6
       precision, level 2, high 99.38% (22525/22665)
       precision, level 3, low 99.01% (5943/6002)
       edges not scored (a class called with no initializer to name): 110
-  worst of 3 runs: wall time 86.9 s, peak 3910 MB
+  worst of 3 runs: wall time 86.5 s, peak 3974 MB
     symbol precision, function: 99.99% (10176/10177), bar 97%, met
-    symbol recall, function: 86.02% (10177/11830), bar 97%, MISSED
+    symbol recall, function: 86.01% (10176/11830), bar 97%, MISSED
     symbol precision, method: 99.96% (16789/16795), bar 97%, met
-    symbol recall, method: 80.37% (16791/20890), bar 97%, MISSED
+    symbol recall, method: 80.36% (16789/20890), bar 97%, MISSED
     symbol precision, class: 100.00% (3886/3886), bar 97%, met
     symbol recall, class: 82.78% (3886/4694), bar 97%, MISSED
     high-confidence call precision: 99.38% (22525/22665), bar 99%, met
