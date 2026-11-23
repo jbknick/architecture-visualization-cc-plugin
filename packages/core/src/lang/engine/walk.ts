@@ -125,7 +125,7 @@ function memberName(pack: LanguagePack, member: SyntaxNode, creator: SyntaxNode)
 /**
  * Visits every child of the file root and, through the pack's bodied types, every member of each type body (a type
  * before its members, in source order), with the dotted name of the type around it. A body kind the pack lists is walked
- * through: its children are members of the same type. A hanging body (`types.anonymous`, `types.constants`) is visited
+ * through: its children are members of the same type (or declarations of the top of the file). A hanging body (`types.anonymous`, `types.constants`) is visited
  * right after the member it hangs from: first the node that makes it (with `body` set), then its members, whose owner is
  * the name of the body. The body of an element of an enumeration is named `<type>.<element>`. The body of a creating
  * expression is named after the member that holds the expression, `<type>.<member>.<prefix><n>`, with `n` counting from 1
@@ -201,9 +201,17 @@ export function walkDeclarations(pack: LanguagePack, root: SyntaxNode, visit: (f
       else hang(c, owner, container, suffix, inBody);
     }
   };
-  for (const c of root.namedChildren()) {
-    repeat(c, null);
-    visit({ node: c, owner: null, container: null, anonymous: false });
-    descend(c, null, false);
-  }
+  // A body kind the pack walks through is walked through at the top of the file too (a decorated declaration).
+  const top = (parent: SyntaxNode): void => {
+    for (const c of parent.namedChildren()) {
+      if (through.has(c.kind())) {
+        top(c);
+        continue;
+      }
+      repeat(c, null);
+      visit({ node: c, owner: null, container: null, anonymous: false });
+      descend(c, null, false);
+    }
+  };
+  top(root);
 }

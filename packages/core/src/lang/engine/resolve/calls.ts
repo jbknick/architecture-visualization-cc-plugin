@@ -5,6 +5,7 @@ import type { EdgeRecord, ParsedSymbol } from "../../../types.js";
 import type { SyntaxNode } from "../grammar.js";
 import type { CallResolver } from "../module.js";
 import type { LanguagePack } from "../pack.js";
+import { dependsOn } from "../workspace.js";
 import { EdgeSet } from "./edges.js";
 import { type FileEntry, ImportIndex } from "./imports.js";
 import { LastTree, withTree } from "./source.js";
@@ -82,7 +83,7 @@ export class NameCalls implements CallResolver {
     if (this.isTest(file.rel) && !this.isTest(from.rel)) return false;
     const a = from.workspace;
     const b = file.workspace;
-    return a?.id === b?.id || (a !== undefined && b !== undefined && a.deps.includes(b.name));
+    return a?.id === b?.id || (a !== undefined && b !== undefined && dependsOn(this.pack, a, b));
   }
 
   /** The symbol a callee expression names, or null when it has no single candidate. */

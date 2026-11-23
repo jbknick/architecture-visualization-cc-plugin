@@ -1,7 +1,8 @@
 import type { ResolveContext } from "../../../resolve/index.js";
-import type { EdgeRecord } from "../../../types.js";
+import type { EdgeRecord, WorkspaceRecord } from "../../../types.js";
 import type { LanguagePack, TypingRules } from "../pack.js";
-import { defaultImportName } from "../parse.js";
+import { defaultImportName, importBinding } from "../parse.js";
+import { dependsOn } from "../workspace.js";
 import type { FileEntry, ImportIndex } from "./imports.js";
 import { Reader } from "./read.js";
 import { withTree } from "./source.js";
@@ -37,6 +38,8 @@ export interface TypeInfo extends TypeDecl {
 export interface VarInfo {
   declared: { type: TypeRef | null } | null;
   value: Expr | null;
+  /** True when the value gives the variable a type only for the flow resolver. */
+  flow?: true;
   file: FileInfo;
 }
 
@@ -46,16 +49,28 @@ export interface Pkg {
   /** A package that nothing imports (its name ends as the pack's `package.separate` says). */
   separate: boolean;
   funcs: Map<string, FuncInfo>;
+  /** Names a file declares as a function twice: which one a call means is not known, so none is in `funcs`. */
+  redefined: Set<string>;
   types: Map<string, TypeInfo>;
   /** Keyed `Recv.Name` with the receiver's base type (the dotted name of the type for a method in a type body). Overloads share a key. */
   methods: Map<string, FuncInfo[]>;
   vars: Map<string, VarInfo>;
 }
 
+/** The module a file is, for a pack whose packages are files: its dotted path below its workspace (empty for the workspace's own index file) and whether the file stands for its folder. */
+export interface ModuleInfo {
+  path: string;
+  index: boolean;
+}
+
 /** A file of the index: where its names come from. */
 export interface FileInfo {
   rel: string;
   fileId: string;
+  /** The workspace that holds the file. */
+  workspace: WorkspaceRecord;
+  /** Set for a pack whose packages are files. */
+  module: ModuleInfo | null;
   /** Local import name to import path. Imports that bind no name are left out. */
   imports: Map<string, string>;
   /** Types the file imports by name: local name to type. */
@@ -109,6 +124,8 @@ export class TypeIndex {
   private readonly idAt = new Map<string, Map<number, string>>();
   private readonly typing: TypingRules;
   private readonly predeclared: ReadonlySet<string>;
+  private readonly workspaces: WorkspaceRecord[];
+  private readonly sep: string;
   private readonly rawImports = new Map<string, FileDecls["imports"]>();
   private readonly order = new Map<string, TypeInfo[]>();
   private implementsByFile: Map<string, EdgeRecord[]> | null = null;
@@ -122,6 +139,10 @@ export class TypeIndex {
     if (!pack.nodes.typing) throw new Error(`${pack.id}: the pack has no typing rules`);
     this.typing = pack.nodes.typing;
     this.predeclared = new Set(this.typing.type.predeclared);
+    this.sep = pack.nodes.import.separator;
+    this.workspaces = ctx.workspaces
+      .filter((w) => w.lang === pack.id)
+      .sort((a, b) => cmp(a.name, b.name) || cmp(a.id, b.id));
     for (const entry of imports.files) {
       const starts = new Map<number, string>();
       for (const s of entry.parsed.symbols) {
@@ -134,16 +155,19 @@ export class TypeIndex {
       const decls = withTree(pack, ctx.root, entry.rel, (root) => reader.declarations(root));
       if (!decls) continue;
       const rule = this.typing.package;
-      const test = rule.separate !== undefined && decls.packageName.endsWith(rule.separate);
-      const path = this.packagePath(entry, decls);
+      const mod = rule.path === "file" ? this.moduleOf(entry, entry.workspace) : null;
+      const packageName = mod ? (mod.path.split(this.sep).pop() ?? "") : decls.packageName;
+      const test = rule.separate !== undefined && packageName.endsWith(rule.separate);
+      const path = mod ? this.moduleKey(entry.workspace, mod.path) : this.packagePath(entry, decls);
       const key = test ? `${path} [test]` : path;
       let pkg = this.pkgs.get(key);
       if (!pkg) {
         pkg = {
           path: key,
-          name: decls.packageName,
+          name: packageName,
           separate: test,
           funcs: new Map(),
+          redefined: new Set(),
           types: new Map(),
           methods: new Map(),
           vars: new Map(),
@@ -153,6 +177,8 @@ export class TypeIndex {
       const file: FileInfo = {
         rel: entry.rel,
         fileId: entry.fileId,
+        workspace: entry.workspace,
+        module: mod,
         imports: new Map(),
         named: new Map(),
         demand: [],
@@ -163,8 +189,14 @@ export class TypeIndex {
       this.files.push(file);
       this.byFileId.set(entry.fileId, file);
       this.rawImports.set(entry.fileId, decls.imports);
-      for (const f of decls.funcs)
-        if (!pkg.funcs.has(f.name))
+      for (const f of decls.funcs) {
+        const earlier = pkg.funcs.get(f.name);
+        // A function declared twice in one file (a redefinition, an overload stub) has no one meaning; a second file
+        // of the package that declares the name (a build-constrained file, a stub) does not take the first one's.
+        if (pkg.redefined.has(f.name) || earlier?.file === file) {
+          pkg.funcs.delete(f.name);
+          pkg.redefined.add(f.name);
+        } else if (!earlier)
           pkg.funcs.set(f.name, {
             results: f.results,
             file,
@@ -172,6 +204,7 @@ export class TypeIndex {
             arity: f.arity,
             tparams: f.tparams,
           });
+      }
       for (const t of decls.types) {
         if (pkg.types.has(t.name)) continue;
         const info: TypeInfo = { ...t, file };
@@ -194,8 +227,20 @@ export class TypeIndex {
         if (!list) pkg.methods.set(m.key, [info]);
         else if (this.typing.arity) list.push(info);
       }
-      for (const v of decls.vars)
-        if (!pkg.vars.has(v.name)) pkg.vars.set(v.name, { declared: v.declared, value: v.value, file });
+      for (const v of decls.vars) {
+        const earlier = pkg.vars.get(v.name);
+        // A variable assigned again, with no declared type, has no one value to read its type from.
+        if (earlier) {
+          if (earlier.flow) earlier.value = null;
+          continue;
+        }
+        pkg.vars.set(v.name, {
+          declared: v.declared,
+          value: v.value,
+          ...(v.flow ? { flow: true as const } : {}),
+          file,
+        });
+      }
     }
     for (const f of this.files) this.mapImports(f);
   }
@@ -219,6 +264,88 @@ export class TypeIndex {
     return sub === "." ? w.name : `${w.name}${sep}${sub.split("/").join(sep)}`;
   }
 
+  /**
+   * The module a file is, for a pack whose packages are files: its path below its workspace, without a folder the pack
+   * names as the holder of packages (`roots`) and without the extension, and the file that stands for its folder is that
+   * folder.
+   */
+  private moduleOf(entry: FileEntry, w: WorkspaceRecord): ModuleInfo {
+    const rule = this.typing.package;
+    const below = w.dir === "." ? entry.rel : entry.rel.slice(w.dir.length + 1);
+    const parts = below.split("/");
+    if (parts.length > 1 && rule.roots?.includes(parts[0] ?? "")) parts.shift();
+    const file = parts.pop() ?? "";
+    const ext = this.pack.extensions.find((x) => file.endsWith(x));
+    const base = ext ? file.slice(0, file.length - ext.length) : file;
+    const index = base === rule.index;
+    if (!index) parts.push(base);
+    return { path: parts.join(this.sep), index };
+  }
+
+  /** The key of a module of a workspace in `pkgs`: the workspace name, then the module's path. */
+  private moduleKey(w: WorkspaceRecord, path: string): string {
+    return path === "" ? w.name : `${w.name}${this.sep}${path}`;
+  }
+
+  /**
+   * The keys a module path written in `from` may name, best first. A relative path is read from the package of the file
+   * (each extra leading character goes one package up) and stays in its workspace; any other is looked for in the
+   * workspace of the file, then in each workspace it depends on.
+   */
+  private moduleKeys(from: FileInfo, specifier: string): string[] {
+    const relative = this.pack.nodes.import.modules?.relative ?? "";
+    if (relative !== "" && specifier.startsWith(relative)) {
+      let dots = 0;
+      while (specifier.startsWith(relative, dots)) dots += relative.length;
+      const levels = dots / relative.length;
+      const here = from.module?.path === "" ? [] : (from.module?.path.split(this.sep) ?? []);
+      const base = from.module?.index ? here : here.slice(0, -1);
+      if (levels - 1 > base.length) return [];
+      const rest = specifier.slice(dots);
+      const up = base.slice(0, base.length - (levels - 1));
+      const parts = [...up, ...(rest === "" ? [] : rest.split(this.sep))];
+      return [this.moduleKey(from.workspace, parts.join(this.sep))];
+    }
+    const deps = this.workspaces.filter(
+      (w) => w.id !== from.workspace.id && dependsOn(this.pack, from.workspace, w),
+    );
+    return [from.workspace, ...deps].map((w) => this.moduleKey(w, specifier));
+  }
+
+  /** The module an import of `name` from the module `specifier` names, when the repo has one. */
+  private submoduleKey(from: FileInfo, specifier: string, name: string): string | undefined {
+    const relative = this.pack.nodes.import.modules?.relative ?? "";
+    const whole =
+      relative !== "" && specifier.split(relative).every((s) => s === "")
+        ? `${specifier}${name}`
+        : `${specifier}${this.sep}${name}`;
+    return this.moduleKeys(from, whole).find((k) => this.pkgs.has(k));
+  }
+
+  /** Reads the imports of a file for a pack whose packages are files: modules, names of a module, and names of any module. */
+  private mapModuleImports(f: FileInfo): void {
+    const first = (keys: string[]): string | undefined => keys.find((k) => this.pkgs.has(k)) ?? keys[0];
+    for (const i of this.rawImports.get(f.fileId) ?? []) {
+      if (i.name === null) {
+        const b = importBinding(this.pack, i);
+        const key = first(this.moduleKeys(f, b.path));
+        if (key) f.imports.set(b.local, key);
+      } else if (i.name === "*") {
+        const key = this.moduleKeys(f, i.specifier).find((k) => this.pkgs.has(k));
+        if (key) f.demand.push(key);
+      } else {
+        const local = i.alias ?? i.name;
+        const sub = this.submoduleKey(f, i.specifier, i.name);
+        if (sub) f.imports.set(local, sub);
+        else {
+          const key = first(this.moduleKeys(f, i.specifier));
+          if (key) f.named.set(local, { k: "named", pkg: key, name: i.name });
+        }
+      }
+    }
+    this.rawImports.delete(f.fileId);
+  }
+
   /** Local name of an import without an alias: the package's own name for a package of the repo, the path's last piece otherwise. */
   private localName(path: string): string {
     return this.pkgs.get(path)?.name ?? defaultImportName(this.pack, path);
@@ -240,6 +367,10 @@ export class TypeIndex {
   }
 
   private mapImports(f: FileInfo): void {
+    if (f.module) {
+      this.mapModuleImports(f);
+      return;
+    }
     for (const i of this.rawImports.get(f.fileId) ?? []) {
       if (i.name === null) {
         if (i.specifier === "" || (i.alias !== null && this.typing.unboundAliases.includes(i.alias)))

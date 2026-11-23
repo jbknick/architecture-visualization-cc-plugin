@@ -36,15 +36,24 @@ export type NameSource =
   | { path: string }
   | { directory: true };
 
-/** The dependency names a manifest lists: a directive (single and block form) with the tokens its entries have, a global `pattern` (the first group of every match), or an XML element `path`. */
-export type DepsSource = { directive: string; tokens: number } | { pattern: RegExp } | { path: string };
+/**
+ * The dependency names a manifest lists: a directive (single and block form) with the tokens its entries have, a global
+ * `pattern` (the first group of every match, in the first group of `within` when it is given), an XML element or
+ * configuration key `path` (one name per string it holds), or the `keys` of a configuration table. With `entry`, a name is
+ * the first match of it in each string (`core>=1.0` is `core`), or the first group when it has one.
+ */
+export type DepsSource =
+  | { directive: string; tokens: number }
+  | { pattern: RegExp; within?: RegExp }
+  | { path: string; entry?: RegExp }
+  | { keys: string; entry?: RegExp };
 
 /** One kind of manifest: the file names that have it, how it is read and what is read from it. */
 export interface ManifestRule {
   /** File names (one workspace per folder that has one of them). */
   files: readonly string[];
-  /** `text` is read with the patterns and directives below, `xml` with element paths. */
-  format: "text" | "xml";
+  /** `text` is read with the patterns and directives below, `xml` with element paths, `toml` and `ini` with the dotted paths of their keys. */
+  format: "text" | "xml" | "toml" | "ini";
   /** Quote characters around a value of a text manifest. */
   quotes: string;
   /** Removed from a text manifest before it is read. */
@@ -52,6 +61,37 @@ export interface ManifestRule {
   /** Sources of the workspace name, tried in order; a manifest that gives no name is skipped. */
   name: readonly NameSource[];
   deps: DepsSource;
+}
+
+/**
+ * Imports written as statements that list modules (`import a.b as c, d`) or names taken from a module
+ * (`from m import a as b, c`, `from . import x`). A module is a dotted path; a relative one starts with the `relative`
+ * character, once per level.
+ */
+export interface ModuleImportRules {
+  /** `import a.b.c`, `import a.b as c`: the statement kind, the field of its entries, the kind of an entry that has an alias and the fields of that entry's path and alias. `binds` says which segment an entry without an alias names (`import a.b.c` brings in `a`). */
+  plain: {
+    kind: string;
+    entries: string;
+    aliased: string;
+    path: string;
+    alias: string;
+    binds: "first" | "last";
+  };
+  /** `from m import a as b, *`: the statement kind, the field of the module, the field of the names (each a path, or an aliased entry with the same fields as above) and the kind of the child that stands for every name. */
+  from: {
+    kind: string;
+    module: string;
+    entries: string;
+    aliased: string;
+    path: string;
+    alias: string;
+    onDemand: string;
+  };
+  /** The character a relative module starts with (one per level up). */
+  relative: string;
+  /** Kinds of statements the search for imports goes through (the branches of a condition, a guarded import): an import in one of them counts. */
+  through: readonly string[];
 }
 
 /** A declaration that is a type with a body of members of its own (a class, an interface, an enum, a record). */
@@ -86,6 +126,35 @@ export interface BaseTypeRule {
   generic: { kind: string; field: string };
   /** Name used when the shape is not recognised. */
   unknown: string;
+}
+
+/**
+ * What the flow resolver (level 3 of the call resolver, spec section 7) reads: the values that reach a name or an
+ * attribute that has no declared type. Every edge it makes is `low`. Every entry names node kinds, fields and names: no
+ * entry is a function.
+ */
+export interface FlowRules {
+  /**
+   * Kinds of declarations (those of `locals.declarations` and `vars.specs`) that, written without a type, give their name
+   * the type of their value, and only for this resolver (`x = Foo()`). A call that names a type of the repo creates a
+   * value of that type, also only for this resolver.
+   */
+  untyped: readonly string[];
+  /** The name of the parameter of a method that stands for the value the method is called on. */
+  self: string;
+  /** The method of a type whose assignments to attributes of that value say what type each attribute has. */
+  initializer: string;
+  /**
+   * An assignment to an attribute of that value (`self.repo = Repo()`): the kind of the assignment, the fields of its
+   * target, its value and its optional type, and the kind and fields of the attribute access that is the target.
+   */
+  attribute: {
+    kind: string;
+    target: string;
+    value: string;
+    type: string;
+    access: { kind: string; object: string; name: string };
+  };
 }
 
 /**
@@ -130,11 +199,28 @@ export interface TypingRules {
     unread: readonly string[];
   };
   /**
-   * The declaration that names the package of a file, how the package is identified (`directory`: the workspace name and
-   * the folder below it; `clause`: the name the declaration gives, whatever the folder), and the ending of a name that
-   * makes a package of its own that no import reaches.
+   * The declaration that names the package of a file (a language without one leaves `clause` out), how the package is
+   * identified (`directory`: the workspace name and the folder below it; `clause`: the name the declaration gives,
+   * whatever the folder; `file`: each file is a package of its own, named by its path below the workspace, and an import
+   * names it with the path alone, found in the workspace of the importing file or in one it depends on), and the ending of
+   * a name that makes a package of its own that no import reaches. With `file`, `roots` are the folders below a workspace
+   * that hold its packages instead of the workspace folder itself, and `index` the name (without extension) of the file
+   * that stands for its folder.
    */
-  package: { clause: string; path: "directory" | "clause"; separate?: string };
+  package: {
+    clause?: string;
+    path: "directory" | "clause" | "file";
+    separate?: string;
+    roots?: readonly string[];
+    index?: string;
+  };
+  /** The kind of the child of a function declaration that makes its result a deferred value: the result is not read as the declared type. */
+  deferred?: string;
+  /**
+   * What only the flow resolver (level 3) reads: values that flow into names without a declared type. A pack that has it
+   * is not resolved by declared types alone where a name has no type of its own.
+   */
+  flow?: FlowRules;
   /** Aliases of an import that bind no name. */
   unboundAliases: readonly string[];
   /** The shape of a list of result types: the list kind, and in each entry the field of the names, the kinds that are names and the field of the type. A language with one result type leaves it out. */
@@ -225,6 +311,12 @@ export interface TypingRules {
   /** Where a name declared inside a function gets its type. `from` is where the name becomes visible: the `start` or the `end` of the declaration. */
   locals: {
     nameKinds: readonly string[];
+    /**
+     * Kinds that hold a list of names (`a, b = ...`). Without this, any node in a field of names holds names among its
+     * children; with it, only these do. An empty field name in the entries below says the names are the children of the
+     * node itself, of the kinds in `nameKinds`.
+     */
+    nameLists?: readonly string[];
     /** Parameters: the field of the names and of the type; a `variadic` one holds a sequence of its type. */
     parameters: readonly {
       kind: string;
@@ -252,8 +344,12 @@ export interface TypingRules {
     valueLists: readonly string[];
     /** Names that take the elements of a value: the field of the names and of the value ranged over. */
     ranges: readonly { kind: string; names: string; source: string; from: "start" | "end" }[];
-    /** Names whose type is not read. They still hide a name of an outer scope. */
-    untyped: readonly { kind: string; names: string; from: "start" | "end" }[];
+    /**
+     * Names whose type is not read. They still hide a name of an outer scope. With `scope`, a name that starts being
+     * visible `from` the `start` is visible from the start of the nearest node around it of one of those kinds (the
+     * variable of a comprehension is the name in the expression that comes before it).
+     */
+    untyped: readonly { kind: string; names: string; from: "start" | "end"; scope?: readonly string[] }[];
   };
   /** Kinds of the expressions a place in a file can name (`targetAt`, `typeNameAt`). */
   lookups: readonly string[];
@@ -347,6 +443,8 @@ export interface LanguagePack {
        * `static` the kind of the child that makes the names members. Without it every import brings in a package.
        */
       named?: { onDemand: string; static: string };
+      /** Imports written as statements that list modules, or names taken from a module; they are read besides `declarations`. */
+      modules?: ModuleImportRules;
     };
     /** Kinds of a call site. */
     call: readonly string[];
@@ -382,6 +480,8 @@ export interface LanguagePack {
     main: RegExp;
     /** Manifest of the repo that lists the workspaces that belong together, and its directive; without one every workspace of the language in the repo belongs together. */
     group?: { file: string; directive: string; tokens: number };
+    /** Names that are the same workspace: two names are equal when they are after lower-casing (`lower`) and replacing each match of `fold` by `as`. Without it names are compared as written. */
+    sameName?: { fold: RegExp; as: string; lower: boolean };
   };
   tokens: {
     /** Kinds that are identifiers; only `local` ones are renamed. */
@@ -397,6 +497,7 @@ export interface LanguagePack {
     /** Names declared inside a declaration, found from these nodes. */
     locals: {
       parameters: { kinds: readonly string[]; field: string };
+      /** Nodes that bind the names in `field`; an empty `field` says the names are the children of the node that are of the `local` kind. */
       bindings: readonly { kind: string; field: string }[];
       /** Specs whose names are local unless the spec is the declaration itself. */
       specs: { kinds: readonly string[]; field: string };

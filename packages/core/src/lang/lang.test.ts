@@ -19,17 +19,36 @@ describe("language registry", () => {
     expect(languageOfPath("src/main/java/a/App.java")?.id).toBe("java");
   });
 
-  it("holds TypeScript, Go and Java", () => {
-    expect(languages().map((m) => m.id)).toEqual(["typescript", "go", "java"]);
-    expect(LANG_IDS).toEqual(["typescript", "go", "java"]);
+  it("picks Python for .py and .pyi", () => {
+    expect(languageOfPath("src/acme/cli.py")?.id).toBe("python");
+    expect(languageOfPath("src/acme/cli.pyi")?.id).toBe("python");
+    expect(languageOfPath("src/acme/cli.pyc")).toBeUndefined();
+  });
+
+  it("holds TypeScript, Go, Java and Python", () => {
+    expect(languages().map((m) => m.id)).toEqual(["typescript", "go", "java", "python"]);
+    expect(LANG_IDS).toEqual(["typescript", "go", "java", "python"]);
     expect(isLang("typescript")).toBe(true);
     expect(isLang("go")).toBe(true);
     expect(isLang("java")).toBe(true);
+    expect(isLang("python")).toBe(true);
     expect(isLang("rust")).toBe(false);
     expect(langLabel("typescript")).toBe("TypeScript");
     expect(langLabel("go")).toBe("Go");
     expect(langLabel("java")).toBe("Java");
+    expect(langLabel("python")).toBe("Python");
     expect(languageModule("go").label).toBe("Go");
+  });
+
+  it("skips virtual environments, caches, installed packages and build folders for Python", () => {
+    const skip = languageModule("python").skipPath;
+    expect(skip?.(".venv/lib/site.py")).toBe(true);
+    expect(skip?.("venv/lib/site.py")).toBe(true);
+    expect(skip?.("src/acme/__pycache__/a.py")).toBe(true);
+    expect(skip?.("lib/site-packages/x/a.py")).toBe(true);
+    expect(skip?.("build/lib/a.py")).toBe(true);
+    expect(skip?.("dist/a.py")).toBe(true);
+    expect(skip?.("src/acme/a.py")).toBe(false);
   });
 
   it("skips target, build and .gradle folders for Java", () => {

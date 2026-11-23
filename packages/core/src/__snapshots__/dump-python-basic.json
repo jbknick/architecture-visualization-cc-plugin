@@ -1,0 +1,949 @@
+{
+  "repos": [
+    {
+      "name": "python-basic"
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "ws:python-basic:python-basic",
+      "repo": "python-basic",
+      "name": "python-basic",
+      "dir": ".",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [
+        "requests"
+      ],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:python-basic:src/acme/__init__.py",
+      "repo": "python-basic",
+      "path": "src/acme/__init__.py",
+      "lang": "python",
+      "workspaceId": "ws:python-basic:python-basic",
+      "contentHash": "405c919704b516e03a03f4c34fa2f432582890bde42a78d3ab78e11b85e4daa0"
+    },
+    {
+      "id": "file:python-basic:src/acme/base.py",
+      "repo": "python-basic",
+      "path": "src/acme/base.py",
+      "lang": "python",
+      "workspaceId": "ws:python-basic:python-basic",
+      "contentHash": "168704b5e3c03c15a072f0e7a2a364e8eede949b129599970a548eb78c8159de"
+    },
+    {
+      "id": "file:python-basic:src/acme/cli.py",
+      "repo": "python-basic",
+      "path": "src/acme/cli.py",
+      "lang": "python",
+      "workspaceId": "ws:python-basic:python-basic",
+      "contentHash": "463136148db223c6e9306a18482969b699eeafd5cfb8894b901fc1a5c5d21ff9"
+    },
+    {
+      "id": "file:python-basic:src/acme/models.py",
+      "repo": "python-basic",
+      "path": "src/acme/models.py",
+      "lang": "python",
+      "workspaceId": "ws:python-basic:python-basic",
+      "contentHash": "3decda79c1ece22b52e00f3430dd0634fceb68b822783944b54a97e7afb0ff5c"
+    },
+    {
+      "id": "file:python-basic:src/acme/proto_pb2.py",
+      "repo": "python-basic",
+      "path": "src/acme/proto_pb2.py",
+      "lang": "python",
+      "workspaceId": "ws:python-basic:python-basic",
+      "contentHash": "d14799fff4b7123b0aab207568b0d15e68c908132439fc4871e0cc11c52f8fb2",
+      "directives": [
+        "generated"
+      ]
+    },
+    {
+      "id": "file:python-basic:src/acme/service.py",
+      "repo": "python-basic",
+      "path": "src/acme/service.py",
+      "lang": "python",
+      "workspaceId": "ws:python-basic:python-basic",
+      "contentHash": "2ce4423fb6b1c040dc7f4061b449c4a0cd36b1c6665247a5ffde4d88c618a703"
+    },
+    {
+      "id": "file:python-basic:src/acme/store.py",
+      "repo": "python-basic",
+      "path": "src/acme/store.py",
+      "lang": "python",
+      "workspaceId": "ws:python-basic:python-basic",
+      "contentHash": "dce83144572c2a4fb73438e948f3d2b12cfbde510fc151d32a28f88722200c7e"
+    },
+    {
+      "id": "file:python-basic:src/acme/util.py",
+      "repo": "python-basic",
+      "path": "src/acme/util.py",
+      "lang": "python",
+      "workspaceId": "ws:python-basic:python-basic",
+      "contentHash": "ca0d205931a5fca9ad4bcd330921f289fd733123dd89db75d380f2e8a4873141"
+    },
+    {
+      "id": "file:python-basic:tests/test_service.py",
+      "repo": "python-basic",
+      "path": "tests/test_service.py",
+      "lang": "python",
+      "workspaceId": "ws:python-basic:python-basic",
+      "contentHash": "507ad37bdc0413d0b9327d61c752956d054ae06074cab75fa9a6c3cd025a22d9"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:python-basic:src/acme/base.py#Base",
+      "fileId": "file:python-basic:src/acme/base.py",
+      "name": "Base",
+      "kind": "class",
+      "lang": "python",
+      "exported": true,
+      "signature": "",
+      "startLine": 1,
+      "endLine": 3,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "7bf52b323d00c56936606c1b699748f8",
+      "shapeHash": "7f88e39d51d9f5e78a586db33b8bff88"
+    },
+    {
+      "id": "sym:python-basic:src/acme/base.py#Base.audit",
+      "fileId": "file:python-basic:src/acme/base.py",
+      "name": "Base.audit",
+      "kind": "method",
+      "lang": "python",
+      "exported": true,
+      "signature": "(self) None",
+      "startLine": 2,
+      "endLine": 3,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "028c8205365a87205d8746c34801d7b4",
+      "shapeHash": "e4fdeefeea4d32de2b4892631653fef7"
+    },
+    {
+      "id": "sym:python-basic:src/acme/cli.py#describe",
+      "fileId": "file:python-basic:src/acme/cli.py",
+      "name": "describe",
+      "kind": "function",
+      "lang": "python",
+      "exported": true,
+      "signature": "(thing)",
+      "startLine": 12,
+      "endLine": 13,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "807911d77964992cd680416b9694412f",
+      "shapeHash": "4d13355bb2d81d18460294e0e0d2255c"
+    },
+    {
+      "id": "sym:python-basic:src/acme/cli.py#main",
+      "fileId": "file:python-basic:src/acme/cli.py",
+      "name": "main",
+      "kind": "function",
+      "lang": "python",
+      "exported": true,
+      "signature": "() None",
+      "startLine": 16,
+      "endLine": 19,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 3,
+      "exactHash": "8cb9df17e95fbbe8ca0f0582b2025490",
+      "shapeHash": "34a63ef272b448f1fc089a15033f29a8"
+    },
+    {
+      "id": "sym:python-basic:src/acme/cli.py#report",
+      "fileId": "file:python-basic:src/acme/cli.py",
+      "name": "report",
+      "kind": "function",
+      "lang": "python",
+      "exported": true,
+      "signature": "(store: Store, user: Admin) int",
+      "startLine": 7,
+      "endLine": 9,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "9cb17201c900bba1342753a35aac721c",
+      "shapeHash": "fece3d2d8c7e44a4c584532d8e583e29"
+    },
+    {
+      "id": "sym:python-basic:src/acme/models.py#Admin",
+      "fileId": "file:python-basic:src/acme/models.py",
+      "name": "Admin",
+      "kind": "class",
+      "lang": "python",
+      "exported": true,
+      "signature": "",
+      "startLine": 12,
+      "endLine": 17,
+      "loc": 6,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "afc9190030f9251c18725ee08558038f",
+      "shapeHash": "a73a413e12f0213eb143932c4f7e38b5"
+    },
+    {
+      "id": "sym:python-basic:src/acme/models.py#Admin.display",
+      "fileId": "file:python-basic:src/acme/models.py",
+      "name": "Admin.display",
+      "kind": "method",
+      "lang": "python",
+      "exported": true,
+      "signature": "(self) str",
+      "startLine": 13,
+      "endLine": 14,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "3d5f850d01620fc6c01b0591ace71467",
+      "shapeHash": "98042e87f221e870ac977cc630d1e7d1"
+    },
+    {
+      "id": "sym:python-basic:src/acme/models.py#Admin.revoke",
+      "fileId": "file:python-basic:src/acme/models.py",
+      "name": "Admin.revoke",
+      "kind": "method",
+      "lang": "python",
+      "exported": true,
+      "signature": "(self) None",
+      "startLine": 16,
+      "endLine": 17,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "5b3132efb3d928a4de000c212a4d79c9",
+      "shapeHash": "4042c911a263765e43a2467d6c5b8de6"
+    },
+    {
+      "id": "sym:python-basic:src/acme/models.py#User",
+      "fileId": "file:python-basic:src/acme/models.py",
+      "name": "User",
+      "kind": "class",
+      "lang": "python",
+      "exported": true,
+      "signature": "",
+      "startLine": 4,
+      "endLine": 9,
+      "loc": 6,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "a9f793ac6d8c58aaf04cee7fa6a0c11f",
+      "shapeHash": "20b247e026fdcedceaa5b0bf657c5816"
+    },
+    {
+      "id": "sym:python-basic:src/acme/models.py#User.__init__",
+      "fileId": "file:python-basic:src/acme/models.py",
+      "name": "User.__init__",
+      "kind": "method",
+      "lang": "python",
+      "exported": false,
+      "signature": "(self, name: str) None",
+      "startLine": 5,
+      "endLine": 6,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "c4b8c75e4652d06755ed314e7361b29b",
+      "shapeHash": "1f3d39af40bff4020b802f4132a41976"
+    },
+    {
+      "id": "sym:python-basic:src/acme/models.py#User.display",
+      "fileId": "file:python-basic:src/acme/models.py",
+      "name": "User.display",
+      "kind": "method",
+      "lang": "python",
+      "exported": true,
+      "signature": "(self) str",
+      "startLine": 8,
+      "endLine": 9,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "8d72bd83cf2cb03cc2739b97a67ad638",
+      "shapeHash": "9d095b27b8961101ba31434a46690622"
+    },
+    {
+      "id": "sym:python-basic:src/acme/proto_pb2.py#Envelope",
+      "fileId": "file:python-basic:src/acme/proto_pb2.py",
+      "name": "Envelope",
+      "kind": "class",
+      "lang": "python",
+      "exported": true,
+      "signature": "",
+      "startLine": 2,
+      "endLine": 4,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "fa48fd7066fbb2140ca3ce8509940489",
+      "shapeHash": "7bf34d236deb4fcbc78c4348337d6fe9"
+    },
+    {
+      "id": "sym:python-basic:src/acme/proto_pb2.py#Envelope.size",
+      "fileId": "file:python-basic:src/acme/proto_pb2.py",
+      "name": "Envelope.size",
+      "kind": "method",
+      "lang": "python",
+      "exported": true,
+      "signature": "(self) int",
+      "startLine": 3,
+      "endLine": 4,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "81663cef1147ae7970db9691286beed0",
+      "shapeHash": "30add6b0c5ef118c206c77b1aae2830d"
+    },
+    {
+      "id": "sym:python-basic:src/acme/service.py#Service",
+      "fileId": "file:python-basic:src/acme/service.py",
+      "name": "Service",
+      "kind": "class",
+      "lang": "python",
+      "exported": true,
+      "signature": "",
+      "startLine": 7,
+      "endLine": 18,
+      "loc": 12,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "1217bd5165bf9df3328e6780c4987b09",
+      "shapeHash": "75a13da40ab814a1d01ab88facce038e"
+    },
+    {
+      "id": "sym:python-basic:src/acme/service.py#Service.__init__",
+      "fileId": "file:python-basic:src/acme/service.py",
+      "name": "Service.__init__",
+      "kind": "method",
+      "lang": "python",
+      "exported": false,
+      "signature": "(self) None",
+      "startLine": 8,
+      "endLine": 9,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "0ab78a32f82871e12c901fc8a6cf3b9e",
+      "shapeHash": "1eba8356958fdf0ed21806117cbf1470"
+    },
+    {
+      "id": "sym:python-basic:src/acme/service.py#Service.run",
+      "fileId": "file:python-basic:src/acme/service.py",
+      "name": "Service.run",
+      "kind": "method",
+      "lang": "python",
+      "exported": true,
+      "signature": "(self, user: User) int",
+      "startLine": 11,
+      "endLine": 15,
+      "loc": 5,
+      "complexity": 1,
+      "stmtCount": 4,
+      "exactHash": "4cb35f94cb15745b66f762119c6d9d8d",
+      "shapeHash": "b80481930adaa9f0e2b8435e0afb9d9f"
+    },
+    {
+      "id": "sym:python-basic:src/acme/service.py#Service.touch",
+      "fileId": "file:python-basic:src/acme/service.py",
+      "name": "Service.touch",
+      "kind": "method",
+      "lang": "python",
+      "exported": true,
+      "signature": "(self) None",
+      "startLine": 17,
+      "endLine": 18,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "def5b93e4bd054c5d4efa679ab12d14d",
+      "shapeHash": "5e5e60d5b7e9aebe05c7afe29e4423dd"
+    },
+    {
+      "id": "sym:python-basic:src/acme/store.py#Store",
+      "fileId": "file:python-basic:src/acme/store.py",
+      "name": "Store",
+      "kind": "class",
+      "lang": "python",
+      "exported": true,
+      "signature": "",
+      "startLine": 4,
+      "endLine": 13,
+      "loc": 10,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "9e7188c0d362da95d27ab7205ef678ae",
+      "shapeHash": "5bbeb81770e0001cd4adf7f38a3a28ea"
+    },
+    {
+      "id": "sym:python-basic:src/acme/store.py#Store.__init__",
+      "fileId": "file:python-basic:src/acme/store.py",
+      "name": "Store.__init__",
+      "kind": "method",
+      "lang": "python",
+      "exported": false,
+      "signature": "(self) None",
+      "startLine": 5,
+      "endLine": 6,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "f4b10fe095c52c0ffe2350c53e703184",
+      "shapeHash": "4e2de08fdb76a6b246c6efca2a57f7ac"
+    },
+    {
+      "id": "sym:python-basic:src/acme/store.py#Store.count",
+      "fileId": "file:python-basic:src/acme/store.py",
+      "name": "Store.count",
+      "kind": "method",
+      "lang": "python",
+      "exported": true,
+      "signature": "(self) int",
+      "startLine": 12,
+      "endLine": 13,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "cba41c61a350946cae311f4636eeb6ab",
+      "shapeHash": "036c381a9cf7293bcd2fc4be09a44546"
+    },
+    {
+      "id": "sym:python-basic:src/acme/store.py#Store.save",
+      "fileId": "file:python-basic:src/acme/store.py",
+      "name": "Store.save",
+      "kind": "method",
+      "lang": "python",
+      "exported": true,
+      "signature": "(self, user: User) int",
+      "startLine": 8,
+      "endLine": 10,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "d88020c360e3d4a62af2944bc4b759de",
+      "shapeHash": "cfef34328f1b19400f129a836c25232b"
+    },
+    {
+      "id": "sym:python-basic:src/acme/util.py#clean",
+      "fileId": "file:python-basic:src/acme/util.py",
+      "name": "clean",
+      "kind": "function",
+      "lang": "python",
+      "exported": true,
+      "signature": "(text: str) str",
+      "startLine": 5,
+      "endLine": 6,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "04c3a44037c41ed96376d793dacd9eee",
+      "shapeHash": "0866d95cad13487cb020668166acb813"
+    },
+    {
+      "id": "sym:python-basic:src/acme/util.py#slug",
+      "fileId": "file:python-basic:src/acme/util.py",
+      "name": "slug",
+      "kind": "function",
+      "lang": "python",
+      "exported": true,
+      "signature": "(text: str) str",
+      "startLine": 1,
+      "endLine": 2,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "4b6046afafbfb3dd921ba0ad04540327",
+      "shapeHash": "b85739270d28e465ff3a314387e0b187"
+    },
+    {
+      "id": "sym:python-basic:tests/test_service.py#test_run_saves_the_user",
+      "fileId": "file:python-basic:tests/test_service.py",
+      "name": "test_run_saves_the_user",
+      "kind": "function",
+      "lang": "python",
+      "exported": true,
+      "signature": "() None",
+      "startLine": 5,
+      "endLine": 7,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "08ced2f981c5829bef6cfb18e35bfdbd",
+      "shapeHash": "fa7d24ca7e76b1a60434f273f87a7253"
+    }
+  ],
+  "edges": [
+    {
+      "src": "file:python-basic:src/acme/base.py",
+      "dst": "sym:python-basic:src/acme/base.py#Base",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/base.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/base.py",
+      "dst": "sym:python-basic:src/acme/base.py#Base.audit",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/base.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/cli.py",
+      "dst": "sym:python-basic:src/acme/cli.py#describe",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/cli.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/cli.py",
+      "dst": "sym:python-basic:src/acme/cli.py#main",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/cli.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/cli.py",
+      "dst": "sym:python-basic:src/acme/cli.py#report",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/cli.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/models.py",
+      "dst": "sym:python-basic:src/acme/models.py#Admin",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/models.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/models.py",
+      "dst": "sym:python-basic:src/acme/models.py#Admin.display",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/models.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/models.py",
+      "dst": "sym:python-basic:src/acme/models.py#Admin.revoke",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/models.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/models.py",
+      "dst": "sym:python-basic:src/acme/models.py#User",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/models.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/models.py",
+      "dst": "sym:python-basic:src/acme/models.py#User.__init__",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/models.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/models.py",
+      "dst": "sym:python-basic:src/acme/models.py#User.display",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/models.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/proto_pb2.py",
+      "dst": "sym:python-basic:src/acme/proto_pb2.py#Envelope",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/proto_pb2.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/proto_pb2.py",
+      "dst": "sym:python-basic:src/acme/proto_pb2.py#Envelope.size",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/proto_pb2.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/service.py",
+      "dst": "sym:python-basic:src/acme/service.py#Service",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/service.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/service.py",
+      "dst": "sym:python-basic:src/acme/service.py#Service.__init__",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/service.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/service.py",
+      "dst": "sym:python-basic:src/acme/service.py#Service.run",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/service.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/service.py",
+      "dst": "sym:python-basic:src/acme/service.py#Service.touch",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/service.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/store.py",
+      "dst": "sym:python-basic:src/acme/store.py#Store",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/store.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/store.py",
+      "dst": "sym:python-basic:src/acme/store.py#Store.__init__",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/store.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/store.py",
+      "dst": "sym:python-basic:src/acme/store.py#Store.count",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/store.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/store.py",
+      "dst": "sym:python-basic:src/acme/store.py#Store.save",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/store.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/util.py",
+      "dst": "sym:python-basic:src/acme/util.py#clean",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/util.py"
+    },
+    {
+      "src": "file:python-basic:src/acme/util.py",
+      "dst": "sym:python-basic:src/acme/util.py#slug",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/util.py"
+    },
+    {
+      "src": "file:python-basic:tests/test_service.py",
+      "dst": "sym:python-basic:tests/test_service.py#test_run_saves_the_user",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:tests/test_service.py"
+    },
+    {
+      "src": "sym:python-basic:src/acme/cli.py#main",
+      "dst": "sym:python-basic:src/acme/service.py#Service.run",
+      "kind": "calls",
+      "confidence": "low",
+      "count": 1,
+      "evidence": [
+        "src/acme/cli.py:18"
+      ],
+      "fileId": "file:python-basic:src/acme/cli.py",
+      "level": 3
+    },
+    {
+      "src": "sym:python-basic:src/acme/cli.py#main",
+      "dst": "sym:python-basic:src/acme/util.py#slug",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/acme/cli.py:19"
+      ],
+      "fileId": "file:python-basic:src/acme/cli.py",
+      "level": 2
+    },
+    {
+      "src": "sym:python-basic:src/acme/cli.py#report",
+      "dst": "sym:python-basic:src/acme/models.py#Admin.revoke",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/acme/cli.py:8"
+      ],
+      "fileId": "file:python-basic:src/acme/cli.py",
+      "level": 2
+    },
+    {
+      "src": "sym:python-basic:src/acme/cli.py#report",
+      "dst": "sym:python-basic:src/acme/store.py#Store.count",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/acme/cli.py:9"
+      ],
+      "fileId": "file:python-basic:src/acme/cli.py",
+      "level": 2
+    },
+    {
+      "src": "sym:python-basic:src/acme/models.py#Admin",
+      "dst": "sym:python-basic:src/acme/models.py#User",
+      "kind": "extends",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/acme/models.py:12"
+      ],
+      "fileId": "file:python-basic:src/acme/models.py"
+    },
+    {
+      "src": "sym:python-basic:src/acme/service.py#Service",
+      "dst": "sym:python-basic:src/acme/base.py#Base",
+      "kind": "extends",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/acme/service.py:7"
+      ],
+      "fileId": "file:python-basic:src/acme/service.py"
+    },
+    {
+      "src": "sym:python-basic:src/acme/service.py#Service.run",
+      "dst": "sym:python-basic:src/acme/base.py#Base.audit",
+      "kind": "calls",
+      "confidence": "low",
+      "count": 1,
+      "evidence": [
+        "src/acme/service.py:13"
+      ],
+      "fileId": "file:python-basic:src/acme/service.py",
+      "level": 3
+    },
+    {
+      "src": "sym:python-basic:src/acme/service.py#Service.run",
+      "dst": "sym:python-basic:src/acme/models.py#User.display",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/acme/service.py:14"
+      ],
+      "fileId": "file:python-basic:src/acme/service.py",
+      "level": 2
+    },
+    {
+      "src": "sym:python-basic:src/acme/service.py#Service.run",
+      "dst": "sym:python-basic:src/acme/service.py#Service.touch",
+      "kind": "calls",
+      "confidence": "low",
+      "count": 1,
+      "evidence": [
+        "src/acme/service.py:12"
+      ],
+      "fileId": "file:python-basic:src/acme/service.py",
+      "level": 3
+    },
+    {
+      "src": "sym:python-basic:src/acme/service.py#Service.run",
+      "dst": "sym:python-basic:src/acme/store.py#Store.save",
+      "kind": "calls",
+      "confidence": "low",
+      "count": 1,
+      "evidence": [
+        "src/acme/service.py:15"
+      ],
+      "fileId": "file:python-basic:src/acme/service.py",
+      "level": 3
+    },
+    {
+      "src": "sym:python-basic:src/acme/service.py#Service.run",
+      "dst": "sym:python-basic:src/acme/util.py#slug",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/acme/service.py:14"
+      ],
+      "fileId": "file:python-basic:src/acme/service.py",
+      "level": 2
+    },
+    {
+      "src": "sym:python-basic:src/acme/service.py#Service.touch",
+      "dst": "sym:python-basic:src/acme/store.py#Store.count",
+      "kind": "calls",
+      "confidence": "low",
+      "count": 1,
+      "evidence": [
+        "src/acme/service.py:18"
+      ],
+      "fileId": "file:python-basic:src/acme/service.py",
+      "level": 3
+    },
+    {
+      "src": "sym:python-basic:src/acme/util.py#slug",
+      "dst": "sym:python-basic:src/acme/util.py#clean",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/acme/util.py:2"
+      ],
+      "fileId": "file:python-basic:src/acme/util.py",
+      "level": 2
+    },
+    {
+      "src": "sym:python-basic:tests/test_service.py#test_run_saves_the_user",
+      "dst": "sym:python-basic:src/acme/service.py#Service.run",
+      "kind": "calls",
+      "confidence": "low",
+      "count": 1,
+      "evidence": [
+        "tests/test_service.py:7"
+      ],
+      "fileId": "file:python-basic:tests/test_service.py",
+      "level": 3
+    },
+    {
+      "src": "ws:python-basic:python-basic",
+      "dst": "file:python-basic:src/acme/__init__.py",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/__init__.py"
+    },
+    {
+      "src": "ws:python-basic:python-basic",
+      "dst": "file:python-basic:src/acme/base.py",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/base.py"
+    },
+    {
+      "src": "ws:python-basic:python-basic",
+      "dst": "file:python-basic:src/acme/cli.py",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/cli.py"
+    },
+    {
+      "src": "ws:python-basic:python-basic",
+      "dst": "file:python-basic:src/acme/models.py",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/models.py"
+    },
+    {
+      "src": "ws:python-basic:python-basic",
+      "dst": "file:python-basic:src/acme/proto_pb2.py",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/proto_pb2.py"
+    },
+    {
+      "src": "ws:python-basic:python-basic",
+      "dst": "file:python-basic:src/acme/service.py",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/service.py"
+    },
+    {
+      "src": "ws:python-basic:python-basic",
+      "dst": "file:python-basic:src/acme/store.py",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/store.py"
+    },
+    {
+      "src": "ws:python-basic:python-basic",
+      "dst": "file:python-basic:src/acme/util.py",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:src/acme/util.py"
+    },
+    {
+      "src": "ws:python-basic:python-basic",
+      "dst": "file:python-basic:tests/test_service.py",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:python-basic:tests/test_service.py"
+    }
+  ]
+}

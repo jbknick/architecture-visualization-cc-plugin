@@ -3,7 +3,7 @@ import { fileId as makeFileId, symId } from "../../ids.js";
 import type { ParsedFile, ParsedImport } from "../../parse/index.js";
 import type { ParsedSymbol, SymbolKind } from "../../types.js";
 import { parseTree, type SyntaxNode } from "./grammar.js";
-import type { BaseTypeRule, DeclarationRule, LanguagePack } from "./pack.js";
+import type { BaseTypeRule, DeclarationRule, LanguagePack, ModuleImportRules } from "./pack.js";
 import { bodiedName, bodiedRule, walkDeclarations } from "./walk.js";
 
 /** File directive recorded on a generated file; the duplicate engine skips files that carry it. */
@@ -291,6 +291,37 @@ export function rawImportsOf(pack: LanguagePack, root: SyntaxNode): RawImport[] 
       else if (rule.groups.includes(c.kind())) specs(c);
     }
   };
+  const modules = rule.modules;
+  /** `import a.b as c, d` and `from m import a as b, *`. */
+  const statement = (d: SyntaxNode, m: ModuleImportRules): void => {
+    const line = d.range().start.line + 1;
+    const entry = (e: SyntaxNode, aliased: string, path: string, alias: string): [string, string | null] => {
+      if (e.kind() !== aliased) return [e.text().replace(/\s+/g, ""), null];
+      return [e.field(path)?.text().replace(/\s+/g, "") ?? "", e.field(alias)?.text() ?? null];
+    };
+    if (d.kind() === m.plain.kind) {
+      for (const e of d.fieldChildren(m.plain.entries)) {
+        const [specifier, alias] = entry(e, m.plain.aliased, m.plain.path, m.plain.alias);
+        if (specifier !== "") out.push({ alias, specifier, name: null, static: false, line });
+      }
+    } else if (d.kind() === m.from.kind) {
+      const specifier = d.field(m.from.module)?.text().replace(/\s+/g, "") ?? "";
+      if (specifier === "") return;
+      if (d.namedChildren().some((x) => x.kind() === m.from.onDemand))
+        out.push({ alias: null, specifier, name: "*", static: false, line });
+      for (const e of d.fieldChildren(m.from.entries)) {
+        const [name, alias] = entry(e, m.from.aliased, m.from.path, m.from.alias);
+        if (name !== "") out.push({ alias, specifier, name, static: false, line });
+      }
+    }
+  };
+  const search = (n: SyntaxNode, m: ModuleImportRules): void => {
+    for (const c of n.namedChildren()) {
+      if (c.kind() === m.plain.kind || c.kind() === m.from.kind) statement(c, m);
+      else if (m.through.includes(c.kind())) search(c, m);
+    }
+  };
+  if (modules) search(root, modules);
   for (const d of root.namedChildren()) {
     if (!rule.declarations.includes(d.kind())) continue;
     if (rule.specs.includes(d.kind())) add(d);
@@ -299,14 +330,30 @@ export function rawImportsOf(pack: LanguagePack, root: SyntaxNode): RawImport[] 
   return out;
 }
 
+/**
+ * The name an import binds in the file and the path it brings in. A whole-package import binds the alias, or the last
+ * segment of the path (the first one for a pack whose plain imports say so, which then names the package of that
+ * segment); a named import binds the alias or the name.
+ */
+export function importBinding(
+  pack: LanguagePack,
+  i: Pick<RawImport, "alias" | "specifier" | "name">,
+): { local: string; path: string } {
+  const sep = pack.nodes.import.separator;
+  const modules = pack.nodes.import.modules;
+  if (i.name !== null) return { local: i.alias ?? i.name, path: i.specifier };
+  if (i.alias === null && modules?.plain.binds === "first") {
+    const first = i.specifier.split(sep)[0] ?? i.specifier;
+    return { local: first, path: first };
+  }
+  return { local: i.alias ?? defaultImportName(pack, i.specifier), path: i.specifier };
+}
+
 function importsOf(pack: LanguagePack, root: SyntaxNode): ParsedImport[] {
-  return rawImportsOf(pack, root).map((i) => ({
-    local: i.alias ?? i.name ?? defaultImportName(pack, i.specifier),
-    imported: i.name ?? "*",
-    specifier: i.specifier,
-    typeOnly: false,
-    line: i.line,
-  }));
+  return rawImportsOf(pack, root).map((i) => {
+    const b = importBinding(pack, i);
+    return { local: b.local, imported: i.name ?? "*", specifier: b.path, typeOnly: false, line: i.line };
+  });
 }
 
 /**

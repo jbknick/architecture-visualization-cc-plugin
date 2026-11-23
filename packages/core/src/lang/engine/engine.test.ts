@@ -52,10 +52,27 @@ const TypingSchema = z.strictObject({
     unread: strings,
   }),
   package: z.strictObject({
-    clause: field,
-    path: z.enum(["directory", "clause"]),
+    clause: field.optional(),
+    path: z.enum(["directory", "clause", "file"]),
     separate: field.optional(),
+    roots: strings.optional(),
+    index: field.optional(),
   }),
+  deferred: field.optional(),
+  flow: z
+    .strictObject({
+      untyped: strings,
+      self: field,
+      initializer: field,
+      attribute: z.strictObject({
+        kind: field,
+        target: field,
+        value: field,
+        type: field,
+        access: z.strictObject({ kind: field, object: field, name: field }),
+      }),
+    })
+    .optional(),
   unboundAliases: strings,
   results: z.strictObject({ list: field, name: field, nameKinds: strings, type: field }).optional(),
   members: z.strictObject({
@@ -106,8 +123,9 @@ const TypingSchema = z.strictObject({
   }),
   locals: z.strictObject({
     nameKinds: strings,
+    nameLists: strings.optional(),
     parameters: z.array(
-      z.strictObject({ kind: field, name: field, type: field, variadic: z.boolean(), from }),
+      z.strictObject({ kind: field, name: z.string(), type: field, variadic: z.boolean(), from }),
     ),
     declarations: z.array(
       z.strictObject({
@@ -122,7 +140,7 @@ const TypingSchema = z.strictObject({
     inferred: strings,
     valueLists: strings,
     ranges: z.array(z.strictObject({ kind: field, names: field, source: field, from })),
-    untyped: z.array(z.strictObject({ kind: field, names: field, from })),
+    untyped: z.array(z.strictObject({ kind: field, names: z.string(), from, scope: strings.optional() })),
   }),
   lookups: strings,
 });
@@ -190,6 +208,29 @@ const PackSchema = z.strictObject({
       separator: field,
       localName: z.strictObject({ skip: regexp }),
       named: z.strictObject({ onDemand: field, static: field }).optional(),
+      modules: z
+        .strictObject({
+          plain: z.strictObject({
+            kind: field,
+            entries: field,
+            aliased: field,
+            path: field,
+            alias: field,
+            binds: z.enum(["first", "last"]),
+          }),
+          from: z.strictObject({
+            kind: field,
+            module: field,
+            entries: field,
+            aliased: field,
+            path: field,
+            alias: field,
+            onDemand: field,
+          }),
+          relative: field,
+          through: strings,
+        })
+        .optional(),
     }),
     call: strings,
     callee: z.strictObject({
@@ -220,7 +261,7 @@ const PackSchema = z.strictObject({
       .array(
         z.strictObject({
           files: strings.min(1),
-          format: z.enum(["text", "xml"]),
+          format: z.enum(["text", "xml", "toml", "ini"]),
           quotes: z.string(),
           comment: regexp,
           name: z
@@ -234,8 +275,9 @@ const PackSchema = z.strictObject({
             .min(1),
           deps: z.union([
             z.strictObject({ directive: field, tokens: z.number().int().positive() }),
-            z.strictObject({ pattern: regexp }),
-            z.strictObject({ path: field }),
+            z.strictObject({ pattern: regexp, within: regexp.optional() }),
+            z.strictObject({ path: field, entry: regexp.optional() }),
+            z.strictObject({ keys: field, entry: regexp.optional() }),
           ]),
         }),
       )
@@ -243,6 +285,7 @@ const PackSchema = z.strictObject({
     skipDirs: strings,
     main: regexp,
     group: z.strictObject({ file: field, directive: field, tokens: z.number().int().positive() }).optional(),
+    sameName: z.strictObject({ fold: regexp, as: z.string(), lower: z.boolean() }).optional(),
   }),
   tokens: z.strictObject({
     identifiers: strings,
@@ -254,7 +297,7 @@ const PackSchema = z.strictObject({
     ownName: field,
     locals: z.strictObject({
       parameters: z.strictObject({ kinds: strings, field }),
-      bindings: z.array(z.strictObject({ kind: field, field })),
+      bindings: z.array(z.strictObject({ kind: field, field: z.string() })),
       specs: z.strictObject({ kinds: strings, field }),
       blank: field,
     }),
@@ -325,6 +368,7 @@ afterEach(async () => {
 describe.each([
   ["Go", "go-basic"],
   ["Java", "java-basic"],
+  ["Python", "python-basic"],
 ] as const)("%s index determinism", (_label, name) => {
   it("dumps byte-equal output from two fresh data dirs", async () => {
     const fx = await materializeFixture(name);

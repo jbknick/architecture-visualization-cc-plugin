@@ -61,7 +61,12 @@ function declaredLocals(pack: LanguagePack, node: SyntaxNode): Set<string> {
     for (const n of node.findAll({ rule: { any: p.kinds.map((kind) => ({ kind })) } }))
       for (const c of n.fieldChildren(p.field)) add(c);
   for (const b of t.locals.bindings)
-    for (const n of node.findAll({ rule: { kind: b.kind } })) add(n.field(b.field));
+    for (const n of node.findAll({ rule: { kind: b.kind } })) {
+      if (b.field !== "") add(n.field(b.field));
+      else
+        for (const c of n.namedChildren())
+          if (c.kind() === t.local && c.text() !== t.locals.blank) names.add(c.text());
+    }
   const s = t.locals.specs;
   if (s.kinds.length > 0)
     for (const n of node.findAll({ rule: { any: s.kinds.map((kind) => ({ kind })) } })) {

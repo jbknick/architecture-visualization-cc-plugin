@@ -17,27 +17,38 @@ import {
   TypeIndex,
   type VarInfo,
 } from "./typeindex.js";
-import type { CallExpr, Callee, Decl, Expr, LocalBody, Results, TypeRef } from "./typing.js";
+import type { CallExpr, Callee, Decl, DeclSource, Expr, LocalBody, Results, TypeRef } from "./typing.js";
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 /** The deepest chain of expressions the types of which are followed. */
 const MAX_DEPTH = 12;
 
-interface Local {
+export interface Local {
   /** Source offset from which the name is visible. */
   pos: number;
   decl: Decl;
   memo?: Ty | null;
+  /** True when `memo` rests on a fact only the flow resolver reads. */
+  flow?: boolean;
   busy: boolean;
 }
-type Scope = Map<string, Local[]>;
+export type Scope = Map<string, Local[]>;
 
-interface Env {
+export interface Env {
   file: FileInfo;
   scope: Scope;
   /** The type whose body the code is in; null outside a type body. */
   owner: Named | null;
+}
+
+/** A call the resolver found in a file: the edge it makes, and whether a fact only the flow resolver reads was used. */
+export interface Site {
+  src: string;
+  dst: string;
+  confidence: "high" | "low";
+  evidence: string;
+  flow: boolean;
 }
 
 /** A function or method of the repo: the file that declares it and the offset of its declaration, which names its symbol. */
@@ -84,10 +95,12 @@ const named = (t: Ty | null): Named | null => (t?.k === "named" ? t : null);
  * by place keep the tree of the last file they were asked about, one at a time.
  */
 export class TypeCalls implements CallResolver {
-  private readonly typing: TypingRules;
-  private readonly reader: Reader;
-  private readonly imports: ImportIndex;
+  protected readonly typing: TypingRules;
+  protected readonly reader: Reader;
+  protected readonly imports: ImportIndex;
   private index: TypeIndex | undefined;
+  /** Set while a call site is resolved: true once a fact that only the flow resolver reads was used. This resolver never reads one. */
+  protected usedFlow = false;
   /** The tree of the last file a lookup by place read, with the expressions and scopes found in it. */
   private readonly last: LastTree<{
     root: SyntaxNode;
@@ -95,28 +108,34 @@ export class TypeCalls implements CallResolver {
     scopes: Map<number, Scope>;
   }>;
 
+  /** With `shared`, the index, the reader and the imports of that resolver are used instead of a second set. */
   constructor(
-    private readonly pack: LanguagePack,
-    private readonly ctx: ResolveContext,
+    protected readonly pack: LanguagePack,
+    protected readonly ctx: ResolveContext,
+    private readonly shared?: TypeCalls,
   ) {
     if (!pack.nodes.typing) throw new Error(`${pack.id}: the pack has no typing rules`);
     this.typing = pack.nodes.typing;
     this.last = new LastTree(pack, ctx.root);
-    this.reader = new Reader(pack);
-    this.imports = new ImportIndex(pack, ctx);
+    this.reader = shared ? shared.reader : new Reader(pack);
+    this.imports = shared ? shared.imports : new ImportIndex(pack, ctx);
   }
 
-  private idx(): TypeIndex {
+  protected idx(): TypeIndex {
+    if (this.shared) return this.shared.idx();
     this.index ??= new TypeIndex(this.pack, this.ctx, this.imports, this.reader);
     return this.index;
   }
 
-  private ownerOf(file: FileInfo, owner: string | null): Named | null {
+  protected ownerOf(file: FileInfo, owner: string | null): Named | null {
     return owner === null ? null : { k: "named", pkg: file.pkg.path, name: owner };
   }
 
-  /** The `calls`, `extends` and `implements` edges whose source is in this file, sorted by (src, dst, kind). */
-  edgesForFile(fileId: string, pf: ParsedFile): EdgeRecord[] {
+  /**
+   * The edges of every call site of a file, in source order, each with whether it rests on a fact that only the flow
+   * resolver reads. Empty when the file is not in the index.
+   */
+  protected sites(fileId: string, pf: ParsedFile): Site[] {
     const idx = this.idx();
     const file = idx.byFileId.get(fileId);
     if (!file) return [];
@@ -128,22 +147,33 @@ export class TypeCalls implements CallResolver {
       const r = pf.bodies.get(s.id);
       if (r && !idByStart.has(r.start)) idByStart.set(r.start, s.id);
     }
-    const calls = new EdgeSet(fileId, 2);
+    const out: Site[] = [];
     for (const b of bodies) {
       const src = idByStart.get(b.start);
       if (!src) continue;
       const env: Env = { file, scope: this.scope(b.decls), owner: this.ownerOf(file, b.owner) };
       for (const site of b.calls) {
+        this.usedFlow = false;
         const r = this.resolveCall(site.call, env, 0);
         // Overloads the number of arguments does not tell apart are each a guess.
         const confidence = r.targets.length === 1 ? "high" : "low";
         for (const t of r.targets) {
           const dst = idx.symbolAt(t.file.fileId, t.start);
           if (!dst || dst === src) continue;
-          calls.add(src, dst, "calls", confidence, `${file.rel}:${r.line}`);
+          out.push({ src, dst, confidence, evidence: `${file.rel}:${r.line}`, flow: this.usedFlow });
         }
       }
     }
+    return out;
+  }
+
+  /** The `calls`, `extends` and `implements` edges whose source is in this file, sorted by (src, dst, kind). */
+  edgesForFile(fileId: string, pf: ParsedFile): EdgeRecord[] {
+    const idx = this.idx();
+    const file = idx.byFileId.get(fileId);
+    if (!file) return [];
+    const calls = new EdgeSet(fileId, 2);
+    for (const s of this.sites(fileId, pf)) calls.add(s.src, s.dst, "calls", s.confidence, s.evidence);
     const extended = new EdgeSet(fileId);
     for (const t of idx.typesOf(fileId)) {
       const src = idx.symbolAt(fileId, t.start);
@@ -238,7 +268,7 @@ export class TypeCalls implements CallResolver {
 
   // --- scopes -------------------------------------------------------------------------------
 
-  private scope(decls: readonly Decl[]): Scope {
+  protected scope(decls: readonly Decl[]): Scope {
     const scope: Scope = new Map();
     for (const decl of decls) {
       const list = scope.get(decl.name) ?? [];
@@ -267,20 +297,54 @@ export class TypeCalls implements CallResolver {
   }
 
   /** The type a declared name has; a name that depends on itself has none. */
-  private typeOfLocal(l: Local, env: Env): Ty | null {
-    if (l.memo !== undefined) return l.memo;
+  protected typeOfLocal(l: Local, env: Env): Ty | null {
+    if (l.memo !== undefined) {
+      if (l.flow) this.usedFlow = true;
+      return l.memo;
+    }
     if (l.busy) return null;
     l.busy = true;
     const outer = l.decl.outer;
+    const before = this.usedFlow;
+    this.usedFlow = false;
     l.memo = this.declType(l.decl, outer ? { ...env, owner: this.ownerOf(env.file, outer.owner) } : env);
+    l.flow = this.usedFlow;
+    this.usedFlow ||= before;
     l.busy = false;
     return l.memo;
   }
 
+  /** What a declared name reads: the source the declared types know. The flow resolver reads more. */
+  protected sourceOf(decl: Decl): DeclSource {
+    return decl.source;
+  }
+
+  /** The type of the value a method is called on; the declared types know nothing of it. */
+  protected selfType(_env: Env): Ty | null {
+    return null;
+  }
+
+  /** The type of a value a call that names a type of the repo creates (`T(x)`). A pack with flow rules gives it to the flow resolver only. */
+  protected created(t: Ty): Ty | null {
+    return this.typing.flow ? null : t;
+  }
+
+  /** The type of a field of a named type. The flow resolver adds the attributes the initializer of a type assigns. */
+  protected fieldTypeOf(t: Named, name: string): Ty | null {
+    return this.idx().fieldType(t, name);
+  }
+
+  /** The type of a variable whose value gives it a type only for the flow resolver. */
+  protected flowVar(_v: VarInfo, _depth: number): Ty | null {
+    return null;
+  }
+
   private declType(decl: Decl, env: Env): Ty | null {
     const idx = this.idx();
-    const s = decl.source;
+    const s = this.sourceOf(decl);
     switch (s.k) {
+      case "self":
+        return this.selfType(env);
       case "type": {
         const t = idx.resolveType(s.type, env.file);
         return s.variadic ? { k: "seq", elem: t } : t;
@@ -305,7 +369,8 @@ export class TypeCalls implements CallResolver {
 
   /** The type of a field a bare name can mean inside a type body: of the type itself or of a type around it. */
   private fieldInScope(name: string, env: Env): Ty | null {
-    if (!env.owner) return null;
+    // Only a language whose code sits in type bodies names a member by a bare name.
+    if (!env.owner || !this.typing.enclosing) return null;
     const index = this.idx();
     for (const o of index.chain(env.owner)) {
       const t = index.fieldType(o, name);
@@ -340,7 +405,7 @@ export class TypeCalls implements CallResolver {
     return this.idx().typeNamed(name, env.file, env.owner?.name ?? null);
   }
 
-  private typeOf(e: Expr | null, env: Env, idx: number, depth: number): Ty | null {
+  protected typeOf(e: Expr | null, env: Env, idx: number, depth: number): Ty | null {
     if (!e || depth > MAX_DEPTH) return null;
     if (e.k === "call") return this.typeOfCall(e.call, env, idx, depth);
     if (idx !== 0) return null;
@@ -387,13 +452,14 @@ export class TypeCalls implements CallResolver {
         }
         let t = named(index.canon(this.typeOf(op, env, 0, depth + 1)));
         if (!t && op?.k === "name" && plain) t = this.typeByName(op.name, env);
-        return t ? index.fieldType(t, e.name) : null;
+        return t ? this.fieldTypeOf(t, e.name) : null;
       }
     }
   }
 
-  private typeOfVar(v: VarInfo, depth: number): Ty | null {
+  protected typeOfVar(v: VarInfo, depth: number): Ty | null {
     if (v.declared) return this.idx().resolveType(v.declared.type, v.file);
+    if (v.flow) return this.flowVar(v, depth);
     return v.value
       ? this.typeOf(v.value, { file: v.file, scope: new Map(), owner: null }, 0, depth + 1)
       : null;
@@ -412,7 +478,8 @@ export class TypeCalls implements CallResolver {
     const r = this.resolveCall(call, env, depth + 1);
     if (idx < r.results.length) return index.resolveType(r.results[idx] ?? null, r.file, r.bind);
     if (idx !== 0) return null;
-    return r.result !== undefined ? r.result : (r.conversion ?? null);
+    if (r.result !== undefined) return r.result;
+    return r.conversion ? this.created(r.conversion) : null;
   }
 
   private resolveCall(call: CallExpr, env: Env, depth: number): Resolved {
@@ -491,6 +558,20 @@ export class TypeCalls implements CallResolver {
         };
       if (pkg.types.has(callee.name))
         return { ...none(callee.line), conversion: { k: "named", pkg: pkg.path, name: callee.name } };
+      // A name the file imports by name: a function of the repo, or a type of it.
+      const imported = env.file.named.get(callee.name);
+      if (imported) {
+        const from = idx.pkgs.get(imported.pkg);
+        const g = from?.funcs.get(imported.name);
+        if (g)
+          return {
+            targets: [{ file: g.file, start: g.start }],
+            results: g.results,
+            file: g.file,
+            line: callee.line,
+          };
+        if (from?.types.has(imported.name)) return { ...none(callee.line), conversion: imported };
+      }
       return none(callee.line);
     }
     const op = callee.operand;
