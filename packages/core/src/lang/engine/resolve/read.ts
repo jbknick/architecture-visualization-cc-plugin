@@ -253,10 +253,13 @@ export class Reader {
     const list = a ? d.field(rule.parameters) : null;
     if (!a || !list) return null;
     const params = list.namedChildren().filter((c) => a.parameters.includes(c.kind()));
-    const variadic = params.some((c) => a.variadic.includes(c.kind()));
-    return variadic
-      ? { min: params.length - 1, max: Number.POSITIVE_INFINITY }
-      : { min: params.length, max: params.length };
+    const spread = params.filter((c) => a.variadic.includes(c.kind())).length;
+    const rest = a.rest !== undefined && list.fieldChildren(a.rest).length > 0;
+    // A parameter with a default value may be left out.
+    const optional = params.filter((c) => c.children().some((x) => x.kind() === a.optional)).length;
+    return spread > 0 || rest
+      ? { min: params.length - spread - optional, max: Number.POSITIVE_INFINITY }
+      : { min: params.length - optional, max: params.length };
   }
 
   // --- expressions --------------------------------------------------------------------------
@@ -293,9 +296,16 @@ export class Reader {
       return {
         k: "member",
         of: this.operand(x.field(member.operand), depth + 1),
-        name: x.field(member.name)?.text() ?? "",
+        name: this.nameOf(x.field(member.name)),
       };
     return null;
+  }
+
+  /** The name a member node holds: an instantiation (`m<T>`) is the name it instantiates. */
+  private nameOf(n: SyntaxNode | null): string {
+    const g = this.typing.type.generic;
+    const head = n?.kind() === g.kind ? (g.field ? n.field(g.field) : n.namedChildren()[0]) : n;
+    return head?.text() ?? "";
   }
 
   /** True for the call the pack's `parent` rule names, written without arguments: it stands for the one base of the type around. */
@@ -394,7 +404,7 @@ export class Reader {
       return {
         k: "member",
         operand: this.operand(operand, depth + 1),
-        name: nameNode?.text() ?? "",
+        name: this.nameOf(nameNode),
         line: (nameNode ?? fn).range().start.line + 1,
       };
     }
@@ -484,10 +494,16 @@ export class Reader {
 
   // --- function bodies ----------------------------------------------------------------------
 
+  /** The node of a declaration that lists its type parameters: the field `field`, or, where the grammar has no such field, the child of that kind. */
+  private genericList(d: SyntaxNode, field: string | undefined): SyntaxNode | null {
+    if (!field) return null;
+    return d.field(field) ?? d.namedChildren().find((c) => c.kind() === field) ?? null;
+  }
+
   /** The names of the type parameters a declaration holds in the field `field`. */
   private typeParams(d: SyntaxNode, field: string | undefined): string[] {
     const p = this.typing.type.parameters;
-    const list = field ? d.field(field) : null;
+    const list = this.genericList(d, field);
     if (!p || !list) return [];
     return list
       .namedChildren()
@@ -542,7 +558,22 @@ export class Reader {
             ? (d.parent()?.field(decl.parentType) ?? null)
             : null;
         if (typeNode && l.inferred.includes(typeNode.text())) typeNode = null;
-        const list = d.field(decl.values);
+        // Without a field for the value, it is the last child of the declaration that is no name (and no comment).
+        const list =
+          decl.values === ""
+            ? (d
+                .namedChildren()
+                .filter(
+                  (c) =>
+                    !this.pack.tokens.comments.includes(c.kind()) &&
+                    !names.some(
+                      (n) =>
+                        n.range().start.index === c.range().start.index &&
+                        n.range().end.index === c.range().end.index,
+                    ),
+                )
+                .at(-1) ?? null)
+            : d.field(decl.values);
         const nodes = list ? (l.valueLists.includes(list.kind()) ? list.namedChildren() : [list]) : [];
         const values = nodes.map((v) => this.expr(v));
         // Without a type, the value types the name only for the flow resolver; the declared types know nothing of it.
@@ -707,16 +738,37 @@ export class Reader {
       });
   }
 
+  /** The mark of an extension method: its first parameter is marked, and the type that parameter has. Empty for any other declaration. */
+  private extensionOf(d: SyntaxNode, rule: { parameters: string }): { extension?: { type: TypeRef | null } } {
+    const x = this.typing.extensions;
+    const first = x
+      ? d
+          .field(rule.parameters)
+          ?.namedChildren()
+          .find((c) => c.kind() === x.parameter)
+      : undefined;
+    if (!x || !first || !first.children().some((c) => c.text() === x.marker)) return {};
+    const type = first.field(x.type);
+    return { extension: { type: type ? this.typeRef(type) : null } };
+  }
+
   /** The package name, imports, functions, methods, types and variables a file declares. */
   declarations(root: SyntaxNode): FileDecls {
     const n = this.pack.nodes;
     const t = this.typing;
-    const clause = t.package.clause
-      ? root.namedChildren().find((c) => c.kind() === t.package.clause)
-      : undefined;
+    // A file with one declaration of a package has it; with several (or one inside another), none.
+    const clauses = t.package.clause
+      ? root.findAll({ rule: { any: t.package.clause.map((kind) => ({ kind })) } })
+      : [];
+    const clause = clauses.length === 1 ? clauses[0] : undefined;
+    const named = clause
+      ? t.package.name
+        ? clause.field(t.package.name)
+        : clause.namedChildren().at(-1)
+      : null;
     const out: FileDecls = {
-      packageName: clause?.namedChildren().at(-1)?.text() ?? "?",
-      packaged: clause !== undefined,
+      packageName: named?.text().replace(/\s+/g, "") ?? "?",
+      packaged: named !== null && named !== undefined,
       imports: rawImportsOf(this.pack, root).map((i) => ({
         alias: i.alias,
         specifier: i.specifier,
@@ -779,6 +831,7 @@ export class Reader {
             arity: this.arityOf(d, rule),
             tparams: this.typeParams(d, rule.generics),
             ...(this.isOverload(d) ? { overload: true as const } : {}),
+            ...this.extensionOf(d, rule),
           });
       } else if (bodied) {
         const name = bodiedName(bodied, d, owner);
@@ -889,7 +942,7 @@ export class Reader {
       name,
       start.line + 1,
       start.index,
-      node.field(t.generics) !== null,
+      this.genericList(node, t.generics) !== null,
       this.typeParams(node, t.generics),
     );
     decl.kind = as === "interface" ? "interface" : "class";
@@ -909,14 +962,17 @@ export class Reader {
       }
     }
     if (t.decorators && node.parent()?.kind() === t.decorators.wrapper) decl.opaque = true;
+    const part = this.pack.nodes.types.partial;
+    if (part && node.children().some((c) => c.kind() === part.node && c.text() === part.keyword))
+      decl.partial = true;
     const rule = bodiedRule(this.pack, node.kind());
     const body = rule ? node.field(rule.body) : null;
     this.owner = name;
     for (const m of body ? membersOf(this.pack, body) : []) {
       if (!t.members.entries.includes(m.kind())) continue;
-      const mt = m.field(t.members.type);
+      const { type: mt, names } = this.memberOf(m);
       if (!mt) continue;
-      for (const nm of this.memberNames(m)) decl.fields.set(nm, this.typeRef(mt));
+      for (const nm of names) decl.fields.set(nm, this.typeRef(mt));
     }
     if (body) decl.attrs = this.attributes(body, name);
     this.owner = owner;
@@ -938,24 +994,30 @@ export class Reader {
     this.owner = h.name;
     for (const m of membersOf(this.pack, h.node)) {
       if (!t.members.entries.includes(m.kind())) continue;
-      const mt = m.field(t.members.type);
+      const { type: mt, names } = this.memberOf(m);
       if (!mt) continue;
-      for (const nm of this.memberNames(m)) decl.fields.set(nm, this.typeRef(mt));
+      for (const nm of names) decl.fields.set(nm, this.typeRef(mt));
     }
     this.owner = owner;
     return decl;
   }
 
-  /** The names a member entry declares. */
-  private memberNames(m: SyntaxNode): string[] {
+  /** The type and the names a member entry declares (see `typing.members`). */
+  private memberOf(m: SyntaxNode): { type: SyntaxNode | null; names: string[] } {
     const t = this.typing.members;
-    const out: string[] = [];
-    for (const x of m.fieldChildren(t.name)) {
-      if (!t.nameKinds.includes(x.kind())) continue;
-      const id = t.declarator ? x.field(t.declarator) : x;
-      if (id) out.push(id.text());
+    const held = t.holder ? m.namedChildren().find((c) => c.kind() === t.holder) : undefined;
+    const declared = held
+      ? held.namedChildren().filter((x) => t.nameKinds.includes(x.kind()))
+      : m.fieldChildren(t.name).filter((x) => t.nameKinds.includes(x.kind()));
+    const names: string[] = [];
+    for (const x of declared) {
+      // A name that has the declarator's field is a declarator. Outside a holder (whose other children, the type among them, are no names), a plain name (no children) is the name itself.
+      const id = t.declarator
+        ? (x.field(t.declarator) ?? (held === undefined && x.children().length === 0 ? x : null))
+        : x;
+      if (id) names.push(id.text());
     }
-    return out;
+    return { type: (held ?? m).field(t.type), names };
   }
 
   private typeDecl(spec: SyntaxNode, name: string, type: SyntaxNode): TypeDecl {
@@ -966,7 +1028,7 @@ export class Reader {
       name,
       start.line + 1,
       start.index,
-      spec.field(t.generics) !== null,
+      this.genericList(spec, t.generics) !== null,
       this.typeParams(spec, t.generics),
     );
     decl.kind = n.types.aliases.includes(spec.kind()) ? "alias" : "other";
@@ -977,9 +1039,8 @@ export class Reader {
       const list = type.namedChildren().find((c) => c.kind() === t.members.container);
       for (const m of list?.namedChildren() ?? []) {
         if (!t.members.entries.includes(m.kind())) continue;
-        const mt = m.field(t.members.type);
+        const { type: mt, names } = this.memberOf(m);
         if (!mt) continue;
-        const names = this.memberNames(m);
         if (names.length === 0)
           decl.embedded.push({ type: this.typeRef(mt), line: mt.range().start.line + 1 });
         for (const nm of names) decl.fields.set(nm, this.typeRef(mt));

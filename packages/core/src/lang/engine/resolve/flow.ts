@@ -86,8 +86,8 @@ export class FlowCalls extends TypeCalls {
     const own = ti.attrs.get(name);
     if (own) return this.attributeOf(c, ti, name, own);
     const bound = idx.bindings(ti, c);
-    for (const s of ti.supers) {
-      const sup = idx.resolveType(s.type, ti.file, bound);
+    for (const s of idx.supersOf(ti)) {
+      const sup = idx.resolveType(s.type, s.file, bound);
       const found = sup?.k === "named" ? this.attribute(sup, name, depth + 1) : null;
       if (found) return found;
     }

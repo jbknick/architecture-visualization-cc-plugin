@@ -9,7 +9,7 @@ import type { LanguagePack } from "./pack.js";
 import { parseWithPack } from "./parse.js";
 import { flowCallResolver, nameCallResolver, typeCallResolver, workspaceOfPath } from "./resolve/index.js";
 import { embeddingTextWithPack, streamsWithPack } from "./streams.js";
-import { detectPackWorkspaces, manifestFiles, packDependsOnEdges } from "./workspace.js";
+import { detectPackWorkspaces, packDependsOnEdges } from "./workspace.js";
 
 /** What resolves calls: the `calls` edges (and, for a language that has them, `extends` and `implements`) and the targets behind them. */
 export interface CallResolver {
@@ -96,7 +96,6 @@ export function buildLanguage(pack: LanguagePack): LanguageModule {
     extensions: grammarAvailable(pack) ? pack.extensions : [],
     skipPath: (repoRelPath) => skip(repoRelPath),
     detectWorkspaces: (root, config, repo) => detectPackWorkspaces(pack, root, config, repo),
-    manifestFiles: manifestFiles(pack),
     unreusable: pack.nodes.typing?.unnamed ?? [],
     parseSource: (repo, repoRelPath, source) => parseWithPack(pack, repo, repoRelPath, source),
     createResolver: (ctx) => createPackResolver(pack, calls, ctx),

@@ -72,7 +72,7 @@ export const javaPack = {
       quotes: "",
       separator: ".",
       localName: { skip: /^$/ },
-      named: { onDemand: "asterisk", static: "static" },
+      named: { onDemand: "asterisk", static: "static", bare: "name" },
     },
     call: ["method_invocation"],
     callee: {
@@ -163,7 +163,7 @@ export const javaPack = {
         ).split(" "),
         unread: ["scoped_type_identifier", "annotated_type"],
       },
-      package: { clause: "package_declaration", path: "clause" },
+      package: { clause: ["package_declaration"], path: "clause" },
       unboundAliases: [],
       members: {
         container: "class_body",
@@ -186,6 +186,7 @@ export const javaPack = {
         arguments: "arguments",
         parameters: ["formal_parameter", "spread_parameter"],
         variadic: ["spread_parameter"],
+        overloads: "low",
       },
       construct: {
         kind: "object_creation_expression",

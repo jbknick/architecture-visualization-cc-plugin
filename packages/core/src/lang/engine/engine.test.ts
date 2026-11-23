@@ -33,7 +33,10 @@ const from = z.enum(["start", "end"]);
 const TypingSchema = z.strictObject({
   type: z.strictObject({
     names: strings,
-    qualified: z.strictObject({ kind: field, qualifier: field, name: field }).optional(),
+    qualified: z
+      .strictObject({ kind: field, qualifier: field, name: field, packages: z.literal(true).optional() })
+      .optional(),
+    builtin: strings.optional(),
     wrappers: strings,
     generic: z.strictObject({ kind: field, field: field.optional(), arguments: field.optional() }),
     parameters: z.strictObject({ entry: field, names: strings }).optional(),
@@ -72,7 +75,9 @@ const TypingSchema = z.strictObject({
     quoted: z.strictObject({ kind: field, content: field, name: regexp }).optional(),
   }),
   package: z.strictObject({
-    clause: field.optional(),
+    clause: strings.optional(),
+    name: field.optional(),
+    nested: z.literal(true).optional(),
     path: z.enum(["directory", "clause", "file"]),
     separate: field.optional(),
     roots: strings.optional(),
@@ -81,6 +86,7 @@ const TypingSchema = z.strictObject({
   }),
   decorators: z.strictObject({ wrapper: field, entry: field, overloads: strings }).optional(),
   construction: z.strictObject({ initializer: field, creators: strings, special: strings }).optional(),
+  extensions: z.strictObject({ parameter: field, marker: field, type: field }).optional(),
   parent: z.strictObject({ call: field, arguments: field }).optional(),
   deferred: field.optional(),
   flow: z
@@ -105,6 +111,7 @@ const TypingSchema = z.strictObject({
     nameKinds: strings,
     type: field,
     declarator: field.optional(),
+    holder: field.optional(),
     callable: z.boolean(),
   }),
   interfaces: z.strictObject({ embeds: strings, embedKinds: strings }),
@@ -112,13 +119,24 @@ const TypingSchema = z.strictObject({
     z.strictObject({
       field: field.optional(),
       kind: field.optional(),
-      edge: z.enum(["extends", "implements"]),
+      edge: z.enum(["extends", "implements", "inferred"]),
       keywords: strings.optional(),
     }),
   ),
   implements: z.enum(["structural", "nominal"]),
-  enclosing: z.strictObject({ self: strings, parent: strings }).optional(),
-  arity: z.strictObject({ arguments: field, parameters: strings, variadic: strings }).optional(),
+  enclosing: z
+    .strictObject({ self: strings, parent: strings, callableLocals: z.literal(true).optional() })
+    .optional(),
+  arity: z
+    .strictObject({
+      arguments: field,
+      parameters: strings,
+      variadic: strings,
+      rest: field.optional(),
+      optional: field.optional(),
+      overloads: z.enum(["low", "none"]),
+    })
+    .optional(),
   construct: z
     .strictObject({ kind: field, type: field, arguments: field, body: field.optional() })
     .optional(),
@@ -157,7 +175,7 @@ const TypingSchema = z.strictObject({
         names: field,
         type: field.optional(),
         parentType: field.optional(),
-        values: field,
+        values: z.string(),
         from,
       }),
     ),
@@ -218,6 +236,7 @@ const PackSchema = z.strictObject({
           body: field,
         }),
       ),
+      partial: z.strictObject({ node: field, keyword: field }).optional(),
       bodies: strings,
       anonymous: z.strictObject({ kind: field, type: field, body: field, prefix: field }).optional(),
       constants: z.strictObject({ kind: field, name: field, body: field }).optional(),
@@ -231,7 +250,9 @@ const PackSchema = z.strictObject({
       quotes: z.string(),
       separator: field,
       localName: z.strictObject({ skip: regexp }),
-      named: z.strictObject({ onDemand: field, static: field }).optional(),
+      named: z
+        .strictObject({ onDemand: field.optional(), static: field, bare: z.enum(["name", "demand"]) })
+        .optional(),
       modules: z
         .strictObject({
           plain: z.strictObject({
@@ -270,6 +291,7 @@ const PackSchema = z.strictObject({
         node: field,
         keywords: strings,
         implicit: strings,
+        owners: strings.optional(),
       }),
       z.strictObject({ by: z.literal("underscore") }),
     ]),
@@ -294,6 +316,7 @@ const PackSchema = z.strictObject({
                 z.strictObject({ pattern: regexp, files: strings.optional() }),
                 z.strictObject({ path: field }),
                 z.strictObject({ directory: z.literal(true) }),
+                z.strictObject({ fileName: z.literal(true) }),
               ]),
             )
             .min(1),
@@ -393,6 +416,7 @@ describe.each([
   ["Go", "go-basic"],
   ["Java", "java-basic"],
   ["Python", "python-basic"],
+  ["C#", "csharp-basic"],
 ] as const)("%s index determinism", (_label, name) => {
   it("dumps byte-equal output from two fresh data dirs", async () => {
     const fx = await materializeFixture(name);

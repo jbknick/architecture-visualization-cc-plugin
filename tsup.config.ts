@@ -23,6 +23,7 @@ export default defineConfig({
     "oxc-parser",
     "oxc-resolver",
     "@ast-grep/napi",
+    "@ast-grep/lang-csharp",
     "@ast-grep/lang-go",
     "@ast-grep/lang-java",
     "@ast-grep/lang-python",

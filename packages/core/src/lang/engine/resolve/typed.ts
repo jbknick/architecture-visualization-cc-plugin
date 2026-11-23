@@ -155,7 +155,8 @@ export class TypeCalls implements CallResolver {
       for (const site of b.calls) {
         this.usedFlow = false;
         const r = this.resolveCall(site.call, env, 0);
-        // Overloads the number of arguments does not tell apart are each a guess.
+        // Overloads the number of arguments does not tell apart are each a guess, or no edge at all.
+        if (r.targets.length > 1 && this.typing.arity?.overloads === "none") continue;
         const confidence = r.targets.length === 1 ? "high" : "low";
         for (const t of r.targets) {
           const dst = idx.symbolAt(t.file.fileId, t.start);
@@ -178,19 +179,27 @@ export class TypeCalls implements CallResolver {
     for (const t of idx.typesOf(fileId)) {
       const src = idx.symbolAt(fileId, t.start);
       if (!src) continue;
-      const to = (type: TypeRef | null): string | null => {
+      const to = (type: TypeRef | null): { id: string | null; kind: string } | null => {
         const ty = named(idx.resolveType(type, file));
         const target = ty ? idx.typeInfo(ty) : undefined;
-        return target ? idx.symbolAt(target.file.fileId, target.start) : null;
+        return target ? { id: idx.symbolAt(target.file.fileId, target.start), kind: target.kind } : null;
       };
       if (t.kind === "class")
         for (const e of t.embedded) {
-          const dst = to(e.type);
+          const dst = to(e.type)?.id;
           if (dst && dst !== src) extended.add(src, dst, "extends", "high", `${file.rel}:${e.line}`);
         }
       for (const s of t.supers) {
-        const dst = to(s.type);
-        if (dst && dst !== src) extended.add(src, dst, s.edge, "high", `${file.rel}:${s.line}`);
+        const target = to(s.type);
+        const dst = target?.id;
+        // One list of both: a class has an interface it lists as `implements`, anything else as `extends`.
+        const edge =
+          s.edge === "inferred"
+            ? t.kind === "class" && target?.kind === "interface"
+              ? "implements"
+              : "extends"
+            : s.edge;
+        if (dst && dst !== src) extended.add(src, dst, edge, "high", `${file.rel}:${s.line}`);
       }
     }
     const implemented = this.typing.implements === "structural" ? (idx.implementers().get(fileId) ?? []) : [];
@@ -428,16 +437,17 @@ export class TypeCalls implements CallResolver {
         return e.body ? this.bodySelf(e.body, env) : env.owner;
       case "base": {
         const ti = env.owner ? index.typeInfo(env.owner) : undefined;
-        const only = ti?.supers[0];
+        const supers = ti ? index.supersOf(ti) : [];
+        const only = supers[0];
         // The value may be of a type below this one that lists several bases: then which base is meant is not known.
-        if (!ti || !only || !env.owner || ti.bases !== 1 || ti.supers.length !== 1) return null;
-        return index.hasMultiBaseDescendant(env.owner) ? null : index.resolveType(only.type, ti.file);
+        if (!ti || !only || !env.owner || ti.bases !== 1 || supers.length !== 1) return null;
+        return index.hasMultiBaseDescendant(env.owner) ? null : index.resolveType(only.type, only.file);
       }
       case "parent": {
         if (e.body) return this.bodySelf(e.body, env);
         const ti = env.owner ? index.typeInfo(env.owner) : undefined;
-        const sup = ti?.supers.find((s) => s.edge === "extends");
-        return ti && sup ? index.resolveType(sup.type, ti.file) : null;
+        const sup = ti ? index.supersOf(ti).find((s) => s.edge === "extends") : undefined;
+        return sup ? index.resolveType(sup.type, sup.file) : null;
       }
       case "through":
         return this.typeOf(e.of, env, 0, depth + 1);
@@ -564,6 +574,9 @@ export class TypeCalls implements CallResolver {
     }
     if (callee.k === "name") {
       if (this.typing.enclosing) {
+        // A local that is called (a delegate, a local function) is not a method.
+        if (this.typing.enclosing.callableLocals && this.local(env, callee.name, callee.pos))
+          return none(callee.line);
         const hits = this.bareHits(callee.name, args, env, callee.body);
         if (hits.length > 0) return this.fromHits(hits, callee.line, env);
       } else if (this.local(env, callee.name, callee.pos)) return none(callee.line);
@@ -616,7 +629,9 @@ export class TypeCalls implements CallResolver {
       }
     }
     let t = named(idx.canon(this.typeOf(op, env, 0, depth + 1)));
-    if (!t && op?.k === "name" && plain) t = this.typeByName(op.name, env);
+    // A name that is a type, not a value: its static members, never an extension method.
+    const byName = !t && op?.k === "name" && plain;
+    if (byName) t = this.typeByName(op.name, env);
     if (!t) return none(callee.line);
     if (op?.k === "base") {
       const m = idx.soleMethod(t, callee.name);
@@ -628,6 +643,11 @@ export class TypeCalls implements CallResolver {
     if (hits.length === 0) {
       const result = idx.libraryResult(t, callee.name);
       if (result !== undefined) return { ...none(callee.line), result };
+      // No method of the type answers: an extension method may. A type of the repo with a supertype outside it may have the method.
+      if (this.typing.extensions && !byName && !(idx.typeInfo(t) && idx.hasUnknownSupers(t))) {
+        const found = idx.extensionHits(t, env.file, callee.name, args);
+        if (found.length > 0) return this.fromHits(found, callee.line, env);
+      }
     }
     return this.fromHits(hits, callee.line, env);
   }

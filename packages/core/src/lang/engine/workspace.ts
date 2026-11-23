@@ -1,4 +1,4 @@
-import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
+import { type Dirent, readdirSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import picomatch from "picomatch";
 import { fileId as makeFileId, workspaceId } from "../../ids.js";
@@ -50,11 +50,29 @@ export const dependsOn = (
   on: Pick<WorkspaceRecord, "name">,
 ): boolean => from.deps.some((d) => nameKey(pack, d) === nameKey(pack, on.name));
 
-/** Where a manifest sits: the folder it is in (repo-relative, `.` for the root) and the folder of the repo. */
+/** Where a manifest sits: the folder it is in (repo-relative, `.` for the root), the folder of the repo and the name of the manifest file. */
 interface Place {
   abs: string;
   dir: string;
   root: string;
+  file?: string;
+}
+
+/** The names of the files of the folder `abs` that the rule's `files` name or match, in the order of the rule, and by name within one pattern. */
+function filesOf(rule: ManifestRule, abs: string): string[] {
+  let names: string[];
+  try {
+    names = readdirSync(abs, { withFileTypes: true })
+      .filter((e) => !e.isDirectory())
+      .map((e) => e.name)
+      .sort(cmp);
+  } catch {
+    return [];
+  }
+  return rule.files.flatMap((pattern) => {
+    const matches = picomatch(pattern, { dot: true });
+    return names.filter((n) => matches(n));
+  });
 }
 
 /** The workspace name a manifest declares; null when it declares none. `place` is needed for names taken from a folder or from another file. */
@@ -68,6 +86,9 @@ export function parseManifestName(
   for (const s of rule.name) {
     if ("directory" in s) {
       const n = place ? basename(place.dir === "." ? place.root : place.dir) : "";
+      if (n !== "") return n;
+    } else if ("fileName" in s) {
+      const n = place?.file?.replace(/\.[^.]*$/, "") ?? "";
       if (n !== "") return n;
     } else if ("path" in s) {
       const v = table?.get(s.path)?.[0];
@@ -169,10 +190,9 @@ function manifestIn(
   place: Place,
 ): { rule: ManifestRule; file: string; text: string; name: string } | null {
   for (const rule of pack.workspace.manifests)
-    for (const file of rule.files) {
-      if (!existsSync(join(abs, file))) continue;
+    for (const file of filesOf(rule, abs)) {
       const text = read(join(abs, file));
-      const name = text === null ? null : parseManifestName(pack, text, rule, place);
+      const name = text === null ? null : parseManifestName(pack, text, rule, { ...place, file });
       if (text !== null && name !== null) return { rule, file, text, name };
     }
   return null;
@@ -181,7 +201,10 @@ function manifestIn(
 /** Repo-relative posix dirs that contain a manifest (root is `.`), sorted. */
 function manifestDirs(pack: LanguagePack, root: string): string[] {
   const skip = new Set(pack.workspace.skipDirs);
-  const names = new Set(pack.workspace.manifests.flatMap((r) => r.files));
+  const isManifest = picomatch(
+    pack.workspace.manifests.flatMap((r) => [...r.files]),
+    { dot: true },
+  );
   const found: string[] = [];
   const walk = (rel: string): void => {
     let entries: Dirent[];
@@ -190,7 +213,7 @@ function manifestDirs(pack: LanguagePack, root: string): string[] {
     } catch {
       return;
     }
-    if (entries.some((e) => e.isFile() && names.has(e.name))) found.push(rel);
+    if (entries.some((e) => e.isFile() && isManifest(e.name))) found.push(rel);
     for (const e of entries) {
       if (!e.isDirectory() || e.name.startsWith(".") || skip.has(e.name)) continue;
       walk(rel === "." ? e.name : `${rel}/${e.name}`);
@@ -276,11 +299,6 @@ export function detectPackWorkspaces(
   }
   return records;
 }
-
-/** The names of the manifest files a pack's workspaces have. */
-export const manifestFiles = (pack: LanguagePack): string[] => [
-  ...new Set(pack.workspace.manifests.flatMap((r) => r.files)),
-];
 
 /**
  * `depends_on` edges between the workspaces of a pack's language, from dependency entries that name a sibling. When the

@@ -894,7 +894,7 @@ async function indexOneRepo(
 
     if (layer === "main") {
       if (full) removeStaleMain(store, repo, new Set([...existsNow, ...pkgIds]), !rebuildFts);
-      writeDependsOn(store, root, repo, workspaces, wsEdges);
+      writeDependsOn(store, root, workspaces, wsEdges);
       if (full) {
         result.edges += wsEdges.length;
         const sha = headSha(root);
@@ -949,7 +949,6 @@ function removeStaleMain(store: Store, repo: string, keep: Set<string>, removeFt
 function writeDependsOn(
   store: Store,
   root: string,
-  repo: string,
   workspaces: WorkspaceRecord[],
   edges: EdgeRecord[],
 ): void {
@@ -959,20 +958,19 @@ function writeDependsOn(
     a.push(e);
     byFile.set(e.fileId, a);
   }
-  const wsOfDir = new Map<string, WorkspaceRecord>();
-  for (const w of workspaces)
-    for (const file of languageModule(w.lang ?? "typescript").manifestFiles)
-      wsOfDir.set(makeFileId(repo, `${w.dir === "." ? "" : `${w.dir}/`}${file}`), w);
+  const wsById = new Map(workspaces.map((w) => [w.id, w]));
   for (const [fileId, es] of [...byFile].sort((a, b) => cmp(a[0], b[0]))) {
     const rel = pathOfFileId(fileId);
     const { hash, mtimeMs } = readJsonHash(root, rel);
+    // The manifest is the requiring workspace's: the source of its edges.
+    const ws = wsById.get(es[0]?.src ?? "");
     store.replaceFile(
       "main",
       {
         id: fileId,
         path: rel,
-        lang: wsOfDir.get(fileId)?.lang ?? "typescript", // a manifest belongs to the language that found the workspace
-        workspaceId: wsOfDir.get(fileId)?.id ?? null,
+        lang: ws?.lang ?? "typescript", // a manifest belongs to the language that found the workspace
+        workspaceId: ws?.id ?? null,
         contentHash: hash,
         mtimeMs: Math.round(mtimeMs),
         deleted: false,
