@@ -2,11 +2,11 @@ import type { ResolveContext } from "../../../resolve/index.js";
 import type { EdgeRecord, WorkspaceRecord } from "../../../types.js";
 import type { LanguagePack, TypingRules } from "../pack.js";
 import { defaultImportName, importBinding } from "../parse.js";
-import { dependsOn } from "../workspace.js";
+import { dependsOn, nameKey } from "../workspace.js";
 import type { FileEntry, ImportIndex } from "./imports.js";
 import { Reader } from "./read.js";
 import { withTree } from "./source.js";
-import type { Arity, Expr, FileDecls, Results, TypeDecl, TypeRef } from "./typing.js";
+import type { Arity, Expr, FileDecls, ImplDecl, Results, TypeDecl, TypeRef } from "./typing.js";
 
 /**
  * A type as far as the resolver reads it: a named type, with the type arguments written after it (null for one that is
@@ -37,6 +37,8 @@ export interface TypeInfo extends TypeDecl {
   file: FileInfo;
   /** The other parts of a type that is declared in several (`types.partial`), each with its own file; empty for any other type. `bases` and `opaque` already hold those of every part. */
   parts: TypeInfo[];
+  /** The interfaces blocks of members name for the type (`types.impls`), as written in the file of each block. */
+  impls: { interface: TypeRef | null; file: FileInfo; line: number }[];
 }
 
 /** An extension method (`typing.extensions`): the method, the type it extends as written in its file, and how many arguments a call passes besides the receiver. */
@@ -155,6 +157,16 @@ export class TypeIndex {
   private readonly indexFiles = new Map<string, FileInfo[]>();
   private implementsByFile: Map<string, EdgeRecord[]> | null = null;
   private multiBase: Named[] | null = null;
+  /** The blocks of members of each file, as written (`types.impls`). */
+  private readonly blockDecls = new Map<string, ImplDecl[]>();
+  /** The methods declared with no type body around them, with the file of each: a block of members may be in another package than its type. */
+  private readonly looseMethods: { file: FileInfo; key: string; info: FuncInfo }[] = [];
+  /** The blocks of members whose type is a type of the repo, by file: the type, the interface the block names and its line. */
+  private readonly blocks = new Map<string, { type: Named; interface: TypeRef | null; line: number }[]>();
+  /** The name of the entry file that stands for each workspace (`typing.package.entries`), by workspace id. */
+  private readonly rootEntries = new Map<string, string>();
+  /** The workspaces with more than one entry file: a file other than an entry belongs to a crate that is not known. */
+  private readonly dualRoots = new Set<string>();
 
   constructor(
     private readonly pack: LanguagePack,
@@ -170,6 +182,23 @@ export class TypeIndex {
     this.workspaces = ctx.workspaces
       .filter((w) => w.lang === pack.id)
       .sort((a, b) => cmp(a.name, b.name) || cmp(a.id, b.id));
+    const entries = this.typing.package.entries;
+    if (entries && this.typing.package.path === "file") {
+      // The first of the entry names that a workspace has directly in its root folder is the file that stands for it; with
+      // another one too, the workspace has two crates, and which of them a file belongs to is not known.
+      const found = new Map<string, number>();
+      for (const entry of imports.files) {
+        if (!entry.workspace) continue;
+        const place = this.placeOf(entry, entry.workspace);
+        const at = entries.indexOf(place.stem);
+        if (place.dirs.length !== 0 || at < 0) continue;
+        found.set(entry.workspace.id, (found.get(entry.workspace.id) ?? 0) + 1);
+        const have = this.rootEntries.get(entry.workspace.id);
+        if (have === undefined || at < entries.indexOf(have))
+          this.rootEntries.set(entry.workspace.id, place.stem);
+      }
+      for (const [id, count] of found) if (count > 1) this.dualRoots.add(id);
+    }
     for (const entry of imports.files) {
       const starts = new Map<number, string>();
       for (const s of entry.parsed.symbols) {
@@ -221,6 +250,7 @@ export class TypeIndex {
       this.files.push(file);
       this.byFileId.set(entry.fileId, file);
       this.rawImports.set(entry.fileId, decls.imports);
+      this.blockDecls.set(entry.fileId, decls.impls);
       if (mod?.index) this.indexFiles.set(key, [...(this.indexFiles.get(key) ?? []), file]);
       for (const f of this.settled(decls.funcs, (x) => x.name)) {
         const earlier = pkg.funcs.get(f.name);
@@ -240,7 +270,7 @@ export class TypeIndex {
       }
       for (const t of decls.types) {
         const earlier = pkg.types.get(t.name);
-        const info: TypeInfo = { ...t, file, parts: [] };
+        const info: TypeInfo = { ...t, file, parts: [], impls: [] };
         if (earlier) {
           // The same name with another number of type parameters is another type, which no use site is matched to.
           if (this.typing.type.byParameterCount && earlier.params.length !== t.params.length) {
@@ -269,7 +299,6 @@ export class TypeIndex {
         // A method in a type body belongs to the type the index took (any part of it); one of a type another file declared first is left out.
         const owner = m.owner === null ? undefined : pkg.types.get(m.owner);
         if (m.owner !== null && !(owner && [owner, ...owner.parts].some((p) => p.file === file))) continue;
-        const list = pkg.methods.get(m.key);
         const info: FuncInfo = {
           results: m.results,
           file,
@@ -278,8 +307,8 @@ export class TypeIndex {
           tparams: m.tparams,
           ...(repeated.has(m.key) && !this.typing.arity ? { ambiguous: true as const } : {}),
         };
-        if (!list) pkg.methods.set(m.key, [info]);
-        else if (this.typing.arity) list.push(info);
+        this.addMethod(pkg, m.key, info);
+        if (m.owner === null) this.looseMethods.push({ file, key: m.key, info });
         if (m.extension) {
           const name = m.key.slice(m.key.lastIndexOf(".") + 1);
           // The receiver is the first parameter, not an argument.
@@ -315,6 +344,45 @@ export class TypeIndex {
     for (const f of this.files) this.mapImports(f);
     const hops = this.typing.package.reexports;
     if (hops) this.followReexports(hops);
+    this.placeBlocks();
+  }
+
+  /** Adds a method to the package under its key; a second declaration of the key is kept only where overloads are told apart. */
+  private addMethod(pkg: Pkg, key: string, info: FuncInfo): void {
+    const list = pkg.methods.get(key);
+    if (!list) pkg.methods.set(key, [info]);
+    else if (this.typing.arity && !list.includes(info)) list.push(info);
+  }
+
+  /**
+   * Places what blocks of members (`types.impls`) declare where the type is: a method declared with no type body around
+   * it whose type is a type of another package is also a method of that type there, and the interface a block names
+   * is a supertype of its type (an `implements` edge from the type to it, found wherever the block is).
+   */
+  private placeBlocks(): void {
+    for (const { file, key, info } of this.pack.nodes.types.impls ? this.looseMethods : []) {
+      const dot = key.lastIndexOf(".");
+      const type = this.typeNamed(key.slice(0, dot), file, null);
+      const target = type && type.pkg !== file.pkg.path ? this.pkgs.get(type.pkg) : undefined;
+      if (type && target) this.addMethod(target, `${type.name}.${key.slice(dot + 1)}`, info);
+    }
+    for (const file of this.files) {
+      for (const b of this.blockDecls.get(file.fileId) ?? []) {
+        const type = this.resolveType(b.type, file);
+        const info = type?.k === "named" ? this.typeInfo(type) : undefined;
+        if (type?.k !== "named" || !info) continue;
+        if (b.interface) info.impls.push({ interface: b.interface, file, line: b.line });
+        const list = this.blocks.get(file.fileId) ?? [];
+        list.push({ type, interface: b.interface, line: b.line });
+        this.blocks.set(file.fileId, list);
+      }
+    }
+    this.blockDecls.clear();
+  }
+
+  /** The blocks of members of a file whose type is a type of the repo (`types.impls`): the type, the interface the block names, its line. */
+  blocksOf(fileId: string): { type: Named; interface: TypeRef | null; line: number }[] {
+    return this.blocks.get(fileId) ?? [];
   }
 
   /**
@@ -388,7 +456,15 @@ export class TypeIndex {
   supersOf(
     ti: TypeInfo,
   ): { type: TypeRef | null; edge: TypeInfo["supers"][number]["edge"]; line: number; file: FileInfo }[] {
-    return [ti, ...ti.parts].flatMap((p) => p.supers.map((s) => ({ ...s, file: p.file })));
+    return [
+      ...[ti, ...ti.parts].flatMap((p) => p.supers.map((s) => ({ ...s, file: p.file }))),
+      ...ti.impls.map((i) => ({
+        type: i.interface,
+        edge: "implements" as const,
+        line: i.line,
+        file: i.file,
+      })),
+    ];
   }
 
   /** The types a file declared that the index took (a name an earlier file of the package declared first is not one). */
@@ -411,16 +487,21 @@ export class TypeIndex {
    * folder.
    */
   private moduleOf(entry: FileEntry, w: WorkspaceRecord): ModuleInfo {
-    const rule = this.typing.package;
+    const { dirs, stem } = this.placeOf(entry, w);
+    // The entry file of the workspace stands for the workspace itself.
+    const index =
+      stem === this.typing.package.index || (dirs.length === 0 && this.rootEntries.get(w.id) === stem);
+    return { path: (index ? dirs : [...dirs, stem]).join(this.sep), index };
+  }
+
+  /** Where a file is below its workspace: the folders (without the folder the pack names as the holder of packages) and the file name without its extension. */
+  private placeOf(entry: FileEntry, w: WorkspaceRecord): { dirs: string[]; stem: string } {
     const below = w.dir === "." ? entry.rel : entry.rel.slice(w.dir.length + 1);
     const parts = below.split("/");
-    if (parts.length > 1 && rule.roots?.includes(parts[0] ?? "")) parts.shift();
+    if (parts.length > 1 && this.typing.package.roots?.includes(parts[0] ?? "")) parts.shift();
     const file = parts.pop() ?? "";
     const ext = this.pack.extensions.find((x) => file.endsWith(x));
-    const base = ext ? file.slice(0, file.length - ext.length) : file;
-    const index = base === rule.index;
-    if (!index) parts.push(base);
-    return { path: parts.join(this.sep), index };
+    return { dirs: parts, stem: ext ? file.slice(0, file.length - ext.length) : file };
   }
 
   /** The key of a module of a workspace in `pkgs`: the workspace name, then the module's path. */
@@ -434,6 +515,8 @@ export class TypeIndex {
    * workspace of the file, then in each workspace it depends on.
    */
   private moduleKeys(from: FileInfo, specifier: string): string[] {
+    const words = this.typing.package.paths;
+    if (words) return this.pathKeys(from, specifier.split(this.sep), words);
     const relative = this.pack.nodes.import.modules?.relative ?? "";
     if (relative !== "" && specifier.startsWith(relative)) {
       let dots = 0;
@@ -453,13 +536,57 @@ export class TypeIndex {
     return [from.workspace, ...deps].map((w) => this.moduleKey(w, specifier));
   }
 
+  /**
+   * The keys a module path (its segments) written in `from` may name, best first, for a pack whose paths start with a
+   * word (`typing.package.paths`): the module of the workspace root, of the file or the one above it; else a workspace
+   * the segment names (the file's own or one it depends on), then a module inside the module of the file.
+   */
+  private pathKeys(
+    from: FileInfo,
+    segments: readonly string[],
+    words: NonNullable<TypingRules["package"]["paths"]>,
+  ): string[] {
+    const here = from.module?.path === "" ? [] : (from.module?.path.split(this.sep) ?? []);
+    const [first = "", ...rest] = segments;
+    const at = (w: WorkspaceRecord, path: readonly string[]): string =>
+      this.moduleKey(w, path.join(this.sep));
+    // With two entry files the root of the crate of a file is its own entry file, if it is one; for any other file it is not known.
+    const dual = this.dualRoots.has(from.workspace.id);
+    const secondary =
+      dual && here.length === 1 && (this.typing.package.entries ?? []).includes(here[0] ?? "");
+    if (first === words.root) {
+      if (!dual || here.length === 0) return [at(from.workspace, rest)];
+      return secondary ? [at(from.workspace, [...here, ...rest])] : [];
+    }
+    if (first === words.self) return [at(from.workspace, [...here, ...rest])];
+    if (first === words.parent) {
+      let up = here;
+      let tail = segments;
+      while (tail[0] === words.parent) {
+        if (up.length === 0 || secondary) return [];
+        up = up.slice(0, -1);
+        tail = tail.slice(1);
+      }
+      return dual && up.length === 0 ? [] : [at(from.workspace, [...up, ...tail])];
+    }
+    const named = [
+      from.workspace,
+      ...this.workspaces.filter((w) => w.id !== from.workspace.id && dependsOn(this.pack, from.workspace, w)),
+    ]
+      .filter((w) => nameKey(this.pack, w.name) === nameKey(this.pack, first))
+      .map((w) => at(w, rest));
+    return [...named, at(from.workspace, [...here, ...segments])];
+  }
+
   /** The module an import of `name` from the module `specifier` names, when the repo has one. */
   private submoduleKey(from: FileInfo, specifier: string, name: string): string | undefined {
     const relative = this.pack.nodes.import.modules?.relative ?? "";
     const whole =
-      relative !== "" && specifier.split(relative).every((s) => s === "")
-        ? `${specifier}${name}`
-        : `${specifier}${this.sep}${name}`;
+      specifier === ""
+        ? name
+        : relative !== "" && specifier.split(relative).every((s) => s === "")
+          ? `${specifier}${name}`
+          : `${specifier}${this.sep}${name}`;
     return this.moduleKeys(from, whole).find((k) => this.pkgs.has(k));
   }
 
@@ -487,7 +614,7 @@ export class TypeIndex {
         if (sub) {
           bind(local);
           f.imports.set(local, sub);
-        } else {
+        } else if (i.specifier !== "") {
           const key = first(this.moduleKeys(f, i.specifier));
           if (key) {
             bind(local);
@@ -502,6 +629,58 @@ export class TypeIndex {
   /** Local name of an import without an alias: the package's own name for a package of the repo, the path's last piece otherwise. */
   private localName(path: string): string {
     return this.pkgs.get(path)?.name ?? defaultImportName(this.pack, path);
+  }
+
+  /** The name a name of a module is bound to there, when the module re-exports it (`typing.package.reexports`); the name itself otherwise. */
+  private followed(n: Named): Named {
+    const hops = this.typing.package.reexports;
+    if (!hops) return n;
+    const r = this.reexport(n, hops);
+    return "named" in r ? { k: "named", pkg: r.named.pkg, name: r.named.name } : n;
+  }
+
+  /** The module a path of names written in `file` names (`typing.package.paths`); null when it names none of the repo. */
+  private moduleAt(file: FileInfo, segments: readonly string[]): string | null {
+    if (!this.typing.package.paths) return null;
+    const [first = "", ...rest] = segments;
+    // A name an import or a module declaration bound is the module it was bound to.
+    const bound = file.imports.get(first);
+    const keys =
+      bound === undefined
+        ? this.moduleKeys(file, segments.join(this.sep))
+        : [rest.length === 0 ? bound : `${bound}${this.sep}${rest.join(this.sep)}`];
+    return keys.find((k) => this.pkgs.has(k)) ?? null;
+  }
+
+  /**
+   * What the prefix of a called path names (`typing.callee.paths`): a module of the repo, or a type of it (the last
+   * segment, found in the module the segments before it name, in the file's own scope when it is the only one, or as the
+   * type `typing.type.self` stands for, which is `owner`). Null for anything else.
+   */
+  resolvePrefix(
+    file: FileInfo,
+    prefix: readonly string[],
+    owner: Named | null,
+  ): { module: string } | { type: Named } | null {
+    if (prefix.length === 0) return null;
+    const whole = this.moduleAt(file, prefix);
+    if (whole !== null) return { module: whole };
+    const last = prefix[prefix.length - 1] ?? "";
+    if (prefix.length === 1) {
+      if (last === this.typing.type.self) return owner ? { type: owner } : null;
+      const t = this.typeNamed(last, file, null);
+      return t ? { type: t } : null;
+    }
+    const module = this.moduleAt(file, prefix.slice(0, -1));
+    if (module === null) return null;
+    const t = this.followed({ k: "named", pkg: module, name: last });
+    return this.typeInfo(t) ? { type: t } : null;
+  }
+
+  /** The function a module declares (or re-exports) under a name. */
+  functionIn(module: string, name: string): FuncInfo | undefined {
+    const at = this.followed({ k: "named", pkg: module, name });
+    return this.pkgs.get(at.pkg)?.funcs.get(at.name);
   }
 
   /** The type a path names (`a.b.Outer.Inner`): the longest prefix that is a package of the repo, then the types below it. */
@@ -568,8 +747,14 @@ export class TypeIndex {
       }
       case "qual": {
         const byPath = this.typing.type.qualified?.packages && this.pkgs.get(t.qualifier)?.declared;
-        const path = file.imports.get(t.qualifier) ?? (byPath ? t.qualifier : undefined);
-        return path ? { k: "named", pkg: path, name: t.name } : null;
+        const path =
+          file.imports.get(t.qualifier) ??
+          (byPath ? t.qualifier : undefined) ??
+          this.moduleAt(file, t.qualifier.split(this.sep)) ??
+          undefined;
+        if (!path) return null;
+        const at: Named = { k: "named", pkg: path, name: t.name };
+        return this.typing.package.paths ? this.followed(at) : at;
       }
       case "seq":
         return { k: "seq", elem: this.resolveType(t.elem, file, bound) };
@@ -727,6 +912,8 @@ export class TypeIndex {
     const pkg = this.pkgs.get(c.pkg);
     if (!pkg) return [];
     const ti = pkg.types.get(c.name);
+    // A type with no declaration in the repo has methods the repo does not show, which blocks of members only add to.
+    if (!ti && this.pack.nodes.types.impls) return [];
     const bound = ti ? this.bindings(ti, c) : undefined;
     const own = this.fitting(pkg.methods.get(`${c.name}.${m}`), args);
     const unsure = own.find((f) => f.ambiguous);

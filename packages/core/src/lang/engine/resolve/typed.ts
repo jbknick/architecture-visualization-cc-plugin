@@ -76,7 +76,9 @@ interface Resolved {
 
 function lookupLocal(scope: Scope, name: string, pos: number): Local | null {
   let best: Local | null = null;
-  for (const l of scope.get(name) ?? []) if (l.pos <= pos && (!best || l.pos > best.pos)) best = l;
+  for (const l of scope.get(name) ?? [])
+    if (l.pos <= pos && (l.decl.end === undefined || pos < l.decl.end) && (!best || l.pos > best.pos))
+      best = l;
   return best;
 }
 
@@ -128,7 +130,15 @@ export class TypeCalls implements CallResolver {
   }
 
   protected ownerOf(file: FileInfo, owner: string | null): Named | null {
-    return owner === null ? null : { k: "named", pkg: file.pkg.path, name: owner };
+    if (owner === null) return null;
+    const impls = this.pack.nodes.types.impls;
+    if (impls) {
+      // A block of members of a type that is not read is of no type; one of a type that another package declares belongs to it.
+      if (owner === impls.baseType.unknown) return null;
+      if (!file.pkg.types.has(owner))
+        return this.idx().typeNamed(owner, file, null) ?? { k: "named", pkg: file.pkg.path, name: owner };
+    }
+    return { k: "named", pkg: file.pkg.path, name: owner };
   }
 
   /**
@@ -176,14 +186,14 @@ export class TypeCalls implements CallResolver {
     const calls = new EdgeSet(fileId, 2);
     for (const s of this.sites(fileId, pf)) calls.add(s.src, s.dst, "calls", s.confidence, s.evidence);
     const extended = new EdgeSet(fileId);
+    const to = (type: TypeRef | null): { id: string | null; kind: string } | null => {
+      const ty = named(idx.resolveType(type, file));
+      const target = ty ? idx.typeInfo(ty) : undefined;
+      return target ? { id: idx.symbolAt(target.file.fileId, target.start), kind: target.kind } : null;
+    };
     for (const t of idx.typesOf(fileId)) {
       const src = idx.symbolAt(fileId, t.start);
       if (!src) continue;
-      const to = (type: TypeRef | null): { id: string | null; kind: string } | null => {
-        const ty = named(idx.resolveType(type, file));
-        const target = ty ? idx.typeInfo(ty) : undefined;
-        return target ? { id: idx.symbolAt(target.file.fileId, target.start), kind: target.kind } : null;
-      };
       if (t.kind === "class")
         for (const e of t.embedded) {
           const dst = to(e.type)?.id;
@@ -201,6 +211,13 @@ export class TypeCalls implements CallResolver {
             : s.edge;
         if (dst && dst !== src) extended.add(src, dst, edge, "high", `${file.rel}:${s.line}`);
       }
+    }
+    // A block of members that names an interface (`types.impls`) makes its type implement it, wherever the type is.
+    for (const b of idx.blocksOf(fileId)) {
+      const ti = idx.typeInfo(b.type);
+      const src = ti ? idx.symbolAt(ti.file.fileId, ti.start) : null;
+      const dst = b.interface ? to(b.interface)?.id : null;
+      if (src && dst && dst !== src) extended.add(src, dst, "implements", "high", `${file.rel}:${b.line}`);
     }
     const implemented = this.typing.implements === "structural" ? (idx.implementers().get(fileId) ?? []) : [];
     const out = [...calls.edges(), ...extended.edges(), ...implemented];
@@ -460,7 +477,7 @@ export class TypeCalls implements CallResolver {
       case "member": {
         const op = e.of;
         const plain = op?.k === "name" && !this.local(env, op.name, op.pos);
-        if (op?.k === "name" && plain) {
+        if (op?.k === "name" && plain && !this.typing.callee.operandsAreValues) {
           const path = env.file.imports.get(op.name);
           if (path) {
             const v = index.pkgs.get(path)?.vars.get(e.name);
@@ -606,11 +623,30 @@ export class TypeCalls implements CallResolver {
       }
       return none(callee.line);
     }
+    if (callee.k === "path") {
+      const segments = callee.segments;
+      const name = segments[segments.length - 1] ?? "";
+      // A function of a module of the repo, or a method or associated function of a type of it.
+      const hit = idx.resolvePrefix(env.file, segments.slice(0, -1), env.owner);
+      if (!hit) return none(callee.line);
+      if ("module" in hit) {
+        const f = idx.functionIn(hit.module, name);
+        return f
+          ? {
+              targets: [{ file: f.file, start: f.start }],
+              results: f.results,
+              file: f.file,
+              line: callee.line,
+            }
+          : none(callee.line);
+      }
+      return this.fromHits(idx.lookupMethods(hit.type, name, args), callee.line, env);
+    }
     const op = callee.operand;
     // `this.m()` in a local body that declares `m` itself calls a method that has no symbol.
     if (op?.k === "self" && op.body?.members.includes(callee.name)) return none(callee.line);
     const plain = op?.k === "name" && !this.local(env, op.name, op.pos);
-    if (op?.k === "name" && plain) {
+    if (op?.k === "name" && plain && !this.typing.callee.operandsAreValues) {
       const path = env.file.imports.get(op.name);
       if (path) {
         const p = idx.pkgs.get(path);

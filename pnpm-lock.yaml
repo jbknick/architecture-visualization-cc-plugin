@@ -20,6 +20,9 @@ importers:
       '@ast-grep/lang-python':
         specifier: 0.0.6
         version: 0.0.6
+      '@ast-grep/lang-rust':
+        specifier: 0.0.7
+        version: 0.0.7
       '@ast-grep/napi':
         specifier: 0.51.3
         version: 0.51.3
@@ -90,6 +93,9 @@ importers:
       '@ast-grep/lang-python':
         specifier: 0.0.6
         version: 0.0.6
+      '@ast-grep/lang-rust':
+        specifier: 0.0.7
+        version: 0.0.7
       '@ast-grep/napi':
         specifier: 0.51.3
         version: 0.51.3
@@ -260,6 +266,14 @@ packages:
 
   '@ast-grep/lang-python@0.0.6':
     resolution: {integrity: sha512-eF/bEBspmrxdVuPNihvZDyyJx5qtIpGEMz9l1nNQmrji7NZcUiRNC8WwzYyQCBdy1mj8HZ0Tn4I2q3gp/6Bkiw==}
+    peerDependencies:
+      tree-sitter-cli: 0.25.8
+    peerDependenciesMeta:
+      tree-sitter-cli:
+        optional: true
+
+  '@ast-grep/lang-rust@0.0.7':
+    resolution: {integrity: sha512-CF6jv8XmlVQgr/pFKADM87EkoGiHIrHKsG1wcX2iqgdBX5kW8wH+Zd4GP6SMme2eZogD49f19vRoRTF44iZqzg==}
     peerDependencies:
       tree-sitter-cli: 0.25.8
     peerDependenciesMeta:
@@ -2992,6 +3006,10 @@ snapshots:
       '@ast-grep/setup-lang': 0.0.6
 
   '@ast-grep/lang-python@0.0.6':
+    dependencies:
+      '@ast-grep/setup-lang': 0.0.6
+
+  '@ast-grep/lang-rust@0.0.7':
     dependencies:
       '@ast-grep/setup-lang': 0.0.6
 

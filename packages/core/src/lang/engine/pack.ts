@@ -223,14 +223,38 @@ export interface TypingRules {
     builtin?: readonly string[];
     /** Kinds that wrap a type and hold it as their first named child (pointer, parentheses). */
     wrappers: readonly string[];
+    /** Kinds that wrap a type and hold it in a field, when the first named child is not it (a reference with a lifetime, an object type). */
+    fielded?: readonly { kind: string; field: string }[];
+    /**
+     * The name that stands for the type of the declaration whose body the code is in (`Self`). Inside a type body or a
+     * block of members it reads as that type; anywhere else it is no type.
+     */
+    self?: string;
     /**
      * A generic instantiation: its kind and the field holding the generic type (the first named child when there is no
      * field), and the kind of its child that holds the type arguments (each a type; one that is not read is unknown). A
      * language without it reads types without their arguments.
      */
     generic: { kind: string; field?: string; arguments?: string };
-    /** The type parameters of a declaration (the field named by `generics`): the kind of each entry and the kinds of its child that is the parameter's name. */
-    parameters?: { entry: string; names: readonly string[] };
+    /**
+     * The type parameters of a declaration (the field named by `generics`): the kind of each entry and the kinds of its
+     * child that is the parameter's name; `bare` are the kinds of the entries that are themselves a name (a parameter
+     * without bounds). With `bounds`, a parameter that has exactly one bound reads, in the parameters and locals of the
+     * declaration, as the type of that bound: the entry's field of the name, its field of the bounds, the kinds in a list
+     * of bounds that are no type (`ignore`), and the clause that lists bounds apart from the parameters, with its
+     * predicates and their fields of the bounded name and of the bounds. A parameter with several bounds is not read.
+     */
+    parameters?: {
+      entry: string;
+      names: readonly string[];
+      bare?: readonly string[];
+      bounds?: {
+        name: string;
+        field: string;
+        ignore: readonly string[];
+        where?: { kind: string; predicate: string; name: string; bounds: string };
+      };
+    };
     /**
      * Types outside the repo whose accessors return one of their type arguments: the package, the simple names of
      * the types, and for each method name the index of the type argument it returns. A type is known by its package (an
@@ -288,7 +312,12 @@ export interface TypingRules {
    * `a.b.c`). With `file`, `roots` are the folders below a workspace that hold its packages instead of the workspace
    * folder itself, and `index` the name (without extension) of the file that stands for its folder. With `reexports`, a
    * name that a file imports from such an index file, which that file binds by an import of its own, is the one it is
-   * bound to there, followed through at most that many index files.
+   * bound to there, followed through at most that many index files. With `entries`, a file with one of these names
+   * (without extension) directly in a root folder stands for the workspace itself, as an index file stands for its folder.
+   * With `paths`, a module path (an import, a qualifier, the prefix of a called name) starts with one of three words:
+   * `root` (the module at the root of the workspace of the file), `self` (the module of the file) or `parent` (the
+   * module that holds it, once for each repetition); any other first segment is the name of a workspace (the file's own
+   * or one it depends on, the rest being the path inside it) or of a module inside the module of the file.
    */
   package: {
     clause?: readonly string[];
@@ -298,7 +327,9 @@ export interface TypingRules {
     separate?: string;
     roots?: readonly string[];
     index?: string;
+    entries?: readonly string[];
     reexports?: number;
+    paths?: { root: string; self: string; parent: string };
   };
   /** Where decorators sit; with it, a function declared several times in a file, all but one marked as a stub, has the one declaration that is not. */
   decorators?: DecoratorRules;
@@ -369,6 +400,12 @@ export interface TypingRules {
    */
   enclosing?: { self: readonly string[]; parent: readonly string[]; callableLocals?: true };
   /**
+   * The kinds of the expression that stands for the value a method is called on, in a language whose bare names are no
+   * members (`enclosing` makes them so, and then names its own `self`): the value has the type of the declaration the
+   * method belongs to.
+   */
+  self?: readonly string[];
+  /**
    * Overloads: methods of one name are told apart by the number of their parameters. `arguments` is the field of a call
    * site that holds the arguments, `parameters` the kinds of the entries of a parameter list and `variadic` those among
    * them that take any number of arguments. `rest` is the field of the parameter list that holds parameters written
@@ -403,6 +440,15 @@ export interface TypingRules {
     members: readonly { kind: string; operand: string; name: string }[];
     /** Kinds an operand has when it is a plain name. */
     operands: readonly string[];
+    /**
+     * A name reached through a path of names (`a::b::f`): the kind of the path, the fields of its prefix (itself a path of
+     * the same kind, or one name) and of its last name, and the kinds of a segment (a plain name, or one of the words
+     * `typing.package.paths` lists). The prefix names a module of the repo, a type of the repo, or the type `typing.type.self`
+     * stands for; the name is a function of the module or a method of the type. Any other prefix gives no edge.
+     */
+    paths?: readonly { kind: string; path: string; name: string; segments: readonly string[] }[];
+    /** True when the name before the operand of a member is always a value: an import that binds a module, and a type of that name, are not read there. */
+    operandsAreValues?: true;
   };
   /** A conversion written as a call: its kind and the field of the type it names. One whose type is a generic instantiation counts as a call site. */
   conversion?: { kind: string; type: string };
@@ -438,6 +484,19 @@ export interface TypingRules {
      * node itself, of the kinds in `nameKinds`.
      */
     nameLists?: readonly string[];
+    /**
+     * Kinds of the nodes that end the scope of a name: a declared name (a declaration, not a parameter) is seen from where
+     * `from` says to the end of the nearest node around it of one of these kinds, and an outer name of the same spelling is
+     * seen again after it. Without this a name is seen to the end of the function.
+     */
+    blocks?: readonly string[];
+    /**
+     * Declarations inside a function of names the module has too: the kinds (and the field of the name) of items declared
+     * in a body, and, with `imports`, the names that an import declared in a body brings (`import.trees`, read in the node
+     * that holds the declaration). Such a name hides, in the whole function, the type, the function and the module of that
+     * name that a file level declaration or import binds: it is looked up nowhere.
+     */
+    items?: { kinds: readonly { kind: string; name: string }[]; imports?: true };
     /** Parameters: the field of the names and of the type; a `variadic` one holds a sequence of its type. */
     parameters: readonly {
       kind: string;
@@ -538,6 +597,26 @@ export interface LanguagePack {
       anonymous?: { kind: string; type: string; body: string; prefix: string };
       /** An element of an enumeration's body that may carry a body of members: its kind and the fields of its name and its body. The body is named `<enclosing type>.<name>`. */
       constants?: { kind: string; name: string; body: string };
+      /**
+       * A block of members of a type that is declared elsewhere, optionally in the name of an interface it implements: its
+       * kind, the fields of the type, of the interface and of the body, how the name of the type is found in the type
+       * expression, and the field of the block's own type parameters. Its members are symbols named `<type>.<member>`, as
+       * those of a type body are; a block whose type is one of its own type parameters, or is not read, names the type
+       * `baseType.unknown`. The type has the interface among its supertypes (an `implements` edge) wherever the block is.
+       * With `nested`, the blocks in a module written in place (`import.submodules` says its kind and its body field) add
+       * their methods to the type of that name, as methods with no symbol: the methods the type has are then not told by
+       * the blocks outside such a module alone. The type is the last name of a qualified one, and any type with that name
+       * in the file's package may be meant.
+       */
+      impls?: {
+        kind: string;
+        type: string;
+        interface: string;
+        body: string;
+        baseType: BaseTypeRule;
+        generics: string;
+        nested?: true;
+      };
     };
     /** Constants and variables: every name is a `const` symbol. */
     values: {
@@ -573,6 +652,29 @@ export interface LanguagePack {
       named?: { onDemand?: string; static: string; bare: "name" | "demand" };
       /** Imports written as statements that list modules, or names taken from a module; they are read besides `declarations`. */
       modules?: ModuleImportRules;
+      /**
+       * Imports written as a tree of paths (`a::b::{c, d as e, f::*, self}`), read besides `declarations`: the kinds of the
+       * statements and the field of each that holds the tree. A tree is a path (a name of the path is brought in), a path
+       * with a list (`scoped`: the fields of the prefix and of the list), a list of trees alone (`list`), a tree under another
+       * name (`aliased`: the fields of the tree's path and of the name), every name of a path (`onDemand`, written with the
+       * path and a last `*`), or the word that stands for the prefix itself (`self`, as a kind). Each name gives one import
+       * from the path of its prefix, the way `named` reads one.
+       */
+      trees?: {
+        declarations: readonly string[];
+        argument: string;
+        scoped: { kind: string; path: string; list: string };
+        list: string;
+        aliased: { kind: string; path: string; alias: string };
+        onDemand: string;
+        self: string;
+      };
+      /**
+       * A declaration of a module that has a file of its own: its kind, the fields of its name and of its body (a module with
+       * a body is written in place and is no import) and the word that names the module around it. It imports the module of
+       * that name from the module around it.
+       */
+      submodules?: { kind: string; name: string; body: string; parent: string };
     };
     /** Kinds of a call site. */
     call: readonly string[];

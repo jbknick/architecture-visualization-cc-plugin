@@ -30,6 +30,8 @@ export interface LocalBody {
 export type Callee =
   | { k: "name"; name: string; pos: number; line: number; body?: LocalBody }
   | { k: "member"; operand: Expr | null; name: string; line: number }
+  /** A name reached through a path of names (`typing.callee.paths`): every segment, the last one being the name. */
+  | { k: "path"; segments: string[]; pos: number; line: number }
   | { k: "new"; type: TypeRef | null; line: number }
   | { k: "none"; line: number };
 
@@ -76,6 +78,8 @@ export type DeclSource =
 export interface Decl {
   name: string;
   pos: number;
+  /** Source offset at which the name stops being visible (`locals.blocks`); absent when it is visible to the end of the function. */
+  end?: number;
   source: DeclSource;
   /** What the flow resolver reads in place of `source` (a name without a declared type that gets its type from a value). */
   flow?: DeclSource;
@@ -193,4 +197,13 @@ export interface FileDecls {
   methods: (FuncDecl & { key: string; owner: string | null })[];
   types: TypeDecl[];
   vars: VarDecl[];
+  /** The blocks of members of a type declared elsewhere (`types.impls`). */
+  impls: ImplDecl[];
+}
+
+/** A block of members of a type, as written: the type and the interface it names, and the line. */
+export interface ImplDecl {
+  type: TypeRef | null;
+  interface: TypeRef | null;
+  line: number;
 }

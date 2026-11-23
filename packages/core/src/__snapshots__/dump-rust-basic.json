@@ -1,0 +1,723 @@
+{
+  "repos": [
+    {
+      "name": "rust-basic"
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "ws:rust-basic:acme-app",
+      "repo": "rust-basic",
+      "name": "acme-app",
+      "dir": "crates/app",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [
+        "acme-core"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:rust-basic:acme-core",
+      "repo": "rust-basic",
+      "name": "acme-core",
+      "dir": "crates/core",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:rust-basic:crates/app/Cargo.toml",
+      "repo": "rust-basic",
+      "path": "crates/app/Cargo.toml",
+      "lang": "rust",
+      "workspaceId": "ws:rust-basic:acme-app",
+      "contentHash": "415b9b102c58b71246d3dce8cb762a4de0a8fe6609f2580b13f0a1ee4948fda9"
+    },
+    {
+      "id": "file:rust-basic:crates/app/src/main.rs",
+      "repo": "rust-basic",
+      "path": "crates/app/src/main.rs",
+      "lang": "rust",
+      "workspaceId": "ws:rust-basic:acme-app",
+      "contentHash": "58bbacf694e5d223cb53e9ce5885cee0192827318fd618cbbb3d5cc348889e27"
+    },
+    {
+      "id": "file:rust-basic:crates/app/src/report.rs",
+      "repo": "rust-basic",
+      "path": "crates/app/src/report.rs",
+      "lang": "rust",
+      "workspaceId": "ws:rust-basic:acme-app",
+      "contentHash": "fb9419e9fc3ecf89d7f56d2652e3440734579a24ec41fae8f686ded8d86be5b1"
+    },
+    {
+      "id": "file:rust-basic:crates/app/tests/report_test.rs",
+      "repo": "rust-basic",
+      "path": "crates/app/tests/report_test.rs",
+      "lang": "rust",
+      "workspaceId": "ws:rust-basic:acme-app",
+      "contentHash": "ed6ce30d91572185939c0ef883c32718ba94f97a13ff288ad580342de74fd723"
+    },
+    {
+      "id": "file:rust-basic:crates/core/src/generated.rs",
+      "repo": "rust-basic",
+      "path": "crates/core/src/generated.rs",
+      "lang": "rust",
+      "workspaceId": "ws:rust-basic:acme-core",
+      "contentHash": "76363bbb9a365e0023a13d41d6958c17aea9829d45c52366002e8f5416f278d6",
+      "directives": [
+        "generated"
+      ]
+    },
+    {
+      "id": "file:rust-basic:crates/core/src/lib.rs",
+      "repo": "rust-basic",
+      "path": "crates/core/src/lib.rs",
+      "lang": "rust",
+      "workspaceId": "ws:rust-basic:acme-core",
+      "contentHash": "cbfa2cb3b3368b1dfdfcc18e2b70f73e6a901ac7ae0161492b9ca09d715c7886"
+    },
+    {
+      "id": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "repo": "rust-basic",
+      "path": "crates/core/src/shapes/circle.rs",
+      "lang": "rust",
+      "workspaceId": "ws:rust-basic:acme-core",
+      "contentHash": "e9e58408c20fa1f6ab1361fe221b44ac0ed6c313c18c524750503be7b4f44550"
+    },
+    {
+      "id": "file:rust-basic:crates/core/src/shapes/mod.rs",
+      "repo": "rust-basic",
+      "path": "crates/core/src/shapes/mod.rs",
+      "lang": "rust",
+      "workspaceId": "ws:rust-basic:acme-core",
+      "contentHash": "1e6ad9c79233c142fa1d346aa231eed829f381211c7dff392290f9c4e6da47ff"
+    },
+    {
+      "id": "file:rust-basic:crates/core/src/util.rs",
+      "repo": "rust-basic",
+      "path": "crates/core/src/util.rs",
+      "lang": "rust",
+      "workspaceId": "ws:rust-basic:acme-core",
+      "contentHash": "c3a4e3f5abfe8f74617f64d11305ca7f7af511a7e524cd5ae47685d30f1ff32c"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:rust-basic:crates/app/src/main.rs#main",
+      "fileId": "file:rust-basic:crates/app/src/main.rs",
+      "name": "main",
+      "kind": "function",
+      "lang": "rust",
+      "exported": false,
+      "signature": "()",
+      "startLine": 7,
+      "endLine": 15,
+      "loc": 9,
+      "complexity": 1,
+      "stmtCount": 7,
+      "exactHash": "2deaa3d4216f3d63db999ec83698899f",
+      "shapeHash": "fb099ca6541728688228aa86658ac063"
+    },
+    {
+      "id": "sym:rust-basic:crates/app/src/report.rs#print",
+      "fileId": "file:rust-basic:crates/app/src/report.rs",
+      "name": "print",
+      "kind": "function",
+      "lang": "rust",
+      "exported": true,
+      "signature": "(shape: &dyn Shape)",
+      "startLine": 3,
+      "endLine": 7,
+      "loc": 5,
+      "complexity": 1,
+      "stmtCount": 3,
+      "exactHash": "a49252f82c1bc5f99ba73c32892347f9",
+      "shapeHash": "61264525abedf998e840b2b3cb2b8e81"
+    },
+    {
+      "id": "sym:rust-basic:crates/app/tests/report_test.rs#clamps_above",
+      "fileId": "file:rust-basic:crates/app/tests/report_test.rs",
+      "name": "clamps_above",
+      "kind": "function",
+      "lang": "rust",
+      "exported": false,
+      "signature": "()",
+      "startLine": 4,
+      "endLine": 7,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "836a9ffdc22fee62fb058cd87b43d298",
+      "shapeHash": "cf99b22831b966f4376d4c639c1dbcf5"
+    },
+    {
+      "id": "sym:rust-basic:crates/core/src/generated.rs#table",
+      "fileId": "file:rust-basic:crates/core/src/generated.rs",
+      "name": "table",
+      "kind": "function",
+      "lang": "rust",
+      "exported": true,
+      "signature": "() [f64; 2]",
+      "startLine": 2,
+      "endLine": 4,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "8b0278d03b6f2d742444dbc04cd3afb4",
+      "shapeHash": "59c4c0135e95c39cff29bccdb36aea5f"
+    },
+    {
+      "id": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle",
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "name": "Circle",
+      "kind": "class",
+      "lang": "rust",
+      "exported": true,
+      "signature": "",
+      "startLine": 4,
+      "endLine": 6,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "1c1d9cb7e26168a68ee07d774f911728",
+      "shapeHash": "3fe91e7f8a8c21e173c3ff8681b55848"
+    },
+    {
+      "id": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle.area",
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "name": "Circle.area",
+      "kind": "method",
+      "lang": "rust",
+      "exported": false,
+      "signature": "(&self) f64",
+      "startLine": 19,
+      "endLine": 21,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "0f8a0b34f8d60b1faff48bdfefb12ade",
+      "shapeHash": "4b80dc2ec8da558bfdb065a7baa9b91b"
+    },
+    {
+      "id": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle.new",
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "name": "Circle.new",
+      "kind": "method",
+      "lang": "rust",
+      "exported": true,
+      "signature": "(radius: f64) Self",
+      "startLine": 9,
+      "endLine": 11,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "1043e36ddaca6730b2baa5f91d69c01d",
+      "shapeHash": "395d1ec75120794149274d6eb604f179"
+    },
+    {
+      "id": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle.scaled",
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "name": "Circle.scaled",
+      "kind": "method",
+      "lang": "rust",
+      "exported": true,
+      "signature": "(&self, factor: f64) Circle",
+      "startLine": 13,
+      "endLine": 15,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "d805df0d6ed55349f2e0db670325ffc2",
+      "shapeHash": "d791f2ec74c4004cacbca6c535eed908"
+    },
+    {
+      "id": "sym:rust-basic:crates/core/src/shapes/circle.rs#unit",
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "name": "unit",
+      "kind": "function",
+      "lang": "rust",
+      "exported": true,
+      "signature": "() Circle",
+      "startLine": 24,
+      "endLine": 26,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "6f1508e641dcdde635d1e4b560590038",
+      "shapeHash": "e99d417325830d2bff1a9d91a778edc8"
+    },
+    {
+      "id": "sym:rust-basic:crates/core/src/shapes/mod.rs#Shape",
+      "fileId": "file:rust-basic:crates/core/src/shapes/mod.rs",
+      "name": "Shape",
+      "kind": "interface",
+      "lang": "rust",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 10,
+      "loc": 8,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "f18c9359b5935b8877c6f562523eb610",
+      "shapeHash": "6a20a500f5a1ac0a34bf863ee98cf6c8"
+    },
+    {
+      "id": "sym:rust-basic:crates/core/src/shapes/mod.rs#Shape.area",
+      "fileId": "file:rust-basic:crates/core/src/shapes/mod.rs",
+      "name": "Shape.area",
+      "kind": "method",
+      "lang": "rust",
+      "exported": true,
+      "signature": "(&self) f64",
+      "startLine": 4,
+      "endLine": 4,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "033468620374649318c2559de45b7c65",
+      "shapeHash": "a642229666af51aa90ba37905e872cf2"
+    },
+    {
+      "id": "sym:rust-basic:crates/core/src/shapes/mod.rs#Shape.describe",
+      "fileId": "file:rust-basic:crates/core/src/shapes/mod.rs",
+      "name": "Shape.describe",
+      "kind": "method",
+      "lang": "rust",
+      "exported": true,
+      "signature": "(&self) String",
+      "startLine": 6,
+      "endLine": 9,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "615f1b43bdca7d0fcd7780082ad8d1ab",
+      "shapeHash": "180ebb2db93340f9c45d82ca7ab34aff"
+    },
+    {
+      "id": "sym:rust-basic:crates/core/src/util.rs#clamp",
+      "fileId": "file:rust-basic:crates/core/src/util.rs",
+      "name": "clamp",
+      "kind": "function",
+      "lang": "rust",
+      "exported": true,
+      "signature": "(value: f64, low: f64, high: f64) f64",
+      "startLine": 1,
+      "endLine": 9,
+      "loc": 9,
+      "complexity": 3,
+      "stmtCount": 1,
+      "exactHash": "c4b2d6f3746b74022cbc5a3ee1302ea0",
+      "shapeHash": "3e08b923369708a6e06edec69a1e858a"
+    },
+    {
+      "id": "sym:rust-basic:crates/core/src/util.rs#round_to",
+      "fileId": "file:rust-basic:crates/core/src/util.rs",
+      "name": "round_to",
+      "kind": "function",
+      "lang": "rust",
+      "exported": true,
+      "signature": "(value: f64, places: i32) f64",
+      "startLine": 11,
+      "endLine": 14,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "502a3d8829cbbbae01de3583872f04f3",
+      "shapeHash": "caf0b2c446e8f182ccdff6ba2295a131"
+    }
+  ],
+  "edges": [
+    {
+      "src": "file:rust-basic:crates/app/src/main.rs",
+      "dst": "sym:rust-basic:crates/app/src/main.rs#main",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/app/src/main.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/app/src/report.rs",
+      "dst": "sym:rust-basic:crates/app/src/report.rs#print",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/app/src/report.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/app/tests/report_test.rs",
+      "dst": "sym:rust-basic:crates/app/tests/report_test.rs#clamps_above",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/app/tests/report_test.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/core/src/generated.rs",
+      "dst": "sym:rust-basic:crates/core/src/generated.rs#table",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/generated.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "dst": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "dst": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle.area",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "dst": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle.new",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "dst": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle.scaled",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "dst": "sym:rust-basic:crates/core/src/shapes/circle.rs#unit",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/core/src/shapes/mod.rs",
+      "dst": "sym:rust-basic:crates/core/src/shapes/mod.rs#Shape",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/shapes/mod.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/core/src/shapes/mod.rs",
+      "dst": "sym:rust-basic:crates/core/src/shapes/mod.rs#Shape.area",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/shapes/mod.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/core/src/shapes/mod.rs",
+      "dst": "sym:rust-basic:crates/core/src/shapes/mod.rs#Shape.describe",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/shapes/mod.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/core/src/util.rs",
+      "dst": "sym:rust-basic:crates/core/src/util.rs#clamp",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/util.rs"
+    },
+    {
+      "src": "file:rust-basic:crates/core/src/util.rs",
+      "dst": "sym:rust-basic:crates/core/src/util.rs#round_to",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/util.rs"
+    },
+    {
+      "src": "sym:rust-basic:crates/app/src/main.rs#main",
+      "dst": "sym:rust-basic:crates/app/src/report.rs#print",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 2,
+      "evidence": [
+        "crates/app/src/main.rs:13",
+        "crates/app/src/main.rs:14"
+      ],
+      "fileId": "file:rust-basic:crates/app/src/main.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/app/src/main.rs#main",
+      "dst": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle.area",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/app/src/main.rs:10"
+      ],
+      "fileId": "file:rust-basic:crates/app/src/main.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/app/src/main.rs#main",
+      "dst": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle.new",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/app/src/main.rs:8"
+      ],
+      "fileId": "file:rust-basic:crates/app/src/main.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/app/src/main.rs#main",
+      "dst": "sym:rust-basic:crates/core/src/shapes/circle.rs#unit",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/app/src/main.rs:9"
+      ],
+      "fileId": "file:rust-basic:crates/app/src/main.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/app/src/main.rs#main",
+      "dst": "sym:rust-basic:crates/core/src/util.rs#clamp",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/app/src/main.rs:10"
+      ],
+      "fileId": "file:rust-basic:crates/app/src/main.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/app/src/main.rs#main",
+      "dst": "sym:rust-basic:crates/core/src/util.rs#round_to",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/app/src/main.rs:11"
+      ],
+      "fileId": "file:rust-basic:crates/app/src/main.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/app/src/report.rs#print",
+      "dst": "sym:rust-basic:crates/core/src/shapes/mod.rs#Shape.area",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/app/src/report.rs:5"
+      ],
+      "fileId": "file:rust-basic:crates/app/src/report.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/app/src/report.rs#print",
+      "dst": "sym:rust-basic:crates/core/src/shapes/mod.rs#Shape.describe",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/app/src/report.rs:4"
+      ],
+      "fileId": "file:rust-basic:crates/app/src/report.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/app/tests/report_test.rs#clamps_above",
+      "dst": "sym:rust-basic:crates/core/src/util.rs#clamp",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/app/tests/report_test.rs:5"
+      ],
+      "fileId": "file:rust-basic:crates/app/tests/report_test.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle",
+      "dst": "sym:rust-basic:crates/core/src/shapes/mod.rs#Shape",
+      "kind": "implements",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/core/src/shapes/circle.rs:18"
+      ],
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs"
+    },
+    {
+      "src": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle.new",
+      "dst": "sym:rust-basic:crates/core/src/util.rs#clamp",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/core/src/shapes/circle.rs:10"
+      ],
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle.scaled",
+      "dst": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle.new",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/core/src/shapes/circle.rs:14"
+      ],
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/core/src/shapes/circle.rs#unit",
+      "dst": "sym:rust-basic:crates/core/src/shapes/circle.rs#Circle.new",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/core/src/shapes/circle.rs:25"
+      ],
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/core/src/shapes/mod.rs#Shape.describe",
+      "dst": "sym:rust-basic:crates/core/src/shapes/mod.rs#Shape.area",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/core/src/shapes/mod.rs:7"
+      ],
+      "fileId": "file:rust-basic:crates/core/src/shapes/mod.rs",
+      "level": 2
+    },
+    {
+      "src": "sym:rust-basic:crates/core/src/util.rs#round_to",
+      "dst": "sym:rust-basic:crates/core/src/util.rs#clamp",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "crates/core/src/util.rs:13"
+      ],
+      "fileId": "file:rust-basic:crates/core/src/util.rs",
+      "level": 2
+    },
+    {
+      "src": "ws:rust-basic:acme-app",
+      "dst": "file:rust-basic:crates/app/src/main.rs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/app/src/main.rs"
+    },
+    {
+      "src": "ws:rust-basic:acme-app",
+      "dst": "file:rust-basic:crates/app/src/report.rs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/app/src/report.rs"
+    },
+    {
+      "src": "ws:rust-basic:acme-app",
+      "dst": "file:rust-basic:crates/app/tests/report_test.rs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/app/tests/report_test.rs"
+    },
+    {
+      "src": "ws:rust-basic:acme-app",
+      "dst": "ws:rust-basic:acme-core",
+      "kind": "depends_on",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/app/Cargo.toml"
+    },
+    {
+      "src": "ws:rust-basic:acme-core",
+      "dst": "file:rust-basic:crates/core/src/generated.rs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/generated.rs"
+    },
+    {
+      "src": "ws:rust-basic:acme-core",
+      "dst": "file:rust-basic:crates/core/src/lib.rs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/lib.rs"
+    },
+    {
+      "src": "ws:rust-basic:acme-core",
+      "dst": "file:rust-basic:crates/core/src/shapes/circle.rs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/shapes/circle.rs"
+    },
+    {
+      "src": "ws:rust-basic:acme-core",
+      "dst": "file:rust-basic:crates/core/src/shapes/mod.rs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/shapes/mod.rs"
+    },
+    {
+      "src": "ws:rust-basic:acme-core",
+      "dst": "file:rust-basic:crates/core/src/util.rs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:rust-basic:crates/core/src/util.rs"
+    }
+  ]
+}
