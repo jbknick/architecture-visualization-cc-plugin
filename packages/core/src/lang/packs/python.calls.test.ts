@@ -458,6 +458,19 @@ class Sub(Leaf):
     ]);
   });
 
+  it("a call on self alone reaches an inherited method at level 3, low", async () => {
+    const edges = await repo({
+      "a.py": `class Base:
+  def hello(self): pass
+class Mid(Base): pass
+class Leaf(Mid):
+  def run(self):
+    self.hello()
+`,
+    });
+    expect(callsOf(edges)).toEqual(["a.py#Leaf.run -> a.py#Base.hello low 3"]);
+  });
+
   it("a method the class declares is found when a base is outside the repo, one that is not declared is not", async () => {
     const edges = await repo({
       "a.py": `from lib import Outside
@@ -794,6 +807,52 @@ class B(Two):
       });
       expect(callsOf(edges)).toEqual([]);
     });
+
+    it("has no edge when a type below the class lists several bases, and keeps it when none does", async () => {
+      const files = (extra: string): Record<string, string> => ({
+        "a.py": `class M1:
+  def hello(self): pass
+class M3:
+  def hello(self): pass
+class M2(M1):
+  def hello(self): super().hello()
+${extra}`,
+      });
+      expect(callsOf(await repo(files("")))).toEqual(["a.py#M2.hello -> a.py#M1.hello high 2"]);
+      expect(callsOf(await repo(files("class Z(M2, M3): pass\n")))).toEqual([]);
+      // Also when the several bases are further down.
+      expect(callsOf(await repo(files("class Y(M2): pass\nclass Z(Y, M3): pass\n")))).toEqual([]);
+      // A class that lists several bases but is not below the class does not matter.
+      expect(callsOf(await repo(files("class Z(M1, M3): pass\n")))).toEqual([
+        "a.py#M2.hello -> a.py#M1.hello high 2",
+      ]);
+    });
+
+    it("has no edge through a base created some other way that does not declare the method", async () => {
+      const edges = await repo({
+        "a.py": `class A:
+  def __init__(self, x): pass
+  def go(self): pass
+class Meta(A, metaclass=type): pass
+@wrap
+class B(A): pass
+class Declares(A):
+  def go(self): pass
+@wrap
+class Own(A):
+  def go(self): pass
+
+class C(B):
+  def __init__(self): super().__init__(1)
+class D(Meta):
+  def go(self): super().go()
+class E(Own):
+  def go(self): super().go()
+`,
+      });
+      // A decorated class that declares the method itself is still where the method is looked for.
+      expect(callsOf(edges)).toEqual(["a.py#E.go -> a.py#Own.go high 2"]);
+    });
   });
 
   describe("overload stubs", () => {
@@ -925,10 +984,19 @@ def v(x: Foo): x.go()
       expect(callsOf(edges)).toEqual(["three.py#u -> real.py#f high 2"]);
     });
 
-    it("does not follow a star import, a name the index declares itself, or a name it binds twice", async () => {
+    it("does not follow a name from an index file that has a star import, even one it binds itself", async () => {
       const edges = await repo({
-        "pkg/__init__.py": `from .mod import *
-from .mod import g
+        "pkg/__init__.py": "from .mod import f\nfrom .other import *\n",
+        "pkg/mod.py": MOD,
+        "pkg/other.py": "def f(): pass\n",
+        "use.py": "from pkg import f\n\ndef u():\n  f()\n",
+      });
+      expect(callsOf(edges)).toEqual([]);
+    });
+
+    it("does not follow a name the index declares itself, a name it does not bind, or one it binds twice", async () => {
+      const edges = await repo({
+        "pkg/__init__.py": `from .mod import g
 try:
   from .mod import f
 except ImportError:
@@ -953,7 +1021,6 @@ def u():
       ]);
     });
   });
-
   describe("annotations that allow no value", () => {
     it("Optional[A], A | None and None | A read as A, also in a string; a union of two classes does not", async () => {
       const edges = await repo({

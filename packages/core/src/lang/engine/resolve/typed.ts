@@ -429,9 +429,9 @@ export class TypeCalls implements CallResolver {
       case "base": {
         const ti = env.owner ? index.typeInfo(env.owner) : undefined;
         const only = ti?.supers[0];
-        return ti && only && ti.bases === 1 && ti.supers.length === 1
-          ? index.resolveType(only.type, ti.file)
-          : null;
+        // The value may be of a type below this one that lists several bases: then which base is meant is not known.
+        if (!ti || !only || !env.owner || ti.bases !== 1 || ti.supers.length !== 1) return null;
+        return index.hasMultiBaseDescendant(env.owner) ? null : index.resolveType(only.type, ti.file);
       }
       case "parent": {
         if (e.body) return this.bodySelf(e.body, env);

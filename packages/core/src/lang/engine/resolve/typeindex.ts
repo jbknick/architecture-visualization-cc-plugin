@@ -77,6 +77,8 @@ export interface FileInfo {
   imports: Map<string, string>;
   /** Local names that two imports of a file bind (only a pack whose packages are files reads them). */
   rebound: Set<string>;
+  /** True when the file imports every name of a module (a pack whose packages are files): any name it binds may be rebound by that import. */
+  starred: boolean;
   /** Types the file imports by name: local name to type. */
   named: Map<string, Named>;
   /** Packages whose types the file imports all at once. */
@@ -136,6 +138,7 @@ export class TypeIndex {
   /** The files that stand for their folder, by the key of the package they make. */
   private readonly indexFiles = new Map<string, FileInfo[]>();
   private implementsByFile: Map<string, EdgeRecord[]> | null = null;
+  private multiBase: Named[] | null = null;
 
   constructor(
     private readonly pack: LanguagePack,
@@ -188,6 +191,7 @@ export class TypeIndex {
         module: mod,
         imports: new Map(),
         rebound: new Set(),
+        starred: false,
         named: new Map(),
         demand: [],
         statics: new Map(),
@@ -306,7 +310,7 @@ export class TypeIndex {
       module?.vars.has(n.name);
     if (!module || declared || hops <= 0) return { named: n };
     for (const file of this.indexFiles.get(n.pkg) ?? []) {
-      if (file.rebound.has(n.name)) continue;
+      if (file.starred || file.rebound.has(n.name)) continue;
       const next = file.named.get(n.name);
       if (next) return this.reexport(next, hops - 1);
       const target = file.imports.get(n.name);
@@ -407,6 +411,7 @@ export class TypeIndex {
           f.imports.set(b.local, key);
         }
       } else if (i.name === "*") {
+        f.starred = true;
         const key = this.moduleKeys(f, i.specifier).find((k) => this.pkgs.has(k));
         if (key) f.demand.push(key);
       } else {
@@ -694,9 +699,37 @@ export class TypeIndex {
     const own = this.pkgs.get(c.pkg)?.methods.get(`${c.name}.${m}`);
     const [only] = own ?? [];
     if (only) return own?.length === 1 && !only.ambiguous ? only : null;
+    // A class created some other way may run a method of its own that its declaration does not show.
+    if (ti.opaque) return null;
     const base = ti.supers[0];
     if (ti.bases !== 1 || ti.supers.length !== 1 || !base) return null;
     return this.soleMethod(this.resolveType(base.type, ti.file), m, depth + 1);
+  }
+
+  /**
+   * True when a type of the repo that lists several bases has `r` among its ancestors: which method the base of `r` means
+   * then depends on the class of the value, whose bases are searched in an order that is not read.
+   */
+  hasMultiBaseDescendant(r: Named): boolean {
+    if (!this.multiBase) {
+      const found: Named[] = [];
+      for (const p of this.pkgs.values())
+        for (const [name, ti] of p.types) if (ti.bases > 1) found.push({ k: "named", pkg: p.path, name });
+      this.multiBase = found;
+    }
+    return this.multiBase.some((t) => this.descendsFrom(t, r, new Set()));
+  }
+
+  private descendsFrom(t: Named, target: Named, seen: Set<string>): boolean {
+    const key = `${t.pkg}\0${t.name}`;
+    const ti = this.typeInfo(t);
+    if (!ti || seen.has(key)) return false;
+    seen.add(key);
+    return ti.supers.some((s) => {
+      const sr = this.canon(this.resolveType(s.type, ti.file));
+      if (sr?.k !== "named") return false;
+      return (sr.pkg === target.pkg && sr.name === target.name) || this.descendsFrom(sr, target, seen);
+    });
   }
 
   /**
