@@ -24,7 +24,7 @@ const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 /** The deepest chain of expressions the types of which are followed. */
 const MAX_DEPTH = 12;
 
-interface Local {
+export interface Local {
   /** Source offset from which the name is visible. */
   pos: number;
   decl: Decl;
@@ -297,7 +297,7 @@ export class TypeCalls implements CallResolver {
   }
 
   /** The type a declared name has; a name that depends on itself has none. */
-  private typeOfLocal(l: Local, env: Env): Ty | null {
+  protected typeOfLocal(l: Local, env: Env): Ty | null {
     if (l.memo !== undefined) {
       if (l.flow) this.usedFlow = true;
       return l.memo;

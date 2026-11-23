@@ -180,7 +180,7 @@ def declared():
     expect(callsOf(edges)).toEqual(["a.py#declared -> a.py#A.go high 2", "a.py#flow -> a.py#A.go low 3"]);
   });
 
-  it("a name assigned again takes the type of its latest assignment, and an unknown one has no type", async () => {
+  it("a name has a type only when every assignment to it in the function agrees", async () => {
     const edges = await repo({
       "a.py": `class A:
   def go(self): pass
@@ -192,13 +192,26 @@ def f(y):
   a = y
   a.go()
 
-def g():
-  a = A()
+def g(c):
+  if c:
+    a = A()
+  else:
+    a = B()
+  a.go()
+
+def h(c):
+  if c:
+    a = A()
+  else:
+    a = A()
+  a.go()
+
+def i(a: A):
   a = B()
   a.go()
 `,
     });
-    expect(callsOf(edges)).toEqual(["a.py#g -> a.py#B.go low 3"]);
+    expect(callsOf(edges)).toEqual(["a.py#h -> a.py#A.go low 3"]);
   });
 
   it("a parameter, a loop variable, a comprehension variable and a nested function hide a name of the file", async () => {

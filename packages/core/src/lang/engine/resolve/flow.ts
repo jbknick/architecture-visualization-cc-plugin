@@ -4,7 +4,7 @@ import type { EdgeRecord } from "../../../types.js";
 import type { CallResolver } from "../module.js";
 import type { LanguagePack } from "../pack.js";
 import { EdgeSet } from "./edges.js";
-import { type Env, type Scope, TypeCalls } from "./typed.js";
+import { type Env, type Local, type Scope, TypeCalls } from "./typed.js";
 import type { Named, Ty, TypeInfo, VarInfo } from "./typeindex.js";
 import type { Decl, DeclSource, FlowAttr } from "./typing.js";
 
@@ -34,6 +34,20 @@ export class FlowCalls extends TypeCalls {
   constructor(pack: LanguagePack, ctx: ResolveContext, types: TypeCalls) {
     super(pack, ctx, types);
     if (!pack.nodes.typing?.flow) throw new Error(`${pack.id}: the pack has no flow rules`);
+  }
+
+  /**
+   * A name whose nearest declaration gets its type from a flow fact has a type only when every declaration of that name
+   * in the function (parameters, typed and untyped assignments) gives the same one: values that reach it along
+   * different paths leave its type unknown.
+   */
+  protected override typeOfLocal(l: Local, env: Env): Ty | null {
+    if (!l.decl.flow) return super.typeOfLocal(l, env);
+    const types = (env.scope.get(l.decl.name) ?? []).map((s) => super.typeOfLocal(s, env));
+    this.usedFlow = true;
+    const [first] = types;
+    const same = first && types.every((t) => t && JSON.stringify(t) === JSON.stringify(first));
+    return same ? first : null;
   }
 
   protected override sourceOf(decl: Decl): DeclSource {

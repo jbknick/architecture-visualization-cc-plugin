@@ -130,7 +130,7 @@ const TypingSchema = z.strictObject({
     declarations: z.array(
       z.strictObject({
         kind: field,
-        names: z.string(),
+        names: field,
         type: field.optional(),
         parentType: field.optional(),
         values: field,
@@ -139,7 +139,7 @@ const TypingSchema = z.strictObject({
     ),
     inferred: strings,
     valueLists: strings,
-    ranges: z.array(z.strictObject({ kind: field, names: z.string(), source: field, from })),
+    ranges: z.array(z.strictObject({ kind: field, names: field, source: field, from })),
     untyped: z.array(z.strictObject({ kind: field, names: z.string(), from, scope: strings.optional() })),
   }),
   lookups: strings,
