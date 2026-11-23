@@ -114,18 +114,50 @@ export const pythonPack = {
           "int float complex str bytes bytearray bool list dict set frozenset tuple object type range slice " +
           "memoryview property Exception BaseException"
         ).split(" "),
-        // A base written `Base[T]`, a keyword argument of a class (`metaclass=M`), a forward reference written as a string
-        // and a union (`A | None`) are not read as types.
+        // A base written `Base[T]`, a keyword argument of a class (`metaclass=M`), a string and a union (`A | None`) are
+        // not read as a base.
         unread: ["subscript", "keyword_argument", "string", "binary_operator"],
+        // An annotation `Optional[A]` (also `typing.Optional[A]`), `A | None` and `None | A` reads as `A`; `A | B` is not read.
+        nullable: {
+          generics: ["Optional"],
+          forms: [
+            { kind: "generic_type", head: "", arguments: { kind: "type_parameter" } },
+            { kind: "subscript", head: "value", arguments: { field: "subscript" } },
+          ],
+          union: {
+            kind: "binary_operator",
+            operator: "operator",
+            operators: ["|"],
+            sides: ["left", "right"],
+            none: ["none"],
+          },
+        },
+        // A forward reference reads as the plain or qualified name inside the string.
+        quoted: {
+          kind: "string",
+          content: "string_content",
+          name: /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/,
+        },
       },
       // Each file is a module, found by its path below the workspace (or below its `src` folder); `__init__` stands for its folder.
-      package: { path: "file", roots: ["src"], index: "__init__" },
+      // A name imported from an `__init__` file that it imports itself is followed, through at most three such files.
+      package: { path: "file", roots: ["src"], index: "__init__", reexports: 3 },
+      // `@overload` (also `typing.overload`) marks the stubs of a function that one declaration without it implements.
+      decorators: { wrapper: "decorated_definition", entry: "decorator", overloads: ["overload"] },
+      // Calling a class runs `__init__`. A class with a decorator or a keyword among its bases, one that declares `__new__`
+      // and one that has an enumeration or a named tuple among its bases are created some other way.
+      construction: {
+        initializer: "__init__",
+        creators: ["__new__"],
+        special: ["Enum", "IntEnum", "StrEnum", "Flag", "IntFlag", "NamedTuple", "TypedDict"],
+      },
+      // `super()` without arguments is the one base of the class around the method.
+      parent: { call: "super", arguments: "arguments" },
       // The result of `async def` is a coroutine, not the declared type.
       deferred: "async",
       flow: {
         untyped: ["assignment"],
         self: "self",
-        initializer: "__init__",
         attribute: {
           kind: "assignment",
           target: "left",
@@ -145,7 +177,7 @@ export const pythonPack = {
         callable: false,
       },
       interfaces: { embeds: [], embedKinds: [] },
-      supertypes: [{ field: "superclasses", edge: "extends" }],
+      supertypes: [{ field: "superclasses", edge: "extends", keywords: ["keyword_argument"] }],
       implements: "nominal",
       generics: "type_parameters",
       vars: { declarations: ["assignment"], specs: ["assignment"], type: "type", value: "right" },

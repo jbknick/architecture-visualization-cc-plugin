@@ -112,7 +112,9 @@ export class Reader {
     let args: (TypeRef | null)[] | undefined;
     while (b) {
       const k = b.kind();
-      if (t.wrappers.includes(k)) b = b.namedChildren()[0] ?? null;
+      const nullable = this.nullable(b);
+      if (nullable) b = nullable.inner;
+      else if (t.wrappers.includes(k)) b = b.namedChildren()[0] ?? null;
       else if (k === t.generic.kind) {
         const list = t.generic.arguments
           ? b.namedChildren().find((c) => c.kind() === t.generic.arguments)
@@ -130,6 +132,7 @@ export class Reader {
       if (!args && this.tparams.includes(name)) return { k: "name", name, param: true };
       return { k: "name", name, owner: this.owner, ...(args ? { args } : {}) };
     }
+    if (t.quoted && k === t.quoted.kind) return this.quoted(b, t.quoted);
     if (t.qualified && k === t.qualified.kind)
       return {
         k: "qual",
@@ -145,6 +148,55 @@ export class Reader {
         elem: this.typeRef(b.field(t.maps.value), depth + 1),
       };
     return null;
+  }
+
+  /**
+   * The type a nullable annotation (`typing.type.nullable`) reads as: `inner` is the node of that type, null when the
+   * annotation is one of those forms but names no one type (a union of two types, a generic with several arguments).
+   * Null when the node is no such form (a generic of another name is an ordinary generic).
+   */
+  private nullable(b: SyntaxNode): { inner: SyntaxNode | null } | null {
+    const n = this.typing.type.nullable;
+    if (!n) return null;
+    const kind = b.kind();
+    if (kind === n.union.kind) {
+      if (!n.union.operators.includes(b.field(n.union.operator)?.text() ?? "")) return null;
+      const [left, right] = n.union.sides.map((s) => b.field(s));
+      const absent = (x: SyntaxNode | null | undefined): boolean => !!x && n.union.none.includes(x.kind());
+      if (absent(left) === absent(right)) return { inner: null };
+      return { inner: (absent(left) ? right : left) ?? null };
+    }
+    const form = n.forms.find((f) => f.kind === kind);
+    const head = form ? (form.head === "" ? b.namedChildren()[0] : b.field(form.head)) : null;
+    if (!form || !head) return null;
+    const sep = this.pack.nodes.import.separator;
+    if (!n.generics.includes(head.text().split(sep).pop() ?? "")) return null;
+    const { kind: holder, field } = form.arguments;
+    const comments = this.pack.tokens.comments;
+    const list = holder
+      ? (b
+          .namedChildren()
+          .find((c) => c.kind() === holder)
+          ?.namedChildren() ?? [])
+      : b.fieldChildren(field ?? "");
+    const given = list.filter((c) => !comments.includes(c.kind()));
+    return { inner: given.length === 1 ? (given[0] ?? null) : null };
+  }
+
+  /** A type written as a string: the plain or qualified name inside it; null for any other text. */
+  private quoted(s: SyntaxNode, rule: { content: string; name: RegExp }): TypeRef | null {
+    const parts = s.namedChildren();
+    // An interpolation is a child that has children of its own.
+    if (parts.some((c) => c.kind() !== rule.content && c.namedChildren().length > 0)) return null;
+    const text = parts.filter((c) => c.kind() === rule.content);
+    const written = text.length === 1 ? (text[0]?.text() ?? "") : "";
+    if (!rule.name.test(written)) return null;
+    const segments = written.split(this.pack.nodes.import.separator);
+    const name = segments.pop() ?? "";
+    if (segments.length > 0)
+      return { k: "qual", qualifier: segments.join(this.pack.nodes.import.separator), name };
+    if (this.tparams.includes(name)) return { k: "name", name, param: true };
+    return { k: "name", name, owner: this.owner };
   }
 
   /** The type expressions inside a node that lists types (`implements A, B` holds a list holding both). */
@@ -215,6 +267,7 @@ export class Reader {
     if (!x || depth > MAX_DEPTH) return null;
     const e = this.typing.expressions;
     const kind = x.kind();
+    if (this.isParentCall(x)) return { k: "base" };
     if (this.isCall(kind)) return { k: "call", call: this.call(x, depth + 1) };
     if (this.typing.enclosing?.self.includes(kind)) return { k: "self", ...this.bodyOf(x) };
     if (this.typing.enclosing?.parent.includes(kind)) return { k: "parent", ...this.bodyOf(x) };
@@ -243,6 +296,17 @@ export class Reader {
         name: x.field(member.name)?.text() ?? "",
       };
     return null;
+  }
+
+  /** True for the call the pack's `parent` rule names, written without arguments: it stands for the one base of the type around. */
+  private isParentCall(x: SyntaxNode): boolean {
+    const rule = this.typing.parent;
+    const field = this.pack.nodes.callee.field;
+    if (!rule || field === null || !this.pack.nodes.call.includes(x.kind())) return false;
+    const fn = unparen(this.typing, x.field(field));
+    if (!fn || !this.typing.callee.names.includes(fn.kind()) || fn.text() !== rule.call) return false;
+    const comments = this.pack.tokens.comments;
+    return (x.field(rule.arguments)?.namedChildren() ?? []).every((c) => comments.includes(c.kind()));
   }
 
   /** True for the kind of a call site read as a call: a call, or a conversion written as one. */
@@ -625,6 +689,24 @@ export class Reader {
 
   // --- declarations -------------------------------------------------------------------------
 
+  /** True when a decorator the pack lists as an overload mark is written on the declaration `d`. */
+  private isOverload(d: SyntaxNode): boolean {
+    const rule = this.typing.decorators;
+    const wrapper = d.parent();
+    if (!rule || wrapper?.kind() !== rule.wrapper) return false;
+    const sep = this.pack.nodes.import.separator;
+    const callee = this.typing.callee;
+    // A decorator that is a call (`@mark(1)`) is not a plain mark.
+    const plain = [...callee.names, ...callee.members.map((m) => m.kind)];
+    return wrapper
+      .namedChildren()
+      .filter((c) => c.kind() === rule.entry)
+      .some((c) => {
+        const e = c.namedChildren()[0];
+        return !!e && plain.includes(e.kind()) && rule.overloads.includes(e.text().split(sep).pop() ?? "");
+      });
+  }
+
   /** The package name, imports, functions, methods, types and variables a file declares. */
   declarations(root: SyntaxNode): FileDecls {
     const n = this.pack.nodes;
@@ -674,6 +756,7 @@ export class Reader {
             start,
             arity: this.arityOf(d, fn),
             tparams: this.typeParams(d, fn.generics),
+            ...(this.isOverload(d) ? { overload: true as const } : {}),
           });
       } else if (rule) {
         const name = d.field(rule.name)?.text();
@@ -695,6 +778,7 @@ export class Reader {
             start,
             arity: this.arityOf(d, rule),
             tparams: this.typeParams(d, rule.generics),
+            ...(this.isOverload(d) ? { overload: true as const } : {}),
           });
       } else if (bodied) {
         const name = bodiedName(bodied, d, owner);
@@ -749,6 +833,8 @@ export class Reader {
       fields: new Map(),
       embedded: [],
       supers: [],
+      bases: 0,
+      opaque: false,
       methods: new Map(),
       embeds: [],
       open: false,
@@ -765,10 +851,11 @@ export class Reader {
   private attributes(body: SyntaxNode, name: string): Map<string, FlowAttr[]> {
     const out = new Map<string, FlowAttr[]>();
     const flow = this.typing.flow;
-    if (!flow) return out;
+    const initializer = this.typing.construction?.initializer;
+    if (!flow || initializer === undefined) return out;
     for (const m of membersOf(this.pack, body)) {
       const rule = this.rule(m, name);
-      if (!rule || m.field(rule.name)?.text() !== flow.initializer) continue;
+      if (!rule || m.field(rule.name)?.text() !== initializer) continue;
       const code = rule.body ? m.field(rule.body) : null;
       if (!code) continue;
       const decls = this.scopeOf(m, name, []);
@@ -811,10 +898,17 @@ export class Reader {
       const holders = s.field
         ? node.fieldChildren(s.field)
         : node.namedChildren().filter((c) => c.kind() === s.kind);
-      for (const h of holders)
+      for (const h of holders) {
         for (const ty of this.typesIn(h))
           decl.supers.push({ type: this.typeRef(ty), edge: s.edge, line: ty.range().start.line + 1 });
+        for (const e of h.namedChildren()) {
+          if (this.pack.tokens.comments.includes(e.kind())) continue;
+          if (s.keywords?.includes(e.kind())) decl.opaque = true;
+          else decl.bases++;
+        }
+      }
     }
+    if (t.decorators && node.parent()?.kind() === t.decorators.wrapper) decl.opaque = true;
     const rule = bodiedRule(this.pack, node.kind());
     const body = rule ? node.field(rule.body) : null;
     this.owner = name;

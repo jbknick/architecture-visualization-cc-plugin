@@ -700,6 +700,30 @@
     },
     {
       "src": "sym:python-basic:src/acme/cli.py#main",
+      "dst": "sym:python-basic:src/acme/models.py#User.__init__",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/acme/cli.py:18"
+      ],
+      "fileId": "file:python-basic:src/acme/cli.py",
+      "level": 2
+    },
+    {
+      "src": "sym:python-basic:src/acme/cli.py#main",
+      "dst": "sym:python-basic:src/acme/service.py#Service.__init__",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/acme/cli.py:17"
+      ],
+      "fileId": "file:python-basic:src/acme/cli.py",
+      "level": 2
+    },
+    {
+      "src": "sym:python-basic:src/acme/cli.py#main",
       "dst": "sym:python-basic:src/acme/service.py#Service.run",
       "kind": "calls",
       "confidence": "low",
@@ -758,6 +782,18 @@
       "fileId": "file:python-basic:src/acme/models.py"
     },
     {
+      "src": "sym:python-basic:src/acme/models.py#Admin.display",
+      "dst": "sym:python-basic:src/acme/models.py#User.display",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/acme/models.py:14"
+      ],
+      "fileId": "file:python-basic:src/acme/models.py",
+      "level": 2
+    },
+    {
       "src": "sym:python-basic:src/acme/service.py#Service",
       "dst": "sym:python-basic:src/acme/base.py#Base",
       "kind": "extends",
@@ -767,6 +803,18 @@
         "src/acme/service.py:7"
       ],
       "fileId": "file:python-basic:src/acme/service.py"
+    },
+    {
+      "src": "sym:python-basic:src/acme/service.py#Service.__init__",
+      "dst": "sym:python-basic:src/acme/store.py#Store.__init__",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/acme/service.py:9"
+      ],
+      "fileId": "file:python-basic:src/acme/service.py",
+      "level": 2
     },
     {
       "src": "sym:python-basic:src/acme/service.py#Service.run",
@@ -850,6 +898,30 @@
         "src/acme/util.py:2"
       ],
       "fileId": "file:python-basic:src/acme/util.py",
+      "level": 2
+    },
+    {
+      "src": "sym:python-basic:tests/test_service.py#test_run_saves_the_user",
+      "dst": "sym:python-basic:src/acme/models.py#User.__init__",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "tests/test_service.py:7"
+      ],
+      "fileId": "file:python-basic:tests/test_service.py",
+      "level": 2
+    },
+    {
+      "src": "sym:python-basic:tests/test_service.py#test_run_saves_the_user",
+      "dst": "sym:python-basic:src/acme/service.py#Service.__init__",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "tests/test_service.py:6"
+      ],
+      "fileId": "file:python-basic:tests/test_service.py",
       "level": 2
     },
     {

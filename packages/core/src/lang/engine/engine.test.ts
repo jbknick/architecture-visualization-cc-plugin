@@ -50,6 +50,26 @@ const TypingSchema = z.strictObject({
     maps: z.strictObject({ kind: field, key: field, value: field }).optional(),
     predeclared: strings,
     unread: strings,
+    nullable: z
+      .strictObject({
+        generics: strings,
+        forms: z.array(
+          z.strictObject({
+            kind: field,
+            head: z.string(),
+            arguments: z.strictObject({ kind: field.optional(), field: field.optional() }),
+          }),
+        ),
+        union: z.strictObject({
+          kind: field,
+          operator: field,
+          operators: strings,
+          sides: z.tuple([field, field]),
+          none: strings,
+        }),
+      })
+      .optional(),
+    quoted: z.strictObject({ kind: field, content: field, name: regexp }).optional(),
   }),
   package: z.strictObject({
     clause: field.optional(),
@@ -57,13 +77,16 @@ const TypingSchema = z.strictObject({
     separate: field.optional(),
     roots: strings.optional(),
     index: field.optional(),
+    reexports: z.number().int().positive().optional(),
   }),
+  decorators: z.strictObject({ wrapper: field, entry: field, overloads: strings }).optional(),
+  construction: z.strictObject({ initializer: field, creators: strings, special: strings }).optional(),
+  parent: z.strictObject({ call: field, arguments: field }).optional(),
   deferred: field.optional(),
   flow: z
     .strictObject({
       untyped: strings,
       self: field,
-      initializer: field,
       attribute: z.strictObject({
         kind: field,
         target: field,
@@ -90,6 +113,7 @@ const TypingSchema = z.strictObject({
       field: field.optional(),
       kind: field.optional(),
       edge: z.enum(["extends", "implements"]),
+      keywords: strings.optional(),
     }),
   ),
   implements: z.enum(["structural", "nominal"]),
