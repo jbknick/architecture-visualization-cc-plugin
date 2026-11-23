@@ -1,0 +1,59 @@
+{
+  "repos": [
+    {
+      "name": "django",
+      "url": "https://github.com/django/django.git",
+      "sha": "f14af5a88472ca10e2e94b37d6c17ee48cbdeb4d",
+      "stack": ["python", "unannotated"],
+      "lang": ["python"],
+      "role": "held-out",
+      "pip": ["asgiref", "sqlparse"]
+    },
+    {
+      "name": "jackson-databind",
+      "url": "https://github.com/FasterXML/jackson-databind.git",
+      "sha": "949188f567b60b88851f4898eeb9bc82d098cfbe",
+      "stack": ["java", "maven"],
+      "lang": ["java"],
+      "role": "held-out"
+    },
+    {
+      "name": "mybatis-3",
+      "url": "https://github.com/mybatis/mybatis-3.git",
+      "sha": "e988edd61fa44489f256c6d497e3d013305e93ad",
+      "stack": ["java", "maven"],
+      "lang": ["java"],
+      "role": "held-out"
+    },
+    {
+      "name": "prefect",
+      "url": "https://github.com/PrefectHQ/prefect.git",
+      "sha": "ba45ac194f5aa918935b86388ee9651950fb06d6",
+      "stack": ["python", "annotated"],
+      "lang": ["python"],
+      "role": "held-out",
+      "pip": [],
+      "pythonPath": [
+        "src",
+        "src/integrations/prefect-aws",
+        "src/integrations/prefect-azure",
+        "src/integrations/prefect-bitbucket",
+        "src/integrations/prefect-dask",
+        "src/integrations/prefect-databricks",
+        "src/integrations/prefect-dbt",
+        "src/integrations/prefect-docker",
+        "src/integrations/prefect-email",
+        "src/integrations/prefect-gcp",
+        "src/integrations/prefect-github",
+        "src/integrations/prefect-gitlab",
+        "src/integrations/prefect-kubernetes",
+        "src/integrations/prefect-ray",
+        "src/integrations/prefect-redis",
+        "src/integrations/prefect-shell",
+        "src/integrations/prefect-slack",
+        "src/integrations/prefect-snowflake",
+        "src/integrations/prefect-sqlalchemy"
+      ]
+    }
+  ]
+}
