@@ -543,6 +543,86 @@ fn c(x: T) { x.m(); T::new(); }
     ]);
   });
 
+  it("a `let` in an inner block is known to the end of that block, and the outer name is known again after it", async () => {
+    const edges = await repo({
+      "src/lib.rs": `
+pub struct A; impl A { pub fn new() -> A { A } pub fn m(&self) {} }
+pub struct B; impl B { pub fn new() -> B { B } pub fn m(&self) {} }
+fn t() { let x = A::new(); { let x = B::new(); x.m(); } x.m(); }
+fn u(buf: A) { let n = { let buf = B::new(); buf.m(); 1 }; buf.m(); }
+`,
+    });
+    expect(show(edges)).toEqual([
+      "src/lib.rs#t -> src/lib.rs#A.m high",
+      "src/lib.rs#t -> src/lib.rs#A.new high",
+      "src/lib.rs#t -> src/lib.rs#B.m high",
+      "src/lib.rs#t -> src/lib.rs#B.new high",
+      "src/lib.rs#u -> src/lib.rs#A.m high",
+      "src/lib.rs#u -> src/lib.rs#B.m high",
+      "src/lib.rs#u -> src/lib.rs#B.new high",
+    ]);
+  });
+
+  it("a `use` in a function hides the module's own name of that name", async () => {
+    const edges = await repo({
+      "src/lib.rs": `
+pub mod other;
+pub struct A; impl A { pub fn new() -> A { A } pub fn m(&self) {} }
+fn helper() {}
+fn t() { use crate::other::helper; helper(); }
+fn u() { use crate::other::A; let a = A::new(); a.m(); }
+fn v() { use crate::other::{helper as helper2}; helper(); helper2(); }
+fn w() { helper(); }
+`,
+      "src/other.rs": "pub fn helper() {} pub struct A;",
+    });
+    // `v` renames the name it brings, so its own `helper` is still the module's.
+    expect(show(edges)).toEqual([
+      "src/lib.rs#v -> src/lib.rs#helper high",
+      "src/lib.rs#w -> src/lib.rs#helper high",
+    ]);
+  });
+
+  it("a type declared in a function hides the module's type of that name", async () => {
+    const edges = await repo({
+      "src/lib.rs": `
+pub struct A; impl A { pub fn new() -> A { A } pub fn m(&self) {} }
+fn f() { struct A; impl A { fn new() -> A { A } fn m(&self) {} } A::new().m(); let a: A = A; a.m(); }
+fn g() { A::new().m(); }
+`,
+    });
+    expect(show(edges)).toEqual([
+      "src/lib.rs#g -> src/lib.rs#A.m high",
+      "src/lib.rs#g -> src/lib.rs#A.new high",
+    ]);
+  });
+
+  it("a block of members in a module written in place makes the method of that name ambiguous", async () => {
+    const edges = await repo({
+      "src/lib.rs": `
+pub trait Tr { fn go(&self); }
+pub struct S;
+impl Tr for S { fn go(&self) {} }
+mod inner { impl super::S { pub fn go(&self) {} } }
+fn t(s: S) { s.go(); }
+pub struct Q;
+impl Q { fn p(&self) {} fn only(&self) {} }
+mod cfgd { impl crate::Q { fn p(&self) {} } }
+fn u(q: Q) { q.p(); q.only(); }
+`,
+    });
+    expect(show(edges)).toEqual(["src/lib.rs#u -> src/lib.rs#Q.only high"]);
+  });
+
+  it("with a library and a binary, `crate::` is the binary's own root in `main.rs` and unknown in its other files", async () => {
+    const edges = await repo({
+      "src/lib.rs": "pub fn setup() {}",
+      "src/main.rs": "mod cli;\nfn setup() {}\nfn main() { crate::setup(); }",
+      "src/cli.rs": "pub fn run() { super::setup(); crate::setup(); }",
+    });
+    expect(show(edges)).toEqual(["src/main.rs#main -> src/main.rs#setup high"]);
+  });
+
   it("a call of a field written in parentheses is no call of the method of that name", async () => {
     const edges = await repo({
       "src/lib.rs": `

@@ -105,6 +105,8 @@ export class Reader {
   private tparams: ReadonlyMap<string, TypeRef | null> = new Map();
   /** False while a result type is read: the parameter of a generic function is then the type the caller gives it, not its bound. */
   private bounded = true;
+  /** The names that items and imports declared in the body of the function being read bring (`locals.items`): none is looked up. */
+  private shadow: ReadonlySet<string> = new Set();
 
   constructor(private readonly pack: LanguagePack) {
     if (!pack.nodes.typing) throw new Error(`${pack.id}: the pack has no typing rules`);
@@ -140,6 +142,7 @@ export class Reader {
     const k = b.kind();
     if (t.names.includes(k)) {
       const name = b.text();
+      if (this.shadow.has(name)) return null;
       // The name for the type around the code is that type; with no type around, it is no type.
       if (t.self !== undefined && name === t.self)
         return this.owner === null || this.owner === this.pack.nodes.types.impls?.baseType.unknown
@@ -152,12 +155,11 @@ export class Reader {
       return { k: "name", name, owner: this.owner, ...(args ? { args } : {}) };
     }
     if (t.quoted && k === t.quoted.kind) return this.quoted(b, t.quoted);
-    if (t.qualified && k === t.qualified.kind)
-      return {
-        k: "qual",
-        qualifier: b.field(t.qualified.qualifier)?.text() ?? "",
-        name: b.field(t.qualified.name)?.text() ?? "",
-      };
+    if (t.qualified && k === t.qualified.kind) {
+      const qualifier = b.field(t.qualified.qualifier)?.text() ?? "";
+      if (this.shadow.has(qualifier.split(this.pack.nodes.import.separator)[0] ?? "")) return null;
+      return { k: "qual", qualifier, name: b.field(t.qualified.name)?.text() ?? "" };
+    }
     const seq = t.sequences.find((s) => s.kind === k);
     if (seq) return { k: "seq", elem: this.typeRef(b.field(seq.element), depth + 1) };
     if (t.maps && k === t.maps.kind)
@@ -428,13 +430,16 @@ export class Reader {
     const line = (fn ?? at).range().start.line + 1;
     if (!fn) return { k: "none", line };
     const kind = fn.kind();
-    if (t.callee.names.includes(kind))
+    if (t.callee.names.includes(kind)) {
+      if (this.shadow.has(fn.text())) return { k: "none", line };
       return { k: "name", name: fn.text(), pos: fn.range().start.index, line, ...this.bodyOf(fn) };
+    }
     const path = t.callee.paths?.find((r) => r.kind === kind);
     if (path) {
       const segments = this.segments(fn, path, 0);
       // A type parameter in front of the name stands for a type no one knows here.
-      if (!segments || this.tparams.has(segments[0] ?? "")) return { k: "none", line };
+      if (!segments || this.tparams.has(segments[0] ?? "") || this.shadow.has(segments[0] ?? ""))
+        return { k: "none", line };
       return { k: "path", segments, pos: fn.range().start.index, line };
     }
     const member = t.callee.members.find((r) => r.kind === kind);
@@ -508,6 +513,33 @@ export class Reader {
     this.owner = f?.owner ?? null;
     this.fn = f?.node ?? null;
     this.tparams = f ? this.paramsIn(f.node, f.owner, f.hosts) : new Map();
+    this.shadow = f ? this.shadowOf(f.node) : new Set();
+  }
+
+  /** The names that the items and imports declared in the body of a function bring (`locals.items`). */
+  private shadowOf(fn: SyntaxNode): Set<string> {
+    const items = this.typing.locals.items;
+    const out = new Set<string>();
+    if (!items) return out;
+    for (const k of items.kinds)
+      for (const d of fn.findAll({ rule: { kind: k.kind } })) {
+        const name = d.field(k.name)?.text();
+        if (name) out.add(name);
+      }
+    const trees = this.pack.nodes.import.trees;
+    if (items.imports && trees) {
+      const held = new Set<number>();
+      for (const u of fn.findAll({ rule: { any: trees.declarations.map((kind) => ({ kind })) } })) {
+        const holder = u.parent();
+        if (!holder || held.has(holder.range().start.index)) continue;
+        held.add(holder.range().start.index);
+        for (const i of rawImportsOf(this.pack, holder)) {
+          const name = i.alias ?? i.name;
+          if (name && name !== "*") out.add(name);
+        }
+      }
+    }
+    return out;
   }
 
   /**
@@ -545,6 +577,7 @@ export class Reader {
       this.owner = h.owner;
       this.fn = h.node;
       this.tparams = this.paramsIn(h.node, h.owner, chain.slice(0, i));
+      this.shadow = this.shadowOf(h.node);
       const own = i === chain.length - 1;
       for (const d of this.decls(h.node)) out.push(own ? d : { ...d, outer: { owner: h.owner } });
     });
@@ -622,8 +655,22 @@ export class Reader {
     const blank = this.pack.tokens.locals.blank;
     const flow = t.flow;
     const out: Decl[] = [];
-    const add = (name: string, pos: number, source: DeclSource, byFlow?: DeclSource): void => {
-      if (name !== blank) out.push({ name, pos, source, ...(byFlow ? { flow: byFlow } : {}) });
+    const add = (name: string, pos: number, source: DeclSource, byFlow?: DeclSource, end?: number): void => {
+      if (name !== blank)
+        out.push({
+          name,
+          pos,
+          ...(end === undefined ? {} : { end }),
+          source,
+          ...(byFlow ? { flow: byFlow } : {}),
+        });
+    };
+    /** Where the nearest block around a node ends (`locals.blocks`); undefined when none is listed or none holds the node. */
+    const blockEnd = (n: SyntaxNode): number | undefined => {
+      if (!l.blocks) return undefined;
+      for (let up = n.parent(); up; up = up.parent())
+        if (l.blocks.includes(up.kind())) return up.range().end.index;
+      return undefined;
     };
     const fnStart = fd.range().start.index;
     const fnEnd = fd.range().end.index;
@@ -684,8 +731,8 @@ export class Reader {
             values,
             count: names.length,
           };
-          if (byFlow) add(n.text(), at(decl.from), { k: "opaque" }, source);
-          else add(n.text(), at(decl.from), source);
+          if (byFlow) add(n.text(), at(decl.from), { k: "opaque" }, source, blockEnd(d));
+          else add(n.text(), at(decl.from), source, undefined, blockEnd(d));
         }
         continue;
       }
@@ -986,7 +1033,52 @@ export class Reader {
     });
     this.owner = null;
     this.tparams = new Map();
+    this.shadow = new Set();
+    if (n.types.impls?.nested && n.import.submodules) this.nestedMethods(root, n.import.submodules, out);
     return out;
+  }
+
+  /**
+   * The methods of the blocks of members (`types.impls.nested`) that sit in modules written in place, at any depth below
+   * `node`: methods with no symbol, of the type the block names, which is the last name of a qualified one. They are the
+   * methods of a type that no block outside such a module shows, so a call that one of them could mean is not certain.
+   */
+  private nestedMethods(
+    node: SyntaxNode,
+    module: NonNullable<LanguagePack["nodes"]["import"]["submodules"]>,
+    out: FileDecls,
+    inside = false,
+  ): void {
+    const n = this.pack.nodes;
+    const unknown = n.types.impls?.baseType.unknown ?? "";
+    for (const c of node.namedChildren()) {
+      if (c.kind() === module.kind) {
+        const body = c.field(module.body);
+        if (body) this.nestedMethods(body, module, out, true);
+        continue;
+      }
+      const impl = inside ? implRule(this.pack, c) : undefined;
+      if (!impl) continue;
+      const type = c.field(impl.type);
+      const qualified = this.typing.type.qualified;
+      let owner = baseTypeName(impl.baseType, type);
+      if (owner === unknown && qualified && type?.kind() === qualified.kind)
+        owner = type.field(qualified.name)?.text() ?? unknown;
+      if (owner === unknown || parameterNames(this.pack, c.field(impl.generics)).includes(owner)) continue;
+      for (const m of c.field(impl.body)?.namedChildren() ?? []) {
+        const rule = n.method.find((r) => r.kind === m.kind() && !r.receiver);
+        const name = rule ? m.field(rule.name)?.text() : undefined;
+        if (rule && name)
+          out.methods.push({
+            key: `${owner}.${name}`,
+            owner: null,
+            results: [],
+            start: m.range().start.index,
+            arity: this.arityOf(m, rule),
+            tparams: [],
+          });
+      }
+    }
   }
 
   /** A type declaration with nothing read yet; the type around it is the one being read (`this.owner`). */

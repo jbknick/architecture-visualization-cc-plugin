@@ -75,6 +75,8 @@ export const rustPack = {
           unknown: "?",
         },
         generics: "type_parameters",
+        // The blocks in a module written in place add methods to their type, though no symbol stands for them.
+        nested: true,
       },
     },
     values: { declarations: [], specs: [], groups: [], name: "name", nameKinds: [] },
@@ -192,6 +194,22 @@ export const rustPack = {
       locals: {
         nameKinds: ["identifier", "shorthand_field_identifier"],
         nameLists: [],
+        // A `let` is known to the end of its block; the name of an outer one is known again after it.
+        blocks: ["block"],
+        // A type, a module or a constant declared in a body, and what a `use` in a body brings, hide the module's own.
+        items: {
+          kinds: [
+            { kind: "struct_item", name: "name" },
+            { kind: "enum_item", name: "name" },
+            { kind: "union_item", name: "name" },
+            { kind: "trait_item", name: "name" },
+            { kind: "type_item", name: "name" },
+            { kind: "mod_item", name: "name" },
+            { kind: "const_item", name: "name" },
+            { kind: "static_item", name: "name" },
+          ],
+          imports: true,
+        },
         parameters: [{ kind: "parameter", name: "pattern", type: "type", variadic: false, from: "start" }],
         declarations: [
           { kind: "let_declaration", names: "pattern", type: "type", values: "value", from: "end" },

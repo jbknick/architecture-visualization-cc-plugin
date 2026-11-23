@@ -484,6 +484,19 @@ export interface TypingRules {
      * node itself, of the kinds in `nameKinds`.
      */
     nameLists?: readonly string[];
+    /**
+     * Kinds of the nodes that end the scope of a name: a declared name (a declaration, not a parameter) is seen from where
+     * `from` says to the end of the nearest node around it of one of these kinds, and an outer name of the same spelling is
+     * seen again after it. Without this a name is seen to the end of the function.
+     */
+    blocks?: readonly string[];
+    /**
+     * Declarations inside a function of names the module has too: the kinds (and the field of the name) of items declared
+     * in a body, and, with `imports`, the names that an import declared in a body brings (`import.trees`, read in the node
+     * that holds the declaration). Such a name hides, in the whole function, the type, the function and the module of that
+     * name that a file level declaration or import binds: it is looked up nowhere.
+     */
+    items?: { kinds: readonly { kind: string; name: string }[]; imports?: true };
     /** Parameters: the field of the names and of the type; a `variadic` one holds a sequence of its type. */
     parameters: readonly {
       kind: string;
@@ -590,6 +603,10 @@ export interface LanguagePack {
        * expression, and the field of the block's own type parameters. Its members are symbols named `<type>.<member>`, as
        * those of a type body are; a block whose type is one of its own type parameters, or is not read, names the type
        * `baseType.unknown`. The type has the interface among its supertypes (an `implements` edge) wherever the block is.
+       * With `nested`, the blocks in a module written in place (`import.submodules` says its kind and its body field) add
+       * their methods to the type of that name, as methods with no symbol: the methods the type has are then not told by
+       * the blocks outside such a module alone. The type is the last name of a qualified one, and any type with that name
+       * in the file's package may be meant.
        */
       impls?: {
         kind: string;
@@ -598,6 +615,7 @@ export interface LanguagePack {
         body: string;
         baseType: BaseTypeRule;
         generics: string;
+        nested?: true;
       };
     };
     /** Constants and variables: every name is a `const` symbol. */

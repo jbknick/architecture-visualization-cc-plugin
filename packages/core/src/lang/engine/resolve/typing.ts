@@ -78,6 +78,8 @@ export type DeclSource =
 export interface Decl {
   name: string;
   pos: number;
+  /** Source offset at which the name stops being visible (`locals.blocks`); absent when it is visible to the end of the function. */
+  end?: number;
   source: DeclSource;
   /** What the flow resolver reads in place of `source` (a name without a declared type that gets its type from a value). */
   flow?: DeclSource;

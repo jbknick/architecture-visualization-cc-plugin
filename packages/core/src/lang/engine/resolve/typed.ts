@@ -76,7 +76,9 @@ interface Resolved {
 
 function lookupLocal(scope: Scope, name: string, pos: number): Local | null {
   let best: Local | null = null;
-  for (const l of scope.get(name) ?? []) if (l.pos <= pos && (!best || l.pos > best.pos)) best = l;
+  for (const l of scope.get(name) ?? [])
+    if (l.pos <= pos && (l.decl.end === undefined || pos < l.decl.end) && (!best || l.pos > best.pos))
+      best = l;
   return best;
 }
 

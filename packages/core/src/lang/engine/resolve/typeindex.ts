@@ -165,6 +165,8 @@ export class TypeIndex {
   private readonly blocks = new Map<string, { type: Named; interface: TypeRef | null; line: number }[]>();
   /** The name of the entry file that stands for each workspace (`typing.package.entries`), by workspace id. */
   private readonly rootEntries = new Map<string, string>();
+  /** The workspaces with more than one entry file: a file other than an entry belongs to a crate that is not known. */
+  private readonly dualRoots = new Set<string>();
 
   constructor(
     private readonly pack: LanguagePack,
@@ -182,15 +184,20 @@ export class TypeIndex {
       .sort((a, b) => cmp(a.name, b.name) || cmp(a.id, b.id));
     const entries = this.typing.package.entries;
     if (entries && this.typing.package.path === "file") {
-      // The first of the entry names that a workspace has directly in its root folder is the file that stands for it.
+      // The first of the entry names that a workspace has directly in its root folder is the file that stands for it; with
+      // another one too, the workspace has two crates, and which of them a file belongs to is not known.
+      const found = new Map<string, number>();
       for (const entry of imports.files) {
         if (!entry.workspace) continue;
         const place = this.placeOf(entry, entry.workspace);
         const at = entries.indexOf(place.stem);
+        if (place.dirs.length !== 0 || at < 0) continue;
+        found.set(entry.workspace.id, (found.get(entry.workspace.id) ?? 0) + 1);
         const have = this.rootEntries.get(entry.workspace.id);
-        if (place.dirs.length === 0 && at >= 0 && (have === undefined || at < entries.indexOf(have)))
+        if (have === undefined || at < entries.indexOf(have))
           this.rootEntries.set(entry.workspace.id, place.stem);
       }
+      for (const [id, count] of found) if (count > 1) this.dualRoots.add(id);
     }
     for (const entry of imports.files) {
       const starts = new Map<number, string>();
@@ -543,17 +550,24 @@ export class TypeIndex {
     const [first = "", ...rest] = segments;
     const at = (w: WorkspaceRecord, path: readonly string[]): string =>
       this.moduleKey(w, path.join(this.sep));
-    if (first === words.root) return [at(from.workspace, rest)];
+    // With two entry files the root of the crate of a file is its own entry file, if it is one; for any other file it is not known.
+    const dual = this.dualRoots.has(from.workspace.id);
+    const secondary =
+      dual && here.length === 1 && (this.typing.package.entries ?? []).includes(here[0] ?? "");
+    if (first === words.root) {
+      if (!dual || here.length === 0) return [at(from.workspace, rest)];
+      return secondary ? [at(from.workspace, [...here, ...rest])] : [];
+    }
     if (first === words.self) return [at(from.workspace, [...here, ...rest])];
     if (first === words.parent) {
       let up = here;
       let tail = segments;
       while (tail[0] === words.parent) {
-        if (up.length === 0) return [];
+        if (up.length === 0 || secondary) return [];
         up = up.slice(0, -1);
         tail = tail.slice(1);
       }
-      return [at(from.workspace, [...up, ...tail])];
+      return dual && up.length === 0 ? [] : [at(from.workspace, [...up, ...tail])];
     }
     const named = [
       from.workspace,

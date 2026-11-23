@@ -188,6 +188,13 @@ const TypingSchema = z.strictObject({
   locals: z.strictObject({
     nameKinds: strings,
     nameLists: strings.optional(),
+    blocks: strings.optional(),
+    items: z
+      .strictObject({
+        kinds: z.array(z.strictObject({ kind: field, name: field })),
+        imports: z.literal(true).optional(),
+      })
+      .optional(),
     parameters: z.array(
       z.strictObject({ kind: field, name: z.string(), type: field, variadic: z.boolean(), from }),
     ),
@@ -275,6 +282,7 @@ const PackSchema = z.strictObject({
             unknown: field,
           }),
           generics: field,
+          nested: z.literal(true).optional(),
         })
         .optional(),
     }),
