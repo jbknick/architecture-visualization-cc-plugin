@@ -25,6 +25,7 @@ export default defineConfig({
     "@ast-grep/napi",
     "@ast-grep/lang-go",
     "@ast-grep/lang-java",
+    "@ast-grep/lang-python",
     "@huggingface/transformers",
     "onnxruntime-node",
   ],

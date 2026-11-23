@@ -7,7 +7,7 @@ import type { LanguageModule } from "../index.js";
 import { grammarAvailable } from "./grammar.js";
 import type { LanguagePack } from "./pack.js";
 import { parseWithPack } from "./parse.js";
-import { nameCallResolver, typeCallResolver, workspaceOfPath } from "./resolve/index.js";
+import { flowCallResolver, nameCallResolver, typeCallResolver, workspaceOfPath } from "./resolve/index.js";
 import { embeddingTextWithPack, streamsWithPack } from "./streams.js";
 import { detectPackWorkspaces, manifestFiles, packDependsOnEdges } from "./workspace.js";
 
@@ -78,11 +78,17 @@ function createPackResolver(pack: LanguagePack, calls: CallResolverFactory, ctx:
 /**
  * The language module of a pack: file rules, workspace discovery, parsing, token streams, embedding text and the data
  * of the pack (labels, hints, thresholds). Calls are resolved from declared types (level 2) when the pack says where its
- * types sit (`nodes.typing`) and by names alone (level 1) otherwise; both are in `resolve/`. On a platform where the
+ * types sit (`nodes.typing`), and by names alone (level 1) otherwise; a pack with `typing.flow` has, besides, the flow
+ * resolver (level 3) for the call sites the declared types leave without a target. All are in `resolve/`. On a platform where the
  * grammar does not load the module claims no extension, so its files are skipped and the other languages are indexed.
  */
 export function buildLanguage(pack: LanguagePack): LanguageModule {
-  const calls: CallResolverFactory = pack.nodes.typing ? typeCallResolver(pack) : nameCallResolver(pack);
+  const typing = pack.nodes.typing;
+  const calls: CallResolverFactory = !typing
+    ? nameCallResolver(pack)
+    : typing.flow
+      ? flowCallResolver(pack)
+      : typeCallResolver(pack);
   const skip = picomatch([...pack.skipPaths], { dot: true });
   return {
     id: pack.id as Lang,

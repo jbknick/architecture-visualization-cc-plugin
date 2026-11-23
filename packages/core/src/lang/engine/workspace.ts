@@ -4,6 +4,7 @@ import picomatch from "picomatch";
 import { fileId as makeFileId, workspaceId } from "../../ids.js";
 import type { EdgeRecord, WorkspaceRecord } from "../../types.js";
 import type { WorkspaceDetectionConfig } from "../../workspace/index.js";
+import { readConfig } from "./config.js";
 import { grammarAvailable, warnSkipped } from "./grammar.js";
 import type { LanguagePack, ManifestRule } from "./pack.js";
 import { readXml } from "./xml.js";
@@ -27,6 +28,28 @@ const unquote = (rule: ManifestRule, s: string): string => {
 
 const strip = (rule: ManifestRule, text: string): string => text.replace(rule.comment, "");
 
+/** The strings of a manifest by the path of the element or key that holds them; null for a manifest that is read as text. */
+function keyedValues(rule: ManifestRule, manifest: string): Map<string, string[]> | null {
+  if (rule.format === "xml") return readXml(manifest);
+  if (rule.format === "text") return null;
+  return readConfig(manifest, rule.format).values;
+}
+
+/** The name of a workspace as it is compared with the names that dependency entries give (`sameName` of the pack). */
+export function nameKey(pack: LanguagePack, name: string): string {
+  const s = pack.workspace.sameName;
+  if (!s) return name;
+  const folded = name.replace(s.fold, s.as);
+  return s.lower ? folded.toLowerCase() : folded;
+}
+
+/** True when the workspace `from` lists the workspace `on` among its dependencies. */
+export const dependsOn = (
+  pack: LanguagePack,
+  from: Pick<WorkspaceRecord, "deps">,
+  on: Pick<WorkspaceRecord, "name">,
+): boolean => from.deps.some((d) => nameKey(pack, d) === nameKey(pack, on.name));
+
 /** Where a manifest sits: the folder it is in (repo-relative, `.` for the root) and the folder of the repo. */
 interface Place {
   abs: string;
@@ -41,13 +64,13 @@ export function parseManifestName(
   rule: ManifestRule = pack.workspace.manifests[0] as ManifestRule,
   place?: Place,
 ): string | null {
-  const xml = rule.format === "xml" ? readXml(manifest) : null;
+  const table = keyedValues(rule, manifest);
   for (const s of rule.name) {
     if ("directory" in s) {
       const n = place ? basename(place.dir === "." ? place.root : place.dir) : "";
       if (n !== "") return n;
     } else if ("path" in s) {
-      const v = xml?.get(s.path)?.[0];
+      const v = table?.get(s.path)?.[0];
       if (v) return v;
     } else {
       let text: string | null = manifest;
@@ -105,8 +128,23 @@ export function parseManifestDeps(
   const d = rule.deps;
   let names: string[];
   if ("directive" in d) names = directiveEntries(rule, manifest, d.directive, d.tokens);
-  else if ("path" in d) names = readXml(manifest).get(d.path) ?? [];
-  else names = [...strip(rule, manifest).matchAll(d.pattern)].map((m) => m[1] ?? "").filter((n) => n !== "");
+  else if ("pattern" in d) {
+    const text = strip(rule, manifest);
+    const region = d.within ? (d.within.exec(text)?.[1] ?? "") : text;
+    names = [...region.matchAll(d.pattern)].map((m) => m[1] ?? "").filter((n) => n !== "");
+  } else {
+    const found =
+      "keys" in d
+        ? (readConfig(manifest, rule.format as "toml" | "ini").keys.get(d.keys) ?? [])
+        : (keyedValues(rule, manifest)?.get(d.path) ?? []);
+    const entry = d.entry;
+    names = found
+      .map((s) => {
+        const m = entry?.exec(s.trim());
+        return entry ? (m ? (m[1] ?? m[0]) : "") : s;
+      })
+      .filter((n) => n !== "");
+  }
   return [...new Set(names)].sort();
 }
 
@@ -121,10 +159,22 @@ export function parseGroupMembers(pack: LanguagePack, manifest: string): string[
   });
 }
 
-/** The rule whose manifest a folder holds (the first rule with a file there), with the file's name. */
-function manifestIn(pack: LanguagePack, abs: string): { rule: ManifestRule; file: string } | null {
+/**
+ * The manifest that makes a folder a workspace: the first, in the order of the pack's rules, that the folder holds and that
+ * gives a name. Its rule, file name, text and the name.
+ */
+function manifestIn(
+  pack: LanguagePack,
+  abs: string,
+  place: Place,
+): { rule: ManifestRule; file: string; text: string; name: string } | null {
   for (const rule of pack.workspace.manifests)
-    for (const file of rule.files) if (existsSync(join(abs, file))) return { rule, file };
+    for (const file of rule.files) {
+      if (!existsSync(join(abs, file))) continue;
+      const text = read(join(abs, file));
+      const name = text === null ? null : parseManifestName(pack, text, rule, place);
+      if (text !== null && name !== null) return { rule, file, text, name };
+    }
   return null;
 }
 
@@ -197,11 +247,9 @@ export function detectPackWorkspaces(
   const records: WorkspaceRecord[] = [];
   for (const dir of dirs) {
     const abs = dir === "." ? root : join(root, dir);
-    const found = manifestIn(pack, abs);
-    const text = found === null ? null : read(join(abs, found.file));
-    if (found === null || text === null) continue;
-    const name = parseManifestName(pack, text, found.rule, { abs, dir, root });
-    if (name === null) continue;
+    const found = manifestIn(pack, abs, { abs, dir, root });
+    if (found === null) continue;
+    const { name, text } = found;
     const nested = new Set([...dirSet].filter((d) => d !== dir && (dir === "." || d.startsWith(`${dir}/`))));
     const record: WorkspaceRecord = {
       id: workspaceId(repo, name),
@@ -250,14 +298,15 @@ export function packDependsOnEdges(
   const work = g ? read(join(root, g.file)) : null;
   const listed = work === null ? null : new Set(parseGroupMembers(pack, work));
   const group = listed === null ? own : own.filter((w) => listed.has(w.dir));
-  const byName = new Map(group.map((w) => [w.name, w]));
+  const byName = new Map(group.map((w) => [nameKey(pack, w.name), w]));
   const edges: EdgeRecord[] = [];
   for (const w of group) {
-    const found = manifestIn(pack, w.dir === "." ? root : join(root, w.dir));
+    const abs = w.dir === "." ? root : join(root, w.dir);
+    const found = manifestIn(pack, abs, { abs, dir: w.dir, root });
     if (!found) continue;
     const modFile = makeFileId(repo, `${w.dir === "." ? "" : `${w.dir}/`}${found.file}`);
     for (const dep of w.deps) {
-      const target = byName.get(dep);
+      const target = byName.get(nameKey(pack, dep));
       if (!target || target.id === w.id) continue;
       edges.push({
         src: w.id,

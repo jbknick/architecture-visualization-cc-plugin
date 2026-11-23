@@ -102,7 +102,7 @@ cd architecture-visualization-cc-plugin
 pnpm install && pnpm build
 ```
 
-Then, inside a TypeScript, Go or Java git repository you want to look at (`<path>` is this clone; Go modules index their symbols and callers, Go functions are described and searchable, and duplicate Go functions are warned about; Maven and Gradle projects index their classes, methods and callers with no JDK installed):
+Then, inside a TypeScript, Go, Java or Python git repository you want to look at (`<path>` is this clone; Go modules index their symbols and callers, Go functions are described and searchable, and duplicate Go functions are warned about; Maven and Gradle projects index their classes, methods and callers with no JDK installed; Python projects with a `pyproject.toml`, `setup.cfg` or `setup.py` index their functions, classes, methods and callers with no interpreter installed, a call that annotations settle is high confidence and one inferred from the values assigned in the code is low):
 
 ```sh
 node <path>/plugin/dist/cli.js init

@@ -26,6 +26,7 @@ type Name =
   | "react-router-fastify"
   | "go-basic"
   | "java-basic"
+  | "python-basic"
   | "bundler-aliases"
   | "ts-references"
   | "tsconfig-extends-workspace"
@@ -65,6 +66,7 @@ describe("indexRepo + dumpGraph snapshots", () => {
     "react-router-fastify",
     "go-basic",
     "java-basic",
+    "python-basic",
     "bundler-aliases",
     "ts-references",
     "tsconfig-extends-workspace",

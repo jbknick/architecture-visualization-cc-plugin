@@ -66,6 +66,8 @@ export type DeclSource =
       count: number;
     }
   | { k: "range"; of: Expr | null; index: number }
+  /** The value the method is called on (the instance); only the flow resolver reads it. */
+  | { k: "self" }
   | { k: "opaque" };
 
 /** A name declared in a function: visible from `pos` on. */
@@ -73,6 +75,8 @@ export interface Decl {
   name: string;
   pos: number;
   source: DeclSource;
+  /** What the flow resolver reads in place of `source` (a name without a declared type that gets its type from a value). */
+  flow?: DeclSource;
   /** Set on a name declared outside the type body the function is in: the type body it was declared in, where its type and value are read. */
   outer?: { owner: string | null };
 }
@@ -109,6 +113,17 @@ export interface FuncDecl {
   tparams: string[];
 }
 
+/** An assignment to an attribute of the instance inside the initializer of a type: what the flow resolver reads to type the attribute. */
+export interface FlowAttr {
+  /** The type the assignment declares, when it has one that is read. */
+  type: TypeRef | null;
+  /** True when the assignment declares a type (`self.x: T = ...`); then `value` is not read. */
+  typed: boolean;
+  value: Expr | null;
+  /** The names declared in the initializer, in which `value` is read. */
+  decls: Decl[];
+}
+
 export interface TypeDecl {
   name: string;
   kind: "class" | "interface" | "alias" | "other";
@@ -134,6 +149,8 @@ export interface TypeDecl {
   open: boolean;
   /** The type written after the name. */
   target: TypeRef | null;
+  /** Assignments to attributes of the instance in the type's initializer, by attribute name (flow facts: no declared type). */
+  attrs: Map<string, FlowAttr[]>;
 }
 
 export interface VarDecl {
@@ -141,6 +158,8 @@ export interface VarDecl {
   /** The declared type; null when the declaration has none. A declared type that is not read is `{ type: null }`. */
   declared: { type: TypeRef | null } | null;
   value: Expr | null;
+  /** True when the value gives the name a type only for the flow resolver. */
+  flow?: true;
 }
 
 /** An import as written in a file. `name` is null for an import of a whole package, `*` for every name of a package or type. */

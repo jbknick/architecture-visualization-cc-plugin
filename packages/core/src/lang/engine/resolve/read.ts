@@ -18,6 +18,7 @@ import type {
   DeclSource,
   Expr,
   FileDecls,
+  FlowAttr,
   FunctionBody,
   LocalBody,
   Results,
@@ -45,12 +46,22 @@ const unparen = (typing: TypingRules, n: SyntaxNode | null): SyntaxNode | null =
   return cur;
 };
 
-/** The nodes of `d`'s field `field` that are names, also those inside a list the field holds. */
-function namesIn(d: SyntaxNode, field: string, kinds: readonly string[]): SyntaxNode[] {
+/**
+ * The nodes of `d`'s field `field` that are names, also those inside a list the field holds (any node, or only the kinds
+ * in `lists` when the pack names them). An empty `field` says the names are the children of `d` itself.
+ */
+function namesIn(
+  d: SyntaxNode,
+  field: string,
+  kinds: readonly string[],
+  lists?: readonly string[],
+): SyntaxNode[] {
+  if (field === "") return d.namedChildren().filter((c) => kinds.includes(c.kind()));
   const out: SyntaxNode[] = [];
   for (const n of d.fieldChildren(field)) {
     if (kinds.includes(n.kind())) out.push(n);
-    else for (const c of n.namedChildren()) if (kinds.includes(c.kind())) out.push(c);
+    else if (!lists || lists.includes(n.kind()))
+      for (const c of n.namedChildren()) if (kinds.includes(c.kind())) out.push(c);
   }
   return out;
 }
@@ -166,6 +177,13 @@ export class Reader {
       for (let i = 0; i < Math.max(1, names); i++) out.push(this.typeRef(t));
     }
     return out;
+  }
+
+  /** The result types of a function or method: none are read for a declaration whose result is a deferred value. */
+  private resultsOf(decl: SyntaxNode, field: string): Results {
+    const deferred = this.typing.deferred;
+    if (deferred && decl.children().some((c) => c.kind() === deferred)) return [];
+    return this.results(decl, field);
   }
 
   /** The number of arguments a call site passes; null for a language that does not tell overloads apart. */
@@ -427,10 +445,13 @@ export class Reader {
       ...l.untyped.map((r) => r.kind),
     ];
     const blank = this.pack.tokens.locals.blank;
+    const flow = t.flow;
     const out: Decl[] = [];
-    const add = (name: string, pos: number, source: DeclSource): void => {
-      if (name !== blank) out.push({ name, pos, source });
+    const add = (name: string, pos: number, source: DeclSource, byFlow?: DeclSource): void => {
+      if (name !== blank) out.push({ name, pos, source, ...(byFlow ? { flow: byFlow } : {}) });
     };
+    const fnStart = fd.range().start.index;
+    const fnEnd = fd.range().end.index;
     for (const d of fd.findAll({ rule: { any: kinds.map((kind) => ({ kind })) } })) {
       const kind = d.kind();
       const start = d.range().start.index;
@@ -440,7 +461,7 @@ export class Reader {
       const param = l.parameters.find((r) => r.kind === kind);
       if (param) {
         const type = d.field(param.type);
-        for (const n of namesIn(d, param.name, l.nameKinds))
+        for (const n of namesIn(d, param.name, l.nameKinds, l.nameLists))
           add(n.text(), at(param.from), {
             k: "type",
             type: type ? this.typeRef(type) : null,
@@ -450,7 +471,7 @@ export class Reader {
       }
       const decl = l.declarations.find((r) => r.kind === kind);
       if (decl) {
-        const names = namesIn(d, decl.names, l.nameKinds);
+        const names = namesIn(d, decl.names, l.nameKinds, l.nameLists);
         let typeNode = decl.type
           ? d.field(decl.type)
           : decl.parentType
@@ -460,28 +481,50 @@ export class Reader {
         const list = d.field(decl.values);
         const nodes = list ? (l.valueLists.includes(list.kind()) ? list.namedChildren() : [list]) : [];
         const values = nodes.map((v) => this.expr(v));
-        for (const [index, n] of names.entries())
-          add(n.text(), at(decl.from), {
+        // Without a type, the value types the name only for the flow resolver; the declared types know nothing of it.
+        const byFlow = typeNode === null && flow?.untyped.includes(kind) === true;
+        for (const [index, n] of names.entries()) {
+          const source: DeclSource = {
             k: "values",
             typed: typeNode !== null,
             type: typeNode ? this.typeRef(typeNode) : null,
             index,
             values,
             count: names.length,
-          });
+          };
+          if (byFlow) add(n.text(), at(decl.from), { k: "opaque" }, source);
+          else add(n.text(), at(decl.from), source);
+        }
         continue;
       }
       const range = l.ranges.find((r) => r.kind === kind);
       if (range) {
         const of = this.expr(d.field(range.source));
-        for (const [index, n] of namesIn(d, range.names, l.nameKinds).entries())
+        for (const [index, n] of namesIn(d, range.names, l.nameKinds, l.nameLists).entries())
           add(n.text(), at(range.from), { k: "range", of, index });
         continue;
       }
       const untyped = l.untyped.find((r) => r.kind === kind);
-      if (untyped)
-        for (const n of namesIn(d, untyped.names, l.nameKinds))
-          add(n.text(), at(untyped.from), { k: "opaque" });
+      if (untyped) {
+        // The parameter of a method that names the instance is the instance, for the flow resolver.
+        const p = d.parent();
+        const own =
+          flow !== undefined &&
+          this.owner !== null &&
+          p !== null &&
+          p.range().start.index === fnStart &&
+          p.range().end.index === fnEnd;
+        let anchor = d;
+        for (let up = d.parent(); untyped.scope && up; up = up.parent()) {
+          if (untyped.scope.includes(up.kind())) {
+            anchor = up;
+            break;
+          }
+        }
+        const pos = untyped.from === "start" ? anchor.range().start.index : end;
+        for (const n of namesIn(d, untyped.names, l.nameKinds, l.nameLists))
+          add(n.text(), pos, { k: "opaque" }, own && n.text() === flow?.self ? { k: "self" } : undefined);
+      }
     }
     return out;
   }
@@ -586,7 +629,9 @@ export class Reader {
   declarations(root: SyntaxNode): FileDecls {
     const n = this.pack.nodes;
     const t = this.typing;
-    const clause = root.namedChildren().find((c) => c.kind() === t.package.clause);
+    const clause = t.package.clause
+      ? root.namedChildren().find((c) => c.kind() === t.package.clause)
+      : undefined;
     const out: FileDecls = {
       packageName: clause?.namedChildren().at(-1)?.text() ?? "?",
       packaged: clause !== undefined,
@@ -625,7 +670,7 @@ export class Reader {
         if (name && !t.unnamed.includes(name))
           out.funcs.push({
             name,
-            results: this.results(d, fn.result),
+            results: this.resultsOf(d, fn.result),
             start,
             arity: this.arityOf(d, fn),
             tparams: this.typeParams(d, fn.generics),
@@ -646,7 +691,7 @@ export class Reader {
           out.methods.push({
             key,
             owner,
-            results: this.results(d, rule.result),
+            results: this.resultsOf(d, rule.result),
             start,
             arity: this.arityOf(d, rule),
             tparams: this.typeParams(d, rule.generics),
@@ -661,10 +706,18 @@ export class Reader {
           if (name && type) out.types.push(this.typeDecl(s, name, type));
         }
       } else if (owner === null && t.vars.declarations.includes(kind)) {
-        for (const s of specsOf(d, t.vars.specs, n.values.groups)) {
+        // A declaration that is itself a spec (an assignment statement) is its own spec.
+        const specs = t.vars.specs.includes(kind) ? [d] : specsOf(d, t.vars.specs, n.values.groups);
+        for (const s of specs) {
           const names = s.fieldChildren(n.values.name).filter((x) => n.values.nameKinds.includes(x.kind()));
-          const values = s.field(t.vars.value)?.namedChildren() ?? [];
+          const list = s.field(t.vars.value);
+          const values = list
+            ? t.locals.valueLists.includes(list.kind())
+              ? list.namedChildren()
+              : [list]
+            : [];
           const type = s.field(t.vars.type);
+          const byFlow = !type && t.flow?.untyped.includes(s.kind()) === true;
           names.forEach((nm, i) => {
             const name = nm.text();
             if (name === this.pack.tokens.locals.blank) return;
@@ -672,6 +725,7 @@ export class Reader {
               name,
               declared: type ? { type: this.typeRef(type) } : null,
               value: values.length === names.length ? this.expr(values[i] ?? null) : null,
+              ...(byFlow ? { flow: true as const } : {}),
             });
           });
         }
@@ -699,7 +753,45 @@ export class Reader {
       embeds: [],
       open: false,
       target: null,
+      attrs: new Map(),
     };
+  }
+
+  /**
+   * The assignments to attributes of the instance in the initializer of the type whose body is `body` (flow facts): by
+   * attribute name, what each assignment declares or assigns, with the names the initializer declares, in which a value
+   * is read.
+   */
+  private attributes(body: SyntaxNode, name: string): Map<string, FlowAttr[]> {
+    const out = new Map<string, FlowAttr[]>();
+    const flow = this.typing.flow;
+    if (!flow) return out;
+    for (const m of membersOf(this.pack, body)) {
+      const rule = this.rule(m, name);
+      if (!rule || m.field(rule.name)?.text() !== flow.initializer) continue;
+      const code = rule.body ? m.field(rule.body) : null;
+      if (!code) continue;
+      const decls = this.scopeOf(m, name, []);
+      for (const a of code.findAll({ rule: { kind: flow.attribute.kind } })) {
+        const target = a.field(flow.attribute.target);
+        const access = flow.attribute.access;
+        if (target?.kind() !== access.kind || target.field(access.object)?.text() !== flow.self) continue;
+        const attr = target.field(access.name)?.text();
+        if (!attr) continue;
+        const type = a.field(flow.attribute.type);
+        const list = out.get(attr) ?? [];
+        list.push({
+          type: type ? this.typeRef(type) : null,
+          typed: type !== null,
+          value: type ? null : this.expr(a.field(flow.attribute.value)),
+          decls,
+        });
+        out.set(attr, list);
+      }
+    }
+    this.fn = null;
+    this.tparams = [];
+    return out;
   }
 
   /** A type with a body of members: its fields and the supertypes its declaration names. `owner` is the type around it. */
@@ -732,6 +824,7 @@ export class Reader {
       if (!mt) continue;
       for (const nm of this.memberNames(m)) decl.fields.set(nm, this.typeRef(mt));
     }
+    if (body) decl.attrs = this.attributes(body, name);
     this.owner = owner;
     return decl;
   }
