@@ -115,6 +115,8 @@ export interface FuncDecl {
   tparams: string[];
   /** True when a decorator the pack lists as an overload mark is on the declaration: it is a stub of the declaration that has none. */
   overload?: true;
+  /** Set on an extension method (`typing.extensions`): the type its first parameter has, which the method is a function of. */
+  extension?: { type: TypeRef | null };
 }
 
 /** An assignment to an attribute of the instance inside the initializer of a type: what the flow resolver reads to type the attribute. */
@@ -144,11 +146,13 @@ export interface TypeDecl {
   /** Embedded (extended) types of a class, with the line each is written on. */
   embedded: { type: TypeRef | null; line: number }[];
   /** Supertypes the declaration names, with the edge each makes and the line it is written on. */
-  supers: { type: TypeRef | null; edge: "extends" | "implements"; line: number }[];
+  supers: { type: TypeRef | null; edge: "extends" | "implements" | "inferred"; line: number }[];
   /** How many supertypes the declaration lists, also those that are not read (a keyword option of the declaration is none). */
   bases: number;
   /** True when the type is created in a way its declaration does not tell: it has a decorator, or a keyword option among its supertypes. */
   opaque: boolean;
+  /** True for a declaration that is one part of a type (`types.partial`). */
+  partial?: true;
   /** Methods declared in the body of an interface. */
   methods: Map<string, { results: Results; start: number }>;
   /** Interfaces an interface embeds. */

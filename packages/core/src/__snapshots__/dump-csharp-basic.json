@@ -1,0 +1,829 @@
+{
+  "repos": [
+    {
+      "name": "csharp-basic"
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "ws:csharp-basic:Acme.App",
+      "repo": "csharp-basic",
+      "name": "Acme.App",
+      "dir": "src/App",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [
+        "Acme.Core"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:csharp-basic:Acme.Core",
+      "repo": "csharp-basic",
+      "name": "Acme.Core",
+      "dir": "src/Core",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:csharp-basic:src/App/App.csproj",
+      "repo": "csharp-basic",
+      "path": "src/App/App.csproj",
+      "lang": "csharp",
+      "workspaceId": "ws:csharp-basic:Acme.App",
+      "contentHash": "5bb0e06aa6c881a67f2cbc6fd1eb6ef8a830f4efd7ef20c7b9a72d5cb4dd6a0b"
+    },
+    {
+      "id": "file:csharp-basic:src/App/Program.cs",
+      "repo": "csharp-basic",
+      "path": "src/App/Program.cs",
+      "lang": "csharp",
+      "workspaceId": "ws:csharp-basic:Acme.App",
+      "contentHash": "e4d5f2ff90bf27bcd473a8711e5619e81b1e9ae97f60c86ce7f7939e3b8ce99c"
+    },
+    {
+      "id": "file:csharp-basic:src/App/ProgramTests.cs",
+      "repo": "csharp-basic",
+      "path": "src/App/ProgramTests.cs",
+      "lang": "csharp",
+      "workspaceId": "ws:csharp-basic:Acme.App",
+      "contentHash": "a52cee377c69ef8f2870985ec4c052b9751267669c97f71a9a2bd61d80e8f064"
+    },
+    {
+      "id": "file:csharp-basic:src/Core/IGreeter.cs",
+      "repo": "csharp-basic",
+      "path": "src/Core/IGreeter.cs",
+      "lang": "csharp",
+      "workspaceId": "ws:csharp-basic:Acme.Core",
+      "contentHash": "539e8d5f16fea6a74393cd1896a1b2fdb48c73c7ef752682a14852aa2a946ef3"
+    },
+    {
+      "id": "file:csharp-basic:src/Core/PoliteGreeter.cs",
+      "repo": "csharp-basic",
+      "path": "src/Core/PoliteGreeter.cs",
+      "lang": "csharp",
+      "workspaceId": "ws:csharp-basic:Acme.Core",
+      "contentHash": "f19a91746afca090033729c20d748ab20dd3f258016f5dc1348e8106cff425c5"
+    },
+    {
+      "id": "file:csharp-basic:src/Core/Report.Totals.cs",
+      "repo": "csharp-basic",
+      "path": "src/Core/Report.Totals.cs",
+      "lang": "csharp",
+      "workspaceId": "ws:csharp-basic:Acme.Core",
+      "contentHash": "f45ac25559485b9b4de6dcbd02a2fafa40f61b2ba7d37383a6d4cb756a4128ed"
+    },
+    {
+      "id": "file:csharp-basic:src/Core/Report.cs",
+      "repo": "csharp-basic",
+      "path": "src/Core/Report.cs",
+      "lang": "csharp",
+      "workspaceId": "ws:csharp-basic:Acme.Core",
+      "contentHash": "e2ce4d64e14ad1fbbc0b1f20f47870d978783c069fef7b26c8fe7a1aed937955"
+    },
+    {
+      "id": "file:csharp-basic:src/Core/Schema.Designer.cs",
+      "repo": "csharp-basic",
+      "path": "src/Core/Schema.Designer.cs",
+      "lang": "csharp",
+      "workspaceId": "ws:csharp-basic:Acme.Core",
+      "contentHash": "a7f78a7a5961f21fd3ccb19bbff6ce4d69b9ec7ca25530259f93819b10a3e7f8",
+      "directives": [
+        "generated"
+      ]
+    },
+    {
+      "id": "file:csharp-basic:src/Core/StringExtensions.cs",
+      "repo": "csharp-basic",
+      "path": "src/Core/StringExtensions.cs",
+      "lang": "csharp",
+      "workspaceId": "ws:csharp-basic:Acme.Core",
+      "contentHash": "8f1ae57d89235803a03772d1eac18fb9e0ca93a5e931aaa1111490678b4a6904"
+    },
+    {
+      "id": "file:csharp-basic:src/Core/Strings.cs",
+      "repo": "csharp-basic",
+      "path": "src/Core/Strings.cs",
+      "lang": "csharp",
+      "workspaceId": "ws:csharp-basic:Acme.Core",
+      "contentHash": "739d8b621026b5b92ec8f0ced0054eab4e4843aa71d8345e4acbbca8658fa475"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:csharp-basic:src/App/Program.cs#Program",
+      "fileId": "file:csharp-basic:src/App/Program.cs",
+      "name": "Program",
+      "kind": "class",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "",
+      "startLine": 6,
+      "endLine": 20,
+      "loc": 15,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "de35e23c5c1f31babdec0f51a268a2ee",
+      "shapeHash": "2b6fc32acf29a16e6f915e41dd5d9dda"
+    },
+    {
+      "id": "sym:csharp-basic:src/App/Program.cs#Program.Main",
+      "fileId": "file:csharp-basic:src/App/Program.cs",
+      "name": "Program.Main",
+      "kind": "method",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "() void",
+      "startLine": 8,
+      "endLine": 11,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "5e1daa7507ffff643d95babec1c2ce5c",
+      "shapeHash": "c85faf298c6c1af00a35c46da8d14a85"
+    },
+    {
+      "id": "sym:csharp-basic:src/App/Program.cs#Program.Run",
+      "fileId": "file:csharp-basic:src/App/Program.cs",
+      "name": "Program.Run",
+      "kind": "method",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "(IGreeter greeter, string name) string",
+      "startLine": 13,
+      "endLine": 19,
+      "loc": 7,
+      "complexity": 1,
+      "stmtCount": 4,
+      "exactHash": "60c729c9569f07b26fd58d692a7bdcd7",
+      "shapeHash": "b621a9ac802295f1600a8b8cd5449456"
+    },
+    {
+      "id": "sym:csharp-basic:src/App/ProgramTests.cs#ProgramTests",
+      "fileId": "file:csharp-basic:src/App/ProgramTests.cs",
+      "name": "ProgramTests",
+      "kind": "class",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "",
+      "startLine": 5,
+      "endLine": 11,
+      "loc": 7,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "5a6829a1f66fdf2691c3892fba5a9b48",
+      "shapeHash": "702d4c589f9667bd97a0dd69aae1cea8"
+    },
+    {
+      "id": "sym:csharp-basic:src/App/ProgramTests.cs#ProgramTests.RunGreets",
+      "fileId": "file:csharp-basic:src/App/ProgramTests.cs",
+      "name": "ProgramTests.RunGreets",
+      "kind": "method",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "() void",
+      "startLine": 7,
+      "endLine": 10,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "8f00518df809ad79bce23bcb737bf272",
+      "shapeHash": "908d0ddc807fb1704400e5f97d7691ad"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/IGreeter.cs#IGreeter",
+      "fileId": "file:csharp-basic:src/Core/IGreeter.cs",
+      "name": "IGreeter",
+      "kind": "interface",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 6,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "694eae9c02357a88e962a62e9879ee8f",
+      "shapeHash": "08d4999b4d71fe727f488e0682f51474"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/IGreeter.cs#IGreeter.Greet",
+      "fileId": "file:csharp-basic:src/Core/IGreeter.cs",
+      "name": "IGreeter.Greet",
+      "kind": "method",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "(string name) string",
+      "startLine": 5,
+      "endLine": 5,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "a619c0c32abaa1e7d44d6a71b7c02aa0",
+      "shapeHash": "4bb4d395af48251e4eb3905e1f6b2df8"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/PoliteGreeter.cs#PoliteGreeter",
+      "fileId": "file:csharp-basic:src/Core/PoliteGreeter.cs",
+      "name": "PoliteGreeter",
+      "kind": "class",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 6,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "0db8fc99e3ad4971fa3bc077cfd2245d",
+      "shapeHash": "911f2961d7f105751e1956d01f6940a3"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/PoliteGreeter.cs#PoliteGreeter.Greet",
+      "fileId": "file:csharp-basic:src/Core/PoliteGreeter.cs",
+      "name": "PoliteGreeter.Greet",
+      "kind": "method",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "(string name) string",
+      "startLine": 5,
+      "endLine": 5,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "c52d5cfbf24c30c3cd11c60d11d47c8c",
+      "shapeHash": "9d41cdc2bc746f12b645455b9c21ce86"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/Report.Totals.cs#Report",
+      "fileId": "file:csharp-basic:src/Core/Report.Totals.cs",
+      "name": "Report",
+      "kind": "class",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 9,
+      "loc": 7,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "3f9c1008d7b707f74fd1303e2dc49673",
+      "shapeHash": "67543b4953ce5b5ebe70381415a7485c"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/Report.Totals.cs#Report.Header",
+      "fileId": "file:csharp-basic:src/Core/Report.Totals.cs",
+      "name": "Report.Header",
+      "kind": "method",
+      "lang": "csharp",
+      "exported": false,
+      "signature": "() string",
+      "startLine": 5,
+      "endLine": 8,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "90d2cc67f45020b11001947c88698f73",
+      "shapeHash": "f956dd993b575d5baf18795910ed0c7c"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/Report.cs#Report",
+      "fileId": "file:csharp-basic:src/Core/Report.cs",
+      "name": "Report",
+      "kind": "class",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 16,
+      "loc": 14,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "bb428e6e95c491e83ef5a0ca9e54c0f9",
+      "shapeHash": "efe760e170ce802330a71311be2bf2a7"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/Report.cs#Report.Render",
+      "fileId": "file:csharp-basic:src/Core/Report.cs",
+      "name": "Report.Render",
+      "kind": "method",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "(string name) string",
+      "startLine": 12,
+      "endLine": 15,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "88bf27e348fc1a1c4e2d01d683e700a3",
+      "shapeHash": "966adc313e9bbdb76164542218eda188"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/Report.cs#Report.Report",
+      "fileId": "file:csharp-basic:src/Core/Report.cs",
+      "name": "Report.Report",
+      "kind": "method",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "(IGreeter greeter)",
+      "startLine": 7,
+      "endLine": 10,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "f5ea0f3ea7900117bc7e6b4a5ac28f00",
+      "shapeHash": "e7c123ce2f265a04074088c30a8a6694"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/Schema.Designer.cs#Schema",
+      "fileId": "file:csharp-basic:src/Core/Schema.Designer.cs",
+      "name": "Schema",
+      "kind": "class",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 9,
+      "loc": 7,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "a19d05935437498ae950e0fee00a1852",
+      "shapeHash": "081b2f767404bfddb6f90dc0070a7a8e"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/Schema.Designer.cs#Schema.Version",
+      "fileId": "file:csharp-basic:src/Core/Schema.Designer.cs",
+      "name": "Schema.Version",
+      "kind": "method",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "() string",
+      "startLine": 5,
+      "endLine": 8,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "af8f25f2a6813073b35a2ea6863d95fb",
+      "shapeHash": "f956dd993b575d5baf18795910ed0c7c"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/StringExtensions.cs#StringExtensions",
+      "fileId": "file:csharp-basic:src/Core/StringExtensions.cs",
+      "name": "StringExtensions",
+      "kind": "class",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 9,
+      "loc": 7,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "9fcdbbf6c4b2ecf4552d1400ef35e263",
+      "shapeHash": "3c64201877fafd95b44f0c97ce42709e"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/StringExtensions.cs#StringExtensions.Twice",
+      "fileId": "file:csharp-basic:src/Core/StringExtensions.cs",
+      "name": "StringExtensions.Twice",
+      "kind": "method",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "(this string text) string",
+      "startLine": 5,
+      "endLine": 8,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "8ad57dd9fa415468b0563b024571bce7",
+      "shapeHash": "a3f66758cce44f0d2f38f67448426cd0"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/Strings.cs#Strings",
+      "fileId": "file:csharp-basic:src/Core/Strings.cs",
+      "name": "Strings",
+      "kind": "class",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "",
+      "startLine": 3,
+      "endLine": 9,
+      "loc": 7,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "ea29a1c3a069e361efd1452b1b8165fc",
+      "shapeHash": "151ec85e7a12dee689d1891fa6c543d1"
+    },
+    {
+      "id": "sym:csharp-basic:src/Core/Strings.cs#Strings.Shout",
+      "fileId": "file:csharp-basic:src/Core/Strings.cs",
+      "name": "Strings.Shout",
+      "kind": "method",
+      "lang": "csharp",
+      "exported": true,
+      "signature": "(string text) string",
+      "startLine": 5,
+      "endLine": 8,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "aeaaf2209d3d681e85df08a1e931df33",
+      "shapeHash": "d61733409bd4333a3ca4c7644e8ce38f"
+    }
+  ],
+  "edges": [
+    {
+      "src": "file:csharp-basic:src/App/Program.cs",
+      "dst": "sym:csharp-basic:src/App/Program.cs#Program",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/App/Program.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/App/Program.cs",
+      "dst": "sym:csharp-basic:src/App/Program.cs#Program.Main",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/App/Program.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/App/Program.cs",
+      "dst": "sym:csharp-basic:src/App/Program.cs#Program.Run",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/App/Program.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/App/ProgramTests.cs",
+      "dst": "sym:csharp-basic:src/App/ProgramTests.cs#ProgramTests",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/App/ProgramTests.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/App/ProgramTests.cs",
+      "dst": "sym:csharp-basic:src/App/ProgramTests.cs#ProgramTests.RunGreets",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/App/ProgramTests.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/IGreeter.cs",
+      "dst": "sym:csharp-basic:src/Core/IGreeter.cs#IGreeter",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/IGreeter.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/IGreeter.cs",
+      "dst": "sym:csharp-basic:src/Core/IGreeter.cs#IGreeter.Greet",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/IGreeter.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/PoliteGreeter.cs",
+      "dst": "sym:csharp-basic:src/Core/PoliteGreeter.cs#PoliteGreeter",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/PoliteGreeter.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/PoliteGreeter.cs",
+      "dst": "sym:csharp-basic:src/Core/PoliteGreeter.cs#PoliteGreeter.Greet",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/PoliteGreeter.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/Report.Totals.cs",
+      "dst": "sym:csharp-basic:src/Core/Report.Totals.cs#Report",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Report.Totals.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/Report.Totals.cs",
+      "dst": "sym:csharp-basic:src/Core/Report.Totals.cs#Report.Header",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Report.Totals.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/Report.cs",
+      "dst": "sym:csharp-basic:src/Core/Report.cs#Report",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Report.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/Report.cs",
+      "dst": "sym:csharp-basic:src/Core/Report.cs#Report.Render",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Report.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/Report.cs",
+      "dst": "sym:csharp-basic:src/Core/Report.cs#Report.Report",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Report.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/Schema.Designer.cs",
+      "dst": "sym:csharp-basic:src/Core/Schema.Designer.cs#Schema",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Schema.Designer.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/Schema.Designer.cs",
+      "dst": "sym:csharp-basic:src/Core/Schema.Designer.cs#Schema.Version",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Schema.Designer.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/StringExtensions.cs",
+      "dst": "sym:csharp-basic:src/Core/StringExtensions.cs#StringExtensions",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/StringExtensions.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/StringExtensions.cs",
+      "dst": "sym:csharp-basic:src/Core/StringExtensions.cs#StringExtensions.Twice",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/StringExtensions.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/Strings.cs",
+      "dst": "sym:csharp-basic:src/Core/Strings.cs#Strings",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Strings.cs"
+    },
+    {
+      "src": "file:csharp-basic:src/Core/Strings.cs",
+      "dst": "sym:csharp-basic:src/Core/Strings.cs#Strings.Shout",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Strings.cs"
+    },
+    {
+      "src": "sym:csharp-basic:src/App/Program.cs#Program.Main",
+      "dst": "sym:csharp-basic:src/App/Program.cs#Program.Run",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/App/Program.cs:10"
+      ],
+      "fileId": "file:csharp-basic:src/App/Program.cs",
+      "level": 2
+    },
+    {
+      "src": "sym:csharp-basic:src/App/Program.cs#Program.Run",
+      "dst": "sym:csharp-basic:src/Core/IGreeter.cs#IGreeter.Greet",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/App/Program.cs:18"
+      ],
+      "fileId": "file:csharp-basic:src/App/Program.cs",
+      "level": 2
+    },
+    {
+      "src": "sym:csharp-basic:src/App/Program.cs#Program.Run",
+      "dst": "sym:csharp-basic:src/Core/Report.cs#Report.Render",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/App/Program.cs:18"
+      ],
+      "fileId": "file:csharp-basic:src/App/Program.cs",
+      "level": 2
+    },
+    {
+      "src": "sym:csharp-basic:src/App/Program.cs#Program.Run",
+      "dst": "sym:csharp-basic:src/Core/Report.cs#Report.Report",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/App/Program.cs:17"
+      ],
+      "fileId": "file:csharp-basic:src/App/Program.cs",
+      "level": 2
+    },
+    {
+      "src": "sym:csharp-basic:src/App/Program.cs#Program.Run",
+      "dst": "sym:csharp-basic:src/Core/StringExtensions.cs#StringExtensions.Twice",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/App/Program.cs:16"
+      ],
+      "fileId": "file:csharp-basic:src/App/Program.cs",
+      "level": 2
+    },
+    {
+      "src": "sym:csharp-basic:src/App/Program.cs#Program.Run",
+      "dst": "sym:csharp-basic:src/Core/Strings.cs#Strings.Shout",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/App/Program.cs:15"
+      ],
+      "fileId": "file:csharp-basic:src/App/Program.cs",
+      "level": 2
+    },
+    {
+      "src": "sym:csharp-basic:src/App/ProgramTests.cs#ProgramTests.RunGreets",
+      "dst": "sym:csharp-basic:src/App/Program.cs#Program.Run",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/App/ProgramTests.cs:9"
+      ],
+      "fileId": "file:csharp-basic:src/App/ProgramTests.cs",
+      "level": 2
+    },
+    {
+      "src": "sym:csharp-basic:src/Core/PoliteGreeter.cs#PoliteGreeter",
+      "dst": "sym:csharp-basic:src/Core/IGreeter.cs#IGreeter",
+      "kind": "implements",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/Core/PoliteGreeter.cs:3"
+      ],
+      "fileId": "file:csharp-basic:src/Core/PoliteGreeter.cs"
+    },
+    {
+      "src": "sym:csharp-basic:src/Core/Report.cs#Report.Render",
+      "dst": "sym:csharp-basic:src/Core/IGreeter.cs#IGreeter.Greet",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/Core/Report.cs:14"
+      ],
+      "fileId": "file:csharp-basic:src/Core/Report.cs",
+      "level": 2
+    },
+    {
+      "src": "sym:csharp-basic:src/Core/Report.cs#Report.Render",
+      "dst": "sym:csharp-basic:src/Core/Report.Totals.cs#Report.Header",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "src/Core/Report.cs:14"
+      ],
+      "fileId": "file:csharp-basic:src/Core/Report.cs",
+      "level": 2
+    },
+    {
+      "src": "ws:csharp-basic:Acme.App",
+      "dst": "file:csharp-basic:src/App/Program.cs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/App/Program.cs"
+    },
+    {
+      "src": "ws:csharp-basic:Acme.App",
+      "dst": "file:csharp-basic:src/App/ProgramTests.cs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/App/ProgramTests.cs"
+    },
+    {
+      "src": "ws:csharp-basic:Acme.App",
+      "dst": "ws:csharp-basic:Acme.Core",
+      "kind": "depends_on",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/App/App.csproj"
+    },
+    {
+      "src": "ws:csharp-basic:Acme.Core",
+      "dst": "file:csharp-basic:src/Core/IGreeter.cs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/IGreeter.cs"
+    },
+    {
+      "src": "ws:csharp-basic:Acme.Core",
+      "dst": "file:csharp-basic:src/Core/PoliteGreeter.cs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/PoliteGreeter.cs"
+    },
+    {
+      "src": "ws:csharp-basic:Acme.Core",
+      "dst": "file:csharp-basic:src/Core/Report.Totals.cs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Report.Totals.cs"
+    },
+    {
+      "src": "ws:csharp-basic:Acme.Core",
+      "dst": "file:csharp-basic:src/Core/Report.cs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Report.cs"
+    },
+    {
+      "src": "ws:csharp-basic:Acme.Core",
+      "dst": "file:csharp-basic:src/Core/Schema.Designer.cs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Schema.Designer.cs"
+    },
+    {
+      "src": "ws:csharp-basic:Acme.Core",
+      "dst": "file:csharp-basic:src/Core/StringExtensions.cs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/StringExtensions.cs"
+    },
+    {
+      "src": "ws:csharp-basic:Acme.Core",
+      "dst": "file:csharp-basic:src/Core/Strings.cs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:csharp-basic:src/Core/Strings.cs"
+    }
+  ]
+}

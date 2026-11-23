@@ -1,12 +1,13 @@
 import { registerPacks } from "../engine/grammar.js";
+import { csharpPack } from "./csharp.js";
 import { goPack } from "./go.js";
 import { javaPack } from "./java.js";
 import { pythonPack } from "./python.js";
 
-export { goPack, javaPack, pythonPack };
+export { csharpPack, goPack, javaPack, pythonPack };
 
 /** Every language pack, in a fixed order. TypeScript has its own module and no pack. */
-export const PACKS = [goPack, javaPack, pythonPack] as const;
+export const PACKS = [goPack, javaPack, pythonPack, csharpPack] as const;
 
 /** True when `lang` is the id of a language pack (every language but TypeScript). */
 export const isPackLang = (lang: string): boolean => PACKS.some((p) => p.id === lang);

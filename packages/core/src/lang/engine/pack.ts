@@ -22,19 +22,21 @@ export interface DeclarationRule {
   body?: string;
   /** Field holding the receiver; a declaration with one is a method named `<receiver type>.<name>`. */
   receiver?: string;
-  /** Field holding the declaration's own type parameters (`<T> T pick()`). */
+  /** Field holding the declaration's own type parameters (`<T> T pick()`), or, when the grammar has none, the kind of the child that does. */
   generics?: string;
 }
 
 /**
  * Where the name of a workspace comes from: `pattern` (the first group of a match in the manifest, or in the first of
  * `files` that exists in the workspace's folder), `path` (the text of an element of an XML manifest, a slash-separated
- * path from the root element) or `directory` (the name of the folder; of the repo for the root).
+ * path from the root element; `<path>@<attribute>` is the value of an attribute), `directory` (the name of the folder; of
+ * the repo for the root) or `fileName` (the name of the manifest file without its extension).
  */
 export type NameSource =
   | { pattern: RegExp; files?: readonly string[] }
   | { path: string }
-  | { directory: true };
+  | { directory: true }
+  | { fileName: true };
 
 /**
  * The dependency names a manifest lists: a directive (single and block form) with the tokens its entries have, a global
@@ -50,7 +52,7 @@ export type DepsSource =
 
 /** One kind of manifest: the file names that have it, how it is read and what is read from it. */
 export interface ManifestRule {
-  /** File names (one workspace per folder that has one of them). */
+  /** File names, or patterns with `*` that match the name of a file (one workspace per folder that has one of them). */
   files: readonly string[];
   /** `text` is read with the patterns and directives below, `xml` with element paths, `toml` and `ini` with the dotted paths of their keys. */
   format: "text" | "xml" | "toml" | "ini";
@@ -108,12 +110,19 @@ export interface BodiedTypeRule {
 
 /**
  * The rule for `exported`: `capital` is an upper-case first letter; `modifier` is a keyword among the modifiers of the
- * declaration (`node` is the kind of the child that holds them, `implicit` the kinds of the bodies whose members are
- * exported without one); `underscore` is a name that does not start with `_`.
+ * declaration (`node` is the kind of the children that hold them, the keyword being one of the children of each; `implicit` the
+ * kinds of the bodies whose members are exported without one, `owners` the kinds of the declarations whose members are);
+ * `underscore` is a name that does not start with `_`.
  */
 export type ExportedRule =
   | { by: "capital" }
-  | { by: "modifier"; node: string; keywords: readonly string[]; implicit: readonly string[] }
+  | {
+      by: "modifier";
+      node: string;
+      keywords: readonly string[];
+      implicit: readonly string[];
+      owners?: readonly string[];
+    }
   | { by: "underscore" };
 
 /** How the type a receiver or type expression names is found: `*S[T]` names `S`. */
@@ -198,8 +207,20 @@ export interface TypingRules {
   type: {
     /** Kinds of a plain type name. */
     names: readonly string[];
-    /** A type name qualified by an import: its kind and the fields of the qualifier and of the name. A language that has no such form leaves it out. */
-    qualified?: { kind: string; qualifier: string; name: string };
+    /**
+     * A type name qualified by an import: its kind and the fields of the qualifier and of the name. A language that has no
+     * such form leaves it out. With `packages`, a qualifier that is the whole path of a package of the repo names that
+     * package too (`a.b.T`), not only a name an import binds.
+     */
+    qualified?: { kind: string; qualifier: string; name: string; packages?: true };
+    /**
+     * The number of type parameters is part of the identity of a type: a name that a package declares with different
+     * numbers (`Foo` and `Foo<T>`) is several types, which the index does not tell apart at a use site, so such a name is no
+     * type (its methods are no target either). Parts of one type merge only when their numbers are equal.
+     */
+    byParameterCount?: true;
+    /** Names of types the language provides that have no declaration in the repo: each is a type of its own that nothing else declares, so an extension method of it can be found. */
+    builtin?: readonly string[];
     /** Kinds that wrap a type and hold it as their first named child (pointer, parentheses). */
     wrappers: readonly string[];
     /**
@@ -257,17 +278,22 @@ export interface TypingRules {
     quoted?: { kind: string; content: string; name: RegExp };
   };
   /**
-   * The declaration that names the package of a file (a language without one leaves `clause` out), how the package is
-   * identified (`directory`: the workspace name and the folder below it; `clause`: the name the declaration gives,
-   * whatever the folder; `file`: each file is a package of its own, named by its path below the workspace, and an import
-   * names it with the path alone, found in the workspace of the importing file or in one it depends on), and the ending of
-   * a name that makes a package of its own that no import reaches. With `file`, `roots` are the folders below a workspace
-   * that hold its packages instead of the workspace folder itself, and `index` the name (without extension) of the file
-   * that stands for its folder. With `reexports`, a name that a file imports from such an index file, which that file
-   * binds by an import of its own, is the one it is bound to there, followed through at most that many index files.
+   * The declarations that name the package of a file (a language without one leaves `clause` out; `name` is the field that
+   * holds the name, else it is the last named child), how the package is identified (`directory`: the workspace name and
+   * the folder below it; `clause`: the name the declaration gives, whatever the folder; `file`: each file is a package of
+   * its own, named by its path below the workspace, and an import names it with the path alone, found in the workspace of
+   * the importing file or in one it depends on), and the ending of a name that makes a package of its own that no import
+   * reaches. A file with more than one such declaration (or one inside another) has no package of its own. With
+   * `nested`, the types of a package are in scope in the packages whose names start with its name (`a.b` is in scope in
+   * `a.b.c`). With `file`, `roots` are the folders below a workspace that hold its packages instead of the workspace
+   * folder itself, and `index` the name (without extension) of the file that stands for its folder. With `reexports`, a
+   * name that a file imports from such an index file, which that file binds by an import of its own, is the one it is
+   * bound to there, followed through at most that many index files.
    */
   package: {
-    clause?: string;
+    clause?: readonly string[];
+    name?: string;
+    nested?: true;
     path: "directory" | "clause" | "file";
     separate?: string;
     roots?: readonly string[];
@@ -278,6 +304,14 @@ export interface TypingRules {
   decorators?: DecoratorRules;
   /** What a call of a type of the repo runs; without it a type that is called makes no edge. */
   construction?: ConstructionRules;
+  /**
+   * Extension methods: a method whose first parameter (kind `parameter`) has a child with the text `marker` is a function
+   * of the type that parameter has (`type` is its field), called as a method of any value of that type. A call
+   * `x.m()` that no method of the type of `x` answers goes to one in a package the file sees (its own, the ones it is
+   * nested in, the ones it imports whole) whose first parameter has the type of `x` or a supertype of it in the repo.
+   * No extension is read for a type of the repo that has a supertype outside it.
+   */
+  extensions?: { parameter: string; marker: string; type: string };
   /** The call that stands for the one base of the enclosing type (`super()`); a method called on it is looked up in that base. */
   parent?: ParentRules;
   /** The kind of the child of a function declaration that makes its result a deferred value: the result is not read as the declared type. */
@@ -294,8 +328,10 @@ export interface TypingRules {
   /**
    * The members of a class type: the node that holds them (for a type with a body, its entries are read from the body),
    * its entries, and in each entry the field of the names, the kinds that are names and the field of the type. An entry
-   * without a name is an embedded (extended) type. With `declarator`, the field holds declarators and the name is the
-   * `declarator` field of each. `callable` says that a member holding a function may be called by its name.
+   * without a name is an embedded (extended) type. With `declarator`, a name that has that field is a declarator and the
+   * name is the field of it. With `holder`, an entry that has a child of that kind declares its names in it (`int a, b;`
+   * holds one type and one declarator per name): the type is read from the child and the names are its children of the
+   * kinds `nameKinds`. `callable` says that a member holding a function may be called by its name.
    */
   members: {
     container: string;
@@ -304,6 +340,7 @@ export interface TypingRules {
     nameKinds: readonly string[];
     type: string;
     declarator?: string;
+    holder?: string;
     callable: boolean;
   };
   /** The elements of an interface body that name another interface, and the kinds of such a name. Any other element makes the method set open. */
@@ -312,35 +349,47 @@ export interface TypingRules {
    * Supertypes written in the declaration of a type: each entry names the field (or, when the grammar has none, the kind
    * of the child) that holds them and the edge they make (`extends` for a class or interface, `implements` for an
    * interface a class declares). `keywords` are the kinds of the entries of that list that are options of the declaration
-   * and no supertype (`metaclass=M`): a type that has one is created in a way its declaration does not tell.
+   * and no supertype (`metaclass=M`): a type that has one is created in a way its declaration does not tell. The edge
+   * `inferred` is for one list that holds both: `implements` from a class to an interface, `extends` for any other pair.
    */
   supertypes: readonly {
     field?: string;
     kind?: string;
-    edge: "extends" | "implements";
+    edge: "extends" | "implements" | "inferred";
     keywords?: readonly string[];
   }[];
   /** How a type comes to implement an interface: `structural` when its method names cover the interface's, `nominal` when it declares it. */
   implements: "structural" | "nominal";
   /**
    * A language whose code sits in type bodies: a bare name or call inside a body names a member of the enclosing type,
-   * of a type it extends, or of a type around it; a local never hides a method; a name that is a type reaches its static
-   * members. `self` and `parent` are the kinds of the expressions that stand for the enclosing type and for its
-   * superclass.
+   * of a type it extends, or of a type around it; a local never hides a method (unless `callableLocals`: a local may be
+   * called, a function or a delegate, and then a call of its name is no call of a method); a name that is a type reaches
+   * its static members. `self` and `parent` are the kinds of the expressions that stand for the enclosing type and for
+   * its superclass.
    */
-  enclosing?: { self: readonly string[]; parent: readonly string[] };
+  enclosing?: { self: readonly string[]; parent: readonly string[]; callableLocals?: true };
   /**
    * Overloads: methods of one name are told apart by the number of their parameters. `arguments` is the field of a call
    * site that holds the arguments, `parameters` the kinds of the entries of a parameter list and `variadic` those among
-   * them that take any number of arguments.
+   * them that take any number of arguments. `rest` is the field of the parameter list that holds parameters written
+   * without a node of their own, which take any number of arguments; `optional` is the kind of the token that starts a
+   * default value in a parameter, which then may be left out. `overloads` says what a call gets when the number of
+   * arguments leaves several methods: an edge to each at `low` confidence, or none.
    */
-  arity?: { arguments: string; parameters: readonly string[]; variadic: readonly string[] };
+  arity?: {
+    arguments: string;
+    parameters: readonly string[];
+    variadic: readonly string[];
+    rest?: string;
+    optional?: string;
+    overloads: "low" | "none";
+  };
   /**
    * An expression that creates a value by calling a constructor: its kind, the field of the type and of the arguments,
    * and the kind of its child that holds a body of members, which makes the value an instance of a subtype of the type.
    */
   construct?: { kind: string; type: string; arguments: string; body?: string };
-  /** Field of a type declaration that holds its type parameters. */
+  /** Field of a type declaration that holds its type parameters, or, when the grammar has none, the kind of the child that does. */
   generics: string;
   /** Package-level variables: declarations, specs, and the fields of a spec that hold its type and its values. */
   vars: { declarations: readonly string[]; specs: readonly string[]; type: string; value: string };
@@ -400,14 +449,14 @@ export interface TypingRules {
     /**
      * Declarations of names with values and an optional type: the field of the names, of the type (if the declaration has
      * one; `parentType` is the field of the parent node that holds it, for a declarator that shares one type) and of the
-     * values.
+     * values. Without `values`, the value is the last named child of the declaration that is not a name.
      */
     declarations: readonly {
       kind: string;
       names: string;
       type?: string;
       parentType?: string;
-      values: string;
+      values?: string;
       from: "start" | "end";
     }[];
     /** Type names that say the type is the one of the value (`var x = ...`). */
@@ -473,6 +522,11 @@ export interface LanguagePack {
        * (`Outer.Inner`), and the methods in their bodies `<type>.<method>`.
        */
       bodied: readonly BodiedTypeRule[];
+      /**
+       * A bodied declaration that has a child of kind `node` with the text `keyword` is one part of a type: the parts of
+       * one name in one package, all marked so, are one type (their members, fields and supertypes together).
+       */
+      partial?: { node: string; keyword: string };
       /** Kinds of body nodes that hold members, or hold nodes that do (they are walked through). */
       bodies: readonly string[];
       /**
@@ -512,9 +566,11 @@ export interface LanguagePack {
       /**
        * Imports that name what they bring in: the last segment of the path is a type (or, with `static`, a member of a
        * type) and the rest its package. `onDemand` is the kind of the child that stands for every name of the path,
-       * `static` the kind of the child that makes the names members. Without it every import brings in a package.
+       * `static` the kind of the child that makes the names members. `bare` says what an import without an alias and
+       * without `onDemand` brings in: one `name` (the last segment), or every name of the path (`demand`). With an alias
+       * the import brings in the last segment under it. Without `named` every import brings in a package.
        */
-      named?: { onDemand: string; static: string };
+      named?: { onDemand?: string; static: string; bare: "name" | "demand" };
       /** Imports written as statements that list modules, or names taken from a module; they are read besides `declarations`. */
       modules?: ModuleImportRules;
     };

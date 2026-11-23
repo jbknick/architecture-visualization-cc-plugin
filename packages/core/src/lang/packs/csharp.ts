@@ -1,0 +1,280 @@
+import type { LanguagePack } from "../engine/pack.js";
+
+/**
+ * The C# pack (spec section 3, `lang/packs/`): tree-sitter C# through `@ast-grep/napi` (no .NET SDK), one workspace per
+ * `.csproj`. The node kinds and field names are those of the tree-sitter C# grammar.
+ */
+export const csharpPack = {
+  id: "csharp",
+  label: "C#",
+  extensions: [".cs"],
+  skipPaths: ["**/bin/**", "**/obj/**"],
+  testPatterns: ["**/*Tests.cs", "**/*.Tests/**"],
+  generatedPatterns: [],
+  generatedPaths: ["**/*.g.cs", "**/*.Designer.cs"],
+  grammar: { package: "@ast-grep/lang-csharp", name: "csharp" },
+  nodes: {
+    errorKind: "ERROR",
+    function: [],
+    method: [
+      {
+        kind: "method_declaration",
+        name: "name",
+        parameters: "parameters",
+        result: "returns",
+        body: "body",
+        generics: "type_parameter_list",
+      },
+      {
+        kind: "constructor_declaration",
+        name: "name",
+        parameters: "parameters",
+        result: "returns",
+        body: "body",
+      },
+    ],
+    types: {
+      declarations: [],
+      specs: [],
+      groups: [],
+      aliases: [],
+      name: "name",
+      type: "type",
+      class: [],
+      interface: [],
+      bodied: [
+        { kind: "class_declaration", as: "class", name: "name", body: "body" },
+        { kind: "struct_declaration", as: "class", name: "name", body: "body" },
+        { kind: "record_declaration", as: "class", name: "name", body: "body" },
+        { kind: "interface_declaration", as: "interface", name: "name", body: "body" },
+        { kind: "enum_declaration", as: "enum", name: "name", body: "body" },
+      ],
+      // `partial class A` in several files is one type.
+      partial: { node: "modifier", keyword: "partial" },
+      // A namespace holds declarations the way the top of the file does (a file-scoped one holds none: its declarations follow it), and so does each branch of a conditional block (`#if`).
+      bodies: ["namespace_declaration", "declaration_list", "preproc_if", "preproc_elif", "preproc_else"],
+    },
+    values: { declarations: [], specs: [], groups: [], name: "name", nameKinds: [] },
+    import: {
+      declarations: ["using_directive"],
+      specs: ["using_directive"],
+      groups: [],
+      pathKinds: ["qualified_name", "identifier"],
+      alias: "name",
+      quotes: "",
+      separator: ".",
+      localName: { skip: /^$/ },
+      // `using A.B;` brings in every type of the namespace, `using static A.B.T;` every member of the type, `using X = A.B.T;` the type under a name.
+      named: { static: "static", bare: "demand" },
+    },
+    call: ["invocation_expression"],
+    callee: {
+      field: "function",
+      names: ["identifier"],
+      member: {
+        kind: "member_access_expression",
+        operand: "expression",
+        name: "name",
+        operands: ["identifier"],
+      },
+    },
+    typing: {
+      type: {
+        names: ["identifier", "predefined_type"],
+        qualified: { kind: "qualified_name", qualifier: "qualifier", name: "name", packages: true },
+        // The types the language names with a keyword: each is a type of its own, which an extension method may extend.
+        builtin:
+          "bool byte char decimal double float int long object sbyte short string uint ulong ushort".split(
+            " ",
+          ),
+        // `Foo` and `Foo<T>` are two types.
+        byParameterCount: true,
+        wrappers: ["nullable_type"],
+        generic: { kind: "generic_name", arguments: "type_argument_list" },
+        parameters: { entry: "type_parameter", names: ["identifier"] },
+        sequences: [{ kind: "array_type", element: "type" }],
+        predeclared: [],
+        unread: ["argument_list"],
+      },
+      // A file with one namespace has it, written block or file-scoped; the types of a namespace are seen in the namespaces inside it.
+      package: {
+        clause: ["file_scoped_namespace_declaration", "namespace_declaration"],
+        name: "name",
+        nested: true,
+        path: "clause",
+      },
+      unboundAliases: [],
+      members: {
+        container: "declaration_list",
+        entries: ["field_declaration", "property_declaration"],
+        name: "name",
+        nameKinds: ["variable_declarator", "identifier"],
+        type: "type",
+        declarator: "name",
+        holder: "variable_declaration",
+        callable: false,
+      },
+      interfaces: { embeds: [], embedKinds: [] },
+      // One list holds the base class and the interfaces: a class lists an interface it implements, anything else extends.
+      supertypes: [{ kind: "base_list", edge: "inferred" }],
+      implements: "nominal",
+      enclosing: { self: ["this"], parent: ["base"], callableLocals: true },
+      // The number of arguments tells overloads apart where it can; two that fit are no edge at all.
+      arity: {
+        arguments: "arguments",
+        parameters: ["parameter"],
+        variadic: [],
+        rest: "name",
+        optional: "=",
+        overloads: "none",
+      },
+      construct: { kind: "object_creation_expression", type: "type", arguments: "arguments" },
+      generics: "type_parameter_list",
+      vars: { declarations: [], specs: [], type: "type", value: "value" },
+      unnamed: [],
+      // A static method whose first parameter is marked `this` is a method of that type.
+      extensions: { parameter: "parameter", marker: "this", type: "type" },
+      callee: {
+        names: ["identifier"],
+        members: [{ kind: "member_access_expression", operand: "expression", name: "name" }],
+        operands: ["identifier"],
+      },
+      expressions: {
+        wrappers: ["parenthesized_expression"],
+        names: ["identifier"],
+        index: { kind: "element_access_expression", operand: "expression" },
+        through: [],
+        typed: [
+          { kind: "object_creation_expression", type: "type" },
+          { kind: "cast_expression", type: "type" },
+          { kind: "as_expression", type: "right" },
+        ],
+      },
+      locals: {
+        nameKinds: ["identifier", "implicit_parameter"],
+        parameters: [
+          { kind: "parameter", name: "name", type: "type", variadic: false, from: "start" },
+          { kind: "foreach_statement", name: "left", type: "type", variadic: false, from: "start" },
+          { kind: "catch_declaration", name: "name", type: "type", variadic: false, from: "start" },
+          { kind: "declaration_pattern", name: "name", type: "type", variadic: false, from: "start" },
+          { kind: "declaration_expression", name: "name", type: "type", variadic: false, from: "start" },
+        ],
+        declarations: [{ kind: "variable_declarator", names: "name", parentType: "type", from: "end" }],
+        inferred: ["var"],
+        valueLists: [],
+        ranges: [],
+        untyped: [
+          { kind: "local_function_statement", names: "name", from: "start" },
+          { kind: "lambda_expression", names: "parameters", from: "start" },
+          { kind: "tuple_pattern", names: "name", from: "start" },
+          { kind: "recursive_pattern", names: "name", from: "start" },
+          { kind: "from_clause", names: "name", from: "start" },
+        ],
+      },
+      lookups: [
+        "invocation_expression",
+        "identifier",
+        "member_access_expression",
+        "object_creation_expression",
+      ],
+    },
+    // A `public` member is exported, and so is any member of an interface.
+    exported: {
+      by: "modifier",
+      node: "modifier",
+      keywords: ["public"],
+      implicit: [],
+      owners: ["interface_declaration"],
+    },
+    signature: { empty: "()", maxLength: 200 },
+    measure: {
+      branches: [
+        "if_statement",
+        "for_statement",
+        "foreach_statement",
+        "while_statement",
+        "do_statement",
+        "switch_section",
+        "switch_expression_arm",
+        "catch_clause",
+        "conditional_expression",
+      ],
+      binary: { kind: "binary_expression", operator: "operator", operators: ["&&", "||"] },
+      statements: [
+        "expression_statement",
+        "local_declaration_statement",
+        "local_function_statement",
+        "return_statement",
+        "if_statement",
+        "for_statement",
+        "foreach_statement",
+        "while_statement",
+        "do_statement",
+        "switch_statement",
+        "try_statement",
+        "throw_statement",
+        "break_statement",
+        "continue_statement",
+        "lock_statement",
+        "using_statement",
+        "yield_statement",
+        "checked_statement",
+      ],
+    },
+  },
+  workspace: {
+    manifests: [
+      {
+        files: ["*.csproj"],
+        format: "xml",
+        quotes: "",
+        comment: /<!--[\s\S]*?-->/g,
+        // The assembly name when the project sets one, else the name of the project file.
+        name: [{ path: "Project/PropertyGroup/AssemblyName" }, { fileName: true }],
+        // A `ProjectReference` names the project file it needs: the name of that file.
+        deps: { path: "Project/ItemGroup/ProjectReference@Include", entry: /([^\\/]+)\.csproj$/ },
+      },
+    ],
+    skipDirs: ["bin", "obj", "node_modules"],
+    main: /\bstatic\s+(?:async\s+)?(?:void|int|Task|Task<int>)\s+Main\s*\(/,
+  },
+  tokens: {
+    identifiers: ["identifier"],
+    local: "identifier",
+    strings: ["string_literal", "character_literal", "verbatim_string_literal", "raw_string_literal"],
+    numbers: ["integer_literal", "real_literal"],
+    comments: ["comment"],
+    punctuation: ["(", ")", "{", "}", "[", "]", ",", ";"],
+    ownName: "name",
+    locals: {
+      parameters: { kinds: ["parameter"], field: "name" },
+      bindings: [
+        { kind: "variable_declarator", field: "name" },
+        { kind: "foreach_statement", field: "left" },
+        { kind: "catch_declaration", field: "name" },
+        { kind: "declaration_pattern", field: "name" },
+        { kind: "lambda_expression", field: "parameters" },
+      ],
+      specs: { kinds: [], field: "name" },
+      blank: "_",
+    },
+    embedding: {
+      strings: ["string_literal"],
+      stringText: '"s"',
+      localPrefix: "v",
+    },
+  },
+  kindLabels: {
+    function: "method",
+    method: "method",
+    component: "component",
+    hook: "hook",
+    class: "class",
+    type: "type",
+    interface: "interface",
+    enum: "enum",
+    const: "constant",
+  },
+  factSheetHints: [],
+  thresholds: { exactMinStmts: 3, nearMinStmts: 6 },
+} as const satisfies LanguagePack;

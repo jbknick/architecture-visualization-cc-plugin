@@ -17,6 +17,7 @@ export type FixtureName =
   | "go-basic"
   | "java-basic"
   | "python-basic"
+  | "csharp-basic"
   | "overlay-groups"
   | "deep-radius"
   | "go-recipes/nethttp"

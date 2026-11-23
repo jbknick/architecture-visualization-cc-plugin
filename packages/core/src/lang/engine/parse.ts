@@ -41,8 +41,16 @@ export function isExportedName(
       return !name.startsWith("_");
     case "modifier": {
       if (container && rule.implicit.includes(container)) return true;
-      const mods = node?.children().find((c) => c.kind() === rule.node);
-      return mods?.children().some((c) => rule.keywords.includes(c.kind())) ?? false;
+      // A member of a declaration the rule names is exported without a modifier: the declaration holds the body that holds the member.
+      const owner = node?.parent()?.parent()?.kind();
+      if (owner !== undefined && rule.owners?.includes(owner)) return true;
+      return (
+        node
+          ?.children()
+          .some(
+            (c) => c.kind() === rule.node && c.children().some((m) => rule.keywords.includes(m.kind())),
+          ) ?? false
+      );
     }
   }
 }
@@ -261,9 +269,16 @@ export function rawImportsOf(pack: LanguagePack, root: SyntaxNode): RawImport[] 
   };
   const add = (c: SyntaxNode): void => {
     const kinds = rule.pathKinds;
-    const path = kinds ? c.namedChildren().find((x) => kinds.includes(x.kind())) : c.field(rule.path ?? "");
+    const aliasNode = rule.alias ? c.field(rule.alias) : null;
+    const isAlias = (x: SyntaxNode): boolean =>
+      aliasNode !== null &&
+      x.range().start.index === aliasNode.range().start.index &&
+      x.range().end.index === aliasNode.range().end.index;
+    const path = kinds
+      ? c.namedChildren().find((x) => kinds.includes(x.kind()) && !isAlias(x))
+      : c.field(rule.path ?? "");
     if (!path) return;
-    const alias = rule.alias ? (c.field(rule.alias)?.text() ?? null) : null;
+    const alias = aliasNode?.text() ?? null;
     const line = c.range().start.line + 1;
     const text = kinds ? path.text().replace(/\s+/g, "") : unquote(path.text());
     const named = rule.named;
@@ -272,7 +287,10 @@ export function rawImportsOf(pack: LanguagePack, root: SyntaxNode): RawImport[] 
       return;
     }
     const isStatic = c.children().some((x) => x.kind() === named.static);
-    if (c.namedChildren().some((x) => x.kind() === named.onDemand)) {
+    if (
+      c.namedChildren().some((x) => x.kind() === named.onDemand) ||
+      (named.bare === "demand" && alias === null)
+    ) {
       out.push({ alias, specifier: text, name: "*", static: isStatic, line });
       return;
     }

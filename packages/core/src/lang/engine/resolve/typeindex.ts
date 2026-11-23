@@ -35,6 +35,15 @@ export interface FuncInfo {
 
 export interface TypeInfo extends TypeDecl {
   file: FileInfo;
+  /** The other parts of a type that is declared in several (`types.partial`), each with its own file; empty for any other type. `bases` and `opaque` already hold those of every part. */
+  parts: TypeInfo[];
+}
+
+/** An extension method (`typing.extensions`): the method, the type it extends as written in its file, and how many arguments a call passes besides the receiver. */
+export interface ExtInfo {
+  func: FuncInfo;
+  receiver: TypeRef | null;
+  arity: Arity | null;
 }
 
 export interface VarInfo {
@@ -54,9 +63,15 @@ export interface Pkg {
   /** Names a file declares as a function twice: which one a call means is not known, so none is in `funcs`. */
   redefined: Set<string>;
   types: Map<string, TypeInfo>;
+  /** Names the package declares with different numbers of type parameters (`typing.type.byParameterCount`): no type of it, nor any member, is kept. */
+  mixed: Set<string>;
   /** Keyed `Recv.Name` with the receiver's base type (the dotted name of the type for a method in a type body). Overloads share a key. */
   methods: Map<string, FuncInfo[]>;
+  /** Extension methods by name. */
+  extensions: Map<string, ExtInfo[]>;
   vars: Map<string, VarInfo>;
+  /** True for a package a file's own declaration names (not one made from the folder the file is in). */
+  declared: boolean;
 }
 
 /** The module a file is, for a pack whose packages are files: its dotted path below its workspace (empty for the workspace's own index file) and whether the file stands for its folder. */
@@ -131,6 +146,7 @@ export class TypeIndex {
   private readonly idAt = new Map<string, Map<number, string>>();
   private readonly typing: TypingRules;
   private readonly predeclared: ReadonlySet<string>;
+  private readonly builtin: ReadonlySet<string>;
   private readonly workspaces: WorkspaceRecord[];
   private readonly sep: string;
   private readonly rawImports = new Map<string, FileDecls["imports"]>();
@@ -149,6 +165,7 @@ export class TypeIndex {
     if (!pack.nodes.typing) throw new Error(`${pack.id}: the pack has no typing rules`);
     this.typing = pack.nodes.typing;
     this.predeclared = new Set(this.typing.type.predeclared);
+    this.builtin = new Set(this.typing.type.builtin);
     this.sep = pack.nodes.import.separator;
     this.workspaces = ctx.workspaces
       .filter((w) => w.lang === pack.id)
@@ -179,8 +196,11 @@ export class TypeIndex {
           funcs: new Map(),
           redefined: new Set(),
           types: new Map(),
+          mixed: new Set(),
           methods: new Map(),
+          extensions: new Map(),
           vars: new Map(),
+          declared: !mod && rule.path === "clause" && decls.packaged,
         };
         this.pkgs.set(key, pkg);
       }
@@ -219,9 +239,20 @@ export class TypeIndex {
           });
       }
       for (const t of decls.types) {
-        if (pkg.types.has(t.name)) continue;
-        const info: TypeInfo = { ...t, file };
-        pkg.types.set(t.name, info);
+        const earlier = pkg.types.get(t.name);
+        const info: TypeInfo = { ...t, file, parts: [] };
+        if (earlier) {
+          // The same name with another number of type parameters is another type, which no use site is matched to.
+          if (this.typing.type.byParameterCount && earlier.params.length !== t.params.length) {
+            pkg.mixed.add(t.name);
+            continue;
+          }
+          // A part of a type another file declared too is read in its own file; any other repeated name is left out.
+          if (!earlier.partial || !t.partial) continue;
+          earlier.parts.push(info);
+          earlier.bases += t.bases;
+          earlier.opaque ||= t.opaque;
+        } else pkg.types.set(t.name, info);
         const list = this.order.get(entry.fileId) ?? [];
         list.push(info);
         this.order.set(entry.fileId, list);
@@ -235,8 +266,9 @@ export class TypeIndex {
         seenKeys.add(m.key);
       }
       for (const m of methods) {
-        // A method in a type body belongs to the type the index took; one of a type another file declared first is left out.
-        if (m.owner !== null && pkg.types.get(m.owner)?.file !== file) continue;
+        // A method in a type body belongs to the type the index took (any part of it); one of a type another file declared first is left out.
+        const owner = m.owner === null ? undefined : pkg.types.get(m.owner);
+        if (m.owner !== null && !(owner && [owner, ...owner.parts].some((p) => p.file === file))) continue;
         const list = pkg.methods.get(m.key);
         const info: FuncInfo = {
           results: m.results,
@@ -248,6 +280,15 @@ export class TypeIndex {
         };
         if (!list) pkg.methods.set(m.key, [info]);
         else if (this.typing.arity) list.push(info);
+        if (m.extension) {
+          const name = m.key.slice(m.key.lastIndexOf(".") + 1);
+          // The receiver is the first parameter, not an argument.
+          const arity = m.arity && { min: Math.max(0, m.arity.min - 1), max: m.arity.max - 1 };
+          pkg.extensions.set(name, [
+            ...(pkg.extensions.get(name) ?? []),
+            { func: info, receiver: m.extension.type, arity },
+          ]);
+        }
       }
       for (const v of decls.vars) {
         const earlier = pkg.vars.get(v.name);
@@ -262,6 +303,13 @@ export class TypeIndex {
           ...(v.flow ? { flow: true as const } : {}),
           file,
         });
+      }
+    }
+    for (const pkg of this.pkgs.values()) {
+      for (const name of pkg.mixed) {
+        const inside = (key: string): boolean => key === name || key.startsWith(`${name}.`);
+        for (const key of [...pkg.types.keys()]) if (inside(key)) pkg.types.delete(key);
+        for (const key of [...pkg.methods.keys()]) if (key.startsWith(`${name}.`)) pkg.methods.delete(key);
       }
     }
     for (const f of this.files) this.mapImports(f);
@@ -322,6 +370,25 @@ export class TypeIndex {
   /** The symbol id of the declaration at an offset of a file; null when the file has no symbol there. */
   symbolAt(fileId: string, start: number): string | null {
     return this.idAt.get(fileId)?.get(start) ?? null;
+  }
+
+  /** The packages a package is nested in (`typing.package.nested`), innermost first: those its name starts with. Empty for a package no declaration names. */
+  private enclosingPkgs(pkg: Pkg): Pkg[] {
+    if (!this.typing.package.nested || !pkg.declared) return [];
+    const out: Pkg[] = [];
+    for (let p = pkg.path; p.includes(this.sep); ) {
+      p = p.slice(0, p.lastIndexOf(this.sep));
+      const outer = this.pkgs.get(p);
+      if (outer?.declared) out.push(outer);
+    }
+    return out;
+  }
+
+  /** The supertypes a type declares, each with the file it is written in: a type of several parts has those of every part. */
+  supersOf(
+    ti: TypeInfo,
+  ): { type: TypeRef | null; edge: TypeInfo["supers"][number]["edge"]; line: number; file: FileInfo }[] {
+    return [ti, ...ti.parts].flatMap((p) => p.supers.map((s) => ({ ...s, file: p.file })));
   }
 
   /** The types a file declared that the index took (a name an earlier file of the package declared first is not one). */
@@ -500,7 +567,8 @@ export class TypeIndex {
         return { ...base, args: t.args.map((a) => this.resolveType(a, file, bound)) };
       }
       case "qual": {
-        const path = file.imports.get(t.qualifier);
+        const byPath = this.typing.type.qualified?.packages && this.pkgs.get(t.qualifier)?.declared;
+        const path = file.imports.get(t.qualifier) ?? (byPath ? t.qualifier : undefined);
         return path ? { k: "named", pkg: path, name: t.name } : null;
       }
       case "seq":
@@ -516,6 +584,7 @@ export class TypeIndex {
 
   /** The type a plain name written in `file` stands for, without its type arguments. */
   private resolveName(t: Extract<TypeRef, { k: "name" }>, file: FileInfo): Named | null {
+    if (this.builtin.has(t.name)) return { k: "named", pkg: "", name: t.name };
     const around = chainOf(file.pkg, t.owner);
     // A type parameter of an enclosing type is not a type of the repo; nothing is known of it.
     for (const o of around) if (file.pkg.types.get(o)?.params.includes(t.name)) return null;
@@ -527,9 +596,17 @@ export class TypeIndex {
     }
     const imported = file.named.get(t.name);
     if (imported) return imported;
+    // A name the package declares with several numbers of type parameters is no type, and hides the same name further out.
+    if (file.pkg.mixed.has(t.name)) return null;
     if (file.pkg.types.has(t.name)) return { k: "named", pkg: file.pkg.path, name: t.name };
-    for (const p of file.demand)
+    for (const p of this.enclosingPkgs(file.pkg)) {
+      if (p.mixed.has(t.name)) return null;
+      if (p.types.has(t.name)) return { k: "named", pkg: p.path, name: t.name };
+    }
+    for (const p of file.demand) {
+      if (this.pkgs.get(p)?.mixed.has(t.name)) return null;
       if (this.pkgs.get(p)?.types.has(t.name)) return { k: "named", pkg: p, name: t.name };
+    }
     // A type of a library the pack knows, brought in by an import of its whole package.
     for (const e of this.typing.type.library ?? [])
       if (e.types.includes(t.name) && file.demand.includes(e.package))
@@ -574,8 +651,8 @@ export class TypeIndex {
     const c = this.canon(r);
     const ti = c?.k === "named" ? this.typeInfo(c) : undefined;
     if (!ti || depth > 8) return true;
-    return ti.supers.some((s) => {
-      const sr = this.resolveType(s.type, ti.file);
+    return this.supersOf(ti).some((s) => {
+      const sr = this.resolveType(s.type, s.file);
       return sr?.k !== "named" || this.hasUnknownSupers(sr, depth + 1);
     });
   }
@@ -608,7 +685,8 @@ export class TypeIndex {
     const ti = this.typeInfo(c);
     if (ti?.kind !== "class") return null;
     const bound = this.bindings(ti, c);
-    if (ti.fields.has(name)) return this.resolveType(ti.fields.get(name) ?? null, ti.file, bound);
+    for (const p of [ti, ...ti.parts])
+      if (p.fields.has(name)) return this.resolveType(p.fields.get(name) ?? null, p.file, bound);
     for (const e of ti.embedded) {
       const er = this.resolveType(e.type, ti.file, bound);
       if (er?.k !== "named") continue;
@@ -616,8 +694,8 @@ export class TypeIndex {
       const sub = this.fieldType(er, name, depth + 1);
       if (sub) return sub;
     }
-    for (const s of ti.supers) {
-      const sr = this.resolveType(s.type, ti.file, bound);
+    for (const s of this.supersOf(ti)) {
+      const sr = this.resolveType(s.type, s.file, bound);
       const sub = sr?.k === "named" ? this.fieldType(sr, name, depth + 1) : null;
       if (sub) return sub;
     }
@@ -678,12 +756,59 @@ export class TypeIndex {
         if (sub.length > 0) return sub;
       }
     }
-    for (const s of ti.supers) {
-      const sr = this.resolveType(s.type, ti.file, bound);
+    for (const s of this.supersOf(ti)) {
+      const sr = this.resolveType(s.type, s.file, bound);
       const sub = sr?.k === "named" ? this.lookupMethods(sr, m, args, true, depth + 1, true) : [];
       if (sub.length > 0) return sub;
     }
     return [];
+  }
+
+  /** True when `r` is `target` or has it among its supertypes in the repo (through at most eight levels). */
+  private isSubtype(r: Named, target: Named, depth = 0): boolean {
+    const c = this.canon(r);
+    if (c?.k !== "named" || depth > 8) return false;
+    if (c.pkg === target.pkg && c.name === target.name) return true;
+    const ti = this.typeInfo(c);
+    if (!ti) return false;
+    return this.supersOf(ti).some((s) => {
+      const sr = this.resolveType(s.type, s.file);
+      return sr?.k === "named" && this.isSubtype(sr, target, depth + 1);
+    });
+  }
+
+  /**
+   * The extension methods (`typing.extensions`) named `m` that a call with `args` arguments on a value of type `r`, written
+   * in `file`, may mean: those of the packages the file sees (its own, those it is nested in, those it imports whole) whose
+   * first parameter has the type `r` or one of its supertypes in the repo. When a fitting one has a first parameter that
+   * is not read (a type parameter, a type with type arguments), which of them the call means is not known: none.
+   */
+  extensionHits(r: Named, file: FileInfo, m: string, args: number | null): MethodHit[] {
+    const seen = new Set<string>();
+    const hits: MethodHit[] = [];
+    const visible = [
+      file.pkg,
+      ...this.enclosingPkgs(file.pkg),
+      ...file.demand.flatMap((p) => this.pkgs.get(p) ?? []),
+    ];
+    for (const pkg of visible) {
+      if (seen.has(pkg.path)) continue;
+      seen.add(pkg.path);
+      for (const e of pkg.extensions.get(m) ?? []) {
+        if (args !== null && e.arity && (args < e.arity.min || args > e.arity.max)) continue;
+        const recv = this.canon(this.resolveType(e.receiver, e.func.file));
+        if (recv?.k !== "named" || recv.args) return [];
+        if (!this.isSubtype(r, recv)) continue;
+        hits.push({
+          kind: "method",
+          file: e.func.file,
+          start: e.func.start,
+          results: e.func.results,
+          bind: new Map(e.func.tparams.map((p): [string, null] => [p, null])),
+        });
+      }
+    }
+    return hits;
   }
 
   /**
@@ -701,9 +826,10 @@ export class TypeIndex {
     if (only) return own?.length === 1 && !only.ambiguous ? only : null;
     // A class created some other way may run a method of its own that its declaration does not show.
     if (ti.opaque) return null;
-    const base = ti.supers[0];
-    if (ti.bases !== 1 || ti.supers.length !== 1 || !base) return null;
-    return this.soleMethod(this.resolveType(base.type, ti.file), m, depth + 1);
+    const supers = this.supersOf(ti);
+    const base = supers[0];
+    if (ti.bases !== 1 || supers.length !== 1 || !base) return null;
+    return this.soleMethod(this.resolveType(base.type, base.file), m, depth + 1);
   }
 
   /**
@@ -725,8 +851,8 @@ export class TypeIndex {
     const ti = this.typeInfo(t);
     if (!ti || seen.has(key)) return false;
     seen.add(key);
-    return ti.supers.some((s) => {
-      const sr = this.canon(this.resolveType(s.type, ti.file));
+    return this.supersOf(ti).some((s) => {
+      const sr = this.canon(this.resolveType(s.type, s.file));
       if (sr?.k !== "named") return false;
       return (sr.pkg === target.pkg && sr.name === target.name) || this.descendsFrom(sr, target, seen);
     });
@@ -760,9 +886,9 @@ export class TypeIndex {
     const pkg = this.pkgs.get(c.pkg);
     if (ti.kind !== "class" || ti.opaque || rule.creators.some((n) => pkg?.methods.has(`${c.name}.${n}`)))
       return false;
-    for (const s of ti.supers) {
+    for (const s of this.supersOf(ti)) {
       if ((s.type?.k === "name" || s.type?.k === "qual") && rule.special.includes(s.type.name)) return false;
-      const base = this.canon(this.resolveType(s.type, ti.file));
+      const base = this.canon(this.resolveType(s.type, s.file));
       if (base?.k === "named" && !this.createdByInitializer(base, rule, seen)) return false;
     }
     return true;

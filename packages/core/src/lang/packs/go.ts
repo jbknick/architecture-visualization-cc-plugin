@@ -106,7 +106,7 @@ export const goPack = {
         ).split(" "),
         unread: [],
       },
-      package: { clause: "package_clause", path: "directory", separate: "_test" },
+      package: { clause: ["package_clause"], path: "directory", separate: "_test" },
       unboundAliases: ["_", "."],
       results: { list: "parameter_list", name: "name", nameKinds: ["identifier"], type: "type" },
       members: {
