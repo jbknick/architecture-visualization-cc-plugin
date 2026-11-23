@@ -52,7 +52,9 @@ export type Expr =
   | { k: "member"; of: Expr | null; name: string }
   | { k: "call"; call: CallExpr }
   | { k: "self"; body?: LocalBody }
-  | { k: "parent"; body?: LocalBody };
+  | { k: "parent"; body?: LocalBody }
+  /** The one base of the type around the code, for a pack whose `parent` rule names the call that stands for it. */
+  | { k: "base" };
 
 /** Where a declared name gets its type. */
 export type DeclSource =
@@ -111,6 +113,8 @@ export interface FuncDecl {
   arity: Arity | null;
   /** The names of the type parameters the declaration has of its own. */
   tparams: string[];
+  /** True when a decorator the pack lists as an overload mark is on the declaration: it is a stub of the declaration that has none. */
+  overload?: true;
 }
 
 /** An assignment to an attribute of the instance inside the initializer of a type: what the flow resolver reads to type the attribute. */
@@ -141,6 +145,10 @@ export interface TypeDecl {
   embedded: { type: TypeRef | null; line: number }[];
   /** Supertypes the declaration names, with the edge each makes and the line it is written on. */
   supers: { type: TypeRef | null; edge: "extends" | "implements"; line: number }[];
+  /** How many supertypes the declaration lists, also those that are not read (a keyword option of the declaration is none). */
+  bases: number;
+  /** True when the type is created in a way its declaration does not tell: it has a decorator, or a keyword option among its supertypes. */
+  opaque: boolean;
   /** Methods declared in the body of an interface. */
   methods: Map<string, { results: Results; start: number }>;
   /** Interfaces an interface embeds. */

@@ -142,10 +142,9 @@ export interface FlowRules {
   untyped: readonly string[];
   /** The name of the parameter of a method that stands for the value the method is called on. */
   self: string;
-  /** The method of a type whose assignments to attributes of that value say what type each attribute has. */
-  initializer: string;
   /**
-   * An assignment to an attribute of that value (`self.repo = Repo()`): the kind of the assignment, the fields of its
+   * An assignment to an attribute of that value (`self.repo = Repo()`) in the initializer of the type (the method
+   * `construction.initializer` names) says what type the attribute has: the kind of the assignment, the fields of its
    * target, its value and its optional type, and the kind and fields of the attribute access that is the target.
    */
   attribute: {
@@ -155,6 +154,38 @@ export interface FlowRules {
     type: string;
     access: { kind: string; object: string; name: string };
   };
+}
+
+/**
+ * What a call of a type does (level 2 of the call resolver, spec section 7): a type of the repo that is called runs a
+ * method of its own, the initializer, which is the call's target. Only a type whose creation the declaration tells
+ * completely is read: no edge for one that is created some other way.
+ */
+export interface ConstructionRules {
+  /** The name of the method a call of a type runs. A type that does not declare it runs the one of its nearest base. */
+  initializer: string;
+  /** Names of methods that create the value themselves: a type that declares one, or has a base of the repo that does, is created some other way. */
+  creators: readonly string[];
+  /** Names of types outside the repo whose subclasses are created some other way (a value looked up, a mapping turned into a value). */
+  special: readonly string[];
+}
+
+/** Where the decorators of a declaration sit, and which of them mark a function as one of several that stand for one declaration. */
+export interface DecoratorRules {
+  /** Kind of the node that holds a declaration and its decorators. */
+  wrapper: string;
+  /** Kind of each decorator in it; its first named child is the expression written after the mark. */
+  entry: string;
+  /** Names (the last segment of a qualified name) of the decorators that mark a declaration as a stub of the one declaration that has none of them. */
+  overloads: readonly string[];
+}
+
+/** The call that stands for the base of the enclosing type, written without arguments about the type. */
+export interface ParentRules {
+  /** The name that is called (a bare name). */
+  call: string;
+  /** The field of the call that holds its arguments; a call that has any is not read. */
+  arguments: string;
 }
 
 /**
@@ -197,6 +228,33 @@ export interface TypingRules {
     predeclared: readonly string[];
     /** Kinds of type expressions that hold other types but are not read as one (a qualified name the pack has no rule for). */
     unread: readonly string[];
+    /**
+     * Annotations that allow the absence of a value and read as the type of the value: a generic written with one
+     * argument (`Optional[A]`), and a binary expression one side of which is the absent value (`A | None`, `None | A`).
+     * A binary expression with no such side (a union of two types) is not read.
+     */
+    nullable?: {
+      /** Names (the last segment of a qualified name) of the generics that read as their one argument. */
+      generics: readonly string[];
+      /**
+       * The kinds a generic is written as: the field holding its name (empty: its first named child) and where its
+       * arguments are, the kind of the child that holds them or the field that does.
+       */
+      forms: readonly { kind: string; head: string; arguments: { kind?: string; field?: string } }[];
+      /** The binary expression: its kind, the field of its operator, the operators that make a union, the fields of its two sides and the kinds of the absent value. */
+      union: {
+        kind: string;
+        operator: string;
+        operators: readonly string[];
+        sides: readonly [string, string];
+        none: readonly string[];
+      };
+    };
+    /**
+     * A type written as a string (a forward reference): the kind of the string, of the child that holds its text, and
+     * the pattern a text must match to be read as a plain or qualified name (the parts are joined by the import separator).
+     */
+    quoted?: { kind: string; content: string; name: RegExp };
   };
   /**
    * The declaration that names the package of a file (a language without one leaves `clause` out), how the package is
@@ -205,7 +263,8 @@ export interface TypingRules {
    * names it with the path alone, found in the workspace of the importing file or in one it depends on), and the ending of
    * a name that makes a package of its own that no import reaches. With `file`, `roots` are the folders below a workspace
    * that hold its packages instead of the workspace folder itself, and `index` the name (without extension) of the file
-   * that stands for its folder.
+   * that stands for its folder. With `reexports`, a name that a file imports from such an index file, which that file
+   * binds by an import of its own, is the one it is bound to there, followed through at most that many index files.
    */
   package: {
     clause?: string;
@@ -213,7 +272,14 @@ export interface TypingRules {
     separate?: string;
     roots?: readonly string[];
     index?: string;
+    reexports?: number;
   };
+  /** Where decorators sit; with it, a function declared several times in a file, all but one marked as a stub, has the one declaration that is not. */
+  decorators?: DecoratorRules;
+  /** What a call of a type of the repo runs; without it a type that is called makes no edge. */
+  construction?: ConstructionRules;
+  /** The call that stands for the one base of the enclosing type (`super()`); a method called on it is looked up in that base. */
+  parent?: ParentRules;
   /** The kind of the child of a function declaration that makes its result a deferred value: the result is not read as the declared type. */
   deferred?: string;
   /**
@@ -245,9 +311,15 @@ export interface TypingRules {
   /**
    * Supertypes written in the declaration of a type: each entry names the field (or, when the grammar has none, the kind
    * of the child) that holds them and the edge they make (`extends` for a class or interface, `implements` for an
-   * interface a class declares).
+   * interface a class declares). `keywords` are the kinds of the entries of that list that are options of the declaration
+   * and no supertype (`metaclass=M`): a type that has one is created in a way its declaration does not tell.
    */
-  supertypes: readonly { field?: string; kind?: string; edge: "extends" | "implements" }[];
+  supertypes: readonly {
+    field?: string;
+    kind?: string;
+    edge: "extends" | "implements";
+    keywords?: readonly string[];
+  }[];
   /** How a type comes to implement an interface: `structural` when its method names cover the interface's, `nominal` when it declares it. */
   implements: "structural" | "nominal";
   /**

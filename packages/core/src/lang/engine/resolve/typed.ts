@@ -426,6 +426,13 @@ export class TypeCalls implements CallResolver {
       }
       case "self":
         return e.body ? this.bodySelf(e.body, env) : env.owner;
+      case "base": {
+        const ti = env.owner ? index.typeInfo(env.owner) : undefined;
+        const only = ti?.supers[0];
+        // The value may be of a type below this one that lists several bases: then which base is meant is not known.
+        if (!ti || !only || !env.owner || ti.bases !== 1 || ti.supers.length !== 1) return null;
+        return index.hasMultiBaseDescendant(env.owner) ? null : index.resolveType(only.type, ti.file);
+      }
       case "parent": {
         if (e.body) return this.bodySelf(e.body, env);
         const ti = env.owner ? index.typeInfo(env.owner) : undefined;
@@ -488,7 +495,7 @@ export class TypeCalls implements CallResolver {
 
   /** The overloads that fit as a resolution: one when the call is certain; the type of the result is known when every one agrees on it. */
   private fromHits(hits: MethodHit[], line: number, env: Env): Resolved {
-    const real = hits.filter((h) => h.kind !== "func-field");
+    const real = hits.filter((h) => h.kind === "method" || h.kind === "interface-method");
     const first = real[0];
     if (!first || real.length < hits.length) return { targets: [], results: [], file: env.file, line };
     const same = real.every((h) => JSON.stringify(h.results) === JSON.stringify(first.results));
@@ -497,6 +504,18 @@ export class TypeCalls implements CallResolver {
       results: same ? first.results : [],
       bind: first.bind,
       file: first.file,
+      line,
+    };
+  }
+
+  /** A call of a type of the repo: no function, the value has that type, and the target is the initializer the pack's `construction` names. */
+  private instantiate(t: Named, line: number, env: Env): Resolved {
+    const init = this.idx().initializer(t);
+    return {
+      targets: init ? [{ file: init.file, start: init.start }] : [],
+      results: [],
+      file: env.file,
+      conversion: t,
       line,
     };
   }
@@ -557,7 +576,7 @@ export class TypeCalls implements CallResolver {
           line: callee.line,
         };
       if (pkg.types.has(callee.name))
-        return { ...none(callee.line), conversion: { k: "named", pkg: pkg.path, name: callee.name } };
+        return this.instantiate({ k: "named", pkg: pkg.path, name: callee.name }, callee.line, env);
       // A name the file imports by name: a function of the repo, or a type of it.
       const imported = env.file.named.get(callee.name);
       if (imported) {
@@ -570,7 +589,7 @@ export class TypeCalls implements CallResolver {
             file: g.file,
             line: callee.line,
           };
-        if (from?.types.has(imported.name)) return { ...none(callee.line), conversion: imported };
+        if (from?.types.has(imported.name)) return this.instantiate(imported, callee.line, env);
       }
       return none(callee.line);
     }
@@ -584,7 +603,7 @@ export class TypeCalls implements CallResolver {
         const p = idx.pkgs.get(path);
         if (!p) return none(callee.line);
         if (p.types.has(callee.name))
-          return { ...none(callee.line), conversion: { k: "named", pkg: path, name: callee.name } };
+          return this.instantiate({ k: "named", pkg: path, name: callee.name }, callee.line, env);
         const f = p.funcs.get(callee.name);
         if (f)
           return {
@@ -599,6 +618,12 @@ export class TypeCalls implements CallResolver {
     let t = named(idx.canon(this.typeOf(op, env, 0, depth + 1)));
     if (!t && op?.k === "name" && plain) t = this.typeByName(op.name, env);
     if (!t) return none(callee.line);
+    if (op?.k === "base") {
+      const m = idx.soleMethod(t, callee.name);
+      return m
+        ? { targets: [{ file: m.file, start: m.start }], results: m.results, file: m.file, line: callee.line }
+        : none(callee.line);
+    }
     const hits = idx.lookupMethods(t, callee.name, args);
     if (hits.length === 0) {
       const result = idx.libraryResult(t, callee.name);

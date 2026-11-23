@@ -29,6 +29,8 @@ export interface FuncInfo {
   start: number;
   arity: Arity | null;
   tparams: string[];
+  /** True for a method the type's body declares more than once: which one a call means is not known. */
+  ambiguous?: true;
 }
 
 export interface TypeInfo extends TypeDecl {
@@ -73,6 +75,10 @@ export interface FileInfo {
   module: ModuleInfo | null;
   /** Local import name to import path. Imports that bind no name are left out. */
   imports: Map<string, string>;
+  /** Local names that two imports of a file bind (only a pack whose packages are files reads them). */
+  rebound: Set<string>;
+  /** True when the file imports every name of a module (a pack whose packages are files): any name it binds may be rebound by that import. */
+  starred: boolean;
   /** Types the file imports by name: local name to type. */
   named: Map<string, Named>;
   /** Packages whose types the file imports all at once. */
@@ -86,7 +92,8 @@ export interface FileInfo {
 
 /** What a method lookup found. `file` and `start` give the symbol. */
 export interface MethodHit {
-  kind: "method" | "interface-method" | "func-field";
+  /** `func-field`: a field holding a function; `ambiguous`: a method declared more than once. Neither is the target of an edge. */
+  kind: "method" | "interface-method" | "func-field" | "ambiguous";
   file: FileInfo;
   start: number;
   results: Results;
@@ -128,7 +135,10 @@ export class TypeIndex {
   private readonly sep: string;
   private readonly rawImports = new Map<string, FileDecls["imports"]>();
   private readonly order = new Map<string, TypeInfo[]>();
+  /** The files that stand for their folder, by the key of the package they make. */
+  private readonly indexFiles = new Map<string, FileInfo[]>();
   private implementsByFile: Map<string, EdgeRecord[]> | null = null;
+  private multiBase: Named[] | null = null;
 
   constructor(
     private readonly pack: LanguagePack,
@@ -180,6 +190,8 @@ export class TypeIndex {
         workspace: entry.workspace,
         module: mod,
         imports: new Map(),
+        rebound: new Set(),
+        starred: false,
         named: new Map(),
         demand: [],
         statics: new Map(),
@@ -189,7 +201,8 @@ export class TypeIndex {
       this.files.push(file);
       this.byFileId.set(entry.fileId, file);
       this.rawImports.set(entry.fileId, decls.imports);
-      for (const f of decls.funcs) {
+      if (mod?.index) this.indexFiles.set(key, [...(this.indexFiles.get(key) ?? []), file]);
+      for (const f of this.settled(decls.funcs, (x) => x.name)) {
         const earlier = pkg.funcs.get(f.name);
         // A function declared twice in one file (a redefinition, an overload stub) has no one meaning; a second file
         // of the package that declares the name (a build-constrained file, a stub) does not take the first one's.
@@ -213,7 +226,15 @@ export class TypeIndex {
         list.push(info);
         this.order.set(entry.fileId, list);
       }
-      for (const m of decls.methods) {
+      const methods = this.settled(decls.methods, (x) => x.key);
+      // Without overloads told apart by their arguments, a method declared twice in a file has no one meaning.
+      const seenKeys = new Set<string>();
+      const repeated = new Set<string>();
+      for (const m of methods) {
+        if (seenKeys.has(m.key)) repeated.add(m.key);
+        seenKeys.add(m.key);
+      }
+      for (const m of methods) {
         // A method in a type body belongs to the type the index took; one of a type another file declared first is left out.
         if (m.owner !== null && pkg.types.get(m.owner)?.file !== file) continue;
         const list = pkg.methods.get(m.key);
@@ -223,6 +244,7 @@ export class TypeIndex {
           start: m.start,
           arity: m.arity,
           tparams: m.tparams,
+          ...(repeated.has(m.key) && !this.typing.arity ? { ambiguous: true as const } : {}),
         };
         if (!list) pkg.methods.set(m.key, [info]);
         else if (this.typing.arity) list.push(info);
@@ -243,6 +265,58 @@ export class TypeIndex {
       }
     }
     for (const f of this.files) this.mapImports(f);
+    const hops = this.typing.package.reexports;
+    if (hops) this.followReexports(hops);
+  }
+
+  /**
+   * The declarations of one file with the stubs set aside: of a name declared several times, those the pack marks as
+   * overload stubs go when exactly one is not marked (the declaration they stand for). Any other repetition stays.
+   */
+  private settled<T extends { overload?: true }>(list: T[], key: (t: T) => string): T[] {
+    if (!this.typing.decorators) return list;
+    const groups = new Map<string, T[]>();
+    for (const x of list) groups.set(key(x), [...(groups.get(key(x)) ?? []), x]);
+    return list.filter((x) => {
+      const group = groups.get(key(x)) ?? [];
+      return !x.overload || group.filter((y) => !y.overload).length !== 1;
+    });
+  }
+
+  /**
+   * Replaces each name a file imports from a package's index file by the name that index file binds it to with an import
+   * of its own, through at most `hops` index files. A name the index file declares, binds twice or binds by a star import
+   * is not followed.
+   */
+  private followReexports(hops: number): void {
+    for (const f of this.files) {
+      for (const [local, n] of [...f.named]) {
+        const r = this.reexport(n, hops);
+        if ("module" in r) {
+          f.named.delete(local);
+          f.imports.set(local, r.module);
+        } else if (r.named !== n) f.named.set(local, r.named);
+      }
+    }
+  }
+
+  /** What a name imported from the module `n.pkg` is bound to, following the imports of its index file. */
+  private reexport(n: Named, hops: number): { named: Named } | { module: string } {
+    const module = this.pkgs.get(n.pkg);
+    const declared =
+      module?.funcs.has(n.name) ||
+      module?.redefined.has(n.name) ||
+      module?.types.has(n.name) ||
+      module?.vars.has(n.name);
+    if (!module || declared || hops <= 0) return { named: n };
+    for (const file of this.indexFiles.get(n.pkg) ?? []) {
+      if (file.starred || file.rebound.has(n.name)) continue;
+      const next = file.named.get(n.name);
+      if (next) return this.reexport(next, hops - 1);
+      const target = file.imports.get(n.name);
+      if (target) return { module: target };
+    }
+    return { named: n };
   }
 
   /** The symbol id of the declaration at an offset of a file; null when the file has no symbol there. */
@@ -325,21 +399,33 @@ export class TypeIndex {
   /** Reads the imports of a file for a pack whose packages are files: modules, names of a module, and names of any module. */
   private mapModuleImports(f: FileInfo): void {
     const first = (keys: string[]): string | undefined => keys.find((k) => this.pkgs.has(k)) ?? keys[0];
+    const bind = (local: string): void => {
+      if (f.named.has(local) || f.imports.has(local)) f.rebound.add(local);
+    };
     for (const i of this.rawImports.get(f.fileId) ?? []) {
       if (i.name === null) {
         const b = importBinding(this.pack, i);
         const key = first(this.moduleKeys(f, b.path));
-        if (key) f.imports.set(b.local, key);
+        if (key) {
+          bind(b.local);
+          f.imports.set(b.local, key);
+        }
       } else if (i.name === "*") {
+        f.starred = true;
         const key = this.moduleKeys(f, i.specifier).find((k) => this.pkgs.has(k));
         if (key) f.demand.push(key);
       } else {
         const local = i.alias ?? i.name;
         const sub = this.submoduleKey(f, i.specifier, i.name);
-        if (sub) f.imports.set(local, sub);
-        else {
+        if (sub) {
+          bind(local);
+          f.imports.set(local, sub);
+        } else {
           const key = first(this.moduleKeys(f, i.specifier));
-          if (key) f.named.set(local, { k: "named", pkg: key, name: i.name });
+          if (key) {
+            bind(local);
+            f.named.set(local, { k: "named", pkg: key, name: i.name });
+          }
         }
       }
     }
@@ -565,6 +651,8 @@ export class TypeIndex {
     const ti = pkg.types.get(c.name);
     const bound = ti ? this.bindings(ti, c) : undefined;
     const own = this.fitting(pkg.methods.get(`${c.name}.${m}`), args);
+    const unsure = own.find((f) => f.ambiguous);
+    if (unsure) return [{ kind: "ambiguous", file: unsure.file, start: -1, results: [] }];
     if (own.length > 0)
       return own.map((f) => ({
         kind: "method",
@@ -596,6 +684,88 @@ export class TypeIndex {
       if (sub.length > 0) return sub;
     }
     return [];
+  }
+
+  /**
+   * Method `m` of a class, certain: the one the class declares, else the one its only base declares or inherits the same
+   * way. Null when a class on the way lists several bases or one that is not a class of the repo, or declares `m` more
+   * than once: which method a call runs is then not known (the order several bases are searched in is not read).
+   */
+  soleMethod(r: Ty | null, m: string, depth = 0): FuncInfo | null {
+    const c = this.canon(r);
+    if (!c || c.k !== "named" || depth > 8) return null;
+    const ti = this.typeInfo(c);
+    if (ti?.kind !== "class") return null;
+    const own = this.pkgs.get(c.pkg)?.methods.get(`${c.name}.${m}`);
+    const [only] = own ?? [];
+    if (only) return own?.length === 1 && !only.ambiguous ? only : null;
+    // A class created some other way may run a method of its own that its declaration does not show.
+    if (ti.opaque) return null;
+    const base = ti.supers[0];
+    if (ti.bases !== 1 || ti.supers.length !== 1 || !base) return null;
+    return this.soleMethod(this.resolveType(base.type, ti.file), m, depth + 1);
+  }
+
+  /**
+   * True when a type of the repo that lists several bases has `r` among its ancestors: which method the base of `r` means
+   * then depends on the class of the value, whose bases are searched in an order that is not read.
+   */
+  hasMultiBaseDescendant(r: Named): boolean {
+    if (!this.multiBase) {
+      const found: Named[] = [];
+      for (const p of this.pkgs.values())
+        for (const [name, ti] of p.types) if (ti.bases > 1) found.push({ k: "named", pkg: p.path, name });
+      this.multiBase = found;
+    }
+    return this.multiBase.some((t) => this.descendsFrom(t, r, new Set()));
+  }
+
+  private descendsFrom(t: Named, target: Named, seen: Set<string>): boolean {
+    const key = `${t.pkg}\0${t.name}`;
+    const ti = this.typeInfo(t);
+    if (!ti || seen.has(key)) return false;
+    seen.add(key);
+    return ti.supers.some((s) => {
+      const sr = this.canon(this.resolveType(s.type, ti.file));
+      if (sr?.k !== "named") return false;
+      return (sr.pkg === target.pkg && sr.name === target.name) || this.descendsFrom(sr, target, seen);
+    });
+  }
+
+  /**
+   * The method a call of a type runs (`typing.construction`): the initializer the type declares, else the one of its
+   * nearest base. Null when the type, or any type of the repo among its ancestors, is created some other way (it has a
+   * decorator or a keyword option, declares a method that creates the value, or has a base the pack lists as special),
+   * or when no initializer is found along bases that are each the only one.
+   */
+  initializer(r: Named): FuncInfo | null {
+    const rule = this.typing.construction;
+    if (!rule || !this.createdByInitializer(r, rule, new Set())) return null;
+    return this.soleMethod(r, rule.initializer);
+  }
+
+  private createdByInitializer(
+    r: Named,
+    rule: NonNullable<TypingRules["construction"]>,
+    seen: Set<string>,
+  ): boolean {
+    const c = this.canon(r);
+    if (c?.k !== "named") return true;
+    const key = `${c.pkg}\0${c.name}`;
+    if (seen.has(key)) return true;
+    seen.add(key);
+    const ti = this.typeInfo(c);
+    // A type outside the repo is judged by the way a type of the repo names it as a base.
+    if (!ti) return true;
+    const pkg = this.pkgs.get(c.pkg);
+    if (ti.kind !== "class" || ti.opaque || rule.creators.some((n) => pkg?.methods.has(`${c.name}.${n}`)))
+      return false;
+    for (const s of ti.supers) {
+      if ((s.type?.k === "name" || s.type?.k === "qual") && rule.special.includes(s.type.name)) return false;
+      const base = this.canon(this.resolveType(s.type, ti.file));
+      if (base?.k === "named" && !this.createdByInitializer(base, rule, seen)) return false;
+    }
+    return true;
   }
 
   /** Interface method lookup; the hit names the interface that declares the method (embedded ones included). */
