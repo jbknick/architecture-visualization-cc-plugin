@@ -5,7 +5,7 @@ import { hashSymbol, MINHASH_PERMUTATIONS, minhashJaccard } from "../hash/index.
 import { repoOfId } from "../ids.js";
 import { GENERATED_DIRECTIVE } from "../lang/engine/parse.js";
 import { langOfPath, languageModule, languages, parseFile } from "../lang/index.js";
-import { isPackLang } from "../lang/packs/index.js";
+import { isNonTypeScriptLang } from "../lang/langs.js";
 import type { Store } from "../store/index.js";
 import { decodeMinhash } from "../store/repo.js";
 import type { Lang, SymbolKind, SymbolRecord } from "../types.js";
@@ -212,7 +212,7 @@ function buildIndex(store: Store, layer: "effective" | "main"): DupIndex {
   };
   for (const r of rows) {
     if (isExcludedPath(r.path)) continue;
-    if (isPackLang(r.lang)) {
+    if (isNonTypeScriptLang(r.lang)) {
       if (languageModule(r.lang).unreusable.includes(r.name)) continue; // many per package, never reused
       if (r.directives?.includes(JSON.stringify(GENERATED_DIRECTIVE))) continue; // the pack found the file generated
     }

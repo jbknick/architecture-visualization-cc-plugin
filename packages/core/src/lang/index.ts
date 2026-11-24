@@ -6,6 +6,7 @@ import type { ParsedFile } from "../parse/index.js";
 import type { ResolveContext, Resolver } from "../resolve/index.js";
 import type { Lang, SymbolKind, WorkspaceRecord } from "../types.js";
 import type { detectWorkspaces, WorkspaceDetectionConfig } from "../workspace/index.js";
+import { clojure } from "./clojure/index.js";
 import { buildLanguage } from "./engine/module.js";
 import { PACKS } from "./packs/index.js";
 import { typescript } from "./typescript/index.js";
@@ -72,8 +73,8 @@ export interface LanguageModule {
   thresholds: DupThresholds;
 }
 
-/** TypeScript first, then one module per pack in `PACKS` order. */
-const MODULES: readonly LanguageModule[] = [typescript, ...PACKS.map((p) => buildLanguage(p))];
+/** TypeScript first, then one module per pack in `PACKS` order, then Clojure (a module of its own, not a pack). */
+const MODULES: readonly LanguageModule[] = [typescript, ...PACKS.map((p) => buildLanguage(p)), clojure];
 
 /** Every language module, in a fixed order. */
 export const languages = (): readonly LanguageModule[] => MODULES;
@@ -92,8 +93,8 @@ export function languageModule(id: Lang): LanguageModule {
   return m;
 }
 
-/** The ids of all languages: TypeScript and every registered pack, for validating `--lang` and the MCP `lang` input. */
-export const LANG_IDS: readonly Lang[] = ["typescript", ...PACKS.map((p) => p.id)];
+/** The ids of all languages: TypeScript, every registered pack and Clojure, for validating `--lang` and the MCP `lang` input. */
+export const LANG_IDS: readonly Lang[] = ["typescript", ...PACKS.map((p) => p.id), clojure.id];
 
 /** True when `v` is a language id. */
 export const isLang = (v: unknown): v is Lang =>

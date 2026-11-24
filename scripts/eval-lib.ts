@@ -18,7 +18,7 @@ const repoSchema = z.strictObject({
     .refine((u) => u.startsWith("https://") || u.startsWith("file://"), "url must be https or file://"),
   sha,
   stack: z.array(z.string().regex(/^[^A-Z\s]+$/, "stack entries are lowercase")).min(1),
-  lang: z.array(z.enum(["ts", "go", "java", "python"])),
+  lang: z.array(z.enum(["ts", "go", "java", "python", "clojure"])),
   role: z.enum(["tuning", "held-out"]),
   /** Python packages installed into the environment the SCIP indexer runs in (the packs proof only). */
   pip: z.array(z.string().regex(/^[A-Za-z0-9._-]+$/)).optional(),

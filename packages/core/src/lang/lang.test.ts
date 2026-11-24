@@ -35,15 +35,24 @@ describe("language registry", () => {
     expect(languageOfPath("crates/core/Cargo.toml")).toBeUndefined();
   });
 
-  it("holds TypeScript, Go, Java, Python, C# and Rust", () => {
-    expect(languages().map((m) => m.id)).toEqual(["typescript", "go", "java", "python", "csharp", "rust"]);
-    expect(LANG_IDS).toEqual(["typescript", "go", "java", "python", "csharp", "rust"]);
+  it("picks Clojure for .clj, .cljs and .cljc", () => {
+    expect(languageOfPath("src/acme/core.clj")?.id).toBe("clojure");
+    expect(languageOfPath("src/acme/view.cljs")?.id).toBe("clojure");
+    expect(languageOfPath("src/acme/util.cljc")?.id).toBe("clojure");
+    expect(languageOfPath("deps.edn")).toBeUndefined();
+  });
+
+  it("holds TypeScript, Go, Java, Python, C#, Rust and Clojure", () => {
+    const ids = ["typescript", "go", "java", "python", "csharp", "rust", "clojure"];
+    expect(languages().map((m) => m.id)).toEqual(ids);
+    expect(LANG_IDS).toEqual(ids);
     expect(isLang("typescript")).toBe(true);
     expect(isLang("go")).toBe(true);
     expect(isLang("java")).toBe(true);
     expect(isLang("python")).toBe(true);
     expect(isLang("csharp")).toBe(true);
     expect(isLang("rust")).toBe(true);
+    expect(isLang("clojure")).toBe(true);
     expect(isLang("ruby")).toBe(false);
     expect(langLabel("typescript")).toBe("TypeScript");
     expect(langLabel("go")).toBe("Go");
@@ -51,6 +60,7 @@ describe("language registry", () => {
     expect(langLabel("python")).toBe("Python");
     expect(langLabel("csharp")).toBe("C#");
     expect(langLabel("rust")).toBe("Rust");
+    expect(langLabel("clojure")).toBe("Clojure");
     expect(languageModule("go").label).toBe("Go");
   });
 

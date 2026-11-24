@@ -1,4 +1,7 @@
-# Java and Python packs measured against SCIP truth
+# Java and Python packs measured against SCIP truth, and Clojure against clj-kondo
+
+The Java and Python sections measure the packs against SCIP indexes. The [Clojure](#clojure) section at the end
+measures the Clojure module against clj-kondo, by another method and with no bar; read it apart from the rest.
 
 This is a measurement. The bars below were set before the first run and are not changed after it. A metric under its
 bar by any amount is a miss, and nothing here was tuned to reach a bar: the packs, the resolvers and the engine are
@@ -625,3 +628,136 @@ Caveats of the truth. `scip-python` was run with the dependencies of the repos n
 scored. For prefect the source roots of the repo and of its integration packages are on the interpreter's path, as an
 editable install would put them. The precise-mode run (`--scip`) is recorded for each run and agrees with the truth
 used here on 32,033 of 32,734 call edges on django and 36,453 of 37,025 on prefect; the difference was not examined.
+
+## Clojure
+
+Bar met: no bar was set
+
+The Clojure module (`lang/clojure/`) is not a tree-sitter pack and has no SCIP indexer to be measured against, so the
+truth here is clj-kondo, not SCIP. clj-kondo's analysis resolves names from the `ns` forms by syntax, as the Clojure
+compiler would, without running the code; it is a truth of names, not of what runs. No bar was set before the run,
+so this section has no verdict: the numbers are reported as measured.
+
+What was measured, pinned in `evals/packs/clojure-repos.json`:
+
+- `ring`: https://github.com/ring-clojure/ring.git at `5f745bbc7daefa097d7e9cf6394b44dce51cf597`. Leiningen, one
+  `project.clj` per library, 81 Clojure files in the index (the nine `project.clj` files among them).
+- `clojure-lsp`: https://github.com/clojure-lsp/clojure-lsp.git at `1e93ac58bede574786c5cc75b0fd3a51bc224f7a`.
+  `deps.edn` and `bb.edn`, 228 files.
+- `status-mobile`: https://github.com/status-im/status-mobile.git at `e0da660e053ae9058e6f4523292407fac21ef945`.
+  ClojureScript with shadow-cljs and re-frame, custom defining macros (`utils.re-frame/defn`, `defview`), 2,045 files.
+
+Truth: clj-kondo v2026.10.26, run once per repo in the clone with
+`clj-kondo --parallel --cache false --lint . --config '{:output {:format :json} :analysis {:var-definitions true :var-usages true}}'`
+(the repo's own `.clj-kondo` configuration applies, as it does for its authors), kept outside git. Each repo is indexed
+once with `gantry index --dump` in a fresh data directory (the index is deterministic). Machine: Apple M3 Pro, 11
+cores, 18 GiB, macOS on arm64, Node 26.13.0.
+
+To reproduce (clones and analyses go outside this repository):
+
+```
+pnpm build
+GANTRY_OSS_DIR=<dir> pnpm eval:clone --repos evals/packs/clojure-repos.json
+GANTRY_OSS_DIR=<dir> GANTRY_PACKS_TRUTH_DIR=<dir> pnpm eval:clojure --truth
+```
+
+How it is scored (`scripts/eval-clojure.ts`):
+
+- Scored files: the Clojure files the graph holds that clj-kondo analysed. clj-kondo names a file it reached through a
+  symbolic link (a Leiningen `checkouts` folder) by the link; the scorer maps it to the file's real path.
+- Symbols: each graph symbol is the var it defines (a protocol method is its method's var, a record's constructor
+  functions their own vars), matched on (file, var name) with clj-kondo's var definitions. A `defmethod` symbol is
+  no var and is counted apart.
+- Calls: a truth pair is a clj-kondo var usage whose target is a var of the repo, from the innermost graph symbol
+  whose lines hold the usage, to the var. A usage outside every symbol (the `ns` form, re-frame registrations, a
+  top-level `extend-protocol`) and a symbol's use of its own var are left out and counted. The graph's `calls` edges
+  are mapped the same way. Every reference is a truth pair, called or passed as a value, as the module's edges are.
+  Recall is over the pairs, precision over the graph's edges, split by confidence. Every edge is level 1.
+
+```
+clojure-lsp (clojure) at 1e93ac58bede574786c5cc75b0fd3a51bc224f7a
+  files indexed 228; scored 225; analysed by clj-kondo but not indexed 0
+  index: 1.2 s, peak 258 MB
+  symbols
+    precision 100.00% (2393/2393), recall 100.00% (2393/2393)
+    defmethod symbols (no var, not scored) 147
+    missed, by the form that defines them: none
+  calls
+    truth pairs 6214; left out: references to the caller's own var 54, usages outside every symbol 182
+    recall 100.00% (6214/6214); missed pairs whose target has no symbol of ours 0
+    precision, all edges 99.96% (6214/6216)
+    precision, high 99.96% (6214/6216); low n/a (0/0)
+    edges: high 6216, low 0, all level 1
+
+ring (clojure) at 5f745bbc7daefa097d7e9cf6394b44dce51cf597
+  files indexed 81; scored 72; analysed by clj-kondo but not indexed 0
+  index: 0.4 s, peak 170 MB
+  symbols
+    precision 100.00% (636/636), recall 100.00% (636/636)
+    defmethod symbols (no var, not scored) 8
+    missed, by the form that defines them: none
+  calls
+    truth pairs 874; left out: references to the caller's own var 61, usages outside every symbol 75
+    recall 100.00% (874/874); missed pairs whose target has no symbol of ours 0
+    precision, all edges 100.00% (874/874)
+    precision, high 100.00% (659/659); low 100.00% (215/215)
+    edges: high 659, low 215, all level 1
+
+status-mobile (clojure) at e0da660e053ae9058e6f4523292407fac21ef945
+  files indexed 2045; scored 2040; analysed by clj-kondo but not indexed 4
+  index: 4.8 s, peak 745 MB
+  symbols
+    precision 100.00% (10203/10203), recall 100.00% (10203/10203)
+    defmethod symbols (no var, not scored) 11
+    missed, by the form that defines them: none
+  calls
+    truth pairs 24438; left out: references to the caller's own var 135, usages outside every symbol 8694
+    recall 98.55% (24086/24438); missed pairs whose target has no symbol of ours 349
+    precision, all edges 99.97% (24086/24092)
+    precision, high 99.97% (24086/24092); low n/a (0/0)
+    edges: high 24092, low 0, all level 1
+```
+
+### Clojure: where the misses are
+
+- ring: the nine files not scored are the `project.clj` manifests, which declare no namespace.
+- clojure-lsp: the two wrong edges are in one function, `unwind-thread`, whose references to `edit/raise` and
+  `edit/wrap-around` sit in `cond->` forms inside `z/subedit->`, a rewrite-clj threading macro, where clj-kondo records
+  no usage.
+  The edges are right by the code as written; they count as wrong here.
+- status-mobile, recall: 349 of the 352 missed pairs are the `deftest` head of test forms, a usage of
+  `cljs.test/deftest`, which clj-kondo resolves to a stub in the repo's own `.clj-kondo/` hook folder; that folder is
+  not indexed (dot folders are skipped), so the target has no symbol. The other 3 are references from the code a
+  `.clj` macro emits (inside syntax-quote) to vars of a `.cljs` file of the same namespace
+  (`utils.re-frame/handler-nesting-level`, `test-helpers.unit/log-fixture-before` and `log-fixture-after`): the
+  module lets ClojureScript code reach a `.clj` macro, but not `.clj` code reach a `.cljs` var.
+- status-mobile, precision: 5 of the 6 wrong edges come from reader conditionals with the repo's own features
+  (`:fdroid`, `:google`, `:mobile`, in `react-native.firebase` and `status-im.setup.interceptor-metrics`): the module
+  reads every branch, clj-kondo only `:clj` and `:cljs`. The sixth is a name that the repo's macro `letsubs` binds
+  as a local, which the module does not know (clj-kondo is configured to read `letsubs` as `let`), so the name
+  resolves to a var of the namespace.
+- Usages outside every symbol (8,694 on status-mobile) include the code of re-frame registrations
+  (`rf/reg-event-fx`, `rf/reg-sub`), which make no symbol (the module's scope leaves them out); they are not in the
+  truth, and the count was not broken down further.
+
+### Changes to the module after a first result
+
+The module was written from a spike scored against the same three repos, and then changed after reading its first
+results here. Every number above was taken after the last change. These changes raise the scores, which is stated so
+that it is visible:
+
+- The reader consumed the closing bracket after a `#_` form at the end of a collection (`(a #_b)`), which ran the
+  rest of a file into one form. Fixed with the rule that `#_` drops one form and a closer is never consumed by a form.
+- `:or` defaults of a destructuring were not walked as code; a constructor call `R.` was not a reference to the
+  record `R`; a `defmethod` nested inside other code did not refer to its multimethod.
+- ClojureScript code could not reach a `defmacro` of a `.clj` file (the platform filter kept `.cljs` and `.cljc`
+  only); `goog-define` made no symbol; a reader-conditional branch that is a vector of top-level forms was not read.
+- Metadata was not walked as code (`^{:key (str "root" @reloader/cnt)}` in a Reagent view), and `:refer` written
+  as a list (`:refer (a b)`) brought in no name.
+- The scorer first left out files clj-kondo named through a Leiningen `checkouts` link (6 of 72 ring files scored).
+
+First results, before the module changes (ring after the scorer fix): ring symbols 100.00% (636/636) precision and
+recall, calls recall 99.65% (871/874), precision 100.00% (871/871); clojure-lsp symbols precision 100.00%
+(2374/2374), recall 99.20% (2374/2393), calls recall 99.91% (6188/6193), precision 99.96% (6188/6190).
+status-mobile was first scored after the reader fix and the `:or` and `R.` changes, before the others: symbols precision 100.00% (10170/10170), recall 99.67% (10170/10203), calls recall 96.22% (23514/24436),
+precision 99.99% (23514/23516).

@@ -1,8 +1,12 @@
+import type { CLOJURE_ID } from "./lang/clojure/ids.js";
 import type { PACKS } from "./lang/packs/index.js";
 
 export type Layer = "main" | "working";
-/** The language of a file or symbol (spec section 7): TypeScript (which includes TSX) or the id of a registered language pack. */
-export type Lang = "typescript" | (typeof PACKS)[number]["id"];
+/**
+ * The language of a file or symbol (spec section 7): TypeScript (which includes TSX), the id of a registered language
+ * pack, or Clojure, which has a module of its own.
+ */
+export type Lang = "typescript" | (typeof PACKS)[number]["id"] | typeof CLOJURE_ID;
 export type SymbolKind =
   | "function"
   | "method"

@@ -14,6 +14,7 @@
     "check": "biome check . && tsx scripts/check-toolchain.ts && tsx scripts/check-version.ts && tsc -b && tsc -p evals/tsconfig.json && vitest run && tsx scripts/describe-mutations.ts",
     "eval:clone": "tsx scripts/eval-clone.ts",
     "eval:packs": "tsx scripts/eval-packs.ts",
+    "eval:clojure": "tsx scripts/eval-clojure.ts",
     "fmt": "biome check --write .",
     "perf": "GANTRY_PERF=1 vitest run -t performance packages/core/src/dup/engine.test.ts",
     "reattach:e2e": "tsx scripts/reattach-e2e.ts",

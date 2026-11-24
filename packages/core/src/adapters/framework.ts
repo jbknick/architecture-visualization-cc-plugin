@@ -1,7 +1,7 @@
 import { parseSync } from "oxc-parser";
 import { isTestPath } from "../dup/filters.js";
 import { workspaceNameOfId } from "../ids.js";
-import { PACKS } from "../lang/packs/index.js";
+import { langIdByExtension } from "../lang/langs.js";
 import { isNode, type Node, nodeArray, unwrap } from "../parse/ast.js";
 import type { ParsedFile } from "../parse/index.js";
 import type { LoadedRecipe } from "../recipe/load.js";
@@ -309,8 +309,7 @@ export function runAdapterList(ctx: AdapterRunContext, adapters: readonly Adapte
     if (wsIds.size > 0) {
       for (const f of files) {
         if (!wsIds.has(f.workspaceId)) continue;
-        const pack = PACKS.find((pk) => pk.extensions.some((x) => f.path.endsWith(x)));
-        if (!(adapter.languages ?? ["typescript"]).includes(pack?.id ?? "typescript")) continue;
+        if (!(adapter.languages ?? ["typescript"]).includes(langIdByExtension(f.path))) continue;
         if (!adapter.includeTests && isTestPath(f.path)) continue;
         const fc = contextOf(f);
         if (!fc) continue;
