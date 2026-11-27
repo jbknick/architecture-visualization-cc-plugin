@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { type GantryPaths, resetTeamProtocolCache } from "@gantry/core";
-import type { ChangeSet } from "@gantry/protocol";
+import { type ChangeSet, PROTOCOL_VERSION } from "@gantry/protocol";
 import { type FakeServer, startFakeServer } from "@gantry/protocol/testing";
 import { Command } from "commander";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -73,19 +73,23 @@ describe("help", () => {
       Connect this checkout to a team server (sign in, link, check the connection)
 
       Options:
-        -h, --help            display help for command
+        -h, --help                   display help for command
 
       Commands:
-        login [options]       Sign in to a team server with a code
-        link [options]        Say which server and organisation this repo belongs to
-        status [options]      Show the server, organisation, user and repo, whether
-                              the server answers, and the team cache
-        logout [options]      Remove the stored sign-in for a server
-        boundaries [options]  List the edges of the changed functions and files that
-                              break a team group's mayUse (read from the team server)
-        publish               Send a local view or group to the team
-        unpublish             Remove a view or group the team has published
-        help [command]        display help for command
+        login [options]              Sign in to a team server with a code
+        link [options]               Say which server and organisation this repo
+                                     belongs to
+        status [options]             Show the server, organisation, user and repo,
+                                     whether the server answers, and the team cache
+        logout [options]             Remove the stored sign-in for a server
+        boundaries [options]         List the edges of the changed functions and files
+                                     that break a team group's mayUse (read from the
+                                     team server)
+        sync-descriptions [options]  Fill in the descriptions the team already has for
+                                     functions this machine has none for
+        publish                      Send a local view or group to the team
+        unpublish                    Remove a view or group the team has published
+        help [command]               display help for command
       "
     `);
     for (const name of ["login", "link", "status", "logout"]) {
@@ -306,7 +310,7 @@ describe("gantry team status", () => {
     stdout.length = 0;
     expect(await teamStatus(ctx(), { json: true })).toBe(0);
     expect(printed(stdout)).toBe(
-      '{"server":"https://gantry.example.com","org":"acme","user":"octo-dev","repo":"acme/storefront","reachable":true,"protocol":1,"cache":{"change_sets":0,"pulled_at":null,"age_s":null,"last_error":null}}\n',
+      `{"server":"https://gantry.example.com","org":"acme","user":"octo-dev","repo":"acme/storefront","reachable":true,"protocol":${PROTOCOL_VERSION},"cache":{"change_sets":0,"pulled_at":null,"age_s":null,"last_error":null}}\n`,
     );
   });
 
@@ -363,7 +367,7 @@ describe("gantry team status", () => {
       user: "octo-dev",
       repo: REPO,
       reachable: true,
-      protocol: 1,
+      protocol: PROTOCOL_VERSION,
       cache: { change_sets: 0, pulled_at: null, age_s: null, last_error: null },
     });
     expect(fs.existsSync(paths.dataDir)).toBe(false);

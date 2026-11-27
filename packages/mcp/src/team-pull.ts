@@ -7,6 +7,7 @@ import {
   resolvePaths,
   resolveTeamSettings,
 } from "@gantry/core";
+import { syncDescriptionsAtStart } from "./descriptionSync.js";
 import type { Logger } from "./log.js";
 
 /** The pull when the server starts: it never delays the server, so this only bounds how long the pull runs. */
@@ -89,7 +90,17 @@ export function createTeamPuller(o: TeamPullOptions): TeamPuller {
     atStart() {
       try {
         const paths = resolvePaths(o.cwd, o.env);
-        if (configured(paths)) start(paths, START_PULL_LIMIT_MS);
+        if (!configured(paths)) return;
+        start(paths, START_PULL_LIMIT_MS);
+        // After the pull, and apart from it: the sync never delays a call, and a call never waits for it.
+        void (inflight ?? Promise.resolve()).then(() =>
+          syncDescriptionsAtStart({
+            paths,
+            env: o.env,
+            log: o.log,
+            ...(o.fetch === undefined ? {} : { fetch: o.fetch }),
+          }),
+        );
       } catch {
         // not a git repository, or no readable config: nothing to pull
       }

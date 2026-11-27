@@ -269,6 +269,7 @@ export function teamClient(paths: GantryPaths, config: GantryConfig, opts: TeamC
       };
     },
     putDescriptions: (body: unknown) => call("putDescriptions", { body }),
+    lookupDescriptions: (body: unknown) => call("lookupDescriptions", { body }),
     putGroup: (repo: string, id: string, body: unknown) => call("putGroup", { params: { repo, id }, body }),
     deleteGroup: (repo: string, id: string) => call("deleteGroup", { params: { repo, id } }),
     putView: (repo: string, id: string, body: unknown) => call("putView", { params: { repo, id }, body }),

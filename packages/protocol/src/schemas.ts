@@ -295,6 +295,11 @@ export const DescriptionsRequestSchema = z.strictObject({
   descriptions: z.array(DescriptionSchema).max(LIMITS.descriptions),
 });
 
+export const DescriptionLookupRequestSchema = z.strictObject({
+  repo: RepoSchema,
+  content_keys: z.array(ContentKeySchema).min(1).max(LIMITS.descriptions),
+});
+
 // ---- responses (tolerant)
 
 export const UploadBegunSchema = z.object({
@@ -328,6 +333,9 @@ export const PullResponseSchema = z.object({
   pulled_at: z.string(),
 });
 export const DescriptionsResponseSchema = z.object({ stored: nonNegInt });
+
+/** What the lookup returns: the descriptions the organisation has, whatever the repo. A key with none is absent. */
+export const DescriptionLookupResponseSchema = z.object({ descriptions: z.array(DescriptionSchema) });
 export const SavedResponseSchema = z.object({ saved: z.literal(true) });
 export const DeletedResponseSchema = z.object({ deleted: z.boolean() });
 export const WhoamiResponseSchema = z.object({
@@ -390,6 +398,8 @@ export type MainRecord = z.infer<typeof MainRecordSchema>;
 export type ChangeSetRecord = z.infer<typeof ChangeSetRecordSchema>;
 export type PartRecord = z.infer<typeof PartRecordSchema>;
 export type CloseRequest = z.infer<typeof CloseRequestSchema>;
+export type DescriptionLookupRequest = z.infer<typeof DescriptionLookupRequestSchema>;
+export type DescriptionLookupResponse = z.infer<typeof DescriptionLookupResponseSchema>;
 export type DescriptionsRequest = z.infer<typeof DescriptionsRequestSchema>;
 export type UploadBegun = z.infer<typeof UploadBegunSchema>;
 export type UploadPartResponse = z.infer<typeof UploadPartResponseSchema>;

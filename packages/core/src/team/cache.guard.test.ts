@@ -83,6 +83,7 @@ describe("no hook reaches the network through the team cache", () => {
       .sort();
     expect(importers).toEqual([
       join("core", "src", "team", "cache.ts"),
+      join("core", "src", "team", "descriptionSync.ts"),
       join("core", "src", "team", "index.ts"),
     ]);
   });
@@ -119,9 +120,11 @@ const CACHE = join(packagesDir, "core", "src", "team", "cache.ts");
 const RESOLVE = join(packagesDir, "core", "src", "team", "resolve.ts");
 const UPLOAD = join(packagesDir, "cli", "src", "commands", "upload.ts");
 const DESCRIPTION_UPLOAD = join(packagesDir, "core", "src", "team", "descriptionUpload.ts");
-const SENDERS = new Set([RESOLVE, UPLOAD, DESCRIPTION_UPLOAD]);
+/** The description sync joins the team settings, the client and the store, so it too is only for commands. */
+const DESCRIPTION_SYNC = join(packagesDir, "core", "src", "team", "descriptionSync.ts");
+const SENDERS = new Set([RESOLVE, UPLOAD, DESCRIPTION_UPLOAD, DESCRIPTION_SYNC]);
 const SENDER_NAMES =
-  /\b(teamClient|pullTeamCache|resolveTeamTarget|runUpload|registerUpload|uploadDescriptions|descriptionRecords)\b/;
+  /\b(teamClient|pullTeamCache|resolveTeamTarget|runUpload|registerUpload|uploadDescriptions|descriptionRecords|syncDescriptions|syncTeamDescriptions|teamSyncDescriptions|syncDescriptionsAtStart|lookupDescriptions)\b/;
 
 /** `./x.js` or a workspace package to a source file; undefined for anything outside this repo's sources. */
 function resolveSpec(from: string, spec: string): string | undefined {
@@ -286,6 +289,7 @@ describe("the hooks' import graph", () => {
       join("cli", "src", "commands", "upload.ts"),
       join("core", "src", "team", "cache.ts"),
       join("core", "src", "team", "client.ts"),
+      join("core", "src", "team", "descriptionSync.ts"),
     ]);
   });
 
@@ -298,6 +302,7 @@ describe("the hooks' import graph", () => {
     expect(mentions(/\bresolveTeamTarget\b/)).toEqual([
       join("cli", "src", "commands", "team-boundaries.ts"),
       join("cli", "src", "commands", "upload.ts"),
+      join("core", "src", "team", "descriptionSync.ts"),
       join("core", "src", "team", "resolve.ts"),
     ]);
     expect(mentions(/\bregisterUpload\b/)).toEqual([
@@ -346,6 +351,48 @@ describe("the description upload", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("the description sync", () => {
+  it("is not reached from a hook through a helper that wraps it (the walker works)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "gantry-guard-"));
+    try {
+      const helper = join(dir, "helper.ts");
+      writeFileSync(
+        helper,
+        `import { syncTeamDescriptions } from "@gantry/core";\nexport const viaHelper = () => syncTeamDescriptions;\n`,
+      );
+      const hook = join(dir, "hook.ts");
+      writeFileSync(hook, `import { viaHelper } from "./helper.js";\nviaHelper();\n`);
+      expect(violations([hook])).toEqual([
+        `${rel(helper)} uses the team client or the pull`,
+        `${rel(helper)} imports syncTeamDescriptions from ${rel(DESCRIPTION_SYNC)}, the upload command's`,
+      ]);
+      const direct = join(dir, "direct.ts");
+      writeFileSync(direct, `import { syncDescriptions } from "@gantry/core";\nsyncDescriptions;\n`);
+      expect(violations([direct])).toEqual([
+        `${rel(direct)} uses the team client or the pull`,
+        `${rel(direct)} imports syncDescriptions from ${rel(DESCRIPTION_SYNC)}, the upload command's`,
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("is called only by gantry team and the MCP server's start-up, and no hook file mentions it", () => {
+    const mentions = all
+      .filter((f) => /\b(syncTeamDescriptions|syncDescriptionsAtStart)\b/.test(read(f)))
+      .map(rel)
+      .sort();
+    expect(mentions).toEqual([
+      join("cli", "src", "commands", "team.ts"),
+      join("core", "src", "team", "descriptionSync.ts"),
+      join("mcp", "src", "descriptionSync.ts"),
+      join("mcp", "src", "team-pull.ts"),
+    ]);
+    for (const file of hookFiles)
+      expect(read(file), rel(file)).not.toMatch(/descriptionSync|syncDescriptions/);
   });
 });
 

@@ -71,8 +71,8 @@ beforeAll(() => {
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
 describe("the protocol tarball, extracted beside zod", () => {
-  it("exposes the package entry point: PROTOCOL_VERSION is 1", () => {
-    expect(node("import('@gantry/protocol').then(m => console.log(m.PROTOCOL_VERSION))")).toBe("1");
+  it("exposes the package entry point: PROTOCOL_VERSION is 2", () => {
+    expect(node("import('@gantry/protocol').then(m => console.log(m.PROTOCOL_VERSION))")).toBe("2");
   });
 
   it("resolves the ./testing entry point", () => {
