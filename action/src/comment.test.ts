@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildComment,
   type CommentInput,
+  type CrossingFinding,
   code,
   GITHUB_COMMENT_LIMIT,
   MARKER,
@@ -153,5 +154,129 @@ describe("comment body", () => {
     const body = buildComment(input({ review }));
     expect(body.length).toBeLessThanOrEqual(MAX_BODY);
     expect(body.startsWith(MARKER)).toBe(true);
+  });
+});
+
+const found = (
+  srcGroup: string,
+  dstGroup: string,
+  srcName: string,
+  dstName: string,
+  over: Partial<CrossingFinding> = {},
+): CrossingFinding => ({
+  kind: "crossing",
+  srcName,
+  srcPath: `src/${srcGroup.toLowerCase()}/a.ts`,
+  srcLine: 3,
+  srcGroup,
+  dstName,
+  dstPath: `src/${dstGroup.toLowerCase()}/b.ts`,
+  dstLine: 1,
+  dstGroup,
+  team: true,
+  ...over,
+});
+const team = (crossings: CrossingFinding[]): CommentInput["teamBoundaries"] => ({
+  crossings,
+  total: crossings.length,
+});
+const sectionOf = (body: string): string =>
+  body.slice(body.indexOf("### Team boundaries"), body.indexOf("### Consumers"));
+
+describe("team boundaries section", () => {
+  it("lists the pairs of groups sorted by name, 3 items per pair, the pair's total, between Crossings and Consumers", () => {
+    const body = buildComment(
+      input({
+        teamBoundaries: team([
+          found("Payments", "Shipping", "shippingCost", "rateFor"),
+          found("Payments", "Checkout", "applyDiscount", "getCart"),
+          found("Payments", "Checkout", "totalWithTax", "getCart"),
+          found("Payments", "Checkout", "roundCents", "getCart"),
+          found("Payments", "Checkout", "fourth", "getCart"),
+          found("Payments", "Checkout", "fifth", "getCart"),
+        ]),
+      }),
+    );
+    expect(sectionOf(body)).toBe(
+      [
+        "### Team boundaries (2)",
+        "",
+        "- `Payments` → `Checkout`: `applyDiscount` uses `getCart`, `totalWithTax` uses `getCart`, `roundCents` uses `getCart` (5 edges in total)",
+        "- `Payments` → `Shipping`: `shippingCost` uses `rateFor` (1 edge in total)",
+        "",
+        "",
+      ].join("\n"),
+    );
+    expect(body.indexOf("### Crossings")).toBeLessThan(body.indexOf("### Team boundaries"));
+    expect(body.indexOf("### Team boundaries")).toBeLessThan(body.indexOf("### Consumers"));
+    // The Crossings section is the one that was there before.
+    expect(body).toContain("### Crossings (2)");
+  });
+
+  it("shows file paths for an added import", () => {
+    const body = buildComment(
+      input({
+        teamBoundaries: team([
+          found("Orders", "Catalog", "src/orders/a.ts", "src/catalog/b.ts", {
+            srcPath: "src/orders/a.ts",
+            dstPath: "src/catalog/b.ts",
+            srcLine: 0,
+            dstLine: 0,
+          }),
+        ]),
+      }),
+    );
+    expect(sectionOf(body)).toContain(
+      "- `Orders` → `Catalog`: `src/orders/a.ts` uses `src/catalog/b.ts` (1 edge in total)",
+    );
+  });
+
+  it("shows 10 pairs and counts the rest: 12 pairs end with and 2 more", () => {
+    const crossings = Array.from({ length: 12 }, (_, i) =>
+      found(`Team${String(i).padStart(2, "0")}`, "Core", `fn${i}`, "helper"),
+    );
+    const section = sectionOf(buildComment(input({ teamBoundaries: team(crossings) })));
+    expect(section.startsWith("### Team boundaries (12)\n")).toBe(true);
+    expect(section.match(/^- `Team/gm)).toHaveLength(10);
+    expect(section).toContain("- and 2 more\n");
+  });
+
+  it("escapes group and function names: no backtick, link, mention or line break gets out", () => {
+    const body = buildComment(
+      input({
+        teamBoundaries: team([found("A`b\n[x](http://evil) @all", "<img src=x>", "f`n\n# head", "g | h")]),
+      }),
+    );
+    const section = sectionOf(body);
+    expect(section.split("\n").filter((l) => l.startsWith("- "))).toHaveLength(1);
+    expect(section).toContain("- `A'b [x](http://evil) @all` → `<img src=x>`: `f'n # head` uses `g | h`");
+  });
+
+  it("is absent, and the body is byte-identical, with no team values, null or none found", () => {
+    const plain = buildComment(input());
+    expect(buildComment(input({ teamBoundaries: null }))).toBe(plain);
+    expect(buildComment(input({ teamBoundaries: team([]) }))).toBe(plain);
+    expect(plain).not.toContain("Team boundaries");
+  });
+
+  it("is dropped after consumers and notes, and before Crossings, when the comment is too long", () => {
+    const base = input({
+      review: sampleReview({ symbols: 20, consumersPer: 5 }),
+      teamBoundaries: team([found("Orders", "Catalog", "totalDue", "formatPrice")]),
+    });
+    const full = buildComment(base);
+    // The size at which each heading first disappears, as the limit falls from the full length.
+    const goneAt = new Map<string, number>();
+    for (let limit = full.length; limit >= 0 && goneAt.size < 4; limit--) {
+      const body = buildComment(base, limit);
+      for (const h of ["### Consumers", "### Notes", "### Team boundaries", "### Crossings"]) {
+        if (!goneAt.has(h) && !body.includes(h)) goneAt.set(h, limit);
+      }
+    }
+    const at = (h: string): number => goneAt.get(h) ?? -1;
+    expect(at("### Consumers")).toBeGreaterThan(at("### Notes"));
+    expect(at("### Notes")).toBeGreaterThan(at("### Team boundaries"));
+    expect(at("### Team boundaries")).toBeGreaterThan(at("### Crossings"));
+    expect(at("### Crossings")).toBeGreaterThan(0);
   });
 });

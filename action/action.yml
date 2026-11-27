@@ -157,6 +157,11 @@ runs:
         GANTRY_FAILURE: ${{ steps.install.outputs.failed || steps.index.outputs.failed || steps.embed.outputs.failed }}
         GANTRY_PR: ${{ github.event.pull_request.number }}
         GANTRY_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        # The team's values, for the team boundaries section. This step's GANTRY_TOKEN is the GitHub token, so the team
+        # token has a name of its own here; the script hands it to the CLI under the name the CLI reads. Empty: no section.
+        GANTRY_TEAM_SERVER: ${{ inputs.team-server }}
+        GANTRY_TEAM_ORG: ${{ inputs.team-org }}
+        GANTRY_TEAM_TOKEN: ${{ inputs.team-token }}
       run: |
         set -uo pipefail
         if [ -n "$GANTRY_INSTALL_FAILED" ]; then

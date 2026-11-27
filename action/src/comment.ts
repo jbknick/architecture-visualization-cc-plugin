@@ -21,6 +21,23 @@ export type ReviewJson = ReviewDiff & { impact: Impact | null };
 /** What `gantry duplicates --json` prints (the fields the comment reads). */
 export type DuplicatesJson = Pick<DuplicatesResult, "summary" | "clusters">;
 
+/**
+ * One edge of `gantry team boundaries --json` (the fields of the CLI's `CrossingFinding` that the comment reads).
+ * `srcLine` is 0 for an import. Group and symbol names are untrusted text.
+ */
+export interface CrossingFinding {
+  kind: "crossing";
+  srcName: string;
+  srcPath: string;
+  srcLine: number;
+  srcGroup: string;
+  dstName: string;
+  dstPath: string;
+  dstLine: number;
+  dstGroup: string;
+  team?: true;
+}
+
 export interface CommentInput {
   review: ReviewJson;
   /** Null when the duplicate check could not run; `duplicatesError` then says why. */
@@ -31,6 +48,8 @@ export interface CommentInput {
   /** Whether the workflow embedded code vectors (`embed: true`), which adds the code-vector tier. */
   embed: boolean;
   version?: string;
+  /** What `gantry team boundaries --json` printed, when the Action has the team values; absent or null otherwise. */
+  teamBoundaries?: { crossings: CrossingFinding[]; total: number } | null;
 }
 
 /** Caps per list; the rest is counted ("and N more"), never listed. */
@@ -41,6 +60,8 @@ export const CAPS = {
   directPerChange: 10,
   potentialPerChange: 10,
   crossings: 10,
+  teamPairs: 10,
+  teamItemsPerPair: 3,
   clusters: 15,
   membersPerCluster: 6,
   notes: 10,
@@ -207,6 +228,39 @@ function crossingsSection(review: ReviewJson): string {
   return `${lines.join("\n")}\n`;
 }
 
+/** One place of a team crossing: the functions, or the file paths of an import (an import has no source line). */
+function teamItem(f: CrossingFinding): string {
+  return f.srcLine === 0
+    ? `${code(f.srcPath, CELL_MAX)} uses ${code(f.dstPath, CELL_MAX)}`
+    : `${code(f.srcName, CELL_MAX)} uses ${code(f.dstName, CELL_MAX)}`;
+}
+
+/**
+ * Edges that break a team group's `mayUse`, by pair of groups (a separate section from `Crossings`). Group and
+ * function names come from the team and the repository: they are code spans like every other name here.
+ */
+function teamBoundariesSection(input: CommentInput): string {
+  const found = input.teamBoundaries?.crossings ?? [];
+  if (found.length === 0) return "";
+  const pairs = new Map<string, { src: string; dst: string; items: CrossingFinding[] }>();
+  for (const f of found) {
+    const key = `${f.srcGroup}\0${f.dstGroup}`;
+    const pair = pairs.get(key) ?? { src: f.srcGroup, dst: f.dstGroup, items: [] };
+    pair.items.push(f);
+    pairs.set(key, pair);
+  }
+  const sorted = [...pairs.values()].sort((a, b) => cmp(a.src, b.src) || cmp(a.dst, b.dst));
+  const lines = [`### Team boundaries (${sorted.length})`, ""];
+  for (const p of sorted.slice(0, CAPS.teamPairs)) {
+    const shown = p.items.slice(0, CAPS.teamItemsPerPair).map(teamItem).join(", ");
+    lines.push(
+      `- ${code(p.src, CELL_MAX)} → ${code(p.dst, CELL_MAX)}: ${shown} (${plural(p.items.length, "edge")} in total)`,
+    );
+  }
+  if (sorted.length > CAPS.teamPairs) lines.push(`- and ${sorted.length - CAPS.teamPairs} more`);
+  return `${lines.join("\n")}\n`;
+}
+
 function consumersSection(review: ReviewJson): string {
   const used = (review.impact?.consumers ?? []).filter(
     (c) => c.directTotal + c.potentialTotal + c.reachableTotal > 0,
@@ -293,9 +347,9 @@ export const FAILURE_MAX = 200;
 const OMITTED = "\n_Part of this comment was left out to stay under GitHub's comment size limit._\n";
 
 /**
- * The comment body: a hidden marker, then risk, duplicates, changed symbols, crossings, consumers, notes and a footer.
+ * The comment body: a hidden marker, then risk, duplicates, changed symbols, crossings, team boundaries, consumers, notes and a footer.
  * Never longer than `MAX_BODY` characters: when the sections together are too long, the least important are dropped
- * first (consumers, notes, crossings, then the changed-symbol table) and a last resort cuts the text.
+ * first (consumers, notes, team boundaries, crossings, then the changed-symbol table) and a last resort cuts the text.
  */
 export function buildComment(input: CommentInput, limit = MAX_BODY): string {
   const sections = {
@@ -303,12 +357,22 @@ export function buildComment(input: CommentInput, limit = MAX_BODY): string {
     duplicates: duplicatesSection(input),
     changed: changedSection(input.review),
     crossings: crossingsSection(input.review),
+    teamBoundaries: teamBoundariesSection(input),
     consumers: consumersSection(input.review),
     notes: notesSection(input),
     footer: footerSection(input),
   };
-  const order = ["header", "duplicates", "changed", "crossings", "consumers", "notes", "footer"] as const;
-  const dropOrder = ["consumers", "notes", "crossings", "changed"] as const;
+  const order = [
+    "header",
+    "duplicates",
+    "changed",
+    "crossings",
+    "teamBoundaries",
+    "consumers",
+    "notes",
+    "footer",
+  ] as const;
+  const dropOrder = ["consumers", "notes", "teamBoundaries", "crossings", "changed"] as const;
   const join = (): string =>
     order
       .map((k) => sections[k])

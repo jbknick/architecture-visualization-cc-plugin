@@ -18,6 +18,7 @@ import {
 } from "@gantry/core";
 import type { Command } from "commander";
 import { EXIT_ERROR, EXIT_OK, fail, resolveCliPaths, writeStdout } from "./shared.js";
+import { teamBoundaries } from "./team-boundaries.js";
 import { type PublishKind, teamPublish } from "./team-publish.js";
 
 /** Everything a team command needs from outside, so a test can run it against the fake server with no process. */
@@ -349,6 +350,24 @@ export function registerTeam(program: Command): void {
     .description("Remove the stored sign-in for a server")
     .option("--server <url>", "the team server (default: GANTRY_SERVER, then team.server)")
     .action((opts: { server?: string }) => run((ctx) => teamLogout(ctx, opts))());
+
+  team
+    .command("boundaries")
+    .description(
+      "List the edges of the changed functions and files that break a team group's mayUse (read from the team server)",
+    )
+    .requiredOption("--base <sha>", "the base of the range")
+    .requiredOption("--head <sha>", "the head of the range")
+    .option("--json", "print { crossings, total } as JSON")
+    .action((opts: { base: string; head: string; json?: boolean }) =>
+      run((ctx) =>
+        teamBoundaries(ctx, {
+          base: opts.base,
+          head: opts.head,
+          ...(opts.json === true ? { json: true } : {}),
+        }),
+      )(),
+    );
 
   for (const action of ["publish", "unpublish"] as const) {
     const group = team
