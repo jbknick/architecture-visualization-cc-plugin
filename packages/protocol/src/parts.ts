@@ -21,6 +21,12 @@ export interface PartLimits {
   part_max_bytes: number;
 }
 
+/**
+ * The limits a client cuts to when it cannot ask a server for its own (a dry run contacts none): 2,000 records and
+ * 1 MiB per part. A server may give others in its answer to the begin request.
+ */
+export const DEFAULT_PART_LIMITS: PartLimits = { part_max_records: 2000, part_max_bytes: 1_048_576 };
+
 const encoder = new TextEncoder();
 const byId = <T extends { id: string }>(a: T, b: T): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 

@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { gunzipSync, gzipSync } from "node:zlib";
 import {
   type ChangeSet,
   ChangeSetSchema,
@@ -384,4 +385,88 @@ export function snapshotRecords(snapshot: MainSnapshot): PartRecord[] {
 /** The NDJSON records of a change set: the `c` record, the sorted nodes, the radius sorted by hop then id. */
 export function changeSetRecords(changeSet: ChangeSet): PartRecord[] {
   return protocolChangeSetRecords(changeSet);
+}
+
+/**
+ * What a dry run summarises: the gzipped parts of a main snapshot or change set, the body of a close request, or the
+ * bodies of the description requests, exactly as the real upload would send them.
+ */
+export type DryRunPayload =
+  | { kind: "main" | "change_set"; parts: readonly Uint8Array[] }
+  | { kind: "close"; body: string }
+  | { kind: "descriptions"; bodies: readonly string[] };
+
+export interface PayloadSummary {
+  kind: DryRunPayload["kind"];
+  /** Text bytes: the decompressed parts (each record and its newline), or the request bodies. */
+  bytes: number;
+  /** Gzip bytes: the sum over the parts, or over each request body gzipped on its own. */
+  gzip_bytes: number;
+  parts: number;
+  fields: Record<string, { count: number; bytes: number }>;
+}
+
+const SECTION_OF_TAG: Record<string, string> = {
+  w: "workspaces",
+  f: "files",
+  s: "symbols",
+  e: "edges",
+  a: "adapter_nodes",
+  c: "change_set",
+  n: "nodes",
+  r: "radius",
+};
+
+const utf8 = (text: string): number => Buffer.byteLength(text, "utf8");
+
+/**
+ * The short view of an upload for `gantry upload --dry-run --summary`: counts and sizes per field, no content. Keys are
+ * sorted at every level so the same payload always prints the same text.
+ */
+export function summarisePayload(payload: DryRunPayload): PayloadSummary {
+  const fields = new Map<string, { count: number; bytes: number }>();
+  const add = (name: string, bytes: number, count = 1): void => {
+    const entry = fields.get(name) ?? { count: 0, bytes: 0 };
+    entry.count += count;
+    entry.bytes += bytes;
+    fields.set(name, entry);
+  };
+  let bytes = 0;
+  let gzipBytes = 0;
+  let parts = 0;
+  if (payload.kind === "close") {
+    const body = JSON.parse(payload.body) as Record<string, unknown>;
+    for (const [name, value] of Object.entries(body)) add(name, utf8(JSON.stringify(value)));
+    bytes = utf8(payload.body);
+    gzipBytes = gzipSync(payload.body).length;
+    parts = 1;
+  } else if (payload.kind === "descriptions") {
+    for (const body of payload.bodies) {
+      const request = JSON.parse(body) as { descriptions: unknown[] };
+      add("descriptions", utf8(JSON.stringify(request.descriptions)), request.descriptions.length);
+      bytes += utf8(body);
+      gzipBytes += gzipSync(body).length;
+    }
+    parts = payload.bodies.length;
+  } else {
+    for (const part of payload.parts) {
+      const text = gunzipSync(part).toString("utf8");
+      bytes += utf8(text);
+      gzipBytes += part.length;
+      for (const line of text.split("\n")) {
+        if (line === "") continue;
+        const tag = (JSON.parse(line) as { t: string }).t;
+        add(SECTION_OF_TAG[tag] ?? tag, utf8(line));
+      }
+    }
+    parts = payload.parts.length;
+  }
+  const sorted = [...fields.entries()].sort(([a], [b]) => cmp(a, b));
+  return {
+    kind: payload.kind,
+    bytes,
+    gzip_bytes: gzipBytes,
+    parts,
+    fields: Object.fromEntries(sorted),
+  };
 }
