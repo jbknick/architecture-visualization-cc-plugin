@@ -1,0 +1,11 @@
+{
+  "kind": "main",
+  "sha": "1863607d4346a2737224baab89b421b2b1a1b8bf",
+  "counts": {
+    "workspaces": 6,
+    "files": 24,
+    "symbols": 26,
+    "edges": 140,
+    "adapter_nodes": 10
+  }
+}

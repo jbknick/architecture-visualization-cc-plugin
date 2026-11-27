@@ -1,0 +1,9 @@
+{
+  "status": "loading",
+  "parts": {
+    "total": 6,
+    "received": 6,
+    "done": 0,
+    "failed": 0
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "kind": "user",
+  "user": "octo-dev",
+  "org": "acme",
+  "role": "member",
+  "repo": "fixture/pnpm-turbo",
+  "repo_connected": true,
+  "protocol": 1
+}

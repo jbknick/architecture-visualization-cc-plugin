@@ -1,0 +1,11 @@
+{
+  "id": "api-only",
+  "name": "API only",
+  "spec": {
+    "view": "api-only",
+    "level": "files",
+    "hidden": [],
+    "groups": [],
+    "filters": {}
+  }
+}

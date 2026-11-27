@@ -80,6 +80,9 @@ architecture-visualization-cc-plugin/
   packages/cli/        `gantry` binary (commander), hook entry points, git hook installer, shim
   packages/mcp/        MCP stdio server
   packages/explorer/   server/ (http for `gantry map`) and web/ (Vite + React)
+  packages/protocol/   `@gantry/protocol`: the zod schemas, routes, limits and helpers of the server API and the upload format
+                       (section 20), and a fake server for tests (`@gantry/protocol/testing`). Depends on `zod` only; the main
+                       entry imports neither `node:http` nor `@gantry/core`. Nothing calls it yet
   action/              (#282) the GitHub Action users add to their own workflows: action.yml (composite), README.md,
                        post-failure.sh (the failure notice when the install failed), testdata/ (a review and
                        duplicates JSON pair from fixtures/pnpm-turbo and the comment snapshot),
@@ -755,3 +758,93 @@ Implementation notes (#29): the advice reads only the index. Reachability follow
 ## 19. Definition of done (every PR)
 
 1. Acceptance criteria met. 2. `biome check` and `tsc -b` pass, and the vitest folders touched pass; the maintainer runs the full `pnpm check` on `main`. 3. New behavior has tests. 4. PR body: three lines (what changed, how it was checked, differences from the brief) plus the generated-with line; screenshots for UI work (never showing private test-bed code). 5. No TODOs left for in-scope items. Milestone-level regression runs happen in the milestone's final piece of work, not in every PR.
+
+## 20. Server API and upload format (`packages/protocol`, `@gantry/protocol`)
+
+The contract between a Gantry client (CLI, MCP server) and a team server. Both sides import the same zod schemas from `@gantry/protocol`, so they cannot drift. The package holds the schemas, `ROUTES`, `buildPath`, the limits, `splitIntoParts` and a fake server (`startFakeServer`, exported from `@gantry/protocol/testing` only). No upload carries a function body, a signature, file contents or a fact sheet: a snapshot with a `signature` or `body` key is rejected, because every request schema is strict.
+
+**Transport.** Plain HTTP and JSON under `/v1`, except a part body, which is gzipped NDJSON. Path parameters are URL-encoded with `encodeURIComponent` (`acme/shop` is `acme%2Fshop`; `cs:pr:acme/shop#12` is `cs%3Apr%3Aacme%2Fshop%2312`); `buildPath(route, params)` does it. Times are ISO 8601 UTC strings. An error body is `{ error, message }`; `message` is for people and is never parsed.
+
+**Version and evolution.** `PROTOCOL_VERSION` is 1 and is sent on every request as `X-Gantry-Protocol`. Every response carries `X-Gantry-Protocol-Max`, the highest version the server speaks (`GET /v1/whoami` also returns it as `protocol`). Response schemas are tolerant (`z.object`: an unknown key is dropped, never an error). Request schemas are strict (`z.strictObject`: an unknown key is an error). `FIELD_SINCE` maps a request field or route key to the version that introduced it (empty at version 1); a change that adds one bumps `PROTOCOL_VERSION` by one and adds its keys. A client sends such a field only when `supports(serverMax, key)` is true (`FIELD_SINCE[key] <= serverMax`; an unknown `serverMax` counts as 1 and a key absent from the table counts as 1). A response-only addition needs no bump.
+
+**Auth.** Every route takes `Authorization: Bearer <token>`. A CI token (`gct_...`) is for one repo, which names its organisation, and ignores `X-Gantry-Org`. A user token (from device sign-in: `POST /api/auth/device/code`, then `POST /api/auth/device/token` with client id `gantry-cli`, polled every `interval` seconds until `expires_in`; these two routes are outside `/v1` and carry no protocol header) names its organisation with `X-Gantry-Org: <slug>`. A user token without that header is 400 on every route except `GET /v1/whoami`, which answers 200 `{ kind: "user", user, repo_connected: false, protocol }`.
+
+| `error`            | Status | Meaning                                                                                                                                                   |
+| ------------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unauthorized`     | 401    | No token, or a malformed, unknown, expired or revoked one.                                                                                                |
+| `forbidden`        | 403    | The token is valid but may not do this: another repo's CI token, a route for the other kind of token, a missing role, an organisation the user is not in. |
+| `not_found`        | 404    | No such upload, change set or repo, or one the caller may not see.                                                                                        |
+| `invalid`          | 400    | Validation failed: an unknown field, a wrong type, a limit passed, a missing header, a path `:id` that differs from the body `id`.                        |
+| `too_large`        | 413    | A part or a whole upload is over a size limit.                                                                                                            |
+| `conflict`         | 409    | The request is valid but the state forbids it: a part for an upload that is superseded, failed or finished.                                               |
+| `budget`           | 409    | The server's daily upload capacity is used. The client stops and tries again later. A change set part is not refused for this reason.                     |
+| `protocol_version` | 400    | `X-Gantry-Protocol` is missing, not an integer, below 1 or above the server's maximum.                                                                    |
+
+**Routes** (`ROUTES` holds each one's method, path, accepted token kinds, query, request schema and response schema).
+
+| Route                                         | Token      | Purpose                                                                                                                                                                                                                             |
+| --------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /v1/whoami`                              | CI or user | Who the token is and whether a repo is connected.                                                                                                                                                                                   |
+| `POST /v1/repos/:repo/uploads`                | CI         | Begin an upload (`UploadStart`, with header `X-Gantry-Target`); answers 202 `UploadBegun`.                                                                                                                                          |
+| `PUT /v1/uploads/:id/parts/:n`                | CI         | Send part `n` (1-based). Headers `Content-Encoding: gzip`, `Content-Type: application/x-ndjson`, `X-Gantry-Part-Count`. Answers 202, or 200 when the part is already recorded. Errors include 409 `conflict`, 409 `budget` and 413. |
+| `GET /v1/uploads/:id`                         | CI         | `UploadStatus`.                                                                                                                                                                                                                     |
+| `POST /v1/repos/:repo/change-sets/:id/close`  | CI         | `CloseRequest`; answers `{ closed }`.                                                                                                                                                                                               |
+| `GET /v1/pull`                                | CI or user | The change sets, team views and groups of a repo, in pages (query `repo`, `cursor`). Answers 304 for a matching `If-None-Match` without a cursor. `X-Gantry-Truncated: true` on the last page when the list was cut.                |
+| `POST /v1/descriptions`                       | user       | `DescriptionsRequest`; answers `{ stored }`.                                                                                                                                                                                        |
+| `PUT` and `DELETE /v1/repos/:repo/groups/:id` | user       | Save or delete a team group (`Group`). A body `id` that differs from the path `:id` is 400.                                                                                                                                         |
+| `PUT` and `DELETE /v1/repos/:repo/views/:id`  | user       | Save or delete a team view (`SavedView`). Same id rule.                                                                                                                                                                             |
+
+**Targets.** An upload's target is `main` or a change set id (`cs:pr:<repo>#<n>` or `cs:branch:<repo>:<name>`, at most 1,024 characters; `changeSetIdForPr`, `changeSetIdForBranch`, `parseChangeSetId`). `X-Gantry-Target` is always sent percent-encoded (`encodeTarget`; `main` stays `main`) and decoded exactly once (`decodeTarget`), so `%` and characters outside Latin-1 in a branch name survive a header. The `c` record's `id` is the raw id and must equal the decoded header. The id's repo must equal the upload's repo, and for a pull request the number must equal `pr`.
+
+**Uploading in parts.** A main snapshot is not one body. A client:
+
+1. Sends `POST /v1/repos/:repo/uploads` with counts only (`UploadStart`: `{ kind: "main", sha, counts }` or `{ kind: "change_set", counts }`). The answer, `UploadBegun`, carries `upload_id` (24 lower-case hex), `part_max_records`, `part_max_bytes` and `max_parts`. The server chooses these values and may change them; a client reads them from every begin response and never hard-codes them. Beginning an upload supersedes the newest earlier unfinished upload of the same repo and target: its status becomes `superseded` and its remaining parts are refused.
+2. Cuts its records into parts (`splitIntoParts(records, limits)`): at most `part_max_records` records and `part_max_bytes` bytes of decompressed NDJSON per part (each line and its newline counted); each part is gzipped on its own; a part whose gzip is over `part_max_bytes` is cut in half; a record that cannot fit an empty part is an error that names it. Record order is fixed so a resend is byte-identical: for a main snapshot workspaces, files, symbols, edges, adapter nodes, each section sorted by id (edges by `from`, `to`, `kind`) (`mainSnapshotRecords`); for a change set the `c` record, then the node ids sorted, then the radius entries sorted by `hop`, then `id` (`changeSetRecords`).
+3. Sends every part with `PUT /v1/uploads/:id/parts/:n`, at most 4 in flight, each with `X-Gantry-Part-Count` (the number of parts, the same on every part). A part answered 5xx or by a network error is sent again; a 409 stops the upload. Parts may arrive in any order.
+4. Polls `GET /v1/uploads/:id` until the status is final. `queued`: begun, nothing received. `loading`: at least one part received. `done`: every part is loaded, the counts match and the upload is visible. `failed`: `error` says why (at most 500 characters, never source text); a failed upload is final, so the client begins a new one. `superseded`: a newer upload for the same target began. Until `done`, nothing of the upload is visible to any read, so a half-sent or failed upload never changes what a person sees. A server may fail an upload that stalls; the client sees status `failed` with a reason.
+
+The counts of `UploadStart` equal the number of records of that kind in the parts; a difference fails the upload.
+
+**Part records.** One NDJSON line per record, an object with a tag `t`; a tag not listed or a key not listed for its tag is rejected (`PartRecordSchema`).
+
+| Upload     | `t` | Record                                                                                                                                                                    |
+| ---------- | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| main       | `w` | workspace: `id`, `name`, `path`                                                                                                                                           |
+| main       | `f` | file: `id`, `path`, `workspace`, `lang`                                                                                                                                   |
+| main       | `s` | symbol: `id`, `name`, `kind`, `lang`, `path`, `workspace`, `line_start`, `line_end` (1-based, inclusive), `exact_hash`, `renamed_hash` (or null), `content_key` (or null) |
+| main       | `e` | edge: `from`, `to`, `kind`                                                                                                                                                |
+| main       | `a` | adapter node: `id`, `kind`, `workspace`, `label` (one line, at most 200 characters), `file_id` (or null)                                                                  |
+| change set | `c` | the change set without `repo`, `nodes` and `radius`: exactly one, the first line of part 1                                                                                |
+| change set | `n` | one node id                                                                                                                                                               |
+| change set | `r` | one radius entry: `id`, `hop`, `tier`, `via_hub`                                                                                                                          |
+
+A symbol has no `shape_hash` and a file no content hash. An adapter node has no free-form data. A `ChangeSet` is `{ id, repo, source: "pr" | "branch", state: "proposed" | "in_progress" | "in_review" | "merged", ref, head_ref, base_branch, nodes, nodes_total?, radius, reachable_total?, estimated, confidence?, owner, title?, pr?, head_sha, created_at, updated_at, links }`. `ref` is `#<n>` for a pull request and the branch name for a branch; `head_ref` is the head branch name (for a pull request the pull request's head branch, for a branch the same as `ref`). `radius` entries have `tier` `direct` (hop 1), `potential` (hops 2 and 3) or `reachable` (hop 4 and over). When the client cuts `nodes`, it sends `nodes_total`; `reachable_total` is the number of hop-4-and-over entries before the cut. `Description` is `{ content_key, behavior, search_terms, name_fits, suggested_name?, provenance: "model" | "fallback", model, prompt_version, created_at }`. `Group`, `SavedView` and `FilterSpec` are the overlay types of section 7, re-declared in the package; a test checks that they give the same verdicts as the library's.
+
+**Limits.** The server rejects (400 `invalid`) what passes them. `ids`, `from`, `to`, `focus`, `file_id`: 1 to 1,024 characters. `path`: at most 1,024. `name`: at most 512. `lang` and `kind`: `^[a-z][a-z0-9_-]{0,31}$` (not a closed set, so a new language or kind needs no version bump). `sha`, `head_sha`: 40 lower-case hex. `exact_hash`, `renamed_hash`: 32 lower-case hex. `content_key`: `^[0-9a-f]{32}:p[0-9]+$`. `ref`, `head_ref`, `base_branch`: at most 250 (`head_ref` may be empty). `owner`: at most 100. `title`: at most 300. A description's `behavior`: at most 400 characters; 1 to 6 search terms of at most 60; `suggested_name` at most 80 and `^[A-Za-z_$][\w$]*$`; `model` at most 100; `prompt_version` `^p[0-9]+$`.
+
+| Where                              | Maximum                                                            |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `workspaces` of a main snapshot    | 500                                                                |
+| `files`                            | 40,000                                                             |
+| `symbols`                          | 250,000                                                            |
+| `edges`                            | 900,000                                                            |
+| `adapter_nodes`                    | 5,000                                                              |
+| `nodes` of a change set            | 5,000                                                              |
+| `radius` of a change set           | 3,000                                                              |
+| `links` of a change set            | 50, each at most 300 characters                                    |
+| Records per part                   | `part_max_records` from the begin response                         |
+| Part size                          | `part_max_bytes` from the begin response, decompressed and gzipped |
+| Parts per upload                   | `max_parts` from the begin response                                |
+| One upload, summed over its parts  | 30 MB gzipped; 300 MB decompressed                                 |
+| `descriptions` per call            | 500                                                                |
+| Change sets in a pull              | 500                                                                |
+| Groups or saved views per repo     | 100 each, each at most 32 KB serialised                            |
+| Error `message` and status `error` | 500 characters                                                     |
+
+**Pull.** `GET /v1/pull` returns pages, newest change set first, at most 500 change sets over all pages. A client requests pages until a response has no `next_cursor` (the cursor is opaque), then sorts the change sets by `id`. `team_views`, `groups` and `settings` are on the first page only. Every page carries the same `ETag`.
+
+**Radius.** A change set's `radius` is built from the review engine's consumers per changed symbol and file: merge by id keeping the lowest hop, tier by hop, `via_hub` true for an id reached only through a collapsed hub, sort by hop then id, then cut to 500 entries for hops 1 to 3 and 2,500 for hop 4 and over. A client that cuts anything prints one stderr line (`radius: sent <sent> of <known>`, `nodes: sent 5000 of <n>`); a cut is never silent.
+
+**Client exit codes** (for a command that uploads). `done`, `superseded` and a close exit 0. `failed`, a timeout (600 seconds by default), a refused branch and a missing token exit 1 with the server's error or the reason. A usage error exits 2. With no team configured the command prints that nothing was uploaded and exits 0.
+
+**Rules.** No field carries a function body, a signature, comments, file contents or a fact sheet; the index fields that never travel are symbol `signature`, `loc`, `complexity`, `stmtCount` and `exported`, edge `evidence`, `confidence` and `count`, and adapter-node `data`. `owner` and `user` are account logins, never an email address or a display name, and no person is ranked by anything on the wire. Text from descriptions, titles, labels and ids is untrusted wherever it is shown. Nothing a hook starts contacts a server, and no hook waits on the network.
