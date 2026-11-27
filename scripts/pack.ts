@@ -1,11 +1,24 @@
-// Release tarball (issue #281). `packRelease` writes dist/gantry-<version>.tgz and its .sha256 file, byte-identical on
+// Release tarballs (issue #281). `packRelease` writes dist/gantry-<version>.tgz and its .sha256 file, byte-identical on
 // every run for the same commit: entries sorted by path, fixed modes, uid/gid 0, mtime = the tagged commit's committer
 // time, gzip header without mtime or file name. ustar and gzip are written with node:zlib only; no network, no npm.
-// `pnpm release:pack` runs this file for the current version; scripts/version.ts calls it from `release()`.
+// `packProtocol` writes dist/gantry-protocol-<version>.tgz and its .sha256 file beside it: the `@gantry/protocol` package
+// as `npm pack` lays it out (top directory `package/`), by the same writer, for any consumer that pins the protocol by
+// URL and checksum. `pnpm release:pack` runs both for the current version; scripts/version.ts calls them from `release()`.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { gzipSync } from "node:zlib";
 
@@ -143,19 +156,113 @@ function commitTime(root: string, version: string): number {
   return time;
 }
 
-/** Build dist/gantry-<version>.tgz and dist/gantry-<version>.tgz.sha256 from `root`. Needs plugin/dist built. */
-export function packRelease(root: string, version: string): PackResult {
-  const entries = collect(root, version);
-  const tar = ustar(entries, commitTime(root, version));
-  const archive = gzipSync(tar, { level: 9 }); // node:zlib writes mtime 0 and no file name
+function finish(root: string, entries: Entry[], mtime: number, name: string): PackResult {
+  const archive = gzipSync(ustar(entries, mtime), { level: 9 }); // node:zlib writes mtime 0 and no file name
   const sha256 = createHash("sha256").update(archive).digest("hex");
   const outDir = join(root, "dist");
   mkdirSync(outDir, { recursive: true });
-  const tarball = join(outDir, `gantry-${version}.tgz`);
+  const tarball = join(outDir, name);
   const sha256File = `${tarball}.sha256`;
   writeFileSync(tarball, archive);
-  writeFileSync(sha256File, `${sha256}  gantry-${version}.tgz\n`);
+  writeFileSync(sha256File, `${sha256}  ${name}\n`);
   return { tarball, sha256File, sha256 };
+}
+
+/** Build dist/gantry-<version>.tgz and dist/gantry-<version>.tgz.sha256 from `root`. Needs plugin/dist built. */
+export function packRelease(root: string, version: string): PackResult {
+  const entries = collect(root, version);
+  return finish(root, entries, commitTime(root, version), `gantry-${version}.tgz`);
+}
+
+const PROTOCOL = "packages/protocol";
+const PROTOCOL_TOP = "package";
+/** Fields of packages/protocol/package.json that the tarball keeps, in this order (no scripts, no devDependencies). */
+const PROTOCOL_FIELDS = ["name", "version", "type", "main", "types", "exports", "dependencies", "files"];
+
+/** Every file under `dir` (relative paths with "/"), skipping SKIPPED names. */
+function files(dir: string, rel = ""): string[] {
+  const out: string[] = [];
+  for (const name of readdirSync(join(dir, rel))) {
+    if (SKIPPED.has(name)) continue;
+    const path = rel ? `${rel}/${name}` : name;
+    const st = lstatSync(join(dir, path));
+    if (st.isDirectory()) out.push(...files(dir, path));
+    else if (st.isFile()) out.push(path);
+    else throw new Error(`${join(dir, path)}: only files and directories can be packed`);
+  }
+  return out;
+}
+
+/** Files of packages/protocol/dist that ship: no test output, no source maps, no tsbuildinfo. */
+const shipsFromDist = (file: string): boolean =>
+  !/\.test\./.test(file) && !/\.map$|\.tsbuildinfo$/.test(file);
+
+/**
+ * Compile packages/protocol with packages/protocol/tsconfig.build.json (no tests) into `outDir`, which is empty, and
+ * return it. Nothing left in packages/protocol/dist by an earlier `tsc -b` is read. Needs the repository's typescript.
+ */
+export function buildProtocol(root: string, outDir: string): string {
+  const config = join(root, PROTOCOL, "tsconfig.build.json");
+  if (!existsSync(config)) throw new Error(`${PROTOCOL}/tsconfig.build.json is missing`);
+  const tsc = join(dirname(createRequire(import.meta.url).resolve("typescript/package.json")), "bin/tsc");
+  try {
+    execFileSync(
+      process.execPath,
+      [tsc, "-p", config, "--composite", "false", "--incremental", "false", "--outDir", outDir],
+      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+  } catch (e) {
+    const out = e as { stdout?: string; stderr?: string };
+    throw new Error(`compiling ${PROTOCOL} failed:\n${out.stdout ?? ""}${out.stderr ?? ""}`);
+  }
+  return outDir;
+}
+
+function protocolEntries(root: string, version: string, dist: string): Entry[] {
+  const pkgDir = join(root, PROTOCOL);
+  if (!existsSync(dist)) throw new Error(`${PROTOCOL}: the build produced no output directory`);
+  const manifest = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8")) as Record<string, unknown>;
+  const kept: Record<string, unknown> = {};
+  for (const field of PROTOCOL_FIELDS) if (field in manifest) kept[field] = manifest[field];
+  kept.version = version;
+  const entries: Entry[] = [
+    { path: `${PROTOCOL_TOP}/LICENSE`, data: readFileSync(join(root, "LICENSE")), mode: 0o644 },
+    {
+      path: `${PROTOCOL_TOP}/package.json`,
+      data: Buffer.from(`${JSON.stringify(kept, null, 2)}\n`),
+      mode: 0o644,
+    },
+  ];
+  for (const file of files(dist).filter(shipsFromDist))
+    entries.push({ path: `${PROTOCOL_TOP}/dist/${file}`, data: readFileSync(join(dist, file)), mode: 0o644 });
+  const examples = join(pkgDir, "examples");
+  if (existsSync(examples))
+    for (const file of files(examples))
+      entries.push({
+        path: `${PROTOCOL_TOP}/examples/${file}`,
+        data: readFileSync(join(examples, file)),
+        mode: 0o644,
+      });
+  return entries.sort((a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
+}
+
+/**
+ * Build dist/gantry-protocol-<version>.tgz and its .sha256 file from packages/protocol, compiled fresh from its
+ * tsconfig.build.json into an empty directory (`build` is replaceable for tests): package.json (with
+ * `version` set), LICENSE, the non-test files of dist/ and the example payloads, files only, mtime as for the CLI tarball.
+ */
+export function packProtocol(
+  root: string,
+  version: string,
+  build: (root: string, outDir: string) => string = buildProtocol,
+): PackResult {
+  const scratch = mkdtempSync(join(tmpdir(), "gantry-protocol-build-"));
+  try {
+    const entries = protocolEntries(root, version, build(root, join(scratch, "dist")));
+    return finish(root, entries, commitTime(root, version), `gantry-protocol-${version}.tgz`);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -163,8 +270,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const root = process.cwd();
     const version = (JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { version: string })
       .version;
-    const { tarball, sha256File, sha256 } = packRelease(root, version);
-    console.log(`${tarball}\n${sha256File}\nsha256 ${sha256}`);
+    for (const { tarball, sha256File, sha256 } of [packRelease(root, version), packProtocol(root, version)])
+      console.log(`${tarball}\n${sha256File}\nsha256 ${sha256}`);
   } catch (e) {
     console.error((e as Error).message);
     process.exit(1);

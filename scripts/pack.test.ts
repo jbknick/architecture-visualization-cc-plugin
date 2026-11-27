@@ -1,10 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { packRelease } from "./pack.js";
+import { packProtocol, packRelease } from "./pack.js";
+import { checkSync } from "./version.js";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -158,5 +159,191 @@ describe("packRelease", () => {
     const root = fake();
     rmSync(join(root, "plugin/dist"), { recursive: true });
     expect(() => packRelease(root, "1.2.3")).toThrow("plugin/dist is missing: run pnpm build");
+  });
+});
+
+/** Stands in for the compiler in the fake repositories: the planted dist is what gets packed. */
+const stub = (root: string) => () => join(root, "packages/protocol/dist");
+const REPO = join(import.meta.dirname, "..");
+
+/** `fake()` plus a built packages/protocol: sources and tests are not shipped, dist and examples are. */
+function fakeWithProtocol(): string {
+  const root = fake();
+  put(
+    root,
+    "packages/protocol/package.json",
+    `${JSON.stringify({ name: "@gantry/protocol", version: "0.0.0", private: true, type: "module", main: "./dist/index.js", exports: { ".": "./dist/index.js", "./testing": "./dist/testing/index.js" }, dependencies: { zod: "4.6.7" }, devDependencies: { "@gantry/core": "workspace:*" }, files: ["dist", "examples", "LICENSE"] }, null, 2)}\n`,
+  );
+  put(root, "packages/protocol/dist/index.js", "export const PROTOCOL_VERSION = 1;\n");
+  put(root, "packages/protocol/dist/index.d.ts", "export declare const PROTOCOL_VERSION = 1;\n");
+  put(root, "packages/protocol/dist/testing/index.js", "export {};\n");
+  put(root, "packages/protocol/dist/testing/index.d.ts", "export {};\n");
+  put(root, "packages/protocol/dist/testing/fakeServer.js", "export {};\n");
+  put(root, "packages/protocol/dist/testing/fakeServer.d.ts", "export {};\n");
+  put(root, "packages/protocol/dist/schemas.test.js", "not shipped\n");
+  put(root, "packages/protocol/dist/schemas.test.d.ts", "not shipped\n");
+  put(root, "packages/protocol/dist/index.js.map", "not shipped\n");
+  put(root, "packages/protocol/dist/tsconfig.tsbuildinfo", "not shipped\n");
+  put(root, "packages/protocol/src/index.ts", "not shipped\n");
+  put(root, "packages/protocol/examples/view.json", "{}\n");
+  put(root, "packages/protocol/examples/main-snapshot.part-1.ndjson.gz", "gz\n");
+  put(root, "packages/other/dist/x.js", "not shipped\n");
+  git(root, "add", "-A");
+  execFileSync("git", ["commit", "-q", "-m", "protocol"], {
+    cwd: root,
+    env: {
+      ...process.env,
+      GIT_COMMITTER_DATE: "2026-01-02T03:04:05Z",
+      GIT_AUTHOR_DATE: "2026-01-02T03:04:05Z",
+    },
+  });
+  return root;
+}
+
+describe("packProtocol", () => {
+  it("writes gantry-protocol-<version>.tgz beside the CLI tarball, with a one-line .sha256 that matches", () => {
+    const root = fakeWithProtocol();
+    const cli = packRelease(root, "1.2.3");
+    const p = packProtocol(root, "1.2.3", stub(root));
+    expect(p.tarball).toBe(join(root, "dist/gantry-protocol-1.2.3.tgz"));
+    expect(readdirSync(join(root, "dist")).sort()).toEqual([
+      "gantry-1.2.3.tgz",
+      "gantry-1.2.3.tgz.sha256",
+      "gantry-protocol-1.2.3.tgz",
+      "gantry-protocol-1.2.3.tgz.sha256",
+    ]);
+    const line = readFileSync(p.sha256File, "utf8");
+    expect(line).toBe(`${p.sha256}  gantry-protocol-1.2.3.tgz\n`);
+    const shasum = execFileSync("shasum", ["-a", "256", p.tarball], { encoding: "utf8" });
+    expect(shasum.split(/\s+/)[0]).toBe(p.sha256);
+    expect(readFileSync(cli.sha256File, "utf8")).toBe(`${cli.sha256}  gantry-1.2.3.tgz\n`);
+  });
+
+  it("lists package.json, LICENSE, the examples and the non-test dist files, and nothing else", () => {
+    const root = fakeWithProtocol();
+    const files = listing(packProtocol(root, "1.2.3", stub(root)).tarball);
+    expect(files).toEqual([
+      "package/LICENSE",
+      "package/dist/index.d.ts",
+      "package/dist/index.js",
+      "package/dist/testing/fakeServer.d.ts",
+      "package/dist/testing/fakeServer.js",
+      "package/dist/testing/index.d.ts",
+      "package/dist/testing/index.js",
+      "package/examples/main-snapshot.part-1.ndjson.gz",
+      "package/examples/view.json",
+      "package/package.json",
+    ]);
+    expect(files.filter((f) => /\.test\./.test(f))).toEqual([]);
+  });
+
+  it("writes the manifest with the release version and without devDependencies", () => {
+    const root = fakeWithProtocol();
+    const out = tmp();
+    execFileSync("tar", ["-xzf", packProtocol(root, "1.2.3", stub(root)).tarball, "-C", out]);
+    const pkg = JSON.parse(readFileSync(join(out, "package/package.json"), "utf8"));
+    expect(pkg.version).toBe("1.2.3");
+    expect(pkg.name).toBe("@gantry/protocol");
+    expect(pkg.dependencies).toEqual({ zod: "4.6.7" });
+    expect(pkg).not.toHaveProperty("devDependencies");
+    expect(pkg).not.toHaveProperty("private");
+    expect(statSync(join(out, "package/dist/index.js")).mtimeMs).toBe(Date.parse("2026-01-02T03:04:05Z"));
+  });
+
+  it("gives the same bytes on a second run", () => {
+    const root = fakeWithProtocol();
+    const a = packProtocol(root, "1.2.3", stub(root));
+    const bytes = readFileSync(a.tarball);
+    const b = packProtocol(root, "1.2.3", stub(root));
+    expect(b.sha256).toBe(a.sha256);
+    expect(readFileSync(b.tarball).equals(bytes)).toBe(true);
+  });
+
+  it("names the missing build config", () => {
+    const root = fake();
+    put(root, "packages/protocol/package.json", "{}\n");
+    expect(() => packProtocol(root, "1.2.3")).toThrow(/tsconfig\.build\.json is missing/);
+  });
+});
+
+describe("packages/protocol manifest", () => {
+  const read = (file: string) => JSON.parse(readFileSync(join(REPO, file), "utf8"));
+
+  it("carries the root version", () => {
+    expect(read("packages/protocol/package.json").version).toBe(read("package.json").version);
+    expect(checkSync(REPO)).toEqual([]);
+  });
+
+  it("pins zod at the exact version the lockfile resolves", () => {
+    const want =
+      /^ {2}packages\/protocol:\n {4}dependencies:\n {6}zod:\n {8}specifier: .+\n {8}version: (\S+)$/m.exec(
+        readFileSync(join(REPO, "pnpm-lock.yaml"), "utf8"),
+      )?.[1];
+    expect(want).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(read("packages/protocol/package.json").dependencies).toEqual({ zod: want });
+  });
+
+  it("lists dist, examples and LICENSE in files and exports both entry points", () => {
+    const pkg = read("packages/protocol/package.json");
+    expect(pkg.files).toEqual(["dist", "examples", "LICENSE"]);
+    expect(Object.keys(pkg.exports)).toEqual([".", "./testing"]);
+  });
+
+  it("has a build config that leaves the tests out", () => {
+    expect(read("packages/protocol/tsconfig.build.json").exclude).toEqual([
+      "src/**/*.test.ts",
+      "src/testing/samples.ts",
+    ]);
+  });
+});
+
+describe("packProtocol build", () => {
+  it("compiles from tsconfig.build.json, so a stale file in packages/protocol/dist and a test never ship", () => {
+    const root = tmp();
+    const proto = join(root, "packages/protocol");
+    put(root, "LICENSE", "MIT\n");
+    put(
+      root,
+      "packages/protocol/package.json",
+      '{"name":"@gantry/protocol","version":"0.0.0","type":"module"}\n',
+    );
+    put(
+      root,
+      "packages/protocol/tsconfig.json",
+      JSON.stringify({
+        compilerOptions: {
+          module: "NodeNext",
+          moduleResolution: "NodeNext",
+          target: "ES2023",
+          rootDir: "src",
+          declaration: true,
+        },
+        include: ["src"],
+      }),
+    );
+    put(
+      root,
+      "packages/protocol/tsconfig.build.json",
+      readFileSync(join(REPO, "packages/protocol/tsconfig.build.json"), "utf8"),
+    );
+    put(root, "packages/protocol/src/index.ts", "export const PROTOCOL_VERSION = 1;\n");
+    put(root, "packages/protocol/src/index.test.ts", "export const t = 1;\n");
+    put(root, "packages/protocol/src/testing/samples.ts", 'export const SHA = "x";\n');
+    put(root, "packages/protocol/dist/removed.js", "// output of a source that no longer exists\n");
+    put(root, "packages/protocol/dist/index.js", "// old build\n");
+    expect(proto).toContain("protocol");
+    git(root, "init", "-q", "-b", "main");
+    git(root, "config", "user.email", "t@example.com");
+    git(root, "config", "user.name", "t");
+    git(root, "add", "-A");
+    git(root, "-c", "commit.gpgsign=false", "commit", "-q", "-m", "x");
+    const files = listing(packProtocol(root, "1.2.3").tarball);
+    expect(files).toEqual([
+      "package/LICENSE",
+      "package/dist/index.d.ts",
+      "package/dist/index.js",
+      "package/package.json",
+    ]);
+    expect(files.filter((f) => f.includes("samples"))).toEqual([]);
   });
 });
