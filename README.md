@@ -244,6 +244,23 @@ In CI, set three environment variables instead: `GANTRY_SERVER`, `GANTRY_ORG` an
 
 Team state is cached locally in one small file, `team-cache.db` in the data directory. The MCP server refreshes it when it starts and, at most once a minute, before a tool call, and `gantry team status --pull` refreshes it on request, so hooks and tools read the file, never the network, and keep working offline; `gantry team status` shows its age as `cache: <n> open changes, pulled <age> ago`.
 
+## What is uploaded and what is not
+
+Uploading is opt-in: nothing is sent unless a checkout is linked to a team server and you run an upload. The upload is built from the index by two functions, so what a dry run prints is what is sent. Two payloads exist.
+
+**The graph of `main`** carries, for the repo:
+
+- workspaces: `id`, `name`, `path`;
+- files: `id`, `path`, `workspace` (a workspace id), `lang`;
+- symbols: `id`, `name`, `kind`, `lang`, `path`, `workspace`, `line_start`, `line_end`, `exact_hash`, `renamed_hash`, `content_key`;
+- edges: `from`, `to`, `kind`;
+- adapter nodes (routes and the like): `id`, `kind`, `workspace`, `label` (one line), `file_id`;
+- the `sha` of the commit.
+
+**A pull request's change set** carries its `id`, repo, number, title (if given), head and base branch, head commit, author login, the ids of the changed symbols and files, and the ids it can reach with the hop and tier of each (`direct`, `potential`, `reachable`), at most 3,000 of them, plus the times it was opened and updated. When the list is cut, one line on stderr says how many were sent of how many were found.
+
+**Never sent:** function bodies, signatures, comments, file contents, fact sheets, descriptions, and the engine's own measures of a function (`loc`, `complexity`, `exported`, edge evidence and confidence). The hashes are one-way: they show that two functions are the same, and cannot be turned back into code. A test builds both payloads for two fixtures and fails if any field could carry source: a key named like source, a value with a newline or a line of the fixture's code, or a function's signature anywhere in the text.
+
 ## Status
 
 Progress by milestone. Issue lists are on the [milestones page](https://github.com/jbknick/architecture-visualization-cc-plugin/milestones).

@@ -1,0 +1,29 @@
+{
+  "id": "cs:pr:fixture/pnpm-turbo#1",
+  "repo": "fixture/pnpm-turbo",
+  "source": "pr",
+  "state": "in_review",
+  "ref": "#1",
+  "head_ref": "feat/slug-edit",
+  "base_branch": "main",
+  "nodes": [
+    "file:fixture/pnpm-turbo:packages/utils/src/slug.ts",
+    "sym:fixture/pnpm-turbo:packages/utils/src/slug.ts#slugify"
+  ],
+  "radius": [
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/utils/src/slug.ts#SLUG_VERSION",
+      "hop": 1,
+      "tier": "direct",
+      "via_hub": false
+    }
+  ],
+  "estimated": false,
+  "owner": "fixture-dev",
+  "title": "Allow underscores in slugs",
+  "pr": 1,
+  "head_sha": "8da8fbd8f25515602bfb04e5716d26dcf0b2e255",
+  "created_at": "2026-01-01T00:00:00.000Z",
+  "updated_at": "2026-01-02T03:04:05.000Z",
+  "links": []
+}
