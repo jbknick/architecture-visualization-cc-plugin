@@ -172,10 +172,21 @@ export async function teamLink(ctx: TeamContext, opts: { server: string; org: st
         ctx.out(`${linked} Run gantry team login.\n`);
         return EXIT_OK;
       }
-      const who = await client.whoami({ repo });
-      ctx.out(
-        who.repo_connected ? `${linked}\n` : `Linked, but ${repo} is not connected on the server yet.\n`,
-      );
+      // The link is saved before the server is asked, so a failed check warns and never blocks (exit 0).
+      try {
+        const who = await client.whoami({ repo });
+        ctx.out(
+          who.repo_connected ? `${linked}\n` : `Linked, but ${repo} is not connected on the server yet.\n`,
+        );
+      } catch (err) {
+        if (!(err instanceof GantryError)) throw err;
+        ctx.out(`${linked}\n`);
+        const warning =
+          err.code === "team_unreachable"
+            ? `Could not check the link: ${err.message}`
+            : errorLine(err, opts.org, server);
+        ctx.err(`${warning}\n`);
+      }
       return EXIT_OK;
     },
   );

@@ -34,8 +34,13 @@ function readAll(file: string): Record<string, Credential> {
   }
 }
 
-function writeAll(file: string, servers: Record<string, Credential>): void {
-  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+function writeAll(file: string, servers: Record<string, Credential>, env: NodeJS.ProcessEnv): void {
+  const dir = path.dirname(file);
+  // mkdir's mode applies only to a directory it creates, and ~/.gantry usually exists already (the hooks install
+  // makes ~/.gantry/bin), so the default directory is tightened to 700 here. A directory the user named through
+  // GANTRY_CREDENTIALS_FILE is theirs: it gets 700 only when this call created it.
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  if (file === credentialsPath({ ...env, GANTRY_CREDENTIALS_FILE: "" })) fs.chmodSync(dir, 0o700);
   const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
   fs.writeFileSync(tmp, `${JSON.stringify({ servers }, null, 2)}\n`, { mode: 0o600, flag: "wx" });
   fs.chmodSync(tmp, 0o600);
@@ -54,7 +59,7 @@ export function writeCredential(
   env: NodeJS.ProcessEnv = process.env,
 ): void {
   const file = credentialsPath(env);
-  writeAll(file, { ...readAll(file), [normalizeServer(server)]: credential });
+  writeAll(file, { ...readAll(file), [normalizeServer(server)]: credential }, env);
 }
 
 /** Removes a server's entry. Returns false when there was none (the file is then left alone). */
@@ -64,6 +69,6 @@ export function removeCredential(server: string, env: NodeJS.ProcessEnv = proces
   const key = normalizeServer(server);
   if (!(key in servers)) return false;
   delete servers[key];
-  writeAll(file, servers);
+  writeAll(file, servers, env);
   return true;
 }

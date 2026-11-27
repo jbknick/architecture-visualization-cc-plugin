@@ -23,6 +23,22 @@ describe("credentials file", () => {
     expect(credentialsPath(env)).toBe(file);
   });
 
+  it("tightens an existing default ~/.gantry directory to 700, but leaves a directory the user named alone", () => {
+    const home = path.join(tmp, "home");
+    fs.mkdirSync(path.join(home, ".gantry"), { recursive: true, mode: 0o755 });
+    fs.chmodSync(path.join(home, ".gantry"), 0o755);
+    writeCredential("https://a.example.com", entry, { HOME: home });
+    expect(mode(path.join(home, ".gantry"))).toBe(0o700);
+    expect(mode(path.join(home, ".gantry", "credentials.json"))).toBe(0o600);
+
+    const own = path.join(tmp, "own");
+    fs.mkdirSync(own, { mode: 0o755 });
+    fs.chmodSync(own, 0o755);
+    writeCredential("https://a.example.com", entry, { GANTRY_CREDENTIALS_FILE: path.join(own, "c.json") });
+    expect(mode(own)).toBe(0o755);
+    expect(mode(path.join(own, "c.json"))).toBe(0o600);
+  });
+
   it("reads nothing when there is no file", () => {
     expect(readCredential("https://gantry.example.com", env)).toBeUndefined();
     expect(fs.existsSync(file)).toBe(false);

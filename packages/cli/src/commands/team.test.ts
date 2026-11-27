@@ -110,6 +110,35 @@ describe("gantry team link", () => {
     expect(fs.existsSync(env.GANTRY_CREDENTIALS_FILE ?? "")).toBe(false);
   });
 
+  it("keeps the link and warns, exit 0, when the server cannot be reached", async () => {
+    const url = fake.url;
+    await fake.close();
+    signIn();
+    expect(await teamLink(ctx(), { server: url, org: "acme" })).toBe(0);
+    expect(stdout.join("").replaceAll(url, SHOWN)).toBe(
+      "Linked acme/storefront to acme on https://gantry.example.com.\n",
+    );
+    expect(stderr.join("").replaceAll(url, SHOWN)).toBe(
+      "Could not check the link: Cannot reach https://gantry.example.com.\n",
+    );
+    expect(JSON.parse(fs.readFileSync(paths.configPath, "utf8"))).toEqual({
+      team: { server: url, org: "acme" },
+    });
+    fake = await startFakeServer();
+  });
+
+  it("keeps the link and says to sign in, exit 0, when the token is rejected", async () => {
+    env.GANTRY_TOKEN = "tok-rejected";
+    expect(await link()).toBe(0);
+    expect(printed(stdout)).toBe("Linked acme/storefront to acme on https://gantry.example.com.\n");
+    expect(stderr.join("")).toBe(
+      "team_unauthorized: The server did not accept the token. Run gantry team login.\n",
+    );
+    expect(JSON.parse(fs.readFileSync(paths.configPath, "utf8"))).toEqual({
+      team: { server: fake.url, org: "acme" },
+    });
+  });
+
   it("refuses a server that is not https or localhost, and writes nothing", async () => {
     expect(await teamLink(ctx(), { server: "http://gantry.example.com", org: "acme" })).toBe(1);
     expect(stderr.join("")).toBe(
@@ -180,6 +209,48 @@ describe("gantry team login", () => {
       {},
     );
     expect(exit).toBe(0);
+  });
+
+  it("waits 5 s longer after slow_down", async () => {
+    const answers = [{ error: "slow_down" }, { error: "authorization_pending" }];
+    const real = fetch;
+    const stub: typeof fetch = async (input, init) => {
+      if (String(input).endsWith("/api/auth/device/token") && answers.length > 0) {
+        return new Response(JSON.stringify(answers.shift()), { status: 400 });
+      }
+      return real(input, init);
+    };
+    const sleeps: number[] = [];
+    const exit = await teamLogin(
+      ctx({
+        fetch: stub,
+        sleep: async (ms) => {
+          sleeps.push(ms);
+          if (sleeps.length === 3)
+            fake.state.approveDevice(
+              /([0-9A-F]{4})-([0-9A-F]{4})/.exec(stdout.join(""))?.slice(1, 3).join("") ?? "",
+            );
+        },
+      }),
+      { server: fake.url },
+    );
+    expect(exit).toBe(0);
+    expect(sleeps).toEqual([5000, 10_000, 10_000]);
+  });
+
+  it("stops at once with exit 1 when the sign-in is denied", async () => {
+    const stub: typeof fetch = async (input, init) =>
+      String(input).endsWith("/api/auth/device/token")
+        ? new Response(JSON.stringify({ error: "access_denied" }), { status: 400 })
+        : fetch(input, init);
+    const sleeps: number[] = [];
+    const exit = await teamLogin(ctx({ fetch: stub, sleep: async (ms) => void sleeps.push(ms) }), {
+      server: fake.url,
+    });
+    expect(exit).toBe(1);
+    expect(sleeps).toHaveLength(1);
+    expect(stderr.join("")).toBe("team_rejected: The sign-in was denied.\n");
+    expect(fs.existsSync(env.GANTRY_CREDENTIALS_FILE ?? "")).toBe(false);
   });
 
   it("stops when the code expires", async () => {
