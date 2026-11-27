@@ -1,0 +1,11 @@
+{
+  "id": "web-app",
+  "name": "Web app",
+  "selectors": [
+    {
+      "type": "workspace",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web"
+    }
+  ],
+  "mayUse": null
+}

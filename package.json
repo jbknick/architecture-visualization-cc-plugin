@@ -15,6 +15,7 @@
     "eval:clone": "tsx scripts/eval-clone.ts",
     "eval:packs": "tsx scripts/eval-packs.ts",
     "fmt": "biome check --write .",
+    "protocol:examples": "tsx scripts/protocol-examples.ts",
     "perf": "GANTRY_PERF=1 vitest run -t performance packages/core/src/dup/engine.test.ts",
     "reattach:e2e": "tsx scripts/reattach-e2e.ts",
     "readme:media": "tsx scripts/readme-media.ts",
