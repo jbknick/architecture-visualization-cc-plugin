@@ -519,6 +519,16 @@ export function readTeamViews(cache: TeamCache | undefined): SavedView[] {
   });
 }
 
+/** One value of the cache's `settings` table (for example `default_view`), or `undefined` when it has none. */
+export function readTeamSetting(cache: TeamCache | undefined, key: string): string | undefined {
+  return read<string | undefined>(cache, undefined, (db) => {
+    const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as
+      | { value: string }
+      | undefined;
+    return row?.value;
+  });
+}
+
 /** Seconds since the last successful pull (a 304 counts), or `undefined` when there has been none. */
 export function cacheAgeSeconds(cache: TeamCache | undefined, now: number = Date.now()): number | undefined {
   return read<number | undefined>(cache, undefined, (db) => {

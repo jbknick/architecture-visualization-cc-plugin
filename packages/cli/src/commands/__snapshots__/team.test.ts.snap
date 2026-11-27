@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`help > lists the four subcommands > link 1`] = `
+exports[`help > lists the subcommands > link 1`] = `
 "Usage: gantry team link [options]
 
 Say which server and organisation this repo belongs to
@@ -12,7 +12,7 @@ Options:
 "
 `;
 
-exports[`help > lists the four subcommands > login 1`] = `
+exports[`help > lists the subcommands > login 1`] = `
 "Usage: gantry team login [options]
 
 Sign in to a team server with a code
@@ -23,7 +23,7 @@ Options:
 "
 `;
 
-exports[`help > lists the four subcommands > logout 1`] = `
+exports[`help > lists the subcommands > logout 1`] = `
 "Usage: gantry team logout [options]
 
 Remove the stored sign-in for a server
@@ -34,7 +34,7 @@ Options:
 "
 `;
 
-exports[`help > lists the four subcommands > status 1`] = `
+exports[`help > lists the subcommands > status 1`] = `
 "Usage: gantry team status [options]
 
 Show the server, organisation, user and repo, whether the server answers, and
