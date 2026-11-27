@@ -65,6 +65,8 @@ export interface CrossingFinding {
   dstPath: string;
   dstLine: number;
   dstGroup: string;
+  /** The rule is a team group's, read from the team cache: printed as `in team group` (spec section 14). */
+  team?: true;
 }
 export type Finding = DupFinding | ImportLine | CrossingFinding;
 
@@ -256,10 +258,11 @@ const score = (n: number): string => n.toFixed(2);
 export function formatFinding(f: Finding): string {
   if (f.kind === "import") return `Gantry: ${f.action} (line ${f.line})`;
   if (f.kind === "crossing") {
-    const tail = `in group ${f.dstGroup}, which ${f.srcGroup} does not list. Warn only.`;
+    const word = f.team === true ? "team group" : "group";
+    const tail = `in ${word} ${f.dstGroup}, which ${f.srcGroup} does not list. Warn only.`;
     return f.srcLine === 0 && f.dstLine === 0 && f.srcName === f.srcPath
-      ? `Gantry: ${f.srcPath} in group ${f.srcGroup} imports ${f.dstPath} ${tail}`
-      : `Gantry: ${f.srcName} (${f.srcPath}:${f.srcLine}) in group ${f.srcGroup} uses ${f.dstName} (${f.dstPath}:${f.dstLine}) ${tail}`;
+      ? `Gantry: ${f.srcPath} in ${word} ${f.srcGroup} imports ${f.dstPath} ${tail}`
+      : `Gantry: ${f.srcName} (${f.srcPath}:${f.srcLine}) in ${word} ${f.srcGroup} uses ${f.dstName} (${f.dstPath}:${f.dstLine}) ${tail}`;
   }
   return (
     `Gantry: ${f.name} (${f.path}:${f.line}) looks like ${f.existing} in ${f.existingRepo === undefined ? "" : `${f.existingRepo}:`}${f.existingPath}:${f.existingLine} ` +

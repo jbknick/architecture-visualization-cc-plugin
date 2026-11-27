@@ -529,6 +529,11 @@ export function readTeamSetting(cache: TeamCache | undefined, key: string): stri
   });
 }
 
+/** The repo (`owner/name`) the cache was pulled for (`meta.repo`), or `undefined` when it has none. */
+export function readTeamRepo(cache: TeamCache | undefined): string | undefined {
+  return read<string | undefined>(cache, undefined, (db) => getMeta(db, "repo"));
+}
+
 /** Seconds since the last successful pull (a 304 counts), or `undefined` when there has been none. */
 export function cacheAgeSeconds(cache: TeamCache | undefined, now: number = Date.now()): number | undefined {
   return read<number | undefined>(cache, undefined, (db) => {

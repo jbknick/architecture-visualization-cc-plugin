@@ -5,19 +5,25 @@ import {
   fileId,
   type GantryConfig,
   type GantryPaths,
+  type Group,
   indexRepo,
   isIndexable,
   isQueryFile,
   loadConfig,
   loadRecipe,
+  mergedGroups,
   openStore,
+  openTeamCache,
   parseFile,
   pathsForRepo,
+  readTeamRepo,
   repoOfPath,
   type Store,
+  type TeamCache,
 } from "@gantry/core";
 import { crossingFindings } from "./boundaries.js";
 import {
+  type CrossingFinding,
   changedSymbols,
   diskCheck,
   duplicateFindings,
@@ -143,7 +149,7 @@ export async function postToolUse(
     const r = await settle(paths, store, session, config, opts);
     // A batch of one that could not finish is not left behind under its throwaway key.
     store.db.prepare("DELETE FROM pending_files WHERE session_id = ?").run(session);
-    const text = formatCapped(r.findings, 600);
+    const text = formatCapped([...r.findings, ...r.teamFindings], 600);
     if (text === "") return undefined;
     return JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: text } });
   } finally {
@@ -179,6 +185,7 @@ export async function settleBatch(
     first.close();
   }
   const findings: Finding[] = [];
+  const teamFindings: Finding[] = [];
   let settled = 0;
   for (const repo of repos) {
     const p = pathsForRepo(paths, repo);
@@ -189,12 +196,14 @@ export async function settleBatch(
         maxFiles: (opts.maxFiles ?? Number.POSITIVE_INFINITY) - settled,
       });
       findings.push(...r.findings);
+      teamFindings.push(...r.teamFindings);
       settled += r.settled;
     } finally {
       store.close();
     }
   }
-  const text = formatCapped(findings, 600);
+  // Team lines come after every other finding, so the cap drops them first.
+  const text = formatCapped([...findings, ...teamFindings], 600);
   if (text === "") return undefined;
   return JSON.stringify({ hookSpecificOutput: { hookEventName: "Stop", additionalContext: text } });
 }
@@ -254,6 +263,8 @@ export interface SettleOptions {
 
 export interface SettleResult {
   findings: Finding[];
+  /** Crossings of the team's groups (spec section 14): printed after every other finding. */
+  teamFindings: Finding[];
   /** Files checked and removed from the batch. */
   settled: number;
   /** Files left in the batch: out of time, or the write lock was busy. */
@@ -272,6 +283,7 @@ export interface SettleResult {
  * 4. Each source file is checked, then its row is deleted in the same transaction, by the (path, created_at) that was
  *    read, so a file edited again meanwhile stays in the batch. No file is started after `deadline`.
  * Findings are per file in path order: duplicates (lowest in the file first), then imports, then group-boundary crossings.
+ * The crossings of team groups (`teamFindings`) are kept apart, so the caller can print them after everything else.
  */
 export async function settle(
   paths: GantryPaths,
@@ -292,7 +304,7 @@ export async function settle(
     return ok;
   };
   const lockWait = opts.lockWaitMs ?? 200;
-  const out: SettleResult = { findings: [], settled: 0, remaining: 0 };
+  const out: SettleResult = { findings: [], teamFindings: [], settled: 0, remaining: 0 };
   const cutoff = new Date(Date.now() - PENDING_TTL_MS).toISOString();
   await locked(store, lockWait, async () => {
     store.db.prepare("DELETE FROM pending_files WHERE created_at < ?").run(cutoff);
@@ -357,6 +369,7 @@ export async function settle(
   }
 
   const check = diskCheck(paths.root, store, config);
+  const groups = boundaryGroups(paths, store);
   for (const r of sources) {
     if (
       late() ||
@@ -364,6 +377,7 @@ export async function settle(
     )
       break;
     const found: Finding[] = [];
+    const foundTeam: Finding[] = [];
     const ok = await step(async () => {
       let baseline: Record<string, string>;
       try {
@@ -388,15 +402,59 @@ export async function settle(
         );
       }
       // Group boundaries (spec section 14): reads overlay.db, never writes it; same disk double-check.
-      found.push(...crossingFindings(store, changed, [r.path]).filter(check));
+      found.push(
+        ...crossingFindings(store, changed, [r.path], groups.local ? { groups: groups.local } : {}).filter(
+          check,
+        ),
+      );
+      // Team groups (spec section 14): from the cache read before the loop, never from a server.
+      if (groups.team.length > 0)
+        foundTeam.push(
+          ...crossingFindings(store, changed, [r.path], { groups: groups.team })
+            .map((f): CrossingFinding => ({ ...f, team: true }))
+            .filter(check),
+        );
       del.run(session, store.repo(), r.path, r.created_at);
     });
     if (!ok) break;
     out.findings.push(...found);
+    out.teamFindings.push(...foundTeam);
     out.settled++;
     out.remaining--;
   }
   return out;
+}
+
+/**
+ * The groups of the team cache that can be boundaries, and, when the team has any group, the local groups that no
+ * team group shadows (the local rule then follows the team's id clash rule, spec section 7). Reads the cache file
+ * once, read-only and with no network, and closes it. The cache is ignored when it is missing, holds another repo's
+ * data or has no groups; then `local` is undefined and the local call reads the overlay as before.
+ */
+function boundaryGroups(paths: GantryPaths, store: Store): { local?: Group[]; team: Group[] } {
+  const none = { team: [] };
+  let cache: TeamCache | undefined;
+  try {
+    cache = openTeamCache(paths, { readonly: true });
+  } catch {
+    return none;
+  }
+  if (cache === undefined) return none;
+  try {
+    if (readTeamRepo(cache) !== store.repo()) return none;
+    const merged = mergedGroups(store, cache);
+    const team = merged.filter((g) => g.origin === "team");
+    if (team.length === 0) return none;
+    return {
+      local: merged.filter((g) => g.origin === "local" && g.shadowed !== true),
+      // The whole list: a group with `mayUse: null` is no boundary, but a call into it is still a crossing.
+      team,
+    };
+  } catch {
+    return none;
+  } finally {
+    cache.close();
+  }
 }
 
 /**
