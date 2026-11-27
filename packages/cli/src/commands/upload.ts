@@ -13,6 +13,7 @@ import {
   snapshotRecords,
   changeSetRecords as teamChangeSetRecords,
   teamClient,
+  uploadDescriptions,
 } from "@gantry/core";
 import {
   CloseRequestSchema,
@@ -126,6 +127,7 @@ export interface UploadOptions {
   title?: string;
   createdAt?: string;
   close?: boolean;
+  descriptions?: boolean;
   merged?: boolean;
   forceMain?: boolean;
   timeout?: string;
@@ -182,6 +184,9 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
   };
 
   // 1. Usage: nothing below runs on a bad command line.
+  if (opts.descriptions === true && (opts.pr !== undefined || opts.close === true)) {
+    return usage("--descriptions cannot be combined with --pr or --close");
+  }
   let pr: number | undefined;
   if (opts.pr !== undefined) {
     if (!/^[1-9]\d{0,8}$/.test(opts.pr)) return usage("--pr must be a pull request number");
@@ -248,10 +253,13 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
   const config = loadConfig(ctx.paths);
   const target = resolveTeamTarget(ctx.paths, config, ctx.env);
   if (target === null) {
-    if (opts.json === true) result("skipped");
+    if (opts.json === true && opts.descriptions === true)
+      ctx.out(`${JSON.stringify({ sent: 0, stored: 0 })}\n`);
+    else if (opts.json === true) result("skipped");
     else ctx.out("No team configured; nothing uploaded.\n");
     return EXIT_OK;
   }
+  if (opts.descriptions === true) return runDescriptionUpload(ctx, opts, target);
   const token = target.token;
   if (token === null) return refuse("No token. Set GANTRY_TOKEN, or run gantry team login.");
   secret = token;
@@ -394,6 +402,80 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
   }
 }
 
+const CI_LINE = "Descriptions need a signed-in user. Run gantry team login.";
+
+/**
+ * `gantry upload --descriptions`: the model-written descriptions of this machine, nothing else. No graph is built, no
+ * source is read, and the `team.upload.descriptions` switch stops it before any request.
+ */
+async function runDescriptionUpload(
+  ctx: UploadContext,
+  opts: UploadOptions,
+  target: NonNullable<ReturnType<typeof resolveTeamTarget>>,
+): Promise<number> {
+  const json = opts.json === true;
+  const token = target.token;
+  const scrub = (text: string): string => (token === null ? text : text.split(token).join("***"));
+  const fail1 = (text: string): number => {
+    ctx.err(`${scrub(text)}\n`);
+    return EXIT_ERROR;
+  };
+  const done = (sent: number, stored: number): number => {
+    if (json) ctx.out(`${JSON.stringify({ sent, stored })}\n`);
+    return EXIT_OK;
+  };
+  if (!target.config.team?.upload?.descriptions) {
+    if (json) return done(0, 0);
+    ctx.out("Description upload is switched off (team.upload.descriptions).\n");
+    return EXIT_OK;
+  }
+  if (token === null) return fail1("No token. Set GANTRY_TOKEN, or run gantry team login.");
+  if (token.startsWith("gct_")) return fail1(CI_LINE);
+  try {
+    const client = teamClient(ctx.paths, target.config, {
+      env: ctx.env,
+      server: target.server,
+      org: target.org,
+      token,
+      timeoutMs: REQUEST_TIMEOUT_MS,
+      ...(ctx.fetch === undefined ? {} : { fetch: ctx.fetch }),
+    });
+    resetStaleStore(ctx.paths);
+    ensureDataDir(ctx.paths);
+    const store = openStore(ctx.paths.dbPath, { overlayPath: ctx.paths.overlayPath, repo: ctx.paths.repo });
+    try {
+      const count = (
+        store.db
+          .prepare("SELECT COUNT(*) AS n FROM descriptions WHERE provenance = 'model' AND model IS NOT NULL")
+          .get() as { n: number }
+      ).n;
+      if (count === 0) {
+        if (!json) ctx.out("No descriptions written on this machine; nothing uploaded.\n");
+        return done(0, 0);
+      }
+      if (!json) ctx.out(`Uploading ${count} descriptions for ${ctx.paths.repo}...\n`);
+      const result = await uploadDescriptions(store, client, ctx.paths.repo, {
+        serialise: (payload) => serialiseBody("descriptions", payload),
+      });
+      if (result.skipped > 0) {
+        ctx.err(`${result.skipped} descriptions do not fit the wire format and were not sent.\n`);
+      }
+      if (!json) ctx.out(`stored ${result.stored} new\n`);
+      return done(result.sent, result.stored);
+    } finally {
+      store.close();
+    }
+  } catch (err) {
+    if (err instanceof GantryError) {
+      const status = err.answer?.status;
+      if (err.code === "team_forbidden") return fail1(CI_LINE);
+      if (status === 404) return fail1("The server does not accept descriptions.");
+      return fail1(describeFailure(err));
+    }
+    return fail1(`gantry: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
 /** A 40-character sha as given, or the commit a ref names here. */
 function resolveSha(root: string, ref: string): string | undefined {
   if (SHA_RE.test(ref)) return ref;
@@ -453,6 +535,10 @@ export function registerUpload(program: Command): void {
     .option("--created-at <iso>", "when the pull request was opened (env GANTRY_PR_CREATED_AT)")
     .option("--close", "tell the server the pull request is closed (needs --pr and --head)")
     .option("--merged", "with --close: the pull request was merged")
+    .option(
+      "--descriptions",
+      "send the descriptions written on this machine to the organisation (not with --pr or --close)",
+    )
     .option("--force-main", "upload this checkout as main even when it is not on the default branch")
     .option("--timeout <s>", `seconds to wait for the server to finish (default ${DEFAULT_TIMEOUT_S})`)
     .option("--json", "print one JSON object instead of lines")
