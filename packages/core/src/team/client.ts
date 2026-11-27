@@ -1,4 +1,6 @@
+import { gunzipSync } from "node:zlib";
 import {
+  assertNoSource,
   buildPath,
   DeviceCodeResponseSchema,
   DeviceTokenResponseSchema,
@@ -12,6 +14,7 @@ import {
   HEADER_TRUNCATED,
   PROTOCOL_VERSION,
   ROUTES,
+  UploadRefused,
 } from "@gantry/protocol";
 import type { z } from "zod";
 import type { GantryConfig } from "../config/index.js";
@@ -47,6 +50,43 @@ export interface TeamClientOptions {
   org?: string | null;
   /** Use this bearer token; `null` sends none (the server then answers 401, which proves it is reachable). */
   token?: string | null;
+}
+
+/** The routes whose bodies carry what an upload sends. Every one is checked by `assertNoSource` before any request. */
+const GUARDED_ROUTES: ReadonlySet<string> = new Set([
+  "beginUpload",
+  "putPart",
+  "closeChangeSet",
+  "putDescriptions",
+]);
+
+/** The most a part may decompress to when it is checked (the protocol's whole-upload raw limit). */
+const GUARD_PART_MAX_BYTES = 300 * 1024 * 1024;
+
+/** Refuses a body that could carry source; a part is decompressed and every record of it checked. */
+function guardBody(key: string, o: { body?: unknown; rawBody?: Uint8Array }): void {
+  if (!GUARDED_ROUTES.has(key)) return;
+  if (o.rawBody !== undefined) {
+    let text: string;
+    try {
+      text = gunzipSync(o.rawBody, { maxOutputLength: GUARD_PART_MAX_BYTES }).toString("utf8");
+    } catch {
+      throw new UploadRefused("part");
+    }
+    for (const line of text.split("\n")) {
+      if (line === "") continue;
+      let record: unknown;
+      try {
+        record = JSON.parse(line);
+      } catch {
+        throw new UploadRefused("part");
+      }
+      assertNoSource(record);
+    }
+    return;
+  }
+  if (o.body === undefined) return;
+  assertNoSource(typeof o.body === "string" ? JSON.parse(o.body) : o.body);
 }
 
 type RouteKey = keyof typeof ROUTES;
@@ -148,6 +188,7 @@ export function teamClient(paths: GantryPaths, config: GantryConfig, opts: TeamC
   const serverProtocol = (): number => learned ?? 1;
 
   async function call<K extends RouteKey>(key: K, o: CallOptions = {}): Promise<Answer<K>> {
+    guardBody(key, o); // before the protocol handshake: a refused body makes no request at all
     if (o.skipReady !== true && key !== "whoami") await ready();
     const route = ROUTES[key];
     let url = `${server}${buildPath(route, o.params)}`;

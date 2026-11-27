@@ -208,7 +208,7 @@ const injections: [string, (record: Record<string, unknown>) => void, string][] 
   ["body", set("s", "body", "return 1;"), "body"],
   ["fact_sheet", set("s", "fact_sheet", { calls: [] }), "fact_sheet"],
   ["source that is a language", set("f", "source", "typescript"), "source"],
-  ["a string over 1,000 characters", set("s", "name", "x".repeat(1001)), "name"],
+  ["a string over 1,024 characters", set("s", "name", "x".repeat(1025)), "name"],
 ];
 
 describe("the guard refuses before any request, on every path that builds a body", () => {
@@ -457,7 +457,7 @@ describe("the functions that write a body refuse on their own", () => {
       ["descriptions", { repo: REPO, descriptions: [{ ...description, text: "x" }] }, "descriptions[0].text"],
       [
         "descriptions",
-        { repo: REPO, descriptions: [{ ...description, behavior: "x".repeat(1001) }] },
+        { repo: REPO, descriptions: [{ ...description, behavior: "x".repeat(1025) }] },
         "descriptions[0].behavior",
       ],
       ["descriptions", { repo: REPO, doc: "x", descriptions: [] }, "doc"],

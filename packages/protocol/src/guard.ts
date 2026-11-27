@@ -16,6 +16,8 @@ export class UploadRefused extends Error {
   }
 }
 
+import { MAX_STRING_LENGTH } from "./schemas.js";
+
 /** Keys that are never allowed at any depth, compared after lower-casing and dropping `_` and `-`. */
 const FORBIDDEN_KEYS: ReadonlySet<string> = new Set([
   "signature",
@@ -31,9 +33,6 @@ const FORBIDDEN_KEYS: ReadonlySet<string> = new Set([
 
 /** The only strings a `source` key may hold (the change set's own origin field). */
 const SOURCE_VALUES: ReadonlySet<string> = new Set(["pr", "branch"]);
-
-/** The longest string a field or a key may hold. Names, paths and one-sentence descriptions are far shorter. */
-export const MAX_STRING_LENGTH = 1000;
 
 /** Deeper than any payload of the protocol; a value this deep (or one that loops back on itself) is refused. */
 const MAX_DEPTH = 32;

@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as zlib from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
-import { assertNoSource, MAX_STRING_LENGTH, UploadRefused } from "./guard.js";
+import { assertNoSource, UploadRefused } from "./guard.js";
 import { DEFAULT_PART_LIMITS, splitIntoParts } from "./parts.js";
-import type { PartRecord } from "./schemas.js";
+import { IdSchema, MAX_STRING_LENGTH, type PartRecord } from "./schemas.js";
 import { changeSet, description, REPO, SHA, snapshot } from "./testing/samples.js";
 
 // Counts every gzip the package asks for, so a test can show that a refused record was never compressed.
@@ -85,17 +85,21 @@ describe("assertNoSource: the source key", () => {
 });
 
 describe("assertNoSource: long strings", () => {
-  it("allows 1,000 characters and refuses 1,001, at any depth", () => {
-    expect(MAX_STRING_LENGTH).toBe(1000);
-    expect(() => assertNoSource({ name: "a".repeat(1000) })).not.toThrow();
-    expect(refusedAt({ name: "a".repeat(1001) })).toBe("name");
-    expect(refusedAt({ files: [{ path: "a".repeat(1001) }] })).toBe("files[0].path");
-    expect(refusedAt(["a".repeat(1001)])).toBe("[0]");
-    expect(refusedAt("a".repeat(1001))).toBe("$");
+  it("allows the protocol's longest string (1,024) and refuses one more, at any depth", () => {
+    const max = MAX_STRING_LENGTH;
+    const over = "a".repeat(max + 1);
+    expect(max).toBe(1024);
+    expect(IdSchema.safeParse("a".repeat(max)).success).toBe(true);
+    expect(IdSchema.safeParse(over).success).toBe(false);
+    expect(() => assertNoSource({ id: "a".repeat(max), path: "a".repeat(max) })).not.toThrow();
+    expect(refusedAt({ name: over })).toBe("name");
+    expect(refusedAt({ files: [{ path: over }] })).toBe("files[0].path");
+    expect(refusedAt([over])).toBe("[0]");
+    expect(refusedAt(over)).toBe("$");
   });
 
-  it("refuses a key longer than 1,000 characters and keeps the path short", () => {
-    const path = refusedAt({ ["a".repeat(1001)]: 1 });
+  it("refuses a key longer than the maximum and keeps the path short", () => {
+    const path = refusedAt({ ["a".repeat(MAX_STRING_LENGTH + 1)]: 1 });
     expect(path.length).toBeLessThan(100);
   });
 });
@@ -194,7 +198,11 @@ describe("splitIntoParts refuses before anything is compressed", () => {
   });
 
   it("refuses a part record with an injected signature, a source value and a long string", () => {
-    for (const injected of [{ signature: "x" }, { source: "typescript" }, { name: "a".repeat(1001) }]) {
+    for (const injected of [
+      { signature: "x" },
+      { source: "typescript" },
+      { name: "a".repeat(MAX_STRING_LENGTH + 1) },
+    ]) {
       expect(() => splitIntoParts([{ ...good, ...injected } as PartRecord], DEFAULT_PART_LIMITS)).toThrow(
         UploadRefused,
       );
