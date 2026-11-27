@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -189,9 +189,9 @@ describe("gantry upload --descriptions", () => {
 
   it("prints {sent, stored} under --json, and stores nothing new the second time", async () => {
     const first = await upload({ descriptions: true, json: true });
-    expect(first).toMatchObject({ code: 0, out: '{"sent":2,"stored":2}\n', err: "" });
+    expect(first).toMatchObject({ code: 0, out: '{"status":"done","sent":2,"stored":2}\n', err: "" });
     const second = await upload({ descriptions: true, json: true });
-    expect(second).toMatchObject({ code: 0, out: '{"sent":2,"stored":0}\n', err: "" });
+    expect(second).toMatchObject({ code: 0, out: '{"status":"done","sent":2,"stored":0}\n', err: "" });
   });
 
   it("is switched off by team.upload.descriptions: one line, exit 0, no request", async () => {
@@ -205,14 +205,22 @@ describe("gantry upload --descriptions", () => {
     });
     expect(fake.state.descriptions.size).toBe(0);
     const json = await upload({ descriptions: true, json: true });
-    expect(json).toMatchObject({ code: 0, out: '{"sent":0,"stored":0}\n', requests: [] });
+    expect(json).toMatchObject({
+      code: 0,
+      out: '{"status":"skipped","sent":0,"stored":0,"reason":"switched off"}\n',
+      requests: [],
+    });
   });
 
   it("with no team configured sends nothing and exits 0", async () => {
     const run = await upload({ descriptions: true }, { GANTRY_SERVER: "", GANTRY_ORG: "" });
     expect(run).toMatchObject({ code: 0, out: "No team configured; nothing uploaded.\n", requests: [] });
     const json = await upload({ descriptions: true, json: true }, { GANTRY_SERVER: "", GANTRY_ORG: "" });
-    expect(json).toMatchObject({ code: 0, out: '{"sent":0,"stored":0}\n', requests: [] });
+    expect(json).toMatchObject({
+      code: 0,
+      out: '{"status":"skipped","sent":0,"stored":0,"reason":"no team"}\n',
+      requests: [],
+    });
   });
 
   it("refuses a CI token with exit 1, before any request, and prints no description text or token", async () => {
@@ -266,6 +274,114 @@ describe("gantry upload --descriptions", () => {
     const run = await upload({ descriptions: true }, {}, broken);
     expect(run.code).toBe(1);
     expect(run.out + run.err).not.toContain(USER_TOKEN);
+  });
+
+  it("under --json, a store with nothing to send is skipped with a reason", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "gantry-desc-empty-"));
+    spawnSync("git", ["init", "-q"], { cwd: dir });
+    const empty = resolvePaths(dir, { HOME: join(dir, "home"), CLAUDE_PLUGIN_DATA: dir });
+    let out = "";
+    const code = await runUpload(
+      {
+        paths: empty,
+        env: {
+          GANTRY_CREDENTIALS_FILE: join(dir, "none.json"),
+          GANTRY_SERVER: fake.url,
+          GANTRY_ORG: "acme",
+          GANTRY_TOKEN: USER_TOKEN,
+        },
+        out: (t) => {
+          out += t;
+        },
+        err: () => undefined,
+      },
+      { descriptions: true, json: true },
+    );
+    rmSync(dir, { recursive: true, force: true });
+    expect(code).toBe(0);
+    expect(out).toBe('{"status":"skipped","sent":0,"stored":0,"reason":"nothing to send"}\n');
+  });
+
+  it("under --json, every failure prints one failed object with the error, token scrubbed", async () => {
+    const reply = (status: number, error: string, message: string) => (url: string) =>
+      url.includes("/v1/descriptions")
+        ? new Response(JSON.stringify({ error, message }), {
+            status,
+            headers: { "content-type": "application/json", "x-gantry-protocol-max": "1" },
+          })
+        : undefined;
+    const one = (run: Run): Record<string, unknown> => {
+      const lines = run.out.trimEnd().split("\n");
+      expect(lines).toHaveLength(1);
+      return JSON.parse(lines[0] as string) as Record<string, unknown>;
+    };
+    const ci = await upload({ descriptions: true, json: true }, { GANTRY_TOKEN: CI_TOKEN });
+    expect(ci.code).toBe(1);
+    expect(one(ci)).toEqual({
+      status: "failed",
+      sent: 0,
+      stored: 0,
+      error: "Descriptions need a signed-in user. Run gantry team login.",
+    });
+    const missing = await upload(
+      { descriptions: true, json: true },
+      {},
+      reply(404, "not_found", "no such route"),
+    );
+    expect(missing.code).toBe(1);
+    expect(one(missing)).toMatchObject({
+      status: "failed",
+      error: "The server does not accept descriptions.",
+    });
+    const leaky = await upload(
+      { descriptions: true, json: true },
+      {},
+      reply(400, "invalid", `bad ${USER_TOKEN}`),
+    );
+    expect(leaky.code).toBe(1);
+    expect(one(leaky).status).toBe("failed");
+    expect(leaky.out + leaky.err).not.toContain(USER_TOKEN);
+    const down = await upload({ descriptions: true, json: true }, {}, (url) => {
+      if (url.includes("/v1/descriptions")) throw new Error("connection refused");
+      return undefined;
+    });
+    expect(down.code).toBe(1);
+    expect(one(down)).toMatchObject({ status: "failed", sent: 0, stored: 0 });
+    expect(String(one(down).error)).toMatch(/^team_unreachable/);
+    const noToken = await upload({ descriptions: true, json: true }, { GANTRY_TOKEN: "" });
+    expect(noToken.code).toBe(1);
+    expect(one(noToken)).toMatchObject({ status: "failed", error: expect.stringContaining("No token") });
+  });
+
+  it("under --json, a later batch that fails keeps the count stored so far", async () => {
+    const store = openStore(paths.dbPath);
+    store.db.exec("BEGIN");
+    const insert = store.db.prepare(
+      "INSERT INTO descriptions VALUES (?, 'Does a thing.', '[\"x\"]', 1, NULL, 'model', 'haiku', 'p1', '2026-03-04T05:06:07.000Z')",
+    );
+    for (let i = 0; i < 600; i += 1) insert.run(`${(i + 16).toString(16).padStart(32, "0")}:p1`);
+    store.db.exec("COMMIT");
+    store.close();
+    try {
+      let posts = 0;
+      const run = await upload({ descriptions: true, json: true }, {}, (url) => {
+        if (!url.includes("/v1/descriptions")) return undefined;
+        posts += 1;
+        return posts < 2
+          ? undefined
+          : new Response(JSON.stringify({ error: "invalid", message: "second batch refused" }), {
+              status: 400,
+              headers: { "content-type": "application/json", "x-gantry-protocol-max": "1" },
+            });
+      });
+      expect(run.code).toBe(1);
+      expect(JSON.parse(run.out)).toMatchObject({ status: "failed", sent: 500, stored: 500 });
+      expect(run.out.trimEnd().split("\n")).toHaveLength(1);
+    } finally {
+      const clean = openStore(paths.dbPath);
+      clean.db.prepare("DELETE FROM descriptions WHERE content_key NOT IN (?, ?)").run(KEYS[0], KEYS[1]);
+      clean.close();
+    }
   });
 
   it("is a usage error (exit 2, no request) with --pr or --close", async () => {
@@ -354,11 +470,11 @@ describe("gantry upload --descriptions, built", () => {
   it("sends 2, then stores 0 new; switched off it makes no request", async () => {
     expect(await gantry(["upload", "--descriptions", "--json"])).toMatchObject({
       code: 0,
-      out: '{"sent":2,"stored":2}\n',
+      out: '{"status":"done","sent":2,"stored":2}\n',
     });
     expect(await gantry(["upload", "--descriptions", "--json"])).toMatchObject({
       code: 0,
-      out: '{"sent":2,"stored":0}\n',
+      out: '{"status":"done","sent":2,"stored":0}\n',
     });
     const seen = e2eFake.state.descriptions.size;
     expect(seen).toBe(2);

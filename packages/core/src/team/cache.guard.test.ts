@@ -118,8 +118,10 @@ const CACHE = join(packagesDir, "core", "src", "team", "cache.ts");
 /** The two files only `gantry upload` may reach: the settings resolver and the command that sends. */
 const RESOLVE = join(packagesDir, "core", "src", "team", "resolve.ts");
 const UPLOAD = join(packagesDir, "cli", "src", "commands", "upload.ts");
-const SENDERS = new Set([RESOLVE, UPLOAD]);
-const SENDER_NAMES = /\b(teamClient|pullTeamCache|resolveTeamTarget|runUpload|registerUpload)\b/;
+const DESCRIPTION_UPLOAD = join(packagesDir, "core", "src", "team", "descriptionUpload.ts");
+const SENDERS = new Set([RESOLVE, UPLOAD, DESCRIPTION_UPLOAD]);
+const SENDER_NAMES =
+  /\b(teamClient|pullTeamCache|resolveTeamTarget|runUpload|registerUpload|uploadDescriptions|descriptionRecords)\b/;
 
 /** `./x.js` or a workspace package to a source file; undefined for anything outside this repo's sources. */
 function resolveSpec(from: string, spec: string): string | undefined {
@@ -318,6 +320,27 @@ describe("the hooks' import graph", () => {
         `import * as upload from "${relative(dir, UPLOAD).replace(/\.ts$/, ".js")}";\nupload;\n`,
       );
       expect(violations([viaPath])).toEqual([`${rel(viaPath)} imports all of ${rel(UPLOAD)}`]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("the description upload", () => {
+  it("is not reached from a hook through a helper that wraps it (the walker works)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "gantry-guard-"));
+    try {
+      const helper = join(dir, "helper.ts");
+      writeFileSync(
+        helper,
+        `import { uploadDescriptions } from "@gantry/core";\nexport const viaHelper = () => uploadDescriptions;\n`,
+      );
+      const hook = join(dir, "hook.ts");
+      writeFileSync(hook, `import { viaHelper } from "./helper.js";\nviaHelper();\n`);
+      expect(violations([hook])).toEqual([
+        `${rel(helper)} uses the team client or the pull`,
+        `${rel(helper)} imports uploadDescriptions from ${rel(DESCRIPTION_UPLOAD)}, the upload command's`,
+      ]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

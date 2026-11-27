@@ -253,9 +253,9 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
   const config = loadConfig(ctx.paths);
   const target = resolveTeamTarget(ctx.paths, config, ctx.env);
   if (target === null) {
-    if (opts.json === true && opts.descriptions === true)
-      ctx.out(`${JSON.stringify({ sent: 0, stored: 0 })}\n`);
-    else if (opts.json === true) result("skipped");
+    if (opts.json === true && opts.descriptions === true) {
+      ctx.out(`${JSON.stringify({ status: "skipped", sent: 0, stored: 0, reason: "no team" })}\n`);
+    } else if (opts.json === true) result("skipped");
     else ctx.out("No team configured; nothing uploaded.\n");
     return EXIT_OK;
   }
@@ -416,21 +416,28 @@ async function runDescriptionUpload(
   const json = opts.json === true;
   const token = target.token;
   const scrub = (text: string): string => (token === null ? text : text.split(token).join("***"));
-  const fail1 = (text: string): number => {
-    ctx.err(`${scrub(text)}\n`);
+  // Under --json every exit but a usage error prints exactly one object (spec section 11).
+  const emit = (body: Record<string, unknown>): void => {
+    if (json) ctx.out(`${JSON.stringify(body)}\n`);
+  };
+  let sent = 0;
+  let stored = 0;
+  const failed = (text: string): number => {
+    const line = scrub(text);
+    emit({ status: "failed", sent, stored, error: line });
+    ctx.err(`${line}\n`);
     return EXIT_ERROR;
   };
-  const done = (sent: number, stored: number): number => {
-    if (json) ctx.out(`${JSON.stringify({ sent, stored })}\n`);
+  const skipped = (reason: string, text: string): number => {
+    emit({ status: "skipped", sent: 0, stored: 0, reason });
+    if (!json) ctx.out(`${text}\n`);
     return EXIT_OK;
   };
   if (!target.config.team?.upload?.descriptions) {
-    if (json) return done(0, 0);
-    ctx.out("Description upload is switched off (team.upload.descriptions).\n");
-    return EXIT_OK;
+    return skipped("switched off", "Description upload is switched off (team.upload.descriptions).");
   }
-  if (token === null) return fail1("No token. Set GANTRY_TOKEN, or run gantry team login.");
-  if (token.startsWith("gct_")) return fail1(CI_LINE);
+  if (token === null) return failed("No token. Set GANTRY_TOKEN, or run gantry team login.");
+  if (token.startsWith("gct_")) return failed(CI_LINE);
   try {
     const client = teamClient(ctx.paths, target.config, {
       env: ctx.env,
@@ -450,29 +457,32 @@ async function runDescriptionUpload(
           .get() as { n: number }
       ).n;
       if (count === 0) {
-        if (!json) ctx.out("No descriptions written on this machine; nothing uploaded.\n");
-        return done(0, 0);
+        return skipped("nothing to send", "No descriptions written on this machine; nothing uploaded.");
       }
       if (!json) ctx.out(`Uploading ${count} descriptions for ${ctx.paths.repo}...\n`);
       const result = await uploadDescriptions(store, client, ctx.paths.repo, {
         serialise: (payload) => serialiseBody("descriptions", payload),
+        onBatch: (s, st) => {
+          sent = s;
+          stored = st;
+        },
       });
       if (result.skipped > 0) {
         ctx.err(`${result.skipped} descriptions do not fit the wire format and were not sent.\n`);
       }
       if (!json) ctx.out(`stored ${result.stored} new\n`);
-      return done(result.sent, result.stored);
+      emit({ status: "done", sent: result.sent, stored: result.stored });
+      return EXIT_OK;
     } finally {
       store.close();
     }
   } catch (err) {
     if (err instanceof GantryError) {
-      const status = err.answer?.status;
-      if (err.code === "team_forbidden") return fail1(CI_LINE);
-      if (status === 404) return fail1("The server does not accept descriptions.");
-      return fail1(describeFailure(err));
+      if (err.code === "team_forbidden") return failed(CI_LINE);
+      if (err.answer?.status === 404) return failed("The server does not accept descriptions.");
+      return failed(describeFailure(err));
     }
-    return fail1(`gantry: ${err instanceof Error ? err.message : String(err)}`);
+    return failed(`gantry: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 

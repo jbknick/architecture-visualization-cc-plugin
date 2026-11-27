@@ -32,6 +32,8 @@ export interface DescriptionUploadOptions {
    * the bytes sent; the default checks the payload with the route's schema and writes compact JSON.
    */
   serialise?: (payload: { repo: string; descriptions: Description[] }) => string;
+  /** Called after each batch the server answered, with the totals so far (a later batch may still fail). */
+  onBatch?: (sent: number, stored: number) => void;
 }
 
 export interface DescriptionUploadResult {
@@ -97,6 +99,7 @@ export async function uploadDescriptions(
       serialise({ repo, descriptions: records.slice(i, i + LIMITS.descriptions) }),
     );
     stored += answer.stored;
+    opts.onBatch?.(Math.min(i + LIMITS.descriptions, records.length), stored);
   }
   return { sent: records.length, stored, skipped };
 }
