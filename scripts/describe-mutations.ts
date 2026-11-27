@@ -21,6 +21,8 @@ const COPY_PATHS = [
   "fixtures",
   "scripts/build-wordlist.ts",
   "packages/core",
+  // the core imports the protocol package (through packages/core/node_modules), so its build must be there
+  "packages/protocol",
   // the redactor-precision test scans every package's src
   "packages/cli/src",
   "packages/explorer/src",

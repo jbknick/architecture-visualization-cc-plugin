@@ -19,6 +19,26 @@ const RouteSchema = z.object({
   effort: z.enum(["low", "medium", "high"]),
 });
 
+/** A team server URL: https, or http for localhost and 127.0.0.1 only (spec section 5). */
+export function isTeamServerUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.protocol === "https:") return true;
+  return url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+}
+
+const TeamSchema = z.object({
+  server: z.string().refine(isTeamServerUrl, "must be an https URL (http only for localhost and 127.0.0.1)"),
+  org: z.string().min(1),
+  upload: z
+    .object({ descriptions: z.boolean().default(true), working: z.boolean().default(false) })
+    .default({ descriptions: true, working: false }),
+});
+
 export const GantryConfigSchema = z.object({
   precommit: z.object({
     mode: z.enum(["off", "timeboxed", "strict"]),
@@ -52,6 +72,8 @@ export const GantryConfigSchema = z.object({
   renameSuggestions: z.boolean(),
   worker: z.object({ binary: z.string().min(1).optional() }).optional(),
   precise: z.object({ scip: z.string().min(1).optional() }).optional(),
+  /** Absent means no team: every command behaves as it did before teams (spec section 5). */
+  team: TeamSchema.optional(),
 });
 
 export type TaskName = (typeof TASK_NAMES)[number];

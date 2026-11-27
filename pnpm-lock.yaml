@@ -78,6 +78,10 @@ importers:
       commander:
         specifier: ^15.1.0
         version: 15.1.0
+    devDependencies:
+      '@gantry/protocol':
+        specifier: workspace:*
+        version: link:../protocol
 
   packages/core:
     dependencies:
@@ -99,6 +103,9 @@ importers:
       '@ast-grep/napi':
         specifier: 0.51.3
         version: 0.51.3
+      '@gantry/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@huggingface/transformers':
         specifier: ^4.3.2
         version: 4.3.2(@types/node@26.6.6)
@@ -239,10 +246,6 @@ importers:
       zod:
         specifier: 4.6.7
         version: 4.6.7
-    devDependencies:
-      '@gantry/core':
-        specifier: workspace:*
-        version: link:../core
 
 packages:
 
