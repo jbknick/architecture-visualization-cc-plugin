@@ -3,8 +3,18 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type Group, indexRepo, openStore, resolvePaths, saveGroup } from "@gantry/core";
+import {
+  fileId,
+  type Group,
+  indexRepo,
+  openStore,
+  resolvePaths,
+  type Store,
+  type SymbolRecord,
+  saveGroup,
+} from "@gantry/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { crossingFindings } from "./boundaries.js";
 import { runHook } from "./entry.js";
 import { settleBatch } from "./postToolUse.js";
 
@@ -199,5 +209,73 @@ ${readFileSync(join(fx.dir, "src/orders/invoice.ts"), "utf8")}`,
       "Gantry: v0 (src/g0/f.ts:3) in group G0 uses v1 (src/g1/f.ts:3) in group G1, which G0 does not list. Warn only.",
     );
     for (const l of lines) expect(l).toMatch(/^Gantry: .* Warn only\.$/);
+  });
+});
+
+describe("crossingFindings options", () => {
+  /** The functions of `rel` as the hook sees them after the edit, with the store open for the callback. */
+  async function withChanged<T>(rel: string, body: (store: Store, changed: SymbolRecord[]) => T): Promise<T> {
+    const paths = resolvePaths(fx.dir, env);
+    const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
+    try {
+      return body(store, store.effectiveSymbols({ fileId: fileId(store.repo(), rel) }));
+    } finally {
+      store.close();
+    }
+  }
+
+  it("without options it reads the overlay and reports only edges the main layer lacks", async () => {
+    await setup("overlay-groups", [ORDERS, CATALOG]);
+    await edit("src/orders/invoice.ts", EDIT);
+    const found = await withChanged("src/orders/invoice.ts", (store, changed) =>
+      crossingFindings(store, changed, ["src/orders/invoice.ts"]),
+    );
+    expect(found).toEqual([
+      {
+        kind: "crossing",
+        srcName: "totalDue",
+        srcPath: "src/orders/invoice.ts",
+        srcLine: 3,
+        srcGroup: "Orders",
+        dstName: "formatPrice",
+        dstPath: "src/catalog/price.ts",
+        dstLine: 1,
+        dstGroup: "Catalog",
+      },
+    ]);
+    const same = await withChanged("src/orders/invoice.ts", (store, changed) =>
+      crossingFindings(store, changed, ["src/orders/invoice.ts"], {}),
+    );
+    expect(same).toEqual(found);
+  });
+
+  it("opts.groups replaces the groups of the overlay", async () => {
+    await setup("overlay-groups", [ORDERS, CATALOG]);
+    await edit("src/orders/invoice.ts", EDIT);
+    const none = await withChanged("src/orders/invoice.ts", (store, changed) =>
+      crossingFindings(store, changed, ["src/orders/invoice.ts"], { groups: [] }),
+    );
+    expect(none).toEqual([]);
+    const renamed = await withChanged("src/orders/invoice.ts", (store, changed) =>
+      crossingFindings(store, changed, ["src/orders/invoice.ts"], {
+        groups: [
+          { ...ORDERS, name: "Orders (renamed)" },
+          { ...CATALOG, name: "Catalog (renamed)" },
+        ],
+      }),
+    );
+    expect(renamed.map((f) => [f.srcGroup, f.dstGroup])).toEqual([["Orders (renamed)", "Catalog (renamed)"]]);
+  });
+
+  it("opts.allEdges reports an edge the main layer already has", async () => {
+    await setup("overlay-groups", [ORDERS, { ...CATALOG, mayUse: [] }]);
+    const run = (opts?: { allEdges?: boolean }) =>
+      withChanged("src/catalog/cart.ts", (store, changed) =>
+        crossingFindings(store, changed, ["src/catalog/cart.ts"], opts),
+      );
+    expect(await run()).toEqual([]);
+    expect(await run({ allEdges: false })).toEqual([]);
+    const all = await run({ allEdges: true });
+    expect(all.map((f) => `${f.srcName}>${f.dstName}`)).toEqual(["cartTotal>totalDue"]);
   });
 });

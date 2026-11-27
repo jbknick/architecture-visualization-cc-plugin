@@ -96,6 +96,7 @@ const READERS = new Set([
   "readTeamGroups",
   "readTeamViews",
   "readTeamSetting",
+  "readTeamRepo",
   "cacheAgeSeconds",
   "readCacheSummary",
   "teamCachePath",
@@ -105,6 +106,9 @@ const READERS = new Set([
   "TouchingChangeSet",
   "TeamCacheSummary",
 ]);
+
+/** The four calls that reach a server from `views.ts`; no hook may import them (spec section 14). */
+const WRITERS = new Set(["publishView", "publishGroup", "unpublishView", "unpublishGroup"]);
 
 const strip = (text: string): string =>
   text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
@@ -206,6 +210,7 @@ function violations(roots: string[]): string[] {
         continue;
       }
       for (const name of edge.names) {
+        if (WRITERS.has(name)) bad.push(`${rel(file)} imports ${name}, which calls the team server`);
         const where = definer(target, name) ?? target;
         if (where === CLIENT) bad.push(`${rel(file)} imports ${name} from the team client`);
         else if (SENDERS.has(where))
@@ -244,12 +249,27 @@ describe("the hooks' import graph", () => {
         `${rel(direct)} uses the team client or the pull`,
         `${rel(direct)} imports pullTeamCache from cache.ts, which is not a reader`,
       ]);
+      const writer = join(dir, "writer.ts");
+      writeFileSync(writer, `import { publishView } from "@gantry/core";\n`);
+      expect(violations([writer])).toEqual([
+        `${rel(writer)} imports publishView, which calls the team server`,
+      ]);
       const ok = join(dir, "ok.ts");
       writeFileSync(ok, `import { openTeamCache, readChangeSets } from "@gantry/core";\n`);
       expect(violations([ok])).toEqual([]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it("the end-of-turn note reads team boundaries through the readers and mergedGroups only", () => {
+    const file = hookFiles.find((f) => rel(f) === join("cli", "src", "hooks", "postToolUse.ts")) as string;
+    const names = edgesOf(read(file))
+      .filter((e) => e.spec === "@gantry/core")
+      .flatMap((e) => e.names ?? []);
+    expect(names).toEqual(expect.arrayContaining(["openTeamCache", "readTeamRepo", "mergedGroups"]));
+    for (const name of names) expect(WRITERS.has(name)).toBe(false);
+    expect(violations([file])).toEqual([]);
   });
 
   it("only the allow-listed files mention teamClient", () => {

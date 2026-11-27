@@ -1,6 +1,7 @@
 import {
   type EdgeKind,
   fileId,
+  type Group,
   isFileId,
   isSymId,
   matchAny,
@@ -24,13 +25,25 @@ const SYMBOL_EDGES: EdgeKind[] = ["calls", "renders", "uses_hook"];
  * and, for `imports`, from `files` (repo-relative paths). The overlay is read once, with `readOverlay`; nothing is
  * written. Lines: per source file, import-only crossings (line 0) first, then by source line, then target id.
  * Fails open: an unreadable overlay gives no findings.
+ *
+ * `opts.groups` replaces the groups read from the overlay (the team call passes the team's groups, read from the
+ * team cache). `opts.allEdges: true` keeps the edges the main layer already has (the pull request check, where the
+ * index is the head checkout). Without `opts` the behaviour is the one above.
  */
-export function crossingFindings(store: Store, changed: SymbolRecord[], files: string[]): CrossingFinding[] {
-  let groups: ReturnType<typeof readOverlay>["groups"];
-  try {
-    groups = readOverlay(store).groups;
-  } catch {
-    return [];
+export function crossingFindings(
+  store: Store,
+  changed: SymbolRecord[],
+  files: string[],
+  opts: { groups?: Group[]; allEdges?: boolean } = {},
+): CrossingFinding[] {
+  let groups: Group[];
+  if (opts.groups !== undefined) groups = opts.groups;
+  else {
+    try {
+      groups = readOverlay(store).groups;
+    } catch {
+      return [];
+    }
   }
   const boundaries = groups.filter((g) => g.mayUse !== null);
   if (boundaries.length === 0) return [];
@@ -75,7 +88,9 @@ export function crossingFindings(store: Store, changed: SymbolRecord[], files: s
   const candidates = [
     ...changed.flatMap((s) => store.effectiveEdges({ src: s.id, kind: SYMBOL_EDGES })),
     ...files.flatMap((p) => store.effectiveEdges({ src: fileId(store.repo(), p), kind: ["imports"] })),
-  ].filter((e) => e.src !== e.dst && inMain.get(e.src, e.dst, e.kind) === undefined);
+  ].filter(
+    (e) => e.src !== e.dst && (opts.allEdges === true || inMain.get(e.src, e.dst, e.kind) === undefined),
+  );
 
   type Row = { path: string; line: number; dstId: string; f: CrossingFinding };
   const rows: Row[] = [];
