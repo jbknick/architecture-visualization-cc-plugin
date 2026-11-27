@@ -211,20 +211,8 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
     }
   }
 
-  // 2. Who we talk to. With no server and organisation nothing is sent and nothing is read from the repo.
-  const config = loadConfig(ctx.paths);
-  const target = resolveTeamTarget(ctx.paths, config, ctx.env);
-  if (target === null) {
-    ctx.out("No team configured; nothing uploaded.\n");
-    return EXIT_OK;
-  }
-  const token = target.token;
-  if (token === null) {
-    ctx.err("No token. Set GANTRY_TOKEN, or run gantry team login.\n");
-    return EXIT_ERROR;
-  }
-  const scrub = (text: string): string => text.split(token).join("***");
-
+  let secret: string | null = null;
+  const scrub = (text: string): string => (secret === null ? text : text.split(secret).join("***"));
   const now = ctx.now ?? Date.now;
   const sleep = ctx.sleep ?? sleepFor;
   const progress = (text: string): void => {
@@ -248,6 +236,25 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
     };
     ctx.out(`${JSON.stringify(body)}\n`);
   };
+
+  /** An exit-1 refusal: one `failed` object under --json, and the reason on stderr. */
+  const refuse = (text: string): number => {
+    result("failed", undefined, text);
+    ctx.err(`${text}\n`);
+    return EXIT_ERROR;
+  };
+
+  // 2. Who we talk to. With no server and organisation nothing is sent and nothing is read from the repo.
+  const config = loadConfig(ctx.paths);
+  const target = resolveTeamTarget(ctx.paths, config, ctx.env);
+  if (target === null) {
+    if (opts.json === true) result("skipped");
+    else ctx.out("No team configured; nothing uploaded.\n");
+    return EXIT_OK;
+  }
+  const token = target.token;
+  if (token === null) return refuse("No token. Set GANTRY_TOKEN, or run gantry team login.");
+  secret = token;
 
   try {
     const client = teamClient(ctx.paths, target.config, {
@@ -284,14 +291,12 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
     if (pr === undefined && opts.forceMain !== true) {
       const state = branchState(ctx.paths.root);
       if (state === "unknown") {
-        ctx.err(
-          "Cannot tell whether this is the default branch. Pass --force-main to upload this checkout as main.\n",
+        return refuse(
+          "Cannot tell whether this is the default branch. Pass --force-main to upload this checkout as main.",
         );
-        return EXIT_ERROR;
       }
       if (state === "other") {
-        ctx.err("Not on the default branch. Pass --force-main to upload this checkout as main.\n");
-        return EXIT_ERROR;
+        return refuse("Not on the default branch. Pass --force-main to upload this checkout as main.");
       }
     }
 
@@ -342,12 +347,10 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
     const begun = await client.beginUpload(repo, serialiseBody(kind, uploadStart(records, sha)), targetId);
     const { parts } = buildUploadParts(records, begun, sha);
     if (parts.length === 0) {
-      ctx.err("Nothing to upload.\n");
-      return EXIT_ERROR;
+      return refuse("Nothing to upload.");
     }
     if (parts.length > begun.max_parts) {
-      ctx.err(`The upload needs ${parts.length} parts; the server takes at most ${begun.max_parts}.\n`);
-      return EXIT_ERROR;
+      return refuse(`The upload needs ${parts.length} parts; the server takes at most ${begun.max_parts}.`);
     }
     await sendParts(client, begun.upload_id, parts, sleep);
 

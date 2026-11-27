@@ -370,6 +370,80 @@ describe("gantry upload --json on a failed request", () => {
   });
 });
 
+describe("gantry upload --json: every non-usage exit prints exactly one object", () => {
+  const only = (out: string): Record<string, unknown> => {
+    expect(out.trim().split("\n")).toHaveLength(1);
+    return JSON.parse(out) as Record<string, unknown>;
+  };
+
+  it("skipped, with exit 0, when no team is configured", async () => {
+    const run = await upload({ json: true, forceMain: true }, { env: { GANTRY_SERVER: "", GANTRY_ORG: "" } });
+    expect(run).toMatchObject({ code: 0, err: "", calls: [] });
+    expect(only(run.out)).toEqual({ kind: "main", status: "skipped", seconds: 0 });
+  });
+
+  it("failed, with the reason, when there is no token", async () => {
+    const run = await upload({ json: true, forceMain: true }, { env: { GANTRY_TOKEN: "" } });
+    expect(run.code).toBe(1);
+    expect(only(run.out)).toMatchObject({
+      kind: "main",
+      status: "failed",
+      error: "No token. Set GANTRY_TOKEN, or run gantry team login.",
+    });
+  });
+
+  it("failed on another branch, on a detached head and when the default branch is unknown", async () => {
+    fx.git(["checkout", "-q", "-b", "elsewhere"]);
+    try {
+      const run = await upload({ json: true });
+      expect(run.code).toBe(1);
+      expect(only(run.out)).toMatchObject({
+        status: "failed",
+        error: expect.stringMatching(/^Not on the default branch/),
+      });
+    } finally {
+      fx.git(["checkout", "-q", "main"]);
+      fx.git(["branch", "-q", "-D", "elsewhere"]);
+    }
+    fx.git(["checkout", "-q", "--detach"]);
+    try {
+      const run = await upload({ json: true });
+      expect(run.code).toBe(1);
+      expect(only(run.out)).toMatchObject({
+        status: "failed",
+        error: expect.stringMatching(/^Cannot tell whether/),
+      });
+    } finally {
+      fx.git(["checkout", "-q", "main"]);
+    }
+    fx.git(["symbolic-ref", "--delete", "refs/remotes/origin/HEAD"]);
+    try {
+      const run = await upload({ json: true });
+      expect(only(run.out)).toMatchObject({
+        status: "failed",
+        error: expect.stringMatching(/^Cannot tell whether/),
+      });
+    } finally {
+      fx.git(["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"]);
+    }
+  });
+
+  it("failed when the upload needs more parts than the server takes", async () => {
+    await fake.close();
+    fake = await startFakeServer({
+      tokens: [CI_TOKEN],
+      repo: REPO,
+      limits: { part_max_records: 50, max_parts: 1 },
+    });
+    const run = await upload({ json: true });
+    expect(run.code).toBe(1);
+    expect(only(run.out)).toMatchObject({
+      status: "failed",
+      error: expect.stringMatching(/^The upload needs \d+ parts; the server takes at most 1\.$/),
+    });
+  });
+});
+
 describe("gantry upload: the default branch", () => {
   const clean = (): void => {
     fx.git(["checkout", "-q", "main"]);
