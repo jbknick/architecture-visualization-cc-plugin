@@ -63,7 +63,7 @@ describe("no hook reaches the network through the team cache", () => {
     });
   }
 
-  it("only the cache itself, the MCP server and gantry team call pullTeamCache", () => {
+  it("only the cache itself, the MCP server, gantry team and the explorer's publish routes call pullTeamCache", () => {
     const callers = all
       .filter((f) => /\bpullTeamCache\b/.test(readFileSync(f, "utf8")))
       .map(rel)
@@ -72,6 +72,7 @@ describe("no hook reaches the network through the team cache", () => {
       join("cli", "src", "commands", "team-publish.ts"),
       join("cli", "src", "commands", "team.ts"),
       join("core", "src", "team", "cache.ts"),
+      join("explorer", "server", "team.ts"),
       join("mcp", "src", "team-pull.ts"),
     ]);
   });
@@ -290,6 +291,7 @@ describe("the hooks' import graph", () => {
       join("core", "src", "team", "cache.ts"),
       join("core", "src", "team", "client.ts"),
       join("core", "src", "team", "descriptionSync.ts"),
+      join("explorer", "server", "team.ts"),
     ]);
   });
 

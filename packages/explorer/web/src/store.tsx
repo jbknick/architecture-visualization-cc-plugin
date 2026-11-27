@@ -6,12 +6,14 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
 } from "react";
 import { api, type Meta, type SearchHit } from "./api.ts";
 import { RELOAD_VIEW_EVENT } from "./hooks.ts";
 import { overlayStore } from "./overlayStore.ts";
 import { refreshStore, useRefresh } from "./refresh.ts";
 import { emptyRoute, formatHash, parseHash, parseInitialHash, type Route } from "./route.ts";
+import { openingView, teamViewsStore } from "./teamViewsStore.ts";
 
 export interface State {
   route: Route;
@@ -147,9 +149,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, [generation]);
 
+  // The team's views and groups come from the same local cache read as the Team layer: loaded at start and after every
+  // Refresh and write. With no team cache the answer is "unavailable" and nothing about teams shows.
+  useEffect(() => {
+    void teamViewsStore.load(scenario);
+    let seen = refreshStore.get().generation;
+    return refreshStore.subscribe(() => {
+      const now = refreshStore.get().generation;
+      if (now === seen) return;
+      seen = now;
+      void teamViewsStore.reload();
+    });
+  }, [scenario]);
+
   const writeOverlay = useCallback(async (write: () => Promise<unknown>) => {
     await write();
     await overlayStore.load();
+    await teamViewsStore.reload();
     window.dispatchEvent(new Event(RELOAD_VIEW_EVENT));
   }, []);
 
@@ -165,6 +181,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "route", route: readRoute() });
     }
   }, [state.route, view]);
+
+  // A session that opens with no view in its link opens on the person's own last saved view, or else on the team's
+  // default view, once both the repo name and the team views are known. One decision per page load.
+  const freshSession = useRef(state.route.view === null);
+  useEffect(() => {
+    const repo = state.meta?.repo;
+    if (!freshSession.current || repo === undefined) return;
+    let unsubscribe = () => {};
+    const decide = (): void => {
+      const { data, loaded } = teamViewsStore.get();
+      if (!loaded) return;
+      unsubscribe();
+      freshSession.current = false;
+      if (data === null || readRoute().saved !== null) return;
+      const id = openingView(data);
+      const picked = id === null ? undefined : data.views.find((v) => v.id === id && v.shadowed !== true);
+      if (!picked) return;
+      window.history.replaceState(
+        null,
+        "",
+        formatHash({ ...emptyRoute, view: picked.spec.view, saved: picked.id }),
+      );
+      dispatch({ type: "route", route: readRoute() });
+    };
+    unsubscribe = teamViewsStore.subscribe(decide);
+    decide();
+    return () => unsubscribe();
+  }, [state.meta?.repo]);
 
   const navigate = useCallback(
     (patch: Partial<Route>) => {

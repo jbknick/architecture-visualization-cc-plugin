@@ -752,6 +752,36 @@ export interface TeamLayerData {
   people: string[];
 }
 
+/** A saved view as `GET /api/team/views` lists it: the team's (`origin: "team"`) or the person's own. Names are teammates' text. */
+export interface TeamView extends SavedView {
+  origin: "team" | "local";
+  /** A local view whose id a team view holds. */
+  shadowed?: true;
+  /** A local view the team holds an equal copy of: yours, and published. */
+  published?: true;
+  /** A team view that is your own published view as the team holds it (it is shown once, under your views). */
+  own?: true;
+}
+
+export interface TeamGroup extends Group {
+  origin: "team" | "local";
+  /** A local group whose id a team group holds: shown, but not selectable. */
+  shadowed?: true;
+  published?: true;
+  own?: true;
+}
+
+/** `GET /api/team/views`: read from the local team cache; the server makes no request to a team server for it. */
+export interface TeamViewsData {
+  available: boolean;
+  age_s: number | null;
+  views: TeamView[];
+  groups: TeamGroup[];
+  default_view: string | null;
+  /** The saved view this person last picked, kept by the explorer's server. */
+  last_view: string | null;
+}
+
 export const api = {
   // `scenario` and `view` are mock-only: the mock answers with that scenario's repo name and counts (they differ
   // between the 2D and 3D datasets). The real server ignores both.
@@ -761,6 +791,21 @@ export const api = {
   /** The open change sets of the local team cache. `scenario` is mock-only. */
   teamLayer: (signal?: AbortSignal, scenario?: string) =>
     getJson<TeamLayerData>("/api/team/layer", { scenario }, signal),
+
+  /** The team's saved views and groups merged with the person's own, and the team default. `scenario` is mock-only. */
+  teamViews: (signal?: AbortSignal, scenario?: string) =>
+    getJson<TeamViewsData>("/api/team/views", { scenario }, signal),
+
+  /** Remembers the saved view the person picked (a small file in the data directory; no team server is involved). */
+  putLastView: (id: string) => writeJson<{ id: string }>("PUT", "/api/team/last-view", { id }),
+
+  /** Sends a local view or group to the team (the one request the explorer makes to a team server, on a click). */
+  publishTeam: (kind: "view" | "group", id: string) =>
+    writeJson<{ published: boolean }>("POST", `/api/team/${kind}s/${encodeURIComponent(id)}/publish`, {}),
+
+  /** Removes a view or group from the team. The server decides who may; its refusal is the error's message. */
+  unpublishTeam: (kind: "view" | "group", id: string) =>
+    writeJson<{ published: boolean }>("DELETE", `/api/team/${kind}s/${encodeURIComponent(id)}/publish`),
 
   view: (id: string, opts: ViewOptions, signal?: AbortSignal) =>
     getJson<ViewData>(

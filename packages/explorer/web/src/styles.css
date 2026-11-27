@@ -1087,3 +1087,271 @@ kbd {
   flex: none;
   gap: 2px;
 }
+
+/* Team views: the saved-view menu with a Team heading, the read-only bar over a team view, and the result lines */
+.saved-views-wrap {
+  position: relative;
+  flex: none;
+  margin-left: auto;
+}
+.saved-views-wrap + .refresh-btn {
+  margin-left: 0;
+}
+.saved-views-wrap .saved-views {
+  width: 188px;
+  margin-left: 0;
+  justify-content: flex-start;
+}
+@media (max-width: 1100px) {
+  .saved-views-wrap .saved-views {
+    width: 148px;
+  }
+}
+.views-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.views-chevron {
+  flex: none;
+  color: var(--muted);
+}
+.views-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 320px;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.16);
+  animation: views-menu-in 120ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.views-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.views-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.views-pulled {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.views-pulled.views-stale,
+.team-view-pulled.views-stale {
+  color: var(--warn-text);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: 999px;
+  padding: 0 8px;
+}
+.views-empty {
+  margin: 0;
+  padding: 4px 10px 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.views-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.views-item,
+.views-more {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+.views-item {
+  flex: 1 1 auto;
+  padding: 8px 10px;
+  text-align: left;
+}
+.views-more {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  justify-content: center;
+  color: var(--muted);
+}
+.views-item:hover,
+.views-more:hover {
+  background: var(--surface-2);
+}
+.views-item:focus-visible,
+.views-more:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--accent-soft);
+}
+.views-item[aria-checked="true"] {
+  background: var(--accent-soft);
+}
+.views-item:disabled,
+.views-item[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
+}
+.views-action {
+  margin-left: 26px;
+  font-size: 13px;
+}
+.views-check {
+  flex: none;
+  color: var(--accent);
+}
+.views-published {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.views-pop {
+  animation: views-pop-in 150ms ease-out both;
+}
+.views-rule {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--border);
+}
+.views-result {
+  /* The live region itself takes no room while empty; it is never display: none. */
+  margin: 0;
+}
+.views-result-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 13px;
+  animation: views-fade-in 120ms ease-out both;
+}
+.views-result-line[data-tone="error"] {
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: var(--danger);
+}
+.team-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.team-view-bar {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 6px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  animation: views-fade-in 150ms ease-out both;
+}
+.team-view-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.team-view-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+.team-view-pulled {
+  color: var(--muted);
+}
+.center.team-open > :not(.team-view-bar) {
+  animation: views-fade-in 150ms ease-out both;
+}
+@keyframes views-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes views-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes views-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .views-menu,
+  .views-pop,
+  .views-result-line,
+  .team-view-bar,
+  .center.team-open > :not(.team-view-bar) {
+    animation: none;
+  }
+  .views-item,
+  .views-more {
+    transition: none;
+  }
+}
+.curation-list li.curation-stack {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.curation-stack .curation-text {
+  flex: 1 1 100%;
+}
+.curation-stack .curation-buttons {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  gap: 4px;
+}

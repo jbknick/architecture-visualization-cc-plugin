@@ -22,6 +22,7 @@ import { type Counts, largeMapCounts, largeMapNode, projectMapLarge } from "./la
 import { handleMockOverlayWrite, isMockOverlayRoute, mockOverlay } from "./overlay.ts";
 import { checkRange, reviewData, ringsView } from "./review.ts";
 import { mockTeamLayer } from "./team.ts";
+import { handleMockTeamWrite, isMockTeamWrite, mockTeamViews } from "./teamViews.ts";
 
 export const meta: Meta = {
   repo: "pnpm-turbo",
@@ -1252,6 +1253,7 @@ let synthetic: ReturnType<typeof generateSynthetic> | undefined;
 export function handleMockWrite(url: URL, body: unknown, method = "PUT"): MockResponse | null {
   if (url.pathname === "/api/dismiss") return duplicatesDismiss(body);
   if (isMockOverlayRoute(url.pathname)) return handleMockOverlayWrite(method, url.pathname, body);
+  if (isMockTeamWrite(url.pathname)) return handleMockTeamWrite(method, url.pathname, body);
   return null;
 }
 
@@ -1296,6 +1298,9 @@ export function handleMockApi(url: URL): MockResponse | null {
 
   if (path === "/api/team/layer")
     return { status: 200, body: mockTeamLayer(url.searchParams.get("scenario")) };
+
+  if (path === "/api/team/views")
+    return { status: 200, body: mockTeamViews(url.searchParams.get("scenario")) };
 
   if (path === "/api/overlay") return { status: 200, body: mockOverlay() };
 

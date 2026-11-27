@@ -5,6 +5,7 @@ import { api, type Group } from "../api.ts";
 import { uniqueId, withHidden, withMember } from "../curation.ts";
 import { useOverlay } from "../overlayStore.ts";
 import { useStore } from "../store.tsx";
+import { useTeamViews } from "../teamViewsStore.ts";
 import { NameDialog } from "./NameDialog.tsx";
 import { Button } from "./ui/button.tsx";
 import { Input } from "./ui/input.tsx";
@@ -19,6 +20,7 @@ const NEW_GROUP = "\u0000new-group";
 export function CurationActions({ id }: { id: string }) {
   const { writeOverlay } = useStore();
   const overlay = useOverlay();
+  const { data: team } = useTeamViews();
   const [renaming, setRenaming] = useState(false);
   const [text, setText] = useState("");
   const [creating, setCreating] = useState(false);
@@ -40,6 +42,11 @@ export function CurationActions({ id }: { id: string }) {
   };
   const hidden = overlay.hidden.some((s) => s.type === "ids" && s.ids.includes(id));
   const addTo = (group: Group) => run(() => api.putGroup(withMember(group, id)));
+  // A local group the team group of the same id shadows cannot be added to: the team's group is the one in use.
+  const shadowed = new Set(
+    team?.groups.filter((g) => g.origin === "local" && g.shadowed && !g.published).map((g) => g.id),
+  );
+  const pickable = overlay.groups.filter((g) => !shadowed.has(g.id));
   const memberOf = overlay.groups.filter((g) =>
     g.selectors.some((s) => s.type === "ids" && s.ids.includes(id)),
   );
@@ -82,13 +89,13 @@ export function CurationActions({ id }: { id: string }) {
             const value = e.target.value;
             if (value === NEW_GROUP) setCreating(true);
             else {
-              const group = overlay.groups.find((g) => g.id === value);
+              const group = pickable.find((g) => g.id === value);
               if (group) void addTo(group);
             }
           }}
         >
           <option value="">Add to group…</option>
-          {overlay.groups.map((g) => (
+          {pickable.map((g) => (
             <option key={g.id} value={g.id}>
               {g.name}
             </option>

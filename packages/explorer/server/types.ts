@@ -1,4 +1,4 @@
-import type { Embedder, GantryConfig, GantryPaths, Store } from "@gantry/core";
+import type { Embedder, GantryConfig, GantryPaths, Group, SavedView, Store } from "@gantry/core";
 
 export interface GraphNode {
   id: string;
@@ -180,4 +180,19 @@ export interface TeamLayerResponse {
   change_sets: TeamChangeSet[];
   /** The owners, sorted and unique. */
   people: string[];
+}
+
+/** `GET /api/team/views`: the team's saved views and groups merged with the local ones (spec section 11). Names are text from teammates. */
+export interface TeamViewsResponse {
+  /** False when there is no team cache for this repo. */
+  available: boolean;
+  /** Seconds since the last pull, or null with no cache. */
+  age_s: number | null;
+  /** Team views first, then local ones; a local view with a team view's id is marked `shadowed`. */
+  views: (SavedView & { origin: "team" | "local"; shadowed?: true; published?: true; own?: true })[];
+  groups: (Group & { origin: "team" | "local"; shadowed?: true; published?: true; own?: true })[];
+  /** The id of the team's default view, or null when there is none (or no cache). */
+  default_view: string | null;
+  /** The saved view this person last picked for this repo (kept in a file in the data directory), or null. */
+  last_view: string | null;
 }

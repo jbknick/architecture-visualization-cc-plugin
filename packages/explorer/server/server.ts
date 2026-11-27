@@ -39,6 +39,7 @@ import {
   removeStateFile,
   stateFilePath,
 } from "./state.js";
+import { isLastViewWrite, isTeamPublish, MAX_TEAM_BODY_BYTES, putLastView, teamPublish } from "./team.js";
 import { buildExplorerUrl } from "./url.js";
 import { clearReviewCache } from "./views/review.js";
 
@@ -263,13 +264,17 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
       const dismissPut = req.method === "PUT" && url.pathname === DISMISS_ROUTE;
       const refreshPost = req.method === "POST" && url.pathname === REFRESH_ROUTE;
       const overlayOp = isOverlayWrite(req.method ?? "", url.pathname);
+      const teamOp = isTeamPublish(req.method ?? "", url.pathname);
+      const lastViewPut = isLastViewWrite(req.method ?? "", url.pathname);
       if (
         req.method !== "GET" &&
         req.method !== "HEAD" &&
         !layoutPut &&
         !dismissPut &&
         !refreshPost &&
-        !overlayOp
+        !overlayOp &&
+        !teamOp &&
+        !lastViewPut
       ) {
         res.setHeader("allow", "GET, HEAD");
         return void sendJson(res, 405, { error: "Method not allowed" });
@@ -285,13 +290,20 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
           (Array.isArray(header) ? header[0] : header) ?? parseCookies(req.headers.cookie)[cookieName(port)];
         if (!supplied || !safeEqual(supplied, token))
           return void sendJson(res, 403, { error: "Missing or bad token" });
-        if (layoutPut || dismissPut || refreshPost || overlayOp) {
+        if (layoutPut || dismissPut || refreshPost || overlayOp || teamOp || lastViewPut) {
           let run: (body: unknown) => unknown;
           let limit: number;
           if (overlayOp) {
             limit = MAX_OVERLAY_BODY_BYTES;
             const method = req.method ?? "";
             run = (body) => overlayWrite(ctx, method, url.pathname, body);
+          } else if (lastViewPut) {
+            limit = MAX_TEAM_BODY_BYTES;
+            run = (body) => putLastView(ctx, body);
+          } else if (teamOp) {
+            limit = MAX_TEAM_BODY_BYTES;
+            const method = req.method ?? "";
+            run = () => teamPublish(ctx, method, url.pathname);
           } else if (refreshPost) {
             limit = MAX_REFRESH_BODY_BYTES;
             run = () => refresh();
@@ -320,7 +332,9 @@ async function startLocked(opts: ExplorerServerOptions): Promise<ExplorerServer>
                 sendJson(res, 500, { error: "Internal error" });
               };
               try {
-                const out = run(noBody ? undefined : JSON.parse(refreshPost && text === "" ? "{}" : text));
+                const out = run(
+                  noBody ? undefined : JSON.parse((refreshPost || teamOp) && text === "" ? "{}" : text),
+                );
                 if (out instanceof Promise) out.then((b) => sendJson(res, 200, b), fail);
                 else sendJson(res, 200, out);
               } catch (err) {
