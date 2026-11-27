@@ -231,13 +231,19 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
     if (opts.json !== true) ctx.out(`${text}\n`);
   };
   const repo = ctx.paths.repo;
-  const started = now();
-  const result = (kind: "main" | "change_set" | "close", status: string, uploadId?: string): void => {
-    if (opts.json !== true) return;
+  // The clock for "done in" and --timeout: it restarts just before the begin request, so local work is not counted.
+  let started = now();
+  const kind: "main" | "change_set" | "close" =
+    opts.close === true ? "close" : pr === undefined ? "main" : "change_set";
+  let emitted = false;
+  const result = (status: string, uploadId?: string, error?: string): void => {
+    if (opts.json !== true || emitted) return;
+    emitted = true;
     const body = {
       kind,
       status,
       ...(uploadId === undefined ? {} : { upload_id: uploadId }),
+      ...(error === undefined ? {} : { error }),
       seconds: seconds(now() - started),
     };
     ctx.out(`${JSON.stringify(body)}\n`);
@@ -265,10 +271,10 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
         serialiseBody("close", { head_sha: sha, merged: opts.merged === true }),
       );
       if (answer.closed) {
-        result("close", "closed");
+        result("closed");
         progress(`Closed ${repo}#${n} (${opts.merged === true ? "merged" : "not merged"}).`);
       } else {
-        result("close", "done");
+        result("done");
         progress(`Nothing to close for ${repo}#${n}.`);
       }
       return EXIT_OK;
@@ -331,8 +337,8 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
     for (const w of new Set(warnings)) ctx.err(`${w}\n`);
 
     // 6. Begin, send the parts, poll.
-    const kind = pr === undefined ? "main" : "change_set";
     progress(announce);
+    started = now();
     const begun = await client.beginUpload(repo, serialiseBody(kind, uploadStart(records, sha)), targetId);
     const { parts } = buildUploadParts(records, begun, sha);
     if (parts.length === 0) {
@@ -349,7 +355,7 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
     for (;;) {
       const status = await client.uploadStatus(begun.upload_id);
       if (status.status === "done" || status.status === "superseded") {
-        result(kind, status.status, begun.upload_id);
+        result(status.status, begun.upload_id);
         const took = seconds(now() - started);
         progress(
           status.status === "done"
@@ -359,7 +365,7 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
         return EXIT_OK;
       }
       if (status.status === "failed") {
-        result(kind, "failed", begun.upload_id);
+        result("failed", begun.upload_id, scrub(status.error ?? "the server gave no reason"));
         ctx.err(`gantry: upload failed: ${scrub(status.error ?? "the server gave no reason")}\n`);
         return EXIT_ERROR;
       }
@@ -368,18 +374,19 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
         progress(status.status);
       }
       if (now() - started >= timeoutS * 1000) {
-        result(kind, "failed", begun.upload_id);
+        result("failed", begun.upload_id);
         ctx.err(`gantry: timed out after ${timeoutS} s; the server had not finished the upload.\n`);
         return EXIT_ERROR;
       }
       await sleep(POLL_MS);
     }
   } catch (err) {
-    if (err instanceof GantryError) {
-      ctx.err(`${scrub(describeFailure(err))}\n`);
-      return EXIT_ERROR;
-    }
-    ctx.err(`gantry: ${scrub(err instanceof Error ? err.message : String(err))}\n`);
+    const line =
+      err instanceof GantryError
+        ? scrub(describeFailure(err))
+        : `gantry: ${scrub(err instanceof Error ? err.message : String(err))}`;
+    result("failed", undefined, line.replace(/^gantry: /, ""));
+    ctx.err(`${line}\n`);
     return EXIT_ERROR;
   }
 }

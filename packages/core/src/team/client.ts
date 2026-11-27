@@ -236,7 +236,11 @@ export function teamClient(paths: GantryPaths, config: GantryConfig, opts: TeamC
       call("putPart", {
         params: { id, n },
         rawBody: gzipped,
-        headers: { "Content-Encoding": "gzip", [HEADER_PART_COUNT]: String(partCount) },
+        headers: {
+          "Content-Encoding": "gzip",
+          "Content-Type": "application/x-ndjson",
+          [HEADER_PART_COUNT]: String(partCount),
+        },
       }),
     uploadStatus: (id: string) => call("uploadStatus", { params: { id } }),
     closeChangeSet: (repo: string, id: string, body: unknown) =>

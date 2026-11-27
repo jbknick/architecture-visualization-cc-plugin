@@ -117,7 +117,12 @@ const statusBody = (status: string, error?: string) => ({
 /** Runs the command in this process against the fake server, with a clock that only `sleep` and the hook move. */
 async function upload(
   opts: UploadOptions,
-  o: { env?: Record<string, string | undefined>; intercept?: Intercept; statusMs?: number } = {},
+  o: {
+    env?: Record<string, string | undefined>;
+    intercept?: Intercept;
+    statusMs?: number;
+    buildMs?: number;
+  } = {},
 ): Promise<Run> {
   const clock = { t: 0 };
   const calls: Call[] = [];
@@ -135,6 +140,8 @@ async function upload(
       paths,
       env,
       out: (t) => {
+        // the "Uploading ..." line is printed when the local build is over: this is how long that took
+        if (t.startsWith("Uploading")) clock.t += o.buildMs ?? 0;
         out += t;
       },
       err: (t) => {
@@ -187,6 +194,12 @@ describe("gantry upload: the main snapshot", () => {
     expect(stored?.edges).toHaveLength(dump.edges.length);
   });
 
+  it("does not count the local build in --timeout or in `done in`", async () => {
+    const run = await upload({ timeout: "5" }, { statusMs: 1800, buildMs: 1_000_000 });
+    expect(run).toMatchObject({ code: 0, err: "" });
+    expect(run.out).toMatch(/\ndone in 1\.8 s\n$/);
+  });
+
   it("sends the target percent-encoded, a sorted begin body, and never an organisation with a CI token", async () => {
     const run = await upload({});
     const begin = run.calls.find((c) => c.method === "POST");
@@ -232,6 +245,7 @@ describe("gantry upload: the main snapshot", () => {
     expect(puts.length).toBeGreaterThan(3);
     expect(new Set(puts.map((c) => c.headers["X-Gantry-Part-Count"])).size).toBe(1);
     expect(puts.every((c) => c.headers["Content-Encoding"] === "gzip")).toBe(true);
+    expect(puts.every((c) => c.headers["Content-Type"] === "application/x-ndjson")).toBe(true);
   });
 
   it("reports superseded and exits 0", async () => {
@@ -321,6 +335,38 @@ describe("gantry upload: the main snapshot", () => {
     expect(never.code).toBe(1);
     expect(never.err).toMatch(/^team_rejected: /);
     expect(never.calls.filter((c) => c.method === "PUT")).toHaveLength(4);
+  });
+});
+
+describe("gantry upload --json on a failed request", () => {
+  it("prints one failed object on a budget 409", async () => {
+    await fake.close();
+    fake = await startFakeServer({ tokens: [CI_TOKEN], repo: REPO, budgetExhausted: true });
+    const run = await upload({ json: true });
+    expect(run.code).toBe(1);
+    expect(run.out.trim().split("\n")).toHaveLength(1);
+    expect(JSON.parse(run.out)).toMatchObject({
+      kind: "main",
+      status: "failed",
+      error: "Daily upload budget used; try again later.",
+    });
+  });
+
+  it("prints one failed object on a network failure, with the token scrubbed", async () => {
+    const run = await upload(
+      { json: true },
+      {
+        intercept: (c) => {
+          if (c.method === "POST") throw new TypeError(`fetch failed for ${CI_TOKEN}`);
+          return undefined;
+        },
+      },
+    );
+    expect(run.code).toBe(1);
+    const body = JSON.parse(run.out) as { status: string; error: string };
+    expect(body.status).toBe("failed");
+    expect(body.error).toMatch(/^team_unreachable: /);
+    expect(run.out).not.toContain(CI_TOKEN);
   });
 });
 
