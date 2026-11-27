@@ -142,6 +142,25 @@ describe("assertNoSource: values that have no plain JSON form", () => {
     expect(() => assertNoSource(deep)).toThrow(UploadRefused);
   });
 
+  it("treats arrays like objects: no own toJSON, no subclass, no getter, no extra property", () => {
+    const own = Object.assign(["a"], { toJSON: () => "export const a = 1;" });
+    expect(refusedAt({ list: own })).toBe("list.toJSON");
+    class Carrier extends Array<string> {
+      toJSON(): string {
+        return "export const a = 1;";
+      }
+    }
+    expect(refusedAt({ list: Carrier.from(["a"]) })).toBe("list");
+    expect(refusedAt(Carrier.from(["a"]))).toBe("$");
+    const getter: string[] = [];
+    Object.defineProperty(getter, 0, { get: () => "x", enumerable: true });
+    expect(refusedAt({ list: getter })).toBe("list[0]");
+    expect(refusedAt({ list: Object.assign(["a"], { extra: 1 }) })).toBe("list.extra");
+    const symbolic = Object.assign(["a"], { [Symbol("s")]: 1 });
+    expect(refusedAt({ list: symbolic })).toBe("list");
+    expect(() => assertNoSource({ list: ["a", ["b", { name: "c" }]] })).not.toThrow();
+  });
+
   it("allows a null-prototype object", () => {
     const plain = Object.assign(Object.create(null) as object, { name: "a" });
     expect(() => assertNoSource(plain)).not.toThrow();

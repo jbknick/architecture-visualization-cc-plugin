@@ -57,7 +57,21 @@ function walk(value: unknown, path: string, depth: number): void {
   if (typeof value !== "object") throw new UploadRefused(here);
   if (depth >= MAX_DEPTH) throw new UploadRefused(here);
   if (Array.isArray(value)) {
-    for (let i = 0; i < value.length; i += 1) walk(value[i], `${path}[${i}]`, depth + 1);
+    // Only plain arrays: a subclass or an own `toJSON` could write something other than the elements.
+    if (Object.getPrototypeOf(value) !== Array.prototype) throw new UploadRefused(here);
+    for (const name of Object.getOwnPropertyNames(value)) {
+      if (name !== "length" && !/^(0|[1-9]\d*)$/.test(name))
+        throw new UploadRefused(`${path}.${shown(name)}`);
+    }
+    if (Object.getOwnPropertySymbols(value).length > 0) throw new UploadRefused(here);
+    for (let i = 0; i < value.length; i += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, i);
+      const where = `${path}[${i}]`;
+      if (descriptor === undefined) continue; // a hole is written as null
+      // A getter could answer differently when the element is read again to be written.
+      if (!("value" in descriptor)) throw new UploadRefused(where);
+      walk(descriptor.value, where, depth + 1);
+    }
     return;
   }
   // Only plain objects: a Map, a Buffer, a Date or a class instance can write something other than what it holds.

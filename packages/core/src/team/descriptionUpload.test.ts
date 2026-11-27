@@ -251,6 +251,23 @@ describe("the guard inside the upload functions", () => {
     expect(requests).toEqual([]);
   });
 
+  it("refuses a body and a part line with a repeated key, which JSON.parse would hide, before any request", async () => {
+    const { fetchFn, requests } = counting();
+    const c = client(fetchFn);
+    const hidden = `{"merged":false,"merged":false,"signature":"x"}`;
+    // the repeated key is dropped by JSON.parse, so a guard that only looked at the parsed value would pass this
+    const dup = `{"merged":false,"head_sha":"${SHA}","head_sha":"${SHA}"}`;
+    await expect(c.closeChangeSet(REPO, "cs:pr:acme/storefront#1", dup)).rejects.toThrow(UploadRefused);
+    await expect(c.closeChangeSet(REPO, "cs:pr:acme/storefront#1", hidden)).rejects.toThrow(UploadRefused);
+    await expect(c.putDescriptions(`{"repo":"${REPO}","descriptions":[],"repo":"${REPO}"}`)).rejects.toThrow(
+      UploadRefused,
+    );
+    const line = `{"t":"w","id":"ws:a:.","name":"a","name":"b","path":"."}`;
+    const part = new Uint8Array(gzipSync(`${line}\n`));
+    await expect(c.putPart("up_1", 1, part, 1)).rejects.toThrow(UploadRefused);
+    expect(requests).toEqual([]);
+  });
+
   it("a clean body still goes through every guarded method", async () => {
     const { fetchFn, requests } = counting();
     const c = client(fetchFn);

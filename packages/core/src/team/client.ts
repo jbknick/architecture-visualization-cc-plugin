@@ -82,11 +82,22 @@ function guardBody(key: string, o: { body?: unknown; rawBody?: Uint8Array }): vo
         throw new UploadRefused("part");
       }
       assertNoSource(record);
+      // JSON.parse drops a repeated key, so the guard would not see the value that is sent: the line must be
+      // exactly what its parsed value writes.
+      if (JSON.stringify(record) !== line) throw new UploadRefused("part");
     }
     return;
   }
   if (o.body === undefined) return;
-  assertNoSource(typeof o.body === "string" ? JSON.parse(o.body) : o.body);
+  if (typeof o.body === "string") {
+    const parsed: unknown = JSON.parse(o.body);
+    assertNoSource(parsed);
+    // The string is sent byte for byte (it equals the dry run's bytes), so it must be what its parsed value writes:
+    // JSON.parse drops a repeated key, which would hide a value from the guard.
+    if (JSON.stringify(parsed) !== o.body) throw new UploadRefused("body");
+    return;
+  }
+  assertNoSource(o.body);
 }
 
 type RouteKey = keyof typeof ROUTES;
