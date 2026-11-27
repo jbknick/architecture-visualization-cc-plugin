@@ -1,0 +1,1296 @@
+{
+  "repo": "fixture/pnpm-turbo",
+  "sha": "f9a27475f89d64e5d4bad25cef9472ad130f1feb",
+  "workspaces": [
+    {
+      "id": "ws:fixture/pnpm-turbo:.",
+      "name": "pnpm-turbo-root",
+      "path": "."
+    },
+    {
+      "id": "ws:fixture/pnpm-turbo:@acme/api",
+      "name": "@acme/api",
+      "path": "apps/api"
+    },
+    {
+      "id": "ws:fixture/pnpm-turbo:@acme/db",
+      "name": "@acme/db",
+      "path": "packages/db"
+    },
+    {
+      "id": "ws:fixture/pnpm-turbo:@acme/ui",
+      "name": "@acme/ui",
+      "path": "packages/ui"
+    },
+    {
+      "id": "ws:fixture/pnpm-turbo:@acme/utils",
+      "name": "@acme/utils",
+      "path": "packages/utils"
+    },
+    {
+      "id": "ws:fixture/pnpm-turbo:@acme/web",
+      "name": "@acme/web",
+      "path": "apps/web"
+    }
+  ],
+  "files": [
+    {
+      "id": "file:fixture/pnpm-turbo:apps/api/package.json",
+      "path": "apps/api/package.json",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/api",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:apps/api/src/app.ts",
+      "path": "apps/api/src/app.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/api",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:apps/api/src/index.ts",
+      "path": "apps/api/src/index.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/api",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:apps/api/src/router.ts",
+      "path": "apps/api/src/router.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/api",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:apps/web/package.json",
+      "path": "apps/web/package.json",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:apps/web/src/components/Header.tsx",
+      "path": "apps/web/src/components/Header.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx",
+      "path": "apps/web/src/components/PostList.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
+      "path": "apps/web/src/hooks/useDebounce.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:apps/web/src/lib/slug.ts",
+      "path": "apps/web/src/lib/slug.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx",
+      "path": "apps/web/src/routes/__root.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:apps/web/src/routes/index.tsx",
+      "path": "apps/web/src/routes/index.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "path": "apps/web/src/routes/posts.$postId.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "path": "apps/web/src/routes/settings/profile.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:packages/db/src/index.ts",
+      "path": "packages/db/src/index.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/db",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:packages/db/src/queries.ts",
+      "path": "packages/db/src/queries.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/db",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:packages/db/src/schema.ts",
+      "path": "packages/db/src/schema.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/db",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:packages/ui/src/button.tsx",
+      "path": "packages/ui/src/button.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/ui",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:packages/ui/src/card.tsx",
+      "path": "packages/ui/src/card.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/ui",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:packages/ui/src/index.ts",
+      "path": "packages/ui/src/index.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/ui",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:packages/ui/src/internal.ts",
+      "path": "packages/ui/src/internal.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/ui",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:packages/utils/src/date.ts",
+      "path": "packages/utils/src/date.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/utils",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:packages/utils/src/index.ts",
+      "path": "packages/utils/src/index.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/utils",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:packages/utils/src/slug.ts",
+      "path": "packages/utils/src/slug.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/utils",
+      "lang": "typescript"
+    },
+    {
+      "id": "file:fixture/pnpm-turbo:packages/utils/src/time.ts",
+      "path": "packages/utils/src/time.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/utils",
+      "lang": "typescript"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/api/src/app.ts#app",
+      "name": "app",
+      "kind": "const",
+      "lang": "typescript",
+      "path": "apps/api/src/app.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/api",
+      "line_start": 4,
+      "line_end": 4,
+      "exact_hash": "06f5df2f90687e7a612ff6e584fd1fb5",
+      "renamed_hash": "22d30fc257eca5326abe2865454b5f76",
+      "content_key": null
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/api/src/router.ts#router",
+      "name": "router",
+      "kind": "const",
+      "lang": "typescript",
+      "path": "apps/api/src/router.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/api",
+      "line_start": 4,
+      "line_end": 9,
+      "exact_hash": "f8277f0160772eb2d331e2a29e523404",
+      "renamed_hash": "9defd21411a79d0688c0ff5f7e18badf",
+      "content_key": null
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/web/src/components/Header.tsx#Header",
+      "name": "Header",
+      "kind": "component",
+      "lang": "typescript",
+      "path": "apps/web/src/components/Header.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "line_start": 1,
+      "line_end": 3,
+      "exact_hash": "bbb205ce805795aa5deee6efebbcc25b",
+      "renamed_hash": "66111dd1fc953227224b5bed3d0138b3",
+      "content_key": "bbb205ce805795aa5deee6efebbcc25b:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
+      "name": "PostList",
+      "kind": "component",
+      "lang": "typescript",
+      "path": "apps/web/src/components/PostList.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "line_start": 5,
+      "line_end": 14,
+      "exact_hash": "78a2d1af4e92db59e2fe0ed2784659e8",
+      "renamed_hash": "9d72c7519dd70c623ec4e6c27e825060",
+      "content_key": "78a2d1af4e92db59e2fe0ed2784659e8:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "name": "useDebounce",
+      "kind": "hook",
+      "lang": "typescript",
+      "path": "apps/web/src/hooks/useDebounce.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "line_start": 3,
+      "line_end": 10,
+      "exact_hash": "fe11dc180c411abe1732cda74471fd55",
+      "renamed_hash": "21d02b3535a7d37604184a1939bd8531",
+      "content_key": "fe11dc180c411abe1732cda74471fd55:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+      "name": "slugify",
+      "kind": "function",
+      "lang": "typescript",
+      "path": "apps/web/src/lib/slug.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "line_start": 1,
+      "line_end": 8,
+      "exact_hash": "8443c45ca4363d0363ffaab88cb18427",
+      "renamed_hash": "8c5c46530cbdd5b7210f8cf3b3ed4c2f",
+      "content_key": "8443c45ca4363d0363ffaab88cb18427:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx#RootLayout",
+      "name": "RootLayout",
+      "kind": "component",
+      "lang": "typescript",
+      "path": "apps/web/src/routes/__root.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "line_start": 5,
+      "line_end": 11,
+      "exact_hash": "fd32a368a6e3a8bc444b0998016bd3c5",
+      "renamed_hash": "5cd3087477d453059a10697b2633299e",
+      "content_key": "fd32a368a6e3a8bc444b0998016bd3c5:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx#Route",
+      "name": "Route",
+      "kind": "const",
+      "lang": "typescript",
+      "path": "apps/web/src/routes/__root.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "line_start": 3,
+      "line_end": 3,
+      "exact_hash": "493b3c64aa48ad7601304077336fae18",
+      "renamed_hash": "2401e0a83f2878eed67d6d0de215075d",
+      "content_key": null
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
+      "name": "HomePage",
+      "kind": "component",
+      "lang": "typescript",
+      "path": "apps/web/src/routes/index.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "line_start": 7,
+      "line_end": 14,
+      "exact_hash": "d759eae095fad73be3e87600b83c1075",
+      "renamed_hash": "9a30c7eaacf138fad6602d4933116837",
+      "content_key": "d759eae095fad73be3e87600b83c1075:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/web/src/routes/index.tsx#Route",
+      "name": "Route",
+      "kind": "const",
+      "lang": "typescript",
+      "path": "apps/web/src/routes/index.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "line_start": 5,
+      "line_end": 5,
+      "exact_hash": "50e0d93492826bd90bc812ba8e86ee9f",
+      "renamed_hash": "56419e324d1e8bb8415d703cf7a7c506",
+      "content_key": null
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "name": "PostPage",
+      "kind": "component",
+      "lang": "typescript",
+      "path": "apps/web/src/routes/posts.$postId.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "line_start": 7,
+      "line_end": 14,
+      "exact_hash": "2218e81375d3e3ef6b719e3b955d1a7e",
+      "renamed_hash": "9e63da33c4d94d3f686112bcc2c6b71c",
+      "content_key": "2218e81375d3e3ef6b719e3b955d1a7e:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#Route",
+      "name": "Route",
+      "kind": "const",
+      "lang": "typescript",
+      "path": "apps/web/src/routes/posts.$postId.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "line_start": 5,
+      "line_end": 5,
+      "exact_hash": "9547deb0ee7203cbc717b6281dec6703",
+      "renamed_hash": "03d6b9d940fbd1f5bf2621a1ba6f9717",
+      "content_key": null
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "name": "ProfilePage",
+      "kind": "component",
+      "lang": "typescript",
+      "path": "apps/web/src/routes/settings/profile.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "line_start": 7,
+      "line_end": 14,
+      "exact_hash": "b9a2fe5472527acf3614fd080641361e",
+      "renamed_hash": "84429c874ea3e40d94e32a182bef6418",
+      "content_key": "b9a2fe5472527acf3614fd080641361e:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx#Route",
+      "name": "Route",
+      "kind": "const",
+      "lang": "typescript",
+      "path": "apps/web/src/routes/settings/profile.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "line_start": 5,
+      "line_end": 5,
+      "exact_hash": "25f6045580e003826026d98d9ff9af68",
+      "renamed_hash": "bc821584a4a5e1ff8ed8d71816f09053",
+      "content_key": null
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#createPost",
+      "name": "createPost",
+      "kind": "function",
+      "lang": "typescript",
+      "path": "packages/db/src/queries.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/db",
+      "line_start": 15,
+      "line_end": 17,
+      "exact_hash": "19cb7a1b268c6af5691314cea035bb44",
+      "renamed_hash": "9ccb28b6134d8296af546b968934644a",
+      "content_key": "19cb7a1b268c6af5691314cea035bb44:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#getPost",
+      "name": "getPost",
+      "kind": "function",
+      "lang": "typescript",
+      "path": "packages/db/src/queries.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/db",
+      "line_start": 11,
+      "line_end": 13,
+      "exact_hash": "45463092bc7d67e7934f72af09ba2690",
+      "renamed_hash": "26e669ce023fa720493cd2a3b04722f4",
+      "content_key": "45463092bc7d67e7934f72af09ba2690:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#listPosts",
+      "name": "listPosts",
+      "kind": "function",
+      "lang": "typescript",
+      "path": "packages/db/src/queries.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/db",
+      "line_start": 7,
+      "line_end": 9,
+      "exact_hash": "e59b93fa1a4f31de6cc91a3c14bb8a9a",
+      "renamed_hash": "fd8433c111029eddf21dc2bb0b6fee2a",
+      "content_key": "e59b93fa1a4f31de6cc91a3c14bb8a9a:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/db/src/schema.ts#posts",
+      "name": "posts",
+      "kind": "const",
+      "lang": "typescript",
+      "path": "packages/db/src/schema.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/db",
+      "line_start": 8,
+      "line_end": 13,
+      "exact_hash": "96e08878a9203b4b5d31980abbee6f6b",
+      "renamed_hash": "525a2bdcc46faec18c940aef78e73056",
+      "content_key": null
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/db/src/schema.ts#users",
+      "name": "users",
+      "kind": "const",
+      "lang": "typescript",
+      "path": "packages/db/src/schema.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/db",
+      "line_start": 3,
+      "line_end": 6,
+      "exact_hash": "6e1557e0e52b5e01cccb7e0c3cca711b",
+      "renamed_hash": "b92a378f821d89bf6e7fe6147f14fe7a",
+      "content_key": null
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/ui/src/button.tsx#Button",
+      "name": "Button",
+      "kind": "component",
+      "lang": "typescript",
+      "path": "packages/ui/src/button.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/ui",
+      "line_start": 1,
+      "line_end": 7,
+      "exact_hash": "0e439a2d9d4ca227e68cbd5b384e7f11",
+      "renamed_hash": "10e0033755f77d010df35e2126151f83",
+      "content_key": "0e439a2d9d4ca227e68cbd5b384e7f11:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/ui/src/card.tsx#Card",
+      "name": "Card",
+      "kind": "component",
+      "lang": "typescript",
+      "path": "packages/ui/src/card.tsx",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/ui",
+      "line_start": 1,
+      "line_end": 3,
+      "exact_hash": "5460dfb423cfa82c5dd1e6efb0a1ee2f",
+      "renamed_hash": "47b7c0cb3292a0ae3e22f8652500dfbb",
+      "content_key": "5460dfb423cfa82c5dd1e6efb0a1ee2f:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/ui/src/internal.ts#INTERNAL_PADDING",
+      "name": "INTERNAL_PADDING",
+      "kind": "const",
+      "lang": "typescript",
+      "path": "packages/ui/src/internal.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/ui",
+      "line_start": 2,
+      "line_end": 2,
+      "exact_hash": "c86085a25a6272bd8f6a6ff3013a791b",
+      "renamed_hash": "9ea1bebcda9d303329e8c46f81055204",
+      "content_key": null
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+      "name": "formatRelativeDate",
+      "kind": "function",
+      "lang": "typescript",
+      "path": "packages/utils/src/date.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/utils",
+      "line_start": 1,
+      "line_end": 11,
+      "exact_hash": "b3a2569c57ad6ce3a47213705e72cbde",
+      "renamed_hash": "b4ce14b5049ec5e4b875ae7cf393525e",
+      "content_key": "b3a2569c57ad6ce3a47213705e72cbde:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/utils/src/slug.ts#SLUG_VERSION",
+      "name": "SLUG_VERSION",
+      "kind": "const",
+      "lang": "typescript",
+      "path": "packages/utils/src/slug.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/utils",
+      "line_start": 11,
+      "line_end": 11,
+      "exact_hash": "dde0ac16a8090b2b31a982fdbeb9c3ec",
+      "renamed_hash": "abe72e792de56e573a32566381c22b5e",
+      "content_key": null
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/utils/src/slug.ts#slugify",
+      "name": "slugify",
+      "kind": "function",
+      "lang": "typescript",
+      "path": "packages/utils/src/slug.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/utils",
+      "line_start": 2,
+      "line_end": 9,
+      "exact_hash": "8443c45ca4363d0363ffaab88cb18427",
+      "renamed_hash": "8c5c46530cbdd5b7210f8cf3b3ed4c2f",
+      "content_key": "8443c45ca4363d0363ffaab88cb18427:p1"
+    },
+    {
+      "id": "sym:fixture/pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
+      "name": "parseTimestamp",
+      "kind": "function",
+      "lang": "typescript",
+      "path": "packages/utils/src/time.ts",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/utils",
+      "line_start": 2,
+      "line_end": 12,
+      "exact_hash": "1082d71e737ed67257c8097c84ab9f38",
+      "renamed_hash": "b4ce14b5049ec5e4b875ae7cf393525e",
+      "content_key": "1082d71e737ed67257c8097c84ab9f38:p1"
+    }
+  ],
+  "edges": [
+    {
+      "from": "ep:fixture/pnpm-turbo:@acme/api:GET /posts/:id",
+      "to": "file:fixture/pnpm-turbo:apps/api/src/app.ts",
+      "kind": "handles"
+    },
+    {
+      "from": "ep:fixture/pnpm-turbo:@acme/api:POST /posts",
+      "to": "file:fixture/pnpm-turbo:apps/api/src/app.ts",
+      "kind": "handles"
+    },
+    {
+      "from": "ep:fixture/pnpm-turbo:@acme/api:rpc posts.create",
+      "to": "sym:fixture/pnpm-turbo:apps/api/src/router.ts#router",
+      "kind": "handles"
+    },
+    {
+      "from": "ep:fixture/pnpm-turbo:@acme/api:rpc posts.list",
+      "to": "sym:fixture/pnpm-turbo:apps/api/src/router.ts#router",
+      "kind": "handles"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/app.ts",
+      "to": "ext:hono",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/app.ts",
+      "to": "file:fixture/pnpm-turbo:packages/db/src/index.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/app.ts",
+      "to": "sym:fixture/pnpm-turbo:apps/api/src/app.ts#app",
+      "kind": "calls"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/app.ts",
+      "to": "sym:fixture/pnpm-turbo:apps/api/src/app.ts#app",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/app.ts",
+      "to": "sym:fixture/pnpm-turbo:apps/api/src/app.ts#app",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/app.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#createPost",
+      "kind": "calls"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/app.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#getPost",
+      "kind": "calls"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/index.ts",
+      "to": "file:fixture/pnpm-turbo:apps/api/src/app.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/index.ts",
+      "to": "file:fixture/pnpm-turbo:apps/api/src/router.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/index.ts",
+      "to": "sym:fixture/pnpm-turbo:apps/api/src/app.ts#app",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/index.ts",
+      "to": "sym:fixture/pnpm-turbo:apps/api/src/router.ts#router",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/router.ts",
+      "to": "ext:@orpc/server",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/router.ts",
+      "to": "file:fixture/pnpm-turbo:packages/db/src/index.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/router.ts",
+      "to": "sym:fixture/pnpm-turbo:apps/api/src/router.ts#router",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/api/src/router.ts",
+      "to": "sym:fixture/pnpm-turbo:apps/api/src/router.ts#router",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/components/Header.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/components/Header.tsx#Header",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/components/Header.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/components/Header.tsx#Header",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx",
+      "to": "ext:react",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx",
+      "to": "file:fixture/pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx",
+      "to": "file:fixture/pnpm-turbo:apps/web/src/lib/slug.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
+      "to": "ext:react",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/lib/slug.ts",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/lib/slug.ts",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx",
+      "to": "ext:@tanstack/react-router",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx#RootLayout",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx#Route",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx#Route",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/index.tsx",
+      "to": "ext:@tanstack/react-router",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/index.tsx",
+      "to": "file:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/index.tsx",
+      "to": "file:fixture/pnpm-turbo:packages/ui/src/button.tsx",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/index.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/index.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/index.tsx#Route",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/index.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/index.tsx#Route",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "to": "ext:@tanstack/react-router",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "to": "file:fixture/pnpm-turbo:packages/db/src/index.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "to": "file:fixture/pnpm-turbo:packages/utils/src/index.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#Route",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#Route",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "to": "ext:@tanstack/react-router",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "to": "file:fixture/pnpm-turbo:packages/ui/src/button.tsx",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "to": "file:fixture/pnpm-turbo:packages/ui/src/index.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx#Route",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx#Route",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/index.ts",
+      "to": "file:fixture/pnpm-turbo:packages/db/src/queries.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/index.ts",
+      "to": "file:fixture/pnpm-turbo:packages/db/src/schema.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/index.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#createPost",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/index.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#getPost",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/index.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#listPosts",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/index.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/schema.ts#posts",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/index.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/schema.ts#users",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/queries.ts",
+      "to": "ext:drizzle-orm",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/queries.ts",
+      "to": "file:fixture/pnpm-turbo:packages/db/src/schema.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/queries.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#createPost",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/queries.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#createPost",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/queries.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#getPost",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/queries.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#getPost",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/queries.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#listPosts",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/queries.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#listPosts",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/schema.ts",
+      "to": "ext:drizzle-orm",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/schema.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/schema.ts#posts",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/schema.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/schema.ts#posts",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/schema.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/schema.ts#users",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/db/src/schema.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/schema.ts#users",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/ui/src/button.tsx",
+      "to": "sym:fixture/pnpm-turbo:packages/ui/src/button.tsx#Button",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/ui/src/button.tsx",
+      "to": "sym:fixture/pnpm-turbo:packages/ui/src/button.tsx#Button",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/ui/src/card.tsx",
+      "to": "sym:fixture/pnpm-turbo:packages/ui/src/card.tsx#Card",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/ui/src/card.tsx",
+      "to": "sym:fixture/pnpm-turbo:packages/ui/src/card.tsx#Card",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/ui/src/index.ts",
+      "to": "file:fixture/pnpm-turbo:packages/ui/src/button.tsx",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/ui/src/index.ts",
+      "to": "file:fixture/pnpm-turbo:packages/ui/src/card.tsx",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/ui/src/index.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/ui/src/button.tsx#Button",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/ui/src/index.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/ui/src/card.tsx#Card",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/ui/src/internal.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/ui/src/internal.ts#INTERNAL_PADDING",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/ui/src/internal.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/ui/src/internal.ts#INTERNAL_PADDING",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/utils/src/date.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/utils/src/date.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/utils/src/index.ts",
+      "to": "file:fixture/pnpm-turbo:packages/utils/src/date.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/utils/src/index.ts",
+      "to": "file:fixture/pnpm-turbo:packages/utils/src/time.ts",
+      "kind": "imports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/utils/src/index.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/utils/src/index.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/utils/src/slug.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/utils/src/slug.ts#SLUG_VERSION",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/utils/src/slug.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/utils/src/slug.ts#SLUG_VERSION",
+      "kind": "exports"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/utils/src/slug.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/utils/src/slug.ts#slugify",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/utils/src/time.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
+      "kind": "contains"
+    },
+    {
+      "from": "file:fixture/pnpm-turbo:packages/utils/src/time.ts",
+      "to": "sym:fixture/pnpm-turbo:packages/utils/src/time.ts#parseTimestamp",
+      "kind": "exports"
+    },
+    {
+      "from": "route:fixture/pnpm-turbo:@acme/web:/",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
+      "kind": "serves"
+    },
+    {
+      "from": "route:fixture/pnpm-turbo:@acme/web:/posts/$postId",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "kind": "serves"
+    },
+    {
+      "from": "route:fixture/pnpm-turbo:@acme/web:/settings/profile",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "kind": "serves"
+    },
+    {
+      "from": "route:fixture/pnpm-turbo:@acme/web:__root__",
+      "to": "route:fixture/pnpm-turbo:@acme/web:/",
+      "kind": "contains"
+    },
+    {
+      "from": "route:fixture/pnpm-turbo:@acme/web:__root__",
+      "to": "route:fixture/pnpm-turbo:@acme/web:/posts/$postId",
+      "kind": "contains"
+    },
+    {
+      "from": "route:fixture/pnpm-turbo:@acme/web:__root__",
+      "to": "route:fixture/pnpm-turbo:@acme/web:/settings/profile",
+      "kind": "contains"
+    },
+    {
+      "from": "route:fixture/pnpm-turbo:@acme/web:__root__",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx#RootLayout",
+      "kind": "serves"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:apps/api/src/router.ts#router",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#createPost",
+      "kind": "calls"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:apps/api/src/router.ts#router",
+      "to": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#listPosts",
+      "kind": "calls"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/hooks/useDebounce.ts#useDebounce",
+      "kind": "uses_hook"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/lib/slug.ts#slugify",
+      "kind": "calls"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx#PostList",
+      "kind": "renders"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:apps/web/src/routes/index.tsx#HomePage",
+      "to": "sym:fixture/pnpm-turbo:packages/ui/src/button.tsx#Button",
+      "kind": "renders"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "to": "sym:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#Route",
+      "kind": "uses_hook"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx#PostPage",
+      "to": "sym:fixture/pnpm-turbo:packages/utils/src/date.ts#formatRelativeDate",
+      "kind": "calls"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "to": "sym:fixture/pnpm-turbo:packages/ui/src/button.tsx#Button",
+      "kind": "renders"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx#ProfilePage",
+      "to": "sym:fixture/pnpm-turbo:packages/ui/src/card.tsx#Card",
+      "kind": "renders"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#createPost",
+      "to": "table:fixture/pnpm-turbo:posts",
+      "kind": "writes"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#getPost",
+      "to": "table:fixture/pnpm-turbo:posts",
+      "kind": "reads"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:packages/db/src/queries.ts#listPosts",
+      "to": "table:fixture/pnpm-turbo:posts",
+      "kind": "reads"
+    },
+    {
+      "from": "sym:fixture/pnpm-turbo:packages/utils/src/slug.ts#SLUG_VERSION",
+      "to": "sym:fixture/pnpm-turbo:packages/utils/src/slug.ts#slugify",
+      "kind": "calls"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/api",
+      "to": "file:fixture/pnpm-turbo:apps/api/src/app.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/api",
+      "to": "file:fixture/pnpm-turbo:apps/api/src/index.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/api",
+      "to": "file:fixture/pnpm-turbo:apps/api/src/router.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/api",
+      "to": "ws:fixture/pnpm-turbo:@acme/db",
+      "kind": "depends_on"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/db",
+      "to": "file:fixture/pnpm-turbo:packages/db/src/index.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/db",
+      "to": "file:fixture/pnpm-turbo:packages/db/src/queries.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/db",
+      "to": "file:fixture/pnpm-turbo:packages/db/src/schema.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/ui",
+      "to": "file:fixture/pnpm-turbo:packages/ui/src/button.tsx",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/ui",
+      "to": "file:fixture/pnpm-turbo:packages/ui/src/card.tsx",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/ui",
+      "to": "file:fixture/pnpm-turbo:packages/ui/src/index.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/ui",
+      "to": "file:fixture/pnpm-turbo:packages/ui/src/internal.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/utils",
+      "to": "file:fixture/pnpm-turbo:packages/utils/src/date.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/utils",
+      "to": "file:fixture/pnpm-turbo:packages/utils/src/index.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/utils",
+      "to": "file:fixture/pnpm-turbo:packages/utils/src/slug.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/utils",
+      "to": "file:fixture/pnpm-turbo:packages/utils/src/time.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/web",
+      "to": "file:fixture/pnpm-turbo:apps/web/src/components/Header.tsx",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/web",
+      "to": "file:fixture/pnpm-turbo:apps/web/src/components/PostList.tsx",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/web",
+      "to": "file:fixture/pnpm-turbo:apps/web/src/hooks/useDebounce.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/web",
+      "to": "file:fixture/pnpm-turbo:apps/web/src/lib/slug.ts",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/web",
+      "to": "file:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/web",
+      "to": "file:fixture/pnpm-turbo:apps/web/src/routes/index.tsx",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/web",
+      "to": "file:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/web",
+      "to": "file:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx",
+      "kind": "contains"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/web",
+      "to": "ws:fixture/pnpm-turbo:@acme/ui",
+      "kind": "depends_on"
+    },
+    {
+      "from": "ws:fixture/pnpm-turbo:@acme/web",
+      "to": "ws:fixture/pnpm-turbo:@acme/utils",
+      "kind": "depends_on"
+    }
+  ],
+  "adapter_nodes": [
+    {
+      "id": "ep:fixture/pnpm-turbo:@acme/api:GET /posts/:id",
+      "kind": "endpoint",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/api",
+      "label": "GET /posts/:id",
+      "file_id": "file:fixture/pnpm-turbo:apps/api/src/app.ts"
+    },
+    {
+      "id": "ep:fixture/pnpm-turbo:@acme/api:POST /posts",
+      "kind": "endpoint",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/api",
+      "label": "POST /posts",
+      "file_id": "file:fixture/pnpm-turbo:apps/api/src/app.ts"
+    },
+    {
+      "id": "ep:fixture/pnpm-turbo:@acme/api:rpc posts.create",
+      "kind": "endpoint",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/api",
+      "label": "rpc posts.create",
+      "file_id": "file:fixture/pnpm-turbo:apps/api/src/router.ts"
+    },
+    {
+      "id": "ep:fixture/pnpm-turbo:@acme/api:rpc posts.list",
+      "kind": "endpoint",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/api",
+      "label": "rpc posts.list",
+      "file_id": "file:fixture/pnpm-turbo:apps/api/src/router.ts"
+    },
+    {
+      "id": "route:fixture/pnpm-turbo:@acme/web:/",
+      "kind": "route",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "label": "/",
+      "file_id": "file:fixture/pnpm-turbo:apps/web/src/routes/index.tsx"
+    },
+    {
+      "id": "route:fixture/pnpm-turbo:@acme/web:/posts/$postId",
+      "kind": "route",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "label": "/posts/$postId",
+      "file_id": "file:fixture/pnpm-turbo:apps/web/src/routes/posts.$postId.tsx"
+    },
+    {
+      "id": "route:fixture/pnpm-turbo:@acme/web:/settings/profile",
+      "kind": "route",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "label": "/settings/profile",
+      "file_id": "file:fixture/pnpm-turbo:apps/web/src/routes/settings/profile.tsx"
+    },
+    {
+      "id": "route:fixture/pnpm-turbo:@acme/web:__root__",
+      "kind": "route",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/web",
+      "label": "__root",
+      "file_id": "file:fixture/pnpm-turbo:apps/web/src/routes/__root.tsx"
+    },
+    {
+      "id": "table:fixture/pnpm-turbo:posts",
+      "kind": "table",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/db",
+      "label": "posts",
+      "file_id": "file:fixture/pnpm-turbo:packages/db/src/schema.ts"
+    },
+    {
+      "id": "table:fixture/pnpm-turbo:users",
+      "kind": "table",
+      "workspace": "ws:fixture/pnpm-turbo:@acme/db",
+      "label": "users",
+      "file_id": "file:fixture/pnpm-turbo:packages/db/src/schema.ts"
+    }
+  ]
+}
