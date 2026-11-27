@@ -60,6 +60,8 @@ export interface AcceptedDescription {
   model: string | null;
   /** `model` (the default), or `fallback` for the deterministic description of #150 (`fallbackDescription`). */
   provenance?: "model" | "fallback";
+  /** ISO time to record as `created_at` (a description synced from another machine keeps its original time). Default: now. */
+  createdAt?: string;
 }
 
 /**
@@ -94,7 +96,7 @@ export function storeDescriptions(
         a.provenance ?? "model",
         a.model,
         PROMPT_MAJOR,
-        at,
+        a.createdAt ?? at,
       );
       stored += r.changes;
       if (r.changes > 0) written.set(a.contentKey, d);

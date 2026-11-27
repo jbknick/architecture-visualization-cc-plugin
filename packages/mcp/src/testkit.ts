@@ -55,7 +55,7 @@ export const CLAMP_SOURCE = `export function clamp(value: number, min: number, m
 }
 `;
 
-export function makeRepo(files: Record<string, string> = {}): Repo {
+export function makeRepo(files: Record<string, string> = {}, opts: { origin?: string } = {}): Repo {
   const parent = mkdtempSync(join(tmpdir(), "gantry-mcp-repo-"));
   const dir = join(parent, "repo"); // the repo name (no remote) is this basename
   mkdirSync(dir);
@@ -71,6 +71,7 @@ export function makeRepo(files: Record<string, string> = {}): Repo {
   git("config", "user.name", "Gantry Test");
   git("config", "user.email", "test@example.invalid");
   git("config", "commit.gpgsign", "false");
+  if (opts.origin !== undefined) git("remote", "add", "origin", opts.origin);
   write("package.json", JSON.stringify({ name: "mcp-test", version: "1.0.0" }));
   for (const [rel, text] of Object.entries({
     "src/lib/slug.ts": SLUG_SOURCE,

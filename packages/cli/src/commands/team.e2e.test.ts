@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolvePaths } from "@gantry/core";
+import { PROTOCOL_VERSION } from "@gantry/protocol";
 import { type FakeServer, startFakeServer } from "@gantry/protocol/testing";
 import { build } from "tsup";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -230,7 +231,7 @@ describe("gantry team, built, against the fake server", () => {
       user: "octo-dev",
       repo: repoName,
       reachable: true,
-      protocol: 1,
+      protocol: PROTOCOL_VERSION,
       cache: { change_sets: 0, pulled_at: null, age_s: null, last_error: null },
     });
     expect(proxy.seen.filter((s) => s.path.startsWith("/v1/whoami?")).map((s) => s.org)).toContain("acme");
@@ -267,7 +268,7 @@ describe("gantry team, built, against the fake server", () => {
     const status = await gantry(["team", "status", "--json"], env);
     expect(status.code).toBe(0);
     expect(status.out).toBe(
-      `${JSON.stringify({ server: proxy.url, org: "acme", user: "octo-dev", repo: repoName, reachable: true, protocol: 1, cache: { change_sets: 0, pulled_at: null, age_s: null, last_error: null } })}\n`,
+      `${JSON.stringify({ server: proxy.url, org: "acme", user: "octo-dev", repo: repoName, reachable: true, protocol: PROTOCOL_VERSION, cache: { change_sets: 0, pulled_at: null, age_s: null, last_error: null } })}\n`,
     );
     expect(existsSync(credentials)).toBe(false);
     expect(readdirSync(pluginData)).toEqual([]);

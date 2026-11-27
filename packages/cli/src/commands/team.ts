@@ -11,6 +11,7 @@ import {
   removeCredential,
   resolveTeamSettings,
   saveProjectConfig,
+  syncTeamDescriptions,
   type TeamCacheSummary,
   type TeamClient,
   teamClient,
@@ -303,6 +304,54 @@ export async function teamLogout(ctx: TeamContext, opts: { server?: string }): P
   );
 }
 
+const SYNC_NOT_LINKED = "not linked to a team";
+const SYNC_CI_LINE = "Descriptions need a signed-in user. Run gantry team login.";
+
+/**
+ * `gantry team sync-descriptions`: downloads the team's descriptions for the functions this machine has none for.
+ * It never uploads and never overwrites a local description; `team.upload.descriptions` does not apply to it.
+ */
+export async function teamSyncDescriptions(ctx: TeamContext, opts: { json?: boolean }): Promise<number> {
+  const config = loadConfig(ctx.paths);
+  const settings = resolveTeamSettings(config, ctx.env);
+  return guarded(
+    ctx,
+    () => ({
+      ...(settings.org === undefined ? {} : { org: settings.org }),
+      ...(settings.server === undefined ? {} : { server: settings.server }),
+    }),
+    async () => {
+      try {
+        const outcome = await syncTeamDescriptions(ctx.paths, config, {
+          env: ctx.env,
+          ...(ctx.fetch === undefined ? {} : { fetch: ctx.fetch }),
+          log: (line) => ctx.err(`${line}\n`),
+        });
+        if (outcome.status === "not_linked") {
+          ctx.err(`${SYNC_NOT_LINKED}\n`);
+          return EXIT_ERROR;
+        }
+        if (outcome.status === "ci_token") {
+          ctx.err(`${SYNC_CI_LINE}\n`);
+          return EXIT_ERROR;
+        }
+        ctx.out(
+          opts.json === true
+            ? `${JSON.stringify({ asked: outcome.asked, filled: outcome.filled })}\n`
+            : `filled ${outcome.filled} of ${outcome.asked} functions without a description\n`,
+        );
+        return EXIT_OK;
+      } catch (err) {
+        if (err instanceof GantryError && err.code === "team_forbidden") {
+          ctx.err(`${SYNC_CI_LINE}\n`);
+          return EXIT_ERROR;
+        }
+        throw err;
+      }
+    },
+  );
+}
+
 function run(body: (ctx: TeamContext) => Promise<number>): () => Promise<void> {
   return async () => {
     try {
@@ -368,6 +417,12 @@ export function registerTeam(program: Command): void {
         }),
       )(),
     );
+
+  team
+    .command("sync-descriptions")
+    .description("Fill in the descriptions the team already has for functions this machine has none for")
+    .option("--json", 'print one JSON line: { "asked": <m>, "filled": <n> }')
+    .action((opts: { json?: boolean }) => run((ctx) => teamSyncDescriptions(ctx, opts))());
 
   for (const action of ["publish", "unpublish"] as const) {
     const group = team

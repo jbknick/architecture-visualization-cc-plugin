@@ -58,6 +58,8 @@ export interface FakeServerOptions {
   pageSize?: number;
   /** Wait this long before answering `GET /v1/pull` (default 0), to stand in for a server that hangs. */
   pullDelayMs?: number;
+  /** Wait this long before answering `POST /v1/descriptions/lookup` (default 0), to stand in for a server that hangs. */
+  lookupDelayMs?: number;
 }
 
 export interface FakeUpload {
@@ -576,6 +578,19 @@ export async function startFakeServer(opts: FakeServerOptions = {}): Promise<Fak
           }
         }
         return send(res, 200, { stored });
+      }
+      case "lookupDescriptions": {
+        // A server below version 2 does not have this route.
+        if (protocolMax < 2) throw new HttpError(404, "not_found", "no such route");
+        if (opts.lookupDelayMs !== undefined && opts.lookupDelayMs > 0) {
+          await new Promise<void>((resolve) => setTimeout(resolve, opts.lookupDelayMs));
+        }
+        const found: Description[] = [];
+        for (const k of (body as { content_keys: string[] }).content_keys) {
+          const d = state.descriptions.get(k);
+          if (d !== undefined) found.push(d);
+        }
+        return send(res, 200, { descriptions: found });
       }
       case "putGroup":
         saveItem(state.groups, repo, params.id ?? "", body as Group, LIMITS.groups_per_repo, "groups");

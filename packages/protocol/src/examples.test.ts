@@ -6,6 +6,8 @@ import { decodePart } from "./parts.js";
 import {
   ChangeSetSchema,
   CloseRequestSchema,
+  DescriptionLookupRequestSchema,
+  DescriptionLookupResponseSchema,
   DescriptionsRequestSchema,
   ErrorSchema,
   GroupSchema,
@@ -22,6 +24,8 @@ const DIR = join(import.meta.dirname, "../examples");
 const schemas: Record<string, z.ZodType> = {
   "change-set.json": ChangeSetSchema,
   "close-request.json": CloseRequestSchema,
+  "description-lookup-request.json": DescriptionLookupRequestSchema,
+  "description-lookup-response.json": DescriptionLookupResponseSchema,
   "descriptions-request.json": DescriptionsRequestSchema,
   "error.json": ErrorSchema,
   "group.json": GroupSchema,

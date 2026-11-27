@@ -119,7 +119,13 @@ describe("one request per route", () => {
     const ci = await call(ROUTES.whoami);
     expect(ci.status).toBe(200);
     check(ROUTES.whoami, ci.json);
-    expect(ci.json).toMatchObject({ kind: "ci", org: "acme", repo: REPO, repo_connected: true, protocol: 1 });
+    expect(ci.json).toMatchObject({
+      kind: "ci",
+      org: "acme",
+      repo: REPO,
+      repo_connected: true,
+      protocol: PROTOCOL_VERSION,
+    });
     const user = await call(ROUTES.whoami, {}, asUser(), `?repo=${encodeURIComponent(REPO)}`);
     expect(user.json).toMatchObject({
       kind: "user",
@@ -221,7 +227,7 @@ describe("auth, headers and validation", () => {
   });
 
   it("answers 400 protocol_version for a missing, malformed or too high version, and sends the maximum on every response", async () => {
-    for (const protocol of [null, "0", "x", "2"]) {
+    for (const protocol of [null, "0", "x", String(PROTOCOL_VERSION + 1)]) {
       const r = await call(ROUTES.whoami, {}, { protocol });
       expect(r.status).toBe(400);
       expect(ErrorSchema.parse(r.json).error).toBe("protocol_version");
@@ -246,7 +252,12 @@ describe("auth, headers and validation", () => {
       const r = await call(def, params, { token: USER });
       if (name === "whoami") {
         expect(r.status).toBe(200);
-        expect(r.json).toEqual({ kind: "user", user: "octo-dev", repo_connected: false, protocol: 1 });
+        expect(r.json).toEqual({
+          kind: "user",
+          user: "octo-dev",
+          repo_connected: false,
+          protocol: PROTOCOL_VERSION,
+        });
       } else {
         expect(r.status, name).toBe(400);
         expect(ErrorSchema.parse(r.json).error).toBe("invalid");
@@ -365,6 +376,56 @@ describe("auth, headers and validation", () => {
     expect((await post(description())).json).toEqual({ stored: 1 });
     expect((await post({ ...description(), behavior: "other" })).json).toEqual({ stored: 0 });
     expect(server.state.descriptions.get(description().content_key)?.provenance).toBe("model");
+  });
+});
+
+describe("description lookup", () => {
+  const lookup = (keys: string[], c: Call = asUser()) =>
+    call(ROUTES.lookupDescriptions, {}, { ...c, body: { repo: REPO, content_keys: keys } });
+  const other = description(`${"b".repeat(32)}:p1`);
+
+  it("returns the stored descriptions for the keys asked and leaves the others out", async () => {
+    server.state.descriptions.set(description().content_key, description());
+    server.state.descriptions.set(other.content_key, other);
+    const r = await lookup([description().content_key, `${"c".repeat(32)}:p1`]);
+    expect(r.status).toBe(200);
+    expect(ROUTES.lookupDescriptions.response.parse(r.json)).toEqual({ descriptions: [description()] });
+    expect((await lookup([`${"c".repeat(32)}:p1`])).json).toEqual({ descriptions: [] });
+  });
+
+  it("returns what POST /v1/descriptions stored", async () => {
+    await call(ROUTES.putDescriptions, {}, asUser({ body: { repo: REPO, descriptions: [other] } }));
+    expect((await lookup([other.content_key])).json).toEqual({ descriptions: [other] });
+  });
+
+  it("is strict about the request: no keys, over 500 keys, a bad key and an unknown field are 400", async () => {
+    for (const keys of [
+      [],
+      Array.from({ length: 501 }, (_, i) => `${i.toString(16).padStart(32, "0")}:p1`),
+      ["x"],
+    ]) {
+      expect((await lookup(keys)).status).toBe(400);
+    }
+    const extra = await call(
+      ROUTES.lookupDescriptions,
+      {},
+      asUser({ body: { repo: REPO, content_keys: [other.content_key], source: "x" } }),
+    );
+    expect(extra.status).toBe(400);
+  });
+
+  it("is for a signed-in user: a CI token gets 403 and another organisation gets 403", async () => {
+    expect((await lookup([other.content_key], { body: undefined })).status).toBe(403);
+    expect((await lookup([other.content_key], asUser({ org: "other" }))).status).toBe(403);
+  });
+
+  it("answers 404 when the server speaks only version 1, and the client sends version 1 to it", async () => {
+    await server.close();
+    await start({ protocolMax: 1 });
+    const r = await lookup([other.content_key], asUser({ protocol: "1" }));
+    expect(r.status).toBe(404);
+    expect(ErrorSchema.parse(r.json).error).toBe("not_found");
+    expect(r.res.headers.get(HEADER_PROTOCOL_MAX)).toBe("1");
   });
 });
 

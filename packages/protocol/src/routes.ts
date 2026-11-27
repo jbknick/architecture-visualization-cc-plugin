@@ -3,6 +3,8 @@ import {
   CloseRequestSchema,
   CloseResponseSchema,
   DeletedResponseSchema,
+  DescriptionLookupRequestSchema,
+  DescriptionLookupResponseSchema,
   DescriptionsRequestSchema,
   DescriptionsResponseSchema,
   type ErrorCode,
@@ -18,7 +20,7 @@ import {
 } from "./schemas.js";
 
 /** The wire protocol version this package speaks. Sent as `X-Gantry-Protocol`. */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 export const HEADER_PROTOCOL = "X-Gantry-Protocol";
 /** On every response: the highest protocol version the server supports. */
@@ -33,10 +35,13 @@ export const HEADER_PART_COUNT = "X-Gantry-Part-Count";
 export const HEADER_TRUNCATED = "X-Gantry-Truncated";
 
 /**
- * Maps a request field or route key to the protocol version that introduced it. Empty at version 1. A later change
- * that adds a request field or a route bumps `PROTOCOL_VERSION` by one and adds its keys here.
+ * Maps a request field or route key to the protocol version that introduced it. A route key is its method and path,
+ * for example `POST /v1/descriptions/lookup`. A later change that adds a request field or a route bumps
+ * `PROTOCOL_VERSION` by one and adds its keys here.
  */
-export const FIELD_SINCE: Record<string, number> = {};
+export const FIELD_SINCE: Record<string, number> = {
+  "POST /v1/descriptions/lookup": 2,
+};
 
 /**
  * Whether a client may send `key` to a server whose highest version is `serverMax`. An unknown `serverMax` counts as
@@ -128,6 +133,15 @@ export const ROUTES = {
     query: null,
     request: DescriptionsRequestSchema,
     response: DescriptionsResponseSchema,
+    errors: ["invalid", "unauthorized", "forbidden", "not_found"],
+  },
+  lookupDescriptions: {
+    method: "POST",
+    path: "/v1/descriptions/lookup",
+    auth: ["user"],
+    query: null,
+    request: DescriptionLookupRequestSchema,
+    response: DescriptionLookupResponseSchema,
     errors: ["invalid", "unauthorized", "forbidden", "not_found"],
   },
   putGroup: {

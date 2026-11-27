@@ -2,14 +2,19 @@ import { afterEach, describe, expect, it } from "vitest";
 import { FIELD_SINCE, HEADER_PROTOCOL, PROTOCOL_VERSION, ROUTES, supports } from "./index.js";
 
 describe("supports", () => {
+  const shipped = { ...FIELD_SINCE };
   afterEach(() => {
     for (const key of Object.keys(FIELD_SINCE)) delete FIELD_SINCE[key];
+    Object.assign(FIELD_SINCE, shipped);
   });
 
-  it("starts empty at version 1", () => {
-    expect(PROTOCOL_VERSION).toBe(1);
+  it("is at version 2 and lists the lookup route as introduced by it", () => {
+    expect(PROTOCOL_VERSION).toBe(2);
     expect(HEADER_PROTOCOL).toBe("X-Gantry-Protocol");
-    expect(FIELD_SINCE).toEqual({});
+    expect(FIELD_SINCE).toEqual({ "POST /v1/descriptions/lookup": 2 });
+    expect(supports(1, "POST /v1/descriptions/lookup")).toBe(false);
+    expect(supports(undefined, "POST /v1/descriptions/lookup")).toBe(false);
+    expect(supports(2, "POST /v1/descriptions/lookup")).toBe(true);
   });
 
   it("is true for a key that is not in FIELD_SINCE and for an unknown server maximum", () => {
@@ -29,7 +34,7 @@ describe("supports", () => {
 });
 
 describe("ROUTES", () => {
-  it("lists the eleven routes with their methods and auth", () => {
+  it("lists the twelve routes with their methods and auth", () => {
     const table = Object.values(ROUTES).map((r) => `${r.method} ${r.path} ${r.auth.join("|")}`);
     expect(table).toEqual([
       "GET /v1/whoami ci|user",
@@ -39,6 +44,7 @@ describe("ROUTES", () => {
       "POST /v1/repos/:repo/change-sets/:id/close ci",
       "GET /v1/pull ci|user",
       "POST /v1/descriptions user",
+      "POST /v1/descriptions/lookup user",
       "PUT /v1/repos/:repo/groups/:id user",
       "DELETE /v1/repos/:repo/groups/:id user",
       "PUT /v1/repos/:repo/views/:id user",

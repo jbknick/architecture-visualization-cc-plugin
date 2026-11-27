@@ -205,7 +205,9 @@ async function main(): Promise<void> {
     ],
   };
   json("descriptions-request.json", descriptions);
-  json("whoami-ci.json", { kind: "ci", org: "acme", repo: REPO, repo_connected: true, protocol: 1 });
+  json("description-lookup-request.json", { repo: REPO, content_keys: [slugSymbol.content_key ?? ""] });
+  json("description-lookup-response.json", { descriptions: descriptions.descriptions });
+  json("whoami-ci.json", { kind: "ci", org: "acme", repo: REPO, repo_connected: true, protocol: 2 });
   json("whoami-user.json", {
     kind: "user",
     user: "octo-dev",
@@ -213,7 +215,7 @@ async function main(): Promise<void> {
     role: "member",
     repo: REPO,
     repo_connected: true,
-    protocol: 1,
+    protocol: 2,
   });
   json("error.json", { error: "budget", message: "the daily upload capacity is used; try later" });
   // The files are formatted as Biome formats them, so `biome check` passes and a second run changes nothing.

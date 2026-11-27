@@ -286,10 +286,21 @@ describe("protocol version", () => {
     const client = teamClient(paths, configFor(fake.url), { env, fetch: rec.fetch, token: USER_TOKEN });
     await client.ready();
     await client.whoami();
-    expect(rec.calls.map((c) => c.headers["X-Gantry-Protocol"])).toEqual([
-      "1",
-      String(Math.min(PROTOCOL_VERSION, 1)),
-    ]);
+    // Nothing is known before the first call, so it sends 1; a server at PROTOCOL_VERSION then lets it send its own.
+    expect(rec.calls.map((c) => c.headers["X-Gantry-Protocol"])).toEqual(["1", String(PROTOCOL_VERSION)]);
+  });
+
+  it("keeps sending 1 to a server whose maximum is 1", async () => {
+    const old = await startFakeServer({ tokens: [USER_TOKEN], protocolMax: 1 });
+    try {
+      const rec = recorder();
+      const client = teamClient(paths, configFor(old.url), { env, fetch: rec.fetch, token: USER_TOKEN });
+      await client.ready();
+      await client.whoami();
+      expect(rec.calls.map((c) => c.headers["X-Gantry-Protocol"])).toEqual(["1", "1"]);
+    } finally {
+      await old.close();
+    }
   });
 
   it("sends no field a version 1 server does not know (supports gating)", async () => {
@@ -301,6 +312,7 @@ describe("protocol version", () => {
       expect(client.serverProtocol()).toBe(1);
       expect(supports(client.serverProtocol(), "future.field")).toBe(false);
       expect(supports(client.serverProtocol(), "descriptions")).toBe(true);
+      expect(supports(client.serverProtocol(), "POST /v1/descriptions/lookup")).toBe(false);
       expect(supports(2, "future.field")).toBe(true);
       expect(supports(undefined, "future.field")).toBe(false);
     } finally {
