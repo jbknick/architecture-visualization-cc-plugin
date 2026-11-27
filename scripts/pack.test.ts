@@ -290,7 +290,10 @@ describe("packages/protocol manifest", () => {
   });
 
   it("has a build config that leaves the tests out", () => {
-    expect(read("packages/protocol/tsconfig.build.json").exclude).toEqual(["src/**/*.test.ts"]);
+    expect(read("packages/protocol/tsconfig.build.json").exclude).toEqual([
+      "src/**/*.test.ts",
+      "src/testing/samples.ts",
+    ]);
   });
 });
 
@@ -321,10 +324,11 @@ describe("packProtocol build", () => {
     put(
       root,
       "packages/protocol/tsconfig.build.json",
-      JSON.stringify({ extends: "./tsconfig.json", exclude: ["src/**/*.test.ts"] }),
+      readFileSync(join(REPO, "packages/protocol/tsconfig.build.json"), "utf8"),
     );
     put(root, "packages/protocol/src/index.ts", "export const PROTOCOL_VERSION = 1;\n");
     put(root, "packages/protocol/src/index.test.ts", "export const t = 1;\n");
+    put(root, "packages/protocol/src/testing/samples.ts", 'export const SHA = "x";\n');
     put(root, "packages/protocol/dist/removed.js", "// output of a source that no longer exists\n");
     put(root, "packages/protocol/dist/index.js", "// old build\n");
     expect(proto).toContain("protocol");
@@ -340,5 +344,6 @@ describe("packProtocol build", () => {
       "package/dist/index.js",
       "package/package.json",
     ]);
+    expect(files.filter((f) => f.includes("samples"))).toEqual([]);
   });
 });

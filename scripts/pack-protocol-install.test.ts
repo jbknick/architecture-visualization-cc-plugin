@@ -84,6 +84,7 @@ describe("the protocol tarball, extracted beside zod", () => {
   it("carries no test file", () => {
     expect(existsSync(join(consumer, "node_modules/@gantry/protocol/dist/schemas.test.js"))).toBe(false);
     expect(existsSync(join(consumer, "node_modules/@gantry/protocol/dist/stale.js"))).toBe(false);
+    expect(existsSync(join(consumer, "node_modules/@gantry/protocol/dist/testing/samples.js"))).toBe(false);
     expect(existsSync(join(consumer, "node_modules/@gantry/protocol/dist/testing/fakeServer.js"))).toBe(true);
   });
 });
