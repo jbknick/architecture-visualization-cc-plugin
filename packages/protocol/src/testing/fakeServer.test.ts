@@ -608,6 +608,79 @@ describe("pull", () => {
   });
 });
 
+describe("pull ETag and 304", () => {
+  const q = `?repo=${encodeURIComponent(REPO)}`;
+  const conditional = (etag: string | null, extra = ""): Promise<Response> =>
+    fetch(`${server.url}/v1/pull${q}${extra}`, {
+      headers: {
+        authorization: `Bearer ${CI}`,
+        [HEADER_PROTOCOL]: "1",
+        ...(etag === null ? {} : { "if-none-match": etag }),
+      },
+    });
+
+  it("answers 304 with no body when If-None-Match equals the ETag, and 200 when it does not", async () => {
+    server.state.changeSets.set(changeSet(1).id, changeSet(1));
+    const first = await call(ROUTES.pull, {}, {}, q);
+    const etag = first.res.headers.get("etag") as string;
+    expect(etag).toMatch(/^"[0-9a-f]{64}"$/);
+
+    const same = await conditional(etag);
+    expect(same.status).toBe(304);
+    expect(await same.text()).toBe("");
+    expect(same.headers.get("etag")).toBe(etag);
+
+    expect((await conditional('"other"')).status).toBe(200);
+    expect((await conditional(null)).status).toBe(200);
+  });
+
+  it("does not depend on pulled_at: two pulls of the same data carry the same ETag", async () => {
+    server.state.changeSets.set(changeSet(1).id, changeSet(1));
+    const a = (await call(ROUTES.pull, {}, {}, q)).res.headers.get("etag");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const b = (await call(ROUTES.pull, {}, {}, q)).res.headers.get("etag");
+    expect(a).toBe(b);
+  });
+
+  it("changes when a change set, a view or a group changes", async () => {
+    const etagNow = async (): Promise<string | null> =>
+      (await call(ROUTES.pull, {}, {}, q)).res.headers.get("etag");
+    server.state.changeSets.set(changeSet(1).id, changeSet(1));
+    const base = await etagNow();
+    server.state.changeSets.set(changeSet(1).id, { ...changeSet(1), title: "A new title" });
+    const retitled = await etagNow();
+    server.state.views.set(REPO, new Map([[view.id, view]]));
+    const withView = await etagNow();
+    server.state.groups.set(REPO, new Map([[group.id, group]]));
+    const withGroup = await etagNow();
+    expect(new Set([base, retitled, withView, withGroup]).size).toBe(4);
+  });
+
+  it("sends the same ETag on every page and answers 304 only to a request without a cursor", async () => {
+    await server.close();
+    await start({ pageSize: 1 });
+    for (const n of [1, 2]) server.state.changeSets.set(changeSet(n).id, changeSet(n));
+    const first = await call(ROUTES.pull, {}, {}, q);
+    const etag = first.res.headers.get("etag") as string;
+    const cursor = (first.json as { next_cursor: string }).next_cursor;
+    const second = await call(ROUTES.pull, {}, {}, `${q}&cursor=${cursor}`);
+    expect(second.res.headers.get("etag")).toBe(etag);
+    expect((await conditional(etag)).status).toBe(304);
+    expect((await conditional(etag, `&cursor=${cursor}`)).status).toBe(200);
+  });
+
+  it("waits pullDelayMs before answering a pull and not before other routes", async () => {
+    await server.close();
+    await start({ pullDelayMs: 150 });
+    const t0 = Date.now();
+    await call(ROUTES.whoami);
+    expect(Date.now() - t0).toBeLessThan(120);
+    const t1 = Date.now();
+    await call(ROUTES.pull, {}, {}, q);
+    expect(Date.now() - t1).toBeGreaterThanOrEqual(140);
+  });
+});
+
 describe("device sign-in", () => {
   it("issues a code, answers pending until approved, then gives a user token that works", async () => {
     const codeRes = await fetch(`${server.url}/api/auth/device/code`, {

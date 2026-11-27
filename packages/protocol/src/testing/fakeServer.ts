@@ -56,6 +56,8 @@ export interface FakeServerOptions {
   limits?: Partial<PartLimits & { max_parts: number }>;
   /** Change sets per pull page (default: all on one page). */
   pageSize?: number;
+  /** Wait this long before answering `GET /v1/pull` (default 0), to stand in for a server that hangs. */
+  pullDelayMs?: number;
 }
 
 export interface FakeUpload {
@@ -525,6 +527,9 @@ export async function startFakeServer(opts: FakeServerOptions = {}): Promise<Fak
         if (q.repo === undefined) throw new HttpError(400, "invalid", "repo is required");
         if (kind === "ci" && q.repo !== ciRepo)
           throw new HttpError(403, "forbidden", "a CI token is for one repo");
+        if (opts.pullDelayMs !== undefined && opts.pullDelayMs > 0) {
+          await new Promise<void>((resolve) => setTimeout(resolve, opts.pullDelayMs));
+        }
         const open = sortBy(
           [...state.changeSets.values()].filter((c) => c.repo === q.repo && c.state !== "merged"),
           (c) => c.id,
@@ -533,8 +538,9 @@ export async function startFakeServer(opts: FakeServerOptions = {}): Promise<Fak
         const all = open.slice(0, LIMITS.pull_change_sets);
         const views = [...(state.views.get(q.repo)?.values() ?? [])];
         const groups = [...(state.groups.get(q.repo)?.values() ?? [])];
+        // The ETag is a hash of the body of the whole pull without `pulled_at`, so every page carries the same one.
         const etag = `"${createHash("sha256")
-          .update(JSON.stringify([all.map((c) => [c.id, c.updated_at]), views, groups]))
+          .update(JSON.stringify({ change_sets: all, team_views: views, groups, settings: {} }))
           .digest("hex")}"`;
         if (q.cursor === undefined && req.headers["if-none-match"] === etag) {
           res.writeHead(304, { etag });

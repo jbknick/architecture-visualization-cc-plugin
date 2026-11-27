@@ -37,10 +37,12 @@ Options:
 exports[`help > lists the four subcommands > status 1`] = `
 "Usage: gantry team status [options]
 
-Show the server, organisation, user and repo, and whether the server answers
+Show the server, organisation, user and repo, whether the server answers, and
+the team cache
 
 Options:
   --json      print one JSON line
+  --pull      pull team state from the server first
   -h, --help  display help for command
 "
 `;

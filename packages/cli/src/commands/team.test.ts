@@ -2,10 +2,19 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { type GantryPaths, resetTeamProtocolCache } from "@gantry/core";
+import type { ChangeSet } from "@gantry/protocol";
 import { type FakeServer, startFakeServer } from "@gantry/protocol/testing";
 import { Command } from "commander";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { registerTeam, type TeamContext, teamLink, teamLogin, teamLogout, teamStatus } from "./team.js";
+import {
+  formatAge,
+  registerTeam,
+  type TeamContext,
+  teamLink,
+  teamLogin,
+  teamLogout,
+  teamStatus,
+} from "./team.js";
 
 const USER_TOKEN = "tok-user-9f3a";
 const REPO = "acme/storefront";
@@ -69,8 +78,8 @@ describe("help", () => {
       Commands:
         login [options]   Sign in to a team server with a code
         link [options]    Say which server and organisation this repo belongs to
-        status [options]  Show the server, organisation, user and repo, and whether
-                          the server answers
+        status [options]  Show the server, organisation, user and repo, whether the
+                          server answers, and the team cache
         logout [options]  Remove the stored sign-in for a server
         help [command]    display help for command
       "
@@ -282,6 +291,7 @@ describe("gantry team status", () => {
       user:      octo-dev
       repo:      acme/storefront
       reachable: yes
+      cache:     empty
       "
     `);
   });
@@ -292,7 +302,7 @@ describe("gantry team status", () => {
     stdout.length = 0;
     expect(await teamStatus(ctx(), { json: true })).toBe(0);
     expect(printed(stdout)).toBe(
-      '{"server":"https://gantry.example.com","org":"acme","user":"octo-dev","repo":"acme/storefront","reachable":true,"protocol":1}\n',
+      '{"server":"https://gantry.example.com","org":"acme","user":"octo-dev","repo":"acme/storefront","reachable":true,"protocol":1,"cache":{"change_sets":0,"pulled_at":null,"age_s":null,"last_error":null}}\n',
     );
   });
 
@@ -350,9 +360,117 @@ describe("gantry team status", () => {
       repo: REPO,
       reachable: true,
       protocol: 1,
+      cache: { change_sets: 0, pulled_at: null, age_s: null, last_error: null },
     });
     expect(fs.existsSync(paths.dataDir)).toBe(false);
     expect(fs.existsSync(env.GANTRY_CREDENTIALS_FILE ?? "")).toBe(false);
+  });
+});
+
+describe("gantry team status, the cache line", () => {
+  const T0 = Date.parse("2026-11-25T14:00:00.000Z");
+  const csFor = (n: number): ChangeSet => ({
+    id: `cs:pr:${REPO}#${n}`,
+    repo: REPO,
+    source: "pr",
+    state: "in_review",
+    ref: `#${n}`,
+    head_ref: `feat/${n}`,
+    base_branch: "main",
+    nodes: [`file:${REPO}:src/a${n}.ts`],
+    radius: [],
+    estimated: false,
+    owner: "octo-dev",
+    title: `Change ${n}`,
+    pr: n,
+    head_sha: "7e3d9a1c5b8f20466d1ae9c3b7f45082d6c1e9ab",
+    created_at: "2026-11-20T09:15:00.000Z",
+    updated_at: `2026-11-20T09:4${n}:12.000Z`,
+    links: [],
+  });
+  const seed = (...ns: number[]) => {
+    for (const n of ns) fake.state.changeSets.set(csFor(n).id, csFor(n));
+  };
+
+  it("does not pull without --pull, and says cache: empty", async () => {
+    await link();
+    signIn();
+    seed(1, 2, 3);
+    stdout.length = 0;
+    expect(await teamStatus(ctx(), {})).toBe(0);
+    expect(printed(stdout)).toContain("reachable: yes\ncache:     empty\n");
+    expect(fs.existsSync(path.join(paths.dataDir, "team-cache.db"))).toBe(false);
+  });
+
+  it("--pull pulls first, then prints the count and the age (the snapshot)", async () => {
+    await link();
+    signIn();
+    seed(1, 2, 3);
+    stdout.length = 0;
+    expect(await teamStatus(ctx({ now: () => T0 }), { pull: true })).toBe(0);
+    expect(printed(stdout)).toContain("cache:     3 open changes, pulled 0 s ago\n");
+    stdout.length = 0;
+    expect(await teamStatus(ctx({ now: () => T0 + 126_000 }), {})).toBe(0);
+    expect(printed(stdout)).toMatchInlineSnapshot(`
+      "server:    https://gantry.example.com
+      org:       acme
+      user:      octo-dev
+      repo:      acme/storefront
+      reachable: yes
+      cache:     3 open changes, pulled 2 min ago
+      "
+    `);
+  });
+
+  it("--json carries the cache block", async () => {
+    await link();
+    signIn();
+    seed(1, 2);
+    stdout.length = 0;
+    expect(await teamStatus(ctx({ now: () => T0 }), { json: true, pull: true })).toBe(0);
+    expect(JSON.parse(stdout.join("")).cache).toEqual({
+      change_sets: 2,
+      pulled_at: "2026-11-25T14:00:00.000Z",
+      age_s: 0,
+      last_error: null,
+    });
+  });
+
+  it("a failed pull shows the old numbers and puts the error in last_error only", async () => {
+    await link();
+    signIn();
+    seed(1, 2);
+    await teamStatus(ctx({ now: () => T0 }), { pull: true });
+    stdout.length = 0;
+    stderr.length = 0;
+    const down: typeof fetch = async (input, init) =>
+      String(input).includes("/v1/pull") ? new Response("{}", { status: 500 }) : fetch(input, init);
+    expect(await teamStatus(ctx({ now: () => T0 + 60_000, fetch: down }), { json: true, pull: true })).toBe(
+      0,
+    );
+    const { cache } = JSON.parse(stdout.join(""));
+    expect(cache).toMatchObject({ change_sets: 2, pulled_at: "2026-11-25T14:00:00.000Z", age_s: 60 });
+    expect(cache.last_error).toMatch(/^team_rejected:/);
+    expect(stderr.join("")).toBe("");
+    stdout.length = 0;
+    await teamStatus(ctx({ now: () => T0 + 60_000, fetch: down }), { pull: true });
+    expect(printed(stdout)).toContain("cache:     2 open changes, pulled 1 min ago\n");
+    expect(stdout.join("")).not.toContain("team_rejected");
+  });
+
+  it("formats ages in seconds, minutes, hours and days", () => {
+    expect([5, 59, 60, 126, 3599, 3600, 7300, 86_399, 86_400, 200_000].map(formatAge)).toEqual([
+      "5 s",
+      "59 s",
+      "1 min",
+      "2 min",
+      "59 min",
+      "1 h",
+      "2 h",
+      "23 h",
+      "1 d",
+      "2 d",
+    ]);
   });
 });
 

@@ -4,10 +4,14 @@ import {
   isTeamServerUrl,
   loadConfig,
   normalizeServer,
+  openTeamCache,
+  pullTeamCache,
+  readCacheSummary,
   readCredential,
   removeCredential,
   resolveTeamSettings,
   saveProjectConfig,
+  type TeamCacheSummary,
   type TeamClient,
   teamClient,
   writeCredential,
@@ -192,7 +196,24 @@ export async function teamLink(ctx: TeamContext, opts: { server: string; org: st
   );
 }
 
-export async function teamStatus(ctx: TeamContext, opts: { json?: boolean }): Promise<number> {
+/** `126` seconds is `2 min`: whole seconds under a minute, then minutes, hours and days. */
+export function formatAge(seconds: number): string {
+  if (seconds < 60) return `${seconds} s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min`;
+  if (seconds < 86_400) return `${Math.floor(seconds / 3600)} h`;
+  return `${Math.floor(seconds / 86_400)} d`;
+}
+
+/** The `cache:` line of `gantry team status`; `cache: empty` before the first pull. */
+function cacheLine(cache: TeamCacheSummary): string {
+  if (cache.age_s === null) return "cache:     empty";
+  return `cache:     ${cache.change_sets} open changes, pulled ${formatAge(cache.age_s)} ago`;
+}
+
+export async function teamStatus(
+  ctx: TeamContext,
+  opts: { json?: boolean; pull?: boolean },
+): Promise<number> {
   const config = loadConfig(ctx.paths);
   const settings = resolveTeamSettings(config, ctx.env);
   const { server } = settings;
@@ -227,8 +248,19 @@ export async function teamStatus(ctx: TeamContext, opts: { json?: boolean }): Pr
         } else throw err;
       }
       const shownUser = signedIn ? user : null;
+      // `--pull` is the one place a command asks the server for team state; a failed pull only sets `last_error`.
+      if (opts.pull === true) {
+        await pullTeamCache(ctx.paths, config, {
+          env: ctx.env,
+          ...(ctx.fetch === undefined ? {} : { fetch: ctx.fetch }),
+          ...(ctx.now === undefined ? {} : { now: ctx.now }),
+        });
+      }
+      const readonly = openTeamCache(ctx.paths, { readonly: true });
+      const cache = readCacheSummary(readonly, (ctx.now ?? Date.now)());
+      readonly?.close();
       if (opts.json === true) {
-        ctx.out(`${JSON.stringify({ server, org, user: shownUser, repo, reachable, protocol })}\n`);
+        ctx.out(`${JSON.stringify({ server, org, user: shownUser, repo, reachable, protocol, cache })}\n`);
       } else {
         const userText = shownUser ?? (signedIn ? "unknown" : "not signed in");
         ctx.out(
@@ -238,6 +270,7 @@ export async function teamStatus(ctx: TeamContext, opts: { json?: boolean }): Pr
             `user:      ${userText}`,
             `repo:      ${repo}`,
             `reachable: ${reachable ? "yes" : "no"}`,
+            cacheLine(cache),
             "",
           ].join("\n"),
         );
@@ -303,9 +336,12 @@ export function registerTeam(program: Command): void {
 
   team
     .command("status")
-    .description("Show the server, organisation, user and repo, and whether the server answers")
+    .description(
+      "Show the server, organisation, user and repo, whether the server answers, and the team cache",
+    )
     .option("--json", "print one JSON line")
-    .action((opts: { json?: boolean }) => run((ctx) => teamStatus(ctx, opts))());
+    .option("--pull", "pull team state from the server first")
+    .action((opts: { json?: boolean; pull?: boolean }) => run((ctx) => teamStatus(ctx, opts))());
 
   team
     .command("logout")
