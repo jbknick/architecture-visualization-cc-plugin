@@ -145,3 +145,39 @@ export interface ViewModule {
   /** May return a promise (the review view reads git). */
   build(ctx: ApiContext, params: ViewParams): ViewResult | Promise<ViewResult>;
 }
+
+/** One open change set of the Team layer (`GET /api/team/layer`, spec section 11). Owner and title come from outside the machine: text only. */
+export interface TeamChangeSet {
+  id: string;
+  source: "pr" | "branch";
+  state: "proposed" | "in_progress" | "in_review" | "merged";
+  /** A GitHub login. */
+  owner: string;
+  title?: string;
+  pr?: number;
+  /** The changed symbol and file ids, at most 200, sorted. */
+  nodes: string[];
+  /** The blast radius, at most 500 entries, lowest hop first. */
+  radius: { id: string; hop: number; tier: "direct" | "potential" | "reachable"; via_hub: boolean }[];
+  /** Counts before the caps. */
+  nodes_total: number;
+  radius_total: number;
+  /** The workspace id of each changed node the local index knows, deduplicated, so the map can mark areas. */
+  map_nodes: string[];
+  /**
+   * Which changed nodes each directly affected (hop 1) entry uses, by the local graph: `id` is the radius entry and
+   * `changed` the ids of `nodes` that the entry (or its file) has an edge to. An entry with no such edge in the local
+   * index is left out, so the map draws no arrow for it. Sorted by `id`; `changed` is sorted.
+   */
+  direct_uses: { id: string; changed: string[] }[];
+}
+
+/** `GET /api/team/layer`: the open change sets in the local team cache. Nothing here comes from a request to a team server. */
+export interface TeamLayerResponse {
+  available: boolean;
+  /** Seconds since the last pull, or null with no cache. */
+  age_s: number | null;
+  change_sets: TeamChangeSet[];
+  /** The owners, sorted and unique. */
+  people: string[];
+}

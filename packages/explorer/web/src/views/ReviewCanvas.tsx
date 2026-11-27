@@ -2,61 +2,10 @@ import "./review.css";
 import { CanvasHost } from "../canvas/CanvasHost.tsx";
 import { Canvas3D } from "../canvas3d/index.tsx";
 import type { CanvasProps } from "../slots.ts";
+import { type LegendMode, ReviewLegend } from "./ReviewLegend.tsx";
 import { ReviewRings } from "./ReviewRings.tsx";
-import { MARK_KINDS, MARK_WORDS } from "./reviewModel.ts";
 
-type LegendMode = "2d" | "3d" | "rings";
-
-/** The colours and lines of the review, drawn over the canvas's bottom-right corner (the same palette in every mode). */
-export function ReviewLegend({ mode }: { mode: LegendMode }) {
-  return (
-    <aside className="rv-legend" aria-label="Review legend" data-testid="review-legend">
-      <ul>
-        {MARK_KINDS.map((k) => (
-          <li key={k} title={MARK_WORDS[k].hint}>
-            <span className={`rv-swatch rv-mark-${k}`} aria-hidden="true" />
-            {MARK_WORDS[k].label}
-          </li>
-        ))}
-        {mode === "rings" ? (
-          <>
-            <li title="Code that calls the ring inside it: darker is nearer the change">
-              <span className="rv-swatch rv-caller-swatch" aria-hidden="true" />
-              Caller (fainter = farther)
-            </li>
-            <li title="From a caller to the code it calls">
-              <span className="rv-line" aria-hidden="true" />
-              Caller → called
-            </li>
-          </>
-        ) : (
-          <>
-            <li title="Calls, renders, imports or otherwise uses a changed symbol itself (hop 1)">
-              <span className="rv-swatch rv-mark-affected" aria-hidden="true" />
-              Directly affected
-            </li>
-            <li title="Uses a directly affected node, or one that uses it (hops 2 and 3)">
-              <span className="rv-swatch rv-mark-potential" aria-hidden="true" />
-              Potentially affected
-            </li>
-            <li title="Code this range did not touch, in its usual place">
-              <span className="rv-swatch rv-mark-faded" aria-hidden="true" />
-              Untouched
-            </li>
-            <li title="From a directly affected node to the changed code it uses">
-              <span className="rv-line" aria-hidden="true" />
-              {mode === "3d" ? "Solid: uses the change (file to file)" : "Solid: uses the change"}
-            </li>
-            <li title="From a potentially affected node to the node one step nearer the change">
-              <span className="rv-line rv-line-dashed" aria-hidden="true" />
-              Dashed: one step nearer
-            </li>
-          </>
-        )}
-      </ul>
-    </aside>
-  );
-}
+export { ReviewLegend };
 
 /**
  * The review view's canvas (hint `review`, #167). Mode `map` (default): the project map itself, 2D (the map canvas, at

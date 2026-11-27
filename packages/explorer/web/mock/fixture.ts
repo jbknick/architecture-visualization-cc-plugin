@@ -1,6 +1,7 @@
 // A tiny pnpm-turbo-like repo served by the mock API (component tests and the mock dev server).
 // Response shapes mirror the real server (packages/explorer/server/{api,types}.ts and views/*): if one
 // changes there, change it here too. The content is synthetic. The real-server end-to-end test lives in e2e/.
+
 import type {
   GraphEdge,
   GraphNode,
@@ -20,6 +21,7 @@ import { egoHub, hubCounts, hubNode } from "./hubEgo.ts";
 import { type Counts, largeMapCounts, largeMapNode, projectMapLarge } from "./largeMap.ts";
 import { handleMockOverlayWrite, isMockOverlayRoute, mockOverlay } from "./overlay.ts";
 import { checkRange, reviewData, ringsView } from "./review.ts";
+import { mockTeamLayer } from "./team.ts";
 
 export const meta: Meta = {
   repo: "pnpm-turbo",
@@ -1291,6 +1293,9 @@ export function handleMockApi(url: URL): MockResponse | null {
   const path = url.pathname;
   if (path === "/api/meta")
     return { status: 200, body: metaFor(url.searchParams.get("scenario"), url.searchParams.get("view")) };
+
+  if (path === "/api/team/layer")
+    return { status: 200, body: mockTeamLayer(url.searchParams.get("scenario")) };
 
   if (path === "/api/overlay") return { status: 200, body: mockOverlay() };
 

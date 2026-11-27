@@ -79,11 +79,43 @@ export interface DrawEnv {
    * their change's colour, hop-1 callers a soft tint, and lines join changed cells to their callers.
    */
   review?: ReviewPaintEnv | null;
+  /**
+   * Team layer: a marker on the top-right corner of each workspace box holding changed nodes of open change sets
+   * (the owners' initials and the count). `progress(index)` is how far the appearance of the marker on that tree index has run (0 to 1).
+   */
+  team?: { markers: TeamAreaMarker[]; progress(index: number): number } | null;
+}
+
+/** One workspace's Team marker: `index` is the workspace's tree index. */
+export interface TeamAreaMarker {
+  index: number;
+  count: number;
+  owners: string[];
+  /** The chip behind each owner's initial and the letter on it (same order as `owners`). */
+  chips: { bg: string; ink: string }[];
+}
+
+/** A Team marker as drawn, in screen px (test hook). */
+export interface TeamMarkerDrawn {
+  index: number;
+  count: number;
+  owners: string[];
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 /** The review layer as the draw loop needs it: tree indices plus the theme's colours. */
 export interface ReviewPaintEnv extends LayerPaint {
   colours: Record<string, string>;
+  /**
+   * Team layer: 1 for a node the change set reaches 4 or more calls away (a faint tint and a dashed outline), 2 for a
+   * node of a nearer tier that is reached through a hub (its tier's tint and the dashed outline). Lit like any marked node.
+   */
+  reach?: Uint8Array;
+  /** Team layer: what to print on a reachable node that is reached through a hub ("through hub Card"). */
+  hubLabel?: ReadonlyMap<number, string>;
 }
 
 /** What the last frame drew of the review layer (test hook). */
@@ -94,6 +126,10 @@ export interface ReviewDrawn {
   links: { src: number; dst: number; change: string; colour: string; soft?: boolean }[];
   /** Changed or affected leaves that got a name label this frame. */
   named: number[];
+  /** Team layer: reachable leaves drawn with the dashed outline. */
+  reach?: number;
+  /** Team layer: the "through hub" lines printed on reachable leaves, by node index. */
+  hubs?: number[];
 }
 
 /** A rank marker as drawn: a numbered circle on (or beside) the tile of one of the largest files. */
@@ -153,6 +189,8 @@ export interface DrawResult {
   badged: { id: string; badges: string[] }[];
   /** Review layer counts of the frame (cells on screen), when the layer is on. */
   review?: ReviewDrawn;
+  /** The Team markers that were drawn. */
+  teamMarkers: TeamMarkerDrawn[];
 }
 
 export { FONT };
@@ -361,6 +399,7 @@ export function drawMap(env: DrawEnv): DrawResult {
     labels: [],
     markers: [],
     badged: [],
+    teamMarkers: [],
   };
   ctx.clearRect(0, 0, w, h);
   ctx.textBaseline = "top";
@@ -437,10 +476,18 @@ export function drawMap(env: DrawEnv): DrawResult {
   const panelHover = env.panelHover != null && env.panelHover < tree.nodes.length ? env.panelHover : null;
   const rv = env.review && env.review.lit.length === tree.nodes.length ? env.review : null;
   const drawn: ReviewDrawn | undefined = rv
-    ? { changed: 0, affected: 0, faded: 0, links: [], named: [] }
+    ? {
+        changed: 0,
+        affected: 0,
+        faded: 0,
+        links: [],
+        named: [],
+        ...(rv.reach ? { reach: 0, hubs: [] } : {}),
+      }
     : undefined;
   /** A changed or affected cell of the review layer: it gets a name whenever any label fits (#173). */
-  const reviewNamed = (i: number): boolean => rv !== null && (rv.change[i] !== null || (rv.hop[i] ?? 0) > 0);
+  const reviewNamed = (i: number): boolean =>
+    rv !== null && (rv.change[i] !== null || (rv.hop[i] ?? 0) > 0 || !!rv.reach?.[i]);
   if (drawn) result.review = drawn;
   const dimmed = (i: number): boolean =>
     (env.bright !== null && !env.bright.has(i)) ||
@@ -458,6 +505,10 @@ export function drawMap(env: DrawEnv): DrawResult {
       if (drawn) drawn.changed++;
       return rv.colours[ch] ?? base;
     }
+    if (rv.reach?.[i] === 1 && leaf) {
+      if (drawn) drawn.reach = (drawn.reach ?? 0) + 1;
+      return mix(rv.colours.affected ?? base, base, 0.12);
+    }
     const hop = rv.hop[i] ?? 0;
     if (hop > 0 && leaf) {
       if (drawn) drawn.affected++;
@@ -471,6 +522,18 @@ export function drawMap(env: DrawEnv): DrawResult {
     const c = ch ? rv?.colours[ch] : undefined;
     if (!c) return fallback;
     return contrastRatio(c, "#ffffff") >= contrastRatio(c, "#111418") ? "#ffffff" : "#111418";
+  };
+
+  /** Team layer: the dashed outline of a reachable leaf (4 or more calls away, or through a hub). */
+  const reachOutline = (i: number, x: number, y: number, pw: number, ph: number): void => {
+    if (!rv?.reach?.[i] || !rv.lit[i] || pw < 4 || ph < 4) return;
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = rv.colours.affected ?? theme.accent;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 3]);
+    ctx.strokeRect(x + 1, y + 1, pw - 2, ph - 2);
+    ctx.restore();
   };
 
   // The largest file of each folder (most functions, then first in order) gets a third chance at a label.
@@ -537,6 +600,7 @@ export function drawMap(env: DrawEnv): DrawResult {
         ctx.lineWidth = 1;
         ctx.strokeRect(x + 0.5, y + 0.5, pw - 1, ph - 1);
       }
+      if (!container) reachOutline(i, x, y, pw, ph);
       const label = scene.nodes[i]?.label ?? "";
       const fs = Math.min(12, Math.max(10, ph * 0.55));
       const text = fitCellLabel((t) => measure(`500 ${fs}px ${FONT}`, t), label, pw, ph, fs, 3);
@@ -574,6 +638,7 @@ export function drawMap(env: DrawEnv): DrawResult {
       ctx.lineWidth = 1;
       ctx.strokeRect(x + 0.5, y + 0.5, pw - 1, ph - 1);
     }
+    if (!container && cls === 2) reachOutline(i, x, y, pw, ph);
 
     const head = headPx(scene, geo, i, pw, ph, cam.scale);
     const name = scene.nodes[i]?.label ?? "";
@@ -656,7 +721,10 @@ export function drawMap(env: DrawEnv): DrawResult {
         if (pw >= 120 && ph >= 34 && used + 11 <= ph - 1) {
           ctx.font = `400 10px ${FONT}`;
           ctx.fillStyle = theme.scheme === "light" ? "#3d4756" : theme.muted;
-          ctx.fillText(`${(scene.functions[i] ?? 0).toLocaleString("en-US")} fn`, vx + 3, y + used + 1);
+          const hub = rv?.hubLabel?.get(i);
+          const fn = `${(scene.functions[i] ?? 0).toLocaleString("en-US")} fn`;
+          if (hub && drawn?.hubs) drawn.hubs.push(i);
+          ctx.fillText(hub ? `${fn} · ${hub}` : fn, vx + 3, y + used + 1);
         }
       }
     }
@@ -825,6 +893,8 @@ export function drawMap(env: DrawEnv): DrawResult {
     const forced = r === env.selected || r === env.hovered || r === env.highlightWs;
     drawTitle(env, result, r, rootBoxes[r] as Rect, tintOf(r), measure, placed, free, forced);
   }
+  // Team markers sit on top of the titles, in the top-right corner of their boxes.
+  drawTeamMarkers(env, result);
   ctx.globalAlpha = 1;
   return result;
 }
@@ -898,6 +968,77 @@ function drawRankMarkers(
     ctx.fillStyle = light ? "#ffffff" : "#10141a";
     ctx.fillText(String(it.rank), p.x, p.y + 0.5);
     result.markers.push({ rank: it.rank, index: it.index, id: it.id, x: p.x, y: p.y, r: R });
+  });
+  ctx.globalAlpha = 1;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+}
+
+const TEAM_PILL_H = 22;
+const TEAM_DOT = 16;
+
+/**
+ * Team layer markers: a pill on the top-right corner of each workspace box that holds a changed node, with up to
+ * three owners' initials and the number of open change sets touching the area. Boxes too small for a pill get none.
+ */
+function drawTeamMarkers(env: DrawEnv, result: DrawResult): void {
+  const team = env.team;
+  if (!team || team.markers.length === 0) return;
+  const { ctx, theme } = env;
+  const light = theme.scheme === "light";
+  const boxes = new Map(result.boxes.map((b) => [b.index, b]));
+  ctx.textBaseline = "middle";
+  team.markers.forEach((m) => {
+    const box = boxes.get(m.index);
+    if (!box || box.w < 56 || box.h < TEAM_PILL_H + 12) return;
+    const p = Math.max(0, Math.min(1, team.progress(m.index)));
+    if (p <= 0) return;
+    const shown = m.owners.slice(0, 3);
+    const label = String(m.count);
+    ctx.font = `700 12px ${FONT}`;
+    const textW = ctx.measureText(label).width;
+    const avatarsW = TEAM_DOT + (shown.length - 1) * (TEAM_DOT - 5);
+    const w = 3 + avatarsW + 5 + textW + 8;
+    const h = TEAM_PILL_H;
+    const right = box.x + box.w - 8;
+    const x = right - w;
+    const y = box.y + 8;
+    const scale = 0.8 + 0.2 * p;
+    ctx.save();
+    ctx.globalAlpha = p;
+    // Scales from its right edge, like the panel's markers.
+    ctx.translate(right, y + h / 2);
+    ctx.scale(scale, scale);
+    ctx.translate(-right, -(y + h / 2));
+    roundRect(ctx, x, y, w, h, h / 2);
+    ctx.fillStyle = theme.surface;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = theme.border;
+    ctx.stroke();
+    shown.forEach((owner, i) => {
+      const cx = x + 3 + TEAM_DOT / 2 + i * (TEAM_DOT - 5);
+      const cy = y + h / 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, TEAM_DOT / 2 + 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = theme.surface;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy, TEAM_DOT / 2, 0, Math.PI * 2);
+      const chip = m.chips[i];
+      ctx.fillStyle = chip?.bg ?? hexToRgba(theme.accent, light ? 0.16 : 0.28);
+      ctx.fill();
+      ctx.font = `700 9.5px ${FONT}`;
+      ctx.textAlign = "center";
+      ctx.fillStyle = chip?.ink ?? (light ? theme.accent : theme.text);
+      ctx.fillText(owner.slice(0, 1).toUpperCase(), cx, cy + 0.5);
+    });
+    ctx.font = `700 12px ${FONT}`;
+    ctx.textAlign = "left";
+    ctx.fillStyle = theme.text;
+    ctx.fillText(label, x + 3 + avatarsW + 5, y + h / 2 + 0.5);
+    ctx.restore();
+    result.teamMarkers.push({ index: m.index, count: m.count, owners: m.owners, x, y, w, h });
   });
   ctx.globalAlpha = 1;
   ctx.textAlign = "left";

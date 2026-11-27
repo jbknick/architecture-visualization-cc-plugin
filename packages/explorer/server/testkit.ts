@@ -44,32 +44,33 @@ function workspaceRecordOf(workspaces: WorkspaceRecord[], rel: string): Workspac
 const workspaceOf = (workspaces: WorkspaceRecord[], repo: string, rel: string): string =>
   workspaceRecordOf(workspaces, rel)?.id ?? workspaceId(repo, ".");
 
-export function fixtureStore(name: string): { store: Store; dir: string } {
+/** `repo` is the repo name in every id (default: the fixture's name). */
+export function fixtureStore(name: string, repo: string = name): { store: Store; dir: string } {
   const root = join(fixturesRoot, name);
-  const workspaces = detectWorkspaces(root, { workspaces: { overrides: {} } }, name);
+  const workspaces = detectWorkspaces(root, { workspaces: { overrides: {} } }, repo);
   const sources = new Map<string, string>();
   const parsed = new Map<string, ParsedFile>();
   for (const rel of walk(root).sort()) {
     if (!isIndexable(rel, config) || rel.startsWith(".claude/") || rel.includes("/.claude/")) continue;
     const src = readFileSync(join(root, rel), "utf8");
     sources.set(rel, src);
-    const pf = parseSource(name, rel, src);
+    const pf = parseSource(repo, rel, src);
     parsed.set(pf.fileId, pf);
   }
   const dir = mkdtempSync(join(tmpdir(), "gantry-views-"));
   const store = openStore(join(dir, "gantry.db"));
-  store.upsertRepo(name, root);
+  store.upsertRepo(repo, root);
   store.upsertWorkspaces(workspaces);
-  const resolver = createResolver({ root, repo: name, workspaces, parsed });
+  const resolver = createResolver({ root, repo, workspaces, parsed });
   const wsEdges = resolver.workspaceEdges();
   const routes = detectTanstackRoutes({
     root,
-    repo: name,
+    repo,
     workspaces,
     files: [...parsed.keys()].map((id) => ({
       id,
       path: pathOfFileId(id),
-      workspaceId: workspaceOf(workspaces, name, pathOfFileId(id)),
+      workspaceId: workspaceOf(workspaces, repo, pathOfFileId(id)),
       source: sources.get(pathOfFileId(id)) as string,
     })),
     parsed,

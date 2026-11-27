@@ -1,0 +1,370 @@
+/* The Team layer: a switch in the map toolbar, a docked panel and the colours of its bands. Colours come from the
+   explorer's theme tokens (styles.css) and the review's palette (review.css). */
+
+:root {
+  --team-panel-w: 340px;
+  --team-panel-gap: 12px;
+}
+
+/* ---- toolbar switch ---- */
+.team-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.team-toggle[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.team-toggle-gap {
+  align-self: stretch;
+  width: 1px;
+  margin-inline: 2px;
+  background: var(--border);
+}
+
+/* ---- the map makes room for the panel ---- */
+.gc-map.team-on .gc-under,
+.gc-map.team-on .gc-sigma {
+  width: calc(100% - var(--team-panel-w) - 2 * var(--team-panel-gap));
+}
+.gc-map.team-on .gc-status,
+.gc-map.team-on .gc-key {
+  max-width: calc(100% - var(--team-panel-w) - 4 * var(--team-panel-gap));
+}
+
+/* ---- panel ---- */
+.team-panel {
+  position: absolute;
+  inset: 58px var(--team-panel-gap) var(--team-panel-gap) auto;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: var(--team-panel-w);
+  padding: 14px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+  outline: none;
+}
+.team-panel:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.team-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.team-panel-close {
+  margin-left: auto;
+}
+
+/* how old the data is */
+.team-pulled {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 12.5px;
+}
+.team-pulled strong {
+  font-weight: 600;
+}
+.team-pulled.is-stale {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  box-shadow: inset 0 0 0 1px var(--warn-border);
+}
+.team-pulled-note {
+  grid-column: span 2;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.team-pulled.is-stale .team-pulled-note {
+  color: var(--warn-text);
+}
+.team-pulled-note code {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+/* people */
+.team-people {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.team-people legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.team-person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.team-person-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.team-person-count {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* a person's initial: each person's own colour, set inline as four custom properties (light and dark) */
+.team-chip {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--p-bg, var(--accent-soft));
+  color: var(--p-ink, var(--accent));
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+@media (prefers-color-scheme: dark) {
+  .team-chip {
+    background: var(--p-bg-dark, var(--accent-soft));
+    color: var(--p-ink-dark, var(--accent));
+  }
+}
+
+/* open changes */
+.team-open {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.team-open h3 {
+  font-size: 13px;
+  font-weight: 600;
+}
+.team-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.team-entries > li {
+  overflow: hidden;
+}
+.team-entry-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.team-entry-btn:hover {
+  background: var(--surface-2);
+}
+.team-entry-btn > :not(.team-entry-mark) {
+  position: relative;
+}
+.team-entry-mark {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.team-entry-title {
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.team-entry-by {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.team-tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.team-tiers > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.team-tiers .rv-swatch {
+  width: 9px;
+  height: 9px;
+}
+.team-swatch-reach {
+  box-sizing: border-box;
+  border: 1.5px dashed var(--rv-affected);
+  background: color-mix(in srgb, var(--rv-faded) 50%, var(--surface));
+}
+
+/* the picked change set, opened under its row */
+.team-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 2px 0 6px;
+  padding-inline: 10px 4px;
+  overflow: hidden;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.team-detail-title {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* the map legend, docked in the panel so it never covers a label on the map */
+.rv-legend.team-legend {
+  position: static;
+  max-width: none;
+  background: var(--surface-2);
+}
+
+/* radius bands */
+.team-radar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px;
+}
+.team-radar-svg {
+  flex: none;
+}
+.team-radar-dot {
+  stroke: var(--surface);
+  stroke-width: 1;
+}
+.team-radar-dot.is-direct {
+  fill: color-mix(in srgb, var(--rv-affected) 55%, var(--surface));
+}
+.team-radar-dot.is-potential {
+  fill: color-mix(in srgb, var(--rv-affected) 30%, var(--surface));
+}
+.team-radar-dot.is-reachable {
+  fill: var(--rv-caller-3);
+}
+.team-radar-dot.is-hub {
+  fill: var(--surface);
+  stroke: var(--rv-caller-3);
+  stroke-dasharray: 2 1.5;
+  stroke-width: 1.2;
+}
+.team-radar-key {
+  display: grid;
+  flex: 1;
+  gap: 5px;
+  margin: 0;
+  font-size: 12px;
+}
+.team-radar-key > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.team-radar-key dt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.team-radar-key dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* changed code */
+.team-changed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.team-changed-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.team-changed-btn:hover {
+  background: var(--surface-2);
+}
+.team-changed-btn .rv-swatch {
+  margin-top: 4px;
+}
+.team-changed-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.team-changed-name {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.team-changed-path {
+  color: var(--muted);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+
+/* keyboard focus on the panel's own controls */
+.team-entry-btn:focus-visible,
+.team-changed-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+/* the legend's line sample takes the colour the arrows are drawn in (the change colour of a modified node) */
+.team-legend .rv-line {
+  background: var(--rv-modified);
+}
+.team-legend .rv-line::after {
+  border-left-color: var(--rv-modified);
+}

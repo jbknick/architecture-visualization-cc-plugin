@@ -725,11 +725,42 @@ export function encodeFilters(filters: Filters): string | undefined {
   return Object.keys(filters).length === 0 ? undefined : JSON.stringify(filters);
 }
 
+// ---- Team layer (mirrors packages/explorer/server/types.ts) ----
+
+/** One open change set of the Team layer. `owner` and `title` come from outside the machine: render as text only. */
+export interface TeamChangeSet {
+  id: string;
+  source: "pr" | "branch";
+  state: "proposed" | "in_progress" | "in_review" | "merged";
+  owner: string;
+  title?: string;
+  pr?: number;
+  nodes: string[];
+  radius: { id: string; hop: number; tier: "direct" | "potential" | "reachable"; via_hub: boolean }[];
+  nodes_total: number;
+  radius_total: number;
+  map_nodes: string[];
+  /** The changed nodes each hop-1 radius entry uses, by the local graph; an entry with no local edge is absent. */
+  direct_uses: { id: string; changed: string[] }[];
+}
+
+/** `GET /api/team/layer`: read from the local team cache; the server makes no request to a team server for it. */
+export interface TeamLayerData {
+  available: boolean;
+  age_s: number | null;
+  change_sets: TeamChangeSet[];
+  people: string[];
+}
+
 export const api = {
   // `scenario` and `view` are mock-only: the mock answers with that scenario's repo name and counts (they differ
   // between the 2D and 3D datasets). The real server ignores both.
   meta: (signal?: AbortSignal, scenario?: string, view?: string) =>
     getJson<Meta>("/api/meta", { scenario, view: scenario ? view : undefined }, signal),
+
+  /** The open change sets of the local team cache. `scenario` is mock-only. */
+  teamLayer: (signal?: AbortSignal, scenario?: string) =>
+    getJson<TeamLayerData>("/api/team/layer", { scenario }, signal),
 
   view: (id: string, opts: ViewOptions, signal?: AbortSignal) =>
     getJson<ViewData>(

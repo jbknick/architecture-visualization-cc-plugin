@@ -1,5 +1,6 @@
 import { displayOfId } from "../ids.ts";
 import "./canvas.css";
+import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type Filters, type GraphNode } from "../api.ts";
 import { badgeTipLines } from "../badges.ts";
@@ -11,6 +12,7 @@ import type { CanvasProps } from "../slots.ts";
 import { useStore } from "../store.tsx";
 import { currentScheme } from "../theme.ts";
 import { getBool } from "../views/filterUtils.ts";
+import { initialColours, personColour } from "../views/personColours.ts";
 import { useReviewFocus } from "../views/reviewFocus.ts";
 import {
   focusedChange,
@@ -20,6 +22,10 @@ import {
   reviewTipLines,
   showOf,
 } from "../views/reviewModel.ts";
+import { TeamLayerPanel } from "../views/TeamLayerPanel.tsx";
+import { TeamLayerToggle } from "../views/TeamLayerToggle.tsx";
+import { areaMarkers, teamReach, teamReviewLayer, visibleSets } from "../views/teamModel.ts";
+import { useTeam } from "../views/teamStore.ts";
 import { GROUP_KIND, kindTier, type TreeNode } from "./hierarchy.ts";
 import { Legend } from "./Legend.tsx";
 import { runLayout } from "./layoutClient.ts";
@@ -34,6 +40,7 @@ import {
   locatePath,
   pickCell,
   type ReviewPaintEnv,
+  type TeamAreaMarker,
 } from "./mapDraw.ts";
 import { type FitPad, fitCamera, fitGroupCamera, rootRect, screenRectOf, worldRectOf } from "./mapGeom.ts";
 import { DEFAULT_VIEWPORT, FIT_INSETS, keepFrom } from "./mapLayout.ts";
@@ -66,6 +73,9 @@ interface Tooltip {
 }
 
 const MAX_SCALE = 90;
+/** Team markers fade in and out over this long, and each one starts this much after the one before. */
+const TEAM_FADE_MS = 150;
+const TEAM_STAGGER_MS = 20;
 /** The camera counts as zoomed in past this multiple of the fit zoom (the breadcrumb shows). */
 const ZOOMED_PAST_FIT = 1.12;
 /** Folder strips stick this far from the top while the breadcrumb is shown (it sits below the List/Graph toggle). */
@@ -185,12 +195,20 @@ export function TreemapCanvas({
   const fromScratch = useRef(false);
   const routeKey = JSON.stringify([view, route.focus, route.level, route.filters, layoutHint]);
   const ui = useMapView();
+  // Team layer: on the project map only, and only while the cache says it is available and the switch is on.
+  const team = useTeam();
+  const teamOn = view === "project-map" && !data?.review && team.data?.available === true && team.on;
+  const teamSets = useMemo(
+    () => (teamOn ? visibleSets(team.data, team.people) : []),
+    [teamOn, team.data, team.people],
+  );
+  const teamPicked = teamSets.find((c) => c.id === team.pickedId) ?? null;
   // Files level: the largest files get numbered markers on their tiles (the same ranking as the left panel's list).
   const filesLevel = route.level === "files" || (route.level === null && !route.focus);
   const ranked = useRanked(
     nodes,
     getBool(route.filters, "hideTests", true),
-    filesLevel && !baseScene.mosaic && !data?.review,
+    filesLevel && !baseScene.mosaic && !data?.review && !teamOn,
   );
   const debug = useMemo(debugEnabled, []);
   const callbacks = useRef({ onSelect, onHover, onDrill });
@@ -217,6 +235,7 @@ export function TreemapCanvas({
     rankHover: null as number | null,
     fresh: [] as number[],
     review: null as ReviewPaintEnv | null,
+    team: null as { markers: TeamAreaMarker[]; progress(index: number): number } | null,
   });
 
   const sceneKey = useMemo(
@@ -305,30 +324,28 @@ export function TreemapCanvas({
   }, [scene, fresh]);
 
   // Review layer (#167): the review drawn over this very map; the layout above never sees it, so nothing moves.
-  const layer = data?.review?.layer ?? null;
+  const teamLayer = useMemo(
+    () => (teamPicked ? teamReviewLayer(teamPicked, (id) => scene.tree.index.has(id)) : null),
+    [teamPicked, scene],
+  );
+  const layer = data?.review?.layer ?? teamLayer;
   const show = showOf(route.filters);
   // A selected change (or one of its consumers, picked from the panel) shows only that change's consumers and lines.
   const storedChange = useReviewFocus();
   const focusChange = focusedChange(data?.review, focus, storedChange);
   const reviewFocusOn = useMemo(() => layerFocus(data?.review, focusChange), [data?.review, focusChange]);
-  const reviewPaint = useMemo<ReviewPaintEnv | null>(
-    () =>
-      layer
-        ? {
-            ...paintLayer(
-              {
-                ids: scene.tree.nodes.map((n) => n.id),
-                parents: scene.tree.nodes.map((n) => n.parent),
-              },
-              layer,
-              show,
-              reviewFocusOn,
-            ),
-            colours: MARK_COLOURS[theme.scheme ?? currentScheme()],
-          }
-        : null,
-    [scene, layer, show, theme.scheme, reviewFocusOn],
-  );
+  const reviewPaint = useMemo<ReviewPaintEnv | null>(() => {
+    if (!layer) return null;
+    const tree = { ids: scene.tree.nodes.map((n) => n.id), parents: scene.tree.nodes.map((n) => n.parent) };
+    const paint = paintLayer(tree, layer, show, reviewFocusOn);
+    // The Team layer also draws the reachable tier (dashed outlines, "through hub <name>"), which a review layer has not.
+    const reach = teamPicked && !data?.review ? teamReach(teamPicked, tree, paint) : null;
+    return {
+      ...paint,
+      colours: MARK_COLOURS[theme.scheme ?? currentScheme()],
+      ...(reach ? { reach: reach.reach, hubLabel: reach.hubLabel } : {}),
+    };
+  }, [scene, layer, show, theme.scheme, reviewFocusOn, teamPicked, data?.review]);
 
   // Selection and highlight state shared with the draw loop. A changed symbol picked in the review panel selects the
   // cell that shows it at this level (its file, folder or workspace).
@@ -361,6 +378,70 @@ export function TreemapCanvas({
     [ranked.files, scene],
   );
   const rankHoverIndex = ranked.hoverFile ? (scene.tree.index.get(ranked.hoverFile) ?? null) : null;
+  // Team markers, by tree index, with the owners' own colours. They are hidden while a change set is picked (its
+  // colours are on the map then). Each fades and scales in over 150 ms, 20 ms after the one before it, and fades out
+  // over 150 ms when a filter removes it; with reduced motion they come and go at once.
+  const teamPeople = team.data?.people;
+  const markerScheme = theme.scheme ?? currentScheme();
+  const teamWanted = useMemo<TeamAreaMarker[]>(
+    () =>
+      teamPicked
+        ? []
+        : areaMarkers(teamSets).flatMap((m) => {
+            const index = scene.tree.index.get(m.id);
+            if (index === undefined) return [];
+            const chips = m.owners.map((o) =>
+              initialColours(personColour(teamPeople ?? [], o, markerScheme), markerScheme),
+            );
+            return [{ index, count: m.count, owners: m.owners, chips }];
+          }),
+    [teamSets, teamPicked, scene, teamPeople, markerScheme],
+  );
+  const teamAppear = useRef(new Map<number, number>());
+  const teamShown = useRef(new Map<number, TeamAreaMarker>());
+  const teamLeaving = useRef(new Map<number, { marker: TeamAreaMarker; at: number }>());
+  const teamEnv = useMemo(() => {
+    if (!teamOn) {
+      teamAppear.current.clear();
+      teamShown.current.clear();
+      teamLeaving.current.clear();
+      return null;
+    }
+    const reduce =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const now = performance.now();
+    const current = new Map(teamWanted.map((m) => [m.index, m] as const));
+    if (!reduce)
+      for (const [index, marker] of teamShown.current)
+        if (!current.has(index)) teamLeaving.current.set(index, { marker, at: now });
+    for (const index of current.keys()) teamLeaving.current.delete(index);
+    for (const [index, l] of teamLeaving.current)
+      if (now - l.at >= TEAM_FADE_MS) teamLeaving.current.delete(index);
+    teamShown.current = current;
+    for (const index of [...teamAppear.current.keys()])
+      if (!current.has(index)) teamAppear.current.delete(index);
+    let n = 0;
+    for (const m of teamWanted)
+      if (!teamAppear.current.has(m.index))
+        teamAppear.current.set(m.index, now + (reduce ? -1000 : n++ * TEAM_STAGGER_MS));
+    const markers = [...teamWanted, ...[...teamLeaving.current.values()].map((l) => l.marker)];
+    if (markers.length === 0) return null;
+    const progress = (index: number): number => {
+      const leaving = teamLeaving.current.get(index);
+      if (leaving) return Math.max(0, 1 - (performance.now() - leaving.at) / TEAM_FADE_MS);
+      const at = teamAppear.current.get(index) ?? 0;
+      return reduce ? 1 : Math.min(1, Math.max(0, (performance.now() - at) / TEAM_FADE_MS));
+    };
+    /** True while any marker is still fading in or out. */
+    const animating = (): boolean =>
+      markers.some((m) => {
+        const p = progress(m.index);
+        return teamLeaving.current.has(m.index) ? p > 0 : p < 1;
+      });
+    return { markers, progress, animating };
+  }, [teamOn, teamWanted]);
+
   useEffect(() => {
     const selectedTier =
       selectedIndex === null ? -1 : kindTier((scene.tree.nodes[selectedIndex] as TreeNode).kind);
@@ -380,6 +461,7 @@ export function TreemapCanvas({
       rankHover: rankHoverIndex,
       fresh: freshIndex,
       review: reviewPaint,
+      team: teamEnv,
       highlightWs:
         selectedIndex !== null && selectedTier === 0
           ? selectedIndex
@@ -398,6 +480,7 @@ export function TreemapCanvas({
     rankHoverIndex,
     freshIndex,
     reviewPaint,
+    teamEnv,
   ]);
 
   // The camera, pointer handling and the draw loop, rebuilt whenever the layout changes.
@@ -425,6 +508,7 @@ export function TreemapCanvas({
       labels: [],
       markers: [],
       badged: [],
+      teamMarkers: [],
     };
     let raf = 0;
     let anim = 0;
@@ -488,6 +572,7 @@ export function TreemapCanvas({
         rankHover: l.rankHover,
         fresh: l.fresh,
         review: l.review,
+        team: l.team,
       });
       const remembered = lastLayout.current;
       if (remembered && remembered.map === geo) {
@@ -831,6 +916,13 @@ export function TreemapCanvas({
         }),
         badged: last.badged,
         review: reviewProbe(live.current.review, last, (i) => scene.nodes[i]?.id),
+        team: last.teamMarkers.map((m) => ({
+          id: scene.nodes[m.index]?.id,
+          count: m.count,
+          owners: m.owners,
+          x: Math.round(m.x),
+          y: Math.round(m.y),
+        })),
         viewport: size(),
         reviewRects: scene.nodes.flatMap((n, i) => {
           const rv = live.current.review;
@@ -903,6 +995,18 @@ export function TreemapCanvas({
     };
   }, [layout, scene, sceneKey, generation]);
 
+  // Redraws while the Team markers fade in.
+  useEffect(() => {
+    if (!teamEnv) return;
+    let raf = 0;
+    const step = () => {
+      engine.current?.redraw();
+      if (teamEnv.animating()) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [teamEnv]);
+
   // Selecting from outside the canvas (search, inspector, deep link) brings the node into view.
   useEffect(() => {
     if (selectedIndex === null) return;
@@ -973,7 +1077,7 @@ export function TreemapCanvas({
   const scheme = theme.scheme ?? currentScheme();
 
   return (
-    <div className="gc gc-map" ref={wrapRef} data-testid="graph-canvas">
+    <div className={teamOn ? "gc gc-map team-on" : "gc gc-map"} ref={wrapRef} data-testid="graph-canvas">
       <canvas ref={canvasRef} className="gc-under" />
       <div
         ref={boxRef}
@@ -982,6 +1086,7 @@ export function TreemapCanvas({
         aria-label={`Map of ${nodes.length} nodes and ${edges.length} links. Press plus or minus to zoom, 0 to fit, Escape to clear.`}
       />
       <div className="gc-controls" role="toolbar" aria-label="Graph controls">
+        {view === "project-map" && !data?.review && <TeamLayerToggle />}
         <button
           type="button"
           className="gc-btn"
@@ -1039,6 +1144,7 @@ export function TreemapCanvas({
         zoomed={zoomedIn}
         onToggle={redrawNow}
       />
+      <AnimatePresence>{teamOn && <TeamLayerPanel key="team-panel" />}</AnimatePresence>
       {!panelLegend && <Legend scene={scene} scheme={scheme} level={level} />}
       {(error || busy || debug) && (
         <div className="gc-status" aria-live="polite">
@@ -1074,6 +1180,9 @@ function reviewProbe(rv: ReviewPaintEnv | null, last: DrawResult, id: (i: number
           affected: last.review.affected,
           faded: last.review.faded,
           named: last.review.named.map(id),
+          ...(last.review.reach === undefined
+            ? {}
+            : { reach: last.review.reach, hubs: (last.review.hubs ?? []).map(id) }),
           links: last.review.links.map((l) => ({
             src: id(l.src),
             dst: id(l.dst),

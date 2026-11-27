@@ -560,3 +560,45 @@ export function readCacheSummary(cache: TeamCache | undefined, now: number = Dat
     last_error: getMeta(db, "last_error") ?? null,
   }));
 }
+
+/** A change set with the node ids it changes and its blast radius, as the explorer's Team layer reads it. */
+export interface TeamChangeSetDetail extends TeamChangeSet {
+  /** Changed symbol and file ids, sorted. */
+  nodes: string[];
+  /** The blast radius, sorted by hop and then id. */
+  radius: { id: string; hop: number; tier: "direct" | "potential" | "reachable"; via_hub: boolean }[];
+}
+
+/** Every change set with its nodes and radius, sorted by id; empty when there is no cache. */
+export function readChangeSetDetails(cache: TeamCache | undefined): TeamChangeSetDetail[] {
+  return read(cache, [], (db) => {
+    const nodes = new Map<string, string[]>();
+    for (const r of db
+      .prepare("SELECT change_set_id AS id, node_id FROM change_set_nodes ORDER BY change_set_id, node_id")
+      .all() as { id: string; node_id: string }[])
+      nodes.set(r.id, [...(nodes.get(r.id) ?? []), r.node_id]);
+    const radius = new Map<string, TeamChangeSetDetail["radius"]>();
+    for (const r of db
+      .prepare(
+        "SELECT change_set_id AS id, node_id, hop, tier, via_hub FROM change_set_reach ORDER BY change_set_id, hop, node_id",
+      )
+      .all() as { id: string; node_id: string; hop: number; tier: string; via_hub: number }[])
+      radius.set(r.id, [
+        ...(radius.get(r.id) ?? []),
+        {
+          id: r.node_id,
+          hop: r.hop,
+          tier: r.tier as TeamChangeSetDetail["radius"][number]["tier"],
+          via_hub: r.via_hub === 1,
+        },
+      ]);
+    return (db.prepare(`SELECT ${COLUMNS} FROM change_sets cs ORDER BY cs.id`).all() as ChangeSetRow[]).map(
+      (r) => ({ ...toChangeSet(r), nodes: nodes.get(r.id) ?? [], radius: radius.get(r.id) ?? [] }),
+    );
+  });
+}
+
+/** The repo (`owner/name`) the cache was pulled for, or `undefined` when there is no cache or no pull yet. */
+export function readCacheRepo(cache: TeamCache | undefined): string | undefined {
+  return read<string | undefined>(cache, undefined, (db) => getMeta(db, "repo"));
+}

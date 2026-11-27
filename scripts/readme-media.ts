@@ -403,6 +403,19 @@ async function stills(browser: Browser, mockBase: string) {
     await zoomedFiles(page);
     await save(page, "project-map-files-zoomed");
   }
+  if (want("team-layer")) {
+    // The mock's `team` scenario: three open pull requests by two made-up people on the synthetic pnpm-turbo-like map.
+    // The filters panel is folded so every area is wide enough to show its files, and one change set is picked.
+    const p = await newPage(browser, "light", true);
+    await openMap2d(p, mockBase, "files", "&scenario=team");
+    await p.getByRole("button", { name: "Collapse filters" }).click();
+    await p.getByTestId("team-toggle").click();
+    await p.getByTestId("team-entry").filter({ hasText: "#214" }).locator(".team-entry-btn").click();
+    await p.getByTestId("team-rings").waitFor();
+    await settle(p);
+    await save(p, "team-layer");
+    await p.context().close();
+  }
   if (want("city-workspaces")) {
     await openCity(page, mockBase, "workspaces", "&scenario=large");
     await save(page, "city-workspaces");
