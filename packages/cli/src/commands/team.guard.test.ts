@@ -14,7 +14,7 @@ function sources(dir: string): string[] {
   });
 }
 
-/** No hook waits on the network, so no hook may reach the team client. */
+/** No hook waits on the network, so no hook may reach the team client or the upload command. */
 describe("hooks never use the team client", () => {
   const files = [...sources(hooksDir), join(here, "hook.ts"), join(here, "hooks.ts")].filter(
     (f) => !f.endsWith(".test.ts"),
@@ -25,12 +25,16 @@ describe("hooks never use the team client", () => {
   });
 
   for (const file of files) {
-    it(`${relative(join(here, "..", ".."), file)} does not import team/client, pullTeamCache or the publish functions`, () => {
+    it(`${relative(join(here, "..", ".."), file)} does not import team/client, pullTeamCache, the publish functions or the upload command`, () => {
       const text = readFileSync(file, "utf8");
       expect(text).not.toMatch(/team\/client/);
       expect(text).not.toMatch(/\bteamClient\b/);
       expect(text).not.toMatch(/\bpullTeamCache\b/); // hooks may import only the cache readers
       expect(text).not.toMatch(/\b(?:un)?publish(?:View|Group)\b/); // publishing is `gantry team publish` only
+      expect(text).not.toMatch(/commands\/upload|team\/resolve|upload\.js/);
+      expect(text).not.toMatch(
+        /\b(resolveTeamTarget|registerUpload|runUpload|buildUploadParts|serialiseBody)\b/,
+      );
     });
   }
 });

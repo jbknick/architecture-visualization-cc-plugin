@@ -12,6 +12,8 @@ export class GantryError extends Error {
   constructor(
     readonly code: GantryErrorCode,
     message: string,
+    /** For an error the server answered: the HTTP status and the protocol `error` code (`conflict`, `budget`, ...). */
+    readonly answer?: { status: number; error?: string },
   ) {
     super(message);
     this.name = "GantryError";
