@@ -642,13 +642,19 @@ describe("pull ETag and 304", () => {
     expect(a).toBe(b);
   });
 
-  it("changes when a change set, a view or a group changes", async () => {
+  it("changes when a change set is updated, or a view or a group changes, and not for a title alone", async () => {
     const etagNow = async (): Promise<string | null> =>
       (await call(ROUTES.pull, {}, {}, q)).res.headers.get("etag");
     server.state.changeSets.set(changeSet(1).id, changeSet(1));
     const base = await etagNow();
-    server.state.changeSets.set(changeSet(1).id, { ...changeSet(1), title: "A new title" });
+    server.state.changeSets.set(changeSet(1).id, { ...changeSet(1), updated_at: "2026-11-21T10:00:00.000Z" });
     const retitled = await etagNow();
+    server.state.changeSets.set(changeSet(1).id, {
+      ...changeSet(1),
+      updated_at: "2026-11-21T10:00:00.000Z",
+      title: "Same update time, other title",
+    });
+    expect(await etagNow()).toBe(retitled);
     server.state.views.set(REPO, new Map([[view.id, view]]));
     const withView = await etagNow();
     server.state.groups.set(REPO, new Map([[group.id, group]]));

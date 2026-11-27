@@ -1,4 +1,5 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type FakeServer, startFakeServer } from "@gantry/protocol/testing";
@@ -82,6 +83,174 @@ describe("no hook reaches the network through the team cache", () => {
     expect(importers).toEqual([
       join("core", "src", "team", "cache.ts"),
       join("core", "src", "team", "index.ts"),
+    ]);
+  });
+});
+
+/** The names a hook may take from `cache.ts`: the readers and their types. */
+const READERS = new Set([
+  "openTeamCache",
+  "readChangeSets",
+  "readChangeSetsTouching",
+  "readTeamGroups",
+  "readTeamViews",
+  "cacheAgeSeconds",
+  "readCacheSummary",
+  "teamCachePath",
+  "TEAM_CACHE_VERSION",
+  "TeamCache",
+  "TeamChangeSet",
+  "TouchingChangeSet",
+  "TeamCacheSummary",
+]);
+
+const strip = (text: string): string =>
+  text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+const read = (file: string): string => strip(readFileSync(file, "utf8"));
+const CLIENT = join(packagesDir, "core", "src", "team", "client.ts");
+const CACHE = join(packagesDir, "core", "src", "team", "cache.ts");
+
+/** `./x.js` or a workspace package to a source file; undefined for anything outside this repo's sources. */
+function resolveSpec(from: string, spec: string): string | undefined {
+  if (spec.startsWith(".")) {
+    const target = join(dirname(from), spec.replace(/\.js$/, ""));
+    for (const candidate of [`${target}.ts`, join(target, "index.ts")])
+      if (existsSync(candidate)) return candidate;
+    return undefined;
+  }
+  const m = /^@gantry\/(core|cli|mcp|explorer)$/.exec(spec);
+  return m ? join(packagesDir, m[1] as string, "src", "index.ts") : undefined;
+}
+
+interface Edge {
+  spec: string;
+  /** Imported names; undefined for a namespace, side-effect or dynamic import. */
+  names: string[] | undefined;
+}
+
+/** Static imports, dynamic imports and re-exports of one file. */
+function edgesOf(text: string): Edge[] {
+  const out: Edge[] = [];
+  for (const m of text.matchAll(
+    /\b(?:import|export)\s+(type\s+)?(\{[^}]*\}|[\w$*][\w$\s*,{}]*?)\s+from\s+["']([^"']+)["']/g,
+  )) {
+    const clause = m[2] as string;
+    const braces = /\{([^}]*)\}/.exec(clause);
+    const names = braces
+      ? (braces[1] as string)
+          .split(",")
+          .map((n) => (n.trim().split(/\s+as\s+/)[0] ?? "").replace(/^type\s+/, "").trim())
+          .filter((n) => n !== "")
+      : undefined;
+    out.push({ spec: m[3] as string, names: clause.includes("*") ? undefined : names });
+  }
+  for (const m of text.matchAll(/\bimport\s*\(\s*["']([^"']+)["']\s*\)/g))
+    out.push({ spec: m[1] as string, names: undefined });
+  for (const m of text.matchAll(/^\s*import\s+["']([^"']+)["']/gm))
+    out.push({ spec: m[1] as string, names: undefined });
+  return out;
+}
+
+function defines(text: string, name: string): boolean {
+  return new RegExp(
+    `export\\s+(?:declare\\s+)?(?:async\\s+)?(?:function|const|let|class|interface|type|enum)\\s+${name}\\b`,
+  ).test(text);
+}
+
+/** The file that defines `name` as exported by `file`, following `export * from` and `export { name } from`. */
+function definer(file: string, name: string, seen = new Set<string>()): string | undefined {
+  if (seen.has(file)) return undefined;
+  seen.add(file);
+  const text = read(file);
+  if (defines(text, name)) return file;
+  for (const edge of edgesOf(text)) {
+    if (!/\bexport\b/.test(text) || edge.names?.includes(name) === false) continue;
+    const target = resolveSpec(file, edge.spec);
+    const found = target === undefined ? undefined : definer(target, name, seen);
+    if (found !== undefined) return found;
+  }
+  return undefined;
+}
+
+/**
+ * Walks the import graph from the hook sources (static and dynamic imports, following barrels name by name) and
+ * returns every way it reaches the team client or the pull: a name defined in `client.ts`, a name of `cache.ts` that
+ * is not a reader, or a namespace import of either file.
+ */
+function violations(roots: string[]): string[] {
+  const bad: string[] = [];
+  const visited = new Set<string>();
+  const queue = [...roots];
+  while (queue.length > 0) {
+    const file = queue.pop() as string;
+    if (visited.has(file)) continue;
+    visited.add(file);
+    const text = read(file);
+    if (file !== CLIENT && file !== CACHE && /\b(teamClient|pullTeamCache)\b/.test(text)) {
+      bad.push(`${rel(file)} uses the team client or the pull`);
+    }
+    for (const edge of edgesOf(text)) {
+      const target = resolveSpec(file, edge.spec);
+      if (target === undefined) continue;
+      if (edge.names === undefined) {
+        if (target === CLIENT || target === CACHE) bad.push(`${rel(file)} imports all of ${rel(target)}`);
+        queue.push(target);
+        continue;
+      }
+      for (const name of edge.names) {
+        const where = definer(target, name) ?? target;
+        if (where === CLIENT) bad.push(`${rel(file)} imports ${name} from the team client`);
+        else if (where === CACHE && !READERS.has(name))
+          bad.push(`${rel(file)} imports ${name} from cache.ts, which is not a reader`);
+        else if (where !== CACHE) queue.push(where);
+      }
+    }
+  }
+  return bad;
+}
+
+describe("the hooks' import graph", () => {
+  it("reaches neither teamClient nor pullTeamCache, through barrels and helpers", () => {
+    expect(violations(hookFiles)).toEqual([]);
+  });
+
+  it("finds a helper that wraps the client and a hook that calls it (the walker works)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "gantry-guard-"));
+    try {
+      const helper = join(dir, "helper.ts");
+      writeFileSync(
+        helper,
+        `import { teamClient } from "@gantry/core";\nexport const viaHelper = () => teamClient;\n`,
+      );
+      const hook = join(dir, "hook.ts");
+      writeFileSync(hook, `import { viaHelper } from "./helper.js";\nviaHelper();\n`);
+      expect(violations([hook])).toEqual([
+        `${rel(helper)} uses the team client or the pull`,
+        `${rel(helper)} imports teamClient from the team client`,
+      ]);
+      const direct = join(dir, "direct.ts");
+      writeFileSync(direct, `import { pullTeamCache, readChangeSets } from "@gantry/core";\n`);
+      expect(violations([direct])).toEqual([
+        `${rel(direct)} uses the team client or the pull`,
+        `${rel(direct)} imports pullTeamCache from cache.ts, which is not a reader`,
+      ]);
+      const ok = join(dir, "ok.ts");
+      writeFileSync(ok, `import { openTeamCache, readChangeSets } from "@gantry/core";\n`);
+      expect(violations([ok])).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("only the allow-listed files mention teamClient", () => {
+    const callers = all
+      .filter((f) => /\bteamClient\b/.test(readFileSync(f, "utf8")))
+      .map(rel)
+      .sort();
+    expect(callers).toEqual([
+      join("cli", "src", "commands", "team.ts"),
+      join("core", "src", "team", "cache.ts"),
+      join("core", "src", "team", "client.ts"),
     ]);
   });
 });

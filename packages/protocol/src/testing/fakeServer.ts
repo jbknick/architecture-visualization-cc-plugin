@@ -538,9 +538,10 @@ export async function startFakeServer(opts: FakeServerOptions = {}): Promise<Fak
         const all = open.slice(0, LIMITS.pull_change_sets);
         const views = [...(state.views.get(q.repo)?.values() ?? [])];
         const groups = [...(state.groups.get(q.repo)?.values() ?? [])];
-        // The ETag is a hash of the body of the whole pull without `pulled_at`, so every page carries the same one.
+        // The ETag hashes the ordered (id, updated_at) of every change set the whole pull returns, plus the views,
+        // groups and settings, so every page carries the same one and `pulled_at` is not part of it.
         const etag = `"${createHash("sha256")
-          .update(JSON.stringify({ change_sets: all, team_views: views, groups, settings: {} }))
+          .update(JSON.stringify([all.map((c) => [c.id, c.updated_at]), views, groups, {}]))
           .digest("hex")}"`;
         if (q.cursor === undefined && req.headers["if-none-match"] === etag) {
           res.writeHead(304, { etag });

@@ -18,7 +18,10 @@ import { type TeamClient, teamClient } from "./client.js";
 export const TEAM_CACHE_VERSION = 1;
 
 const DEFAULT_PULL_TIMEOUT_MS = 5000;
-const MAX_PAGES = 200;
+/** The contract allows 500 change sets, and a page holds at least one, so up to 500 pages. */
+const MAX_PAGES = 600;
+/** How long a pull waits for another writer's lock (SQLite waits synchronously, so this blocks the event loop). */
+const PULL_BUSY_MS = 250;
 const MAX_ERROR_CHARS = 500;
 
 export interface TeamCache {
@@ -43,10 +46,10 @@ function tableCount(db: Database.Database): number {
 }
 
 /** Opens `file` for writing: creates the schema in a new file, and returns undefined for a file of another version. */
-function openWritable(file: string): Database.Database | undefined {
-  const db = new Database(file, { timeout: 5000 });
+function openWritable(file: string, busyMs: number): Database.Database | undefined {
+  const db = new Database(file, { timeout: busyMs });
   try {
-    db.pragma("busy_timeout = 5000");
+    db.pragma(`busy_timeout = ${busyMs}`);
     db.pragma("journal_mode = WAL");
     db.pragma("synchronous = NORMAL");
     const ok = db
@@ -61,8 +64,14 @@ function openWritable(file: string): Database.Database | undefined {
       })
       .immediate();
     if (ok) return db;
-  } catch {
-    // not a database, or locked beyond the timeout: the caller recreates the file
+  } catch (err) {
+    // Only a file that is not a database, or is corrupt, is recreated. A lock held by another writer (busy) or any
+    // other error leaves the file alone and is thrown to the caller.
+    const code = (err as { code?: string }).code;
+    if (code !== "SQLITE_NOTADB" && code !== "SQLITE_CORRUPT") {
+      db.close();
+      throw err;
+    }
   }
   db.close();
   return undefined;
@@ -74,8 +83,11 @@ function openWritable(file: string): Database.Database | undefined {
  * Without it the file is created, and a file of another version is deleted and recreated.
  */
 export function openTeamCache(paths: GantryPaths, opts: { readonly: true }): TeamCache | undefined;
-export function openTeamCache(paths: GantryPaths, opts?: { readonly?: false }): TeamCache;
-export function openTeamCache(paths: GantryPaths, opts: { readonly?: boolean } = {}): TeamCache | undefined {
+export function openTeamCache(paths: GantryPaths, opts?: { readonly?: false; busyMs?: number }): TeamCache;
+export function openTeamCache(
+  paths: GantryPaths,
+  opts: { readonly?: boolean; busyMs?: number } = {},
+): TeamCache | undefined {
   const file = teamCachePath(paths);
   if (opts.readonly === true) {
     if (!existsSync(file)) return undefined;
@@ -90,10 +102,11 @@ export function openTeamCache(paths: GantryPaths, opts: { readonly?: boolean } =
     return undefined;
   }
   mkdirSync(paths.dataDir, { recursive: true });
-  let db = openWritable(file);
+  const busyMs = opts.busyMs ?? 5000;
+  let db = openWritable(file, busyMs);
   if (db === undefined) {
     removeFiles(file);
-    db = openWritable(file);
+    db = openWritable(file, busyMs);
   }
   if (db === undefined) throw new Error(`Cannot create ${file}.`);
   const open = db;
@@ -147,7 +160,7 @@ function replaceAll(
     groups: unknown[];
     settings: Record<string, unknown>;
   },
-  meta: { etag: string | undefined; pulledAt: string },
+  meta: { etag: string | undefined; pulledAt: string; identity: Record<string, string> },
 ): void {
   const insertSet = db.prepare(
     `INSERT OR REPLACE INTO change_sets(id, repo, source, state, estimated, confidence, owner, title, pr, ref, head_ref,
@@ -209,6 +222,7 @@ function replaceAll(
       );
     }
     db.exec("DELETE FROM inflight WHERE change_set_id NOT IN (SELECT id FROM change_sets)");
+    for (const [key, value] of Object.entries(meta.identity)) setMeta(db, key, value);
     setMeta(db, "etag", meta.etag);
     setMeta(db, "pulled_at", meta.pulledAt);
     setMeta(db, "last_error", undefined);
@@ -284,34 +298,47 @@ export async function pullTeamCache(
   const identity = { server: client.server, org: client.org ?? "", repo: paths.repo };
   let cache: TeamCache;
   try {
-    cache = openTeamCache(paths);
+    cache = openTeamCache(paths, { busyMs: PULL_BUSY_MS });
     if (identityDiffers(cache.db, identity)) {
       cache.close();
       removeFiles(cache.path);
-      cache = openTeamCache(paths);
+      cache = openTeamCache(paths, { busyMs: PULL_BUSY_MS });
     }
   } catch (err) {
     return { status: "failed", change_sets: 0, error: errorText(err) };
   }
   const { db } = cache;
   try {
-    for (const [key, value] of Object.entries(identity)) setMeta(db, key, value);
     const now = new Date((opts.now ?? Date.now)()).toISOString();
     try {
       const data = await fetchAll(client, paths.repo, getMeta(db, "etag"));
       if (data === undefined) {
         db.transaction(() => {
+          for (const [key, value] of Object.entries(identity)) setMeta(db, key, value);
           setMeta(db, "pulled_at", now);
           setMeta(db, "last_error", undefined);
         }).immediate();
         return { status: "unchanged", change_sets: countChangeSets(db) };
       }
-      replaceAll(db, data, { etag: data.etag, pulledAt: now });
+      replaceAll(db, data, { etag: data.etag, pulledAt: now, identity });
       return { status: "updated", change_sets: countChangeSets(db) };
     } catch (err) {
       const error = errorText(err);
-      setMeta(db, "last_error", error);
-      return { status: "failed", change_sets: countChangeSets(db), error };
+      let count = 0;
+      try {
+        count = countChangeSets(db);
+      } catch {
+        // unreadable: report none
+      }
+      try {
+        db.transaction(() => {
+          for (const [key, value] of Object.entries(identity)) setMeta(db, key, value);
+          setMeta(db, "last_error", error);
+        }).immediate();
+      } catch {
+        // another writer holds the lock: the old rows stay and the error is only returned
+      }
+      return { status: "failed", change_sets: count, error };
     }
   } finally {
     cache.close();

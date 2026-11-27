@@ -256,6 +256,57 @@ describe("later pulls", () => {
   });
 });
 
+describe("limits", () => {
+  it("follows more than 200 pages, as one change set per page needs", async () => {
+    await fake.close();
+    fake = await startFakeServer({ tokens: [USER_TOKEN], repo: REPO, pageSize: 1 });
+    for (let n = 1; n <= 260; n++) {
+      const cs = changeSet(n, {
+        updated_at: `2026-11-20T09:${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}.000Z`,
+      });
+      fake.state.changeSets.set(cs.id, cs);
+    }
+    expect(await pull({ timeoutMs: 20_000 })).toEqual({ status: "updated", change_sets: 260 });
+  });
+
+  it("fails, keeps the file and its rows, and returns within the bound when another writer holds the lock", async () => {
+    seed(changeSet(1), changeSet(2));
+    await pull();
+    const before = rows("change_sets");
+    const other = new Database(teamCachePath(paths));
+    other.pragma("busy_timeout = 0");
+    other.exec("BEGIN IMMEDIATE");
+    try {
+      const started = Date.now();
+      const result = await pull({ timeoutMs: 1500 });
+      expect(Date.now() - started).toBeLessThan(1500);
+      expect(result.status).toBe("failed");
+      expect(result.error).toMatch(/locked|busy/i);
+    } finally {
+      other.exec("ROLLBACK");
+      other.close();
+    }
+    expect(rows("change_sets")).toEqual(before);
+    expect(metaOf("etag")).toBeDefined();
+    // the lock is gone: the next pull works on the same file
+    expect((await pull()).status).toBe("unchanged");
+  });
+
+  it("does not recreate a file it could not open because of a lock", async () => {
+    seed(changeSet(1));
+    await pull();
+    const other = new Database(teamCachePath(paths));
+    other.exec("BEGIN IMMEDIATE");
+    try {
+      expect(() => openTeamCache(paths, { busyMs: 50 })).toThrow();
+    } finally {
+      other.exec("ROLLBACK");
+      other.close();
+    }
+    expect(rows("change_sets")).toHaveLength(1);
+  });
+});
+
 describe("the file's identity", () => {
   it("is recreated when it has another version", async () => {
     seed(changeSet(1));

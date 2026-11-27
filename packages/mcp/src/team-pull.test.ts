@@ -59,17 +59,27 @@ let fake: FakeServer | undefined;
 let conn: Connected | undefined;
 let clock: number;
 let pullRequests: string[];
+/** The `If-None-Match` header and the status of each pull request, in order. */
+let pullExchanges: { ifNoneMatch: string | undefined; status: number }[];
 
 /** A fetch that remembers the pull requests it makes. */
 const counting: typeof fetch = async (input, init) => {
-  if (String(input).includes("/v1/pull")) pullRequests.push(String(input));
-  return fetch(input, init);
+  const res = await fetch(input, init);
+  if (String(input).includes("/v1/pull")) {
+    pullRequests.push(String(input));
+    pullExchanges.push({
+      ifNoneMatch: (init?.headers as Record<string, string> | undefined)?.["If-None-Match"],
+      status: res.status,
+    });
+  }
+  return res;
 };
 
 beforeEach(async () => {
   resetTeamProtocolCache();
   silentLog.errors.length = 0;
   pullRequests = [];
+  pullExchanges = [];
   clock = Date.now();
   fx = await materializeFixture("pnpm-turbo");
   fx.git(["remote", "add", "origin", `https://github.com/${REPO}.git`]);
@@ -151,6 +161,10 @@ describe("the MCP server's team pull", () => {
     await browse(c);
     expect(summary().change_sets).toBe(2);
     expect(summary().pulled_at).not.toBe(first);
+    expect(pullExchanges).toHaveLength(2);
+    expect(pullExchanges[0]).toEqual({ ifNoneMatch: undefined, status: 200 });
+    expect(pullExchanges[1]?.status).toBe(304);
+    expect(pullExchanges[1]?.ifNoneMatch).toMatch(/^"[0-9a-f]{64}"$/);
   });
 
   it("is not delayed past 1,600 ms by a server that hangs for 5 s", async () => {
