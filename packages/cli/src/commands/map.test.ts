@@ -1,8 +1,7 @@
 import { type ChildProcess, execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { resolvePaths } from "@gantry/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -21,26 +20,37 @@ function spawnAsync(
   });
 }
 
-const here = dirname(fileURLToPath(import.meta.url));
-const cliJs = join(here, "..", "..", "..", "..", "plugin", "dist", "cli.js");
-const built = existsSync(cliJs);
+interface TestBundle {
+  home: string;
+  cleanup(): void;
+}
+// The shared helper lives outside this package's rootDir, so it is loaded by a computed path.
+const helperPath = "../../../../scripts/testBundle.js";
+const { bundlePlugin } = (await import(/* @vite-ignore */ helperPath)) as {
+  bundlePlugin: (names: string[]) => Promise<TestBundle>;
+};
 
-// Exercises the bundled CLI, so it only runs after `pnpm build` (which `pnpm check` follows in the PR workflow).
-describe.skipIf(!built)("gantry map (bundled CLI)", () => {
+// Exercises the real CLI entry, bundled from source in beforeAll.
+describe("gantry map (bundled CLI)", () => {
+  let bundle: TestBundle | undefined;
+  let cliJs: string;
   let tmp: string;
   let repo: string;
   let env: NodeJS.ProcessEnv;
   let first: ChildProcess | undefined;
 
-  beforeAll(() => {
+  beforeAll(async () => {
+    bundle = await bundlePlugin(["cli"]);
+    cliJs = join(bundle.home, "dist/cli.js");
     tmp = mkdtempSync(join(tmpdir(), "gantry-map-"));
     repo = join(tmp, "repo");
     execFileSync("git", ["init", "-q", repo]);
     env = { ...process.env, HOME: join(tmp, "home"), CLAUDE_PLUGIN_DATA: join(tmp, "data") };
-  });
+  }, 60_000);
   afterAll(() => {
     first?.kill("SIGINT");
-    rmSync(tmp, { recursive: true, force: true });
+    if (tmp) rmSync(tmp, { recursive: true, force: true });
+    bundle?.cleanup();
   });
 
   it("starts, serves the API, and a second `gantry map` reuses the same server", async () => {
