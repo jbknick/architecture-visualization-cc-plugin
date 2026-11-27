@@ -88,6 +88,16 @@ export function buildMainSnapshot(store: Store, paths: GantryPaths): MainSnapsho
   return buildMainSnapshotChecked(store, paths).snapshot;
 }
 
+/** At most 200 UTF-16 units (the schema counts those), never splitting a surrogate pair. */
+function cutLabel(s: string, max = 200): string {
+  let out = "";
+  for (const ch of s) {
+    if (out.length + ch.length > max) break;
+    out += ch;
+  }
+  return out;
+}
+
 /** True when `s` holds a line break or another control character (C0, DEL, C1, line and paragraph separators). */
 function hasControl(s: string): boolean {
   for (const ch of s) {
@@ -144,10 +154,10 @@ export function buildMainSnapshotChecked(
     .effectiveAdapterNodes()
     .filter((n) => inRepo(n.id, repo))
     .map((n) => {
-      const label = n.label.trim();
-      const bad = hasControl(label);
+      // The control check runs on the raw label: trimming first would drop a leading or trailing line break unseen.
+      const bad = hasControl(n.label);
       if (bad) heldBack += 1;
-      return { n, label: bad ? "" : label.slice(0, 200) };
+      return { n, label: bad ? "" : cutLabel(n.label.trim()) };
     })
     .map(({ n, label }) => ({
       id: n.id,

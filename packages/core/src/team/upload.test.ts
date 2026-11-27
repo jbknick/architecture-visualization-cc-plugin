@@ -300,6 +300,28 @@ describe("adapter labels", () => {
     expect(JSON.stringify(snapshot)).not.toContain("secretCode");
     expect(warnings).toEqual(["adapter nodes: 1 label(s) with a line break or control character sent empty"]);
   });
+  it.each([
+    "\nreturn secretCode(1);",
+    "return secretCode(1);\n",
+    "\r\treturn secretCode(1);",
+    "x\u2028",
+    "\u2029x",
+  ])("sends a label with an edge line break or control character empty, with the warning (%j)", (label) => {
+    const { snapshot, warnings } = buildMainSnapshotChecked(patched(label), paths);
+    expect(snapshot.adapter_nodes.map((n) => n.label)).toEqual([""]);
+    expect(warnings).toEqual(["adapter nodes: 1 label(s) with a line break or control character sent empty"]);
+  });
+  it("cuts a label by code points: an astral character at position 200 is kept whole or left out, never split", () => {
+    const { snapshot } = buildMainSnapshotChecked(patched(`${"a".repeat(199)}\u{1F600}b`), paths);
+    const label = snapshot.adapter_nodes[0]?.label as string;
+    expect(label).toBe("a".repeat(199));
+    expect(label.length).toBeLessThanOrEqual(200);
+    const fits = buildMainSnapshotChecked(patched(`${"a".repeat(198)}\u{1F600}b`), paths).snapshot
+      .adapter_nodes[0]?.label as string;
+    expect(fits).toBe(`${"a".repeat(198)}\u{1F600}`);
+    expect(fits.length).toBe(200);
+    expect(JSON.parse(JSON.stringify(fits))).toBe(fits);
+  });
   it("keeps a one-line label, trimmed and cut at 200 characters", () => {
     const { snapshot, warnings } = buildMainSnapshotChecked(patched(`  ${"a".repeat(300)}  `), paths);
     expect(snapshot.adapter_nodes[0]?.label).toBe("a".repeat(200));
