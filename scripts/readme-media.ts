@@ -280,7 +280,11 @@ async function save(page: Page, name: string) {
   const file = join(out, `${name}.png`);
   // The curation overlay loads after the first paint: the top bar's `Saved view` control (and the inspector's
   // Rename / Hide / Group row) appear with it, so a shot waits for it.
-  await page.getByRole("combobox", { name: "Saved view" }).waitFor({ timeout: 30_000 });
+  // With a team cache (the mock's `team` scenario) the control is a menu button instead of a select.
+  await page
+    .getByRole("combobox", { name: "Saved view" })
+    .or(page.getByRole("button", { name: "Saved view" }))
+    .waitFor({ timeout: 30_000 });
   let png = await page.screenshot({ animations: "disabled" });
   let note = "";
   if (png.length > 400 * 1024) {
@@ -414,6 +418,20 @@ async function stills(browser: Browser, mockBase: string) {
     await p.getByTestId("team-rings").waitFor();
     await settle(p);
     await save(p, "team-layer");
+    await p.context().close();
+  }
+  if (want("team-views")) {
+    // The mock's `team` scenario again: the saved-view menu with one view of your own and the team's views under the
+    // `Team` heading, the default marked. The own view is saved in the mock's memory for the shot and taken out after.
+    const p = await newPage(browser, "light", true);
+    const spec = { view: "project-map", level: "files", hidden: [], groups: [], filters: {} };
+    await p.request.put(`${mockBase}/api/overlay/views/api-trace`, { data: { name: "Api trace", spec } });
+    await openMap2d(p, mockBase, "files", "&scenario=team&saved=ownership-map");
+    await p.getByRole("button", { name: "Saved view" }).click();
+    await p.getByRole("menu", { name: "Saved views" }).waitFor();
+    await settle(p);
+    await save(p, "team-views");
+    await p.request.delete(`${mockBase}/api/overlay/views/api-trace`);
     await p.context().close();
   }
   if (want("city-workspaces")) {

@@ -5,6 +5,7 @@ import { ApiError, api } from "./api.ts";
 import { Inspector } from "./components/Inspector.tsx";
 import { LeftPanel } from "./components/LeftPanel.tsx";
 import { StatusBar } from "./components/StatusBar.tsx";
+import { TeamViewBar } from "./components/TeamViewBar.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { Button } from "./components/ui/button.tsx";
 import { useViewData } from "./hooks.ts";
@@ -156,7 +157,10 @@ export function App() {
         route={route}
         onRouteChange={navigate}
       />
-      <main className="center">{center}</main>
+      <main className="center">
+        <TeamViewBar />
+        {center}
+      </main>
       {route.sel && <Inspector nodes={nodes} review={needsFocus ? null : (data?.review ?? null)} />}
       <StatusBar
         meta={meta}

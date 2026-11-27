@@ -46,7 +46,10 @@ const server = createServer(async (req, res) => {
     );
     return;
   }
-  if (req.method !== "GET" && url.pathname.startsWith("/api/overlay/")) {
+  if (
+    req.method !== "GET" &&
+    (url.pathname.startsWith("/api/overlay/") || url.pathname.startsWith("/api/team/"))
+  ) {
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk as Buffer);
     let parsed: unknown = null;

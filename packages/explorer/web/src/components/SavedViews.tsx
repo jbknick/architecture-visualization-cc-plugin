@@ -4,8 +4,10 @@ import { uniqueId, viewFromRoute } from "../curation.ts";
 import { useOverlay } from "../overlayStore.ts";
 import { emptyRoute } from "../route.ts";
 import { useStore } from "../store.tsx";
+import { rememberView, useTeamViews } from "../teamViewsStore.ts";
 import { NameDialog } from "./NameDialog.tsx";
 import Dialog from "./smoothui/dialog/index.tsx";
+import { TeamViewsMenu } from "./TeamViewsMenu.tsx";
 import { Button } from "./ui/button.tsx";
 import { NativeSelect } from "./ui/native-select.tsx";
 
@@ -14,11 +16,13 @@ const RESET = "\u0000reset";
 
 /**
  * The saved-view switcher of the top bar: the saved views by name, then `Save view…` (the current picture under a
- * name) and `Reset curation…` (drops every label, hidden part, group and saved view after a confirmation).
+ * name) and `Reset curation…` (drops every label, hidden part, group and saved view after a confirmation). With a team
+ * cache for the repo the select becomes a menu with a `Team` heading (`TeamViewsMenu`); without one it is this select.
  */
 export function SavedViews() {
   const { state, view, navigate, writeOverlay } = useStore();
   const overlay = useOverlay();
+  const { data: team, loadedAt } = useTeamViews();
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
@@ -35,11 +39,15 @@ export function SavedViews() {
       if (picked) navigate({ ...emptyRoute, view: picked.spec.view, saved: picked.id });
     }
   };
+  /** A pick in the team menu: the views are the merged list (the team's and the person's own). */
+  const onPickMerged = (id: string) => {
+    const picked = team?.views.find((v) => v.id === id);
+    if (!picked) return;
+    rememberView(id);
+    navigate({ ...emptyRoute, view: picked.spec.view, saved: picked.id });
+  };
   const save = (name: string) => {
-    const id = uniqueId(
-      name,
-      overlay.views.map((v) => v.id),
-    );
+    const id = uniqueId(name, [...overlay.views.map((v) => v.id), ...(team?.views.map((v) => v.id) ?? [])]);
     if (id === null || view === null)
       return Promise.reject(new Error("A view name needs at least one letter or digit."));
     return writeOverlay(() =>
@@ -61,22 +69,33 @@ export function SavedViews() {
 
   return (
     <>
-      <NativeSelect
-        size="sm"
-        className="saved-views"
-        aria-label="Saved view"
-        value={route.saved && overlay.views.some((v) => v.id === route.saved) ? route.saved : ""}
-        onChange={(e) => onPick(e.target.value)}
-      >
-        <option value="">Saved views</option>
-        {overlay.views.map((v) => (
-          <option key={v.id} value={v.id}>
-            {v.name}
-          </option>
-        ))}
-        <option value={SAVE}>Save view…</option>
-        <option value={RESET}>Reset curation…</option>
-      </NativeSelect>
+      {team ? (
+        <TeamViewsMenu
+          team={team}
+          loadedAt={loadedAt}
+          current={route.saved}
+          onPick={onPickMerged}
+          onSave={() => onPick(SAVE)}
+          onReset={() => onPick(RESET)}
+        />
+      ) : (
+        <NativeSelect
+          size="sm"
+          className="saved-views"
+          aria-label="Saved view"
+          value={route.saved && overlay.views.some((v) => v.id === route.saved) ? route.saved : ""}
+          onChange={(e) => onPick(e.target.value)}
+        >
+          <option value="">Saved views</option>
+          {overlay.views.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name}
+            </option>
+          ))}
+          <option value={SAVE}>Save view…</option>
+          <option value={RESET}>Reset curation…</option>
+        </NativeSelect>
+      )}
       <NameDialog
         open={saving}
         title="Save view"

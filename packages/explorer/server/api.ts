@@ -24,7 +24,7 @@ import {
 import { HttpError } from "./errors.js";
 import { getLayout } from "./layout.js";
 import { applyOverlay } from "./overlay.js";
-import { teamLayer } from "./team.js";
+import { teamLayer, teamOverlay, teamViews } from "./team.js";
 import type { ApiContext, ViewLevel, ViewModule, ViewParams } from "./types.js";
 import { adapterNodeBody } from "./views/adapterNode.js";
 import { getView, listViews } from "./views/index.js";
@@ -87,8 +87,10 @@ export function handleApi(ctx: ApiContext, pathname: string, query: URLSearchPar
       if (segments.length > 2) throw new HttpError(404, "Unknown API route");
       return { ...readOverlay(ctx.store), unresolved: listUnresolved(ctx.store) };
     case "team":
-      if (segments[2] !== "layer" || segments.length > 3) throw new HttpError(404, "Unknown API route");
-      return teamLayer(ctx);
+      if (segments.length > 3) throw new HttpError(404, "Unknown API route");
+      if (segments[2] === "layer") return teamLayer(ctx);
+      if (segments[2] === "views") return teamViews(ctx);
+      throw new HttpError(404, "Unknown API route");
     default:
       throw new HttpError(404, "Unknown API route");
   }
@@ -136,7 +138,7 @@ function view(ctx: ApiContext, id: string, query: URLSearchParams) {
   const mod = getView(id);
   if (!mod) throw new HttpError(404, `Unknown view: ${id}`);
   if (!isEnabled(ctx, mod)) throw new HttpError(404, `View disabled: ${id}`);
-  const state = readOverlay(ctx.store);
+  const state = teamOverlay(ctx, readOverlay(ctx.store));
   // A saved view's level, focus and filters are the defaults; query parameters given explicitly win.
   let spec: FilterSpec | undefined;
   const savedId = query.get("saved");
