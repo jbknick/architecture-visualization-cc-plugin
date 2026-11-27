@@ -63,7 +63,7 @@ const signIn = () => {
 };
 
 describe("help", () => {
-  it("lists the four subcommands", () => {
+  it("lists the subcommands", () => {
     const program = new Command().name("gantry");
     registerTeam(program);
     const team = program.commands.find((c) => c.name() === "team");
@@ -81,6 +81,8 @@ describe("help", () => {
         status [options]  Show the server, organisation, user and repo, whether the
                           server answers, and the team cache
         logout [options]  Remove the stored sign-in for a server
+        publish           Send a local view or group to the team
+        unpublish         Remove a view or group the team has published
         help [command]    display help for command
       "
     `);

@@ -69,6 +69,7 @@ describe("no hook reaches the network through the team cache", () => {
       .map(rel)
       .sort();
     expect(callers).toEqual([
+      join("cli", "src", "commands", "team-publish.ts"),
       join("cli", "src", "commands", "team.ts"),
       join("core", "src", "team", "cache.ts"),
       join("mcp", "src", "team-pull.ts"),
@@ -94,6 +95,7 @@ const READERS = new Set([
   "readChangeSetsTouching",
   "readTeamGroups",
   "readTeamViews",
+  "readTeamSetting",
   "cacheAgeSeconds",
   "readCacheSummary",
   "teamCachePath",
@@ -248,6 +250,7 @@ describe("the hooks' import graph", () => {
       .map(rel)
       .sort();
     expect(callers).toEqual([
+      join("cli", "src", "commands", "team-publish.ts"),
       join("cli", "src", "commands", "team.ts"),
       join("core", "src", "team", "cache.ts"),
       join("core", "src", "team", "client.ts"),

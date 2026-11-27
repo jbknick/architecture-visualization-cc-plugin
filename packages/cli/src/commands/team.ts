@@ -18,6 +18,7 @@ import {
 } from "@gantry/core";
 import type { Command } from "commander";
 import { EXIT_ERROR, EXIT_OK, fail, resolveCliPaths, writeStdout } from "./shared.js";
+import { type PublishKind, teamPublish } from "./team-publish.js";
 
 /** Everything a team command needs from outside, so a test can run it against the fake server with no process. */
 export interface TeamContext {
@@ -348,4 +349,29 @@ export function registerTeam(program: Command): void {
     .description("Remove the stored sign-in for a server")
     .option("--server <url>", "the team server (default: GANTRY_SERVER, then team.server)")
     .action((opts: { server?: string }) => run((ctx) => teamLogout(ctx, opts))());
+
+  for (const action of ["publish", "unpublish"] as const) {
+    const group = team
+      .command(action)
+      .description(
+        action === "publish"
+          ? "Send a local view or group to the team"
+          : "Remove a view or group the team has published",
+      );
+    for (const kind of ["view", "group"] as const satisfies readonly PublishKind[]) {
+      group
+        .command(`${kind} <id>`)
+        .description(
+          action === "publish"
+            ? `Send the local ${kind} <id> to the team`
+            : `Remove the ${kind} <id> from the team (it must also exist locally)`,
+        )
+        .option("--json", "print one JSON line")
+        .action((id: string, opts: { json?: boolean }) =>
+          run((ctx) =>
+            teamPublish(ctx, { action, kind, id, ...(opts.json === true ? { json: true } : {}) }),
+          )(),
+        );
+    }
+  }
 }

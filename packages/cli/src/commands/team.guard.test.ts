@@ -25,11 +25,12 @@ describe("hooks never use the team client", () => {
   });
 
   for (const file of files) {
-    it(`${relative(join(here, "..", ".."), file)} does not import team/client or pullTeamCache`, () => {
+    it(`${relative(join(here, "..", ".."), file)} does not import team/client, pullTeamCache or the publish functions`, () => {
       const text = readFileSync(file, "utf8");
       expect(text).not.toMatch(/team\/client/);
       expect(text).not.toMatch(/\bteamClient\b/);
       expect(text).not.toMatch(/\bpullTeamCache\b/); // hooks may import only the cache readers
+      expect(text).not.toMatch(/\b(?:un)?publish(?:View|Group)\b/); // publishing is `gantry team publish` only
     });
   }
 });
