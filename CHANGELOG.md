@@ -2,6 +2,21 @@
 
 One section per release, newest first. Written by `pnpm release`.
 
+## 0.3.0 - 2026-11-27
+
+- gantry upload --dry-run prints exactly what would be sent and contacts no server; --summary shows counts and sizes per field (#443)
+- Descriptions written on one machine fill in on another: a lookup by content key, gantry team sync-descriptions and the start-up pull (#444)
+- The pull request comment gains a Team boundaries section: edges from a changed function into a group its team group does not allow, from the team server's groups (gantry team boundaries) (#442)
+- Team layer: every open pull request on the project map with its blast radius, filtered by person (#441)
+- gantry upload --descriptions sends the descriptions written on this machine to the organisation, complete (#440)
+- The Action uploads on a push to the default branch and on pull request events, skips forks, and never fails the job (#439)
+- Team boundaries in the end-of-turn note: an edit that uses a group the team has not allowed is named, from the local cache (#438)
+- gantry upload: send the main snapshot or a pull request's change set, or close a change set, and report the result (#437)
+- Shared team views and groups: published ones merge into the local ones, a default view is read, and gantry team publish sends or removes one (#436)
+- Upload payloads: the main snapshot and a pull request's change set, byte-stable from the index, with a guard proving they carry no source (#435)
+- Team cache: the MCP server and gantry team status pull the team's open work into team-cache.db; hooks only read it (#434)
+- gantry team login, link, status and logout: connect a checkout to a team server (#433)
+
 ## 0.2.0 - 2026-11-27
 
 - Release: a @gantry/protocol tarball with its checksum beside the CLI tarball (#431)
