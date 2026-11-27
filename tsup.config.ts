@@ -7,6 +7,8 @@ export default defineConfig({
     mcp: "packages/mcp/src/main.ts",
     // The pull request comment script of the GitHub Action (#282); only node built-ins, so it needs no external.
     action: "action/src/main.ts",
+    // The upload step of the Action: sends the main graph or a pull request's change set to a team server.
+    upload: "action/src/upload-main.ts",
   },
   outDir: "plugin/dist",
   format: ["esm"],

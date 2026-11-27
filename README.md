@@ -198,6 +198,8 @@ jobs:
 
 The comment is a summary, capped well below GitHub's 65,536-character limit, never the raw review JSON. Without a committed `.gantry/recipe.json` the comment says the radius is structural only. A pull request from a fork gets no comment (its token is read-only); the same text goes to the job summary and the job stays green, and so does any run whose token is refused. The Action fails open: if the install, the checksum check, the index or the review goes wrong, the step logs a warning and exits 0, and the pull request's one comment is updated to say the analysis failed and why (a checksum mismatch is logged as an error and the tarball is never run). A cold index takes about a minute per 1,000 files on a standard runner (about 5 to 6 minutes at 10,000 files). Inputs, behaviour and limits are in [`action/README.md`](action/README.md).
 
+The same Action can also send the graph to a team server, when you set the three inputs `team-server`, `team-org` and `team-token` (all empty by default, so nothing is uploaded): a push to the default branch uploads the graph of that branch, a pull request event uploads its change set, a closed pull request tells the server it closed and whether it merged, and a pull request from a fork uploads nothing. A failed upload is one warning line and never fails the job. What is sent is listed under [What is uploaded and what is not](#what-is-uploaded-and-what-is-not); the workflow is in [`action/README.md`](action/README.md#uploading-to-a-team-server).
+
 ## Commands
 
 Run as `node <path>/plugin/dist/cli.js <command>`. Every command below exists today (`--help` on each shows its options).

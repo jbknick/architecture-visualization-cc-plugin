@@ -30,6 +30,18 @@ inputs:
     description: "Head of the range to review. Default: the pull request's head commit."
     required: false
     default: ""
+  team-server:
+    description: "URL of your team server. With team-org and team-token it makes the Action upload the graph of the default branch and each pull request's change set. Empty (the default): nothing is uploaded."
+    required: false
+    default: ""
+  team-org:
+    description: "Your organisation's slug on the team server. Needed with team-server and team-token."
+    required: false
+    default: ""
+  team-token:
+    description: "The team's CI token. Store it as a secret. Pull requests from forks never get it: they upload nothing."
+    required: false
+    default: ""
 
 outputs:
   comment:
@@ -98,7 +110,7 @@ runs:
 
     - name: Index the checkout
       id: index
-      if: steps.install.outputs.failed == ''
+      if: steps.install.outputs.failed == '' && github.event.action != 'closed'
       shell: bash
       env:
         GANTRY_HOME: ${{ steps.install.outputs.home }}
@@ -114,7 +126,7 @@ runs:
 
     - name: Embed code vectors
       id: embed
-      if: inputs.embed == 'true' && steps.install.outputs.failed == '' && steps.index.outputs.failed == ''
+      if: inputs.embed == 'true' && steps.install.outputs.failed == '' && steps.index.outputs.failed == '' && github.event.action != 'closed' && (github.event.pull_request || (inputs.base != '' && inputs.head != ''))
       shell: bash
       env:
         GANTRY_HOME: ${{ steps.install.outputs.home }}
@@ -130,7 +142,7 @@ runs:
 
     - name: Comment on the pull request
       id: comment
-      if: ${{ !cancelled() }}
+      if: ${{ !cancelled() && github.event.action != 'closed' && (github.event.pull_request || (inputs.base != '' && inputs.head != '')) }}
       shell: bash
       env:
         GANTRY_HOME: ${{ steps.install.outputs.home }}
@@ -157,3 +169,41 @@ runs:
         fi
         export GANTRY_BIN="$GANTRY_HOME/bin/gantry"
         node "$GANTRY_HOME/dist/action.js"
+
+    # Sends the graph to a team server when team-server, team-org and team-token are all set. Every event value reaches
+    # the script through the environment, never through the text of the script. It fails open: a failed upload is one
+    # warning line. Pull requests from forks upload nothing (decided in upload.ts, before anything is run).
+    - name: Upload to the team server
+      id: upload
+      if: ${{ !cancelled() && inputs.team-server != '' && inputs.team-org != '' && inputs.team-token != '' && steps.install.outputs.failed == '' }}
+      shell: bash
+      env:
+        GANTRY_HOME: ${{ steps.install.outputs.home }}
+        CLAUDE_PLUGIN_DATA: ${{ runner.temp }}/gantry-data
+        GANTRY_SERVER: ${{ inputs.team-server }}
+        GANTRY_ORG: ${{ inputs.team-org }}
+        GANTRY_TOKEN: ${{ inputs.team-token }}
+        GANTRY_EVENT: ${{ github.event_name }}
+        GANTRY_EVENT_ACTION: ${{ github.event.action }}
+        GANTRY_REF_NAME: ${{ github.ref_name }}
+        GANTRY_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        GANTRY_PR: ${{ github.event.pull_request.number }}
+        GANTRY_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        GANTRY_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        GANTRY_PR_OWNER: ${{ github.event.pull_request.user.login }}
+        GANTRY_PR_TITLE: ${{ github.event.pull_request.title }}
+        GANTRY_PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        GANTRY_PR_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        GANTRY_PR_CREATED_AT: ${{ github.event.pull_request.created_at }}
+        GANTRY_PR_MERGED: ${{ github.event.pull_request.merged }}
+        GANTRY_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        GANTRY_INDEX_FAILED: ${{ steps.index.outputs.failed }}
+      run: |
+        set -uo pipefail
+        # A tarball from before the upload step has no dist/upload.js: say so and go on, never fail the job.
+        if [ ! -f "$GANTRY_HOME/dist/upload.js" ]; then
+          echo "::warning title=Gantry::the installed Gantry version has no upload step, so nothing was uploaded; use a newer version"
+          exit 0
+        fi
+        node "$GANTRY_HOME/dist/upload.js" || echo "::warning title=Gantry::upload failed: the upload script exited with an error"
+        exit 0

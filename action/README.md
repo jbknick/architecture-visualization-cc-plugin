@@ -45,6 +45,10 @@ Pin `actions/checkout` and this Action by commit SHA if your organisation requir
 | `base`         | no       | Base of the range to review. Default: the pull request's base commit.                                                                                    |
 | `head`         | no       | Head of the range to review. Default: the pull request's head commit. Check out the same commit (as above), because the duplicate check reads `HEAD`.    |
 
+| `team-server` | no | URL of your team server. With `team-org` and `team-token` set, the Action also uploads (see "Uploading to a team server"). Default empty: nothing is uploaded. |
+| `team-org` | no | Your organisation's slug on the team server. Default empty. |
+| `team-token` | no | The team's CI token. Store it as a secret. Default empty. A pull request from a fork never gets it. |
+
 Outputs: `comment` (`created`, `updated`, or `summary` when the review went to the job summary) and `comment-url`.
 
 ## What the Action does
@@ -60,7 +64,55 @@ The comment says when the blast radius is **structural only**: a repository with
 
 The Action fails open: a Gantry error never fails your job. If the install (input check, download, checksum, extraction, `npm ci`), `gantry init`, `gantry embed` or `gantry review` fails, or the review is not JSON, the step logs a `::warning` line and exits 0, and the pull request still gets its one comment (the same one, updated in place) saying that the analysis failed and why, in one short line. A duplicate check that fails is reported inside the normal comment. If the checksum of the download does not match, the log has an `::error` line, the tarball is deleted and never run, and the comment says so.
 
-When the install fails, the release tarball (and so its comment script) is not there. The last step then runs `post-failure.sh` from this Action's own folder, which needs only `bash`, `curl` and `node`: it writes the same failure comment, or the job summary when no comment can be posted. Only a misconfigured workflow (no base and head to review) still fails the job.
+When the install fails, the release tarball (and so its comment script) is not there. The last step then runs `post-failure.sh` from this Action's own folder, which needs only `bash`, `curl` and `node`: it writes the same failure comment, or the job summary when no comment can be posted. A workflow with no pull request and no `base` and `head` inputs (a push, a schedule) simply skips the comment: the comment and embed steps run only when the event carries a pull request, or both inputs are set.
+
+## Uploading to a team server
+
+Uploading is opt-in. With `team-server`, `team-org` and `team-token` all set, a last step (`Upload to the team server`) runs after the index and the comment; with any of them empty the step does not run and nothing is sent. No source leaves the runner: the upload carries what [What is uploaded and what is not](../README.md#what-is-uploaded-and-what-is-not) lists. What it sends depends on the event:
+
+| Event                                              | What happens                                                                                                                                                                                               |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `push` to the default branch                       | uploads the graph of that branch (`gantry upload --force-main`)                                                                                                                                            |
+| `push` to another branch                           | `upload skipped: push to <branch> is not the default branch (<default>)`                                                                                                                                   |
+| `pull_request` `opened`, `synchronize`, `reopened` | uploads that pull request's change set (`gantry upload --pr <n> --base <sha> --head <sha>`)                                                                                                                |
+| `pull_request` `closed`                            | tells the server the pull request closed, and whether it was merged (`--close`, with `--merged` when it was); the index, embed and comment steps are skipped, so a close costs the install and one request |
+| `pull_request` from a fork                         | `fork: upload skipped`: nothing is sent, and the token is not used                                                                                                                                         |
+| any other action or event                          | `upload skipped: ... does not upload`                                                                                                                                                                      |
+
+On a push there is nothing to review, so the comment and embed steps do not run; the index does, because the upload needs it. If the index failed, a push or a pull request update uploads nothing (`upload skipped: the index failed`); a close still goes through. The step never fails the job: an upload that does not work logs one `::warning title=Gantry::upload failed: <reason>` line, with the token never in it. Store the three values as secrets (the server URL and organisation are not secret, but then they are one place to change):
+
+```yaml
+name: gantry
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  gantry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: jbknick/architecture-visualization-cc-plugin/action@v0.3.0
+        with:
+          version: "0.3.0"
+          sha256: "<the checksum from gantry-0.3.0.tgz.sha256>"
+          team-server: ${{ secrets.GANTRY_SERVER }}
+          team-org: ${{ secrets.GANTRY_ORG }}
+          team-token: ${{ secrets.GANTRY_TOKEN }}
+```
+
+The upload step first ships in v0.3.0; an earlier version installs fine but skips the upload with a warning.
+
+Use the `pull_request` event, not `pull_request_target`: a fork's run must not get the secrets, and GitHub does not pass them to a `pull_request` run from a fork, so the three inputs are empty there as well.
 
 ## Pull requests from forks
 
