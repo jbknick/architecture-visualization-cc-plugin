@@ -1,18 +1,20 @@
-// End to end for the team boundaries section: the built script (plugin/dist/action.js) runs the real CLI
+// End to end for the team boundaries section: the script (action/src/main.ts, bundled here) runs the real CLI
 // (plugin/bin/gantry) on a copy of fixtures/overlay-groups indexed at a head commit whose function in src/orders/ now
 // calls one in src/catalog/, against the fake protocol server (holding the fixture's two groups) and the fake GitHub
-// API. Run `pnpm build` first. No network beyond 127.0.0.1.
+// API. Bundled from source in beforeAll. No network beyond 127.0.0.1.
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Group } from "../../packages/core/src/index.js";
 import { type FakeServer, startFakeServer } from "../../packages/protocol/src/testing/index.js";
+import { bundlePlugin, type TestBundle } from "./testBundle.js";
 import { type FakeGithub, startFakeGithub } from "./testkit.js";
 
 const root = join(import.meta.dirname, "../..");
-const home = join(root, "plugin");
+let home: string;
+let bundle: TestBundle;
 const REPO = "acme/overlay-groups";
 const GITHUB_TOKEN = "ghs_e2e-github-3f6a";
 const TEAM_TOKEN = "gct_e2e-team-8c41";
@@ -95,10 +97,9 @@ const teamEnv = (): Record<string, string> => ({
   GANTRY_TEAM_TOKEN: TEAM_TOKEN,
 });
 
-beforeAll(() => {
-  for (const f of [join(home, "dist/action.js"), join(home, "dist/cli.js"), join(home, "bin/gantry")]) {
-    if (!existsSync(f)) throw new Error(`${f} is missing: run pnpm build first`);
-  }
+beforeAll(async () => {
+  bundle = await bundlePlugin(["cli", "action"]);
+  home = bundle.home;
   work = mkdtempSync(join(tmpdir(), "gantry-team-boundaries-e2e-"));
   mkdirSync(join(work, "home"));
   dir = join(work, "overlay-groups");
@@ -121,7 +122,10 @@ beforeAll(() => {
   head = git(dir, "rev-parse", "HEAD");
 }, 60_000);
 
-afterAll(() => rmSync(work, { recursive: true, force: true }));
+afterAll(() => {
+  rmSync(work, { recursive: true, force: true });
+  bundle.cleanup();
+});
 
 beforeEach(async () => {
   data = mkdtempSync(join(work, "data-"));

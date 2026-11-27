@@ -18,8 +18,11 @@ function qualifyFocus(repo: string, focus: string): string {
 /** Parts of the URL that are set by other arguments; a filter must not override them. */
 const RESERVED_FILTER_KEYS = new Set(["focus", "saved", "t", "view"]);
 
-/** `gantry` CLI bundle: next to the MCP bundle in `plugin/dist/`, or (running from source) at the repo's `plugin/dist/`. */
+/** `gantry` CLI bundle: GANTRY_CLI_BUNDLE if set, else next to the MCP bundle in `plugin/dist/`, or (running from source) at the repo's `plugin/dist/`. */
 function cliPath(): string | undefined {
+  // A test bundles the CLI from source and points here, so it never depends on a built plugin/dist.
+  const override = process.env.GANTRY_CLI_BUNDLE;
+  if (override && existsSync(override)) return override;
   const here = dirname(fileURLToPath(import.meta.url));
   return [join(here, "cli.js"), join(here, "..", "..", "..", "..", "plugin", "dist", "cli.js")].find((p) =>
     existsSync(p),

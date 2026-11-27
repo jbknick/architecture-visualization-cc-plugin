@@ -1,18 +1,20 @@
-// End to end for the upload step: the built script (plugin/dist/upload.js) runs the real CLI (plugin/bin/gantry)
+// End to end for the upload step: the script (action/src/upload-main.ts, bundled here) runs the real CLI (plugin/bin/gantry)
 // against the fake protocol server, on a copy of fixtures/pnpm-turbo, for fake GitHub event files of a push, a pull
-// request, a closed and merged pull request and a fork. Run `pnpm build` first. No network beyond 127.0.0.1.
+// request, a closed and merged pull request and a fork. Bundled from source in beforeAll. No network beyond 127.0.0.1.
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, request, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { type FakeServer, startFakeServer } from "../../packages/protocol/src/testing/index.js";
+import { bundlePlugin, type TestBundle } from "./testBundle.js";
 
 const root = join(import.meta.dirname, "../..");
-const home = join(root, "plugin");
-const script = join(home, "dist/upload.js");
+let home: string;
+let script: string;
+let bundle: TestBundle;
 const REPO = "fixture/pnpm-turbo";
 const TOKEN = "gct_e2e-5d2a9b1f";
 
@@ -149,9 +151,9 @@ const pullRequest = (action: string, over: { merged?: boolean; headRepo?: string
 });
 
 beforeAll(async () => {
-  for (const f of [script, join(home, "dist/cli.js")]) {
-    if (!existsSync(f)) throw new Error(`${f} is missing: run pnpm build first`);
-  }
+  bundle = await bundlePlugin(["cli", "upload"]);
+  home = bundle.home;
+  script = join(home, "dist/upload.js");
   work = mkdtempSync(join(tmpdir(), "gantry-upload-e2e-"));
   mkdirSync(join(work, "home"));
   const dir = join(work, "pnpm-turbo");
@@ -177,7 +179,10 @@ beforeAll(async () => {
   fx = { dir, main, feature };
 }, 60_000);
 
-afterAll(() => rmSync(work, { recursive: true, force: true }));
+afterAll(() => {
+  rmSync(work, { recursive: true, force: true });
+  bundle.cleanup();
+});
 
 beforeEach(async () => {
   data = mkdtempSync(join(work, "data-"));
