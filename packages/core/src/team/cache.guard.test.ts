@@ -380,12 +380,13 @@ describe("the description sync", () => {
     }
   });
 
-  it("is called only by gantry team and the MCP server's start-up, and no hook file mentions it", () => {
+  it("is called only by gantry team, gantry init and the MCP server's start-up, and no hook file mentions it", () => {
     const mentions = all
       .filter((f) => /\b(syncTeamDescriptions|syncDescriptionsAtStart)\b/.test(read(f)))
       .map(rel)
       .sort();
     expect(mentions).toEqual([
+      join("cli", "src", "commands", "init.ts"),
       join("cli", "src", "commands", "team.ts"),
       join("core", "src", "team", "descriptionSync.ts"),
       join("mcp", "src", "descriptionSync.ts"),

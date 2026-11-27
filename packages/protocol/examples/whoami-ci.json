@@ -3,5 +3,5 @@
   "org": "acme",
   "repo": "fixture/pnpm-turbo",
   "repo_connected": true,
-  "protocol": 1
+  "protocol": 2
 }

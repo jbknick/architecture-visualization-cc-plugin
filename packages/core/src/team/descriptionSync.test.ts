@@ -108,13 +108,14 @@ describe("syncDescriptions", () => {
     for (const k of keys.slice(0, 2)) fake.state.descriptions.set(k, wire(k));
     const rec = recorder();
     const result = await syncDescriptions(ix.store, clientFor(fake, rec.fetch), REPO);
-    expect(result).toEqual({ asked: keys.length, filled: 2 });
+    expect(result).toEqual({ asked: keys.length, filled: 2, dropped: 0 });
     expect(descriptionRows(ix.store).map((r) => r.content_key)).toEqual([...keys.slice(0, 2)].sort());
     expect(rec.lookups()).toBe(1);
     // The next run asks about the functions still without one, and finds nothing.
     expect(await syncDescriptions(ix.store, clientFor(fake), REPO)).toEqual({
       asked: keys.length - 2,
       filled: 0,
+      dropped: 0,
     });
   });
 
@@ -148,7 +149,7 @@ describe("syncDescriptions", () => {
     );
     const rec = recorder();
     const result = await syncDescriptions(store, clientFor(fake, rec.fetch), REPO);
-    expect(result).toEqual({ asked: 1201, filled: 0 });
+    expect(result).toEqual({ asked: 1201, filled: 0, dropped: 0 });
     expect(rec.lookups()).toBe(3);
     const limited = await syncDescriptions(store, clientFor(fake, rec.fetch), REPO, { limit: 10 });
     expect(limited.asked).toBe(10);
@@ -180,8 +181,53 @@ describe("syncDescriptions", () => {
       serverProtocol: () => PROTOCOL_VERSION,
       lookupDescriptions: answer,
     };
-    expect(await syncDescriptions(ix.store, client, REPO, { limit: 1 })).toEqual({ asked: 1, filled: 1 });
+    expect(await syncDescriptions(ix.store, client, REPO, { limit: 1 })).toEqual({
+      asked: 1,
+      filled: 1,
+      dropped: 0,
+    });
     expect(descriptionRows(ix.store).map((r) => r.content_key)).toEqual([asked]);
+  });
+
+  it("accepts a record with a key this version does not know, and drops a bad record alone", async () => {
+    const ix = await fixture();
+    const [withExtra, bad, good] = functionKeys(ix.store) as [string, string, string];
+    const answer = async () => ({
+      descriptions: [
+        { ...wire(withExtra), added_later: "x" },
+        { ...wire(bad), search_terms: [] },
+        "not an object",
+        wire(good),
+      ],
+    });
+    const lines: string[] = [];
+    const client = {
+      ready: async () => {},
+      serverProtocol: () => PROTOCOL_VERSION,
+      lookupDescriptions: answer,
+    };
+    const result = await syncDescriptions(ix.store, client, REPO, { log: (l) => lines.push(l) });
+    expect(result).toMatchObject({ filled: 2, dropped: 2 });
+    expect(descriptionRows(ix.store).map((r) => r.content_key)).toEqual([withExtra, good].sort());
+    expect(lines).toEqual(["dropped 2 description records that did not fit the format"]);
+  });
+
+  it("through the real client an unknown key does not fail the lookup", async () => {
+    const ix = await fixture();
+    const [key] = functionKeys(ix.store) as [string];
+    fake.state.descriptions.set(key, { ...wire(key), added_later: true } as Description);
+    expect((await syncDescriptions(ix.store, clientFor(fake), REPO)).filled).toBe(1);
+  });
+
+  it("skips a fallback record and a record with no model, so a pending describe stays pending", async () => {
+    const ix = await fixture();
+    const [fallback, noModel, model] = functionKeys(ix.store) as [string, string, string];
+    fake.state.descriptions.set(fallback, wire(fallback, { provenance: "fallback", model: null }));
+    fake.state.descriptions.set(noModel, wire(noModel, { model: null }));
+    fake.state.descriptions.set(model, wire(model));
+    const result = await syncDescriptions(ix.store, clientFor(fake), REPO);
+    expect(result.filled).toBe(1);
+    expect(descriptionRows(ix.store).map((r) => r.content_key)).toEqual([model]);
   });
 
   it("(e) a server error rejects and leaves the store unchanged", async () => {
