@@ -1,6 +1,7 @@
 export * from "./cache.js";
 export * from "./client.js";
 export * from "./credentials.js";
+export * from "./descriptionUpload.js";
 export * from "./resolve.js";
 export * from "./upload.js";
 export * from "./views.js";

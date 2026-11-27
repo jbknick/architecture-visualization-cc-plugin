@@ -31,9 +31,9 @@ describe("hooks never use the team client", () => {
       expect(text).not.toMatch(/\bteamClient\b/);
       expect(text).not.toMatch(/\bpullTeamCache\b/); // hooks may import only the cache readers
       expect(text).not.toMatch(/\b(?:un)?publish(?:View|Group)\b/); // publishing is `gantry team publish` only
-      expect(text).not.toMatch(/commands\/upload|team\/resolve|upload\.js/);
+      expect(text).not.toMatch(/commands\/upload|team\/resolve|upload\.js|descriptionUpload/);
       expect(text).not.toMatch(
-        /\b(resolveTeamTarget|registerUpload|runUpload|buildUploadParts|serialiseBody)\b/,
+        /\b(resolveTeamTarget|registerUpload|runUpload|buildUploadParts|serialiseBody|uploadDescriptions|descriptionRecords)\b/,
       );
     });
   }
