@@ -229,8 +229,37 @@ function replaceAll(
   }).immediate();
 }
 
-/** Every page of a pull, as `{ changeSets, ... }`; or `undefined` when the server answers 304 to `etag`. */
+/** How often a pull starts over from page 1 after the server answers 409 `conflict` on a later page. */
+const MAX_PULL_RESTARTS = 3;
+
+const isConflict = (err: unknown): boolean =>
+  err instanceof GantryError && err.answer?.status === 409 && err.answer.error === "conflict";
+
+/**
+ * Every page of a pull, as `{ changeSets, ... }`; or `undefined` when the server answers 304 to `etag`. A 409
+ * `conflict` on a page after the first means the change set list changed since page 1: the pull then starts over from
+ * page 1 with no cursor and no `If-None-Match`, at most `MAX_PULL_RESTARTS` times. A 409 on the first page is an error
+ * like any other.
+ */
 async function fetchAll(client: TeamClient, repo: string, etag: string | undefined) {
+  for (let restarts = 0; ; restarts++) {
+    try {
+      return await fetchPages(client, repo, restarts === 0 ? etag : undefined);
+    } catch (err) {
+      if (!(err instanceof PageConflict)) throw err;
+      if (restarts >= MAX_PULL_RESTARTS) throw err.cause;
+    }
+  }
+}
+
+/** A 409 `conflict` on a page after the first. */
+class PageConflict extends Error {
+  constructor(override readonly cause: unknown) {
+    super("the change set list changed during the pull");
+  }
+}
+
+async function fetchPages(client: TeamClient, repo: string, etag: string | undefined) {
   const changeSets = new Map<string, ChangeSetRead>();
   let views: unknown[] = [];
   let groups: unknown[] = [];
@@ -238,10 +267,15 @@ async function fetchAll(client: TeamClient, repo: string, etag: string | undefin
   let newEtag: string | undefined;
   let cursor: string | undefined;
   for (let page = 0; page < MAX_PAGES; page++) {
-    const answer = await client.pullPage(
-      cursor === undefined ? { repo } : { repo, cursor },
-      cursor === undefined ? etag : undefined,
-    );
+    let answer: Awaited<ReturnType<TeamClient["pullPage"]>>;
+    try {
+      answer = await client.pullPage(
+        cursor === undefined ? { repo } : { repo, cursor },
+        cursor === undefined ? etag : undefined,
+      );
+    } catch (err) {
+      throw page > 0 && isConflict(err) ? new PageConflict(err) : err;
+    }
     if (answer.notModified) return undefined;
     if (page === 0) {
       newEtag = answer.etag;
