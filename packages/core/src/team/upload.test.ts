@@ -10,7 +10,9 @@ import { openStore, type Store } from "../store/index.js";
 import {
   buildChangeSet,
   buildMainSnapshot,
+  buildMainSnapshotChecked,
   changeSetRecords,
+  cutNodes,
   cutRadius,
   mergeRadius,
   snapshotRecords,
@@ -195,6 +197,19 @@ describe("buildChangeSet", () => {
     await expect(buildChangeSet(store, paths, noBase as typeof INPUT)).rejects.toThrow(/base_branch/);
   });
 
+  it("accepts an empty head_ref (the schema allows it)", async () => {
+    const { changeSet } = await buildChangeSet(store, paths, { ...INPUT, head_ref: "" });
+    expect(changeSet.head_ref).toBe("");
+  });
+
+  it("passes the warnings of the node cut and the radius cut through", async () => {
+    const { changeSet, warnings } = await buildChangeSet(store, paths, INPUT, { nodes: 1, near: 0 });
+    expect(changeSet.nodes.length).toBe(1);
+    expect(changeSet.nodes_total).toBe(2);
+    expect(changeSet.radius).toEqual([]);
+    expect(warnings).toEqual(["nodes: sent 1 of 2", "radius: sent 0 of 1"]);
+  });
+
   it("gives the change set records in the protocol order: the c record, nodes, radius", async () => {
     const { changeSet } = await buildChangeSet(store, paths, INPUT);
     const records = changeSetRecords(changeSet);
@@ -244,6 +259,53 @@ function changeConsumers(over: Partial<ChangeConsumers>): ChangeConsumers {
     ...over,
   };
 }
+
+describe("cutNodes", () => {
+  const ids = Array.from({ length: 5001 }, (_, i) => `n${String(i).padStart(5, "0")}`);
+  it("sends exactly 5,000 ids with nodes_total and the warning when more are found", () => {
+    const cut = cutNodes(ids);
+    expect(cut.nodes).toEqual(ids.slice(0, 5000));
+    expect(cut.nodes_total).toBe(5001);
+    expect(cut.warning).toBe("nodes: sent 5000 of 5001");
+  });
+  it("sends no total and no warning at exactly 5,000", () => {
+    const cut = cutNodes(ids.slice(0, 5000));
+    expect(cut.nodes.length).toBe(5000);
+    expect(cut).not.toHaveProperty("nodes_total");
+    expect(cut).not.toHaveProperty("warning");
+  });
+});
+
+describe("adapter labels", () => {
+  const patched = (label: string): Store =>
+    Object.create(store, {
+      effectiveAdapterNodes: {
+        value: () => [
+          {
+            id: "route:fixture/pnpm-turbo:@acme/web:GET /x",
+            kind: "route",
+            ws: "ws:fixture/pnpm-turbo:@acme/web",
+            label,
+            fileId: "file:fixture/pnpm-turbo:apps/web/src/lib/slug.ts",
+            data: {},
+          },
+        ],
+      },
+    });
+
+  it("sends a multi-line label empty, with a warning, and never rewrites it into one line", () => {
+    const label = "route(`\n  return secretCode(1);\n`)";
+    const { snapshot, warnings } = buildMainSnapshotChecked(patched(label), paths);
+    expect(snapshot.adapter_nodes.map((n) => n.label)).toEqual([""]);
+    expect(JSON.stringify(snapshot)).not.toContain("secretCode");
+    expect(warnings).toEqual(["adapter nodes: 1 label(s) with a line break or control character sent empty"]);
+  });
+  it("keeps a one-line label, trimmed and cut at 200 characters", () => {
+    const { snapshot, warnings } = buildMainSnapshotChecked(patched(`  ${"a".repeat(300)}  `), paths);
+    expect(snapshot.adapter_nodes[0]?.label).toBe("a".repeat(200));
+    expect(warnings).toEqual([]);
+  });
+});
 
 describe("the radius", () => {
   it("merges by id at the lowest hop, tiers by hop, and marks an id only in hub members as via_hub", () => {
@@ -297,6 +359,27 @@ describe("the radius", () => {
     });
     // potential: 7 total, 1 listed, 4 stood for by the hub: 2 unlisted; hub: 4 total, 1 member: 3 unlisted; direct 4.
     expect(mergeRadius([a]).unlisted).toBe(4 + 2 + 3);
+  });
+
+  it("lowers a hub's hop every time: a shared hub keeps the lowest, whichever change comes first", () => {
+    const deep = changeConsumers({ hubs: [hub("h", 5, [consumer("m1", 5)])] });
+    const shallow = changeConsumers({ hubs: [hub("h", 3, [consumer("m2", 3)])] });
+    for (const order of [
+      [deep, shallow],
+      [shallow, deep],
+    ]) {
+      expect(mergeRadius(order).merged.find((e) => e.id === "h")).toEqual({
+        id: "h",
+        hop: 2,
+        tier: "potential",
+        via_hub: false,
+      });
+    }
+    // The hub node is also a member of another hub, at a deeper hop.
+    const nested = changeConsumers({
+      hubs: [hub("g", 5, [consumer("h", 5)]), hub("h", 3, [consumer("m", 3)])],
+    });
+    expect(mergeRadius([nested]).merged.find((e) => e.id === "h")).toMatchObject({ hop: 2, via_hub: false });
   });
 
   it("cuts to 500 entries for hops 1 to 3 and 2,500 for hop 4 and over, with a total and a warning", () => {

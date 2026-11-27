@@ -85,6 +85,27 @@ function inRepo(id: string, repo: string): boolean {
  * signature; `content_key` is set for function-like kinds only. Byte-stable for one index.
  */
 export function buildMainSnapshot(store: Store, paths: GantryPaths): MainSnapshot {
+  return buildMainSnapshotChecked(store, paths).snapshot;
+}
+
+/** True when `s` holds a line break or another control character (C0, DEL, C1, line and paragraph separators). */
+function hasControl(s: string): boolean {
+  for (const ch of s) {
+    const c = ch.codePointAt(0) as number;
+    if (c < 0x20 || (c >= 0x7f && c <= 0x9f) || c === 0x2028 || c === 0x2029) return true;
+  }
+  return false;
+}
+
+/**
+ * `buildMainSnapshot` with the warnings a command prints to stderr. An adapter label with a line break or another
+ * control character is never rewritten: it is sent empty and counted, so a multi-line label cannot reach the wire.
+ */
+export function buildMainSnapshotChecked(
+  store: Store,
+  paths: GantryPaths,
+): { snapshot: MainSnapshot; warnings: string[] } {
+  const warnings: string[] = [];
   const repo = paths.repo;
   const rootWorkspace = workspaceId(repo, ".");
   const workspaces = store
@@ -118,18 +139,28 @@ export function buildMainSnapshot(store: Store, paths: GantryPaths): MainSnapsho
     .filter((e) => e.kind !== "similar_to" && inRepo(e.src, repo))
     .map((e) => ({ from: e.src, to: e.dst, kind: e.kind }))
     .sort((a, b) => cmp(a.from, b.from) || cmp(a.to, b.to) || cmp(a.kind, b.kind));
+  let heldBack = 0;
   const adapterNodes = store
     .effectiveAdapterNodes()
     .filter((n) => inRepo(n.id, repo))
-    .map((n) => ({
+    .map((n) => {
+      const label = n.label.trim();
+      const bad = hasControl(label);
+      if (bad) heldBack += 1;
+      return { n, label: bad ? "" : label.slice(0, 200) };
+    })
+    .map(({ n, label }) => ({
       id: n.id,
       kind: n.kind,
       workspace: n.ws ?? rootWorkspace,
-      label: n.label.replace(/\s+/g, " ").trim().slice(0, 200),
+      label,
       file_id: n.fileId === "" ? null : n.fileId,
     }))
     .sort(byId);
-  return parseOrThrow("main snapshot", MainSnapshotSchema, {
+  if (heldBack > 0) {
+    warnings.push(`adapter nodes: ${heldBack} label(s) with a line break or control character sent empty`);
+  }
+  const snapshot = parseOrThrow("main snapshot", MainSnapshotSchema, {
     repo,
     sha: headSha(paths),
     workspaces,
@@ -140,6 +171,7 @@ export function buildMainSnapshot(store: Store, paths: GantryPaths): MainSnapsho
     edges,
     adapter_nodes: adapterNodes,
   });
+  return { snapshot, warnings };
 }
 
 /**
@@ -147,16 +179,33 @@ export function buildMainSnapshot(store: Store, paths: GantryPaths): MainSnapsho
  * `reachable_total` is the number of hop-4-and-over ids before the cut, set only when it is more than what is sent.
  * `warning` is `radius: sent <sent> of <known>` when entries are missing, whether the wire or the engine cut them.
  */
-export function cutRadius(r: Radius): { radius: RadiusEntry[]; reachable_total?: number; warning?: string } {
-  const near = r.merged.filter((e) => e.hop < REACHABLE_FIRST_HOP).slice(0, RADIUS_NEAR_CAP);
+export function cutRadius(
+  r: Radius,
+  nearCap = RADIUS_NEAR_CAP,
+  reachableCap = RADIUS_REACHABLE_CAP,
+): { radius: RadiusEntry[]; reachable_total?: number; warning?: string } {
+  const near = r.merged.filter((e) => e.hop < REACHABLE_FIRST_HOP).slice(0, nearCap);
   const farAll = r.merged.filter((e) => e.hop >= REACHABLE_FIRST_HOP);
-  const far = farAll.slice(0, RADIUS_REACHABLE_CAP);
+  const far = farAll.slice(0, reachableCap);
   const radius = [...near, ...far];
   const known = r.merged.length + r.unlisted;
   return {
     radius,
     ...(farAll.length > far.length ? { reachable_total: farAll.length } : {}),
     ...(radius.length < known ? { warning: `radius: sent ${radius.length} of ${known}` } : {}),
+  };
+}
+
+/** The first `cap` ids (sorted), with `nodes_total` and a warning only when something was cut. */
+export function cutNodes(
+  sorted: readonly string[],
+  cap = NODES_CAP,
+): { nodes: string[]; nodes_total?: number; warning?: string } {
+  if (sorted.length <= cap) return { nodes: [...sorted] };
+  return {
+    nodes: sorted.slice(0, cap),
+    nodes_total: sorted.length,
+    warning: `nodes: sent ${cap} of ${sorted.length}`,
   };
 }
 
@@ -238,10 +287,8 @@ export function mergeRadius(consumers: readonly ChangeConsumers[]): Radius {
   }
   for (const c of consumers) {
     for (const h of c.hubs) {
-      if (!hops.has(h.hub)) {
-        ordinary.add(h.hub);
-        lower(h.hub, Math.max(1, h.hop - 1));
-      } else ordinary.add(h.hub);
+      ordinary.add(h.hub);
+      lower(h.hub, Math.max(1, h.hop - 1));
     }
   }
   const merged = [...hops.entries()]
@@ -260,8 +307,10 @@ export async function buildChangeSet(
   store: Store,
   paths: GantryPaths,
   input: ChangeSetInput,
+  /** Cut sizes; a test lowers them. The wire values are the defaults. */
+  caps: { nodes?: number; near?: number; reachable?: number } = {},
 ): Promise<BuiltChangeSet> {
-  if (typeof input.head_ref !== "string" || input.head_ref === "") {
+  if (typeof input.head_ref !== "string") {
     throw new Error("buildChangeSet: head_ref (the pull request's head branch) is required");
   }
   if (typeof input.base_branch !== "string" || input.base_branch === "") {
@@ -274,11 +323,11 @@ export async function buildChangeSet(
   const allNodes = [
     ...new Set([...diff.changes.map((c) => c.id), ...diff.files.map((f) => makeFileId(paths.repo, f.path))]),
   ].sort(cmp);
-  const nodes = allNodes.slice(0, NODES_CAP);
-  if (allNodes.length > NODES_CAP) warnings.push(`nodes: sent ${NODES_CAP} of ${allNodes.length}`);
+  const nodeCut = cutNodes(allNodes, caps.nodes);
+  if (nodeCut.warning !== undefined) warnings.push(nodeCut.warning);
 
   const { merged, unlisted } = mergeRadius(impact.consumers);
-  const cut = cutRadius({ merged, unlisted });
+  const cut = cutRadius({ merged, unlisted }, caps.near, caps.reachable);
   if (cut.warning !== undefined) warnings.push(cut.warning);
 
   const now = input.now ?? new Date().toISOString();
@@ -290,8 +339,8 @@ export async function buildChangeSet(
     ref: `#${input.pr}`,
     head_ref: input.head_ref,
     base_branch: input.base_branch,
-    nodes,
-    ...(allNodes.length > NODES_CAP ? { nodes_total: allNodes.length } : {}),
+    nodes: nodeCut.nodes,
+    ...(nodeCut.nodes_total !== undefined ? { nodes_total: nodeCut.nodes_total } : {}),
     radius: cut.radius,
     ...(cut.reachable_total !== undefined ? { reachable_total: cut.reachable_total } : {}),
     estimated: false,

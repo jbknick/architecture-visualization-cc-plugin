@@ -45,16 +45,21 @@ const LONG_LINE = 40;
 interface Evidence {
   /** Trimmed lines of the fixture's source files that are longer than 40 characters. */
   sourceLines: string[];
-  /** The signatures the store holds for the function-like symbols. */
+  /** Every non-empty signature the store holds (functions, types, interfaces, classes, constants). */
   signatures: string[];
+  /** The raw labels of adapter nodes that hold a line break or control character, as the store has them. */
+  rawLabels: string[];
 }
 
 /** Every problem found in `payload`; an empty list means the payload carries no source. */
 function findLeaks(payload: unknown, evidence: Evidence): string[] {
   const problems: string[] = [];
+  // A short signature is matched as a whole field value; a long one anywhere in the text (below).
+  const shortSignatures = new Set(evidence.signatures.filter((x) => x.length <= LONG_LINE));
   const walk = (value: unknown, at: string): void => {
     if (typeof value === "string") {
       if (/[\r\n]/.test(value)) problems.push(`${at}: a string value holds a newline`);
+      if (shortSignatures.has(value)) problems.push(`${at}: a string value is a whole signature`);
       for (const line of evidence.sourceLines) {
         if (value.includes(line)) problems.push(`${at}: a string value holds a line of the source`);
       }
@@ -77,6 +82,17 @@ function findLeaks(payload: unknown, evidence: Evidence): string[] {
   for (const sig of evidence.signatures) {
     if (text.includes(JSON.stringify(sig).slice(1, -1)))
       problems.push(`a signature occurs in the payload: ${sig}`);
+  }
+  for (const label of evidence.rawLabels) {
+    const collapsed = label.replace(/\s+/g, " ").trim();
+    if (text.includes(JSON.stringify(collapsed).slice(1, -1))) {
+      problems.push("a multi-line adapter label occurs in the payload");
+    }
+    for (const line of label.split(/\r?\n/)) {
+      if (line.trim().length > 8 && text.includes(JSON.stringify(line.trim()).slice(1, -1))) {
+        problems.push("a line of a multi-line adapter label occurs in the payload");
+      }
+    }
   }
   return problems;
 }
@@ -141,12 +157,12 @@ describe.each(cases)("the upload payloads of $name carry no source", (c) => {
       for (const l of text.split(/\r?\n/)) if (l.trim().length > LONG_LINE) lines.add(l.trim());
     }
     const symbols = store.effectiveSymbols();
-    const signatures = new Set(
-      symbols
-        .filter((s) => ["function", "method", "component", "hook"].includes(s.kind) && s.signature.length > 0)
-        .map((s) => s.signature),
-    );
-    evidence = { sourceLines: [...lines], signatures: [...signatures] };
+    const signatures = new Set(symbols.filter((s) => s.signature.length > 0).map((s) => s.signature));
+    const rawLabels = store
+      .effectiveAdapterNodes()
+      .map((n) => n.label)
+      .filter((l) => /[\r\n]/.test(l));
+    evidence = { sourceLines: [...lines], signatures: [...signatures], rawLabels };
 
     const snapshot = buildMainSnapshot(store, paths);
     const { changeSet } = await buildChangeSet(store, paths, {
@@ -239,6 +255,23 @@ describe.each(cases)("the upload payloads of $name carry no source", (c) => {
       const s = snapshot();
       s.files[0] = { ...s.files[0], path: evidence.sourceLines[0] };
       expect(findLeaks(s, evidence)).not.toEqual([]);
+    });
+    it("fails when a short signature of a constant is a whole field value", () => {
+      // The fixtures index no signature for a constant, so the evidence gets one, as a language pack could give it.
+      const konst = "export const SLUG_LIMIT = 80";
+      expect(konst.length <= LONG_LINE).toBe(true);
+      const withConst = { ...evidence, signatures: [...evidence.signatures, konst] };
+      const s = snapshot();
+      s.symbols[0] = { ...s.symbols[0], name: konst };
+      expect(findLeaks(s, withConst)).not.toEqual([]);
+      expect(findLeaks(snapshot(), withConst)).toEqual([]);
+    });
+    it("fails when a multi-line adapter label is flattened into one line", () => {
+      const raw = "route(`\n  return secretCode(1);\n`)";
+      const withLabel = { ...evidence, rawLabels: [raw] };
+      const flat = { adapter_nodes: [{ id: "route:x", label: "route(` return secretCode(1); `)" }] };
+      expect(findLeaks(flat, withLabel)).not.toEqual([]);
+      expect(findLeaks({ adapter_nodes: [{ id: "route:x", label: "" }] }, withLabel)).toEqual([]);
     });
     it("fails when the signature of a function occurs in a value", () => {
       const s = snapshot();
