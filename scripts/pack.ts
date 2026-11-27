@@ -6,8 +6,19 @@
 // URL and checksum. `pnpm release:pack` runs both for the current version; scripts/version.ts calls them from `release()`.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { gzipSync } from "node:zlib";
 
@@ -186,10 +197,30 @@ function files(dir: string, rel = ""): string[] {
 const shipsFromDist = (file: string): boolean =>
   !/\.test\./.test(file) && !/\.map$|\.tsbuildinfo$/.test(file);
 
-function protocolEntries(root: string, version: string): Entry[] {
+/**
+ * Compile packages/protocol with packages/protocol/tsconfig.build.json (no tests) into `outDir`, which is empty, and
+ * return it. Nothing left in packages/protocol/dist by an earlier `tsc -b` is read. Needs the repository's typescript.
+ */
+export function buildProtocol(root: string, outDir: string): string {
+  const config = join(root, PROTOCOL, "tsconfig.build.json");
+  if (!existsSync(config)) throw new Error(`${PROTOCOL}/tsconfig.build.json is missing`);
+  const tsc = join(dirname(createRequire(import.meta.url).resolve("typescript/package.json")), "bin/tsc");
+  try {
+    execFileSync(
+      process.execPath,
+      [tsc, "-p", config, "--composite", "false", "--incremental", "false", "--outDir", outDir],
+      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+  } catch (e) {
+    const out = e as { stdout?: string; stderr?: string };
+    throw new Error(`compiling ${PROTOCOL} failed:\n${out.stdout ?? ""}${out.stderr ?? ""}`);
+  }
+  return outDir;
+}
+
+function protocolEntries(root: string, version: string, dist: string): Entry[] {
   const pkgDir = join(root, PROTOCOL);
-  const dist = join(pkgDir, "dist");
-  if (!existsSync(dist)) throw new Error(`${PROTOCOL}/dist is missing: run pnpm build`);
+  if (!existsSync(dist)) throw new Error(`${PROTOCOL}: the build produced no output directory`);
   const manifest = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8")) as Record<string, unknown>;
   const kept: Record<string, unknown> = {};
   for (const field of PROTOCOL_FIELDS) if (field in manifest) kept[field] = manifest[field];
@@ -216,12 +247,22 @@ function protocolEntries(root: string, version: string): Entry[] {
 }
 
 /**
- * Build dist/gantry-protocol-<version>.tgz and its .sha256 file from the built packages/protocol: package.json (with
+ * Build dist/gantry-protocol-<version>.tgz and its .sha256 file from packages/protocol, compiled fresh from its
+ * tsconfig.build.json into an empty directory (`build` is replaceable for tests): package.json (with
  * `version` set), LICENSE, the non-test files of dist/ and the example payloads, files only, mtime as for the CLI tarball.
  */
-export function packProtocol(root: string, version: string): PackResult {
-  const entries = protocolEntries(root, version);
-  return finish(root, entries, commitTime(root, version), `gantry-protocol-${version}.tgz`);
+export function packProtocol(
+  root: string,
+  version: string,
+  build: (root: string, outDir: string) => string = buildProtocol,
+): PackResult {
+  const scratch = mkdtempSync(join(tmpdir(), "gantry-protocol-build-"));
+  try {
+    const entries = protocolEntries(root, version, build(root, join(scratch, "dist")));
+    return finish(root, entries, commitTime(root, version), `gantry-protocol-${version}.tgz`);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

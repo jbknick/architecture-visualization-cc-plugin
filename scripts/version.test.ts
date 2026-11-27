@@ -38,10 +38,38 @@ function scratch(version = "0.0.1"): string {
     root,
     "package.json",
     version,
-    ',\n  "scripts": { "build": "mkdir -p plugin/dist packages/protocol/dist && echo built > plugin/dist/cli.js && echo built > packages/protocol/dist/index.js" }',
+    ',\n  "scripts": { "build": "mkdir -p plugin/dist && echo built > plugin/dist/cli.js" }',
   );
   writeFileSync(join(root, ".gitignore"), "dist\n");
   writeFileSync(join(root, "LICENSE"), "MIT\n");
+  // a protocol package the release script compiles from its own build config, and another package that must not ship
+  put(root, "packages/protocol/package.json", version, ',\n  "type": "module"');
+  const protocol = JSON.parse(readFileSync(join(root, "packages/protocol/package.json"), "utf8"));
+  protocol.name = "@gantry/protocol";
+  writeFileSync(join(root, "packages/protocol/package.json"), `${JSON.stringify(protocol, null, 2)}\n`);
+  put(root, "packages/protocol/tsconfig.json", null, "");
+  const compilerOptions = {
+    module: "NodeNext",
+    moduleResolution: "NodeNext",
+    target: "ES2023",
+    rootDir: "src",
+    declaration: true,
+  };
+  writeFileSync(
+    join(root, "packages/protocol/tsconfig.json"),
+    JSON.stringify({ compilerOptions, include: ["src"] }),
+  );
+  writeFileSync(
+    join(root, "packages/protocol/tsconfig.build.json"),
+    JSON.stringify({ extends: "./tsconfig.json", exclude: ["src/**/*.test.ts"] }),
+  );
+  mkdirSync(join(root, "packages/protocol/src"), { recursive: true });
+  writeFileSync(join(root, "packages/protocol/src/index.ts"), "export const PROTOCOL_VERSION = 1;\n");
+  writeFileSync(join(root, "packages/protocol/src/index.test.ts"), "export const t: number = 2;\n");
+  mkdirSync(join(root, "packages/other/dist"), { recursive: true });
+  writeFileSync(join(root, "packages/other/dist/x.js"), "// not shipped\n");
+  mkdirSync(join(root, "packages/protocol/dist"), { recursive: true });
+  writeFileSync(join(root, "packages/protocol/dist/stale.js"), "// removed source\n");
   put(root, "scripts/release-deps/package.json", null, ',\n  "dependencies": { "zod": "1.0.0" }');
   writeFileSync(join(root, "scripts/release-deps/package-lock.json"), "{}\n");
   run(root, "add", "-A");
@@ -53,8 +81,6 @@ function scratch(version = "0.0.1"): string {
 function fakeBuild(root: string) {
   mkdirSync(join(root, "plugin/dist"), { recursive: true });
   writeFileSync(join(root, "plugin/dist/cli.js"), "// built\n");
-  mkdirSync(join(root, "packages/protocol/dist"), { recursive: true });
-  writeFileSync(join(root, "packages/protocol/dist/index.js"), "// built\n");
 }
 
 describe("nextVersion", () => {
@@ -144,8 +170,22 @@ describe("release", () => {
 
   it("packs the tarball after tagging and has no remote to push to", () => {
     const root = scratch();
-    const { pack } = release(root, "minor", "2026-11-16", fakeBuild);
+    const { pack, protocol } = release(root, "minor", "2026-11-16", fakeBuild);
     expect(existsSync(pack.tarball)).toBe(true);
+    expect(readFileSync(protocol.sha256File, "utf8")).toBe(`${protocol.sha256}  gantry-protocol-0.1.0.tgz\n`);
+    const files = execFileSync("tar", ["-tzf", protocol.tarball], { encoding: "utf8" }).trim().split("\n");
+    expect(files).toEqual([
+      "package/LICENSE",
+      "package/dist/index.d.ts",
+      "package/dist/index.js",
+      "package/package.json",
+    ]);
+    const out = mkdtempSync(join(tmpdir(), "gantry-release-unpack-"));
+    dirs.push(out);
+    execFileSync("tar", ["-xzf", protocol.tarball, "-C", out]);
+    const pkg = JSON.parse(readFileSync(join(out, "package/package.json"), "utf8"));
+    expect(pkg).toMatchObject({ name: "@gantry/protocol", version: "0.1.0" });
+    expect(readFileSync(join(out, "package/dist/index.js"), "utf8")).toContain("PROTOCOL_VERSION");
     expect(readFileSync(pack.sha256File, "utf8")).toBe(`${pack.sha256}  gantry-0.1.0.tgz\n`);
     expect(run(root, "remote")).toBe("");
   });

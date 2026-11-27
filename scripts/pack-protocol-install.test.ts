@@ -23,22 +23,19 @@ beforeAll(() => {
     recursive: true,
   });
   cpSync(join(REPO, "LICENSE"), join(root, "LICENSE"));
-  const tsc = join(dirname(createRequire(import.meta.url).resolve("typescript/package.json")), "bin/tsc");
-  execFileSync(
-    process.execPath,
-    [
-      tsc,
-      "-p",
-      join(REPO, "packages/protocol/tsconfig.build.json"),
-      "--composite",
-      "false",
-      "--incremental",
-      "false",
-      "--outDir",
-      join(root, "packages/protocol/dist"),
-    ],
-    { cwd: REPO, stdio: "pipe" },
+  cpSync(join(REPO, "packages/protocol/tsconfig.json"), join(root, "packages/protocol/tsconfig.json"));
+  cpSync(
+    join(REPO, "packages/protocol/tsconfig.build.json"),
+    join(root, "packages/protocol/tsconfig.build.json"),
   );
+  cpSync(join(REPO, "packages/protocol/src"), join(root, "packages/protocol/src"), { recursive: true });
+  cpSync(join(REPO, "tsconfig.base.json"), join(root, "tsconfig.base.json"));
+  mkdirSync(join(root, "packages/core"), { recursive: true });
+  cpSync(join(REPO, "packages/core/tsconfig.json"), join(root, "packages/core/tsconfig.json"));
+  symlinkSync(join(REPO, "node_modules"), join(root, "node_modules"), "dir");
+  // a stale file in the old dist, which the tarball must not carry
+  mkdirSync(join(root, "packages/protocol/dist"), { recursive: true });
+  writeFileSync(join(root, "packages/protocol/dist/stale.js"), "// removed source\n");
   for (const args of [
     ["init", "-q", "-b", "main"],
     ["add", "-A"],
@@ -58,10 +55,7 @@ beforeAll(() => {
       "-m",
       "x",
     ],
-    {
-      cwd: root,
-      stdio: "pipe",
-    },
+    { cwd: root, stdio: "pipe" },
   );
   const { tarball } = packProtocol(root, "0.1.0");
   const target = join(consumer, "node_modules/@gantry/protocol");
@@ -89,6 +83,7 @@ describe("the protocol tarball, extracted beside zod", () => {
 
   it("carries no test file", () => {
     expect(existsSync(join(consumer, "node_modules/@gantry/protocol/dist/schemas.test.js"))).toBe(false);
+    expect(existsSync(join(consumer, "node_modules/@gantry/protocol/dist/stale.js"))).toBe(false);
     expect(existsSync(join(consumer, "node_modules/@gantry/protocol/dist/testing/fakeServer.js"))).toBe(true);
   });
 });

@@ -4,7 +4,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type PackResult, packProtocol, packRelease } from "./pack.js";
+import { buildProtocol, type PackResult, packProtocol, packRelease } from "./pack.js";
 
 /** Root first (the source of truth), then every file that must carry the same version. */
 export const VERSION_FILES = [
@@ -176,6 +176,7 @@ export function release(
   bump: string,
   date = new Date().toISOString().slice(0, 10),
   build: (root: string) => void = runBuild,
+  protocolBuild: (root: string, outDir: string) => string = buildProtocol,
 ): { version: string; pack: PackResult; protocol: PackResult } {
   const current = readVersion(root, VERSION_FILES[0] as string) as string;
   const problems = checkSync(root);
@@ -196,7 +197,7 @@ export function release(
   git(root, ["commit", "-m", `Release ${tag}`]);
   git(root, ["tag", "-a", tag, "-m", `Release ${tag}`]);
   build(root);
-  return { version, pack: packRelease(root, version), protocol: packProtocol(root, version) };
+  return { version, pack: packRelease(root, version), protocol: packProtocol(root, version, protocolBuild) };
 }
 
 function runBuild(root: string): void {
