@@ -9,12 +9,21 @@ import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Group } from "../../packages/core/src/index.js";
 import { type FakeServer, startFakeServer } from "../../packages/protocol/src/testing/index.js";
-import { bundlePlugin, type TestBundle } from "./testBundle.js";
 import { type FakeGithub, startFakeGithub } from "./testkit.js";
+
+interface TestBundle {
+  home: string;
+  cleanup(): void;
+}
+// The shared helper (scripts/testBundle.ts) is outside this project's file list, so it is loaded by a computed path.
+const helperPath = "../../scripts/testBundle.js";
+const { bundlePlugin } = (await import(/* @vite-ignore */ helperPath)) as {
+  bundlePlugin: (names: string[]) => Promise<TestBundle>;
+};
 
 const root = join(import.meta.dirname, "../..");
 let home: string;
-let bundle: TestBundle;
+let bundle: TestBundle | undefined;
 const REPO = "acme/overlay-groups";
 const GITHUB_TOKEN = "ghs_e2e-github-3f6a";
 const TEAM_TOKEN = "gct_e2e-team-8c41";
@@ -123,8 +132,8 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(() => {
-  rmSync(work, { recursive: true, force: true });
-  bundle.cleanup();
+  if (work) rmSync(work, { recursive: true, force: true });
+  bundle?.cleanup();
 });
 
 beforeEach(async () => {

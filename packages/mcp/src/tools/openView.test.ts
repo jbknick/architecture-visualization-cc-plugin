@@ -1,70 +1,31 @@
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { openStore, saveView } from "@gantry/core";
-import { build } from "tsup";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { type Connected, call, connect, indexAndSync, makeRepo, type Repo, silentLog } from "../testkit.js";
+import type { Tool } from "../tool.js";
 import { TOOLS } from "./index.js";
-import { openViewTool } from "./openView.js";
+import { createOpenViewTool, openViewTool } from "./openView.js";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(here, "..", "..", "..", "..");
-let bundleDir: string;
-let savedBundleEnv: string | undefined;
+interface TestBundle {
+  home: string;
+  cleanup(): void;
+}
+// The shared helper lives outside this package's rootDir, so it is loaded by a computed path.
+const helperPath = "../../../../scripts/testBundle.js";
+const { bundlePlugin } = (await import(/* @vite-ignore */ helperPath)) as {
+  bundlePlugin: (names: string[]) => Promise<TestBundle>;
+};
 
-// The real CLI entry, bundled from source into a temp dir; the tool finds it through GANTRY_CLI_BUNDLE.
+// The real CLI entry, bundled from source; the tool is built with its path, so no plugin/dist is needed.
+let bundle: TestBundle | undefined;
+let tools: Tool[];
 beforeAll(async () => {
-  bundleDir = mkdtempSync(join(tmpdir(), "gantry-openview-bundle-"));
-  mkdirSync(join(bundleDir, ".claude-plugin"));
-  copyFileSync(
-    join(repoRoot, "plugin/.claude-plugin/plugin.json"),
-    join(bundleDir, ".claude-plugin/plugin.json"),
-  );
-  symlinkSync(join(repoRoot, "node_modules"), join(bundleDir, "node_modules"), "dir");
-  await build({
-    entry: { cli: join(repoRoot, "packages/cli/src/main.ts") },
-    outDir: join(bundleDir, "dist"),
-    format: ["esm"],
-    platform: "node",
-    target: "node22",
-    external: [
-      "better-sqlite3",
-      "sqlite-vec",
-      "oxc-parser",
-      "oxc-resolver",
-      "@huggingface/transformers",
-      "onnxruntime-node",
-    ],
-    esbuildOptions(o) {
-      o.alias = {
-        "@gantry/core": join(repoRoot, "packages/core/src/index.ts"),
-        "@gantry/protocol": join(repoRoot, "packages/protocol/src/index.ts"),
-      };
-    },
-    silent: true,
-    dts: false,
-    config: false,
-  });
-  savedBundleEnv = process.env.GANTRY_CLI_BUNDLE;
-  process.env.GANTRY_CLI_BUNDLE = join(bundleDir, "dist/cli.js");
+  bundle = await bundlePlugin(["cli"]);
+  const cli = join(bundle.home, "dist/cli.js");
+  tools = TOOLS.map((t) => (t === openViewTool ? createOpenViewTool(cli) : t));
 }, 60_000);
-
-afterAll(() => {
-  if (savedBundleEnv === undefined) delete process.env.GANTRY_CLI_BUNDLE;
-  else process.env.GANTRY_CLI_BUNDLE = savedBundleEnv;
-  rmSync(bundleDir, { recursive: true, force: true });
-});
+afterAll(() => bundle?.cleanup());
 
 const repos: Repo[] = [];
 const conns: Connected[] = [];
@@ -88,7 +49,7 @@ async function setup() {
   const repo = makeRepo();
   repos.push(repo);
   await indexAndSync(repo);
-  const conn = await connect(repo);
+  const conn = await connect(repo, { tools });
   conns.push(conn);
   return { repo, ...conn };
 }
