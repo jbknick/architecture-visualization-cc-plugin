@@ -11,6 +11,7 @@ import { cachedEmbedder } from "./embedder.js";
 import { envelope, errorEnvelope, MAX_RESPONSE_CHARS, type ToolResponse } from "./envelope.js";
 import { createLogger, type Logger } from "./log.js";
 import { lazyRefresh } from "./refresh.js";
+import { createTeamPuller, type TeamPuller } from "./team-pull.js";
 import type { Tool, ToolContext } from "./tool.js";
 import { TOOLS } from "./tools/index.js";
 
@@ -27,16 +28,24 @@ export interface ServerOptions {
   log?: Logger;
   /** Default: the embedding model if it is already cached, else none. */
   getEmbedder?: ToolContext["getEmbedder"];
+  /** For tests: the fetch and the clock of the team pull. */
+  teamPull?: { fetch?: typeof fetch; now?: () => number };
 }
 
 /**
- * One tool call: `resolvePaths` -> lazy refresh (`heal` only if `HEAD` moved, then `refreshWorking`) -> handler ->
+ * One tool call: `resolvePaths` -> team pull when the cache is over 60 s old (spec section 11) -> lazy refresh (`heal` only if `HEAD` moved, then `refreshWorking`) -> handler ->
  * envelope. Any failure becomes an `isError` payload `{ error, message }`; the process never crashes.
  */
 async function runTool(
   tool: Tool,
   args: unknown,
-  o: { cwd: string; env: NodeJS.ProcessEnv; log: Logger; getEmbedder: ToolContext["getEmbedder"] },
+  o: {
+    cwd: string;
+    env: NodeJS.ProcessEnv;
+    log: Logger;
+    getEmbedder: ToolContext["getEmbedder"];
+    teamPuller: TeamPuller;
+  },
 ): Promise<ToolResponse> {
   try {
     let paths: GantryPaths;
@@ -48,6 +57,7 @@ async function runTool(
     }
     resetStaleStore(paths);
     ensureDataDir(paths);
+    await o.teamPuller.beforeCall(paths);
     await lazyRefresh(paths, o.log);
     const store = openStore(paths.dbPath, { overlayPath: paths.overlayPath, repo: paths.repo });
     try {
@@ -81,6 +91,8 @@ export function createServer(opts: ServerOptions = {}): McpServer {
   const log = opts.log ?? createLogger(() => logsDir);
   const getEmbedder = opts.getEmbedder ?? cachedEmbedder();
   const server = new McpServer({ name: SERVER_NAME, version: opts.version ?? "0.0.0" });
+  const teamPuller = createTeamPuller({ cwd, env, log, ...opts.teamPull });
+  teamPuller.atStart(); // not awaited: the server starts either way
 
   // Calls run one at a time: the refresh and the claim bookkeeping write the same database.
   let queue: Promise<unknown> = Promise.resolve();
@@ -89,7 +101,7 @@ export function createServer(opts: ServerOptions = {}): McpServer {
       tool.name,
       { description: tool.description, inputSchema: tool.inputSchema },
       (args: unknown) => {
-        const run = queue.then(() => runTool(tool, args, { cwd, env, log, getEmbedder }));
+        const run = queue.then(() => runTool(tool, args, { cwd, env, log, getEmbedder, teamPuller }));
         queue = run.catch(() => undefined);
         return run;
       },

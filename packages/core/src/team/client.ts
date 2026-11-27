@@ -9,6 +9,7 @@ import {
   HEADER_PROTOCOL,
   HEADER_PROTOCOL_MAX,
   HEADER_TARGET,
+  HEADER_TRUNCATED,
   PROTOCOL_VERSION,
   ROUTES,
 } from "@gantry/protocol";
@@ -60,6 +61,10 @@ interface CallOptions {
   headers?: Record<string, string>;
   /** `ready()` itself and `whoami` do not wait for the version to be known. */
   skipReady?: boolean;
+  /** Called with the status and headers of every answer, before the status is checked. */
+  onResponse?: (status: number, headers: Headers) => void;
+  /** Answer `undefined` (instead of throwing) for a 304 with no body. */
+  allowNotModified?: boolean;
 }
 
 export type DeviceTokenAnswer =
@@ -68,6 +73,15 @@ export type DeviceTokenAnswer =
   | { status: "slow_down" }
   | { status: "denied" }
   | { status: "expired" };
+
+export type PullPage =
+  | { notModified: true }
+  | {
+      notModified: false;
+      page: z.output<typeof ROUTES.pull.response>;
+      etag: string | undefined;
+      truncated: boolean;
+    };
 
 export type DeviceCode = z.output<typeof DeviceCodeResponseSchema>;
 
@@ -162,6 +176,8 @@ export function teamClient(paths: GantryPaths, config: GantryConfig, opts: TeamC
       timeoutMs,
     );
     learnFrom(res.headers);
+    o.onResponse?.(res.status, res.headers);
+    if (res.status === 304 && o.allowNotModified === true) return undefined as Answer<K>;
     if (res.status < 200 || res.status >= 300) throw failure(res.status, res.text);
     const parsed = route.response.safeParse(parseJson(res.text));
     if (!parsed.success) {
@@ -219,6 +235,28 @@ export function teamClient(paths: GantryPaths, config: GantryConfig, opts: TeamC
     closeChangeSet: (repo: string, id: string, body: unknown) =>
       call("closeChangeSet", { params: { repo, id }, body }),
     pull: (query: { repo: string; cursor?: string }) => call("pull", { query }),
+    /**
+     * One page of a pull with its `ETag` and `X-Gantry-Truncated` headers. With `etag` the request is conditional
+     * (`If-None-Match`, first page only): a 304 answers `{ notModified: true }`.
+     */
+    async pullPage(query: { repo: string; cursor?: string }, etag?: string): Promise<PullPage> {
+      let headers: Headers | undefined;
+      const page = await call("pull", {
+        query,
+        allowNotModified: true,
+        ...(etag === undefined ? {} : { headers: { "If-None-Match": etag } }),
+        onResponse: (_status, h) => {
+          headers = h;
+        },
+      });
+      if (page === undefined) return { notModified: true };
+      return {
+        notModified: false,
+        page,
+        etag: headers?.get("etag") ?? undefined,
+        truncated: headers?.get(HEADER_TRUNCATED) === "true",
+      };
+    },
     putDescriptions: (body: unknown) => call("putDescriptions", { body }),
     putGroup: (repo: string, id: string, body: unknown) => call("putGroup", { params: { repo, id }, body }),
     deleteGroup: (repo: string, id: string) => call("deleteGroup", { params: { repo, id } }),

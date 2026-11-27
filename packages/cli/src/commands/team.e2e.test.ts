@@ -231,6 +231,7 @@ describe("gantry team, built, against the fake server", () => {
       repo: repoName,
       reachable: true,
       protocol: 1,
+      cache: { change_sets: 0, pulled_at: null, age_s: null, last_error: null },
     });
     expect(proxy.seen.filter((s) => s.path.startsWith("/v1/whoami?")).map((s) => s.org)).toContain("acme");
 
@@ -266,11 +267,73 @@ describe("gantry team, built, against the fake server", () => {
     const status = await gantry(["team", "status", "--json"], env);
     expect(status.code).toBe(0);
     expect(status.out).toBe(
-      `${JSON.stringify({ server: proxy.url, org: "acme", user: "octo-dev", repo: repoName, reachable: true, protocol: 1 })}\n`,
+      `${JSON.stringify({ server: proxy.url, org: "acme", user: "octo-dev", repo: repoName, reachable: true, protocol: 1, cache: { change_sets: 0, pulled_at: null, age_s: null, last_error: null } })}\n`,
     );
     expect(existsSync(credentials)).toBe(false);
     expect(readdirSync(pluginData)).toEqual([]);
     expect(fx.git(["status", "--short"])).toBe("");
     expect(outputs.join("\n")).not.toContain(USER_TOKEN);
   });
+  it("pulls into team-cache.db, reads it without the network, and keeps it when the server is gone", async () => {
+    // an origin remote gives the repo an owner/name, which the pull's change sets must carry
+    fx.git(["remote", "add", "origin", "https://github.com/acme/storefront.git"]);
+    const repo = "acme/storefront";
+    await fake.close();
+    fake = await startFakeServer({ tokens: ["gct_fake", USER_TOKEN], repo }); // for this repo name
+    for (const n of [1, 2]) {
+      const id = `cs:pr:${repo}#${n}`;
+      fake.state.changeSets.set(id, {
+        id,
+        repo,
+        source: "pr",
+        state: "in_review",
+        ref: `#${n}`,
+        head_ref: `feat/${n}`,
+        base_branch: "main",
+        nodes: [`file:${repo}:src/a${n}.ts`],
+        radius: [],
+        estimated: false,
+        owner: "octo-dev",
+        title: `Change ${n}`,
+        pr: n,
+        head_sha: "7e3d9a1c5b8f20466d1ae9c3b7f45082d6c1e9ab",
+        created_at: "2026-11-20T09:15:00.000Z",
+        updated_at: `2026-11-20T09:4${n}:12.000Z`,
+        links: [],
+      });
+    }
+    const env = { GANTRY_SERVER: fake.url, GANTRY_ORG: "acme", GANTRY_TOKEN: USER_TOKEN };
+
+    const before = await gantry(["team", "status", "--json"], env);
+    expect(JSON.parse(before.out).cache).toEqual({
+      change_sets: 0,
+      pulled_at: null,
+      age_s: null,
+      last_error: null,
+    });
+
+    const pulled = await gantry(["team", "status", "--pull"], env);
+    expect(pulled.code).toBe(0);
+    expect(pulled.out).toMatch(/\ncache: {5}2 open changes, pulled \d+ s ago\n$/);
+
+    // without --pull, status reads the file and asks the server nothing about team state
+    const read = await gantry(["team", "status", "--json"], env);
+    expect(JSON.parse(read.out).cache).toMatchObject({ change_sets: 2, last_error: null });
+    const pulledAt = JSON.parse(read.out).cache.pulled_at as string;
+
+    const url = fake.url;
+    await fake.close();
+    const down = await gantry(["team", "status", "--pull", "--json"], { ...env, GANTRY_SERVER: url });
+    expect(down.code).toBe(1);
+    const cache = JSON.parse(down.out).cache as {
+      change_sets: number;
+      pulled_at: string;
+      last_error: string;
+    };
+    expect(cache.change_sets).toBe(2);
+    expect(cache.pulled_at).toBe(pulledAt);
+    expect(cache.last_error).toContain("team_unreachable");
+    expect(down.err).toBe("");
+    fake = await startFakeServer();
+  }, 30_000);
 });
