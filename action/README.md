@@ -55,7 +55,7 @@ Outputs: `comment` (`created`, `updated`, or `summary` when the review went to t
 
 1. Sets up Node 26 (`actions/setup-node`, pinned by commit SHA) and installs the release tarball by tag and checksum with `npm ci`. Nothing else is downloaded.
 2. Runs `gantry init` on the checkout (a cold index; plan for about a minute per 1,000 files on a standard runner, longer on very large repositories). With `embed: true` it then runs `gantry embed`.
-3. Runs `gantry review <base>...<head> --json` and `gantry duplicates --since <base> --json` and builds the comment from them. The raw JSON is never posted: the comment is a summary with a cap on every list, and the whole body is kept under 60,000 characters, below GitHub's limit of 65,536. When it still would not fit, the least important sections (consumers, notes, crossings, then the changed-symbol table) are dropped first.
+3. Runs `gantry review <base>...<head> --json` and `gantry duplicates --since <base> --json` and builds the comment from them. The raw JSON is never posted: the comment is a summary with a cap on every list, and the whole body is kept under 60,000 characters, below GitHub's limit of 65,536. When it still would not fit, the least important sections (consumers, notes, team boundaries, crossings, then the changed-symbol table) are dropped first.
 4. Finds its earlier comment on the pull request by the hidden marker `<!-- gantry:pr-comment -->` at the start of its body and updates it; otherwise creates one.
 
 The comment says when the blast radius is **structural only**: a repository without a committed `.gantry/recipe.json` gets a radius that follows imports, calls and renders, without routes, endpoints or tables. Once the repository commits a recipe (see `gantry recipe check` in the main README), the comment shows the same radius as the one developers see locally.
@@ -113,6 +113,16 @@ jobs:
 The upload step first ships in v0.3.0; an earlier version installs fine but skips the upload with a warning.
 
 Use the `pull_request` event, not `pull_request_target`: a fork's run must not get the secrets, and GitHub does not pass them to a `pull_request` run from a fork, so the three inputs are empty there as well.
+
+## Team boundaries in the comment
+
+With the same three inputs (`team-server`, `team-org`, `team-token`), the comment gains a section `### Team boundaries (<n>)` between `Crossings` and `Consumers`. It lists, for each pair of groups, the places where a changed function (or an added import) uses a group that its own team group does not list in `mayUse`: up to 3 items per pair, the number of edges in total, up to 10 pairs, then `and <n> more`. It is a warning only and never fails the check. The groups are the team's, read from the server with one request; nothing from the repository is sent, and the team token is used only for that request, never for the comment (the comment still uses `github-token`).
+
+- It is separate from `Crossings`, which lists consumers in another workspace, app or client and server, and is unchanged.
+- Without the three inputs, and for a pull request from a fork, there is no request and no section: the comment is exactly what it was.
+- If the server cannot be reached or refuses the token, the comment is posted without the section and the log has one `::warning title=Gantry::team boundaries unavailable: <reason>` line. The job stays green and the comment is not the failure comment.
+- A group name is shown as plain code, so a name cannot add a link, a mention or HTML to the comment. When the comment would be too long, this section goes before `Crossings` does.
+- The release you install must include the `gantry team boundaries` command; with an older release the step logs the warning above and the section is left out.
 
 ## Pull requests from forks
 

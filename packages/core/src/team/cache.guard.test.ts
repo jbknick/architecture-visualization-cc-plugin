@@ -280,6 +280,7 @@ describe("the hooks' import graph", () => {
       .map(rel)
       .sort();
     expect(callers).toEqual([
+      join("cli", "src", "commands", "team-boundaries.ts"),
       join("cli", "src", "commands", "team-publish.ts"),
       join("cli", "src", "commands", "team.ts"),
       join("cli", "src", "commands", "upload.ts"),
@@ -288,13 +289,14 @@ describe("the hooks' import graph", () => {
     ]);
   });
 
-  it("only resolve.ts and gantry upload mention resolveTeamTarget, and only main.ts registers the command", () => {
+  it("only resolve.ts, gantry upload and gantry team boundaries mention resolveTeamTarget, and only main.ts registers the command", () => {
     const mentions = (name: RegExp): string[] =>
       all
         .filter((f) => name.test(readFileSync(f, "utf8")))
         .map(rel)
         .sort();
     expect(mentions(/\bresolveTeamTarget\b/)).toEqual([
+      join("cli", "src", "commands", "team-boundaries.ts"),
       join("cli", "src", "commands", "upload.ts"),
       join("core", "src", "team", "resolve.ts"),
     ]);

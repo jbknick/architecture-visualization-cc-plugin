@@ -73,17 +73,19 @@ describe("help", () => {
       Connect this checkout to a team server (sign in, link, check the connection)
 
       Options:
-        -h, --help        display help for command
+        -h, --help            display help for command
 
       Commands:
-        login [options]   Sign in to a team server with a code
-        link [options]    Say which server and organisation this repo belongs to
-        status [options]  Show the server, organisation, user and repo, whether the
-                          server answers, and the team cache
-        logout [options]  Remove the stored sign-in for a server
-        publish           Send a local view or group to the team
-        unpublish         Remove a view or group the team has published
-        help [command]    display help for command
+        login [options]       Sign in to a team server with a code
+        link [options]        Say which server and organisation this repo belongs to
+        status [options]      Show the server, organisation, user and repo, whether
+                              the server answers, and the team cache
+        logout [options]      Remove the stored sign-in for a server
+        boundaries [options]  List the edges of the changed functions and files that
+                              break a team group's mayUse (read from the team server)
+        publish               Send a local view or group to the team
+        unpublish             Remove a view or group the team has published
+        help [command]        display help for command
       "
     `);
     for (const name of ["login", "link", "status", "logout"]) {
