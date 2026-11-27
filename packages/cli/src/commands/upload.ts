@@ -20,6 +20,7 @@ import {
   uploadDescriptions,
 } from "@gantry/core";
 import {
+  assertNoSource,
   CloseRequestSchema,
   changeSetIdForPr,
   DEFAULT_PART_LIMITS,
@@ -27,6 +28,7 @@ import {
   type PartLimits,
   type PartRecord,
   splitIntoParts,
+  UploadRefused,
   type UploadStart,
   UploadStartSchema,
 } from "@gantry/protocol";
@@ -66,12 +68,21 @@ const sortKeys = (value: unknown): unknown => {
  * the close request and the description upload all go through it, so the bytes a dry run shows are the bytes sent.
  */
 export function serialiseBody(kind: BodyKind, payload: unknown): string {
-  if (kind === "close") return JSON.stringify(sortKeys(CloseRequestSchema.parse(payload)));
-  if (kind === "descriptions") return JSON.stringify(sortKeys(DescriptionsRequestSchema.parse(payload)));
+  // The guard runs on what was given and on what is about to be written, before either is serialised.
+  assertNoSource(payload);
+  const checked = (value: unknown): unknown => {
+    assertNoSource(value);
+    return sortKeys(value);
+  };
+  if (kind === "close") return JSON.stringify(checked(CloseRequestSchema.parse(payload)));
+  if (kind === "descriptions") return JSON.stringify(checked(DescriptionsRequestSchema.parse(payload)));
   const start = UploadStartSchema.parse(payload);
   if (start.kind !== kind) throw new Error(`serialiseBody: a ${start.kind} request is not a ${kind} body`);
-  return JSON.stringify(sortKeys(start));
+  return JSON.stringify(checked(start));
 }
+
+/** The one line printed when the guard refuses; the same text on every path (upload, dry run, descriptions). */
+const refusalLine = (err: UploadRefused): string => `upload refused: field ${err.path} may carry source`;
 
 /** The begin request for a list of records: the counts per kind, and the commit for a main snapshot. */
 export function uploadStart(records: readonly PartRecord[], sha?: string): UploadStart {
@@ -108,7 +119,20 @@ export function buildUploadParts(
   limits: PartLimits,
   sha?: string,
 ): { start: UploadStart; parts: Uint8Array[] } {
-  return { start: uploadStart(records, sha), parts: splitIntoParts(records, limits) };
+  const start = guardUpload(records, sha);
+  // `splitIntoParts` checks every record again before it compresses anything.
+  return { start, parts: splitIntoParts(records, limits) };
+}
+
+/**
+ * The guard of an upload: `assertNoSource` on the begin request and on every record. It runs before the begin request
+ * is sent, so a refused upload makes no request at all, and again inside `buildUploadParts` before any part is gzipped.
+ */
+function guardUpload(records: readonly PartRecord[], sha?: string): UploadStart {
+  const start = uploadStart(records, sha);
+  assertNoSource(start);
+  for (const record of records) assertNoSource(record);
+  return start;
 }
 
 /** Everything the command needs from outside, so a test runs it against the fake server with no process. */
@@ -335,6 +359,7 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
     for (const w of new Set(warnings)) ctx.err(`${w}\n`);
 
     // 6. Begin, send the parts, poll.
+    guardUpload(records, sha); // refuses before the begin request, so a refused upload sends nothing
     progress(announce);
     started = now();
     const begun = await client.beginUpload(repo, serialiseBody(kind, uploadStart(records, sha)), targetId);
@@ -377,6 +402,7 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
       await sleep(POLL_MS);
     }
   } catch (err) {
+    if (err instanceof UploadRefused) return refuse(refusalLine(err));
     const line =
       err instanceof GantryError
         ? scrub(describeFailure(err))
@@ -467,7 +493,8 @@ async function runDryRun(ctx: UploadContext, opts: UploadOptions, a: PrArgs): Pr
   try {
     if (opts.descriptions === true) {
       // The switch only: an empty environment, so no server, organisation or token is looked at.
-      if (!resolveTeamSettings(loadConfig(ctx.paths), {}).upload.descriptions) {
+      const enabled = resolveTeamSettings(loadConfig(ctx.paths), {}).upload.descriptions;
+      if (!enabled) {
         ctx.err("Description upload is switched off (team.upload.descriptions).\n");
         return finish();
       }
@@ -485,7 +512,7 @@ async function runDryRun(ctx: UploadContext, opts: UploadOptions, a: PrArgs): Pr
             },
           },
           ctx.paths.repo,
-          { serialise: (payload) => serialiseBody("descriptions", payload) },
+          { enabled, serialise: (payload) => serialiseBody("descriptions", payload) },
         );
         if (result.skipped > 0) {
           ctx.err(`${result.skipped} descriptions do not fit the wire format and were not sent.\n`);
@@ -532,6 +559,10 @@ async function runDryRun(ctx: UploadContext, opts: UploadOptions, a: PrArgs): Pr
     }
     return finish();
   } catch (err) {
+    if (err instanceof UploadRefused) {
+      ctx.err(`${refusalLine(err)}\n`);
+      return EXIT_ERROR;
+    }
     ctx.err(`gantry: ${err instanceof Error ? err.message : String(err)}\n`);
     return EXIT_ERROR;
   }
@@ -568,7 +599,8 @@ async function runDescriptionUpload(
     if (!json) ctx.out(`${text}\n`);
     return EXIT_OK;
   };
-  if (!target.config.team?.upload?.descriptions) {
+  const enabled = target.config.team?.upload?.descriptions === true;
+  if (!enabled) {
     return skipped("switched off", "Description upload is switched off (team.upload.descriptions).");
   }
   if (token === null) return failed("No token. Set GANTRY_TOKEN, or run gantry team login.");
@@ -596,6 +628,7 @@ async function runDescriptionUpload(
       }
       if (!json) ctx.out(`Uploading ${count} descriptions for ${ctx.paths.repo}...\n`);
       const result = await uploadDescriptions(store, client, ctx.paths.repo, {
+        enabled,
         serialise: (payload) => serialiseBody("descriptions", payload),
         onBatch: (s, st) => {
           sent = s;
@@ -612,6 +645,7 @@ async function runDescriptionUpload(
       store.close();
     }
   } catch (err) {
+    if (err instanceof UploadRefused) return failed(refusalLine(err));
     if (err instanceof GantryError) {
       if (err.code === "team_forbidden") return failed(CI_LINE);
       if (err.answer?.status === 404) return failed("The server does not accept descriptions.");

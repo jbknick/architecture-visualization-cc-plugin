@@ -1,3 +1,4 @@
+export * from "./guard.js";
 export * from "./ids.js";
 export * from "./parts.js";
 export * from "./routes.js";

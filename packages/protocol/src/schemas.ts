@@ -9,6 +9,12 @@ import { z } from "zod";
  * server knows it (see `FIELD_SINCE` in `routes.ts`).
  */
 
+/**
+ * The longest string any field of the protocol allows (ids, paths and change set ids). The upload guard refuses a
+ * string longer than this, so a payload that passes the schemas never trips it.
+ */
+export const MAX_STRING_LENGTH = 1024;
+
 /** Limits the client must respect. The part limits are not here: the server gives them in `UploadBegun`. */
 export const LIMITS = {
   workspaces: 500,
@@ -37,7 +43,7 @@ const HEX32 = /^[0-9a-f]{32}$/;
 const SHA = /^[0-9a-f]{40}$/;
 const NAME_PATTERN = /^[a-z][a-z0-9_-]{0,31}$/;
 
-export const IdSchema = z.string().min(1).max(1024);
+export const IdSchema = z.string().min(1).max(MAX_STRING_LENGTH);
 export const RepoSchema = z
   .string()
   .max(200)
@@ -59,7 +65,7 @@ const BRANCH_ID = /^cs:branch:([^/:\s]+\/[^/:\s]+):(.+)$/;
 /** A change set id: `cs:pr:<repo>#<n>` or `cs:branch:<repo>:<name>`, at most 1,024 characters. */
 export const ChangeSetIdSchema = z
   .string()
-  .max(1024)
+  .max(MAX_STRING_LENGTH)
   .refine((id) => PR_ID.test(id) || BRANCH_ID.test(id), { message: "not a change set id" });
 
 // ---- main snapshot
@@ -67,11 +73,11 @@ export const ChangeSetIdSchema = z
 export const WorkspaceSchema = z.strictObject({
   id: IdSchema,
   name: z.string().min(1).max(512),
-  path: z.string().max(1024),
+  path: z.string().max(MAX_STRING_LENGTH),
 });
 export const FileSchema = z.strictObject({
   id: IdSchema,
-  path: z.string().min(1).max(1024),
+  path: z.string().min(1).max(MAX_STRING_LENGTH),
   workspace: IdSchema,
   lang: LangSchema,
 });
@@ -80,7 +86,7 @@ export const SymbolSchema = z.strictObject({
   name: z.string().min(1).max(512),
   kind: KindSchema,
   lang: LangSchema,
-  path: z.string().min(1).max(1024),
+  path: z.string().min(1).max(MAX_STRING_LENGTH),
   workspace: IdSchema,
   line_start: z.number().int().min(1),
   line_end: z.number().int().min(1),

@@ -1,4 +1,5 @@
 import { gunzipSync, gzipSync } from "node:zlib";
+import { assertNoSource } from "./guard.js";
 import {
   type AdapterNode,
   type ChangeSet,
@@ -78,11 +79,13 @@ function gzipLines(lines: string[]): Uint8Array {
  * Cuts an ordered record list into gzipped NDJSON parts. A part holds at most `part_max_records` records and
  * `part_max_bytes` bytes of decompressed text (each line and its newline counted). Each part is gzipped on its own.
  * A part whose gzip is over `part_max_bytes` is cut in half. Throws, naming the record, when one record cannot fit an
- * empty part. An empty list gives no parts.
+ * empty part. An empty list gives no parts. Every record passes `assertNoSource` first, so a record that could carry
+ * source throws `UploadRefused` before any part is compressed.
  */
 export function splitIntoParts(records: readonly PartRecord[], limits: PartLimits): Uint8Array[] {
   const groups: { lines: string[]; records: PartRecord[] }[] = [];
   let current = { lines: [] as string[], records: [] as PartRecord[], bytes: 0 };
+  for (const record of records) assertNoSource(record);
   for (const record of records) {
     const line = `${JSON.stringify(record)}\n`;
     const size = encoder.encode(line).length;

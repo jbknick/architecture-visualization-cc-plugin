@@ -298,7 +298,7 @@ describe("syncDescriptions", () => {
         createdAt: "2026-03-04T05:06:07.000Z",
       },
     ]);
-    const sent = await uploadDescriptions(first.store, clientFor(fake), REPO);
+    const sent = await uploadDescriptions(first.store, clientFor(fake), REPO, { enabled: true });
     expect(sent).toMatchObject({ sent: 2, stored: 2 });
 
     const second = await fixture();

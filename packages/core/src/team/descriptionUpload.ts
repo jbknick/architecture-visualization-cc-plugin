@@ -1,4 +1,11 @@
-import { type Description, DescriptionSchema, DescriptionsRequestSchema, LIMITS } from "@gantry/protocol";
+import {
+  assertNoSource,
+  type Description,
+  DescriptionSchema,
+  DescriptionsRequestSchema,
+  LIMITS,
+} from "@gantry/protocol";
+import { GantryError } from "../errors.js";
 import type { Store } from "../store/index.js";
 
 /**
@@ -27,6 +34,11 @@ export interface DescriptionsClient {
 }
 
 export interface DescriptionUploadOptions {
+  /**
+   * The `team.upload.descriptions` switch, read by the caller from the machine's config. Required, so no caller can
+   * forget it: when false this function throws before it reads the table or makes a request.
+   */
+  enabled: boolean;
   /**
    * Writes one request body. The command passes `serialiseBody("descriptions", ...)` so the bytes a dry run shows are
    * the bytes sent; the default checks the payload with the route's schema and writes compact JSON.
@@ -81,16 +93,23 @@ export function descriptionRecords(store: Store): { records: Description[]; skip
   return { records, skipped };
 }
 
-const compact = (payload: { repo: string; descriptions: Description[] }): string =>
-  JSON.stringify(DescriptionsRequestSchema.parse(payload));
+const compact = (payload: { repo: string; descriptions: Description[] }): string => {
+  assertNoSource(payload);
+  const checked = DescriptionsRequestSchema.parse(payload);
+  assertNoSource(checked);
+  return JSON.stringify(checked);
+};
 
 /** Sends the model-written descriptions in batches of 500; `stored` is the sum of the server's answers. */
 export async function uploadDescriptions(
   store: Store,
   client: DescriptionsClient,
   repo: string,
-  opts: DescriptionUploadOptions = {},
+  opts: DescriptionUploadOptions,
 ): Promise<DescriptionUploadResult> {
+  if (opts.enabled !== true) {
+    throw new GantryError("team_config", "Description upload is switched off (team.upload.descriptions).");
+  }
   const serialise = opts.serialise ?? compact;
   const { records, skipped } = descriptionRecords(store);
   let stored = 0;

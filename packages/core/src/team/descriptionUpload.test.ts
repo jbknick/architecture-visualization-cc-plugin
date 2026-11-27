@@ -1,9 +1,10 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { Description } from "@gantry/protocol";
+import { gzipSync } from "node:zlib";
+import { type Description, DescriptionSchema, UploadRefused } from "@gantry/protocol";
 import { type FakeServer, startFakeServer } from "@gantry/protocol/testing";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GantryConfig } from "../config/index.js";
 import type { GantryPaths } from "../paths/index.js";
 import { openStore, type Store } from "../store/index.js";
@@ -85,7 +86,7 @@ describe("uploadDescriptions", () => {
       { n: 5, model: null },
       { n: 6, provenance: "template", model: null },
     );
-    const result = await uploadDescriptions(store, client(), REPO);
+    const result = await uploadDescriptions(store, client(), REPO, { enabled: true });
     expect(result).toEqual({ sent: 3, stored: 3, skipped: 0 });
     expect([...fake.state.descriptions.keys()].sort()).toEqual([key(1), key(2), key(3)]);
   });
@@ -126,20 +127,23 @@ describe("uploadDescriptions", () => {
       }
       return fetch(input, init);
     };
-    const result = await uploadDescriptions(store, client(recorder), REPO);
+    const result = await uploadDescriptions(store, client(recorder), REPO, { enabled: true });
     expect(result).toEqual({ sent: 1201, stored: 1201, skipped: 0 });
     expect(sent.map((b) => b.length)).toEqual([500, 500, 201]);
     const keys = sent.flat().map((d) => d.content_key);
     expect(keys).toEqual([...keys].sort());
     expect(fake.state.descriptions.size).toBe(1201);
     // a second run stores nothing new
-    expect(await uploadDescriptions(store, client(), REPO)).toMatchObject({ sent: 1201, stored: 0 });
+    expect(await uploadDescriptions(store, client(), REPO, { enabled: true })).toMatchObject({
+      sent: 1201,
+      stored: 0,
+    });
   });
 
   it("leaves every stored record equal to the mapped local row in all nine fields", async () => {
     seed({ n: 10, suggested: "slugify" }, { n: 11, nameFits: 0 }, { n: 12 });
     const expected = descriptionRecords(store).records;
-    await uploadDescriptions(store, client(), REPO);
+    await uploadDescriptions(store, client(), REPO, { enabled: true });
     expect(expected).toHaveLength(3);
     for (const want of expected) {
       const got = fake.state.descriptions.get(want.content_key);
@@ -152,7 +156,11 @@ describe("uploadDescriptions", () => {
   it("does not send a row the wire format would refuse, and counts it", async () => {
     seed({ n: 20 }, { n: 21 });
     store.db.prepare("UPDATE descriptions SET search_terms = ? WHERE content_key = ?").run("[]", key(21));
-    expect(await uploadDescriptions(store, client(), REPO)).toEqual({ sent: 1, stored: 1, skipped: 1 });
+    expect(await uploadDescriptions(store, client(), REPO, { enabled: true })).toEqual({
+      sent: 1,
+      stored: 1,
+      skipped: 1,
+    });
   });
 
   it("makes no request when there is nothing to send", async () => {
@@ -162,11 +170,108 @@ describe("uploadDescriptions", () => {
       requests += 1;
       return fetch(input, init);
     };
-    expect(await uploadDescriptions(store, client(counting), REPO)).toEqual({
+    expect(await uploadDescriptions(store, client(counting), REPO, { enabled: true })).toEqual({
       sent: 0,
       stored: 0,
       skipped: 0,
     });
     expect(requests).toBe(0);
+  });
+
+  it("with the switch off throws before it reads the table or makes a request", async () => {
+    let requests = 0;
+    const counting: typeof fetch = async (input, init) => {
+      requests += 1;
+      return fetch(input, init);
+    };
+    await expect(uploadDescriptions(store, client(counting), REPO, { enabled: false })).rejects.toThrow(
+      "Description upload is switched off (team.upload.descriptions).",
+    );
+    expect(requests).toBe(0);
+  });
+});
+
+describe("the guard inside the upload functions", () => {
+  const counting = (): { fetchFn: typeof fetch; requests: string[] } => {
+    const requests: string[] = [];
+    const fetchFn: typeof fetch = async (input, init) => {
+      requests.push(String(input));
+      return fetch(input, init);
+    };
+    return { fetchFn, requests };
+  };
+  const SHA = "1863607d4346a2737224baab89b421b2b1a1b8bf";
+
+  it("uploadDescriptions with no serialiser refuses a record that carries a forbidden key, before any request", async () => {
+    seed({ n: 1 });
+    const real = DescriptionSchema.safeParse.bind(DescriptionSchema);
+    const spy = vi.spyOn(DescriptionSchema, "safeParse").mockImplementation((value) => {
+      const parsed = real(value);
+      return parsed.success ? { ...parsed, data: { ...parsed.data, text: "export const a = 1;" } } : parsed;
+    });
+    try {
+      const { fetchFn, requests } = counting();
+      await expect(uploadDescriptions(store, client(fetchFn), REPO, { enabled: true })).rejects.toThrow(
+        UploadRefused,
+      );
+      expect(requests).toEqual([]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("the client methods refuse a forbidden key before any request, the handshake included", async () => {
+    const { fetchFn, requests } = counting();
+    const c = client(fetchFn);
+    const start = {
+      kind: "main",
+      sha: SHA,
+      counts: { workspaces: 0, files: 0, symbols: 0, edges: 0, adapter_nodes: 0 },
+    };
+    const close = { merged: false };
+    const batch = { repo: REPO, descriptions: [] };
+    for (const key of ["signature", "body", "fact_sheet"]) {
+      await expect(c.beginUpload(REPO, { ...start, [key]: "x" }, "main")).rejects.toThrow(UploadRefused);
+      await expect(c.beginUpload(REPO, JSON.stringify({ ...start, [key]: "x" }), "main")).rejects.toThrow(
+        UploadRefused,
+      );
+      await expect(
+        c.closeChangeSet(REPO, "cs:pr:acme/storefront#1", { ...close, [key]: "x" }),
+      ).rejects.toThrow(UploadRefused);
+      await expect(c.putDescriptions({ ...batch, [key]: "x" })).rejects.toThrow(UploadRefused);
+      const record = { t: "w", id: "ws:a:.", name: "a", path: ".", [key]: "x" };
+      const part = new Uint8Array(
+        gzipSync(
+          `${JSON.stringify({ t: "w", id: "ws:a:b", name: "b", path: "b" })}\n${JSON.stringify(record)}\n`,
+        ),
+      );
+      await expect(c.putPart("up_1", 1, part, 1)).rejects.toThrow(UploadRefused);
+    }
+    await expect(c.putPart("up_1", 1, new Uint8Array([1, 2, 3]), 1)).rejects.toThrow(UploadRefused);
+    expect(requests).toEqual([]);
+  });
+
+  it("refuses a body and a part line with a repeated key, which JSON.parse would hide, before any request", async () => {
+    const { fetchFn, requests } = counting();
+    const c = client(fetchFn);
+    const hidden = `{"merged":false,"merged":false,"signature":"x"}`;
+    // the repeated key is dropped by JSON.parse, so a guard that only looked at the parsed value would pass this
+    const dup = `{"merged":false,"head_sha":"${SHA}","head_sha":"${SHA}"}`;
+    await expect(c.closeChangeSet(REPO, "cs:pr:acme/storefront#1", dup)).rejects.toThrow(UploadRefused);
+    await expect(c.closeChangeSet(REPO, "cs:pr:acme/storefront#1", hidden)).rejects.toThrow(UploadRefused);
+    await expect(c.putDescriptions(`{"repo":"${REPO}","descriptions":[],"repo":"${REPO}"}`)).rejects.toThrow(
+      UploadRefused,
+    );
+    const line = `{"t":"w","id":"ws:a:.","name":"a","name":"b","path":"."}`;
+    const part = new Uint8Array(gzipSync(`${line}\n`));
+    await expect(c.putPart("up_1", 1, part, 1)).rejects.toThrow(UploadRefused);
+    expect(requests).toEqual([]);
+  });
+
+  it("a clean body still goes through every guarded method", async () => {
+    const { fetchFn, requests } = counting();
+    const c = client(fetchFn);
+    await c.putDescriptions({ repo: REPO, descriptions: [] });
+    expect(requests.some((r) => r.includes("/v1/descriptions"))).toBe(true);
   });
 });
