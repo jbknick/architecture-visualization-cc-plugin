@@ -1,10 +1,20 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { type Group, indexRepo, resolvePaths } from "@gantry/core";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { build } from "tsup";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { seedTeamCache } from "../testing/teamCacheSeed.js";
 
 interface MaterializedFixture {
@@ -18,7 +28,8 @@ const { materializeFixture } = (await import(/* @vite-ignore */ helperPath)) as 
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "../../../..");
-const cli = join(repoRoot, "plugin/dist/cli.js");
+let bundleDir: string;
+let cli: string;
 const fixtureDir = join(repoRoot, "fixtures/overlay-groups");
 const EDIT = readFileSync(join(fixtureDir, "invoice.edited.txt"), "utf8");
 const TEAM = JSON.parse(readFileSync(join(fixtureDir, "groups.json"), "utf8")) as Group[];
@@ -46,9 +57,42 @@ let env: NodeJS.ProcessEnv;
 let preload: string;
 let netLog: string;
 
-beforeAll(() => {
-  if (!existsSync(cli)) throw new Error("plugin/dist/cli.js is missing: run `pnpm build` first");
-});
+// The real CLI entry, built from source into a temp folder (as the other command tests do), so it is never stale.
+beforeAll(async () => {
+  bundleDir = mkdtempSync(join(tmpdir(), "gantry-boundaries-bundle-"));
+  mkdirSync(join(bundleDir, ".claude-plugin"));
+  copyFileSync(
+    join(repoRoot, "plugin/.claude-plugin/plugin.json"),
+    join(bundleDir, ".claude-plugin/plugin.json"),
+  );
+  symlinkSync(join(repoRoot, "node_modules"), join(bundleDir, "node_modules"), "dir");
+  await build({
+    entry: { cli: join(repoRoot, "packages/cli/src/main.ts") },
+    outDir: join(bundleDir, "dist"),
+    format: ["esm"],
+    platform: "node",
+    target: "node22",
+    external: [
+      "better-sqlite3",
+      "sqlite-vec",
+      "oxc-parser",
+      "oxc-resolver",
+      "@huggingface/transformers",
+      "onnxruntime-node",
+    ],
+    esbuildOptions(o) {
+      o.alias = {
+        "@gantry/core": join(repoRoot, "packages/core/src/index.ts"),
+        "@gantry/protocol": join(repoRoot, "packages/protocol/src/index.ts"),
+      };
+    },
+    silent: true,
+    dts: false,
+    config: false,
+  });
+  cli = join(bundleDir, "dist/cli.js");
+}, 60_000);
+afterAll(() => rmSync(bundleDir, { recursive: true, force: true }));
 beforeEach(async () => {
   work = mkdtempSync(join(tmpdir(), "gantry-team-boundaries-e2e-"));
   preload = join(work, "no-network.mjs");
@@ -71,7 +115,7 @@ afterEach(async () => {
   rmSync(work, { recursive: true, force: true });
 });
 
-/** Runs `node plugin/dist/cli.js hook <name>` in the fixture with `input` on stdin. */
+/** Runs `node dist/cli.js hook <name>` in the fixture with `input` on stdin. */
 function hook(name: string, input: object): Promise<{ out: string; ms: number }> {
   return new Promise((resolve) => {
     const t0 = Date.now();

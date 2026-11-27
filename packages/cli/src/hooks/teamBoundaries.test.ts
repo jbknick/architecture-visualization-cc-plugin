@@ -132,6 +132,12 @@ describe("team boundaries in the end-of-turn note", () => {
     expect(await stop()).toBeUndefined();
   });
 
+  it("a call into a team group with mayUse null is still named", async () => {
+    await setup({ team: [ORDERS, { ...CATALOG, mayUse: null }] });
+    await edit("src/orders/invoice.ts", EDIT);
+    expect(await stop()).toBe(STOP(TEAM_LINE));
+  });
+
   it("an allowed edge never prints", async () => {
     await setup({ team: TEAM });
     const cart = `import { totalDue } from "../orders/invoice";
@@ -247,7 +253,7 @@ describe("team boundaries are read from the cache file and nothing else", () => 
       for (let run = 0; run < 20; run++) {
         const t0 = performance.now();
         const cache = openTeamCache(paths, { readonly: true });
-        const team = mergedGroups(store, cache).filter((g) => g.origin === "team" && g.mayUse !== null);
+        const team = mergedGroups(store, cache).filter((g) => g.origin === "team");
         cache?.close();
         // `allEdges`: the edges are already in the main layer of this fixture.
         count = crossingFindings(store, changed, paths20, { groups: team, allEdges: true }).length;
@@ -265,9 +271,13 @@ describe("team boundaries are read from the cache file and nothing else", () => 
   it("no hook file imports the team client or a call to a team server, or reaches a network module", () => {
     // The names are joined here so that this file does not itself match a search for them in the hooks folder.
     const forbidden = new RegExp(
-      ["team/client", "publish" + "View", "publish" + "Group", "pull" + "TeamCache", "team" + "Client"].join(
-        "|",
-      ),
+      [
+        ["team", "client"].join("/"),
+        "publish" + "View",
+        "publish" + "Group",
+        "pull" + "TeamCache",
+        "team" + "Client",
+      ].join("|"),
     );
     const dir = fileURLToPath(new URL(".", import.meta.url));
     const sources = readdirSync(dir).filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"));

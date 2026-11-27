@@ -447,7 +447,8 @@ function boundaryGroups(paths: GantryPaths, store: Store): { local?: Group[]; te
     if (team.length === 0) return none;
     return {
       local: merged.filter((g) => g.origin === "local" && g.shadowed !== true),
-      team: team.filter((g) => g.mayUse !== null),
+      // The whole list: a group with `mayUse: null` is no boundary, but a call into it is still a crossing.
+      team,
     };
   } catch {
     return none;
