@@ -536,6 +536,25 @@ describe("uploads in parts", () => {
     expect((mismatch.json as { message: string }).message).toContain("target mismatch");
   });
 
+  it("refuses a record of the other kind of upload", async () => {
+    const main = await begin({ kind: "main", sha: SHA, counts: countsOf(snapshot()) });
+    const mainId = (main.json as { upload_id: string }).upload_id;
+    const [csPart] = splitIntoParts(changeSetRecords(changeSet()), LIMITS);
+    const a = await putPart(mainId, 1, 1, csPart as Uint8Array);
+    expect(a.status).toBe(400);
+    expect(ErrorSchema.parse(a.json).error).toBe("invalid");
+
+    const cs = changeSet();
+    const started = await begin({ kind: "change_set", counts: { nodes: 2, radius: 2 } }, cs.id);
+    const csId = (started.json as { upload_id: string }).upload_id;
+    const records = [...changeSetRecords(cs), ...mainSnapshotRecords(snapshot())];
+    const [mixed] = splitIntoParts(records, LIMITS);
+    const b = await putPart(csId, 1, 1, mixed as Uint8Array);
+    expect(b.status).toBe(400);
+    expect(ErrorSchema.parse(b.json).error).toBe("invalid");
+    expect((await status(csId)).parts.received).toBe(0);
+  });
+
   it("checks the target header at begin", async () => {
     const snap = countsOf(snapshot());
     expect(

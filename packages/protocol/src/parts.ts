@@ -2,9 +2,11 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import {
   type AdapterNode,
   type ChangeSet,
+  ChangeSetRecordSchema,
   type Edge,
   type FileNode,
   type MainRecord,
+  MainRecordSchema,
   type MainSnapshot,
   type PartRecord,
   PartRecordSchema,
@@ -117,14 +119,16 @@ export function splitIntoParts(records: readonly PartRecord[], limits: PartLimit
 
 /**
  * Reads one part: gunzips it (at most `maxBytes` decompressed when given) and checks every line with
- * `PartRecordSchema`. Throws on a body that is not gzip, a line that is not JSON or a record that is not valid.
+ * `PartRecordSchema` (or, given `kind`, only the records of that kind of upload). Throws on a body that is not gzip, a line that is not JSON or a record that is not valid.
  */
-export function decodePart(body: Uint8Array, maxBytes?: number): PartRecord[] {
+export function decodePart(body: Uint8Array, maxBytes?: number, kind?: "main" | "change_set"): PartRecord[] {
   const text = gunzipSync(body, maxBytes === undefined ? {} : { maxOutputLength: maxBytes }).toString("utf8");
   const records: PartRecord[] = [];
   for (const [i, line] of text.split("\n").entries()) {
     if (line === "") continue;
-    const parsed = PartRecordSchema.safeParse(JSON.parse(line));
+    const schema =
+      kind === "main" ? MainRecordSchema : kind === "change_set" ? ChangeSetRecordSchema : PartRecordSchema;
+    const parsed = schema.safeParse(JSON.parse(line));
     if (!parsed.success) throw new Error(`record ${i + 1}: ${parsed.error.issues[0]?.message ?? "invalid"}`);
     records.push(parsed.data);
   }

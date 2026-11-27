@@ -215,7 +215,7 @@ export async function startFakeServer(opts: FakeServerOptions = {}): Promise<Fak
     };
     let records: PartRecord[] = [];
     try {
-      records = decodePart(body, limits.part_max_bytes);
+      records = decodePart(body, limits.part_max_bytes, upload.start.kind);
     } catch (err) {
       refuse(err instanceof Error ? err.message : "invalid");
     }
