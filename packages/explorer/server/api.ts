@@ -24,6 +24,7 @@ import {
 import { HttpError } from "./errors.js";
 import { getLayout } from "./layout.js";
 import { applyOverlay } from "./overlay.js";
+import { teamLayer } from "./team.js";
 import type { ApiContext, ViewLevel, ViewModule, ViewParams } from "./types.js";
 import { adapterNodeBody } from "./views/adapterNode.js";
 import { getView, listViews } from "./views/index.js";
@@ -85,6 +86,9 @@ export function handleApi(ctx: ApiContext, pathname: string, query: URLSearchPar
     case "overlay":
       if (segments.length > 2) throw new HttpError(404, "Unknown API route");
       return { ...readOverlay(ctx.store), unresolved: listUnresolved(ctx.store) };
+    case "team":
+      if (segments[2] !== "layer" || segments.length > 3) throw new HttpError(404, "Unknown API route");
+      return teamLayer(ctx);
     default:
       throw new HttpError(404, "Unknown API route");
   }
