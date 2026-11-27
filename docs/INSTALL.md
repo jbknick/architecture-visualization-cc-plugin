@@ -20,6 +20,10 @@ pnpm install && pnpm build
 
 The plugin adds the `gantry` MCP server, the `describer` agent and the read-only `explainer` agent and six skills that only you can start: `/gantry:init`, `/gantry:sync`, `/gantry:explain`, `/gantry:overview`, `/gantry:map` and `/gantry:review`. You can check the files without a session: `claude plugin validate plugin` and `claude plugin validate .claude-plugin/marketplace.json`.
 
+## Using the protocol package
+
+Every release also carries `gantry-protocol-<version>.tgz`, the `@gantry/protocol` package (the wire schemas, route table, limits and a test double), with its checksum in `gantry-protocol-<version>.tgz.sha256` (one line, `<sha256>  gantry-protocol-<version>.tgz`). Any consumer that must speak the wire format without installing the CLI pins it by URL and checksum: put `"@gantry/protocol": "https://github.com/jbknick/architecture-visualization-cc-plugin/releases/download/v<version>/gantry-protocol-<version>.tgz"` in its `package.json` dependencies, and check the downloaded file against the checksum the `.sha256` file holds (`sha256sum -c gantry-protocol-<version>.tgz.sha256`). The package exports `.` and `./testing`, and its only dependency is `zod`, at an exact version. It is not published to a package registry.
+
 ## Where the data lives
 
 The MCP server, the hooks and the skills all use one data directory per repo: the plugin data dir Claude Code gives the plugin (`~/.claude/plugins/data/gantry-gantry-dev/` for this marketplace), under `repos/<hash>/` (repos that a `gantry-workspace.json` lists share one, under `workspaces/<hash>/`). Commands that Claude runs through the Bash tool do not receive `CLAUDE_PLUGIN_DATA`, so the skills pass it in explicitly and `bin/gantry` derives it from its own install path when it is missing. Running `bin/gantry` from a terminal at the installed path (`~/.claude/plugins/cache/gantry-dev/gantry/<version>/bin/gantry`) gives the same directory. Running it from your clone (`<clone>/plugin/bin/gantry`) does not, so for terminal checks set `CLAUDE_PLUGIN_DATA=~/.claude/plugins/data/gantry-gantry-dev` first.

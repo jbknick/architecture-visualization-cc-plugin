@@ -164,13 +164,13 @@ Restart Claude Code afterwards. Uninstalling the plugin deletes its data directo
 
 ## Install in CI
 
-Each tagged release carries one tarball, `gantry-<version>.tgz`, and its checksum, `gantry-<version>.tgz.sha256`. The tarball holds the bundled CLI and MCP server and a lockfile for the native dependencies (SQLite, the parser, the embedding runtime). It is the same file for every platform: `npm ci` fetches the native binaries for the machine it runs on. Gantry is not published to a package registry. On a runner with Node 26, set `V` to the version of a release that has the tarball and run:
+Each tagged release carries two tarballs, each with its own checksum file. `gantry-<version>.tgz` (checksum `gantry-<version>.tgz.sha256`) holds the bundled CLI and MCP server and a lockfile for the native dependencies (SQLite, the parser, the embedding runtime); it is the same file for every platform: `npm ci` fetches the native binaries for the machine it runs on. Gantry is not published to a package registry. On a runner with Node 26, set `V` to the version of a release that has the tarball and run:
 
 ```sh
 V=<version>; B=https://github.com/jbknick/architecture-visualization-cc-plugin/releases/download/v$V; curl -fsSLO $B/gantry-$V.tgz && curl -fsSLO $B/gantry-$V.tgz.sha256 && sha256sum -c gantry-$V.tgz.sha256 && tar -xzf gantry-$V.tgz && (cd gantry && npm ci --omit=dev --no-audit --no-fund) && ./gantry/bin/gantry --version
 ```
 
-The last command prints the version. `npm ci` installs only the third-party native dependencies from the lockfile in the tarball; nothing else is downloaded. On macOS use `shasum -a 256 -c` in place of `sha256sum -c`. To build the tarball yourself, run `pnpm build && pnpm release:pack`: it writes `dist/gantry-<version>.tgz` and its `.sha256`, and two runs on the same commit give the same bytes.
+The last command prints the version. `npm ci` installs only the third-party native dependencies from the lockfile in the tarball; nothing else is downloaded. On macOS use `shasum -a 256 -c` in place of `sha256sum -c`. To build the tarball yourself, run `pnpm build && pnpm release:pack`: it writes `dist/gantry-<version>.tgz`, `dist/gantry-protocol-<version>.tgz` (the `@gantry/protocol` package, described in [`docs/INSTALL.md`](docs/INSTALL.md)) and a `.sha256` file for each, and two runs on the same commit give the same bytes.
 
 ## Pull request comment
 

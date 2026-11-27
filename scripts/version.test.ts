@@ -38,7 +38,7 @@ function scratch(version = "0.0.1"): string {
     root,
     "package.json",
     version,
-    ',\n  "scripts": { "build": "mkdir -p plugin/dist && echo built > plugin/dist/cli.js" }',
+    ',\n  "scripts": { "build": "mkdir -p plugin/dist packages/protocol/dist && echo built > plugin/dist/cli.js && echo built > packages/protocol/dist/index.js" }',
   );
   writeFileSync(join(root, ".gitignore"), "dist\n");
   writeFileSync(join(root, "LICENSE"), "MIT\n");
@@ -53,6 +53,8 @@ function scratch(version = "0.0.1"): string {
 function fakeBuild(root: string) {
   mkdirSync(join(root, "plugin/dist"), { recursive: true });
   writeFileSync(join(root, "plugin/dist/cli.js"), "// built\n");
+  mkdirSync(join(root, "packages/protocol/dist"), { recursive: true });
+  writeFileSync(join(root, "packages/protocol/dist/index.js"), "// built\n");
 }
 
 describe("nextVersion", () => {
@@ -183,9 +185,10 @@ describe("release", () => {
     });
     expect(r.status, r.stderr).toBe(0);
     expect(r.stdout).toContain(
-      "gh release create v0.0.2 dist/gantry-0.0.2.tgz dist/gantry-0.0.2.tgz.sha256 --notes-from-tag",
+      "gh release create v0.0.2 dist/gantry-0.0.2.tgz dist/gantry-0.0.2.tgz.sha256 dist/gantry-protocol-0.0.2.tgz dist/gantry-protocol-0.0.2.tgz.sha256 --notes-from-tag",
     );
     expect(existsSync(join(root, "dist/gantry-0.0.2.tgz"))).toBe(true);
+    expect(existsSync(join(root, "dist/gantry-protocol-0.0.2.tgz.sha256"))).toBe(true);
     expect(run(root, "tag", "--list")).toBe("v0.0.2");
     expect(run(root, "remote")).toBe("");
   });
