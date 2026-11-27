@@ -2,6 +2,11 @@
 
 One section per release, newest first. Written by `pnpm release`.
 
+## 0.4.0 - 2026-11-27
+
+- A runtime guard refuses any upload that could carry source, and the description switch is proved to stop every description upload (#447)
+- Explorer: team views under a Team heading, a team default for new sessions, read-only team views and Publish to team (#446)
+
 ## 0.3.0 - 2026-11-27
 
 - gantry upload --dry-run prints exactly what would be sent and contacts no server; --summary shows counts and sizes per field (#443)
