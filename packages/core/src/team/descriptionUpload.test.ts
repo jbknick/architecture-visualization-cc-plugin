@@ -85,7 +85,7 @@ describe("uploadDescriptions", () => {
       { n: 5, model: null },
       { n: 6, provenance: "template", model: null },
     );
-    const result = await uploadDescriptions(store, client(), REPO);
+    const result = await uploadDescriptions(store, client(), REPO, { enabled: true });
     expect(result).toEqual({ sent: 3, stored: 3, skipped: 0 });
     expect([...fake.state.descriptions.keys()].sort()).toEqual([key(1), key(2), key(3)]);
   });
@@ -126,20 +126,23 @@ describe("uploadDescriptions", () => {
       }
       return fetch(input, init);
     };
-    const result = await uploadDescriptions(store, client(recorder), REPO);
+    const result = await uploadDescriptions(store, client(recorder), REPO, { enabled: true });
     expect(result).toEqual({ sent: 1201, stored: 1201, skipped: 0 });
     expect(sent.map((b) => b.length)).toEqual([500, 500, 201]);
     const keys = sent.flat().map((d) => d.content_key);
     expect(keys).toEqual([...keys].sort());
     expect(fake.state.descriptions.size).toBe(1201);
     // a second run stores nothing new
-    expect(await uploadDescriptions(store, client(), REPO)).toMatchObject({ sent: 1201, stored: 0 });
+    expect(await uploadDescriptions(store, client(), REPO, { enabled: true })).toMatchObject({
+      sent: 1201,
+      stored: 0,
+    });
   });
 
   it("leaves every stored record equal to the mapped local row in all nine fields", async () => {
     seed({ n: 10, suggested: "slugify" }, { n: 11, nameFits: 0 }, { n: 12 });
     const expected = descriptionRecords(store).records;
-    await uploadDescriptions(store, client(), REPO);
+    await uploadDescriptions(store, client(), REPO, { enabled: true });
     expect(expected).toHaveLength(3);
     for (const want of expected) {
       const got = fake.state.descriptions.get(want.content_key);
@@ -152,7 +155,11 @@ describe("uploadDescriptions", () => {
   it("does not send a row the wire format would refuse, and counts it", async () => {
     seed({ n: 20 }, { n: 21 });
     store.db.prepare("UPDATE descriptions SET search_terms = ? WHERE content_key = ?").run("[]", key(21));
-    expect(await uploadDescriptions(store, client(), REPO)).toEqual({ sent: 1, stored: 1, skipped: 1 });
+    expect(await uploadDescriptions(store, client(), REPO, { enabled: true })).toEqual({
+      sent: 1,
+      stored: 1,
+      skipped: 1,
+    });
   });
 
   it("makes no request when there is nothing to send", async () => {
@@ -162,11 +169,23 @@ describe("uploadDescriptions", () => {
       requests += 1;
       return fetch(input, init);
     };
-    expect(await uploadDescriptions(store, client(counting), REPO)).toEqual({
+    expect(await uploadDescriptions(store, client(counting), REPO, { enabled: true })).toEqual({
       sent: 0,
       stored: 0,
       skipped: 0,
     });
+    expect(requests).toBe(0);
+  });
+
+  it("with the switch off throws before it reads the table or makes a request", async () => {
+    let requests = 0;
+    const counting: typeof fetch = async (input, init) => {
+      requests += 1;
+      return fetch(input, init);
+    };
+    await expect(uploadDescriptions(store, client(counting), REPO, { enabled: false })).rejects.toThrow(
+      "Description upload is switched off (team.upload.descriptions).",
+    );
     expect(requests).toBe(0);
   });
 });

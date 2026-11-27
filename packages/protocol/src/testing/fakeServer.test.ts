@@ -474,8 +474,9 @@ describe("uploads in parts", () => {
     const records = mainSnapshotRecords(snap).map((r) =>
       r.t === "s" ? { ...r, signature: "function slugify(title) {" } : r,
     );
-    const [part] = splitIntoParts(records as unknown as PartRecord[], LIMITS);
-    const r = await putPart(id, 1, 1, part as Uint8Array);
+    // `splitIntoParts` refuses such a record (see guard.test.ts), so the server is shown a part made by hand
+    const part = new Uint8Array(gzipSync(records.map((r) => `${JSON.stringify(r)}\n`).join("")));
+    const r = await putPart(id, 1, 1, part);
     expect(r.status).toBe(400);
     expect(ErrorSchema.parse(r.json).error).toBe("invalid");
     expect((await status(id)).parts.received).toBe(0);
