@@ -1,6 +1,8 @@
 // The shape of action/action.yml that the upload step depends on. No YAML parser is an approved dependency, so the
 // file is read as text: a step starts at a line `    - name:` and its environment is the `      env:` block.
-import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -38,6 +40,17 @@ function steps(): Step[] {
     out.push({ name: field("name"), id: field("id"), if: field("if"), env, run: field("run") });
   }
   return out;
+}
+
+/** The `run: |` script of the upload step, without its indentation. */
+function uploadScript(): string {
+  const start = yml.indexOf("id: upload");
+  const run = yml.indexOf("run: |\n", start);
+  return yml
+    .slice(run + "run: |\n".length)
+    .split("\n")
+    .map((l) => l.replace(/^ {8}/, ""))
+    .join("\n");
 }
 
 const step = (id: string): Step => {
@@ -100,8 +113,8 @@ describe("action.yml", () => {
     expect(s.env.get("GANTRY_TOKEN")).toBe(expr("inputs.team-token"));
     expect(s.env.get("GANTRY_INDEX_FAILED")).toBe(expr("steps.index.outputs.failed"));
     expect(s.env.get("GANTRY_PR_MERGED")).toBe(expr("github.event.pull_request.merged"));
-    expect(s.run).toBe('node "$GANTRY_HOME/dist/upload.js"');
-    expect(s.run).not.toContain(expr("").slice(0, 3));
+    expect(uploadScript()).toContain('node "$GANTRY_HOME/dist/upload.js"');
+    expect(uploadScript()).not.toContain(expr("").slice(0, 3));
   });
 
   it("keeps the GitHub token in the comment step's GANTRY_TOKEN", () => {
@@ -160,6 +173,7 @@ describe("action.yml", () => {
     it("a pull request update runs every step", () => {
       const got = ran({
         "github.event_name": "pull_request",
+        "github.event.pull_request": "{}",
         "github.event.action": "opened",
         "inputs.embed": "true",
       });
@@ -169,15 +183,93 @@ describe("action.yml", () => {
     it("a closed pull request runs install and upload only", () => {
       const got = ran({
         "github.event_name": "pull_request",
+        "github.event.pull_request": "{}",
         "github.event.action": "closed",
         "inputs.embed": "true",
       });
       expect(got).toEqual(["Set up Node 26", "install", "upload"]);
     });
 
+    it("a push to a non-default branch behaves like any push: no comment", () => {
+      const got = ran({ "github.event_name": "push", "github.ref_name": "feature" });
+      expect(got).not.toContain("comment");
+      expect(got).toContain("index");
+    });
+
+    it.each(["synchronize", "reopened"])("a pull request %s runs every step", (action) => {
+      const got = ran({
+        "github.event_name": "pull_request",
+        "github.event.pull_request": "{}",
+        "github.event.action": action,
+        "inputs.embed": "true",
+      });
+      expect(got).toEqual(["Set up Node 26", "install", "index", "embed", "comment", "upload"]);
+    });
+
+    it("a pull_request_review event carries a pull request, so the comment runs", () => {
+      const got = ran({
+        "github.event_name": "pull_request_review",
+        "github.event.pull_request": "{}",
+        "github.event.action": "submitted",
+      });
+      expect(got).toContain("comment");
+    });
+
+    it.each([
+      ["none", {}],
+      ["only base", { "inputs.base": "a" }],
+      ["only head", { "inputs.head": "b" }],
+    ])("a workflow_dispatch with %s of base and head skips the comment", (_name, inputs) => {
+      const got = ran({ "github.event_name": "workflow_dispatch", ...inputs });
+      expect(got).not.toContain("comment");
+      expect(got).not.toContain("embed");
+    });
+
+    it("a schedule skips the comment and reaches the upload step, which logs and uploads nothing", () => {
+      const got = ran({ "github.event_name": "schedule" });
+      expect(got).not.toContain("comment");
+      expect(got).toContain("upload");
+    });
+
     it("a run with base and head inputs set still comments (the summary path)", () => {
       const got = ran({ "github.event_name": "workflow_dispatch", "inputs.base": "a", "inputs.head": "b" });
       expect(got).toContain("comment");
+    });
+  });
+
+  describe("the upload step's script", () => {
+    const run = (withFile: string | null) => {
+      const dir = mkdtempSync(join(tmpdir(), "gantry-upload-step-"));
+      try {
+        mkdirSync(join(dir, "dist"));
+        if (withFile !== null) writeFileSync(join(dir, "dist/upload.js"), withFile);
+        const r = spawnSync("bash", ["-c", uploadScript()], {
+          env: { PATH: process.env.PATH ?? "", GANTRY_HOME: dir },
+          encoding: "utf8",
+        });
+        return { status: r.status, out: r.stdout };
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    };
+
+    it("warns once and exits 0 when the installed version has no upload script", () => {
+      const r = run(null);
+      expect(r.status).toBe(0);
+      expect(r.out.trim().split("\n")).toHaveLength(1);
+      expect(r.out).toContain("::warning title=Gantry::the installed Gantry version has no upload step");
+    });
+
+    it("turns a failing script into one warning and exit 0", () => {
+      const r = run("process.exit(3);");
+      expect(r.status).toBe(0);
+      expect(r.out).toContain("::warning title=Gantry::upload failed");
+    });
+
+    it("runs the script and passes its output through when it works", () => {
+      const r = run('console.log("fork: upload skipped");');
+      expect(r.status).toBe(0);
+      expect(r.out.trim()).toBe("fork: upload skipped");
     });
   });
 });

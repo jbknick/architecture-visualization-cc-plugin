@@ -64,7 +64,7 @@ The comment says when the blast radius is **structural only**: a repository with
 
 The Action fails open: a Gantry error never fails your job. If the install (input check, download, checksum, extraction, `npm ci`), `gantry init`, `gantry embed` or `gantry review` fails, or the review is not JSON, the step logs a `::warning` line and exits 0, and the pull request still gets its one comment (the same one, updated in place) saying that the analysis failed and why, in one short line. A duplicate check that fails is reported inside the normal comment. If the checksum of the download does not match, the log has an `::error` line, the tarball is deleted and never run, and the comment says so.
 
-When the install fails, the release tarball (and so its comment script) is not there. The last step then runs `post-failure.sh` from this Action's own folder, which needs only `bash`, `curl` and `node`: it writes the same failure comment, or the job summary when no comment can be posted. Only a misconfigured workflow (no base and head to review) still fails the job.
+When the install fails, the release tarball (and so its comment script) is not there. The last step then runs `post-failure.sh` from this Action's own folder, which needs only `bash`, `curl` and `node`: it writes the same failure comment, or the job summary when no comment can be posted. A workflow with no pull request and no `base` and `head` inputs (a push, a schedule) simply skips the comment: the comment and embed steps run only when the event carries a pull request, or both inputs are set.
 
 ## Uploading to a team server
 
@@ -101,14 +101,16 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: jbknick/architecture-visualization-cc-plugin/action@v0.1.0
+      - uses: jbknick/architecture-visualization-cc-plugin/action@v0.3.0
         with:
-          version: "0.1.0"
-          sha256: "<the checksum from gantry-0.1.0.tgz.sha256>"
+          version: "0.3.0"
+          sha256: "<the checksum from gantry-0.3.0.tgz.sha256>"
           team-server: ${{ secrets.GANTRY_SERVER }}
           team-org: ${{ secrets.GANTRY_ORG }}
           team-token: ${{ secrets.GANTRY_TOKEN }}
 ```
+
+The upload step first ships in v0.3.0; an earlier version installs fine but skips the upload with a warning.
 
 Use the `pull_request` event, not `pull_request_target`: a fork's run must not get the secrets, and GitHub does not pass them to a `pull_request` run from a fork, so the three inputs are empty there as well.
 

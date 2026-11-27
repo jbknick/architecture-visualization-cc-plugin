@@ -169,6 +169,10 @@ describe("runUpload", () => {
     await runUpload({ ...base, GANTRY_EVENT: "pull_request_target", GANTRY_EVENT_ACTION: "opened" }, b.deps);
     expect(b.calls).toEqual([]);
     expect(b.lines).toEqual(["upload skipped: event pull_request_target does not upload"]);
+    const c = harness();
+    await runUpload({ ...base, GANTRY_EVENT: "schedule" }, c.deps);
+    expect(c.calls).toEqual([]);
+    expect(c.lines).toEqual(["upload skipped: event schedule does not upload"]);
   });
 
   it("warns once and does not throw when the CLI exits non-zero, with the last stderr line and no token", async () => {
