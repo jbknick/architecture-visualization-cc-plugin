@@ -55,6 +55,7 @@ type Answer<K extends RouteKey> = z.output<(typeof ROUTES)[K]["response"]>;
 interface CallOptions {
   params?: Record<string, string | number>;
   query?: Record<string, unknown>;
+  /** The request object, or a JSON string that is already serialised (it is checked, then sent byte for byte). */
   body?: unknown;
   /** A body that is already bytes (an upload part). */
   rawBody?: Uint8Array;
@@ -117,12 +118,13 @@ function parseJson(text: string): unknown {
 function failure(status: number, text: string): GantryError {
   const body = ErrorSchema.safeParse(parseJson(text));
   const message = body.success ? body.data.message : `The server answered ${status}.`;
-  if (status === 401) return new GantryError("team_unauthorized", message);
-  if (status === 403) return new GantryError("team_forbidden", message);
+  const answer = { status, ...(body.success ? { error: body.data.error } : {}) };
+  if (status === 401) return new GantryError("team_unauthorized", message, answer);
+  if (status === 403) return new GantryError("team_forbidden", message, answer);
   if (status === 400 && body.success && body.data.error === "protocol_version") {
-    return new GantryError("team_protocol", message);
+    return new GantryError("team_protocol", message, answer);
   }
-  return new GantryError("team_rejected", message);
+  return new GantryError("team_rejected", message, answer);
 }
 
 /**
@@ -166,7 +168,12 @@ export function teamClient(paths: GantryPaths, config: GantryConfig, opts: TeamC
     if (o.rawBody !== undefined) {
       body = o.rawBody;
     } else if (route.request !== null) {
-      body = JSON.stringify(route.request.parse(o.body));
+      if (typeof o.body === "string") {
+        route.request.parse(JSON.parse(o.body));
+        body = o.body;
+      } else {
+        body = JSON.stringify(route.request.parse(o.body));
+      }
       headers["Content-Type"] = "application/json";
     }
     const res = await exchange(
@@ -229,7 +236,11 @@ export function teamClient(paths: GantryPaths, config: GantryConfig, opts: TeamC
       call("putPart", {
         params: { id, n },
         rawBody: gzipped,
-        headers: { "Content-Encoding": "gzip", [HEADER_PART_COUNT]: String(partCount) },
+        headers: {
+          "Content-Encoding": "gzip",
+          "Content-Type": "application/x-ndjson",
+          [HEADER_PART_COUNT]: String(partCount),
+        },
       }),
     uploadStatus: (id: string) => call("uploadStatus", { params: { id } }),
     closeChangeSet: (repo: string, id: string, body: unknown) =>

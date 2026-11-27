@@ -4,7 +4,7 @@ import type { LanguagePack, TypingRules } from "../pack.js";
 import { defaultImportName, importBinding } from "../parse.js";
 import { dependsOn, nameKey } from "../workspace.js";
 import type { FileEntry, ImportIndex } from "./imports.js";
-import { Reader } from "./read.js";
+import type { Reader } from "./read.js";
 import { withTree } from "./source.js";
 import type { Arity, Expr, FileDecls, ImplDecl, Results, TypeDecl, TypeRef } from "./typing.js";
 

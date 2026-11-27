@@ -111,6 +111,11 @@ const strip = (text: string): string =>
 const read = (file: string): string => strip(readFileSync(file, "utf8"));
 const CLIENT = join(packagesDir, "core", "src", "team", "client.ts");
 const CACHE = join(packagesDir, "core", "src", "team", "cache.ts");
+/** The two files only `gantry upload` may reach: the settings resolver and the command that sends. */
+const RESOLVE = join(packagesDir, "core", "src", "team", "resolve.ts");
+const UPLOAD = join(packagesDir, "cli", "src", "commands", "upload.ts");
+const SENDERS = new Set([RESOLVE, UPLOAD]);
+const SENDER_NAMES = /\b(teamClient|pullTeamCache|resolveTeamTarget|runUpload|registerUpload)\b/;
 
 /** `./x.js` or a workspace package to a source file; undefined for anything outside this repo's sources. */
 function resolveSpec(from: string, spec: string): string | undefined {
@@ -188,20 +193,23 @@ function violations(roots: string[]): string[] {
     if (visited.has(file)) continue;
     visited.add(file);
     const text = read(file);
-    if (file !== CLIENT && file !== CACHE && /\b(teamClient|pullTeamCache)\b/.test(text)) {
+    if (file !== CLIENT && file !== CACHE && !SENDERS.has(file) && SENDER_NAMES.test(text)) {
       bad.push(`${rel(file)} uses the team client or the pull`);
     }
     for (const edge of edgesOf(text)) {
       const target = resolveSpec(file, edge.spec);
       if (target === undefined) continue;
       if (edge.names === undefined) {
-        if (target === CLIENT || target === CACHE) bad.push(`${rel(file)} imports all of ${rel(target)}`);
-        queue.push(target);
+        if (target === CLIENT || target === CACHE || SENDERS.has(target))
+          bad.push(`${rel(file)} imports all of ${rel(target)}`);
+        if (!SENDERS.has(target)) queue.push(target);
         continue;
       }
       for (const name of edge.names) {
         const where = definer(target, name) ?? target;
         if (where === CLIENT) bad.push(`${rel(file)} imports ${name} from the team client`);
+        else if (SENDERS.has(where))
+          bad.push(`${rel(file)} imports ${name} from ${rel(where)}, the upload command's`);
         else if (where === CACHE && !READERS.has(name))
           bad.push(`${rel(file)} imports ${name} from cache.ts, which is not a reader`);
         else if (where !== CACHE) queue.push(where);
@@ -252,9 +260,47 @@ describe("the hooks' import graph", () => {
     expect(callers).toEqual([
       join("cli", "src", "commands", "team-publish.ts"),
       join("cli", "src", "commands", "team.ts"),
+      join("cli", "src", "commands", "upload.ts"),
       join("core", "src", "team", "cache.ts"),
       join("core", "src", "team", "client.ts"),
     ]);
+  });
+
+  it("only resolve.ts and gantry upload mention resolveTeamTarget, and only main.ts registers the command", () => {
+    const mentions = (name: RegExp): string[] =>
+      all
+        .filter((f) => name.test(readFileSync(f, "utf8")))
+        .map(rel)
+        .sort();
+    expect(mentions(/\bresolveTeamTarget\b/)).toEqual([
+      join("cli", "src", "commands", "upload.ts"),
+      join("core", "src", "team", "resolve.ts"),
+    ]);
+    expect(mentions(/\bregisterUpload\b/)).toEqual([
+      join("cli", "src", "commands", "upload.ts"),
+      join("cli", "src", "main.ts"),
+    ]);
+    expect(mentions(/commands\/upload\.js/)).toEqual([join("cli", "src", "main.ts")]);
+  });
+
+  it("reaches neither resolveTeamTarget nor the upload command from a hook, however it is imported", () => {
+    const dir = mkdtempSync(join(tmpdir(), "gantry-guard-"));
+    try {
+      const viaName = join(dir, "name.ts");
+      writeFileSync(viaName, `import { resolveTeamTarget } from "@gantry/core";\nresolveTeamTarget;\n`);
+      expect(violations([viaName])).toEqual([
+        `${rel(viaName)} uses the team client or the pull`,
+        `${rel(viaName)} imports resolveTeamTarget from ${rel(RESOLVE)}, the upload command's`,
+      ]);
+      const viaPath = join(dir, "path.ts");
+      writeFileSync(
+        viaPath,
+        `import * as upload from "${relative(dir, UPLOAD).replace(/\.ts$/, ".js")}";\nupload;\n`,
+      );
+      expect(violations([viaPath])).toEqual([`${rel(viaPath)} imports all of ${rel(UPLOAD)}`]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

@@ -20,6 +20,7 @@ import { registerSearch } from "./commands/search.js";
 import { registerTeam } from "./commands/team.js";
 import { registerTrace } from "./commands/trace.js";
 import { registerUninstall } from "./commands/uninstall.js";
+import { registerUpload } from "./commands/upload.js";
 import { registerUsage } from "./commands/usage.js";
 
 // Bundled to plugin/dist/cli.js, so plugin.json is one level up.
@@ -46,4 +47,5 @@ registerConfig(program);
 registerEmbed(program);
 registerDescribe(program);
 registerTeam(program);
+registerUpload(program);
 await program.parseAsync();

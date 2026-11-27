@@ -19,6 +19,7 @@ interface Call {
   url: string;
   method: string;
   headers: Record<string, string>;
+  body?: unknown;
 }
 
 /** The global fetch, remembering each request. */
@@ -31,6 +32,7 @@ function recorder(): { fetch: typeof fetch; calls: Call[] } {
         url: String(input),
         method: init?.method ?? "GET",
         headers: { ...(init?.headers as Record<string, string> | undefined) },
+        body: init?.body,
       });
       return fetch(input, init);
     },
@@ -324,5 +326,19 @@ describe("device sign-in", () => {
   it("refuses an unknown device code", async () => {
     const client = teamClient(paths, configFor(fake.url), { env, org: null, token: null });
     expect((await failureOf(client.deviceToken("nope"))).code).toBe("team_rejected");
+  });
+});
+
+describe("an already serialised body", () => {
+  it("is checked against the route's schema and sent byte for byte", async () => {
+    const rec = recorder();
+    const client = teamClient(paths, configFor(fake.url), { env, token: "gct_fake", fetch: rec.fetch });
+    const sha = "7e3d9a1c5b8f20466d1ae9c3b7f45082d6c1e9ab";
+    const exact = `{"head_sha":"${sha}","merged":true}`;
+    const answer = await client.closeChangeSet("fixture/pnpm-turbo", `cs:pr:fixture/pnpm-turbo#1`, exact);
+    expect(answer).toEqual({ closed: false });
+    const sent = rec.calls.find((c) => c.url.endsWith("/close"));
+    expect(sent?.body).toBe(exact);
+    await expect(client.closeChangeSet("fixture/pnpm-turbo", "x", `{"merged":true}`)).rejects.toThrow();
   });
 });
