@@ -1,8 +1,10 @@
 import { spawn } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import net from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gunzipSync } from "node:zlib";
 import {
   buildMainSnapshot,
   dumpGraph,
@@ -13,11 +15,13 @@ import {
   resolvePaths,
   type Store,
   snapshotRecords,
+  storeDescriptions,
+  summarisePayload,
 } from "@gantry/core";
-import { decodePart } from "@gantry/protocol";
+import { decodePart, splitIntoParts } from "@gantry/protocol";
 import { type FakeServer, startFakeServer } from "@gantry/protocol/testing";
 import { build } from "tsup";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildUploadParts, runUpload, serialiseBody, type UploadOptions } from "./upload.js";
 
 interface UploadFixture {
@@ -92,6 +96,8 @@ interface Call {
   url: string;
   headers: Record<string, string>;
   body: string | undefined;
+  /** The bytes of a binary body (a gzipped part). */
+  raw?: Uint8Array;
 }
 
 interface Run {
@@ -122,6 +128,7 @@ async function upload(
     intercept?: Intercept;
     statusMs?: number;
     buildMs?: number;
+    paths?: GantryPaths;
   } = {},
 ): Promise<Run> {
   const clock = { t: 0 };
@@ -137,7 +144,7 @@ async function upload(
   };
   const code = await runUpload(
     {
-      paths,
+      paths: o.paths ?? paths,
       env,
       out: (t) => {
         // the "Uploading ..." line is printed when the local build is over: this is how long that took
@@ -158,6 +165,7 @@ async function upload(
           url: String(input),
           headers: { ...(init?.headers as Record<string, string> | undefined) },
           body: typeof body === "string" ? body : undefined,
+          ...(body instanceof Uint8Array ? { raw: body } : {}),
         };
         calls.push(call);
         if (call.method === "GET" && call.url.includes("/v1/uploads/")) clock.t += o.statusMs ?? 0;
@@ -738,6 +746,291 @@ describe("buildUploadParts", () => {
       buildUploadParts(records, { part_max_records: 5, part_max_bytes: 10 }, snapshot.sha),
     ).toThrow(/record too large/);
     expect(() => buildUploadParts(records, { part_max_records: 5, part_max_bytes: 10 })).toThrow();
+  });
+});
+
+/** What a real upload sent, as a dry run prints it: the begin body, then each part's marker line and its records. */
+function printedBySentCalls(calls: Call[]): string {
+  const begin = calls.find((c) => c.method === "POST" && c.url.endsWith("/uploads"));
+  const parts = calls
+    .filter((c) => c.method === "PUT" && c.raw !== undefined)
+    .map((c) => ({
+      n: Number(c.url.split("/").pop()),
+      count: Number(c.headers["X-Gantry-Part-Count"]),
+      raw: c.raw,
+    }))
+    .sort((a, b) => a.n - b.n);
+  return `${begin?.body}\n${parts
+    .map((p) => `{"of":${p.count},"part":${p.n}}\n${gunzipSync(p.raw as Uint8Array).toString("utf8")}`)
+    .join("")}`;
+}
+
+const NO_TEAM = {
+  GANTRY_SERVER: undefined,
+  GANTRY_ORG: undefined,
+  GANTRY_TOKEN: undefined,
+  GANTRY_PR_OWNER: undefined,
+} as const;
+
+describe("gantry upload --dry-run", () => {
+  const DRY_LINE = "dry run: nothing was sent\n";
+
+  it("dry run prints the begin body and each part exactly as the fake server receives them from a real upload", async () => {
+    const real = await upload({});
+    expect(real.code).toBe(0);
+    const dry = await upload({ dryRun: true }, { env: NO_TEAM });
+    expect(dry).toMatchObject({ code: 0, err: DRY_LINE, calls: [] });
+    expect(dry.out).toBe(printedBySentCalls(real.calls));
+    expect(dry.out.startsWith(`{"counts":`)).toBe(true);
+    expect(dry.out).toContain(`{"of":1,"part":1}\n{"t":"w",`);
+    // the same holds for a pull request's change set
+    // a change set carries the time it was built (`updated_at`); a frozen clock makes two builds byte-equal
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-01-02T03:04:05.000Z") });
+    try {
+      const realPr = await upload(PR);
+      expect(realPr.code).toBe(0);
+      const dryPr = await upload({ ...PR, dryRun: true }, { env: NO_TEAM });
+      expect(dryPr).toMatchObject({ code: 0, err: DRY_LINE });
+      expect(dryPr.out).toBe(printedBySentCalls(realPr.calls));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("dry run of a change set differs between runs only in the updated_at value", async () => {
+    // `created_at` is an input (`--created-at`); without it the command stamps the time too, so it is pinned here
+    const pinned = { ...PR, createdAt: "2026-01-02T03:04:05.000Z", dryRun: true };
+    const a = await upload(pinned, { env: NO_TEAM });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const b = await upload(pinned, { env: NO_TEAM });
+    expect(a.code + b.code).toBe(0);
+    const blank = (text: string): string => text.replace(/"updated_at":"[^"]*"/g, '"updated_at":"-"');
+    expect(a.out).toContain('"updated_at":"');
+    expect(blank(a.out)).toBe(blank(b.out));
+    expect(a.out).not.toBe(b.out);
+  });
+
+  it("dry run cuts the parts to the default limits: 2,000 records each", async () => {
+    const records = snapshotRecords(buildMainSnapshot(store, paths));
+    const dry = await upload({ dryRun: true }, { env: NO_TEAM });
+    const markers = dry.out.split("\n").filter((l) => l.startsWith('{"of":'));
+    expect(markers).toHaveLength(Math.ceil(records.length / 2000));
+    expect(dry.out.split("\n").filter((l) => l.startsWith('{"t":'))).toHaveLength(records.length);
+  });
+
+  it("dry run gives identical stdout twice", async () => {
+    const a = await upload({ dryRun: true }, { env: NO_TEAM });
+    const b = await upload({ dryRun: true }, { env: NO_TEAM });
+    expect(a.out).not.toBe("");
+    expect(a.out).toBe(b.out);
+  });
+
+  it("dry run makes no request to a running server and opens no socket", async () => {
+    const connect = vi.spyOn(net.Socket.prototype, "connect");
+    const run = await upload(
+      { dryRun: true },
+      { env: { GANTRY_SERVER: fake.url, GANTRY_ORG: "acme", GANTRY_TOKEN: CI_TOKEN } },
+    );
+    try {
+      expect(run.code).toBe(0);
+      expect(run.calls).toHaveLength(0);
+      expect(connect).not.toHaveBeenCalled();
+      expect(fake.state.uploads.size).toBe(0);
+    } finally {
+      connect.mockRestore();
+    }
+  });
+
+  it("dry run exits 0 with no credentials, no team and a fetch that throws", async () => {
+    const realFetch = globalThis.fetch;
+    const connect = vi.spyOn(net.Socket.prototype, "connect");
+    globalThis.fetch = (() => {
+      throw new Error("a dry run must not call fetch");
+    }) as typeof fetch;
+    try {
+      let out = "";
+      let err = "";
+      const code = await runUpload(
+        {
+          paths,
+          env: { GANTRY_CREDENTIALS_FILE: join(data, "no-credentials.json") },
+          out: (t) => {
+            out += t;
+          },
+          err: (t) => {
+            err += t;
+          },
+          fetch: globalThis.fetch,
+        },
+        { dryRun: true },
+      );
+      expect(code).toBe(0);
+      expect(err).toBe(DRY_LINE);
+      expect(out).not.toBe("");
+      expect(connect).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = realFetch;
+      connect.mockRestore();
+    }
+  });
+
+  it("dry run on a non-default branch prints the body and exits 0", async () => {
+    fx.git(["checkout", "-q", "-b", "elsewhere-dry"]);
+    try {
+      const run = await upload({ dryRun: true }, { env: NO_TEAM });
+      expect(run).toMatchObject({ code: 0, err: DRY_LINE });
+      expect(run.out).toMatch(/^\{"counts":/);
+    } finally {
+      fx.git(["checkout", "-q", "main"]);
+      fx.git(["branch", "-q", "-D", "elsewhere-dry"]);
+    }
+  });
+
+  it("dry run --summary matches the committed snapshot and is byte-stable", async () => {
+    const a = await upload({ dryRun: true, summary: true }, { env: NO_TEAM });
+    const b = await upload({ dryRun: true, summary: true }, { env: NO_TEAM });
+    expect(a).toMatchObject({ code: 0, err: DRY_LINE });
+    expect(a.out).toBe(b.out);
+    const summary = JSON.parse(a.out) as { bytes: number; gzip_bytes: number; kind: string; parts: number };
+    expect(summary).toMatchObject({ kind: "main", parts: 1 });
+    expect(summary.gzip_bytes).toBeGreaterThan(0);
+    // the sizes depend on the zlib build, so the snapshot holds everything else
+    const { gzip_bytes: _gzip, ...stable } = summary;
+    expect(JSON.stringify(stable)).toMatchSnapshot();
+  });
+
+  it("dry run --summary alone exits 2 and prints nothing else", async () => {
+    const run = await upload({ summary: true }, { env: NO_TEAM });
+    expect(run).toMatchObject({ code: 2, out: "", err: "--summary needs --dry-run\n", calls: [] });
+  });
+
+  it("dry run with --json is a usage error that prints nothing else", async () => {
+    const run = await upload({ dryRun: true, json: true }, { env: NO_TEAM });
+    expect(run).toMatchObject({
+      code: 2,
+      out: "",
+      err: "--json can't be used with --dry-run; the dry run prints the payload\n",
+      calls: [],
+    });
+  });
+
+  it("dry run --pr --close --merged prints the close body, and --close alone says merged false", async () => {
+    const merged = await upload(
+      { pr: "1", head: prHeadSha, close: true, merged: true, dryRun: true },
+      { env: NO_TEAM },
+    );
+    expect(merged).toMatchObject({
+      code: 0,
+      out: `{"head_sha":"${prHeadSha}","merged":true}\n`,
+      err: DRY_LINE,
+    });
+    const open = await upload({ pr: "1", head: prHeadSha, close: true, dryRun: true }, { env: NO_TEAM });
+    expect(open.out).toBe(`{"head_sha":"${prHeadSha}","merged":false}\n`);
+    expect(open.calls).toEqual([]);
+    await upload(PR);
+    const sent = await upload({ pr: "1", head: prHeadSha, close: true, merged: true });
+    expect(sent.code).toBe(0);
+    expect(sent.calls.find((c) => c.url.endsWith("/close"))?.body).toBe(merged.out.trimEnd());
+  });
+
+  describe("--descriptions", () => {
+    let dataDir: string;
+    let descPaths: GantryPaths;
+    const keyOf = (i: number): string => `${i.toString(16).padStart(32, "0")}:p1`;
+    const writeConfig = (descriptions: boolean): void => {
+      mkdirSync(dirname(descPaths.configPath), { recursive: true });
+      writeFileSync(
+        descPaths.configPath,
+        JSON.stringify({ team: { server: fake.url, org: "acme", upload: { descriptions } } }),
+      );
+    };
+
+    beforeAll(() => {
+      dataDir = mkdtempSync(join(tmpdir(), "gantry-upload-dry-desc-"));
+      descPaths = resolvePaths(fx.dir, { HOME: join(dataDir, "home"), CLAUDE_PLUGIN_DATA: dataDir });
+      const s = openStore(descPaths.dbPath);
+      try {
+        storeDescriptions(
+          s,
+          Array.from({ length: 1201 }, (_, i) => ({
+            contentKey: keyOf(i),
+            model: "haiku",
+            description: { behavior: `Does thing ${i}.`, searchTerms: ["thing", `n${i}`], nameFits: true },
+          })),
+        );
+      } finally {
+        s.close();
+      }
+    }, 60_000);
+    afterAll(() => {
+      rmSync(dataDir, { recursive: true, force: true });
+    });
+
+    it("dry run --descriptions prints one body per batch of 500, equal to what the fake server receives", async () => {
+      writeConfig(true);
+      const real = await upload(
+        { descriptions: true },
+        { env: { GANTRY_TOKEN: USER_TOKEN }, paths: descPaths },
+      );
+      expect(real.code).toBe(0);
+      const sent = real.calls.filter((c) => c.url.includes("/v1/descriptions")).map((c) => c.body);
+      expect(sent).toHaveLength(3);
+      const dry = await upload({ descriptions: true, dryRun: true }, { env: NO_TEAM, paths: descPaths });
+      expect(dry).toMatchObject({ code: 0, err: DRY_LINE, calls: [] });
+      expect(dry.out).toBe(sent.map((b) => `${b}\n`).join(""));
+      expect(dry.out.trimEnd().split("\n")).toHaveLength(3);
+      const summary = JSON.parse(
+        (
+          await upload(
+            { descriptions: true, dryRun: true, summary: true },
+            { env: NO_TEAM, paths: descPaths },
+          )
+        ).out,
+      ) as { fields: { descriptions: { count: number } }; kind: string; parts: number };
+      expect(summary).toMatchObject({
+        kind: "descriptions",
+        parts: 3,
+        fields: { descriptions: { count: 1201 } },
+      });
+    });
+
+    it("dry run --descriptions says so when the switch is off", async () => {
+      writeConfig(false);
+      const run = await upload({ descriptions: true, dryRun: true }, { env: NO_TEAM, paths: descPaths });
+      expect(run).toMatchObject({
+        code: 0,
+        out: "",
+        err: `Description upload is switched off (team.upload.descriptions).\n${DRY_LINE}`,
+        calls: [],
+      });
+    });
+  });
+});
+
+describe("dry run summarisePayload", () => {
+  it("counts and sizes the fields of a small literal payload", () => {
+    const records = [
+      { t: "w" as const, id: "w:a", name: "a", root: "a" },
+      { t: "n" as const, id: "s:x" },
+      { t: "n" as const, id: "s:y" },
+    ] as unknown as Parameters<typeof splitIntoParts>[0];
+    const parts = splitIntoParts(records, { part_max_records: 2, part_max_bytes: 1_048_576 });
+    const summary = summarisePayload({ kind: "change_set", parts });
+    const line = (r: unknown): string => JSON.stringify(r);
+    expect(summary).toEqual({
+      kind: "change_set",
+      bytes: records.reduce((n, r) => n + Buffer.byteLength(line(r)) + 1, 0),
+      gzip_bytes: parts.reduce((n, p) => n + p.length, 0),
+      parts: 2,
+      fields: {
+        nodes: { count: 2, bytes: Buffer.byteLength(line(records[1])) + Buffer.byteLength(line(records[2])) },
+        workspaces: { count: 1, bytes: Buffer.byteLength(line(records[0])) },
+      },
+    });
+    expect(summarisePayload({ kind: "close", body: '{"head_sha":"abc","merged":false}' }).fields).toEqual({
+      head_sha: { count: 1, bytes: 5 },
+      merged: { count: 1, bytes: 5 },
+    });
   });
 });
 

@@ -1,7 +1,9 @@
 import { spawnSync } from "node:child_process";
+import { gunzipSync } from "node:zlib";
 import {
   buildChangeSet,
   buildMainSnapshotChecked,
+  type DryRunPayload,
   ensureDataDir,
   GantryError,
   type GantryPaths,
@@ -9,8 +11,10 @@ import {
   openStore,
   rebuildIndex,
   resetStaleStore,
+  resolveTeamSettings,
   resolveTeamTarget,
   snapshotRecords,
+  summarisePayload,
   changeSetRecords as teamChangeSetRecords,
   teamClient,
   uploadDescriptions,
@@ -18,6 +22,7 @@ import {
 import {
   CloseRequestSchema,
   changeSetIdForPr,
+  DEFAULT_PART_LIMITS,
   DescriptionsRequestSchema,
   type PartLimits,
   type PartRecord,
@@ -130,6 +135,8 @@ export interface UploadOptions {
   descriptions?: boolean;
   merged?: boolean;
   forceMain?: boolean;
+  dryRun?: boolean;
+  summary?: boolean;
   timeout?: string;
   json?: boolean;
 }
@@ -184,6 +191,10 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
   };
 
   // 1. Usage: nothing below runs on a bad command line.
+  if (opts.summary === true && opts.dryRun !== true) return usage("--summary needs --dry-run");
+  if (opts.dryRun === true && opts.json === true) {
+    return usage("--json can't be used with --dry-run; the dry run prints the payload");
+  }
   if (opts.descriptions === true && (opts.pr !== undefined || opts.close === true)) {
     return usage("--descriptions cannot be combined with --pr or --close");
   }
@@ -214,6 +225,10 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
     ) {
       return usage("--pr needs --base, --head, --owner, --head-ref and --base-branch");
     }
+  }
+
+  if (opts.dryRun === true) {
+    return runDryRun(ctx, opts, { pr, base, head, owner, headRef, baseBranch });
   }
 
   let secret: string | null = null;
@@ -309,44 +324,14 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
     }
 
     // 5. The payload: from the index, by the builders, nothing else.
-    resetStaleStore(ctx.paths);
-    ensureDataDir(ctx.paths);
-    await rebuildIndex(ctx.paths);
-    const store = openStore(ctx.paths.dbPath, { overlayPath: ctx.paths.overlayPath, repo });
-    let records: PartRecord[];
-    let warnings: string[];
-    let sha: string | undefined;
-    let targetId: string;
-    let announce: string;
-    try {
-      if (pr === undefined) {
-        const built = buildMainSnapshotChecked(store, ctx.paths);
-        records = snapshotRecords(built.snapshot);
-        warnings = built.warnings;
-        sha = built.snapshot.sha;
-        targetId = "main";
-        announce = `Uploading main snapshot for ${repo} (${sha.slice(0, 7)})...`;
-      } else {
-        const title = pick(opts.title, ctx.env, "GANTRY_PR_TITLE");
-        const createdAt = pick(opts.createdAt, ctx.env, "GANTRY_PR_CREATED_AT");
-        const built = await buildChangeSet(store, ctx.paths, {
-          base: base as string,
-          head: head as string,
-          pr,
-          owner: owner as string,
-          head_ref: headRef as string,
-          base_branch: baseBranch as string,
-          ...(title === undefined ? {} : { title }),
-          ...(createdAt === undefined ? {} : { created_at: createdAt }),
-        });
-        records = teamChangeSetRecords(built.changeSet);
-        warnings = built.warnings;
-        targetId = built.changeSet.id;
-        announce = `Uploading change set for ${repo}#${pr}...`;
-      }
-    } finally {
-      store.close();
-    }
+    const { records, warnings, sha, targetId, announce } = await loadRecords(ctx, opts, {
+      pr,
+      base,
+      head,
+      owner,
+      headRef,
+      baseBranch,
+    });
     for (const w of new Set(warnings)) ctx.err(`${w}\n`);
 
     // 6. Begin, send the parts, poll.
@@ -398,6 +383,156 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
         : `gantry: ${scrub(err instanceof Error ? err.message : String(err))}`;
     result("failed", undefined, line.replace(/^gantry: /, ""));
     ctx.err(`${line}\n`);
+    return EXIT_ERROR;
+  }
+}
+
+/** The command-line values that pick what a pull request upload is built from. */
+interface PrArgs {
+  pr: number | undefined;
+  base: string | undefined;
+  head: string | undefined;
+  owner: string | undefined;
+  headRef: string | undefined;
+  baseBranch: string | undefined;
+}
+
+interface LoadedRecords {
+  records: PartRecord[];
+  warnings: string[];
+  sha: string | undefined;
+  targetId: string;
+  announce: string;
+}
+
+/** The records of a main snapshot or a change set, from the index by the payload builders. The one place they are built. */
+async function loadRecords(ctx: UploadContext, opts: UploadOptions, a: PrArgs): Promise<LoadedRecords> {
+  const repo = ctx.paths.repo;
+  resetStaleStore(ctx.paths);
+  ensureDataDir(ctx.paths);
+  await rebuildIndex(ctx.paths);
+  const store = openStore(ctx.paths.dbPath, { overlayPath: ctx.paths.overlayPath, repo });
+  try {
+    if (a.pr === undefined) {
+      const built = buildMainSnapshotChecked(store, ctx.paths);
+      const sha = built.snapshot.sha;
+      return {
+        records: snapshotRecords(built.snapshot),
+        warnings: built.warnings,
+        sha,
+        targetId: "main",
+        announce: `Uploading main snapshot for ${repo} (${sha.slice(0, 7)})...`,
+      };
+    }
+    const title = pick(opts.title, ctx.env, "GANTRY_PR_TITLE");
+    const createdAt = pick(opts.createdAt, ctx.env, "GANTRY_PR_CREATED_AT");
+    const built = await buildChangeSet(store, ctx.paths, {
+      base: a.base as string,
+      head: a.head as string,
+      pr: a.pr,
+      owner: a.owner as string,
+      head_ref: a.headRef as string,
+      base_branch: a.baseBranch as string,
+      ...(title === undefined ? {} : { title }),
+      ...(createdAt === undefined ? {} : { created_at: createdAt }),
+    });
+    return {
+      records: teamChangeSetRecords(built.changeSet),
+      warnings: built.warnings,
+      sha: undefined,
+      targetId: built.changeSet.id,
+      announce: `Uploading change set for ${repo}#${a.pr}...`,
+    };
+  } finally {
+    store.close();
+  }
+}
+
+/** The one line a dry run ends with on stderr. */
+const DRY_RUN_LINE = "dry run: nothing was sent\n";
+
+/**
+ * `gantry upload --dry-run`: prints what the real command would send and sends nothing. It never reads the team
+ * target, a token or a credentials file and never makes a request; the bodies come from the functions the real upload
+ * sends from (`loadRecords`, `buildUploadParts`, `serialiseBody`, `uploadDescriptions`), cut to the protocol's default
+ * limits because no server is asked for its own. A dry run behaves as if `--force-main` were given.
+ */
+async function runDryRun(ctx: UploadContext, opts: UploadOptions, a: PrArgs): Promise<number> {
+  const finish = (): number => {
+    ctx.err(DRY_RUN_LINE);
+    return EXIT_OK;
+  };
+  const summary = (payload: DryRunPayload): string =>
+    `${JSON.stringify(sortKeys(summarisePayload(payload)))}\n`;
+  try {
+    if (opts.descriptions === true) {
+      // The switch only: an empty environment, so no server, organisation or token is looked at.
+      if (!resolveTeamSettings(loadConfig(ctx.paths), {}).upload.descriptions) {
+        ctx.err("Description upload is switched off (team.upload.descriptions).\n");
+        return finish();
+      }
+      resetStaleStore(ctx.paths);
+      ensureDataDir(ctx.paths);
+      const store = openStore(ctx.paths.dbPath, { overlayPath: ctx.paths.overlayPath, repo: ctx.paths.repo });
+      const bodies: string[] = [];
+      try {
+        const result = await uploadDescriptions(
+          store,
+          {
+            putDescriptions: async (body) => {
+              bodies.push(body as string);
+              return { stored: 0 };
+            },
+          },
+          ctx.paths.repo,
+          { serialise: (payload) => serialiseBody("descriptions", payload) },
+        );
+        if (result.skipped > 0) {
+          ctx.err(`${result.skipped} descriptions do not fit the wire format and were not sent.\n`);
+        }
+      } finally {
+        store.close();
+      }
+      if (bodies.length === 0) ctx.err("no descriptions to send\n");
+      else
+        ctx.out(
+          opts.summary === true
+            ? summary({ kind: "descriptions", bodies })
+            : bodies.map((b) => `${b}\n`).join(""),
+        );
+      return finish();
+    }
+
+    if (opts.close === true) {
+      const sha = resolveSha(ctx.paths.root, a.head as string);
+      if (sha === undefined) {
+        ctx.err(`--head ${a.head} is not a commit here; pass its full 40-character sha\n`);
+        return EXIT_USAGE;
+      }
+      const body = serialiseBody("close", { head_sha: sha, merged: opts.merged === true });
+      ctx.out(opts.summary === true ? summary({ kind: "close", body }) : `${body}\n`);
+      return finish();
+    }
+
+    const { records, warnings, sha } = await loadRecords(ctx, opts, a);
+    for (const w of new Set(warnings)) ctx.err(`${w}\n`);
+    const kind = a.pr === undefined ? "main" : "change_set";
+    const { start, parts } = buildUploadParts(records, DEFAULT_PART_LIMITS, sha);
+    if (parts.length === 0) {
+      ctx.err("Nothing to upload.\n");
+      return EXIT_ERROR;
+    }
+    if (opts.summary === true) {
+      ctx.out(summary({ kind, parts }));
+    } else {
+      ctx.out(`${serialiseBody(kind, start)}\n`);
+      parts.forEach((part, i) => {
+        ctx.out(`${JSON.stringify({ of: parts.length, part: i + 1 })}\n${gunzipSync(part).toString("utf8")}`);
+      });
+    }
+    return finish();
+  } catch (err) {
+    ctx.err(`gantry: ${err instanceof Error ? err.message : String(err)}\n`);
     return EXIT_ERROR;
   }
 }
@@ -550,6 +685,8 @@ export function registerUpload(program: Command): void {
       "send the descriptions written on this machine to the organisation (not with --pr or --close)",
     )
     .option("--force-main", "upload this checkout as main even when it is not on the default branch")
+    .option("--dry-run", "print exactly what would be sent and send nothing (needs no server or token)")
+    .option("--summary", "with --dry-run: print counts and sizes per field instead of the body")
     .option("--timeout <s>", `seconds to wait for the server to finish (default ${DEFAULT_TIMEOUT_S})`)
     .option("--json", "print one JSON object instead of lines")
     .exitOverride((err) => process.exit(err.exitCode === 0 ? 0 : EXIT_USAGE))

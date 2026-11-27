@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`gantry upload --dry-run > dry run --summary matches the committed snapshot and is byte-stable 1`] = `"{"bytes":37201,"fields":{"adapter_nodes":{"bytes":2064,"count":10},"edges":{"bytes":20336,"count":140},"files":{"bytes":4105,"count":24},"symbols":{"bytes":9977,"count":26},"workspaces":{"bytes":513,"count":6}},"kind":"main","parts":1}"`;

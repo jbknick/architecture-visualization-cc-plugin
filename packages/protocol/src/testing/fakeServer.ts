@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import type { AddressInfo } from "node:net";
 import { gunzipSync } from "node:zlib";
 import { decodeTarget, parseChangeSetId } from "../ids.js";
-import { decodePart, type PartLimits } from "../parts.js";
+import { DEFAULT_PART_LIMITS, decodePart, type PartLimits } from "../parts.js";
 import {
   HEADER_ORG,
   HEADER_PART_COUNT,
@@ -120,8 +120,8 @@ export async function startFakeServer(opts: FakeServerOptions = {}): Promise<Fak
   const role = opts.role ?? "owner";
   const protocolMax = opts.protocolMax ?? PROTOCOL_VERSION;
   const limits = {
-    part_max_records: opts.limits?.part_max_records ?? 2000,
-    part_max_bytes: opts.limits?.part_max_bytes ?? 1_048_576,
+    part_max_records: opts.limits?.part_max_records ?? DEFAULT_PART_LIMITS.part_max_records,
+    part_max_bytes: opts.limits?.part_max_bytes ?? DEFAULT_PART_LIMITS.part_max_bytes,
     max_parts: opts.limits?.max_parts ?? 1000,
   };
   const devices = new Map<string, { userCode: string; approved: boolean }>();
