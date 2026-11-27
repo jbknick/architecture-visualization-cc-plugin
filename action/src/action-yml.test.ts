@@ -120,4 +120,64 @@ describe("action.yml", () => {
   it("never uses pull_request_target", () => {
     expect(yml).not.toContain("pull_request_target");
   });
+
+  describe("which steps run for an event", () => {
+    // Evaluates the `if` of a step for a context. Only what action.yml uses: contexts, ==, !=, &&, ||, !, cancelled().
+    const runs = (step: Step, ctx: Record<string, string>): boolean => {
+      if (step.if === "") return true;
+      const code = step.if
+        .replace(/^\$\{\{\s*|\s*\}\}$/g, "")
+        .replace(/cancelled\(\)/g, "false")
+        .replace(/\b(?:inputs|steps|github)\.[A-Za-z0-9_.-]+/g, (path) => JSON.stringify(ctx[path] ?? ""));
+      return new Function(`return (${code});`)() as boolean;
+    };
+    const team = {
+      "inputs.team-server": "https://team.example.test",
+      "inputs.team-org": "acme",
+      "inputs.team-token": "t",
+    };
+    const ran = (ctx: Record<string, string>): string[] =>
+      steps()
+        .filter((s) => runs(s, { ...team, ...ctx }))
+        .map((s) => s.id || s.name);
+
+    it("a push runs install, index and upload, and not the comment: it has nothing to review", () => {
+      const got = ran({ "github.event_name": "push" });
+      expect(got).toContain("install");
+      expect(got).toContain("index");
+      expect(got).toContain("upload");
+      expect(got).not.toContain("comment");
+      expect(got).not.toContain("embed");
+      // every step that runs on a push is one that cannot fail the job: the comment script, which throws without a
+      // pull request to review, is not among them
+      expect(got.filter((id) => !["install", "index", "upload"].includes(id))).toEqual(["Set up Node 26"]);
+    });
+
+    it("a push with embed set still skips the embed step, which only serves the comment", () => {
+      expect(ran({ "github.event_name": "push", "inputs.embed": "true" })).not.toContain("embed");
+    });
+
+    it("a pull request update runs every step", () => {
+      const got = ran({
+        "github.event_name": "pull_request",
+        "github.event.action": "opened",
+        "inputs.embed": "true",
+      });
+      expect(got).toEqual(["Set up Node 26", "install", "index", "embed", "comment", "upload"]);
+    });
+
+    it("a closed pull request runs install and upload only", () => {
+      const got = ran({
+        "github.event_name": "pull_request",
+        "github.event.action": "closed",
+        "inputs.embed": "true",
+      });
+      expect(got).toEqual(["Set up Node 26", "install", "upload"]);
+    });
+
+    it("a run with base and head inputs set still comments (the summary path)", () => {
+      const got = ran({ "github.event_name": "workflow_dispatch", "inputs.base": "a", "inputs.head": "b" });
+      expect(got).toContain("comment");
+    });
+  });
 });

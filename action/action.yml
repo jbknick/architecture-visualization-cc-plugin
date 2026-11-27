@@ -126,7 +126,7 @@ runs:
 
     - name: Embed code vectors
       id: embed
-      if: inputs.embed == 'true' && steps.install.outputs.failed == '' && steps.index.outputs.failed == '' && github.event.action != 'closed'
+      if: inputs.embed == 'true' && steps.install.outputs.failed == '' && steps.index.outputs.failed == '' && github.event.action != 'closed' && (github.event_name == 'pull_request' || (inputs.base != '' && inputs.head != ''))
       shell: bash
       env:
         GANTRY_HOME: ${{ steps.install.outputs.home }}
@@ -142,7 +142,7 @@ runs:
 
     - name: Comment on the pull request
       id: comment
-      if: ${{ !cancelled() && github.event.action != 'closed' }}
+      if: ${{ !cancelled() && github.event.action != 'closed' && (github.event_name == 'pull_request' || (inputs.base != '' && inputs.head != '')) }}
       shell: bash
       env:
         GANTRY_HOME: ${{ steps.install.outputs.home }}

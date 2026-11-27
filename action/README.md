@@ -79,7 +79,7 @@ Uploading is opt-in. With `team-server`, `team-org` and `team-token` all set, a 
 | `pull_request` from a fork                         | `fork: upload skipped`: nothing is sent, and the token is not used                                                                                                                                         |
 | any other action or event                          | `upload skipped: ... does not upload`                                                                                                                                                                      |
 
-If the index failed, a push or a pull request update uploads nothing (`upload skipped: the index failed`); a close still goes through. The step never fails the job: an upload that does not work logs one `::warning title=Gantry::upload failed: <reason>` line, with the token never in it. Store the three values as secrets (the server URL and organisation are not secret, but then they are one place to change):
+On a push there is nothing to review, so the comment and embed steps do not run; the index does, because the upload needs it. If the index failed, a push or a pull request update uploads nothing (`upload skipped: the index failed`); a close still goes through. The step never fails the job: an upload that does not work logs one `::warning title=Gantry::upload failed: <reason>` line, with the token never in it. Store the three values as secrets (the server URL and organisation are not secret, but then they are one place to change):
 
 ```yaml
 name: gantry
