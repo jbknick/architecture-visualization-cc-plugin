@@ -110,6 +110,13 @@ describe("comment body", () => {
     expect(body.split("\n").every((l) => !l.includes("\r"))).toBe(true);
   });
 
+  it("removes invisible format characters and collapses odd spaces in a code span", () => {
+    expect(code("ui\u200b\u200dx\u202eevil\u2066")).toBe("`uixevil`");
+    expect(code(`Orders${String.fromCodePoint(0xe0069, 0xe0067, 0xe006e)}`)).toBe("`Orders`");
+    expect(code("a\u00a0\u3000b\ue000c\ud800d")).toBe("`a bcd`");
+    expect(code("\u200b\u202e")).toBe("`-`");
+  });
+
   it("names a node from its id", () => {
     expect(nameOfId("sym:repo:src/a.ts#f")).toBe("f");
     expect(nameOfId("file:repo:src/a.ts")).toBe("src/a.ts");

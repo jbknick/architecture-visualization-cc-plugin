@@ -74,8 +74,10 @@ const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 
 function sanitize(text: string, max: number): string {
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are exactly what is removed
-  const flat = text.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").trim();
+  const flat = text
+    .replace(/[\p{Cf}\p{Co}\p{Cs}\u{E0000}-\u{E007F}]/gu, "") // zero-width, bidi, tag-encoded text, private use, lone surrogates
+    .replace(/[\p{Cc}\p{Zs}\p{Zl}\p{Zp}]+/gu, " ")
+    .trim();
   const cut = flat.length > max ? `${flat.slice(0, max - 1).replace(/[\ud800-\udbff]$/, "")}…` : flat;
   return cut.replaceAll("`", "'");
 }

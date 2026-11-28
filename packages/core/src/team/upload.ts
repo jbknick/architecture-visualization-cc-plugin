@@ -99,13 +99,12 @@ function cutLabel(s: string, max = 200): string {
   return out;
 }
 
-/** True when `s` holds a line break or another control character (C0, DEL, C1, line and paragraph separators). */
+/**
+ * True when `s` holds a line break or another control character (C0, DEL, C1, line and paragraph separators) or an
+ * invisible format character (zero-width, bidi, tag characters, private use, a lone surrogate).
+ */
 function hasControl(s: string): boolean {
-  for (const ch of s) {
-    const c = ch.codePointAt(0) as number;
-    if (c < 0x20 || (c >= 0x7f && c <= 0x9f) || c === 0x2028 || c === 0x2029) return true;
-  }
-  return false;
+  return /[\p{Cc}\p{Cf}\p{Co}\p{Cs}\p{Zl}\p{Zp}\u{E0000}-\u{E007F}]/u.test(s);
 }
 
 /**

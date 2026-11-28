@@ -306,6 +306,11 @@ describe("adapter labels", () => {
     "\r\treturn secretCode(1);",
     "x\u2028",
     "\u2029x",
+    "zero\u200bwidth",
+    "bidi\u202eoverride",
+    "tag\u{E0069}\u{E0067}",
+    "private\ue000use",
+    "lone\ud800surrogate",
   ])("sends a label with an edge line break or control character empty, with the warning (%j)", (label) => {
     const { snapshot, warnings } = buildMainSnapshotChecked(patched(label), paths);
     expect(snapshot.adapter_nodes.map((n) => n.label)).toEqual([""]);

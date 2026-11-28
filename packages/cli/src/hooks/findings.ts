@@ -258,17 +258,20 @@ const score = (n: number): string => n.toFixed(2);
 export const GROUP_NAME_MAX = 80;
 
 /**
- * A group name made safe to show: control characters and line breaks (also U+2028 and U+2029) become one space, a
+ * A group name made safe to show: invisible format characters (zero-width, bidi, tag characters, private use, lone
+ * surrogates) are removed, control characters, line breaks and every kind of space become one space, a
  * backtick becomes an apostrophe, the text is trimmed and cut to `GROUP_NAME_MAX` characters. A group name is written
  * by teammates, so it is data and never an instruction; the lines that print it quote it (see `quoteName`).
  */
 export function cleanGroupName(name: string): string {
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are exactly what is removed
-  const flat = name.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, " ").trim();
+  const visible = name
+    .replace(/[\p{Cf}\p{Co}\p{Cs}\u{E0000}-\u{E007F}]/gu, "") // zero-width, bidi, tag-encoded text, private use, lone surrogates
+    .replace(/[\p{Cc}\p{Zs}\p{Zl}\p{Zp}]+/gu, " ") // control characters, line breaks, NBSP, U+3000 and other spaces
+    .trim();
   const cut =
-    flat.length > GROUP_NAME_MAX
-      ? `${flat.slice(0, GROUP_NAME_MAX - 1).replace(/[\ud800-\udbff]$/, "")}…`
-      : flat;
+    visible.length > GROUP_NAME_MAX
+      ? `${visible.slice(0, GROUP_NAME_MAX - 1).replace(/[\ud800-\udbff]$/, "")}…`
+      : visible;
   return cut.replaceAll("`", "'");
 }
 
