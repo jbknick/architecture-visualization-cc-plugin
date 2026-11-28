@@ -147,6 +147,83 @@ describe("first pull", () => {
     expect(await pull()).toEqual({ status: "updated", change_sets: 5 });
   });
 
+  describe("when the change set list changes during a paged pull", () => {
+    /** Wraps fetch: after page 1 has been served, `afterFirstPage` runs once (it changes the server's list). */
+    const changeAfterFirstPage = (change: () => void): typeof fetch => {
+      let served = 0;
+      return async (input, init) => {
+        const res = await fetch(input, init);
+        if (String(input).includes("/v1/pull") && res.status === 200 && ++served === 1) change();
+        return res;
+      };
+    };
+    const countPulls =
+      (inner: typeof fetch, seen: { url: string; ifNoneMatch: string | null }[]): typeof fetch =>
+      async (input, init) => {
+        if (String(input).includes("/v1/pull"))
+          seen.push({ url: String(input), ifNoneMatch: new Headers(init?.headers).get("if-none-match") });
+        return inner(input, init);
+      };
+
+    beforeEach(async () => {
+      await fake.close();
+      fake = await startFakeServer({ tokens: [USER_TOKEN], repo: REPO, pageSize: 2 });
+    });
+
+    it("restarts from page 1 without a cursor or If-None-Match, and succeeds", async () => {
+      seed(changeSet(1), changeSet(2), changeSet(3), changeSet(4), changeSet(5));
+      expect(await pull()).toEqual({ status: "updated", change_sets: 5 });
+      const seen: { url: string; ifNoneMatch: string | null }[] = [];
+      // the list differs from the cached one (so no 304) and changes again after page 1
+      seed(changeSet(1, { updated_at: "2026-11-21T09:00:00.000Z" }));
+      const inner = changeAfterFirstPage(() => seed(changeSet(6)));
+      expect(await pull({ fetch: countPulls(inner, seen) })).toEqual({ status: "updated", change_sets: 6 });
+      const pulls = seen.map((s) => new URL(s.url).searchParams.get("cursor"));
+      // page 1, page 2 (409), then page 1 again with no cursor, then its pages
+      expect(pulls.slice(0, 3)).toEqual([null, expect.any(String), null]);
+      expect(seen[0]?.ifNoneMatch).not.toBeNull();
+      expect(seen[2]?.ifNoneMatch).toBeNull();
+      expect(metaOf("last_error")).toBeUndefined();
+    });
+
+    it("gives up after 3 restarts, keeps the old cache and sets last_error", async () => {
+      seed(changeSet(1), changeSet(2), changeSet(3));
+      await pull();
+      const before = rows("change_sets");
+      seed(changeSet(1, { updated_at: "2026-11-21T09:00:00.000Z" }));
+      let n = 10;
+      let pageOnes = 0;
+      const unstable: typeof fetch = async (input, init) => {
+        const url = new URL(String(input));
+        const res = await fetch(input, init);
+        if (url.pathname === "/v1/pull" && !url.searchParams.has("cursor") && res.status === 200) {
+          pageOnes++;
+          seed(changeSet(n++));
+        }
+        return res;
+      };
+      const result = await pull({ fetch: unstable });
+      expect(result.status).toBe("failed");
+      expect(result.error).toMatch(/changed/i);
+      expect(pageOnes).toBe(4);
+      expect(rows("change_sets")).toEqual(before);
+      expect(metaOf("last_error")).toBeDefined();
+    });
+
+    it("does not restart on a 409 conflict for the first page", async () => {
+      seed(changeSet(1));
+      const seen: { url: string; ifNoneMatch: string | null }[] = [];
+      const conflict: typeof fetch = async (input, init) =>
+        String(input).includes("/v1/pull")
+          ? new Response(JSON.stringify({ error: "conflict", message: "no" }), { status: 409 })
+          : fetch(input, init);
+      const result = await pull({ fetch: countPulls(conflict, seen) });
+      expect(result.status).toBe("failed");
+      expect(seen).toHaveLength(1);
+      expect(metaOf("last_error")).toBeDefined();
+    });
+  });
+
   it("ignores a field it does not know, so a newer server does not break it", async () => {
     seed(changeSet(1));
     const extra: typeof fetch = async (input, init) => {

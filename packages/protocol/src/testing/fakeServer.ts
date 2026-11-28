@@ -549,11 +549,21 @@ export async function startFakeServer(opts: FakeServerOptions = {}): Promise<Fak
           res.writeHead(304, { etag });
           return void res.end();
         }
-        const offset = q.cursor === undefined ? 0 : Number(q.cursor);
-        if (!Number.isInteger(offset) || offset < 0) throw new HttpError(400, "invalid", "bad cursor");
+        // A cursor is `<offset>.<list>`, where `<list>` identifies the change set list of page 1. A later page whose
+        // list differs from the one the cursor was made for answers 409 `conflict`.
+        const list = createHash("sha256")
+          .update(JSON.stringify(all.map((c) => [c.id, c.updated_at])))
+          .digest("hex")
+          .slice(0, 16);
+        const [offsetText, cursorList] = (q.cursor ?? "0.").split(".");
+        const offset = Number(offsetText);
+        if (!Number.isInteger(offset) || offset < 0 || cursorList === undefined)
+          throw new HttpError(400, "invalid", "bad cursor");
+        if (q.cursor !== undefined && cursorList !== list)
+          throw new HttpError(409, "conflict", "the change set list changed since page 1");
         const size = opts.pageSize ?? Math.max(all.length, 1);
         const page = all.slice(offset, offset + size);
-        const next = offset + size < all.length ? String(offset + size) : undefined;
+        const next = offset + size < all.length ? `${offset + size}.${list}` : undefined;
         return send(
           res,
           200,
