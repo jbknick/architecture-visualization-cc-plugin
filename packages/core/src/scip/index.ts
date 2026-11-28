@@ -1,5 +1,6 @@
 export {
   mapScip,
+  restrictScipEdges,
   SCIP_EDGE_KINDS,
   type ScipResult,
   type ScipSourceFile,

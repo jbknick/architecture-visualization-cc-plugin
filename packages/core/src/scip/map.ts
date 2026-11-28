@@ -46,6 +46,20 @@ export interface ScipResult {
   stats: ScipStats;
 }
 
+/**
+ * Drops, in place, every edge whose source or target is not in `known` (the ids of the files and symbols of the index
+ * being built), and corrects the edge count. A SCIP file made from another state of the tree cannot add a name this way.
+ */
+export function restrictScipEdges(result: ScipResult, known: ReadonlySet<string>): void {
+  let dropped = 0;
+  for (const [id, list] of result.edges) {
+    const kept = list.filter((e) => known.has(e.src) && known.has(e.dst));
+    dropped += list.length - kept.length;
+    result.edges.set(id, kept);
+  }
+  result.stats.edges -= dropped;
+}
+
 /** The edges of a file the index covers: its inferred edges without those of `SCIP_EDGE_KINDS`, plus the edges from the index. */
 export function withScipEdges(inferred: EdgeRecord[], scip: EdgeRecord[]): EdgeRecord[] {
   const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -225,11 +239,17 @@ const unquote = (s: string): string =>
  * modified after the index file was written (`indexMtimeMs`), when a range lies outside it, or when at the range of a
  * definition of a non-local symbol it does not spell the symbol's name (a quoted name without its quotes).
  */
-function isStale(doc: ScipDocument, file: ScipSourceFile, lines: string[], indexMtimeMs: number): boolean {
+function isStale(
+  doc: ScipDocument,
+  file: ScipSourceFile,
+  lines: string[],
+  indexMtimeMs: number,
+  ignoreMtime = false,
+): boolean {
   if (doc.text !== undefined) {
     return createHash("sha256").update(Buffer.from(doc.text, "utf8")).digest("hex") !== file.contentHash;
   }
-  if (file.mtimeMs > indexMtimeMs) return true;
+  if (!ignoreMtime && file.mtimeMs > indexMtimeMs) return true;
   const encoding = doc.positionEncoding;
   for (const o of doc.occurrences) {
     if (o.symbol.startsWith("local ")) continue;
@@ -293,6 +313,7 @@ const lastSegment = (name: string): string => name.slice(name.lastIndexOf(".") +
 export async function mapScip(
   indexFile: string,
   lookup: (relativePath: string) => ScipSourceFile | undefined,
+  opts: { ignoreMtime?: boolean } = {},
 ): Promise<ScipResult> {
   const stats: ScipStats = { documents: 0, edges: 0, unmapped: 0, stale: 0, otherRefs: 0 };
   const indexMtimeMs = (await fs.promises.stat(indexFile)).mtimeMs;
@@ -307,7 +328,7 @@ export async function mapScip(
     if (!file) continue;
     stats.documents++;
     const lines = file.source.split(/\r?\n/);
-    if (isStale(doc, file, lines, indexMtimeMs)) {
+    if (isStale(doc, file, lines, indexMtimeMs, opts.ignoreMtime === true)) {
       stats.stale++;
       continue;
     }

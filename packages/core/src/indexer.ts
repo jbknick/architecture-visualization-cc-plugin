@@ -22,7 +22,7 @@ import { type LoadedRecipe, loadRecipe, recipeNotes } from "./recipe/load.js";
 import { isQueryFile } from "./recipe/query-files.js";
 import type { SpecifierClass } from "./resolve/index.js";
 import { SiblingFiles, type SiblingRepo } from "./resolve/sibling.js";
-import { mapScip, ProtoError, type ScipStats, withScipEdges } from "./scip/index.js";
+import { mapScip, ProtoError, restrictScipEdges, type ScipStats, withScipEdges } from "./scip/index.js";
 import { refreshDescriptionFts } from "./search/descfts.js";
 import { openStore, type Store, splitIdentifier } from "./store/index.js";
 import type {
@@ -83,6 +83,11 @@ export interface IndexOptions {
    * the config for this run. Other repos of the workspace read their own `precise.scip`, if any.
    */
   scip?: string;
+  /**
+   * Do not treat a SCIP document as stale because its file is newer than the index (the checkout is fresh, so every
+   * file would be). The text check still applies: a document whose names are not in the file is ignored.
+   */
+  scipIgnoreMtime?: boolean;
 }
 
 const READ_CONCURRENCY = 16;
@@ -541,18 +546,26 @@ async function indexOneRepo(
     } else {
       const byPath = new Map(present.map((e) => [e.path, e]));
       try {
-        const r = await mapScip(scipFile, (p) => {
-          const e = byPath.get(p);
-          const pf = e ? parsed.get(e.id) : undefined;
-          if (!e || !pf) return undefined;
-          return {
-            id: e.id,
-            source: e.source as string,
-            contentHash: e.contentHash as string,
-            mtimeMs: e.mtimeMs,
-            symbols: pf.symbols,
-          };
-        });
+        const known = new Set<string>(present.map((e) => e.id));
+        for (const pf of parsed.values()) for (const sym of pf.symbols) known.add(sym.id);
+        const r = await mapScip(
+          scipFile,
+          (p) => {
+            const e = byPath.get(p);
+            const pf = e ? parsed.get(e.id) : undefined;
+            if (!e || !pf) return undefined;
+            return {
+              id: e.id,
+              source: e.source as string,
+              contentHash: e.contentHash as string,
+              mtimeMs: e.mtimeMs,
+              symbols: pf.symbols,
+            };
+          },
+          { ignoreMtime: opts.scipIgnoreMtime === true },
+        );
+        // Only edges between nodes of this index: a SCIP file made from another state of the tree adds no other names.
+        restrictScipEdges(r, known);
         scipEdges = r.edges;
         scipStats = r.stats;
       } catch (err) {
