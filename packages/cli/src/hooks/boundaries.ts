@@ -12,7 +12,7 @@ import {
   type SymbolRecord,
   workspaceForPath,
 } from "@gantry/core";
-import type { CrossingFinding } from "./findings.js";
+import { type CrossingFinding, cleanGroupName } from "./findings.js";
 
 const SYMBOL_EDGES: EdgeKind[] = ["calls", "renders", "uses_hook"];
 
@@ -108,7 +108,7 @@ export function crossingFindings(
     }
     return out.sort();
   };
-  const name = (id: string): string => groups.find((g) => g.id === id)?.name ?? id;
+  const name = (id: string): string => cleanGroupName(groups.find((g) => g.id === id)?.name ?? id);
 
   const imports = candidates.filter((e) => e.kind === "imports");
   for (const e of candidates) {

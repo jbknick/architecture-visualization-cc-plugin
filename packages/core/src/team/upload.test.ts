@@ -306,11 +306,31 @@ describe("adapter labels", () => {
     "\r\treturn secretCode(1);",
     "x\u2028",
     "\u2029x",
+    "zero\u200bwidth",
+    "bidi\u202eoverride",
+    "tag\u{E0069}\u{E0067}",
+    "private\ue000use",
+    "lone\ud800surrogate",
   ])("sends a label with an edge line break or control character empty, with the warning (%j)", (label) => {
     const { snapshot, warnings } = buildMainSnapshotChecked(patched(label), paths);
     expect(snapshot.adapter_nodes.map((n) => n.label)).toEqual([""]);
     expect(warnings).toEqual(["adapter nodes: 1 label(s) with a line break or control character sent empty"]);
   });
+  it.each(["👩\u200d💻 button", "می\u200cخواهم"])(
+    "keeps a label with a joiner between visible characters (%j)",
+    (label) => {
+      const { snapshot, warnings } = buildMainSnapshotChecked(patched(label), paths);
+      expect(snapshot.adapter_nodes.map((n) => n.label)).toEqual([label]);
+      expect(warnings).toEqual([]);
+    },
+  );
+  it.each(["a\u3164b", "a\u2800b", `a${String.fromCodePoint(0xe0100)}b`, "a\u200d", "a\u034fb"])(
+    "sends a label with a blank or a stray joiner empty (%j)",
+    (label) => {
+      const { snapshot } = buildMainSnapshotChecked(patched(label), paths);
+      expect(snapshot.adapter_nodes.map((n) => n.label)).toEqual([""]);
+    },
+  );
   it("cuts a label by code points: an astral character at position 200 is kept whole or left out, never split", () => {
     const { snapshot } = buildMainSnapshotChecked(patched(`${"a".repeat(199)}\u{1F600}b`), paths);
     const label = snapshot.adapter_nodes[0]?.label as string;

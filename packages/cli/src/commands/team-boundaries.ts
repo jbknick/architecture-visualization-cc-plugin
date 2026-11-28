@@ -12,7 +12,7 @@ import {
   teamClient,
 } from "@gantry/core";
 import { crossingFindings } from "../hooks/boundaries.js";
-import type { CrossingFinding } from "../hooks/findings.js";
+import { type CrossingFinding, quoteName } from "../hooks/findings.js";
 import { EXIT_ERROR, EXIT_OK } from "./shared.js";
 import type { TeamContext } from "./team.js";
 
@@ -26,8 +26,9 @@ const oneLine = (s: string): string => s.replace(/\s+/g, " ").trim();
 
 /** One readable line of a finding: functions with their lines, or file paths for an import. */
 function lineOf(f: CrossingFinding): string {
-  if (f.srcLine === 0) return `${f.srcGroup} -> ${f.dstGroup}: ${f.srcPath} imports ${f.dstPath}`;
-  return `${f.srcGroup} -> ${f.dstGroup}: ${f.srcName} (${f.srcPath}:${f.srcLine}) uses ${f.dstName} (${f.dstPath}:${f.dstLine})`;
+  const groups = `${quoteName(f.srcGroup)} -> ${quoteName(f.dstGroup)}`;
+  if (f.srcLine === 0) return `${groups}: ${f.srcPath} imports ${f.dstPath}`;
+  return `${groups}: ${f.srcName} (${f.srcPath}:${f.srcLine}) uses ${f.dstName} (${f.dstPath}:${f.dstLine})`;
 }
 
 /**
