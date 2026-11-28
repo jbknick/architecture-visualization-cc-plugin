@@ -10,7 +10,7 @@ import type { Filters, ViewLevel } from "./api.ts";
  */
 export interface Route {
   view: string | null;
-  /** The subject of the view: the project-map subtree root or the ego centre. */
+  /** The subject of the view: the project-map subtree root or the ego center. */
   focus: string | null;
   /** The node shown in the inspector. */
   sel: string | null;

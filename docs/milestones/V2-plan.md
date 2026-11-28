@@ -133,7 +133,7 @@ Spec sections touched: 4, 5, 6, 9, 10, 11, 15, 17.
 The TypeScript pipeline is split into a language module and shared code before Go is added. The split is driven by what the spikes showed each side must own:
 
 - **The language supplies:** file match and skip rules; workspace discovery from manifests; parsing to symbols; import resolution and the adapter resolver; call and type edges with confidence; for each symbol `{ exact, shape, selfRefs, stmtCount }` token streams and the text used for code embeddings; fact sheet fields and prompt hints; display labels for symbol kinds.
-- **Shared code computes all five hashes** (`exactHash`, `renamedHash`, `shapeHash`, `minhash`, `nearMinhash`) from those streams. With the TypeScript streams this was byte-identical on every fixture and on this repo (3,337 symbols). A shared, language-blind normaliser is not used: it changed every TypeScript hash.
+- **Shared code computes all five hashes** (`exactHash`, `renamedHash`, `shapeHash`, `minhash`, `nearMinhash`) from those streams. With the TypeScript streams this was byte-identical on every fixture and on this repo (3,337 symbols). A shared, language-blind normalizer is not used: it changed every TypeScript hash.
 - **Symbol kinds stay a neutral set** (section 7). A Go struct is `class`, shown as "struct".
 - **Records carry a `lang` field** (files and symbols). Adding it is the only intended change to the TypeScript graph when the split lands; hashes, IDs and edges stay identical.
 - **Duplicate tiers** are one algorithm with thresholds per language. Go starts with the TypeScript thresholds and is refit only if seeded Go duplicates fail. Comparisons never cross languages.

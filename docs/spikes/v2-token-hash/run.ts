@@ -1,6 +1,6 @@
 // Spike: can exactHash / renamedHash / shapeHash / minhash / nearMinhash come from shared code fed by a
 // language-supplied token stream, with TypeScript output byte-identical? And would a shared, language-blind
-// normaliser (tree-sitter kinds) keep the same duplicate pairs?
+// normalizer (tree-sitter kinds) keep the same duplicate pairs?
 // Usage: pnpm tsx docs/spikes/v2-token-hash/run.ts
 import { execFileSync } from "node:child_process";
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
@@ -139,7 +139,7 @@ async function storeCheck(fixture: string): Promise<void> {
   }
 }
 
-/** Part 2: a language-blind normaliser (tree-sitter kinds) vs today's oxc shape stream, by duplicate pairs. */
+/** Part 2: a language-blind normalizer (tree-sitter kinds) vs today's oxc shape stream, by duplicate pairs. */
 function generic(label: string, syms: Sym[], threshold: number): void {
   const big = syms.filter((s) => s.stmts >= 6);
   const oxcShape = big.map((s) => tsStreams(s.source, s.range, s.lang).shape);
@@ -194,7 +194,7 @@ const own = symbolsOf(ownFiles, repo);
 identity("packages/* (this repo)", own);
 await storeCheck(join(repo, "fixtures/pnpm-turbo"));
 
-console.log("\n## Part 2: shared, language-blind normaliser (tree-sitter kinds) for TypeScript");
+console.log("\n## Part 2: shared, language-blind normalizer (tree-sitter kinds) for TypeScript");
 const turbo = join(repo, "fixtures/pnpm-turbo");
 const turboSyms = symbolsOf(listTs(turbo), turbo);
 const t0 = turboSyms.find((s) => s.key.includes("formatRelativeDate"));

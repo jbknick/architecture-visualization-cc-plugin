@@ -4,7 +4,7 @@ import { MARK_KINDS, MARK_WORDS } from "./reviewModel.ts";
 
 export type LegendMode = "2d" | "3d" | "rings";
 
-/** The colours and lines of the review, drawn over the canvas's bottom-right corner (the same palette in every mode). */
+/** The colors and lines of the review, drawn over the canvas's bottom-right corner (the same palette in every mode). */
 export function ReviewLegend({
   mode,
   reachable = false,
@@ -15,7 +15,7 @@ export function ReviewLegend({
   mode: LegendMode;
   /** Add the row for the reachable tier (hop 4 and over, or through a hub), which the Team layer shows. */
   reachable?: boolean;
-  /** The change colours to list (all five by default). */
+  /** The change colors to list (all five by default). */
   kinds?: readonly ReviewMarkKind[];
   /** The rows for the solid and dashed lines; `solid` lists only the solid one (the Team layer has no dashed lines). */
   lines?: boolean | "solid";

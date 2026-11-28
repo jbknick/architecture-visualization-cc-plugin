@@ -6,7 +6,7 @@
 import { type Pt, routeAround } from "./route.ts";
 import type { Rect } from "./types.ts";
 
-/** Distance between neighbouring tracks and between neighbouring ports, in layout units (px at the fit zoom). */
+/** Distance between neighboring tracks and between neighboring ports, in layout units (px at the fit zoom). */
 export const GRID = 12;
 /** Routes keep at least this far from every box, except on the straight leg into a port. */
 export const CLEAR = 8;
@@ -455,7 +455,7 @@ export function routeLinks(boxes: Map<number, Rect>, links: readonly RouteLink[]
       }
       if (!improved) break;
     }
-    // Swap neighbouring ports: two links whose routes cross near their ports often just have their ports the wrong
+    // Swap neighboring ports: two links whose routes cross near their ports often just have their ports the wrong
     // way round (the nested corner is the other way). Both are routed again, and the swap stays when it helps.
     const stubFor = (e: End): Pt => stubPoint(boxes.get(e.box) as Rect, e.side, e.slot);
     for (let round = 0; round < 2 && score > 0 && budget > 0; round++) {

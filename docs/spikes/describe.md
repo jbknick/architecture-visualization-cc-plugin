@@ -2,17 +2,17 @@
 
 Scripts: `docs/spikes/describe/` (`system-prompt.md`, `run.ts`, `score.ts`, `lib.ts`, `store.ts`, `pathb.ts`, `mcp-stub.mjs`, `describer.md`). Reprint every number below with `pnpm tsx docs/spikes/describe/score.ts` (reads stored outputs, no model calls).
 
-This report holds aggregate numbers only. The 200-function labelled set (evals/labelled/README.md) and every raw model output are private and stay in the git-ignored `evals/private/` (`describe-out/`).
+This report holds aggregate numbers only. The 200-function labeled set (evals/labelled/README.md) and every raw model output are private and stay in the git-ignored `evals/private/` (`describe-out/`).
 
 ## Verdict
 
 - Path A (headless recipe, Haiku, `--effort low`, 5 batches of 40) is good enough on the three plan targets that can be measured: 95.5% of descriptions graded acceptable (target 85%), 100% schema pass (target 98%).
-- The `nameFits` precision target cannot be assessed: Haiku flagged none of the 200 functions as misleadingly named, although 23 are labelled that way (recall 0 of 23). Precision of a flag that is never raised is undefined.
+- The `nameFits` precision target cannot be assessed: Haiku flagged none of the 200 functions as misleadingly named, although 23 are labeled that way (recall 0 of 23). Precision of a flag that is never raised is undefined.
 - Path B (describer subagent in a Claude Code session) is not measured. A headless approximation did not complete (details below), so it is pending the operator.
 
 ## Method
 
-- Input: the 200-function labelled set (40 component, 30 hook, 50 util, 40 server, 40 helper), reviewed by the operator with 0 corrections. 23 labels have `nameFits: false`.
+- Input: the 200-function labeled set (40 component, 30 hook, 50 util, 40 server, 40 helper), reviewed by the operator with 0 corrections. 23 labels have `nameFits: false`.
 - Fact sheets are rendered from the stored fields (kind, name, path, signature, doc, callees, return type, body trimmed to 1,500 chars).
 - Path A: the spec section 16 recipe unchanged from `docs/spikes/worker.md` (verdict WORKER OK): `GANTRY_WORKER=1`, `CLAUDE_CODE_EFFORT_LEVEL` removed, `--model haiku --effort low --safe-mode --tools '' --disallowedTools 'mcp__*' --strict-mcp-config --system-prompt-file system-prompt.md --no-session-persistence --output-format json --json-schema <results schema>`. Called from a scratch directory. 5 calls of 40, one try each, no retries needed.
 - Grading: Sonnet, `--effort low`, same lock-down, 5 calls of 40. Fixed rubric from the issue: 2 = says what it does correctly and specifically; 1 = correct but vague; 0 = wrong or misleading. The grader sees the function name, signature, the human reference and the candidate (not the body). Grades are model-judged and no human spot-checked them.
@@ -30,7 +30,7 @@ This report holds aggregate numbers only. The 200-function labelled set (evals/l
 
 Tokens in include cache creation and cache reads. Seconds per function is the sum of call wall times over functions described (calls run one after another). The retry row adds the Sonnet call's tokens and time to Path A's.
 
-nameFits (positive = name misleads): 23 labelled positives, 0 predicted positives, 0 true positives, agreement with the labels 88.5% (the 177 fitting names were all kept as fitting).
+nameFits (positive = name misleads): 23 labeled positives, 0 predicted positives, 0 true positives, agreement with the labels 88.5% (the 177 fitting names were all kept as fitting).
 
 Grade counts for Path A: 0 = 9, 1 = 62, 2 = 129.
 
@@ -52,7 +52,7 @@ Per batch (Path A):
 | 3     | 40        | 39.6   | 27918     | 9899       | 0.0103   |
 | 4     | 40        | 28.0   | 22525     | 6581       | 0.0075   |
 
-Batch 1 used about 3 times the tokens of its neighbours and took 78 s; the cause was not investigated (the output passed every check). Batch cost varies by a factor of 4 in tokens and time, so budget with the slow case.
+Batch 1 used about 3 times the tokens of its neighbors and took 78 s; the cause was not investigated (the output passed every check). Batch cost varies by a factor of 4 in tokens and time, so budget with the slow case.
 
 Sonnet retry of the 20 worst: mean grade 0.55 to 1.25; 12 improved, 8 unchanged, 0 worse; grade >= 1 on those 20 went from 55% to 85%; identifier pass stayed 100%. Sonnet exceeded 25 words on 4 of the 20 (overall length pass 98.0%), so a retry result needs the same truncate-or-re-ask repair as Haiku output.
 
@@ -114,7 +114,7 @@ The spec's placeholder was 500 in and 150 to 200 out per function. Measured on r
 
 ## Recommendations
 
-- `renameSuggestions` default: keep it off. With the strict `nameFits` prompt Haiku never says a name misleads, so suggestions would be empty (no harm, no value), and the precision target has no data. To enable it by default, first find a prompt or model variant that flags a fair share of the 23 labelled cases and measure precision on the flags; the labelled set now supports that (23 positives, 177 negatives).
+- `renameSuggestions` default: keep it off. With the strict `nameFits` prompt Haiku never says a name misleads, so suggestions would be empty (no harm, no value), and the precision target has no data. To enable it by default, first find a prompt or model variant that flags a fair share of the 23 labeled cases and measure precision on the flags; the labeled set now supports that (23 positives, 177 negatives).
 - Sonnet retry: worth it for the worst items, with a caveat. On the 20 worst it lifted grade >= 1 from 55% to 85% (12 of 20 improved, none worse) for one call, taking the whole set from 95.5% to 98.5%. But the worst items were picked using the grader, which production does not have. The spec's trigger (a function failing the section 8 checks twice goes to `describe.retry`) fired for 0 of 200 here, so on this set it would have retried nothing. Use Sonnet for `describe.retry` as specced, and treat a blanket quality retry as unproven until a cheap signal (for example a grade-0 predictor) exists. Retry output also needs the 25-word repair.
 - Prompt: the identifier rule worked (only 7 identifier-like words appeared in 200 descriptions, all present in the fact sheets). The 25-word limit was never exceeded by Haiku with the "stay under 22 words" wording, unlike the worker spike's shorter prompt.
 

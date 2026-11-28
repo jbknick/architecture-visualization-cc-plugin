@@ -78,7 +78,7 @@ describe("lane layouts (#48)", () => {
 });
 
 describe("large swimlane graphs", () => {
-  it("skip ELK past LANE_ELK_MAX boxes and stay fast, lanes in columns, neighbours near", async () => {
+  it("skip ELK past LANE_ELK_MAX boxes and stay fast, lanes in columns, neighbors near", async () => {
     const nodes = [];
     const edges = [];
     for (let i = 0; i < 200; i++) {

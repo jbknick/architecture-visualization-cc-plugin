@@ -57,7 +57,7 @@ const LANE_GAP_TREE = 110;
 const LANE_ROW = 40;
 const BAND_GAP = 90;
 
-/** Entry point: lay out everything, honouring saved positions. */
+/** Entry point: lay out everything, honoring saved positions. */
 export async function computeLayout(input: LayoutInput): Promise<LayoutResult> {
   const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
   const tree = buildTree(input.nodes, { boxWorkspaces: input.hint === "nested-elk" });
@@ -225,7 +225,7 @@ function layoutForce(tree: Tree, edges: IdxEdge[]): Positions {
     y0 = Math.min(y0, y);
     y1 = Math.max(y1, y);
   }
-  // Scale so neighbouring nodes keep room for labels regardless of how FA2 normalised the picture.
+  // Scale so neighboring nodes keep room for labels regardless of how FA2 normalized the picture.
   const span = Math.max(x1 - x0, y1 - y0, 1);
   const target = 110 * Math.sqrt(Math.max(n, 1));
   const k = target / span;
@@ -457,7 +457,7 @@ function laneMembers(l: LaneInfo, members: number[]): Map<number, number[]> {
   return out;
 }
 
-/** Columns: one per lane, nodes in rank order, each column centred on y = 0. */
+/** Columns: one per lane, nodes in rank order, each column centered on y = 0. */
 function layoutLaneColumns(tree: Tree, l: LaneInfo, colW: number): Positions {
   const positions: Positions = {};
   const all = tree.nodes.map((_, i) => i);
@@ -471,7 +471,7 @@ function layoutLaneColumns(tree: Tree, l: LaneInfo, colW: number): Positions {
 
 /**
  * A tree over lanes. The root side is the outer lane with fewer nodes (the table of the table usage view, on the
- * right); every other node hangs off its neighbour one lane nearer the root with the smallest rank. Leaves get
+ * right); every other node hangs off its neighbor one lane nearer the root with the smallest rank. Leaves get
  * rows in depth-first order and a parent sits at the middle of its children, so a subtree stays together.
  */
 function layoutLaneTree(tree: Tree, edges: IdxEdge[], l: LaneInfo): Positions {
@@ -543,7 +543,7 @@ export const LANE_ELK_MAX = 250;
 
 /**
  * The large-graph form of the swimlane layout: per band, lane 0 in rank order, then each lane ordered by the mean row
- * of its neighbours in the lanes to its left (ties by rank), one row per box; bands stacked. Linear in the edges.
+ * of its neighbors in the lanes to its left (ties by rank), one row per box; bands stacked. Linear in the edges.
  */
 function layoutLaneSweep(tree: Tree, edges: IdxEdge[], l: LaneInfo, input: LayoutInput): Positions {
   const bandOrder = input.nodes.map((x) => x.band ?? "").filter((b, i, a) => a.indexOf(b) === i);

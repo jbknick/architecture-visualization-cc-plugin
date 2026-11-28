@@ -62,7 +62,7 @@ export interface FlagAnchor {
 
 export interface PlacedFlag {
   id: string;
-  /** Disc centre. */
+  /** Disc center. */
   x: number;
   y: number;
   /** Pole foot. */

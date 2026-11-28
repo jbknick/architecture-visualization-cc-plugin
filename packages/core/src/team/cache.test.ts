@@ -445,7 +445,7 @@ describe("skipped", () => {
 });
 
 describe("a CI token", () => {
-  it("pulls without an organisation", async () => {
+  it("pulls without an organization", async () => {
     seed(changeSet(1));
     const config = { team: { server: fake.url, upload: { descriptions: true, working: false } } } as never;
     const result = await pullTeamCache(paths, config, { env: { GANTRY_TOKEN: "gct_fake" } });

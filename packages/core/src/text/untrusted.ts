@@ -44,7 +44,7 @@ function scan(text: string, limit = Number.POSITIVE_INFINITY): { out: string[]; 
     const c = cps[i] as string;
     const prev = out[out.length - 1];
     if (isJoiner(c)) {
-      // Both neighbours in the text as written must be visible; a kept variation selector counts as part of its base.
+      // Both neighbors in the text as written must be visible; a kept variation selector counts as part of its base.
       const was = cps[i - 1];
       const before = was !== undefined && (isVisible(was) || (isVariation(was) && prev === was));
       if (before && isVisible(cps[i + 1])) out.push(c);

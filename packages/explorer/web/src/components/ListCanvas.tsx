@@ -20,7 +20,7 @@ const KEY_TARGET: Record<string, (cursor: number, count: number) => number> = {
 };
 
 /**
- * Reading order for the list: ego graphs go centre, callers (nearest first), callees (nearest first);
+ * Reading order for the list: ego graphs go center, callers (nearest first), callees (nearest first);
  * hierarchies go parent before children. Anything else keeps the server's order.
  */
 export function orderNodes(nodes: GraphNode[]): GraphNode[] {
@@ -179,7 +179,7 @@ export function ListCanvas({ nodes: rawNodes, edges, focus, onSelect, onHover, o
                   <span className="row-meta">
                     {node.side
                       ? node.side === "focus"
-                        ? "centre"
+                        ? "center"
                         : `${node.side === "in" ? "caller" : "callee"}, ${node.hop} away`
                       : `${degree.get(node.id) ?? 0} links`}
                   </span>

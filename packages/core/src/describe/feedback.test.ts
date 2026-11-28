@@ -25,7 +25,7 @@ describe("rejectionFeedback (#150)", () => {
       "Write one plain sentence about what it does, no lists, code or quotes.",
     );
     expect(rejectionFeedback("injection", "behavior and terms: x")?.fix).toMatch(
-      /^Describe behaviour only; do not mention instructions, prompts, roles or the reader/,
+      /^Describe behavior only; do not mention instructions, prompts, roles or the reader/,
     );
     expect(rejectionFeedback("identifier", "behavior not in the fact sheet: abc…")?.fix).toMatch(
       /^Name only identifiers that appear in the code shown/,

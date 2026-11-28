@@ -241,7 +241,7 @@ export class SettlementScene {
 
   /**
    * The review layer (#167), resolved against `land.buildings` (one index per building): untouched buildings fade to
-   * grey, changed ones take their change's colour, hop-1 callers a soft tint, and arcs join each caller building to
+   * gray, changed ones take their change's color, hop-1 callers a soft tint, and arcs join each caller building to
    * the changed building it calls. Null clears it. Positions never change.
    */
   setReview(paint: LayerPaint | null): void {
@@ -341,7 +341,7 @@ export class SettlementScene {
     this.animateTo(target.clone().addScaledVector(dir, dist), target, !this.opts.reducedMotion);
   }
 
-  /** Test hook: where the buildings `ids` project on screen now, in normalised device coordinates (-1 to 1). */
+  /** Test hook: where the buildings `ids` project on screen now, in normalized device coordinates (-1 to 1). */
   projectIds(ids: readonly string[]): { id: string; x: number; y: number; z: number }[] {
     const l = this.land;
     if (!l) return [];
@@ -406,7 +406,7 @@ export class SettlementScene {
     this.reviewDisposables = [];
   }
 
-  /** Recolours the building instances for the review layer (from their own colours) and draws its arcs. */
+  /** Recolors the building instances for the review layer (from their own colors) and draws its arcs. */
   private applyReview(): void {
     const land = this.land;
     const built = this.built;
@@ -629,7 +629,7 @@ export class SettlementScene {
           if (segPoint([x, z], r.pts[i] as Pt, r.pts[i + 1] as Pt).d < r.width / 2 + 0.9) return false;
       return true;
     };
-    // Clumps: a few centres, trees round them.
+    // Clumps: a few centers, trees round them.
     for (let c = 0; c < want / 9 && spots.length < want + 400; c++) {
       const cx = (rnd() * 2 - 1) * E * 1.15;
       const cz = (rnd() * 2 - 1) * E * 1.15;
@@ -806,7 +806,7 @@ export class SettlementScene {
   private fit(view: SettlementView): { pos: THREE.Vector3; target: THREE.Vector3 } {
     const l = this.land;
     if (view === "street" && l && l.settlements.length > 0) {
-      // Down an avenue of the biggest settlement towards its centre: the radial street on the camera's side.
+      // Down an avenue of the biggest settlement towards its center: the radial street on the camera's side.
       const s = [...l.settlements].sort((a, b) => b.fns - a.fns)[0] as Settlement;
       const want = Math.atan2(Math.cos(AZIMUTH), Math.sin(AZIMUTH));
       let ang = want;
@@ -1264,7 +1264,7 @@ export class SettlementScene {
     const rankOf = new Map(l.roads.map((r, i) => [r.key, i]));
     for (const p of sorted) {
       const on = !focus || p.road.a === focus || p.road.b === focus;
-      // Unfocused, only the busiest links are labelled; a focused settlement labels every link it has.
+      // Unfocused, only the busiest links are labeled; a focused settlement labels every link it has.
       const wanted = focus ? on : p.road.cls === "highway" || (rankOf.get(p.road.key) ?? 99) < 6;
       if (!wanted) {
         hide(p.el);

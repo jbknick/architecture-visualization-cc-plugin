@@ -1095,7 +1095,7 @@ describe("Claude Code hooks (PostToolUse) and pre-commit findings", () => {
     expect(stop(fx).out).toBe("");
   });
 
-  it("a package.json declared on disk after the last index is honoured by the double-check (#131)", async () => {
+  it("a package.json declared on disk after the last index is honored by the double-check (#131)", async () => {
     const fx = await indexedFx();
     expect(
       touch(fx, "apps/web/src/lib/db.ts", 'import { db } from "@acme/db";\nexport const handle = db;\n').out,

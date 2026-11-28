@@ -266,7 +266,7 @@ describe("auth, headers and validation", () => {
     }
   });
 
-  it("answers 403 to another organisation, and to a CI token for another repo or on a user route", async () => {
+  it("answers 403 to another organization, and to a CI token for another repo or on a user route", async () => {
     for (const [name, def, params] of concrete) {
       const r = await call(def, params, { token: USER, org: "other" });
       expect(r.status, name).toBe(403);
@@ -315,7 +315,7 @@ describe("auth, headers and validation", () => {
   });
 
   it("answers 413 too_large when a group or view is over the item size", async () => {
-    // Valid by the schema (50 selectors of 20 ids each) and still over 32 KB serialised.
+    // Valid by the schema (50 selectors of 20 ids each) and still over 32 KB serialized.
     const selectors = Array.from({ length: 50 }, () => ({
       type: "ids" as const,
       ids: Array.from({ length: 20 }, () => `sym:${"a".repeat(32)}:src/a.ts#f`),
@@ -445,7 +445,7 @@ describe("description lookup", () => {
     expect(extra.status).toBe(400);
   });
 
-  it("is for a signed-in user: a CI token gets 403 and another organisation gets 403", async () => {
+  it("is for a signed-in user: a CI token gets 403 and another organization gets 403", async () => {
     expect((await lookup([other.content_key], { body: undefined })).status).toBe(403);
     expect((await lookup([other.content_key], asUser({ org: "other" }))).status).toBe(403);
   });

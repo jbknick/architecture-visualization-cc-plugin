@@ -1,4 +1,4 @@
-// Scene colours for the 3D map. Workspace colours come from the shared ../workspacePalette.ts.
+// Scene colors for the 3D map. Workspace colors come from the shared ../workspacePalette.ts.
 import type { Scheme } from "../theme.ts";
 
 export interface SceneTheme {

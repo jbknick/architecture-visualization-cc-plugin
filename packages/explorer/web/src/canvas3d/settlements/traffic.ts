@@ -22,7 +22,7 @@ export interface Vehicle {
   phase: number;
   speed: number;
   kind: VehicleKind;
-  /** 0..1 for the paint colour. */
+  /** 0..1 for the paint color. */
   paint: number;
 }
 

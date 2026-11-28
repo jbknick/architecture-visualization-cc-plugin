@@ -150,7 +150,7 @@ describe("team boundaries in the pull request comment run", () => {
     expect(r.body).not.toContain("Team boundaries");
   });
 
-  it("makes no team request unless the server, the organisation and the token are all set", async () => {
+  it("makes no team request unless the server, the organization and the token are all set", async () => {
     fake = await startFakeGithub({ token: GITHUB_TOKEN });
     for (const missing of Object.keys(TEAM)) {
       const exec = stubExec(ok([finding()]));

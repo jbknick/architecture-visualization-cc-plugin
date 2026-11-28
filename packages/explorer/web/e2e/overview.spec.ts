@@ -30,7 +30,7 @@ test("overview text is never parsed as HTML", async ({ page }) => {
   ).toBeUndefined();
 });
 
-test("a 3D map folder id is normalised by the server and its cached overview shows", async ({ page }) => {
+test("a 3D map folder id is normalized by the server and its cached overview shows", async ({ page }) => {
   await page.goto("/#/map-3d?level=dirs&sel=dir%3Aws%3A%40acme%2Fdb%3Asrc");
   const overview = page
     .getByRole("complementary", { name: "Inspector" })

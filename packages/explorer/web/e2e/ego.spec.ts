@@ -76,7 +76,7 @@ function expectReadable(p: Probe, focusId: string) {
         overlaps(p.labels[i] as Label, p.labels[j] as Label),
         `${p.labels[i]?.text} / ${p.labels[j]?.text}`,
       ).toBe(false);
-  // The focus card is vertically centred in the canvas area (below the 72px title band).
+  // The focus card is vertically centered in the canvas area (below the 72px title band).
   const mid = focus.y + focus.h / 2;
   expect(mid).toBeGreaterThan(300);
   expect(mid).toBeLessThan(560);
@@ -210,7 +210,7 @@ test("small graph, nothing grouped (light)", async ({ page }) => {
   expect(p.labels.some((l) => l.id.startsWith("group:"))).toBe(false);
   const focus = p.labels.find((l) => l.id === ids.button);
   expect(focus?.text).toBe("Button");
-  // Every node is labelled, and the callers (the pages that render Button) sit left of the focus.
+  // Every node is labeled, and the callers (the pages that render Button) sit left of the focus.
   const callers = p.labels.filter((l) => l.id !== ids.button && l.x < (focus?.x ?? 0));
   expect(callers.map((l) => l.text).sort()).toEqual(["PostList", "buttonTest"]);
   await page.screenshot({ path: resolve(shots, "ego-small.png") });

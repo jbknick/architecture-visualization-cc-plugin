@@ -46,7 +46,7 @@ function assertLabelled(label: string, value: unknown, marker: string): void {
 }
 
 describe("fallback description containment (#175)", () => {
-  it("reads back only inside untrusted_description, labelled described_by: fallback", async () => {
+  it("reads back only inside untrusted_description, labeled described_by: fallback", async () => {
     const repo = makeRepo({ "src/text/clean.ts": fn("cleanText") });
     repos.push(repo);
     await indexAndSync(repo);

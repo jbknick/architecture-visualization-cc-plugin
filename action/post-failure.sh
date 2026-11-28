@@ -16,7 +16,7 @@ reason=$(printf '%s' "${GANTRY_FAILURE:-the install failed}" | tr -c 'A-Za-z0-9 
 reason=${reason# }
 reason=${reason% }
 [ -n "$reason" ] || reason='-'
-body=$(printf '%s\n## Gantry: the analysis failed\n\nGantry could not analyse this pull request: `%s`\n\n<sub>The pull request itself is not affected. The job log of the Gantry step has the details.</sub>\n' "$marker" "$reason")
+body=$(printf '%s\n## Gantry: the analysis failed\n\nGantry could not analyze this pull request: `%s`\n\n<sub>The pull request itself is not affected. The job log of the Gantry step has the details.</sub>\n' "$marker" "$reason")
 body="$body"$'\n'
 
 finish() {

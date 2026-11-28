@@ -23,7 +23,7 @@ export function SettlementsHowTo() {
           <strong>Settlement</strong> = one workspace. By functions, ranked within this repo:{" "}
           <strong>village</strong> (cottages, fields, a windmill), <strong>town</strong> (houses, a church),{" "}
           <strong>city</strong> (blocks, cranes), <strong>metropolis</strong> (a tower core, suburbs). Under{" "}
-          {TIER_FLOOR.town} functions is always a village. Kerb and roof colour = workspace, as in the list
+          {TIER_FLOOR.town} functions is always a village. Kerb and roof color = workspace, as in the list
           below.
         </span>
       </li>

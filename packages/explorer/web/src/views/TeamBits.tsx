@@ -7,7 +7,7 @@ export function Icon({ icon, size }: { icon: IconSvgElement; size: number }) {
   return <HugeiconsIcon icon={icon} size={size} aria-hidden="true" />;
 }
 
-/** The little coloured square beside a count, one of the review's colours (`rv-mark-*`) or the reachable outline. */
+/** The little colored square beside a count, one of the review's colors (`rv-mark-*`) or the reachable outline. */
 export function Swatch({ tone }: { tone: "modified" | "affected" | "potential" | "reach" }) {
   return (
     <span

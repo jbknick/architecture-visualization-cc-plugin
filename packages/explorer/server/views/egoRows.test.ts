@@ -109,7 +109,7 @@ describe("ego row budget", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("honours maxRows from 8 to 40", () => {
+  it("honors maxRows from 8 to 40", () => {
     for (const maxRows of [8, 12, 24, 40]) {
       const { rows } = plan(thin(), { maxRows });
       expect(rows.length, `maxRows ${maxRows}`).toBeLessThanOrEqual(maxRows);

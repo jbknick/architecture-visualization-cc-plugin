@@ -175,7 +175,7 @@ describe("the city on the large mock", () => {
       for (const d of city.districts) {
         const r = rectOf(map, d.idx);
         expect(d.rect).toEqual(r);
-        // World box = 2D rect shifted to the centre of the diagram (x -> X, y -> Z).
+        // World box = 2D rect shifted to the center of the diagram (x -> X, y -> Z).
         expect(d.box.cx).toBeCloseTo(r.x + r.w / 2 - city.origin.x, 6);
         expect(d.box.cz).toBeCloseTo(r.y + r.h / 2 - city.origin.y, 6);
         expect(d.box.sx).toBeCloseTo(r.w, 6);

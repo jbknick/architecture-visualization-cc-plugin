@@ -127,7 +127,7 @@ describe("gantry team sync-descriptions", () => {
     expect(JSON.parse(r.out)).toEqual({ asked: keys.length, filled: 2 });
   });
 
-  it("says not linked to a team and exits 1 when there is no server, organisation or token", async () => {
+  it("says not linked to a team and exits 1 when there is no server, organization or token", async () => {
     expect(await run({})).toEqual({ code: 1, out: "", err: "not linked to a team\n" });
     expect((await run({ GANTRY_SERVER: fake.url, GANTRY_ORG: "acme" })).err).toBe("not linked to a team\n");
   });
@@ -139,7 +139,7 @@ describe("gantry team sync-descriptions", () => {
       out: "",
       err: "Descriptions need a signed-in user. Run gantry team login.\n",
     });
-    // A request the server itself answers 403 (here another organisation) gets the same message.
+    // A request the server itself answers 403 (here another organization) gets the same message.
     const other = await run({ ...linked(), GANTRY_ORG: "other" });
     expect(other).toEqual({
       code: 1,

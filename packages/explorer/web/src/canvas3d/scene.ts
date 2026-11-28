@@ -55,7 +55,7 @@ interface NodeEntry {
   group: THREE.Group;
   /** The dot's radius from the layout; ranked files are drawn larger (see `applyRankStyles`). */
   baseR: number;
-  /** Workspace-coloured ring around the dot of a ranked file. */
+  /** Workspace-colored ring around the dot of a ranked file. */
   ring: THREE.Sprite | null;
 }
 
@@ -134,7 +134,7 @@ interface Rect {
   b: number;
 }
 
-/** Shade offsets by folder rank inside an island (Files level): lighter or darker than the island colour. */
+/** Shade offsets by folder rank inside an island (Files level): lighter or darker than the island color. */
 const SHADES = [0, 0.3, -0.22, 0.5, -0.38, 0.14, -0.1, 0.4] as const;
 const PAD = 3;
 const MARGIN = 5;
@@ -180,7 +180,7 @@ function dotTexture(): THREE.Texture {
   return new THREE.CanvasTexture(c);
 }
 
-/** A ring (annulus) texture, tinted per island through the sprite material's colour. */
+/** A ring (annulus) texture, tinted per island through the sprite material's color. */
 function ringTexture(): THREE.Texture {
   const c = document.createElement("canvas");
   c.width = c.height = 64;
@@ -1052,7 +1052,7 @@ export class MapScene {
   }
 
   /**
-   * Ranked files (Files level) are drawn larger and ringed in their workspace colour, so they stand out from the
+   * Ranked files (Files level) are drawn larger and ringed in their workspace color, so they stand out from the
    * cloud of dots; the file under the pointer in the list gets a larger ring still.
    */
   /** World radius of a ranked file's dot: larger than a plain dot, and never under about 4.5px on screen. */
@@ -1126,7 +1126,7 @@ export class MapScene {
     return { nodes, islands };
   }
 
-  /** Island whose arcs and labels are emphasised: the hovered one, else the selected one (or the selected node's). */
+  /** Island whose arcs and labels are emphasized: the hovered one, else the selected one (or the selected node's). */
   private activeIsland(): string | null {
     const hover = this.pointerIsland ?? this.legendIsland;
     if (hover) return hover;

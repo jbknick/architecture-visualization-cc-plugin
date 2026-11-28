@@ -40,7 +40,7 @@ const aliasStop =
   /^(?:\s+(?:AS\s+)?(?!(?:WHERE|JOIN|LEFT|RIGHT|INNER|FULL|CROSS|ON|GROUP|ORDER|LIMIT|UNION|SET|USING|OFFSET|HAVING|FOR|RETURNING|WINDOW|EXCEPT|INTERSECT|NATURAL|LATERAL|SELECT)\b)[A-Za-z_]\w*)?\s*,\s*/i;
 const idRx = () => new RegExp(ID, "g");
 
-/** A text is SQL when it holds a statement shape anywhere, so a parenthesised subquery or a CTE fragment counts. */
+/** A text is SQL when it holds a statement shape anywhere, so a parenthesized subquery or a CTE fragment counts. */
 const SQL_SHAPE =
   /\bSELECT\b[\s\S]*?\bFROM\b|\bINSERT\s+INTO\b|\bDELETE\s+FROM\b|\bUPDATE\b[\s\S]*?\bSET\b|\bCREATE\s+(?:[A-Z]+\s+)*TABLE\b|\bTRUNCATE\b/i;
 

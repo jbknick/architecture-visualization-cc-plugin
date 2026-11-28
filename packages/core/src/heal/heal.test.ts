@@ -259,7 +259,7 @@ describe("heal: fallbacks and no-ops", () => {
     expect(dump(paths)).toBe(await freshDump(fx));
   });
 
-  it("honours --from by diffing against that commit", async () => {
+  it("honors --from by diffing against that commit", async () => {
     const { fx, paths } = await setup();
     const first = head(fx);
     featureCommit(fx, "alpha");

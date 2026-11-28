@@ -40,7 +40,7 @@ export function edgeStyle(e: Pick<GraphEdge, "kind" | "confidence" | "weight">, 
 }
 
 /**
- * The curve of an edge between two boxes centred on `a` and `b`: from the right side of the source to the left side
+ * The curve of an edge between two boxes centered on `a` and `b`: from the right side of the source to the left side
  * of the target when the target is to the right, the other way round when it is to the left, and a loop out of the
  * right sides when both are in one column.
  */

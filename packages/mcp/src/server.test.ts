@@ -574,7 +574,7 @@ describe("gantry_claim_batch and gantry_submit_descriptions", () => {
 
   it("caps a claim at 20,000 characters and puts the sheets that did not fit back in the queue", async () => {
     const files: Record<string, string> = {};
-    const doc = `// ${"documented behaviour ".repeat(30)}\n`;
+    const doc = `// ${"documented behavior ".repeat(30)}\n`;
     const calls = Array.from(
       { length: 60 },
       (_, i) => `  helperWithAVeryLongDescriptiveName${i}(input);\n`,

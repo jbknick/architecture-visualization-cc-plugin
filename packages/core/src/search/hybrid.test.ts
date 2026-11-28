@@ -106,7 +106,7 @@ describe("description columns of fts_symbols", () => {
 });
 
 /**
- * Stub model for the weak-neighbour tests: the query is the unit vector on axis 0, and every function-like symbol
+ * Stub model for the weak-neighbor tests: the query is the unit vector on axis 0, and every function-like symbol
  * except `skip` gets a stored vector at cosine `cosine` to it, on its own axis, so nothing is downloaded.
  */
 function storeWeakVectors(cosine: number, skip: string[]): Embedder {
@@ -134,7 +134,7 @@ function storeWeakVectors(cosine: number, skip: string[]): Embedder {
 }
 
 describe("hybridSearch", () => {
-  it("keeps the top keyword hit first when the vector half is only weak neighbours that omit it", async () => {
+  it("keeps the top keyword hit first when the vector half is only weak neighbors that omit it", async () => {
     describeAll();
     if (!vecAvailable(ix.store)) return;
     const query = "turn a title into a url slug";
@@ -213,7 +213,7 @@ describe("hybridSearch", () => {
     }
   });
 
-  it("returns nothing for an empty query and honours limit", async () => {
+  it("returns nothing for an empty query and honors limit", async () => {
     describeAll();
     expect(await hybridSearch(ix.store, "   ")).toEqual([]);
     expect((await hybridSearch(ix.store, "date", { limit: 1 })).length).toBeLessThanOrEqual(1);

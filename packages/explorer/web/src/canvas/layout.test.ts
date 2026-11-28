@@ -136,7 +136,7 @@ describe("map layout of a large monorepo (3 big workspaces, 8 tiny, scoped names
 
     for (const [n] of roots) {
       const r = box(n.id);
-      expect(r.w).toBeGreaterThanOrEqual(120 - 1e-6); // tiny workspaces stay clickable and labelled
+      expect(r.w).toBeGreaterThanOrEqual(120 - 1e-6); // tiny workspaces stay clickable and labeled
       expect(r.h).toBeGreaterThanOrEqual(64 - 1e-6);
     }
     for (let a = 0; a < roots.length; a++) {

@@ -15,7 +15,7 @@ export type { Lang };
 
 /**
  * What a language module hands to shared code for one symbol (spec section 3, `lang/`). Shared code computes the
- * five hashes from it (`hash/`); no shared, language-blind normaliser exists because it changes every TypeScript hash.
+ * five hashes from it (`hash/`); no shared, language-blind normalizer exists because it changes every TypeScript hash.
  * The statement count of a symbol (`stmtCount`) comes with the parsed symbol, not from the streams.
  */
 export interface TokenStreams {

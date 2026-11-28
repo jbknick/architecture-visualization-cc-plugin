@@ -95,7 +95,7 @@ describe("SlicesPanel", () => {
       routeFallback: ["ws:@a/web"],
     });
 
-  it("summarises slices and links, lists what is shared and notes the route fallback", () => {
+  it("summarizes slices and links, lists what is shared and notes the route fallback", () => {
     render(
       <SlicesPanel
         {...base}

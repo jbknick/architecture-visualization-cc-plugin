@@ -291,7 +291,7 @@ describe("gantry_find_similar", () => {
     );
   });
 
-  it("validates input, honours limit and kind, and stays within the default cap", async () => {
+  it("validates input, honors limit and kind, and stays within the default cap", async () => {
     const { client } = await setup();
     const none = await call(client, "gantry_find_similar", {});
     expect(none.json.error).toBe("invalid_input");

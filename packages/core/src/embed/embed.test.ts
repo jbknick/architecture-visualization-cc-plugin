@@ -257,7 +257,7 @@ describe("embedPending", () => {
     expect((storedKeys(store, "vec_code") as Set<string>).has(key)).toBe(true);
   });
 
-  it("skips code when no root is given and honours the limit and batches of the default size", async () => {
+  it("skips code when no root is given and honors the limit and batches of the default size", async () => {
     for (let i = 0; i < 70; i++)
       addDescription(`k${String(i).padStart(2, "0")}:p1`, `Does thing ${i}.`, ["t"]);
     const emb = fakeEmbedder();

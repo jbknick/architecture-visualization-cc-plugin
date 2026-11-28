@@ -124,7 +124,7 @@ export interface ReviewLink {
   src: string;
   /** `direct`: the changed symbol's node. `potential`: the node of the consumer's `next` (one step nearer). */
   dst: string;
-  /** The change the line points to (its colour). */
+  /** The change the line points to (its color). */
   change: ReviewMarkKind;
   /** Edges (direct) or potential consumers (potential) joined by this line. */
   weight: number;
@@ -160,7 +160,7 @@ export interface ReviewData {
   head: string;
   mergeBase: string;
   headSha: string;
-  /** `map` (default): the review as a layer on the project map; `rings`: changed code in the centre, callers by hop. */
+  /** `map` (default): the review as a layer on the project map; `rings`: changed code in the center, callers by hop. */
   mode: "map" | "rings";
   /** Which map the review view draws on: the 2D project map (default) or the 3D map. */
   map: "2d" | "3d";
@@ -393,7 +393,7 @@ async function compute(
 const sideOf = (s: SymbolChange["before"]): ReviewSide | undefined =>
   s ? { id: s.id, path: s.path, line: s.line, signature: s.signature, exported: s.exported } : undefined;
 
-/** The layer colour of one change. */
+/** The layer color of one change. */
 export function markKindOf(c: Pick<SymbolChange, "kind" | "signatureChanged">): ReviewMarkKind {
   if (c.kind === "added" || c.kind === "removed") return c.kind;
   if (c.kind === "renamed" || c.kind === "moved") return "moved";
@@ -575,7 +575,7 @@ export async function reviewFor(
 }
 
 /**
- * Mode `rings`: the changed symbols in the centre and their callers on rings by hop, grouped by file on each ring
+ * Mode `rings`: the changed symbols in the center and their callers on rings by hop, grouped by file on each ring
  * (see `ringLayout`), with the review data. Null when the options name neither `range` nor `pr`.
  */
 export async function reviewRings(

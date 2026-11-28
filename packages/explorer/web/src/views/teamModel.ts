@@ -4,7 +4,7 @@ import type { ReviewLayer, ReviewLink, ReviewMark, TeamChangeSet, TeamLayerData 
 import { fileIdOfSymId, kindOfId, nameOfSymId, pathOfFileId, pathOfSymId } from "../ids.ts";
 import type { LayerPaint, LayerTree } from "./reviewModel.ts";
 
-/** Data older than this (24 hours) gets the freshness line in the muted warning colour. */
+/** Data older than this (24 hours) gets the freshness line in the muted warning color. */
 export const STALE_AFTER_S = 24 * 3600;
 
 /** Seconds since the pull: the age the server gave when the data was read, plus the time since then. */

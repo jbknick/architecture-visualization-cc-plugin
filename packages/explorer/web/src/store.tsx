@@ -60,9 +60,9 @@ export interface Store {
   setView: (view: string) => void;
   /** Open a node in the inspector (`sel`). */
   selectNode: (id: string | null, hit?: SearchHit | null) => void;
-  /** Set the view's focus (project-map subtree, ego centre) and open the node in the inspector. */
+  /** Set the view's focus (project-map subtree, ego center) and open the node in the inspector. */
   focusOn: (id: string, hit?: SearchHit | null) => void;
-  /** Switch to `view` centred on `id`, with that view's default options. `selectId` is shown in the inspector. */
+  /** Switch to `view` centered on `id`, with that view's default options. `selectId` is shown in the inspector. */
   openInView: (view: string, id: string, selectId?: string | null) => void;
   toggleLeft: () => void;
   setHover: (id: string | null) => void;
@@ -231,7 +231,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       focusOn: (id, hit = null) => {
         dispatch({ type: "pick", hit });
-        // The default connection types depend on whether the centre is a function or a file, so drop a stale choice.
+        // The default connection types depend on whether the center is a function or a file, so drop a stale choice.
         const { edgeKinds: _drop, expand: _expand, ...filters } = state.route.filters;
         navigate({ focus: id, sel: id, filters });
       },

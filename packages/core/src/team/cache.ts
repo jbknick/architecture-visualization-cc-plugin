@@ -291,7 +291,7 @@ async function fetchPages(client: TeamClient, repo: string, etag: string | undef
   throw new GantryError("team_rejected", "The server's pull has too many pages.");
 }
 
-/** The cache is for one server, organisation and repo; a different one means the file is another team's. */
+/** The cache is for one server, organization and repo; a different one means the file is another team's. */
 function identityDiffers(db: Database.Database, identity: Record<string, string>): boolean {
   return Object.entries(identity).some(([key, value]) => {
     const stored = getMeta(db, key);
@@ -325,7 +325,7 @@ export async function pullTeamCache(
   } catch (err) {
     return { status: "failed", change_sets: 0, error: errorText(err) };
   }
-  // A signed-in user's request needs an organisation; a CI token's needs none.
+  // A signed-in user's request needs an organization; a CI token's needs none.
   if (!client.hasToken || (client.org === undefined && !ciToken))
     return { status: "skipped", change_sets: 0 };
 

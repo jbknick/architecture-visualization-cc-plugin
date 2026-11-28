@@ -24,7 +24,7 @@ import {
 /**
  * Duplicate engine (spec section 17): four tiers from cheapest to most semantic.
  *
- * - exact: same `exactHash`, or same `renamedHash` (the function's own name normalised, #151), `stmtCount >= 3`;
+ * - exact: same `exactHash`, or same `renamedHash` (the function's own name normalized, #151), `stmtCount >= 3`;
  * - near: same `shapeHash` or shape MinHash Jaccard >= `nearJaccard`, and token MinHash Jaccard (literals,
  *   property names and callees kept) >= `nearTokenJaccard`, `stmtCount >= 6`, parameter count within 1. The score
  *   is the token Jaccard;

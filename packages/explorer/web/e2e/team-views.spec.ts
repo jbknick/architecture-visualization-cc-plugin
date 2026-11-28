@@ -173,7 +173,7 @@ async function shots(page: Page, name: string) {
   mkdirSync(results, { recursive: true });
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
-    // Colours of the kit's controls ease over 150 ms: let them settle before the picture is taken.
+    // Colors of the kit's controls ease over 150 ms: let them settle before the picture is taken.
     await page.waitForTimeout(400);
     await page.screenshot({ path: join(results, `${name}-${scheme}.png`) });
   }

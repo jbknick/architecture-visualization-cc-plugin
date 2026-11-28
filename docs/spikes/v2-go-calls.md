@@ -71,9 +71,9 @@ Index and resolve after parsing: 627 ms (caddy) and 1,166 ms (hugo), single-thre
 
 ## Deviations and notes
 
-- The truth limits calls to top-level function bodies, as the syntax side does; calls in package-level `var` initialisers are not scored on either side.
+- The truth limits calls to top-level function bodies, as the syntax side does; calls in package-level `var` initializers are not scored on either side.
 - Calls are paired by `file:line:name`, not byte column, because tree-sitter and `go/token` count columns differently. No truth site went unpaired.
-- Interface keys: a direct interface call is keyed by the receiver's interface, and a call promoted through a struct embedding by the interface that declares the method, to match `go/types`. A first run keyed both by the declaring interface and showed 432 false "wrong callee" sites on hugo, a key-convention artefact that is fixed in the code.
+- Interface keys: a direct interface call is keyed by the receiver's interface, and a call promoted through a struct embedding by the interface that declares the method, to match `go/types`. A first run keyed both by the declaring interface and showed 432 false "wrong callee" sites on hugo, a key-convention artifact that is fixed in the code.
 - Two repos (230 and 519 source files). Both are module-heavy server code. A codebase that relies more on generics or dot imports could score lower; dot imports were absent from both.
 - The helper-binary fallback was not built; the truth program is close to what it would be (about 370 lines over `go/packages`), and it took 2.1 to 2.3 s per repo including type-checking dependencies.
 

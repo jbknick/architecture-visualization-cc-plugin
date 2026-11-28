@@ -58,7 +58,7 @@ export interface LayoutInput {
   /**
    * Level-independent box sizes: every workspace is sized as if it had contents. Without it a workspace with no
    * children (the Workspaces level) can be a pixel or two smaller than the same one at the Folders level, which
-   * would move its neighbours. The 3D city sets it so its districts stay put when the level changes.
+   * would move its neighbors. The 3D city sets it so its districts stay put when the level changes.
    */
   stableBoxes?: boolean;
   /**

@@ -170,7 +170,7 @@ for (const scheme of ["light", "dark"] as const) {
     await page.mouse.wheel(0, -420);
     await page.waitForTimeout(500);
     // Pan down into the folder: the workspace title scrolls out of view, folder strips stick to the top, and the
-    // breadcrumb says where the canvas centre is.
+    // breadcrumb says where the canvas center is.
     await page.mouse.move(box.x + 700, box.y + 520);
     await page.mouse.down();
     await page.mouse.move(box.x + 560, box.y + 250, { steps: 10 });
@@ -365,7 +365,7 @@ test("large scenario: the key says what boxes, arrows and numbers mean, and can 
   const key = canvas(page).getByTestId("map-key");
   await expect(key).toBeVisible();
   await expect(key).toContainText("Box = workspace (area = functions)");
-  await expect(key).toContainText("Line colour = importing workspace");
+  await expect(key).toContainText("Line color = importing workspace");
   await expect(key).toContainText("A imports from B");
   await expect(key).toContainText("Number = files importing · thicker = more");
   await expect(key).toContainText("Tests hidden");
@@ -391,7 +391,7 @@ test("large scenario: the key says what boxes, arrows and numbers mean, and can 
   await expect(key.locator(".gc-key-body")).toHaveCount(1);
 });
 
-test("large scenario: lines are coloured by the importing workspace, pills keep off the key, and the key folds away when zoomed in", async ({
+test("large scenario: lines are colored by the importing workspace, pills keep off the key, and the key folds away when zoomed in", async ({
   page,
 }) => {
   await page.emulateMedia({ colorScheme: "light" });
@@ -402,7 +402,7 @@ test("large scenario: lines are coloured by the importing workspace, pills keep 
     const src = e.key.split(">")[0] as string;
     bySource.set(src, (bySource.get(src) ?? new Set()).add(e.colour));
   }
-  // "All blue lines leave web": one colour per importer, a different colour for each importer.
+  // "All blue lines leave web": one color per importer, a different color for each importer.
   for (const [src, set] of bySource) expect(set.size, src).toBe(1);
   expect(new Set([...bySource.values()].map((s) => [...s][0])).size).toBe(bySource.size);
   expect(bySource.size).toBeGreaterThanOrEqual(8);

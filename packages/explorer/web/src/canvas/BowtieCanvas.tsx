@@ -218,7 +218,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
 
-  // Theme: follow the shell's CSS variables and the OS colour scheme.
+  // Theme: follow the shell's CSS variables and the OS color scheme.
   useEffect(() => {
     const update = () => setTheme(readTheme(wrapRef.current));
     update();
@@ -572,7 +572,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
           ctx.textBaseline = "alphabetic";
         }
       } else {
-        // An individual function or file: a row tinted with its workspace's colour.
+        // An individual function or file: a row tinted with its workspace's color.
         roundRect(ctx, x, y, w, h, Math.min(5, h / 3));
         ctx.fillStyle = T.surface;
         ctx.fill();
@@ -719,7 +719,7 @@ export function BowtieCanvas({ nodes, edges, focus, onSelect, onHover, onDrill }
     [cameraFor, goTo],
   );
 
-  /** Centres an item (or an expanded group with its members) in the view. */
+  /** Centers an item (or an expanded group with its members) in the view. */
   const showItem = useCallback(
     (id: string, ms = 350) => {
       const L = live.current.layout;

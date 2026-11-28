@@ -26,7 +26,7 @@ function leaves(v: unknown, key = "", out: { key: string; text: string }[] = [])
   return out;
 }
 
-/** The marker is present only as a value of FIELD, and the serialised text has no other occurrence. */
+/** The marker is present only as a value of FIELD, and the serialized text has no other occurrence. */
 function assertContained(label: string, value: unknown, text: string): number {
   const hits = leaves(value).filter((l) => l.text.includes(NAME_MARKER));
   for (const h of hits) expect({ label, key: h.key }).toEqual({ label, key: FIELD });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { IMPERATIVE_PATTERNS, scanInjection, suspiciousCharacters } from "./filters.js";
 import { IDENTIFIER_STOP_LIST, isIdentifierLike } from "./identifiers.js";
 
-// The injection filter is defence in depth: a small set of high-precision patterns. Most attacks are stopped by the
+// The injection filter is defense in depth: a small set of high-precision patterns. Most attacks are stopped by the
 // shape and grounding rules (see validate.shape.test.ts and validate.corpus.test.ts).
 
 describe("scanInjection: must reject", () => {

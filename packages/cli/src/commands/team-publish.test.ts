@@ -218,7 +218,7 @@ describe("refusals and errors", () => {
     expect(stderr.join("")).toBe("not linked to a team\n");
   });
 
-  it("exits 1 with `not linked to a team` when no organisation is named", async () => {
+  it("exits 1 with `not linked to a team` when no organization is named", async () => {
     env = { ...linkedEnv(), GANTRY_ORG: "" };
     expect(await publish("group", "payments")).toBe(1);
     expect(stderr.join("")).toBe("not linked to a team\n");

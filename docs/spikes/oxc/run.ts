@@ -199,7 +199,7 @@ export function runOnce(
       }
     }
 
-    // ecosystem shapes (generalised: no workspace or file names)
+    // ecosystem shapes (generalized: no workspace or file names)
     const eco = s.ecosystem;
     const gdir = generaliseDir(rel);
     const specs = facts.imports.map((i) => i.specifier);
@@ -306,7 +306,7 @@ export function render(s: Summary, medians: Summary["timings"], runs: number): s
   }
   const e = s.ecosystem;
   lines.push("");
-  lines.push("framework shapes (generalised paths, counts only)");
+  lines.push("framework shapes (generalized paths, counts only)");
   lines.push(
     `  createFileRoute: ${e.fileRoutes.calls} calls in ${e.fileRoutes.files} files; root routes: ${e.fileRoutes.rootRoutes}; paths with $param: ${e.fileRoutes.withParams}; pathless (_) paths: ${e.fileRoutes.pathless}`,
   );

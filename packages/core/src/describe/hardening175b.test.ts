@@ -1,5 +1,5 @@
-// Final round of #175 (untrusted-text model). The validator is defence in depth, not the boundary: it keeps main's
-// behaviour on honest text (the benign corpus below must see no new rejection against main), and the clause and claim
+// Final round of #175 (untrusted-text model). The validator is defense in depth, not the boundary: it keeps main's
+// behavior on honest text (the benign corpus below must see no new rejection against main), and the clause and claim
 // rules live only in the extra-attempt gate, where a false positive costs one retry. Each attack category of the
 // reviews gets no extra attempt and no fallback; representative strings only. Each carries an ungrounded word so the
 // validator rejects it for a wording rule (identifier), which is the case the gate decides.
@@ -48,7 +48,7 @@ const raw = (behavior: unknown, searchTerms: unknown = ["slug"], suggestedName?:
 function expectNoExtra(d: unknown): void {
   const s = slugSheet();
   const v = validateDescription(d, s);
-  if (v.ok) return; // accepted text is untrusted output like any other: contained, labelled, never a fallback
+  if (v.ok) return; // accepted text is untrusted output like any other: contained, labeled, never a fallback
   expect(extendableRejection(v, d, s), `${v.reason} ${JSON.stringify(d)}`).toBe(false);
 }
 

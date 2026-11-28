@@ -27,7 +27,7 @@ export interface Tool {
   inputSchema: z.ZodRawShape;
   /** Response size limit in characters. Default 4,000 (`MAX_RESPONSE_CHARS`); only a describer-only tool may raise it. */
   maxResponseChars?: number;
-  /** Receives the arguments already validated against `inputSchema`. Returns a JSON-serialisable result. */
+  /** Receives the arguments already validated against `inputSchema`. Returns a JSON-serializable result. */
   run(args: unknown, ctx: ToolContext): unknown | Promise<unknown>;
 }
 

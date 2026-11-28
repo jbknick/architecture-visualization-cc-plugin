@@ -169,7 +169,7 @@ describe("isSensitive / isIndexable", () => {
       expect(isSensitive(p), p).toBe(true);
   });
 
-  it("rejects escaping, absolute and drive-letter paths and normalises dot segments", async () => {
+  it("rejects escaping, absolute and drive-letter paths and normalizes dot segments", async () => {
     const { config } = await setup("single-pkg");
     for (const p of [
       "a/../../x.ts",

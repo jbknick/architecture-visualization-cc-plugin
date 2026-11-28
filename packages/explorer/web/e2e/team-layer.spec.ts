@@ -160,7 +160,7 @@ test("selecting a change set shows its rings, legend and changed nodes, and a no
   await expect(legend).toContainText("Reachable, or through a hub");
   // The map paints the change the way the review does.
   await expect.poll(async () => (await probe(page)).review?.changed.length ?? 0).toBeGreaterThan(0);
-  // The markers give way to the change's own colours, and solid lines run from the direct consumers to the change.
+  // The markers give way to the change's own colors, and solid lines run from the direct consumers to the change.
   await expect.poll(async () => (await probe(page)).team.length).toBe(0);
   await expect.poll(async () => (await probe(page)).review?.drawn?.links.length ?? 0).toBeGreaterThan(0);
   const nodes = page.getByTestId("team-nodes");
@@ -179,7 +179,7 @@ test("the mock's team scenario: reachable entries get a dashed outline and a thr
   await page.getByRole("button", { name: "Collapse filters" }).click();
   await toggle(page).click();
   await expect.poll(async () => (await probe(page)).team.length).toBeGreaterThan(0);
-  // Each person has their own colour on the markers and in the filter.
+  // Each person has their own color on the markers and in the filter.
   const chips = await page
     .locator(".team-people .team-chip")
     .evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundColor));

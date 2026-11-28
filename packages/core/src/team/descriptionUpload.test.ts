@@ -202,7 +202,7 @@ describe("the guard inside the upload functions", () => {
   };
   const SHA = "1863607d4346a2737224baab89b421b2b1a1b8bf";
 
-  it("uploadDescriptions with no serialiser refuses a record that carries a forbidden key, before any request", async () => {
+  it("uploadDescriptions with no serializer refuses a record that carries a forbidden key, before any request", async () => {
     seed({ n: 1 });
     const real = DescriptionSchema.safeParse.bind(DescriptionSchema);
     const spy = vi.spyOn(DescriptionSchema, "safeParse").mockImplementation((value) => {

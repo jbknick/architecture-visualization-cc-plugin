@@ -13,7 +13,7 @@ import { type ReviewResult, reviewFor, reviewMapOf, reviewRings, wantsReview } f
  * 3D map (settlements, one building per file), so the nodes are the project map's Files level. Hint `review`: the web
  * renders it through the 2D map canvas or the 3D one.
  */
-// `mode=rings`: the changed symbols in the centre and their callers on rings by hop, grouped by file (`reviewRings`).
+// `mode=rings`: the changed symbols in the center and their callers on rings by hop, grouped by file (`reviewRings`).
 export async function buildReview(ctx: ApiContext, params: ViewParams): Promise<ReviewResult> {
   if (!wantsReview(params)) return { nodes: [], edges: [], layoutHint: "review", review: null };
   if (params.options?.mode === "rings") {

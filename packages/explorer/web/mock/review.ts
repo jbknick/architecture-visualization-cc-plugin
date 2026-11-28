@@ -302,7 +302,7 @@ export function reviewData(
         },
         callers: 2,
         consumers: consumersOn(BUTTON, place),
-        untrusted_description: "Renders a labelled button.",
+        untrusted_description: "Renders a labeled button.",
         described_by: "model",
       },
       {

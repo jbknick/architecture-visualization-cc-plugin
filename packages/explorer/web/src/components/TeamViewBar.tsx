@@ -11,7 +11,7 @@ import { Button } from "./ui/button.tsx";
 
 /**
  * The bar over the map while a team view is open. A team view is read-only: the bar names it, says so in text (with a
- * lock, never by colour alone) and offers `Save a personal copy` where an edit control would be. The copy is a view of
+ * lock, never by color alone) and offers `Save a personal copy` where an edit control would be. The copy is a view of
  * your own with a new id, and it opens at once. The name is text from a teammate and is rendered as text.
  */
 export function TeamViewBar() {

@@ -3,11 +3,11 @@
 exports[`help > lists the subcommands > link 1`] = `
 "Usage: gantry team link [options]
 
-Say which server and organisation this repo belongs to
+Say which server and organization this repo belongs to
 
 Options:
   --server <url>  the team server
-  --org <slug>    the organisation slug
+  --org <slug>    the organization slug
   -h, --help      display help for command
 "
 `;
@@ -37,7 +37,7 @@ Options:
 exports[`help > lists the subcommands > status 1`] = `
 "Usage: gantry team status [options]
 
-Show the server, organisation, user and repo, whether the server answers, and
+Show the server, organization, user and repo, whether the server answers, and
 the team cache
 
 Options:

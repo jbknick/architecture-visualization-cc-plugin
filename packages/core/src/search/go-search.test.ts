@@ -63,7 +63,7 @@ async function submitGo(ix: Indexed): Promise<{ accepted: number; rejected: unkn
 }
 
 describe("Go descriptions and search (fixed part)", () => {
-  it("accepts every committed Go description and finds the expected function in the top 5 by behaviour", async () => {
+  it("accepts every committed Go description and finds the expected function in the top 5 by behavior", async () => {
     const ix = await indexedFixture("go-basic");
     const sub = await submitGo(ix);
     expect(sub.rejected).toEqual([]);

@@ -48,7 +48,7 @@ async function origin(page: Page) {
   return box;
 }
 
-test("far zoom shows labelled workspace regions with weighted arrows", async ({ page }) => {
+test("far zoom shows labeled workspace regions with weighted arrows", async ({ page }) => {
   await openMap(page);
   await expect(sigmaBox(page)).toHaveAttribute("data-level", "far");
   // The key starts collapsed in the strip above the diagram, so it never covers the fitted picture.
@@ -69,7 +69,7 @@ test("mid zoom shows directories and files inside the workspace", async ({ page 
   await page.screenshot({ path: resolve(shots, "canvas-mid.png") });
 });
 
-test("near zoom shows file regions with labelled symbols", async ({ page }) => {
+test("near zoom shows file regions with labeled symbols", async ({ page }) => {
   await openMap(page);
   await zoomTo(page, "file:pnpm-turbo:packages/web/src/components/Modal.ts", "near");
   await page.screenshot({ path: resolve(shots, "canvas-near.png") });

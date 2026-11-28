@@ -4,7 +4,7 @@
 // characters), so the size is bounded whatever the input.
 //
 // Everything that comes from the reviewed repository (names, paths, notes) is untrusted text: it only ever appears
-// inside a code span, with backticks, line breaks and table pipes neutralised, so a file name cannot add links,
+// inside a code span, with backticks, line breaks and table pipes neutralized, so a file name cannot add links,
 // mentions, HTML or table cells to the comment.
 
 import type { ChangeConsumers, Consumer, Impact, ReviewDiff } from "../../packages/core/src/index.js";
@@ -334,7 +334,7 @@ export function buildFailureComment(reason: string): string {
     MARKER,
     "## Gantry: the analysis failed",
     "",
-    `Gantry could not analyse this pull request: ${code(reason, FAILURE_MAX)}`,
+    `Gantry could not analyze this pull request: ${code(reason, FAILURE_MAX)}`,
     "",
     "<sub>The pull request itself is not affected. The job log of the Gantry step has the details.</sub>",
     "",

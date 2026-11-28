@@ -139,7 +139,7 @@ describe("PUT /api/dismiss", () => {
     expect(after.clusters).toHaveLength(1);
     expect(after.clusters[0]?.members.map((m) => m.id)).not.toContain(DATE);
 
-    // The duplicate guard honours the same dismissal.
+    // The duplicate guard honors the same dismissal.
     const sym = store.getSymbol(DATE);
     if (!sym) throw new Error("fixture symbol missing");
     const found = await findDuplicates(store, { symbol: sym }, { config });

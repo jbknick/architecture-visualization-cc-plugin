@@ -28,7 +28,7 @@ import { cmp, entryPoints, normPath, packageJsonPath, SCRIPT_EXTS, targetCandida
  * importPathFor: `<pkg name><subpath without leading .>` of the first exports-map entry (the package
  * entry points when there is no map: `types`, `main`, `src/index`) whose file exports the match, directly
  * or through re-exports (read from the stored `exports` edges); null if no entry reaches it. Without
- * `store` only a direct export from the entry file is recognised.
+ * `store` only a direct export from the entry file is recognized.
  */
 export interface Advice {
   situation: 1 | 2 | 3 | 4 | 5 | 6 | 7;

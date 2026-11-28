@@ -442,7 +442,7 @@ describe("tiers and filters (synthetic hashes)", () => {
     ]);
   });
 
-  it("honours dismissals in both orders, and excludeIds", async () => {
+  it("honors dismissals in both orders, and excludeIds", async () => {
     const { store, target } = world();
     const twin = { exactHash: "E-target", shapeHash: "S-target", minhash: base };
     addFile(store, "src/b.ts", [{ name: "b", ...twin }]);
@@ -465,7 +465,7 @@ describe("tiers and filters (synthetic hashes)", () => {
     ).toEqual([]);
   });
 
-  it("sorts by tier rank then score then id, stops at the limit and honours tiers", async () => {
+  it("sorts by tier rank then score then id, stops at the limit and honors tiers", async () => {
     const { store, target } = world();
     addFile(store, "src/z.ts", [
       { name: "n1", exactHash: "N1", shapeHash: "S1", minhash: perturb(base, 2) },

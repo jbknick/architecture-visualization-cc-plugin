@@ -233,7 +233,7 @@ describe("detectWorkspaces", () => {
     expect(detectWorkspaces(repo({}), config, "repo")[0]?.id).toBe("ws:repo:.");
   });
 
-  it("detects framework apps and honours overrides", () => {
+  it("detects framework apps and honors overrides", () => {
     const root = repo({
       "package.json": { name: "r", workspaces: ["x/*"] },
       "x/router/package.json": { name: "router", dependencies: { "@tanstack/react-router": "1" } },

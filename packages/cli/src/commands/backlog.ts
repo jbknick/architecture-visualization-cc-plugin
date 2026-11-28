@@ -97,7 +97,7 @@ export function registerBacklog(program: Command): void {
                 ...(indexed
                   ? []
                   : [
-                      "Not initialised: the backlog was never built here. Run /gantry:init (or gantry init).",
+                      "Not initialized: the backlog was never built here. Run /gantry:init (or gantry init).",
                     ]),
               ];
               writeStdout(`${lines.join("\n")}\n`);

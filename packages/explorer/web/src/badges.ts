@@ -1,4 +1,4 @@
-// M2 badges on symbol nodes: what they mean, how to colour them and how to draw the small marks on canvases.
+// M2 badges on symbol nodes: what they mean, how to color them and how to draw the small marks on canvases.
 // The server decides which badges a node has (`GraphNode.badges`); nothing here reads descriptions or source text.
 
 import type { Scheme } from "./theme.ts";
@@ -11,7 +11,7 @@ interface BadgeSpec {
   label: string;
   /** Tooltip text. */
   help: string;
-  /** Mark colours, light then dark theme. */
+  /** Mark colors, light then dark theme. */
   colour: [string, string];
   /** Hollow ring instead of a filled disc (used for the very common "not yet described" state). */
   hollow: boolean;
@@ -65,7 +65,7 @@ export function badgeTipLines(badges: readonly string[] | undefined): string[] {
 export const BADGE_MARK_R = 4;
 
 /**
- * Draws one mark per M2 badge, right to left from (`right`, `cy`). A halo in the surface colour keeps the mark apart
+ * Draws one mark per M2 badge, right to left from (`right`, `cy`). A halo in the surface color keeps the mark apart
  * from whatever is under it. Returns how many pixels were used.
  */
 export function drawBadgeMarks(

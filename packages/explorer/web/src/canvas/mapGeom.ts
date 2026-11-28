@@ -246,7 +246,7 @@ export interface FitCam {
   ty: number;
 }
 
-/** The camera that shows world rectangle `rect` centred in a `size` viewport, inside `pad` (at least 40 px free). */
+/** The camera that shows world rectangle `rect` centered in a `size` viewport, inside `pad` (at least 40 px free). */
 export function fitCamera(rect: Rect, pad: FitPad, size: { w: number; h: number }): FitCam {
   const aw = Math.max(40, size.w - pad.left - pad.right);
   const ah = Math.max(40, size.h - pad.top - pad.bottom);

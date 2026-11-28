@@ -1,25 +1,25 @@
 import { currentScheme, kindColor, type Scheme } from "../theme.ts";
 import { workspaceColorAt } from "../workspacePalette.ts";
 
-// One stable colour per workspace: the shell's shared palette (../workspacePalette.ts) indexed by the
-// workspace's position in the sorted id list, so the same workspace is the same colour in 2D, 3D and the panels.
-// The palette colours are fills and borders; label text uses `labelInk`, a darkened (light theme) or lightened
+// One stable color per workspace: the shell's shared palette (../workspacePalette.ts) indexed by the
+// workspace's position in the sorted id list, so the same workspace is the same color in 2D, 3D and the panels.
+// The palette colors are fills and borders; label text uses `labelInk`, a darkened (light theme) or lightened
 // (dark theme) version that keeps 4.5:1 contrast on the region background.
 
-/** Number of distinct colours before the palette wraps. */
+/** Number of distinct colors before the palette wraps. */
 export const WORKSPACE_PALETTE_SIZE = 12;
 
-/** Colour for the n-th workspace in sorted-id order. */
+/** Color for the n-th workspace in sorted-id order. */
 export function workspaceColor(rank: number, scheme: Scheme): string {
   return workspaceColorAt(rank, scheme);
 }
 
-/** Text colour for a label sitting on a region tinted with `colour`. */
+/** Text color for a label sitting on a region tinted with `color`. */
 export function labelInk(colour: string, scheme: Scheme): string {
   return scheme === "light" ? mix(colour, "#000000", 0.5) : mix(colour, "#ffffff", 0.6);
 }
 
-/** WCAG relative luminance of a #rrggbb colour. */
+/** WCAG relative luminance of a #rrggbb color. */
 export function luminance(hex: string): number {
   const n = Number.parseInt(hex.slice(1), 16);
   const lin = (v: number): number => {
@@ -29,7 +29,7 @@ export function luminance(hex: string): number {
   return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
 }
 
-/** WCAG contrast ratio of two #rrggbb colours (1 to 21). */
+/** WCAG contrast ratio of two #rrggbb colors (1 to 21). */
 export function contrastRatio(a: string, b: string): number {
   const la = luminance(a);
   const lb = luminance(b);
@@ -37,8 +37,8 @@ export function contrastRatio(a: string, b: string): number {
 }
 
 /**
- * `colour` moved toward black (light theme) or white (dark theme) in small steps, only as far as it takes to reach
- * `min` contrast against `bg`. A colour that already has the contrast is returned as it is, so the hue survives.
+ * `color` moved toward black (light theme) or white (dark theme) in small steps, only as far as it takes to reach
+ * `min` contrast against `bg`. A color that already has the contrast is returned as it is, so the hue survives.
  */
 export function inkAgainst(colour: string, bg: string, scheme: Scheme, min: number): string {
   const toward = scheme === "light" ? "#000000" : "#ffffff";

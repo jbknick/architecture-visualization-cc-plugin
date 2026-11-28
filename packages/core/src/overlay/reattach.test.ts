@@ -298,7 +298,7 @@ describe("reattachOverlay (run by heal)", () => {
     const { fx, paths } = await setup();
     const utilsSlug = "packages/utils/src/slug.ts";
     const webSlug = "apps/web/src/lib/slug.ts";
-    // Three copies of slugify with one body: the utils one (labelled), the web one, and a new one next to it.
+    // Three copies of slugify with one body: the utils one (labeled), the web one, and a new one next to it.
     const body = read(fx, webSlug);
     write(fx, "apps/web/src/lib/slug2.ts", body);
     write(fx, utilsSlug, body); // the internal helper becomes the same exported text as the web copy

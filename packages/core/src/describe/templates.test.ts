@@ -108,7 +108,7 @@ describe("re-export templates", () => {
     expect(reexportTemplate(parsed, "missing")).toBeNull();
   });
 
-  it("recognises barrel files", () => {
+  it("recognizes barrel files", () => {
     expect(isBarrelFile(parsed)).toBe(true);
     expect(isBarrelFile(parseSource("repo", "src/a.ts", "export function f() { return 1; }\n"))).toBe(false);
   });

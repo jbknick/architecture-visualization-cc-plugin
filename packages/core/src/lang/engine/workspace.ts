@@ -169,7 +169,7 @@ export function parseManifestDeps(
   return [...new Set(names)].sort();
 }
 
-/** The directories the group manifest lists, as written (`.`, `./tools`) normalised to repo-relative. */
+/** The directories the group manifest lists, as written (`.`, `./tools`) normalized to repo-relative. */
 export function parseGroupMembers(pack: LanguagePack, manifest: string): string[] {
   const g = pack.workspace.group;
   const rule = pack.workspace.manifests[0] as ManifestRule;

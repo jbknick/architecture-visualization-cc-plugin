@@ -130,7 +130,7 @@ describe("RecipeSchema", () => {
     expect(g.__ran).toBeUndefined();
   });
 
-  it("requires examples, a known language and a recognisable capture", () => {
+  it("requires examples, a known language and a recognizable capture", () => {
     const { examples: _e, ...noExamples } = rule;
     expect(RuleSchema.safeParse(noExamples).success).toBe(false);
     expect(RuleSchema.safeParse({ ...rule, language: "python" }).success).toBe(false);

@@ -36,7 +36,7 @@ import type { Command } from "commander";
 import { EXIT_ERROR, EXIT_OK, fail, resolveCliPaths, writeStdout } from "./shared.js";
 
 // `gantry upload` is the only command that sends an index to a team server. It sends what the payload builders
-// return (`core/src/team/upload.ts`), cut into parts and serialised by the two functions below, and nothing else.
+// return (`core/src/team/upload.ts`), cut into parts and serialized by the two functions below, and nothing else.
 // No hook imports this file (a test checks), so no hook ever waits on the network.
 
 const EXIT_USAGE = 2;
@@ -64,11 +64,11 @@ const sortKeys = (value: unknown): unknown => {
 
 /**
  * The one place a JSON request body is written: the payload is checked with the request schema of its route, then
- * serialised compactly with the keys sorted alphabetically at every depth. The begin request (`main`, `change_set`),
+ * serialized compactly with the keys sorted alphabetically at every depth. The begin request (`main`, `change_set`),
  * the close request and the description upload all go through it, so the bytes a dry run shows are the bytes sent.
  */
 export function serialiseBody(kind: BodyKind, payload: unknown): string {
-  // The guard runs on what was given and on what is about to be written, before either is serialised.
+  // The guard runs on what was given and on what is about to be written, before either is serialized.
   assertNoSource(payload);
   const checked = (value: unknown): unknown => {
     assertNoSource(value);
@@ -288,7 +288,7 @@ export async function runUpload(ctx: UploadContext, opts: UploadOptions): Promis
     return EXIT_ERROR;
   };
 
-  // 2. Who we talk to. With no server and organisation nothing is sent and nothing is read from the repo.
+  // 2. Who we talk to. With no server and organization nothing is sent and nothing is read from the repo.
   const config = loadConfig(ctx.paths);
   const target = resolveTeamTarget(ctx.paths, config, ctx.env);
   if (target === null) {
@@ -493,7 +493,7 @@ async function runDryRun(ctx: UploadContext, opts: UploadOptions, a: PrArgs): Pr
     `${JSON.stringify(sortKeys(summarisePayload(payload)))}\n`;
   try {
     if (opts.descriptions === true) {
-      // The switch only: an empty environment, so no server, organisation or token is looked at.
+      // The switch only: an empty environment, so no server, organization or token is looked at.
       const enabled = resolveTeamSettings(loadConfig(ctx.paths), {}).upload.descriptions;
       if (!enabled) {
         ctx.err("Description upload is switched off (team.upload.descriptions).\n");
@@ -717,7 +717,7 @@ export function registerUpload(program: Command): void {
     .option("--merged", "with --close: the pull request was merged")
     .option(
       "--descriptions",
-      "send the descriptions written on this machine to the organisation (not with --pr or --close)",
+      "send the descriptions written on this machine to the organization (not with --pr or --close)",
     )
     .option("--force-main", "upload this checkout as main even when it is not on the default branch")
     .option("--dry-run", "print exactly what would be sent and send nothing (needs no server or token)")

@@ -1,4 +1,4 @@
-/** Minimal generic helpers over oxc's ESTree-compatible (TS-ESTree flavoured) output. */
+/** Minimal generic helpers over oxc's ESTree-compatible (TS-ESTree flavored) output. */
 
 export interface Node {
   type: string;

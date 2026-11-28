@@ -200,7 +200,7 @@ export default function CityCanvas({ focus, onSelect, onHover }: CanvasProps) {
         </span>
         {" · "}
         <span>
-          <strong>Arch A → B</strong> = A imports from B (colour = importer, number = imports)
+          <strong>Arch A → B</strong> = A imports from B (color = importer, number = imports)
         </span>
         {level === "files" && ranked.files.length > 0 && (
           <>

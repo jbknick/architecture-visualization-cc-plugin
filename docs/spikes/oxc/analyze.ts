@@ -463,7 +463,7 @@ export function redactSpecifier(spec: string, ctx: UnresolvedContext): string {
   return spec;
 }
 
-// ---------- generalised path shapes for the report ----------
+// ---------- generalized path shapes for the report ----------
 
 const GENERIC_DIRS = new Set([
   "src",

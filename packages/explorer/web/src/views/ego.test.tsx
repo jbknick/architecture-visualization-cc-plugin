@@ -96,7 +96,7 @@ describe("ego panel on the hub scenario", () => {
   const firstExpand = (groups: HTMLElement): HTMLElement =>
     within(groups).getAllByRole("button", { name: /^Expand (?!all)/ })[0] as HTMLElement;
 
-  it("summarises the sides in plain words and lists the groups with their full labels", async () => {
+  it("summarizes the sides in plain words and lists the groups with their full labels", async () => {
     installMockFetch();
     renderApp(hub);
     expect(await screen.findByText(/^221 callers in 3 workspaces · \d+ files$/)).toBeTruthy();
@@ -111,8 +111,8 @@ describe("ego panel on the hub scenario", () => {
     expect((within(groups).getByRole("button", { name: "Collapse all" }) as HTMLButtonElement).disabled).toBe(
       true,
     );
-    // Colour key: one row per workspace, short names, the workspace with the most callers first.
-    const key = screen.getByRole("region", { name: "Workspace colours" });
+    // Color key: one row per workspace, short names, the workspace with the most callers first.
+    const key = screen.getByRole("region", { name: "Workspace colors" });
     const names = within(key)
       .getAllByRole("listitem")
       .map((li) => li.textContent ?? "");

@@ -213,7 +213,7 @@ export function TopBar() {
   return (
     <header className={`topbar${tabs.length >= MANY_TABS ? " many-tabs" : ""}`}>
       <div className="topbar-id">
-        <span className="brand">Claude Code Architecture Visualisation Plugin</span>
+        <span className="brand">Claude Code Architecture Visualization Plugin</span>
         {meta && (
           <span className="repo" title={meta.headSha ? `${meta.repo} at ${meta.headSha}` : meta.repo}>
             <span className="repo-name">{meta.repo}</span>

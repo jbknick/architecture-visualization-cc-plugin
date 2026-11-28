@@ -9,7 +9,7 @@ import type { Level } from "./zoom.ts";
 const MAX_WORKSPACES = 14;
 
 /**
- * Colour key: workspace colours and kind colours. Flat graphs start with it open; hierarchical maps (which have
+ * Color key: workspace colors and kind colors. Flat graphs start with it open; hierarchical maps (which have
  * their own legend in the left panel, or none) start with it collapsed, tucked in the strip above the diagram,
  * so it never covers the fitted picture.
  */
@@ -48,7 +48,7 @@ export function Legend({ scene, scheme, level }: { scene: Scene; scheme: Scheme;
       {open && (
         <div className="gc-legend-body">
           {workspaces.length > 0 && (
-            <section aria-label="Workspace colours">
+            <section aria-label="Workspace colors">
               <h4>Workspaces</h4>
               <ul>
                 {workspaces.slice(0, MAX_WORKSPACES).map((w) => (
@@ -62,7 +62,7 @@ export function Legend({ scene, scheme, level }: { scene: Scene; scheme: Scheme;
             </section>
           )}
           {kinds.length > 0 && (level === "near" || workspaces.length === 0) && (
-            <section aria-label="Kind colours">
+            <section aria-label="Kind colors">
               <h4>{workspaces.length > 0 ? "Function kinds" : "Kinds"}</h4>
               <ul>
                 {kinds.map((k) => (

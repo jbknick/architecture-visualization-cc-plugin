@@ -1,4 +1,4 @@
-// The blast radius of the picked change set as small concentric bands, in the review view's colours: the changed code
+// The blast radius of the picked change set as small concentric bands, in the review view's colors: the changed code
 // in the middle, then the directly affected, the potentially affected and the reachable code. Each band shows one dot
 // per node (at most 18, spread by the golden angle); a node reached through a hub is a hollow dot.
 import { motion, useReducedMotion } from "motion/react";

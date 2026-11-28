@@ -127,7 +127,7 @@ function FlatGraphCanvas({
   // Radial and tree layouts follow from the data (the focus, the filters), so their positions are not saved.
   const persist = Boolean(viewId) && layoutHint !== "radial" && layoutHint !== "tree-lr";
 
-  // Theme: follow the shell's CSS variables and the OS colour scheme.
+  // Theme: follow the shell's CSS variables and the OS color scheme.
   useEffect(() => {
     const update = () => setTheme(readTheme(wrapRef.current));
     update();
@@ -422,7 +422,7 @@ function FlatGraphCanvas({
     sigma.on("doubleClickNode", ({ node, event }) => {
       event.preventSigmaDefault();
       const index = graph.getNodeAttribute(node, "i") as number;
-      // Views that can drill (ego: re-centre) get the first say.
+      // Views that can drill (ego: re-center) get the first say.
       if (callbacks.current.onDrill) callbacks.current.onDrill(node);
       else api2.current?.zoomTo(index);
     });

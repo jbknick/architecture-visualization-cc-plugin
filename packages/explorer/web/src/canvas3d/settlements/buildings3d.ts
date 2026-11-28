@@ -77,7 +77,7 @@ function partsFor(
   const { w, d, h } = b;
   const hk = hash01(`look:${b.id}`);
   const tierWall = color(look.walls[tier]);
-  // Walls: the tier's stone, a little of the workspace colour, and a per-building shade so neighbours differ.
+  // Walls: the tier's stone, a little of the workspace color, and a per-building shade so neighbors differ.
   const wall = mix(
     tierWall,
     ws,

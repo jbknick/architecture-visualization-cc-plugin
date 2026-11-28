@@ -6,4 +6,4 @@ In short: be respectful and constructive, assume good intent, keep criticism abo
 
 ## Reporting
 
-If someone's behaviour worries you, use GitHub's **Report content** option on the comment, issue or PR, or contact the maintainer, [@jbknick](https://github.com/jbknick), through GitHub. Reports are handled privately, and the maintainer will not disclose who made a report.
+If someone's behavior worries you, use GitHub's **Report content** option on the comment, issue or PR, or contact the maintainer, [@jbknick](https://github.com/jbknick), through GitHub. Reports are handled privately, and the maintainer will not disclose who made a report.

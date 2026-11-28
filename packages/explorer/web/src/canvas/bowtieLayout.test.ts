@@ -99,7 +99,7 @@ describe("layoutBowtie", () => {
     expect(L.byId.get("g")?.type).toBe("head");
   });
 
-  it("is deterministic and centred on the focus when both sides have nodes", () => {
+  it("is deterministic and centered on the focus when both sides have nodes", () => {
     const nodes = [focus, node("c1", "in", 1), node("e1", "out", 1)];
     const a = layoutBowtie(nodes, [edge("c1", "f"), edge("f", "e1")]);
     const b = layoutBowtie([...nodes].reverse(), [edge("f", "e1"), edge("c1", "f")]);
@@ -108,7 +108,7 @@ describe("layoutBowtie", () => {
     expect(f.x + f.w / 2).toBeCloseTo(0);
   });
 
-  it("an empty side still has its (empty) column, and orders hop 2 by its neighbours", () => {
+  it("an empty side still has its (empty) column, and orders hop 2 by its neighbors", () => {
     const L = layoutBowtie([focus, node("c1", "in", 1)], [edge("c1", "f")]);
     expect(L.columns.map((c) => [c.side, c.count])).toEqual([
       ["in", 1],
@@ -158,7 +158,7 @@ describe("rows and columns", () => {
     expect(huge.bounds.y1 - huge.bounds.y0).toBeGreaterThan(500 - 96);
   });
 
-  it("no two rows overlap, columns fill top to bottom, and the focus is vertically centred", () => {
+  it("no two rows overlap, columns fill top to bottom, and the focus is vertically centered", () => {
     const L = layoutBowtie(
       [focus, ...many(28), ...many(5, "out").map((n) => ({ ...n, id: `o${n.id}` }))],
       [],

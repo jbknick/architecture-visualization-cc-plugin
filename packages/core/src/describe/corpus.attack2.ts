@@ -1,5 +1,5 @@
 // Attack corpus, second part (issue #22, final round): every input of the second independent security review (its
-// behaviours, search-term spreads, suggested names, bait names, spelled-out hosts and attacker fact sheets), the first
+// behaviors, search-term spreads, suggested names, bait names, spelled-out hosts and attacker fact sheets), the first
 // review's remaining inputs, and generated variants of each class. The validator must reject 100% of ATTACK_CORPUS_2.
 // Credential-looking strings are assembled from pieces (see corpus.attack.ts) so no whole key is stored here.
 
@@ -496,7 +496,7 @@ export const ATTACK_CORPUS_2: readonly AttackCase2[] = [
 ];
 
 /**
- * Declarative false claims the consult accepts as residual risk (the field stays labelled `untrusted_description`).
+ * Declarative false claims the consult accepts as residual risk (the field stays labeled `untrusted_description`).
  * Nothing is asserted about them; they are listed so the decision is visible next to the corpus.
  */
 export const RESIDUAL_CLAIMS: readonly string[] = [

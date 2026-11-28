@@ -1,5 +1,5 @@
 /* Review view (#44, on the map since #167): the layer's legend over the map, the left panel and the inspector's change
-   block. The canvases draw the layer with the same colours (views/reviewModel.ts, MARK_COLOURS). */
+   block. The canvases draw the layer with the same colors (views/reviewModel.ts, MARK_COLOURS). */
 :root {
   --rv-added: #1f8a4c;
   --rv-modified: #c98a00;

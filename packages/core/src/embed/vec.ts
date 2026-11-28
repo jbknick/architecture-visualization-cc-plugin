@@ -163,7 +163,7 @@ export function allVectors(store: Store, table: VecTable): Map<string, Float32Ar
 /**
  * K nearest vectors of `vector` in `table`, nearest first. `distance` is the cosine distance from vec0
  * (`1 - cosine`); `cosine` is the similarity. Returns [] when vectors are unavailable or the table is
- * empty or missing: every consumer must treat "no vectors yet" as "no neighbours".
+ * empty or missing: every consumer must treat "no vectors yet" as "no neighbors".
  */
 export function knn(
   store: Store,

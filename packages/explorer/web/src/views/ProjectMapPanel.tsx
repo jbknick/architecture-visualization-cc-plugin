@@ -133,7 +133,7 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
   const workspaces = [...(all.data?.nodes ?? nodes)]
     .filter((n) => n.kind === "workspace")
     .sort((a, b) => (b.stats?.functions ?? 0) - (a.stats?.functions ?? 0) || (a.id < b.id ? -1 : 1));
-  // The same colour as the canvas: the workspace's position among all workspaces sorted by id.
+  // The same color as the canvas: the workspace's position among all workspaces sorted by id.
   const scheme = currentScheme();
   const colourRank = new Map(
     [...workspaces].sort((a, b) => (a.id < b.id ? -1 : 1)).map((w, i) => [w.id, i] as const),
@@ -315,7 +315,7 @@ export function ProjectMapPanel({ nodes, filters, onFiltersChange, route, onRout
       {level === "symbols" && (
         <section className="filter-group" aria-label="Kinds of code">
           <h3>Kinds of code</h3>
-          <p className="muted">Colour of each function cell. Untick a kind to hide it.</p>
+          <p className="muted">Color of each function cell. Untick a kind to hide it.</p>
           {KIND_OPTIONS.map((k) => (
             <Check
               key={k.id}

@@ -63,7 +63,7 @@ import {
  * with reason `wrapper_body` and `data.wrapper` its symbol id. The recipe's `clientWrappers` list wrappers by symbol
  * where inference does not see the flow (every client call of such a body is then `wrapper_body`).
  *
- * An instance is a top-level `const` initialised by `<axios>.create({ baseURL })`, `<ky>.create({ prefixUrl })` or
+ * An instance is a top-level `const` initialized by `<axios>.create({ baseURL })`, `<ky>.create({ prefixUrl })` or
  * `<kyInstance>.extend({ prefixUrl? })` (`extend` without `prefixUrl` keeps the parent's base). Calls on it are
  * followed through imports and re-exports. The URL is joined by the library's own rule (`joinUrl`): axios puts the
  * base and the request path together with one `/`, an absolute request URL replaces the base; ky puts `prefixUrl`,
@@ -71,7 +71,7 @@ import {
  * makes the call a gap (`dynamic_url`). Calls on the default `axios` import use the one `axios.defaults.baseURL` assigned at the top level
  * of a file of the same workspace; two different assignments in a workspace make them gaps (`ambiguous`).
  *
- * An oRPC client is a top-level `const` initialised by `createORPCClient`, `createTanstackQueryUtils` (or the other
+ * An oRPC client is a top-level `const` initialized by `createORPCClient`, `createTanstackQueryUtils` (or the other
  * `@orpc/*-query` utils), or by a function of the same file that returns one of those calls
  * (`const make = () => createORPCClient(link); export const client = make()`); a Hono client likewise by `hc` from
  * `hono/client`. Uses are followed through imports. Rule 2 strips one trailing helper (`queryOptions`,
@@ -244,7 +244,7 @@ function importedLocals(ctx: AdapterFileContext, modules: (s: string) => boolean
   return out;
 }
 
-/** Client bindings of a file: top-level consts initialised by a client factory, directly or through a local function. */
+/** Client bindings of a file: top-level consts initialized by a client factory, directly or through a local function. */
 function readDecls(ctx: AdapterFileContext): ClientDecl[] {
   const orpc = importedLocals(ctx, (s) => s.startsWith("@orpc/"), ORPC_FACTORIES);
   const hono = importedLocals(ctx, (s) => s === HONO_CLIENT, new Set(["hc"]));
@@ -765,7 +765,7 @@ export const clientsAdapter: Adapter<ClientFacts> = {
     const aliases: ClientFacts["aliases"] = [];
     for (const m of ctx.source.matchAll(ALIAS_RE)) {
       const name = m[1] as string;
-      // A const initialised by a member chain is not always a symbol of the parser: then it is keyed by file and name.
+      // A const initialized by a member chain is not always a symbol of the parser: then it is keyed by file and name.
       const symbol = pf.symbols.find((s) => s.name === name)?.id;
       aliases.push({
         key: symbol ?? localKey(ctx.fileId, name),

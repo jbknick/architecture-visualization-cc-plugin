@@ -191,7 +191,7 @@ describe("review view", () => {
     });
   });
 
-  it("files level: the changed file coloured by kind, caller files by hop, file-to-file lines, the risk of reviewImpact", async () => {
+  it("files level: the changed file colored by kind, caller files by hop, file-to-file lines, the risk of reviewImpact", async () => {
     const { ctx, paths } = await setup();
     const r = await buildReview(ctx, opts({ range: "main...feature" }));
     expect(r.layoutHint).toBe("review");
@@ -342,7 +342,7 @@ describe("review view", () => {
     }
   });
 
-  it("rings: Button in the centre, callers by hop grouped by file, edges from caller to callee, the same review data", async () => {
+  it("rings: Button in the center, callers by hop grouped by file, edges from caller to callee, the same review data", async () => {
     const { ctx } = await setup();
     const r = await buildReview(ctx, opts({ range: "main...feature", mode: "rings" }));
     expect(r.review?.mode).toBe("rings");

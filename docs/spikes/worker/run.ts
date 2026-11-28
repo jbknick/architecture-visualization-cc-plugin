@@ -375,7 +375,7 @@ async function modeEffortEnv(cli: Cli): Promise<number> {
 
 /**
  * Recursion check. A scratch repo has a stub "Gantry hook" registered as a Claude Code SessionStart hook
- * and as a git pre-commit hook. The stub honours GANTRY_WORKER=1 (spec section 1) and otherwise appends to a log.
+ * and as a git pre-commit hook. The stub honors GANTRY_WORKER=1 (spec section 1) and otherwise appends to a log.
  * The worker is started from inside the git pre-commit hook, with and without --safe-mode and the guard.
  */
 async function modeRecursion(cli: Cli): Promise<number> {

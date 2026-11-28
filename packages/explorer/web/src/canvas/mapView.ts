@@ -7,7 +7,7 @@ export interface MapViewState {
   showDeclared: boolean;
   /** Workspace id under the pointer in the left panel; the canvas shows its links in full. */
   hoverWorkspace: string | null;
-  /** "api › agreement": the workspace and folder at the centre of the canvas while it is zoomed in, else null. */
+  /** "api › agreement": the workspace and folder at the center of the canvas while it is zoomed in, else null. */
   zoomedInto: string | null;
 }
 

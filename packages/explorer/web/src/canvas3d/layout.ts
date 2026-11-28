@@ -19,7 +19,7 @@ export interface Island {
   fullLabel: string;
   /** app / package / "(repo root)", from the workspace node's first badge ("unknown" is shown as "(repo root)"). */
   wsKind: string;
-  /** Index in the sorted island list; selects the colour. */
+  /** Index in the sorted island list; selects the color. */
   index: number;
   center: Vec3;
   radius: number;
@@ -235,7 +235,7 @@ export interface PackedCircle {
 /**
  * Deterministic circle packing on a flat disc. Circles go biggest first; each takes the spot (tangent to two
  * placed circles, or to one) closest to the centroid of what is already placed that overlaps nothing, with `pad`
- * of clear space between neighbours. The result is re-centred on the (approximately) smallest enclosing circle,
+ * of clear space between neighbors. The result is re-centered on the (approximately) smallest enclosing circle,
  * whose radius is returned. No randomness: the same input always gives the same picture.
  */
 export function packCircles(
@@ -301,7 +301,7 @@ export function packCircles(
     // Unreachable in practice (a tangent spot to one circle always exists), but never lose a circle.
     placed.push(spot ? { id: it.id, x: spot.x, y: spot.y, r: it.r } : { id: it.id, x: 1e3, y: 0, r: it.r });
   }
-  // Re-centre on the minimax centre: walk towards the farthest circle with shrinking steps.
+  // Re-center on the minimax center: walk towards the farthest circle with shrinking steps.
   let cx = 0;
   let cy = 0;
   for (const q of placed) {
@@ -360,7 +360,7 @@ export function packFolders(
 
 /**
  * Files of one folder as a sunflower (Vogel spiral) inside a ring of radius `rho`: biggest file in the middle,
- * dot radius proportional to sqrt(functions), never larger than what keeps it clear of its nearest neighbour.
+ * dot radius proportional to sqrt(functions), never larger than what keeps it clear of its nearest neighbor.
  */
 export function sunflower(files: { id: string; functions: number }[], rho: number): PackedCircle[] {
   const sorted = [...files].sort((a, b) => b.functions - a.functions || cmp(a.id, b.id));
@@ -410,7 +410,7 @@ interface IslandInner {
 
 /**
  * Lays one island's nodes out inside a sphere of the given radius (which was fixed by the function count alone).
- * Everything lies on one flat disc through the island centre that faces the default camera.
+ * Everything lies on one flat disc through the island center that faces the default camera.
  * - a lone node is one sphere in the middle;
  * - folders (Folders level) are discs packed without overlap, radius ~ sqrt(functions);
  * - files (Files level) sit in the same folder discs, as sunflower dots, the biggest file in the middle.
@@ -498,11 +498,11 @@ const cross = (a: Vec3, b: Vec3): Vec3 => ({
 const dot = (a: Vec3, b: Vec3): number => a.x * b.x + a.y * b.y + a.z * b.z;
 
 /**
- * Places island centres, deterministically and without overlap, mostly in one plane (z = 0) so that the default
+ * Places island centers, deterministically and without overlap, mostly in one plane (z = 0) so that the default
  * camera, which faces that plane, sees a map. The input is only (id, radius, links): function counts and the
  * workspace-to-workspace import weights, never what is drawn inside an island.
  * 1. Islands go in order of size. The biggest sits at the origin; each next one takes the free spot (on a ring
- *    around an island it links to, or around any island) closest to its linked neighbours, with the required gap.
+ *    around an island it links to, or around any island) closest to its linked neighbors, with the required gap.
  * 2. The plane is rotated so that its long axis is horizontal.
  * 3. A shallow dome lifts the middle towards the camera, a secondary depth cue; it only ever increases distances.
  */
@@ -571,7 +571,7 @@ function placeIslands(
   }
   separate(placed, (a, b) => islandGap(a.r, b.r), 3000);
 
-  // Centre on the mass-weighted middle, then rotate the principal axis onto x.
+  // Center on the mass-weighted middle, then rotate the principal axis onto x.
   let cx = 0;
   let cy = 0;
   let m = 0;
@@ -639,7 +639,7 @@ export function arrowSpreadAngle(radius: number, extent: number): number {
 }
 
 /**
- * Spreads angles around a circle so that neighbours are at least `sep` apart, moving each as little as it can.
+ * Spreads angles around a circle so that neighbors are at least `sep` apart, moving each as little as it can.
  * Returns the new angle per key (same order of keys; ties broken by key so it is deterministic).
  */
 export function spreadAngles(items: { key: string; angle: number }[], sep: number): Map<string, number> {
@@ -837,7 +837,7 @@ export interface IslandSummary {
   files: number;
 }
 
-/** Islands in colour order, without running the layout. The legend uses this. */
+/** Islands in color order, without running the layout. The legend uses this. */
 export function summarizeIslands(nodes: GraphNode[]): IslandSummary[] {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const hasChildren = new Set(nodes.flatMap((n) => (n.parent ? [n.parent] : [])));
@@ -884,7 +884,7 @@ export function bestViewDir(islands: { center: Vec3; radius: number }[]): Vec3 {
         }
       }
       if (islands.length < 2) gap = 0;
-      // Favour a view from above (az 90) very slightly, so the same data always tilts the same way.
+      // Favor a view from above (az 90) very slightly, so the same data always tilts the same way.
       const tilt = tiltDeg + Math.abs(((az - 90 + 540) % 360) - 180) / 90;
       const better =
         best === null ||
@@ -1045,7 +1045,7 @@ export function positionHash(layout: Layout): string {
   return fnv1a(s).toString(16).padStart(8, "0");
 }
 
-/** Digest of island centres, radii and the default camera only: equal at every level for the same workspaces. */
+/** Digest of island centers, radii and the default camera only: equal at every level for the same workspaces. */
 export function islandHash(layout: Layout): string {
   let s = `${layout.viewDir.x.toFixed(4)},${layout.viewDir.y.toFixed(4)},${layout.viewDir.z.toFixed(4)};`;
   for (const i of layout.islands) {

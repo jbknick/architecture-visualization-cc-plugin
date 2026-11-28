@@ -254,7 +254,7 @@ export function layoutBowtie(
   const limit = Math.max(120, view.h - TOP_MARGIN - BOTTOM_MARGIN);
   const availW = Math.max(400, view.w - 2 * SIDE_MARGIN);
 
-  // Lines of every bucket; hop 1 first so farther hops can order by where their neighbours sit.
+  // Lines of every bucket; hop 1 first so farther hops can order by where their neighbors sit.
   const buckets: { side: "in" | "out"; hop: number; lines: Line[]; slices: Slice[] }[] = [];
   for (const side of ["in", "out"] as const)
     for (const hop of side === "in" ? hopsIn : hopsOut) {
@@ -412,7 +412,7 @@ export function layoutBowtie(
     centreY.set(focus.id, 0);
   }
 
-  // Place hop 1 first, then farther hops ordered by their neighbours' heights.
+  // Place hop 1 first, then farther hops ordered by their neighbors' heights.
   const placeOrder = [...cols].sort(
     (a, b) => a.hop - b.hop || (a.side === b.side ? a.sub - b.sub : a.side === "in" ? -1 : 1),
   );
@@ -424,7 +424,7 @@ export function layoutBowtie(
   for (const [, group] of byHop) {
     const first = group[0] as Col;
     if (first.hop > 1) {
-      // Re-order the whole bucket by the barycentre of already placed neighbours, then re-slice.
+      // Re-order the whole bucket by the barycentre of already placed neighbors, then re-slice.
       const bary = (l: Line): number => {
         let sum = 0;
         let n = 0;
@@ -580,7 +580,7 @@ export function layoutBowtie(
   };
 }
 
-/** Rank of each workspace id among the workspaces present, sorted by id: drives the colours (see workspacePalette.ts). */
+/** Rank of each workspace id among the workspaces present, sorted by id: drives the colors (see workspacePalette.ts). */
 export function workspaceRanks(nodes: readonly GraphNode[]): Map<string, number> {
   const ids = [...new Set(nodes.map((n) => n.workspace).filter((w): w is string => Boolean(w)))].sort(cmp);
   return new Map(ids.map((id, i) => [id, i]));

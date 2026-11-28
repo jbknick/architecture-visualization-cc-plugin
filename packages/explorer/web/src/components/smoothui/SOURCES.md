@@ -48,7 +48,7 @@ Hugeicons (`@hugeicons/core-free-icons`).
 - Range sliders (`<input type="range">`): the specs and component tests drive `role="slider"` with `fill`, which needs
   the native input; neither SmoothUI's `scrubber` nor Base UI's slider has one.
 - `components/Segment.tsx`: a `role="radio"` button, so the segmented controls keep the ARIA radio roles the specs use.
-- The function badges (`.badge-dup`, `.badge-misleading`, `.badge-undescribed`): their colour pairs are checked for
+- The function badges (`.badge-dup`, `.badge-misleading`, `.badge-undescribed`): their color pairs are checked for
   contrast and are not a kit component.
 - The canvases' own overlays (`.gc-btn` zoom buttons, the Duplicates canvas's action buttons, the review rings' zoom
   buttons) live in canvas files, which this change does not edit.

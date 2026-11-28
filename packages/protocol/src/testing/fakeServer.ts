@@ -42,7 +42,7 @@ import {
 export interface FakeServerOptions {
   /** Accepted bearer tokens. A token that starts with `gct_` is a CI token, any other is a user token. */
   tokens?: string[];
-  /** The organisation slug (default `acme`). A user token must send it as `X-Gantry-Org`. */
+  /** The organization slug (default `acme`). A user token must send it as `X-Gantry-Org`. */
   org?: string;
   /** The repo a CI token is for (default `fixture/pnpm-turbo`). */
   repo?: string;
@@ -380,7 +380,7 @@ export async function startFakeServer(opts: FakeServerOptions = {}): Promise<Fak
       if (typeof orgHeader !== "string") throw new HttpError(400, "invalid", `${HEADER_ORG} is required`);
     }
     if (kind === "user" && typeof orgHeader === "string" && orgHeader !== org) {
-      throw new HttpError(403, "forbidden", "not a member of that organisation");
+      throw new HttpError(403, "forbidden", "not a member of that organization");
     }
     if (!(def.auth as readonly string[]).includes(kind))
       throw new HttpError(403, "forbidden", "this token cannot use this route");

@@ -37,7 +37,7 @@ export const RRF_K = 60;
 const MAX_VECTOR_CANDIDATES = 4000;
 /**
  * Smallest cosine similarity between the query and a description vector for that vector hit to be fused. Nearest
- * neighbours below it are noise (the nearest vectors of a query that matches nothing are still returned), and
+ * neighbors below it are noise (the nearest vectors of a query that matches nothing are still returned), and
  * fused by rank alone they outrank an exact keyword match.
  */
 export const VECTOR_MIN_COSINE = 0.5;

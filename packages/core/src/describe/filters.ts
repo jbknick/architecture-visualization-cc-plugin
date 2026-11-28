@@ -1,4 +1,4 @@
-// Injection filter, defence in depth (spec section 8 check 7). The main defence is structural: the shape rules in
+// Injection filter, defense in depth (spec section 8 check 7). The main defense is structural: the shape rules in
 // shape.ts and the grounding rules in identifiers.ts accept only text that looks like a description of a function.
 // This file keeps a SMALL set of high-precision patterns for what the structure could still let through (an
 // "ignore previous instructions" spelled with plain words, chat-template tokens, role prefixes, markup). It does not

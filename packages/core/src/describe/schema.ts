@@ -8,7 +8,7 @@ export const MAX_TERM_CHARS = 30;
 export const MIN_TERMS = 1;
 export const MAX_TERMS = 6;
 /**
- * Hard caps, checked first and in O(1) before any regex or normalisation work, so no scanner ever sees more than 400
+ * Hard caps, checked first and in O(1) before any regex or normalization work, so no scanner ever sees more than 400
  * characters of `behavior`, 6 terms of 60 characters or an 80-character name. A value over a hard cap fails with
  * reason `length` and is never repaired (the 25-word / 200-character rule and its truncation repair apply below it).
  */
