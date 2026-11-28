@@ -28,6 +28,7 @@ import {
 import { reviewDiff } from "../review/diff.js";
 import { computeImpact } from "../review/impact.js";
 import { openStore, type Store } from "../store/index.js";
+import { hasHiddenText } from "../text/untrusted.js";
 import type { SymbolKind } from "../types.js";
 
 /**
@@ -286,13 +287,12 @@ function cutLabel(s: string, max = 200): string {
   return out;
 }
 
-/** True when `s` holds a line break or another control character (C0, DEL, C1, line and paragraph separators). */
+/**
+ * True when `s` holds a line break or another control character (C0, DEL, C1, line and paragraph separators) or an
+ * invisible format character (zero-width, bidi, tag characters, private use, a lone surrogate).
+ */
 function hasControl(s: string): boolean {
-  for (const ch of s) {
-    const c = ch.codePointAt(0) as number;
-    if (c < 0x20 || (c >= 0x7f && c <= 0x9f) || c === 0x2028 || c === 0x2029) return true;
-  }
-  return false;
+  return hasHiddenText(s);
 }
 
 /**

@@ -34,7 +34,7 @@ const EDIT = readFileSync(
   "utf8",
 );
 const LINE =
-  "Gantry: totalDue (src/orders/invoice.ts:3) in group Orders uses formatPrice (src/catalog/price.ts:1) in group Catalog, which Orders does not list. Warn only.";
+  "Gantry: totalDue (src/orders/invoice.ts:3) in group `Orders` uses formatPrice (src/catalog/price.ts:1) in group `Catalog`, which `Orders` does not list. Warn only.";
 const STOP = (text: string) =>
   JSON.stringify({ hookSpecificOutput: { hookEventName: "Stop", additionalContext: text } });
 
@@ -160,7 +160,7 @@ ${readFileSync(join(fx.dir, "src/orders/invoice.ts"), "utf8")}`,
     const out = await stop();
     expect(out).toBe(
       STOP(
-        "Gantry: src/orders/invoice.ts in group Orders imports src/catalog/price.ts in group Catalog, which Orders does not list. Warn only.",
+        "Gantry: src/orders/invoice.ts in group `Orders` imports src/catalog/price.ts in group `Catalog`, which `Orders` does not list. Warn only.",
       ),
     );
   });
@@ -206,7 +206,7 @@ ${readFileSync(join(fx.dir, "src/orders/invoice.ts"), "utf8")}`,
     const lines = (text ?? "").split("\n");
     expect(lines.length).toBeGreaterThan(1);
     expect(lines[0]).toBe(
-      "Gantry: v0 (src/g0/f.ts:3) in group G0 uses v1 (src/g1/f.ts:3) in group G1, which G0 does not list. Warn only.",
+      "Gantry: v0 (src/g0/f.ts:3) in group `G0` uses v1 (src/g1/f.ts:3) in group `G1`, which `G0` does not list. Warn only.",
     );
     for (const l of lines) expect(l).toMatch(/^Gantry: .* Warn only\.$/);
   });
