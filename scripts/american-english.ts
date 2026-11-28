@@ -198,8 +198,9 @@ interface AstNode {
 }
 
 /** Ranges of the text a person reads in a TypeScript or JavaScript file. */
-export function sourceRanges(file: string, text: string): Range[] {
-  const { program, comments } = parseSync(file, text);
+export function sourceRanges(file: string, text: string): Range[] | null {
+  const { program, comments, errors } = parseSync(file, text);
+  if (errors.length > 0) return null; // cannot tell code from text: scan the whole file
   const out: Range[] = comments.map((c) => [c.start, c.end] as Range);
   const visit = (node: unknown, parent: AstNode | null, key: string): void => {
     if (Array.isArray(node)) {
@@ -293,6 +294,10 @@ export function filesInScope(): string[] {
     ".md",
     ".ts",
     ".tsx",
+    ".mts",
+    ".js",
+    ".mjs",
+    ".cjs",
     ".json",
     ".css",
     ".snap",

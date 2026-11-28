@@ -15,8 +15,8 @@ export function workspaceColor(rank: number, scheme: Scheme): string {
 }
 
 /** Text color for a label sitting on a region tinted with `color`. */
-export function labelInk(colour: string, scheme: Scheme): string {
-  return scheme === "light" ? mix(colour, "#000000", 0.5) : mix(colour, "#ffffff", 0.6);
+export function labelInk(color: string, scheme: Scheme): string {
+  return scheme === "light" ? mix(color, "#000000", 0.5) : mix(color, "#ffffff", 0.6);
 }
 
 /** WCAG relative luminance of a #rrggbb color. */
@@ -40,10 +40,10 @@ export function contrastRatio(a: string, b: string): number {
  * `color` moved toward black (light theme) or white (dark theme) in small steps, only as far as it takes to reach
  * `min` contrast against `bg`. A color that already has the contrast is returned as it is, so the hue survives.
  */
-export function inkAgainst(colour: string, bg: string, scheme: Scheme, min: number): string {
+export function inkAgainst(color: string, bg: string, scheme: Scheme, min: number): string {
   const toward = scheme === "light" ? "#000000" : "#ffffff";
   for (let k = 0; k <= 20; k++) {
-    const c = k === 0 ? colour : mix(toward, colour, k / 20);
+    const c = k === 0 ? color : mix(toward, color, k / 20);
     if (contrastRatio(c, bg) >= min) return c;
   }
   return toward;
