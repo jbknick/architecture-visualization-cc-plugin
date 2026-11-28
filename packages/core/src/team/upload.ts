@@ -1,4 +1,7 @@
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 import {
   type ChangeSet,
@@ -13,7 +16,8 @@ import {
 } from "@gantry/protocol";
 import { contentKey, FUNCTION_LIKE_KINDS } from "../describe/factsheet.js";
 import { fileId as makeFileId, parseId, parseWorkspaceId, workspaceId } from "../ids.js";
-import type { GantryPaths } from "../paths/index.js";
+import { indexRepo } from "../indexer.js";
+import { ensureDataDir, type GantryPaths } from "../paths/index.js";
 import {
   type ChangeConsumers,
   type Consumer,
@@ -22,7 +26,7 @@ import {
 } from "../review/consumers.js";
 import { reviewDiff } from "../review/diff.js";
 import { computeImpact } from "../review/impact.js";
-import type { Store } from "../store/index.js";
+import { openStore, type Store } from "../store/index.js";
 import type { SymbolKind } from "../types.js";
 
 /**
@@ -87,6 +91,62 @@ function inRepo(id: string, repo: string): boolean {
  */
 export function buildMainSnapshot(store: Store, paths: GantryPaths): MainSnapshot {
   return buildMainSnapshotChecked(store, paths).snapshot;
+}
+
+/**
+ * The main snapshot of the commit `HEAD` names, whatever the working tree looks like. The user's own store is never
+ * read: its main layer can hold the working tree (a first or full index reads the files on disk, and an incremental
+ * heal re-indexes dirty importers into main), and its workspaces have no layer. Instead `HEAD` is checked out detached
+ * into a temporary directory (git hooks off), indexed there into a temporary store, and the snapshot is built from
+ * that store with the temporary checkout's `HEAD` as `sha`, so the body holds exactly the graph of that commit.
+ * The temporary directory is removed whether or not the build succeeds. The config of the data dir is copied over,
+ * so the same files are indexed as in the user's own index.
+ */
+export async function buildMainSnapshotOfHead(
+  paths: GantryPaths,
+): Promise<{ snapshot: MainSnapshot; warnings: string[] }> {
+  headSha(paths); // a clear error when there is no commit
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gantry-upload-head-"));
+  const checkout = path.join(tmp, "checkout");
+  const git = (args: string[], cwd: string) =>
+    spawnSync("git", ["-c", "core.hooksPath=/dev/null", ...args], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  let added = false;
+  try {
+    const add = git(["worktree", "add", "--detach", "--quiet", checkout, "HEAD"], paths.root);
+    if (add.status !== 0)
+      throw new Error(`cannot check out HEAD to build the main snapshot: ${add.stderr.trim()}`);
+    added = true;
+    const root = fs.realpathSync(checkout);
+    const dataDir = path.join(tmp, "data");
+    const tmpPaths: GantryPaths = {
+      ...paths,
+      root,
+      workspace: { file: null, repos: [{ name: paths.repo, root }] },
+      dataDir,
+      dbPath: path.join(dataDir, "gantry.db"),
+      overlayPath: path.join(dataDir, "overlay.db"),
+      configPath: path.join(dataDir, "config.json"),
+      catalogDir: path.join(dataDir, "catalog"),
+      logsDir: path.join(dataDir, "logs"),
+    };
+    ensureDataDir(tmpPaths);
+    if (fs.existsSync(paths.configPath)) fs.copyFileSync(paths.configPath, tmpPaths.configPath);
+    await indexRepo(tmpPaths, { layer: "main" });
+    const store = openStore(tmpPaths.dbPath, { overlayPath: tmpPaths.overlayPath, repo: tmpPaths.repo });
+    try {
+      return buildMainSnapshotChecked(store, tmpPaths);
+    } finally {
+      store.close();
+    }
+  } finally {
+    if (added) git(["worktree", "remove", "--force", checkout], paths.root);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    git(["worktree", "prune"], paths.root);
+  }
 }
 
 /** At most 200 UTF-16 units (the schema counts those), never splitting a surrogate pair. */
