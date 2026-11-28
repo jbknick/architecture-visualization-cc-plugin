@@ -112,7 +112,7 @@ test("project map: switch levels, drill into @acme/ui, then see Button's callers
   // Drill into @acme/ui: the server returns just that subtree.
   await levels.getByRole("radio", { name: "Workspaces" }).click();
   await rows.filter({ hasText: "@acme/ui" }).dblclick();
-  await expect(page).toHaveURL(/focus=ws%3A%40acme%2Fui/);
+  await expect(page).toHaveURL(/focus=ws%3Apnpm-turbo%3A%40acme%2Fui/);
   const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
   await expect(crumbs).toContainText("@acme/ui");
   await expect(rows.filter({ hasText: "@acme/web" })).toHaveCount(0);
@@ -201,7 +201,7 @@ test("3D map: opens from the view switcher and draws the fixture's workspaces as
   ).toBeVisible();
   await page.waitForTimeout(500);
   await legend.getByRole("button", { name: /^ui/ }).click();
-  await expect(page).toHaveURL(/sel=ws%3A%40acme%2Fui/);
+  await expect(page).toHaveURL(/sel=ws%3Apnpm-turbo%3A%40acme%2Fui/);
   await expect(page.getByRole("complementary", { name: "Inspector" })).toBeVisible();
   // The city draws one district per workspace with a visible name; the island style stays one click away.
   await expect(page.locator(".map3d[data-style='city']")).toBeVisible();

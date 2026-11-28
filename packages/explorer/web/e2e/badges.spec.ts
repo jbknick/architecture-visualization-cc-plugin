@@ -80,7 +80,7 @@ test.afterAll(() => {
 test("project map draws M2 badges on function tiles, with a legend and tooltips", async ({ page }) => {
   mkdirSync(shots, { recursive: true });
   const base = url.replace(/#.*$/, "");
-  await page.goto(`${base}#/project-map?level=symbols&focus=ws%3A%40acme%2Futils`);
+  await page.goto(`${base}#/project-map?level=symbols&focus=ws%3Apnpm-turbo%3A%40acme%2Futils`);
   const canvas = page.getByTestId("graph-canvas");
   await expect(canvas.locator(".gc-sigma[data-ready=true]")).toBeVisible({ timeout: 30_000 });
   await page.waitForTimeout(800);
