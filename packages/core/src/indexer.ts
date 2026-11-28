@@ -547,13 +547,13 @@ async function indexOneRepo(
       const byPath = new Map(present.map((e) => [e.path, e]));
       try {
         const known = new Set<string>(present.map((e) => e.id));
-        for (const pf of parsed.values()) for (const sym of pf.symbols) known.add(sym.id);
         const r = await mapScip(
           scipFile,
           (p) => {
             const e = byPath.get(p);
             const pf = e ? parsed.get(e.id) : undefined;
             if (!e || !pf) return undefined;
+            for (const sym of pf.symbols) known.add(sym.id);
             return {
               id: e.id,
               source: e.source as string,
