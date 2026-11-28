@@ -151,7 +151,7 @@ export const ROUTES = {
     query: null,
     request: GroupSchema,
     response: SavedResponseSchema,
-    errors: ["invalid", "unauthorized", "forbidden", "not_found"],
+    errors: ["invalid", "unauthorized", "forbidden", "not_found", "conflict", "too_large"],
   },
   deleteGroup: {
     method: "DELETE",
@@ -169,7 +169,7 @@ export const ROUTES = {
     query: null,
     request: SavedViewSchema,
     response: SavedResponseSchema,
-    errors: ["invalid", "unauthorized", "forbidden", "not_found"],
+    errors: ["invalid", "unauthorized", "forbidden", "not_found", "conflict", "too_large"],
   },
   deleteView: {
     method: "DELETE",
