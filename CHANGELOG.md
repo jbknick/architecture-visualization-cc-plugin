@@ -2,6 +2,13 @@
 
 One section per release, newest first. Written by `pnpm release`.
 
+## 0.5.1 - 2026-11-28
+
+- A main upload holds only committed state: it builds from a fresh index of HEAD (#457)
+- Team group names reach the agent as cleaned, quoted data (#456)
+- Remove a private project name and a local home path from the changelog and the worker spike notes (#455)
+- Two explorer e2e specs expect the repo-qualified workspace id, as the app now writes it (#454)
+
 ## 0.5.0 - 2026-11-28
 
 - Team login prints the verification URL with the code in it, falling back to the plain URL and the code (#452)
