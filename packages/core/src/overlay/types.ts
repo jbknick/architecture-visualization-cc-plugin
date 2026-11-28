@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Types of the curation overlay (spec section 7): what a person labelled, hid, grouped or saved. */
+/** Types of the curation overlay (spec section 7): what a person labeled, hid, grouped or saved. */
 export const NodeIdSchema = z.string().min(1).max(1024);
 export const GroupIdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/);
 

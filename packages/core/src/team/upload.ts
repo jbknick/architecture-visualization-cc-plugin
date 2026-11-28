@@ -575,7 +575,7 @@ export function changeSetRecords(changeSet: ChangeSet): PartRecord[] {
 }
 
 /**
- * What a dry run summarises: the gzipped parts of a main snapshot or change set, the body of a close request, or the
+ * What a dry run summarizes: the gzipped parts of a main snapshot or change set, the body of a close request, or the
  * bodies of the description requests, exactly as the real upload would send them.
  */
 export type DryRunPayload =

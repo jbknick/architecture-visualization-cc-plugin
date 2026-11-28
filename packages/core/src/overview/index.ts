@@ -13,7 +13,7 @@ import type { Store } from "../store/index.js";
 export const OVERVIEW_MAX_CHARS = 1200;
 
 export interface OverviewTarget {
-  /** The node id as given, normalised to `ws:<name>` or `dir:<repo-relative path>`. */
+  /** The node id as given, normalized to `ws:<name>` or `dir:<repo-relative path>`. */
   nodeId: string;
   /** Function-like symbols inside the node. */
   functions: number;

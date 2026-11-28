@@ -166,7 +166,7 @@ describe("gantry_open_view", () => {
     expect(url2.hash).toBe("#/duplicates");
     expect(silentLog.errors).toEqual([]);
 
-    // The log never holds the access token (the child prints no tokenised URL).
+    // The log never holds the access token (the child prints no tokenized URL).
     expect(readFileSync(join(repo.paths.logsDir, "explorer.log"), "utf8")).not.toContain(token);
   }, 15000);
 

@@ -28,7 +28,7 @@ interface Row {
   created_at: string;
 }
 
-/** The part of the team client this module needs: send one serialised request body. */
+/** The part of the team client this module needs: send one serialized request body. */
 export interface DescriptionsClient {
   putDescriptions(body: unknown): Promise<{ stored: number }>;
 }

@@ -12,7 +12,7 @@ export function runLayout(input: LayoutInput): LayoutJob {
     let cancelled = false;
     const promise = import("./layout.ts").then(async ({ computeLayout }) => {
       const result = await computeLayout(input);
-      if (cancelled) throw new Error("cancelled");
+      if (cancelled) throw new Error("canceled");
       return result;
     });
     return {

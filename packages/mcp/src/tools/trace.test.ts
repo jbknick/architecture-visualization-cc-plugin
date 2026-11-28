@@ -160,7 +160,7 @@ describe("gantry_trace", () => {
     expect(steps).toBeGreaterThan(50);
   });
 
-  it("summarises a long chain with counts and stays under the limit", () => {
+  it("summarizes a long chain with counts and stays under the limit", () => {
     const chain: TraceResult["chain"] = [
       { id: "route:repo:w:/a", kind: "route", label: "/a", via: "target", depth: 0 },
     ];

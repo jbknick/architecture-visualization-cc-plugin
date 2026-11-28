@@ -41,7 +41,7 @@ const USER_MOTION = "user" as const;
 /** How often the age of the data is worked out again. */
 const AGE_TICK_MS = 60_000;
 
-/** A person's initial on their own colour, the colour their map markers use. */
+/** A person's initial on their own color, the color their map markers use. */
 function PersonChip({ name, people }: { name: string; people: readonly string[] }) {
   return (
     <span className="team-chip" style={initialStyle(people, name)} aria-hidden="true">

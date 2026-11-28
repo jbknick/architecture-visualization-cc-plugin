@@ -219,7 +219,7 @@ export default function SettlementCanvas({ focus, onSelect, onHover, data: viewD
         {" · "}
         <span>
           <strong>Building</strong> = file (taller = more functions, wider = more lines; roof = workspace
-          colour)
+          color)
         </span>
         {" · "}
         <span>

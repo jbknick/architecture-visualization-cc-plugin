@@ -1,6 +1,6 @@
 // Pure helpers for the describe spike (issue #6): fact sheet rendering, the spec section 8 checks, grading
 // aggregation and nameFits metrics. No process spawning and no file access here so everything is unit-testable
-// with synthetic data. The labelled set and raw model outputs are private and never committed.
+// with synthetic data. The labeled set and raw model outputs are private and never committed.
 
 export interface FactSheetRow {
   contentKey: string;
@@ -112,7 +112,7 @@ export const IDENTIFIER_STOP_LIST: ReadonlySet<string> = new Set([
 
 /**
  * True when a word looks like a code identifier: camelCase (lower then upper), PascalCase with an inner capital
- * (`MilestoneList`) or snake_case (underscore between letters/digits). A plain capitalised word ("Renders") or an
+ * (`MilestoneList`) or snake_case (underscore between letters/digits). A plain capitalized word ("Renders") or an
  * all-caps acronym does not count.
  */
 export function isIdentifierLike(word: string): boolean {

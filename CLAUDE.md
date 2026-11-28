@@ -1,4 +1,4 @@
-# Claude Code Architecture Visualisation Plugin
+# Claude Code Architecture Visualization Plugin
 
 It is a Claude Code plugin: a codebase map, function index and reuse guard for TypeScript repos. This repo holds the plugin (`plugin/`), the indexing library, CLI, MCP server and explorer (`packages/`).
 
@@ -13,5 +13,5 @@ It is a Claude Code plugin: a codebase map, function index and reuse guard for T
 
 ## Keeping this README current
 
-- Every PR that changes user-visible behaviour, commands or views updates `README.md` in the same PR (the Commands table, Status table and Quick start must match what exists on `main`).
+- Every PR that changes user-visible behavior, commands or views updates `README.md` in the same PR (the Commands table, Status table and Quick start must match what exists on `main`).
 - If a view's look changed, or a new view was added, regenerate the images with `pnpm build && pnpm readme:media` and commit the changed files under `docs/readme/`. The PNGs are deterministic (re-running changes nothing); `explorer-tour.gif` is captured mid-animation, so it is rewritten only with `pnpm readme:media --gif`. The script uses public data only (`fixtures/pnpm-turbo` and the explorer mock's synthetic scenarios); never point it at a private repo.

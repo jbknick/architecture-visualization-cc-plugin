@@ -496,7 +496,7 @@ export function Inspector({ nodes, review = null }: { nodes: GraphNode[]; review
             variant="outline"
             size="sm"
             disabled={!canMap || !mapReady}
-            title={canMap ? "Show this in the project map" : "The project map cannot centre on this"}
+            title={canMap ? "Show this in the project map" : "The project map cannot center on this"}
             onClick={() => openInView("project-map", mapTarget, id)}
           >
             Open in project map

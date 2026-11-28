@@ -6,7 +6,7 @@ V2 plan, M10. Question: is there a Go grammar package (and a Java one, for after
 
 - `@ast-grep/napi` is listed in spec section 2 (approved runtime dependencies) but **no package in the repo depends on it and no version is pinned** (`grep -rn ast-grep packages/*/package.json package.json` finds nothing). The spike used the latest release at the time, **0.51.3** (published 2026-11-16), with its platform package `@ast-grep/napi-darwin-arm64` 0.51.3.
 - Grammar packages: `npm search @ast-grep/lang` lists one package per language from the ast-grep maintainer. Used: **`@ast-grep/lang-go` 0.0.6** (built from `tree-sitter-go` 0.25.0, published 2026-03-15) and **`@ast-grep/lang-java` 0.0.7** (built from `tree-sitter-java` 0.23.5, published 2026-03-15). Both depend on `@ast-grep/setup-lang` 0.0.6 and have an optional peer `tree-sitter-cli` 0.25.8 (only for building a parser where no prebuild exists).
-- Installed in `docs/spikes/v2-ast-grep-langs/` with its own `package.json` (exact versions) and `npm install --no-audit --no-fund`; not part of the pnpm workspace, root manifests unchanged. Also installed with `pnpm add` (pnpm 10.31.0) in a scratch project outside the repo to check pnpm behaviour.
+- Installed in `docs/spikes/v2-ast-grep-langs/` with its own `package.json` (exact versions) and `npm install --no-audit --no-fund`; not part of the pnpm workspace, root manifests unchanged. Also installed with `pnpm add` (pnpm 10.31.0) in a scratch project outside the repo to check pnpm behavior.
 - Machine: Apple M3 Pro, macOS arm64, Node v26.13.0. No Go toolchain or JRE is needed (`java -version`: "Unable to locate a Java Runtime"; the Java grammar still loads and parses).
 - Script: `pnpm tsx docs/spikes/v2-ast-grep-langs/run.ts --go <dir> --java <dir>`.
 - Corpora (public, cloned to `/private/tmp/claude-501/gantry-spikes/`): `caddyserver/caddy` @ `7ce9f0823762109fc67911f95f6af1a697345ab7` (all 429 `.go` files, tests included); `spring-projects/spring-petclinic` @ `500158f732419217507c7656904b8e6aa1bcc0d6` (50 `.java` files).
@@ -21,7 +21,7 @@ V2 plan, M10. Question: is there a Go grammar package (and a Java one, for after
 | Inline sample: kinds and `field("name")`            | funcs `New`, methods `Total`, types `Cart`, `Store`; 0 ERROR nodes                                                         | class `OwnerController`, record `Pair`, method `show`; pattern `@GetMapping("$P")` captured `/{id}` |
 | Real repo                                           | 429 files, 4,186 KiB, parse median **268 ms** (264/268/268), 0 files with ERROR nodes, 4,584 func/method/type declarations | 50 files, 138 KiB, parse median **7 ms**, 0 files with ERROR nodes, 245 declarations                |
 
-Behaviour notes measured:
+Behavior notes measured:
 
 - **Install scripts are blocked and it still works.** npm 11 (`allowScripts`) and pnpm 10 (`Ignored build scripts: @ast-grep/lang-go@0.0.6, @ast-grep/lang-java@0.0.7`) both skip the `postinstall`. The packages resolve the prebuild at load time (`resolvePrebuild` in `index.js`), so on the five prebuilt platforms no script and no compiler is needed. On any other platform `index.js` throws "No parser found" unless the postinstall ran with `tree-sitter-cli` and a C compiler.
 - **Platform gap.** `@ast-grep/napi` 0.51.3 has native builds for 9 targets (incl. `win32-arm64-msvc`, `win32-ia32-msvc`, `linux-*-musl`); the grammar packages have 5. Windows arm64 and ia32 have no Go/Java prebuild. The prebuild directory names do not say glibc or musl; Linux musl was not tested.

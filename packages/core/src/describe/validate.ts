@@ -1,6 +1,6 @@
 // validateDescription (spec section 8, issue #22). Order: hard caps (O(1)), schema, secret filter, length (with
 // truncation repair), shape of `behavior`, grounding of every unusual token in the fact sheet's names, then a small
-// injection filter for defence in depth. Pure, no I/O. Failure details name rules only; matched text (which may be a
+// injection filter for defense in depth. Pure, no I/O. Failure details name rules only; matched text (which may be a
 // secret or an injected instruction) is never put into a detail string, and ungrounded tokens are echoed shortened.
 
 import type { Description, FactSheet } from "../types.js";
@@ -89,7 +89,7 @@ function fail(reason: ValidationFailureReason, detail: string): ValidationResult
   return { ok: false, reason, detail };
 }
 
-/** O(1) caps on the raw object, before any parsing, regex or normalisation. Returns a detail or null. */
+/** O(1) caps on the raw object, before any parsing, regex or normalization. Returns a detail or null. */
 function hardCapViolation(raw: unknown): string | null {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
   const o = raw as Record<string, unknown>;
@@ -305,7 +305,7 @@ export function validateDescription(
   const ungrounded = ungroundedTokens(original, g);
   if (ungrounded.length > 0) return fail("identifier", `behavior ${describeUngrounded(ungrounded)}`);
 
-  // (7) injection filter, defence in depth: behavior, and behavior with every term appended (instructions split
+  // (7) injection filter, defense in depth: behavior, and behavior with every term appended (instructions split
   // across fields), then each search term and the suggested name on their own.
   const b = scanInjection(`${original} ${d.searchTerms.join(" ")}`);
   if (b.reject.length > 0) return fail("injection", `behavior and terms: ${b.reject.join(", ")}`);
@@ -365,7 +365,7 @@ export function validateDescription(
 /**
  * A sentence that claims the host's fallback provenance ("generated without a model" and close variants). Gate only
  * since #180: the validator accepts ordinary sentences such as "Returns the config built from the host environment",
- * and a model that imitates the marker still gets a stored description labelled `model`; consumers read provenance
+ * and a model that imitates the marker still gets a stored description labeled `model`; consumers read provenance
  * from `described_by`, never from the text. A rejected description that imitates it earns no extra attempt.
  */
 const PRODUCED = "(?:generated|written|created|produced|made|built|composed|authored|derived)";

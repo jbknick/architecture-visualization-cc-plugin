@@ -70,7 +70,7 @@ export interface Settlement {
   tier: Tier;
   fns: number;
   files: number;
-  /** Palette index: position among the workspaces sorted by id (the 2D map's colours). */
+  /** Palette index: position among the workspaces sorted by id (the 2D map's colors). */
   colorIndex: number;
   x: number;
   z: number;

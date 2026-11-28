@@ -1,6 +1,6 @@
-// The one workspace palette. The 2D filter panels colour a workspace by a hash of its id (`workspaceColor`);
-// the 3D map colours islands by position in the sorted workspace list (`workspaceColorAt`), so neighbouring
-// islands never share a colour. Each pair is [light-theme, dark-theme]; hues are spread so neighbours differ.
+// The one workspace palette. The 2D filter panels color a workspace by a hash of its id (`workspaceColor`);
+// the 3D map colors islands by position in the sorted workspace list (`workspaceColorAt`), so neighboring
+// islands never share a color. Each pair is [light-theme, dark-theme]; hues are spread so neighbors differ.
 import type { Scheme } from "./theme.ts";
 
 const PAIRS: [string, string][] = [
@@ -18,13 +18,13 @@ const PAIRS: [string, string][] = [
   ["#8a6d3b", "#d9b779"],
 ];
 
-/** Colour for the workspace at `index` in the sorted workspace list. */
+/** Color for the workspace at `index` in the sorted workspace list. */
 export function workspaceColorAt(index: number, scheme: Scheme): string {
   const pair = PAIRS[index % PAIRS.length] as [string, string];
   return scheme === "dark" ? pair[1] : pair[0];
 }
 
-/** Stable colour for a workspace id, independent of which other workspaces are shown. */
+/** Stable color for a workspace id, independent of which other workspaces are shown. */
 export function workspaceColor(id: string, scheme: Scheme = "light"): string {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;

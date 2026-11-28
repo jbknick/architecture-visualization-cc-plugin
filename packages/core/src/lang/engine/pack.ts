@@ -133,7 +133,7 @@ export interface BaseTypeRule {
   wrappers: readonly string[];
   /** The kind of a generic instantiation and the field holding the generic type. */
   generic: { kind: string; field: string };
-  /** Name used when the shape is not recognised. */
+  /** Name used when the shape is not recognized. */
   unknown: string;
 }
 

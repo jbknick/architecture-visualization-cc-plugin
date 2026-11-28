@@ -412,7 +412,7 @@ export function backlogCounts(store: Store): BacklogCounts {
 /**
  * Whether this store holds a Gantry index whose backlog was built (`gantry init` ran against this data dir). A store
  * that only a lookup, a hook or the MCP lazy refresh created has symbols but no backlog, so an empty claim there
- * means "not initialised", never "backlog empty" (#147). Stores from before `meta.backlog_synced_at` count as
+ * means "not initialized", never "backlog empty" (#147). Stores from before `meta.backlog_synced_at` count as
  * indexed when they hold any backlog row or description.
  */
 export function isIndexed(store: Store): boolean {

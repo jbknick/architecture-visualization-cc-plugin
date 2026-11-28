@@ -9,7 +9,7 @@ export interface LargestFilesProps {
   scope: string | null;
   scopes: { id: string; label: string }[];
   onScope: (id: string | null) => void;
-  /** Workspace dot colour for a workspace id. */
+  /** Workspace dot color for a workspace id. */
   colorOf: (workspaceId: string) => string;
   /** The row was clicked: select the file (inspector). */
   onSelect: (id: string) => void;

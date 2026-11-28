@@ -49,7 +49,7 @@ M17 waits for the repo part in stable IDs so that overlay entries are not re-key
 
 - **Components:** SmoothUI, a copy-paste registry of animated React components (MIT) on Tailwind CSS 4, Motion and shadcn. Components are added with `pnpm dlx shadcn@latest add @smoothui/<name>` into `packages/explorer/web/src/components/smoothui/`, on a `base-*` (Base UI) shadcn style, and committed as source with SmoothUI's MIT notice. `SOURCES.md` beside them lists each component, its registry URL and the date copied; nothing is fetched at build time.
 - **Fallback order:** a SmoothUI component; else a shadcn primitive on the same style; else hand-written, with the reason in the PR.
-- **Icons:** Hugeicons only, through `HugeiconsIcon` from `@hugeicons/react` with icons from `@hugeicons/core-free-icons` (MIT). Icon imports that come with copied components (for example `lucide-react`) are replaced. No `@hugeicons-pro` package: its licence does not allow open-source icon assets.
+- **Icons:** Hugeicons only, through `HugeiconsIcon` from `@hugeicons/react` with icons from `@hugeicons/core-free-icons` (MIT). Icon imports that come with copied components (for example `lucide-react`) are replaced. No `@hugeicons-pro` package: its license does not allow open-source icon assets.
 - **What changes:** the chrome (top bar, left panel, inspector, status bar, search, lists, badges, review and cross-stack panels). The canvases (sigma, flow, three) keep drawing as they do.
 - **Theme:** the explorer's light and dark tokens become the CSS variables the components read.
 - **Determinism:** animations respect `prefers-reduced-motion`, and Playwright e2e and `pnpm readme:media` force reduced motion, so a second `pnpm build && pnpm readme:media` changes no PNG.

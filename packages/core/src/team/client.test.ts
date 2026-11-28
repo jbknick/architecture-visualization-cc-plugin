@@ -341,7 +341,7 @@ describe("device sign-in", () => {
   });
 });
 
-describe("an already serialised body", () => {
+describe("an already serialized body", () => {
   it("is checked against the route's schema and sent byte for byte", async () => {
     const rec = recorder();
     const client = teamClient(paths, configFor(fake.url), { env, token: "gct_fake", fetch: rec.fetch });

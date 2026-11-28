@@ -57,7 +57,7 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, maxW: number): str
 }
 
 /**
- * The canvas of the cross-stack views (#48): nodes as labelled boxes in lanes (columns, swimlanes or a reversed
+ * The canvas of the cross-stack views (#48): nodes as labeled boxes in lanes (columns, swimlanes or a reversed
  * tree, laid out by layout.ts from the server's `lane` and `rank`), edges as curves. Reads are blue, writes orange,
  * low-confidence matches dashed; hovering an edge says how many places it stands for (`via`). A plain 2D canvas:
  * no WebGL needed. Wheel or +/- zoom, drag pans, 0 fits, Esc clears the selection.
@@ -123,7 +123,7 @@ export function FlowCanvas({
         if (alive) setPositions({ key, pos: r.positions, ms: r.ms });
       },
       (err: unknown) => {
-        if (alive && !(err instanceof Error && err.message === "cancelled"))
+        if (alive && !(err instanceof Error && err.message === "canceled"))
           setError(err instanceof Error ? err.message : String(err));
       },
     );

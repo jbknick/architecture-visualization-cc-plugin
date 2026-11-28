@@ -40,7 +40,7 @@ const MODES = [
   {
     id: "rings",
     label: "Rings",
-    hint: "What changed in the centre; each ring out is code that calls the ring inside it",
+    hint: "What changed in the center; each ring out is code that calls the ring inside it",
   },
 ] as const;
 

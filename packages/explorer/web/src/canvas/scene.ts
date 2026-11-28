@@ -26,7 +26,7 @@ export interface SceneEdge {
   crossRepo?: boolean;
 }
 
-/** A repo of a workspace of several repos: drawn as a labelled container around the boxes of its workspaces. */
+/** A repo of a workspace of several repos: drawn as a labeled container around the boxes of its workspaces. */
 export interface RepoGroup {
   id: string;
   label: string;
@@ -52,7 +52,7 @@ export interface Scene {
   /** Input nodes in tree order (sorted by id). */
   nodes: GraphNode[];
   edges: SceneEdge[];
-  /** Rank of each root among roots sorted by id; drives the stable workspace colours. */
+  /** Rank of each root among roots sorted by id; drives the stable workspace colors. */
   rootRank: Map<number, number>;
   roots: number[];
   /** Symbols under each node (1 for a symbol itself). */

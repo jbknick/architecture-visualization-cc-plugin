@@ -1,6 +1,6 @@
 // Reprints the issue #6 score table from stored outputs under evals/private/describe-out/. No model calls.
 // Usage: pnpm tsx docs/spikes/describe/score.ts
-// Prints aggregate numbers only. Raw outputs and the labelled set are private and never printed.
+// Prints aggregate numbers only. Raw outputs and the labeled set are private and never printed.
 
 import { join } from "node:path";
 import { fixed, mdTable, type PathSummary, pct, summarize } from "./lib.js";
@@ -156,7 +156,7 @@ const first = reports[0];
 if (first) {
   const nf = first.summary.nameFits;
   console.log(
-    `nameFits (positive = name misleads): labelled positives ${nf.labelledPositives}, predicted positives ${nf.predictedPositives}, true positives ${nf.truePositives}, agreement with labels ${pct(nf.agreement)}.`,
+    `nameFits (positive = name misleads): labeled positives ${nf.labelledPositives}, predicted positives ${nf.predictedPositives}, true positives ${nf.truePositives}, agreement with labels ${pct(nf.agreement)}.`,
   );
 }
 if (retryDetail) console.log(retryDetail);
@@ -249,7 +249,7 @@ if (first) {
   console.log(
     `- nameFits precision at least ${TARGETS.nameFitsPrecision}: ${
       p === null
-        ? `undefined, no function was flagged as misleading (recall ${pct(s.nameFits.recall)} of ${s.nameFits.labelledPositives} labelled)`
+        ? `undefined, no function was flagged as misleading (recall ${pct(s.nameFits.recall)} of ${s.nameFits.labelledPositives} labeled)`
         : `${fixed(p)} ${ok(p >= TARGETS.nameFitsPrecision)}`
     }`,
   );

@@ -186,7 +186,7 @@ describe("map-3d view", () => {
 });
 
 describe("path classes", () => {
-  it("recognises generated files", () => {
+  it("recognizes generated files", () => {
     expect(isGeneratedPath("a/routeTree.gen.ts")).toBe(true);
     expect(isGeneratedPath("a/types.d.ts")).toBe(true);
     expect(isGeneratedPath("a/b.ts")).toBe(false);

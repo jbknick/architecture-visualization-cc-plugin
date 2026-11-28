@@ -90,9 +90,9 @@ interface Tip {
 }
 
 /**
- * Rings mode of the review view: what changed in the centre, then one ring per hop of callers ("Call the changed code
- * directly", "2 calls away", ...), each labelled with its count. Nodes on a ring sit together by file, with a faint
- * arc and the file's name over each group. Changed nodes take the map layer's colours; callers a neutral tone that
+ * Rings mode of the review view: what changed in the center, then one ring per hop of callers ("Call the changed code
+ * directly", "2 calls away", ...), each labeled with its count. Nodes on a ring sit together by file, with a faint
+ * arc and the file's name over each group. Changed nodes take the map layer's colors; callers a neutral tone that
  * fades by hop. Edges point from caller to callee; hovering or selecting a node keeps its own path through the rings
  * and fades the rest.
  */
@@ -163,7 +163,7 @@ export function ReviewRings({
         className="rv-svg"
         viewBox={viewBox}
         role="img"
-        aria-label="Changed code in the centre; each ring out is code that calls the ring inside it"
+        aria-label="Changed code in the center; each ring out is code that calls the ring inside it"
         {...handlers}
         onClick={(e) => {
           if (e.target === e.currentTarget && !dragged()) onSelect(null);

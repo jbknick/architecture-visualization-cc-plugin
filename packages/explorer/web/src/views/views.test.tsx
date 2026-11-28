@@ -44,7 +44,7 @@ describe("view params from the hash reach /api/view", () => {
       hideTests: "false",
       workspaces: "ws:@acme/ui|ws:@acme/utils",
     });
-    // The mock honours them like the real server: only the two chosen workspaces come back.
+    // The mock honors them like the real server: only the two chosen workspaces come back.
     expect(screen.queryByRole("option", { name: /@acme\/web/ })).toBeNull();
     expect(screen.getByRole("option", { name: /@acme\/utils/ })).toBeTruthy();
   });
@@ -94,7 +94,7 @@ describe("project map filter panel", () => {
     expect(await screen.findByRole("option", { name: /Button/ })).toBeTruthy();
   });
 
-  it("lists every workspace with a colour dot and file count, and keeps unticked ones in the list", async () => {
+  it("lists every workspace with a color dot and file count, and keeps unticked ones in the list", async () => {
     installMockFetch();
     renderApp("#/project-map");
     const section = await screen.findByRole("region", { name: "Workspaces" });
@@ -123,7 +123,7 @@ describe("project map filter panel", () => {
 
   it("writes kind checkboxes, 'Exported only', 'Hide tests' (on by default) and 'Show npm packages'", async () => {
     installMockFetch();
-    // The kind colours matter only once functions are drawn, so the checkboxes appear at that level.
+    // The kind colors matter only once functions are drawn, so the checkboxes appear at that level.
     renderApp("#/project-map?level=symbols");
     const hideTests = await screen.findByRole("checkbox", { name: "Hide tests" });
     expect(isChecked(hideTests)).toBe(true);
@@ -249,9 +249,9 @@ describe("ego view", () => {
     fireEvent.keyDown(box, { key: "Enter" });
 
     await waitFor(() => expect(hashParams().get("focus")).toBe(ids.button));
-    // Callers (left) are listed with how far away they are, and the centre is marked.
+    // Callers (left) are listed with how far away they are, and the center is marked.
     expect(await screen.findByRole("option", { name: /PostList.*caller, 1 away/ })).toBeTruthy();
-    expect(screen.getByRole("option", { name: /Button.*centre/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Button.*center/ })).toBeTruthy();
     expect(screen.queryByText("Pick a function to see its callers and callees")).toBeNull();
     expect(lastMain(calls, "ego")?.get("focus")).toBe(ids.button);
   });
@@ -317,7 +317,7 @@ describe("ego view", () => {
     expect(await screen.findByText("Pick a function to see its callers and callees")).toBeTruthy();
   });
 
-  it("double-click re-centres on a caller", async () => {
+  it("double-click re-centers on a caller", async () => {
     installMockFetch();
     renderApp(`#/ego?focus=${encodeURIComponent(ids.button)}`);
     fireEvent.doubleClick(await screen.findByRole("option", { name: /PostList/ }));

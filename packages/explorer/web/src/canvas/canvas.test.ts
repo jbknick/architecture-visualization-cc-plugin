@@ -74,7 +74,7 @@ describe("workspace-level map", () => {
 });
 
 describe("scene", () => {
-  it("computes workspace links and highlights a selection's neighbours", () => {
+  it("computes workspace links and highlights a selection's neighbors", () => {
     const { nodes, edges } = fixture();
     const scene = buildScene(nodes, edges);
     expect(scene.wsEdges.length).toBe(7);
@@ -106,7 +106,7 @@ describe("zoom levels", () => {
   });
 });
 
-describe("workspace colours", () => {
+describe("workspace colors", () => {
   const luminance = (hex: string) => {
     const n = Number.parseInt(hex.slice(1), 16);
     const lin = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {

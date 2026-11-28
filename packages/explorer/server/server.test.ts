@@ -492,7 +492,7 @@ describe("static", () => {
       const res = await get(s.port, "/");
       expect(res.status).toBe(200);
       expect(res.body).toContain("not built");
-      expect(res.body).toContain("<title>Claude Code Architecture Visualisation Plugin</title>");
+      expect(res.body).toContain("<title>Claude Code Architecture Visualization Plugin</title>");
     } finally {
       await s.close();
     }
@@ -850,7 +850,7 @@ describe("/api/source", () => {
     }
   });
 
-  it("is not fooled by encodings, slashes, case or normalisation", async () => {
+  it("is not fooled by encodings, slashes, case or normalization", async () => {
     const variants = [
       "src/ignored.ts",
       "./src/ignored.ts",
@@ -870,7 +870,7 @@ describe("/api/source", () => {
     expect([403, 404]).toContain((await src("path=src%252Fignored.ts")).status); // double-encoded
     expect([403, 404]).toContain((await api("/api/source/?path=src/ignored.ts")).status);
     expect((await api("/api/%73ource?path=src/a.ts")).status).toBe(404);
-    // Normalised aliases of an indexed file stay readable (the lookup uses the normalised path).
+    // Normalized aliases of an indexed file stay readable (the lookup uses the normalized path).
     expect((await src("path=./src/a.ts")).status).toBe(200);
     // Repeated parameters: the first one is what counts for both the check and the read.
     expect([403, 404]).toContain((await src("path=src/ignored.ts&path=src/a.ts")).status);

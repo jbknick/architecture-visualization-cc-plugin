@@ -62,7 +62,7 @@ interface Theme {
   grid: string;
   gridCenter: string;
   white: string;
-  /** Text colours for count pills. */
+  /** Text colors for count pills. */
   scheme: Scheme;
 }
 
@@ -469,7 +469,7 @@ export class CityScene {
       return mesh;
     };
 
-    // Districts: a saturated frame under a tinted slab (the solid coloured border), then the block at Workspaces level.
+    // Districts: a saturated frame under a tinted slab (the solid colored border), then the block at Workspaces level.
     const bw = Math.max(1.8, city.extent * 0.0032);
     make(
       "frame",
@@ -984,7 +984,7 @@ export class CityScene {
       }
       return true;
     };
-    // Smallest distance that fits, then slide the target so the content is centred in the free band; repeat.
+    // Smallest distance that fits, then slide the target so the content is centered in the free band; repeat.
     let hi = E * 30;
     const tanH = Math.tan((FOV * Math.PI) / 360);
     for (let round = 0; round < 3; round++) {
@@ -1169,7 +1169,7 @@ export class CityScene {
     const id = this.idOf(p.hit);
     if (id) {
       this.cb.onSelect(id);
-      // A tiny district is hard to read from afar and a close fly-in would lose its neighbours: frame them all.
+      // A tiny district is hard to read from afar and a close fly-in would lose its neighbors: frame them all.
       const e = this.city?.byId.get(id);
       if (e?.type === "district" && this.city?.districts[e.i]?.tiny) this.setView("small");
       else this.flyTo(id);
@@ -1353,7 +1353,7 @@ export class CityScene {
         const sets = near(w, l.h);
         if (l.d.tiny) {
           // Next to the slab (touching or within TITLE_GAP_PX of its projected quad), the same side for every tiny
-          // district so neighbours form a tidy column: under the front-left corner first.
+          // district so neighbors form a tidy column: under the front-left corner first.
           const quad: Pt2[] = [q.bl, q.br, q.fr, q.fl];
           const near = (cd: Spot): boolean =>
             rectQuadDistance({ l: cd.l, t: cd.t, r: cd.l + w, b: cd.t + l.h }, quad) <= TITLE_GAP_PX - 3;

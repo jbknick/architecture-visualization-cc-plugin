@@ -406,7 +406,7 @@ export interface ReviewData {
   head: string;
   mergeBase: string;
   headSha: string;
-  /** `map`: the layer on the project map (default); `rings`: changed code in the centre, callers by hop. */
+  /** `map`: the layer on the project map (default); `rings`: changed code in the center, callers by hop. */
   mode: "map" | "rings";
   /** The map the review view draws on. */
   map: "2d" | "3d";

@@ -119,7 +119,7 @@ Bugs of the scorer were found by reading results. Every run below was taken afte
   (22525/22665), 66.60% (28468/42741), 99.99% (10176/10177) and 99.96% (16789/16795). On django, recall went from
   64.91% (28279/43560) to 65.02% (28279/43489).
 - Symbol recall counted a graph symbol twice when two definitions of the truth mapped onto it, which is in the pack's
-  favour. It now counts distinct graph symbols. Recall moved down: django classes 72.86% (8122/11146) to 72.86%
+  favor. It now counts distinct graph symbols. Recall moved down: django classes 72.86% (8122/11146) to 72.86%
   (8121/11146), prefect functions 86.02% (10177/11830) to 86.01% (10176/11830), prefect methods 80.37%
   (16791/20890) to 80.36% (16789/20890). No verdict changed.
 - The wording of the causes for symbols declared inside a function (no change of any number).

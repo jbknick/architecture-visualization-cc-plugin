@@ -21,7 +21,7 @@ describe("word list", () => {
     expect(WORD_BLOOM_BASE64.length).toBeLessThan(600_000);
   });
 
-  itTiming("initialises lazily in under 50 ms", () => {
+  itTiming("initializes lazily in under 50 ms", () => {
     expect(isWord("session")).toBe(true);
     console.log(
       `word list init ${wordlistInitMs.toFixed(2)} ms, ${WORD_BLOOM_BASE64.length} base64 characters`,

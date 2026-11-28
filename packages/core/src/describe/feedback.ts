@@ -23,7 +23,7 @@ const GENERIC: Readonly<Record<string, string>> = {
   identifier:
     "Name only identifiers that appear in the code shown; say everything else in plain English words, with no routes, URLs or invented names.",
   injection:
-    "Describe behaviour only; do not mention instructions, prompts, roles or the reader, and do not address anyone.",
+    "Describe behavior only; do not mention instructions, prompts, roles or the reader, and do not address anyone.",
   secret: "Leave out every credential value, key, token and password, even one that appears in the code.",
   length:
     "Keep behavior under 22 words and 200 characters, and give 1 to 6 search terms of at most 30 characters each.",
@@ -63,19 +63,19 @@ const SPECIFIC: readonly (readonly [string, string, string])[] = [
   [
     "injection",
     "speech-act",
-    "Describe behaviour only; do not say the code tells or asks anyone to do anything.",
+    "Describe behavior only; do not say the code tells or asks anyone to do anything.",
   ],
   [
     "injection",
     "addressee-action",
-    "Describe behaviour only; make the code, not a person or an agent, the subject.",
+    "Describe behavior only; make the code, not a person or an agent, the subject.",
   ],
   [
     "injection",
     "permission-claim",
-    "Describe behaviour only; do not judge whether any code may be changed or removed.",
+    "Describe behavior only; do not judge whether any code may be changed or removed.",
   ],
-  ["injection", "addressing", "Describe behaviour only, in the third person, without addressing anyone."],
+  ["injection", "addressing", "Describe behavior only, in the third person, without addressing anyone."],
   ["injection", "directive", "Make search terms and names nouns or descriptive phrases, never commands."],
   ["injection", "imperative", "Make search terms and names nouns or descriptive phrases, never commands."],
 ];

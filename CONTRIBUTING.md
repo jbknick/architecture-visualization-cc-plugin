@@ -6,7 +6,7 @@ Thanks for wanting to help. The project is at an early stage and its contracts s
 
 - Ask questions and float ideas in [Discussions](https://github.com/jbknick/architecture-visualization-cc-plugin/discussions).
 - Report bugs and concrete feature requests in [Issues](https://github.com/jbknick/architecture-visualization-cc-plugin/issues/new/choose), using the templates.
-- For anything larger than a small fix, comment on the issue (or open one) first so we can agree on the approach before you write code. Issues labelled `good first issue` or `help wanted` are good places to start.
+- For anything larger than a small fix, comment on the issue (or open one) first so we can agree on the approach before you write code. Issues labeled `good first issue` or `help wanted` are good places to start.
 - Report security problems privately as described in [`SECURITY.md`](SECURITY.md), not in a public issue.
 
 ## Contributing through a guided program
@@ -37,7 +37,7 @@ These come from [`CLAUDE.md`](CLAUDE.md), which the coding agents that work on t
 3. Keep private code and data out. This repo is public, so never commit code, descriptions, graph dumps or screenshots from a private repository. Tests and screenshots use `fixtures/` and the explorer mock's synthetic scenarios only. Private eval data goes in the git-ignored `evals/private/`.
 4. Add only dependencies listed in section 2 of the spec. If you need another one, propose it in the issue first.
 5. Keep each PR to one issue and put `Closes #<n>` in the description. A branch name like `gantry/<issue-number>-<slug>` is welcome but not required on forks.
-6. Update `README.md` in the same PR when you change user-visible behaviour, commands or views. The Commands table, Status table and Quick start must match `main`. If a view's look changed, run `pnpm build && pnpm readme:media` and commit the changed files under `docs/readme/`. That needs Chromium for Playwright: `pnpm --filter @gantry/explorer exec playwright install chromium`.
+6. Update `README.md` in the same PR when you change user-visible behavior, commands or views. The Commands table, Status table and Quick start must match `main`. If a view's look changed, run `pnpm build && pnpm readme:media` and commit the changed files under `docs/readme/`. That needs Chromium for Playwright: `pnpm --filter @gantry/explorer exec playwright install chromium`.
 
 ## Releases
 
@@ -66,6 +66,6 @@ A ruleset protects `main`. Changes land through pull requests, force-pushes and 
 
 The maintainer reviews each PR against the rules above (spec, `pnpm check`, private data, dependencies, one issue per PR, README), may ask for changes, and merges when it is ready. Pushing to your PR branch updates the PR, so you do not need to open a new one.
 
-## Licence
+## License
 
-By contributing you agree that your contribution is licensed under the [MIT licence](LICENSE), like the rest of the project. Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+By contributing you agree that your contribution is licensed under the [MIT license](LICENSE), like the rest of the project. Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).

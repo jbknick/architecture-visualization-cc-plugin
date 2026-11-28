@@ -34,7 +34,7 @@ export const SENSITIVE_PATTERNS: readonly string[] = [
 ];
 
 /**
- * Normalise to a clean repo-relative POSIX path, or null when the path is empty, absolute,
+ * Normalize to a clean repo-relative POSIX path, or null when the path is empty, absolute,
  * has a drive letter, or escapes the repo root via `..`.
  */
 function safeNormalize(repoRelPath: string): string | null {

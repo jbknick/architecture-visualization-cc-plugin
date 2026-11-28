@@ -34,7 +34,7 @@ describe("kindFamily for Go symbols (#223)", () => {
 });
 
 describe("path filters", () => {
-  it("recognises tests, fixtures and generated files", () => {
+  it("recognizes tests, fixtures and generated files", () => {
     for (const p of ["a.test.ts", "src/a.spec.tsx", "src/__tests__/x.ts", "x/y.test.mts"]) {
       expect(isTestPath(p)).toBe(true);
     }

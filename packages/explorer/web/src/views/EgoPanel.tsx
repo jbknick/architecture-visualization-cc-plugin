@@ -129,15 +129,15 @@ function WorkspaceKey({ nodes }: { nodes: FilterPanelProps["nodes"] }) {
       if (n.workspace && n.side !== "focus") m.set(n.workspace, (m.get(n.workspace) ?? 0) + weightOf(n));
     return m;
   }, [nodes]);
-  // Only workspaces that have callers or callees (the focus's own is not coloured).
+  // Only workspaces that have callers or callees (the focus's own is not colored).
   const rows = [...ranks]
     .filter(([id]) => (counts.get(id) ?? 0) > 0)
     .sort((a, b) => (counts.get(b[0]) ?? 0) - (counts.get(a[0]) ?? 0) || (a[0] < b[0] ? -1 : 1));
   if (rows.length < 2) return null;
   const scheme = currentScheme();
   return (
-    <section className="filter-group" aria-label="Workspace colours">
-      <h3>Colours</h3>
+    <section className="filter-group" aria-label="Workspace colors">
+      <h3>Colors</h3>
       <ul className="group-list">
         {rows.map(([id, rank]) => (
           <li key={id}>
@@ -174,8 +174,8 @@ export function EgoPanel({ nodes, filters, onFiltersChange, route, onRouteChange
 
   return (
     <div className="filter-panel" data-view="ego">
-      <section className="filter-group" aria-label="Centred on">
-        <h3>Centred on</h3>
+      <section className="filter-group" aria-label="Centered on">
+        <h3>Centered on</h3>
         {focus ? (
           <>
             <p className="focus-name">{centre?.label ?? focus}</p>
@@ -194,7 +194,7 @@ export function EgoPanel({ nodes, filters, onFiltersChange, route, onRouteChange
                 types. Try more steps or turn on more connection types.
               </p>
             )}
-            <p className="muted">Search (Cmd/Ctrl+K) to centre on a different function.</p>
+            <p className="muted">Search (Cmd/Ctrl+K) to center on a different function.</p>
           </>
         ) : (
           <p className="muted">Nothing chosen yet. Search for a function to begin.</p>

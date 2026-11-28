@@ -28,7 +28,7 @@ const SYMBOL_EDGES: EdgeKind[] = ["calls", "renders", "uses_hook"];
  *
  * `opts.groups` replaces the groups read from the overlay (the team call passes the team's groups, read from the
  * team cache). `opts.allEdges: true` keeps the edges the main layer already has (the pull request check, where the
- * index is the head checkout). Without `opts` the behaviour is the one above.
+ * index is the head checkout). Without `opts` the behavior is the one above.
  */
 export function crossingFindings(
   store: Store,

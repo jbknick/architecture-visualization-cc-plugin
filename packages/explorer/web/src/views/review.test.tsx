@@ -49,7 +49,7 @@ function mockView(view: string, filters: Record<string, string>, level?: string)
 }
 
 describe("reviewModel", () => {
-  it("names, mark kinds and one colour per kind in both themes", () => {
+  it("names, mark kinds and one color per kind in both themes", () => {
     expect(shortName(BUTTON)).toBe("Button");
     expect(shortName("file:pnpm-turbo:a/b/c.ts")).toBe("c.ts");
     expect(markKindOf({ kind: "modified", signatureChanged: true })).toBe("signature");
@@ -186,7 +186,7 @@ describe("reviewModel", () => {
     }
   });
 
-  it("the mock layer on the map: Button's file coloured, Card's file tinted, a line Card -> Button", () => {
+  it("the mock layer on the map: Button's file colored, Card's file tinted, a line Card -> Button", () => {
     const v = mockView("review", { range: "main...feature" }, "files");
     const layer = v.review?.layer as ReviewLayer;
     expect(layer.marks.find((m) => m.id === BUTTON_FILE)).toMatchObject({ change: "signature" });
@@ -243,7 +243,7 @@ describe("rings model", () => {
       for (const o of groups) if (o !== g && o.hop === g.hop) expect(o.a0 > g.a1 || o.a1 < g.a0).toBe(true);
   });
 
-  it("a node's path runs inward to the centre and outward to its callers", () => {
+  it("a node's path runs inward to the center and outward to its callers", () => {
     const p = ringPath("sym:pnpm-turbo:apps/web/src/components/PostList.tsx#PostList", ringEdges);
     expect([...p.nodes].sort()).toEqual(
       [
@@ -337,7 +337,7 @@ describe("review view", () => {
     expect(change.querySelector('[data-side="before"]')?.textContent).toContain("onClick?: () => void })");
     expect(change.querySelector('[data-side="after"]')?.textContent).toContain("size?: number");
     // The description is plain text, inside the change block only.
-    expect(within(change).getByText("Renders a labelled button.")).toBeTruthy();
+    expect(within(change).getByText("Renders a labeled button.")).toBeTruthy();
     // Who wrote it (#180): the label in the inspector and a word in the panel's row, both from described_by.
     expect(within(change).getByText("Generated description — may be wrong")).toBeTruthy();
     expect(within(list).getByRole("button", { name: /Button/ }).textContent).toContain("model description");

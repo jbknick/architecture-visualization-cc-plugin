@@ -94,7 +94,7 @@ export function useNodeDetail(id: string | null): Loadable<NodeDetail> {
 }
 
 /**
- * The cached overview of a workspace or folder. The server normalises ids (the 3D map's `dir:<workspace id>:<path>`
+ * The cached overview of a workspace or folder. The server normalizes ids (the 3D map's `dir:<workspace id>:<path>`
  * comes back as `dir:<repo path>`), so a response is matched to its request by the id that was asked for, never by
  * the `node_id` it carries. Data from an earlier id is hidden and counts as loading.
  */

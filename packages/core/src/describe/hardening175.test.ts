@@ -163,7 +163,7 @@ describe("finding 2: secrets gate the extra attempt even when shape fires first"
 });
 
 describe("finding 3: a semicolon or colon clause of bare verbs earns no extra attempt", () => {
-  // The validator keeps main's clause behaviour (#175 final round: it is not the security boundary, and its new
+  // The validator keeps main's clause behavior (#175 final round: it is not the security boundary, and its new
   // clause rules rejected honest sentences); the gate refuses these the extra attempt. With an ungrounded word each
   // is rejected as identifier, the case the gate decides.
   it.each([

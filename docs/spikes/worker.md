@@ -9,7 +9,7 @@ The spec section 16 recipe works unchanged on CLI 2.1.325 through the claude.ai 
 Caveats, none of which change the verdict:
 
 - In the `--n 10` Verify run the model exceeded the 25-word `behavior` limit on 3 of 10 descriptions (27 words each). The harness reports these as length warnings. The production worker must treat over-length `behavior` as repairable (truncate or re-ask), not trust the model to count, and the system prompt should state the limit more firmly. The last timing run at each of 1, 10 and 40 sheets passed all checks.
-- Only Haiku with `--effort low` was measured. Quality of descriptions was judged only by the schema/length checks, not against a labelled set (that belongs to the eval issues).
+- Only Haiku with `--effort low` was measured. Quality of descriptions was judged only by the schema/length checks, not against a labeled set (that belongs to the eval issues).
 - One account was tested (claude.ai subscription). API-key and Bedrock/Vertex logins were not tested.
 
 ## Operator steps (done)
@@ -69,7 +69,7 @@ Observed:
 - Dropping both `--safe-mode` and `--strict-mcp-config` loads 23 MCP servers (the user's plugin servers and account connectors, plus the project stub) and 55 skills. Either flag alone keeps them all out. Keep both: this is the lock-down that matters, and a worker that could see Gmail or Drive connectors is a leak.
 - `--tools ''` leaves a single tool, `StructuredOutput`, and only with `--json-schema`. Without `--json-schema` there are zero tools. Dropping `--tools ''` gives 28 built-in tools (27 on 2.1.321), so it is required.
 - `--safe-mode` still leaves 23 skills and 59 slash commands (built-in or bundled; the counts rose from 19/52 on 2.1.321). The cost is prompt tokens only and is included in the token table below. Dropping it adds one (the scratch project skill).
-- `--disallowedTools 'mcp__*'` and `--no-session-persistence` had no visible effect on the loaded sets or the outcome. They stay as defence in depth (the second keeps worker sessions out of the user's history).
+- `--disallowedTools 'mcp__*'` and `--no-session-persistence` had no visible effect on the loaded sets or the outcome. They stay as defense in depth (the second keeps worker sessions out of the user's history).
 - `--effort` with an invalid value does not error: it prints `Warning: Unknown --effort value ... ignoring it` and uses the default. Valid: low, medium, high, xhigh, max.
 
 ## Recursion and hook guard (step 6)
@@ -92,7 +92,7 @@ Scratch repo under the temp directory (not inside any real repo), the same stub 
 - The hook log had exactly two lines: `session-start` (the outer Claude Code session) and `outer-pre-commit`. No third line, so the worker did not fire the Gantry hook.
 - The guard-exit log was empty. With the full recipe the worker's `--safe-mode` skips project hooks, so the guard never even runs.
 
-Findings: a `claude -p` worker without `--safe-mode` re-enters project `SessionStart` hooks, and `GANTRY_WORKER=1` stops that (guard exit count 1, work count 0). With `--safe-mode`, project hooks do not run at all. The guard is a second line of defence, and both lines hold for a real Claude-made commit. Not measured: a commit by a Claude Code session that has Gantry's real plugin hooks (as opposed to the stub with the same structure) installed; that belongs to the hook issues.
+Findings: a `claude -p` worker without `--safe-mode` re-enters project `SessionStart` hooks, and `GANTRY_WORKER=1` stops that (guard exit count 1, work count 0). With `--safe-mode`, project hooks do not run at all. The guard is a second line of defense, and both lines hold for a real Claude-made commit. Not measured: a commit by a Claude Code session that has Gantry's real plugin hooks (as opposed to the stub with the same structure) installed; that belongs to the hook issues.
 
 ## Timing (step 5)
 
@@ -130,14 +130,14 @@ Values are from the last of the 3 runs at each size (`--timing` prints one row o
 | `--effort low`, env unset | 672, 616              | 4617 ms     |
 | `--effort low`, env=`max` | 4914, 4382            | 19288 ms    |
 
-The env var clearly wins over the flag: output tokens rise about 7x and wall time about 4x with `CLAUDE_CODE_EFFORT_LEVEL=max` set. Unsetting it restores the flag's behaviour. The worker must remove `CLAUDE_CODE_EFFORT_LEVEL` from its env, as the spec says and the script does. (Measured by token and time effect; the CLI does not report the effective effort.)
+The env var clearly wins over the flag: output tokens rise about 7x and wall time about 4x with `CLAUDE_CODE_EFFORT_LEVEL=max` set. Unsetting it restores the flag's behavior. The worker must remove `CLAUDE_CODE_EFFORT_LEVEL` from its env, as the spec says and the script does. (Measured by token and time effect; the CLI does not report the effective effort.)
 
 ## Spec changes to make (section 16; docs/SPEC.md is not edited here, that is issue #11)
 
 1. Replace "M0 confirms which flags work together" with the confirmed recipe from this report (CLI 2.1.325). Every flag in the recipe works together unchanged.
 2. `--system-prompt-file` works but does not appear in `claude --help` (only `--system-prompt` is listed). Note to re-check it on each CLI upgrade, or fall back to `--system-prompt "$(cat file)"`.
 3. State that `--json-schema` is mandatory: without it there is no `structured_output` (0/2 live) and no `StructuredOutput` tool. Keep "may be missing, then backlog" for model or schema failures.
-4. State that `--safe-mode` and `--strict-mcp-config` are each sufficient to keep MCP servers out, and that dropping both loads all user plugin and claude.ai connector servers (23 here). Keep both; keep `GANTRY_WORKER=1` as the third line (it stopped the hook in the control without `--safe-mode`). `--disallowedTools 'mcp__*'` and `--no-session-persistence` had no visible effect on loaded sets; keep them as defence in depth.
+4. State that `--safe-mode` and `--strict-mcp-config` are each sufficient to keep MCP servers out, and that dropping both loads all user plugin and claude.ai connector servers (23 here). Keep both; keep `GANTRY_WORKER=1` as the third line (it stopped the hook in the control without `--safe-mode`). `--disallowedTools 'mcp__*'` and `--no-session-persistence` had no visible effect on loaded sets; keep them as defense in depth.
 5. Say how Gantry finds the `claude` binary. It is not on `PATH` when Claude Code runs from the desktop app or here (`~/.local/bin/claude`). Resolve in this order: config override, `$CLAUDE_CODE_EXECPATH`, `claude` on `PATH`.
 6. `claude auth status` prints JSON; gate on `loggedIn === true` (`authMethod: claude.ai` worked). Treat `false` as "no worker, enqueue only", not an error.
 7. Add the measured budget: about 3 s cold start, about 0.4 s per function, about 2000 input tokens fixed per call plus about 140 per fact sheet, about 125 to 165 output tokens per function. Recommend batches of 10 to 40 per call.

@@ -10,7 +10,7 @@ export { ReviewLegend };
 /**
  * The review view's canvas (hint `review`, #167). Mode `map` (default): the project map itself, 2D (the map canvas, at
  * the level asked for) or 3D (the settlements), with the review layer on it; the map's nodes and layout are the plain
- * map's. Mode `rings`: the changed code in the centre and its callers on rings by hop.
+ * map's. Mode `rings`: the changed code in the center and its callers on rings by hop.
  */
 export function ReviewCanvas(props: CanvasProps) {
   const review = props.data?.review ?? null;

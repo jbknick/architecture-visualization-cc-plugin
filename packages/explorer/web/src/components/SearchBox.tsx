@@ -36,7 +36,7 @@ export function SearchBox() {
   const choose = (index: number) => {
     const hit = results[index];
     if (!hit) return;
-    // In the ego view a search result becomes the centre of the graph; elsewhere it opens in the inspector.
+    // In the ego view a search result becomes the center of the graph; elsewhere it opens in the inspector.
     if (view === "ego") focusOn(hit.id, hit);
     else selectNode(hit.id, hit);
     setOpen(false);

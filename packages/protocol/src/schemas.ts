@@ -30,7 +30,7 @@ export const LIMITS = {
   pull_change_sets: 500,
   groups_per_repo: 100,
   views_per_repo: 100,
-  /** Serialised size of one group or saved view, in bytes. */
+  /** Serialized size of one group or saved view, in bytes. */
   item_bytes: 32 * 1024,
   /** `message` of an error and `error` of an upload status, in characters. */
   message: 500,
@@ -347,7 +347,7 @@ export const DescriptionsResponseSchema = z.object({ stored: nonNegInt });
 export const DescriptionReadSchema = z.object(DescriptionSchema.shape);
 
 /**
- * What the lookup returns: the descriptions the organisation has, whatever the repo. A key with none is absent. The
+ * What the lookup returns: the descriptions the organization has, whatever the repo. A key with none is absent. The
  * records are `unknown` here on purpose: one record that does not fit must not reject the others, so the caller
  * checks each with `DescriptionReadSchema.safeParse` and drops the ones that fail.
  */

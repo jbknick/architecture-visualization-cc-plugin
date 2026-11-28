@@ -86,7 +86,7 @@ interface Use {
 
 const AFTER_CALL = /^\s*(?:\?\.)?\s*(?:<[^()<>]*(?:<[^()<>]*>[^()<>]*)*>)?\s*\(/;
 
-/** Reads the use off the line the occurrence is on (only that line: a range and its neighbours on other lines are not looked at). */
+/** Reads the use off the line the occurrence is on (only that line: a range and its neighbors on other lines are not looked at). */
 function useAt(line: string, start: number, end: number): Use {
   const before = line.slice(0, start);
   return {

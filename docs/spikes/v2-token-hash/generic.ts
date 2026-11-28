@@ -1,5 +1,5 @@
-// A language-blind shape normaliser over any tree-sitter tree (ast-grep), driven by a per-language kind table.
-// Question it answers: if the shared code also did the normalising, would TypeScript hashes survive?
+// A language-blind shape normalizer over any tree-sitter tree (ast-grep), driven by a per-language kind table.
+// Question it answers: if the shared code also did the normalizing, would TypeScript hashes survive?
 import { Lang, parse, type SgNode } from "@ast-grep/napi";
 
 export interface KindTable {

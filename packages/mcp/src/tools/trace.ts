@@ -21,7 +21,7 @@ interface Step {
 
 /**
  * The MCP shape of a trace: the routes, endpoints and tables it reached, then the chain. When the chain does not fit,
- * the steps between them (components, hooks, helpers) are summarised as repeats `{ depth, via, kind, count, sample }`
+ * the steps between them (components, hooks, helpers) are summarized as repeats `{ depth, via, kind, count, sample }`
  * and the lists are cut, with totals. Ids, kinds and edge kinds only: no description text.
  */
 export function shapeTrace(r: TraceResult, budget: number = TRACE_LIMITS.budget) {
@@ -103,7 +103,7 @@ export const traceTool = defineTool({
     "Page → API → table chain. From a route (route:<ws>:<route id>, or a route path such as /posts/$postId) it follows the page's component, what it renders, calls and hooks, the endpoints those request (oRPC procedures, Hono routes, server functions), their handlers and the database tables they read or write; from a table (table:<name>) it goes up to the endpoints and pages that use it. " +
     "Also takes an endpoint id or label (ep:..., GET /api/posts/:id, rpc posts.list), a symbol id, a file path or path:line; direction defaults to up for a table and down otherwise. " +
     "Returns {target, direction, routes, endpoints: [{id, low?}], tables, chain: [{id, kind, repo?, via, depth, from?, low?}], repeats?, gaps, omitted, truncated}: repo (only when the workspace has several repos) names the repo of a step, since a trace follows a page's request into the repo that serves it, via is the edge kind a step was reached by, low marks a low-confidence match (fetch URL or name only), gaps lists where the chain stops (unmatched client calls, endpoints without a handler or table, limits). " +
-    "When the chain is long the steps between pages, endpoints and tables are summarised in repeats with counts; *_total fields count what was cut. No description text is returned.",
+    "When the chain is long the steps between pages, endpoints and tables are summarized in repeats with counts; *_total fields count what was cut. No description text is returned.",
   inputSchema: {
     target: z
       .string()

@@ -6,7 +6,7 @@
     {
       "name": "gantry",
       "source": "./plugin",
-      "description": "Claude Code Architecture Visualisation Plugin (local development copy)"
+      "description": "Claude Code Architecture Visualization Plugin (local development copy)"
     }
   ]
 }

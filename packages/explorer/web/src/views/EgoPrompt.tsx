@@ -4,7 +4,7 @@ import { Button } from "../components/ui/button.tsx";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
-/** Centre-of-screen explanation shown by the ego view until a function is chosen. */
+/** Center-of-screen explanation shown by the ego view until a function is chosen. */
 export function EgoPrompt() {
   const focusSearch = () => {
     const box = document.querySelector<HTMLInputElement>('input[aria-label="Search symbols"]');

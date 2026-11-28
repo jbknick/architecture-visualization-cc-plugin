@@ -289,7 +289,7 @@ export class FlowBuilder {
   }
 }
 
-/** Rank the nodes of `lane` by the mean rank of their neighbours in `fromLane` (barycentre), ties by label. */
+/** Rank the nodes of `lane` by the mean rank of their neighbors in `fromLane` (barycentre), ties by label. */
 export function barycentreRanks(
   nodes: GraphNode[],
   edges: GraphEdge[],

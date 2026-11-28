@@ -14,9 +14,9 @@ export interface FakeConfig {
   delayMs: number;
   /** From this many `-p` calls on (0-based count of earlier calls), a call hangs like mode "hang". -1: never. */
   hangAfter: number;
-  /** Default behaviour of a `-p` call. */
+  /** Default behavior of a `-p` call. */
   mode: FakeMode;
-  /** Behaviour by `--model` value, over `mode`. */
+  /** Behavior by `--model` value, over `mode`. */
   perModel: Record<string, FakeMode>;
   usage: { input: number; cacheCreation: number; cacheRead: number; output: number };
 }

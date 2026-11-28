@@ -90,7 +90,7 @@ function isCommitId(hex: string, ctx: string): boolean {
   return (hex.length === 40 || hex.length === 64) && COMMIT_CONTEXT.test(ctx) && !SIGNATURE_CONTEXT.test(ctx);
 }
 
-/** A capitalised phrase of letters and spaces: "Enter your password". */
+/** A capitalized phrase of letters and spaces: "Enter your password". */
 function looksLikeLabel(v: string): boolean {
   return /\s/.test(v) && /^\p{Lu}[\p{L}' ,.!?-]*$/u.test(v) && v.trim().split(/\s+/).length >= 2;
 }
@@ -142,7 +142,7 @@ function credentialValueAccepted(g: Record<string, string>, redact: boolean): bo
   if (g.q === "`" && v.includes("${")) return false;
   if (looksLikeMessageKey(v) || NON_SECRET_VALUES.has(v)) return false;
   // A text for a person ("Enter your password") is not a secret, but only when the name says so or the value reads as
-  // a sentence; a capitalised phrase behind a plain credential name stays redacted (`password = "Correct Horse Battery"`).
+  // a sentence; a capitalized phrase behind a plain credential name stays redacted (`password = "Correct Horse Battery"`).
   // A strong credential name (password, token, secret, ...) is redacted whatever the value reads like, except a
   // placeholder prompt; the sentence exemption holds only for other names.
   const name = g.name ?? "";
@@ -227,7 +227,7 @@ export const SECRET_RULES: readonly SecretRule[] = [
   },
   {
     name: "private-key",
-    // The header, plus the key body through the END line when present (the body has no recognisable shape).
+    // The header, plus the key body through the END line when present (the body has no recognizable shape).
     re: /-----BEGIN (?:[A-Z0-9]+ ){0,4}PRIVATE KEY(?: BLOCK)?-----(?:[\s\S]{0,6000}?-----END (?:[A-Z0-9]+ ){0,4}PRIVATE KEY(?: BLOCK)?-----)?/g,
     collapsible: true,
   },
@@ -524,7 +524,7 @@ const COLLAPSIBLE_RULES = SECRET_RULES.filter((r) => r.collapsible === true);
 
 /**
  * Names of the secret rules that match `text`, in rule order, without duplicates. Never returns matched text.
- * Zero-width and other invisible characters are removed and the text is NFKC-normalised first, so a key split by a
+ * Zero-width and other invisible characters are removed and the text is NFKC-normalized first, so a key split by a
  * zero-width space or written in fullwidth letters is still found. A second pass removes hyphens between alphanumerics and
  * joins runs of adjacent tokens, then runs the prefix-anchored rules again, so "AKIA-IOSF-ODNN" or a key broken across words is found
  * (reported as `split:<rule>`). Base64 tokens are also decoded and scanned (reported as `base64:<rule>`).

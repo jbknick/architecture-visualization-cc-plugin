@@ -46,7 +46,7 @@ describe("sql-text", () => {
     expect(refTarget(rt[0]?.ref ?? "")).toEqual({ placeholder: 1 });
   });
 
-  it("recognises text that holds a statement shape anywhere", () => {
+  it("recognizes text that holds a statement shape anywhere", () => {
     expect(looksLikeSql("select a from b")).toBe(true);
     expect(looksLikeSql("(SELECT x FROM y)")).toBe(true);
     expect(looksLikeSql("INSERT INTO t")).toBe(true);

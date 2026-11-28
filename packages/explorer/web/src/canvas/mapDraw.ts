@@ -76,7 +76,7 @@ export interface DrawEnv {
   fresh?: readonly number[];
   /**
    * Review layer (#167): unlit cells fade back (low opacity, desaturated) in their usual place, changed cells take
-   * their change's colour, hop-1 callers a soft tint, and lines join changed cells to their callers.
+   * their change's color, hop-1 callers a soft tint, and lines join changed cells to their callers.
    */
   review?: ReviewPaintEnv | null;
   /**
@@ -106,7 +106,7 @@ export interface TeamMarkerDrawn {
   h: number;
 }
 
-/** The review layer as the draw loop needs it: tree indices plus the theme's colours. */
+/** The review layer as the draw loop needs it: tree indices plus the theme's colors. */
 export interface ReviewPaintEnv extends LayerPaint {
   colours: Record<string, string>;
   /**
@@ -160,7 +160,7 @@ export interface EdgeHit {
   /** The routed polyline itself (screen px, as drawn), for tests. */
   route: [number, number][];
   width: number;
-  /** The line colour (the importing workspace's), for tests. */
+  /** The line color (the importing workspace's), for tests. */
   colour: string;
   /** Opacity the line was drawn with, and the arrowhead's length in px. */
   alpha: number;
@@ -183,7 +183,7 @@ export interface DrawResult {
   pills: { key: string; count: string; text: string; x: number; y: number; w: number; h: number }[];
   /** The text printed on every folder strip and file cell: `cellW` is the cell's width on screen. */
   labels: { id: string; kind: "folder" | "file"; cellW: number; lines: string[]; box?: Rect }[];
-  /** The rank markers that were drawn (centre and radius in px), in rank order. */
+  /** The rank markers that were drawn (center and radius in px), in rank order. */
   markers: RankMarker[];
   /** Function tiles that got M2 badge marks (ids and badge names), for tests. */
   badged: { id: string; badges: string[] }[];
@@ -417,8 +417,8 @@ export function drawMap(env: DrawEnv): DrawResult {
     return v;
   };
 
-  // Per-workspace colours, computed once per frame. Siblings alternate between two close tints (by index), so
-  // neighbouring cells read as separate cells in both themes; folder strips get a little stronger per depth.
+  // Per-workspace colors, computed once per frame. Siblings alternate between two close tints (by index), so
+  // neighboring cells read as separate cells in both themes; folder strips get a little stronger per depth.
   interface Tint {
     colour: string;
     box: string;
@@ -448,7 +448,7 @@ export function drawMap(env: DrawEnv): DrawResult {
     }
     return t;
   };
-  // Link ink: the workspace colour moved toward black (light) or white (dark) just far enough for 3:1 against the
+  // Link ink: the workspace color moved toward black (light) or white (dark) just far enough for 3:1 against the
   // canvas (lines) and 4.5:1 against the pill background (numbers).
   const inks = new Map<number, { line: string; text: string }>();
   const linkInk = (root: number): { line: string; text: string } => {
@@ -493,7 +493,7 @@ export function drawMap(env: DrawEnv): DrawResult {
     (env.bright !== null && !env.bright.has(i)) ||
     (panelHover !== null && (tree.nodes[i] as TreeNode).root !== panelHover) ||
     (rv !== null && !rv.lit[i]);
-  /** Review layer: the fill of cell `i` (a leaf takes its change's colour or the caller tint; the rest go grey). */
+  /** Review layer: the fill of cell `i` (a leaf takes its change's color or the caller tint; the rest go gray). */
   const reviewFill = (i: number, base: string, leaf: boolean): string => {
     if (!rv) return base;
     if (!rv.lit[i]) {
@@ -516,7 +516,7 @@ export function drawMap(env: DrawEnv): DrawResult {
     }
     return base;
   };
-  /** Text on a cell filled with a change colour: black or white, whichever reads better. */
+  /** Text on a cell filled with a change color: black or white, whichever reads better. */
   const inkOnChange = (i: number, fallback: string): string => {
     const ch = rv && (tree.nodes[i] as TreeNode).children.length === 0 ? rv.change[i] : null;
     const c = ch ? rv?.colours[ch] : undefined;
@@ -770,7 +770,7 @@ export function drawMap(env: DrawEnv): DrawResult {
     const tint = tintOf(r);
     ctx.globalAlpha = dimmed(r) ? 0.3 : 1;
     roundRect(ctx, bx, by, bw, bh, Math.min(12, 12 * cam.scale + 2));
-    // A childless box (the Workspaces level) is the marked node itself: a soft wash of its change's colour.
+    // A childless box (the Workspaces level) is the marked node itself: a soft wash of its change's color.
     const boxMark = rv && (tree.nodes[r] as TreeNode).children.length === 0 ? rv.change[r] : null;
     ctx.fillStyle = boxMark
       ? mix(rv?.colours[boxMark] ?? tint.box, tint.box, 0.35)
@@ -830,7 +830,7 @@ export function drawMap(env: DrawEnv): DrawResult {
   ctx.globalAlpha = 1;
   if (rv) {
     // Containers that hold a change of their own (a file whose imports changed, a folder at the Folders level) or a
-    // caller, and workspace boxes, get an outline in the layer's colour; other leaves are filled instead.
+    // caller, and workspace boxes, get an outline in the layer's color; other leaves are filled instead.
     const boxed = (i: number) => {
       const n = tree.nodes[i] as TreeNode;
       return n.children.length > 0 || n.parent === -1;
@@ -952,7 +952,7 @@ function drawRankMarkers(
     const colour = tintOf((tree.nodes[it.index] as TreeNode).root).colour;
     const r = hot ? R + 2 : R;
     ctx.globalAlpha = dim ? 0.35 : 1;
-    // Halo in the canvas colour keeps the circle apart from the tiles under it.
+    // Halo in the canvas color keeps the circle apart from the tiles under it.
     ctx.beginPath();
     ctx.arc(p.x, p.y, r + 2.5, 0, Math.PI * 2);
     ctx.fillStyle = hexToRgba(light ? "#ffffff" : "#0b0e13", 0.92);
@@ -1304,7 +1304,7 @@ function farFrom(b: RouteBox, rect: Rect, reach: number): boolean {
   );
 }
 
-/** The link ink of one workspace: the line colour (3:1 on the canvas) and the pill text colour (4.5:1 on the pill). */
+/** The link ink of one workspace: the line color (3:1 on the canvas) and the pill text color (4.5:1 on the pill). */
 interface LinkInk {
   line: string;
   text: string;
@@ -1396,7 +1396,7 @@ function drawWsEdges(
       if (Math.hypot(last[0] - prev[0], last[1] - prev[1]) > 0.5) break;
     }
     const ang = Math.atan2(last[1] - prev[1], last[0] - prev[0]);
-    // At least 11px so it reads, at most 15px so neighbouring ports (12px apart) keep their own heads. The tip
+    // At least 11px so it reads, at most 15px so neighboring ports (12px apart) keep their own heads. The tip
     // touches the edge of the target box.
     const head = Math.min(15, Math.max(11, width * 1.3 + 8));
     const shaft = pts.slice(0, -1);
@@ -1411,7 +1411,7 @@ function drawWsEdges(
     if (e.declaredOnly || e.crossRepo) ctx.setLineDash([5, 4]);
     strokeRounded(ctx, shaft, 14);
     ctx.setLineDash([]);
-    // The arrowhead, with a hairline of the canvas colour so neighbouring heads and the box edge stay apart.
+    // The arrowhead, with a hairline of the canvas color so neighboring heads and the box edge stay apart.
     ctx.strokeStyle = halo;
     ctx.lineWidth = 0.75;
     arrowHead(ctx, last[0], last[1], ang, head, true);
@@ -1659,7 +1659,7 @@ function drawCellLinks(env: DrawEnv): void {
   ctx.lineCap = "butt";
 }
 
-/** A colour moved to grey and toward the surface: an untouched cell of the review layer. */
+/** A color moved to gray and toward the surface: an untouched cell of the review layer. */
 export function fadeColour(hex: string, surface: string): string {
   const n = Number.parseInt(hex.slice(1), 16);
   const g = Math.round(0.3 * ((n >> 16) & 255) + 0.59 * ((n >> 8) & 255) + 0.11 * (n & 255));
@@ -1668,7 +1668,7 @@ export function fadeColour(hex: string, surface: string): string {
 }
 
 /**
- * The review layer's lines: a curve from each caller cell to the changed cell it calls, in the change's colour (made
+ * The review layer's lines: a curve from each caller cell to the changed cell it calls, in the change's color (made
  * to read against the canvas), an arrowhead at the changed end and a dot at the caller's.
  */
 function drawReviewLinks(env: DrawEnv, rv: ReviewPaintEnv, drawn: ReviewDrawn): void {

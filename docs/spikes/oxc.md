@@ -2,7 +2,7 @@
 
 Issue #3, milestone M0. Question: how fast and how complete is an `oxc-parser` + `oxc-resolver` import-binding graph on a real pnpm/Turborepo monorepo, before M1 builds the production one?
 
-This report is public. It contains counts, generalised path shapes and public module names only. No test-bed code, file names, feature names or internal package names appear here. Raw detail (real specifiers and file paths) is written to git-ignored `evals/private/` by the script.
+This report is public. It contains counts, generalized path shapes and public module names only. No test-bed code, file names, feature names or internal package names appear here. Raw detail (real specifiers and file paths) is written to git-ignored `evals/private/` by the script.
 
 ## Setup
 
@@ -78,7 +78,7 @@ Only 14 of the 181 are repo-internal, and all 14 trace to generated, untracked o
 ### Findings and concrete fixes for M1
 
 1. **Set `builtinModules: true`.** Without it every `node:*` import reports "Cannot find module" (296 false unresolved). With it, `result.builtin` is set and they classify as builtin.
-2. **`realpath` the repo root before comparing.** The resolver returns real paths (`symlinks` on). On macOS `/tmp` is `/private/tmp`, so a naive `startsWith(root)` classified every repo file as outside the repo (0% resolved on the first run). Use `fs.realpathSync(root)`, and compare after normalising separators.
+2. **`realpath` the repo root before comparing.** The resolver returns real paths (`symlinks` on). On macOS `/tmp` is `/private/tmp`, so a naive `startsWith(root)` classified every repo file as outside the repo (0% resolved on the first run). Use `fs.realpathSync(root)`, and compare after normalizing separators.
 3. **Treat `<scheme>:` specifiers as virtual**, not unresolved failures: `cloudflare:*`, `virtual:*`, `bun:`, `data:`. Keep `node:` for builtins.
 4. **Generated files:** add a "generated, expected missing" class for spec-section-5 excluded files (`*.gen.ts`, `routeTree.gen.ts`) and for imports into gitignored output. These should be a separate count, not resolution failures. If the user has run their codegen, the resolver already follows them.
 5. **Types-only packages:** when a bare specifier fails and `node_modules/@types/<name>` exists, classify as `node_modules` (types). Fixes the `hast`/`mdast` pair.
@@ -94,7 +94,7 @@ Only 14 of the 181 are repo-internal, and all 14 trace to generated, untracked o
 - Option keys seen in the options object: `component` (39), `head` (20), `validateSearch` (14), `beforeLoad` (12), `server` (8), `headers` (6), `loader` (6), `notFoundComponent` (6), `errorComponent` (4), `staleTime` (4), `ssr` (3), `pendingComponent` (2). `server` and `headers` indicate TanStack Start server routes (HTTP handlers on a route file): M3 should treat a route with `server` as both a page and an endpoint candidate.
 - `createServerFn`: 0 uses.
 
-## Locations for M6 (paths generalised: workspace and feature folder names replaced)
+## Locations for M6 (paths generalized: workspace and feature folder names replaced)
 
 - **Hono:** 11 files import `hono`: 5 in `apps/<name>/src/`, 4 in `packages/<name>/src/`, 2 in a feature subfolder of a package. Middleware imports `hono/cookie`, `hono/cors`, `hono/http-exception`, `hono/body-limit`. Detected by the `hono` import plus `new Hono(...)`.
 - **oRPC routers:** 131 files import `@orpc/server`: 60 directly under `packages/<name>/src/`, 19 under `packages/<name>/src/routers/`, 46 in feature subfolders of packages (`packages/<name>/src/<feature>/`), 6 under `apps/<name>/src/`. `@orpc/server/fetch` (6 imports) is the HTTP adapter. No file calls `implement()`; routers are built from the `os` builder chain, so detection must be by `@orpc/server` import plus a `.handler(...)` chain. Client side: `@orpc/client` (56 files), `@orpc/client/fetch` (48), `@orpc/tanstack-query` (1).
@@ -102,7 +102,7 @@ Only 14 of the 181 are repo-internal, and all 14 trace to generated, untracked o
 
 ## Deviations and notes
 
-- **Path-level detail withheld from the report.** The issue asks for "paths only" for the M6 locations, but the project rules forbid committing private file paths from the test bed. Paths here are generalised (`apps/<name>/src/routes/`). Exact paths are in the git-ignored private output (`--private-out evals/private/oxc-spike.json`).
+- **Path-level detail withheld from the report.** The issue asks for "paths only" for the M6 locations, but the project rules forbid committing private file paths from the test bed. Paths here are generalized (`apps/<name>/src/routes/`). Exact paths are in the git-ignored private output (`--private-out evals/private/oxc-spike.json`).
 - **Top-20 unresolved specifiers.** Only 6 distinct groups exist, so the table is the full list. Internal specifiers are redacted to shape.
 - **Nodes counted.** "Functions" are top-level function declarations and top-level const arrow/function expressions only (class methods and nested functions are not counted), as the issue specifies. Dynamic imports with non-literal arguments are not counted as imports.
 - The script lives at `docs/spikes/oxc/` with its own `tsconfig.json` (referenced from the root solution) so that `tsc -b` type-checks it, and `vitest.config.ts` now also picks up `docs/spikes/**/*.test.ts`. `tsx` was added as a root dev dependency (approved in spec section 2).

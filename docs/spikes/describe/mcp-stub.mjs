@@ -1,6 +1,6 @@
 // Temporary stdio MCP stub for the issue #6 Path B spike. Not product code: it stands in for the Gantry MCP server
-// so a describer-style subagent can claim fact sheets from the labelled JSONL and submit descriptions.
-// Env: STUB_DATA (labelled jsonl, required), STUB_OUT (output dir, required), STUB_BATCH (default 40).
+// so a describer-style subagent can claim fact sheets from the labeled JSONL and submit descriptions.
+// Env: STUB_DATA (labeled jsonl, required), STUB_OUT (output dir, required), STUB_BATCH (default 40).
 // Tools: claim_batch {} -> up to STUB_BATCH fact sheets; submit { results: [{ content_key, description }] }.
 // Every claim and accepted submission is appended with a timestamp to STUB_OUT/events.jsonl (private data).
 

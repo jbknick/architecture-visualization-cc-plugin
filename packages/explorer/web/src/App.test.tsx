@@ -213,7 +213,7 @@ describe("inspector actions", () => {
     );
   });
 
-  it("'Show callers & callees' switches to the ego view centred on the node", async () => {
+  it("'Show callers & callees' switches to the ego view centered on the node", async () => {
     installMockFetch();
     renderApp(deepLink(BUTTON));
     const inspector = await inspectorOf();

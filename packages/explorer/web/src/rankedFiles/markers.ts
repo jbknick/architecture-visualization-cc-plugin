@@ -2,7 +2,7 @@
 // that would collide is nudged to the nearest free spot. Deterministic: markers are placed in rank order.
 export interface MarkerSpot {
   id: string;
-  /** Where the marker wants to be (centre, px). */
+  /** Where the marker wants to be (center, px). */
   x: number;
   y: number;
 }
@@ -15,7 +15,7 @@ export interface PlacedMarker extends MarkerSpot {
 const ANGLES = 16;
 
 /**
- * Centres for `spots` (in the order given, which is rank order) so that no two circles of radius `r` plus `gap`
+ * Centers for `spots` (in the order given, which is rank order) so that no two circles of radius `r` plus `gap`
  * overlap. Every spot gets a position. `blocked(x, y)` may veto positions (e.g. outside the canvas).
  */
 export function decollideMarkers(

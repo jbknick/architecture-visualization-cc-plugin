@@ -29,7 +29,7 @@ export interface Tree {
   index: Map<string, number>;
   /** True when at least one node has a parent in the set, or workspaces are boxed (see `buildTree`). */
   hierarchical: boolean;
-  /** Childless workspaces are drawn as labelled boxes (the project map at workspace level). */
+  /** Childless workspaces are drawn as labeled boxes (the project map at workspace level). */
   boxWorkspaces: boolean;
 }
 

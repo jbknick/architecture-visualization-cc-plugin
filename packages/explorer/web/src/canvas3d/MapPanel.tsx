@@ -80,7 +80,7 @@ export function MapPanel({
   };
   const level = route?.level === "workspaces" || route?.level === "files" ? route.level : "dirs";
   const hideTests = getBool(filters, "hideTests", true);
-  // Biggest first; the colour index stays the island's position in the sorted-id order.
+  // Biggest first; the color index stays the island's position in the sorted-id order.
   const islands = useMemo(
     () =>
       (fromMap ? cityWorkspaces(nodes) : summarizeIslands(nodes)).sort(
@@ -223,7 +223,7 @@ export function MapPanel({
               <span className="map3d-sw map3d-sw-island" aria-hidden="true" />
               <span>
                 <strong>District</strong> = one workspace, laid out like the 2D project map (area =
-                functions). Colour = workspace, as in the list below.
+                functions). Color = workspace, as in the list below.
               </span>
             </li>
             <li>
@@ -232,7 +232,7 @@ export function MapPanel({
                 <path d="M16 0.8 L25 5 L16 9.2 Z" fill="currentColor" />
               </svg>
               <span>
-                <strong>Arch A → B</strong> = A imports from B. Colour = the importer, thicker = more imports,
+                <strong>Arch A → B</strong> = A imports from B. Color = the importer, thicker = more imports,
                 the number is the import count.
               </span>
             </li>
@@ -260,7 +260,7 @@ export function MapPanel({
             <li>
               <span className="map3d-sw map3d-sw-island" aria-hidden="true" />
               <span>
-                <strong>Island</strong> = one workspace. Size = number of functions. Colour = workspace, as in
+                <strong>Island</strong> = one workspace. Size = number of functions. Color = workspace, as in
                 the list below.
               </span>
             </li>

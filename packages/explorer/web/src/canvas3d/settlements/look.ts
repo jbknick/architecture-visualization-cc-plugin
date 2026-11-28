@@ -1,4 +1,4 @@
-// Colours of the landscape, by day (light theme) and by night (dark theme).
+// Colors of the landscape, by day (light theme) and by night (dark theme).
 import * as THREE from "three";
 import type { Scheme } from "../../theme.ts";
 import { workspaceColorAt } from "../../workspacePalette.ts";
@@ -89,7 +89,7 @@ export function lookFor(scheme: Scheme): Look {
 
 export const color = (c: string): THREE.Color => new THREE.Color(c);
 
-/** The workspace's colour, as the 2D map draws it. */
+/** The workspace's color, as the 2D map draws it. */
 export function wsColor(index: number, look: Look): THREE.Color {
   return color(workspaceColorAt(index, look.scheme));
 }

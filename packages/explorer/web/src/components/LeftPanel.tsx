@@ -33,10 +33,10 @@ export function LeftPanel({
   onRouteChange,
 }: Props) {
   const Panel = viewId ? getFilterPanel(viewId) : null;
-  // The project map's panel already lists the workspaces with their colours; the kind colours only matter once
+  // The project map's panel already lists the workspaces with their colors; the kind colors only matter once
   // functions are drawn.
-  // The ego view colours by workspace and lists them in its own panel; the 3D map has its own "how to read it"
-  // block and workspace list (kind colours never appear in either).
+  // The ego view colors by workspace and lists them in its own panel; the 3D map has its own "how to read it"
+  // block and workspace list (kind colors never appear in either).
   const showKindLegend =
     viewId !== "ego" &&
     viewId !== "map-3d" &&

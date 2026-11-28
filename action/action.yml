@@ -35,7 +35,7 @@ inputs:
     required: false
     default: ""
   team-org:
-    description: "Your organisation's slug on the team server. Needed with team-server and team-token."
+    description: "Your organization's slug on the team server. Needed with team-server and team-token."
     required: false
     default: ""
   team-token:
@@ -59,7 +59,7 @@ runs:
       with:
         node-version: "26"
 
-    # Every Gantry step below fails open: on an error it logs a warning, writes `failed=<one sanitised line>` to its
+    # Every Gantry step below fails open: on an error it logs a warning, writes `failed=<one sanitized line>` to its
     # outputs and exits 0, and the later Gantry steps are skipped. The last step still runs and posts a comment that
     # says the analysis failed and why.
     - name: Install Gantry

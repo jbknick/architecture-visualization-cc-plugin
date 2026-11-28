@@ -81,7 +81,7 @@ describe("post-failure.sh", () => {
       GITHUB_API_URL: fake.url,
     });
     const body = fake.comments[0]?.body ?? "";
-    expect(body.split("\n").filter((l) => l.startsWith("Gantry could not analyse"))).toHaveLength(1);
+    expect(body.split("\n").filter((l) => l.startsWith("Gantry could not analyze"))).toHaveLength(1);
     expect(body).not.toContain("```");
     expect(body.length).toBeLessThan(500);
   });

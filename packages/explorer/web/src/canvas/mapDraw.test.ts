@@ -30,7 +30,7 @@ describe("picking", () => {
     const cam = { scale: 1, tx: 0, ty: 0 };
     const symbol = scene.tree.nodes.findIndex((n) => n.kind === "function");
     const r = rectOf(geo, symbol);
-    // A big enough zoom that the cell is over 2px: its centre picks the function itself.
+    // A big enough zoom that the cell is over 2px: its center picks the function itself.
     const zoomed = { scale: 20, tx: 0, ty: 0 };
     expect(pickCell(scene, geo, zoomed, (r.x + r.w / 2) * 20, (r.y + r.h / 2) * 20)).toBe(symbol);
 
@@ -233,7 +233,7 @@ describe("the large mock, drawn at the fit zoom of a 1180 x 812 canvas", () => {
       if (!own) throw new Error(`no route for ${p.key}`);
       const cx = p.x + p.w / 2;
       const cy = p.y + p.h / 2;
-      // On its own route (the pill is centred on a straight stretch of it).
+      // On its own route (the pill is centered on a straight stretch of it).
       expect(distanceToPolyline(cx, cy, own.route), `${p.key} is on its route`).toBeLessThan(1);
       for (const other of result.edgeHits) {
         if (other.key === p.key) continue;
@@ -333,7 +333,7 @@ describe("the large mock, drawn at the fit zoom of a 1180 x 812 canvas", () => {
         }
   });
 
-  it("colours every line, arrowhead and pill by the importing workspace, and never fades the light ones", async () => {
+  it("colors every line, arrowhead and pill by the importing workspace, and never fades the light ones", async () => {
     const { scene, result } = await drawLarge("workspaces", true);
     const bySource = new Map<number, Set<string>>();
     for (const e of result.edgeHits) {
@@ -341,7 +341,7 @@ describe("the large mock, drawn at the fit zoom of a 1180 x 812 canvas", () => {
       expect(e.width, `${e.key} width`).toBeGreaterThanOrEqual(1.25);
       expect(e.alpha, `${e.key} opacity`).toBeGreaterThanOrEqual(0.55);
     }
-    // One colour per source workspace, a different one for each.
+    // One color per source workspace, a different one for each.
     for (const set of bySource.values()) expect(set.size).toBe(1);
     const colours = [...bySource.values()].map((s) => [...s][0]);
     expect(new Set(colours).size).toBe(bySource.size);

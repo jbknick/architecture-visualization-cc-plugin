@@ -41,14 +41,14 @@ export interface Road {
   weight: number;
   flows: Flow[];
   declaredOnly: boolean;
-  /** Centre line from a's gate to b's gate. */
+  /** Center line from a's gate to b's gate. */
   pts: Pt[];
   length: number;
   width: number;
 }
 
 export const ROAD_WIDTH: Record<RoadClass, number> = { lane: 0.8, road: 1.5, highway: 4.2 };
-/** Distance from the centre line to the middle of each travel lane, per direction (right-hand traffic). */
+/** Distance from the center line to the middle of each travel lane, per direction (right-hand traffic). */
 export const LANE_OFFSETS: Record<RoadClass, number[]> = { lane: [0.2], road: [0.38], highway: [1.15, 1.75] };
 
 /** Class by the pair's import count: a highway for the heavy links, a lane for a handful of imports. */
@@ -111,7 +111,7 @@ export function routeAround(pts: Pt[], sites: readonly RoadSite[], skip: Readonl
   return path;
 }
 
-/** Gate angles per settlement: each road leaves towards its partner, spread so neighbours do not overlap. */
+/** Gate angles per settlement: each road leaves towards its partner, spread so neighbors do not overlap. */
 function gateAngles(
   site: RoadSite,
   wants: { key: string; ang: number; width: number }[],

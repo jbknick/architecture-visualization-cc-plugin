@@ -33,7 +33,7 @@ interface Props {
 
 /**
  * The saved-view switcher when the repo has a team cache: the person's own views, then a `Team` heading with the team's
- * views, the default marked. Every name is rendered as text. The menu is a labelled `role="menu"`: arrow keys move,
+ * views, the default marked. Every name is rendered as text. The menu is a labeled `role="menu"`: arrow keys move,
  * Enter selects, Escape closes and returns focus to the button. A view's `…` item opens its action (Publish to team or
  * Remove from team); the result of the action is read out from an `aria-live` line under the list.
  */

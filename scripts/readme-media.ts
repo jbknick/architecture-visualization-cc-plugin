@@ -194,7 +194,7 @@ async function newPage(browser: Browser, scheme: "light" | "dark" = "light", sti
   return ctx.newPage();
 }
 
-/** Indexed (256-colour) PNG of a screenshot: used only when the true-colour PNG is over the size limit. */
+/** Indexed (256-color) PNG of a screenshot: used only when the true-color PNG is over the size limit. */
 async function indexedPng(page: Page, png: Buffer): Promise<Buffer> {
   const helper = await page.context().newPage();
   const b64 = await helper.evaluate(async (data) => {
@@ -289,7 +289,7 @@ async function save(page: Page, name: string) {
   let note = "";
   if (png.length > 400 * 1024) {
     png = await indexedPng(page, png);
-    note = " (256 colours)";
+    note = " (256 colors)";
   }
   if (existsSync(file) && (await samePicture(page, readFileSync(file), png))) {
     note += " (unchanged)";

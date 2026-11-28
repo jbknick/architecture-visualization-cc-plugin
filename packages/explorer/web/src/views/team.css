@@ -1,4 +1,4 @@
-/* The Team layer: a switch in the map toolbar, a docked panel and the colours of its bands. Colours come from the
+/* The Team layer: a switch in the map toolbar, a docked panel and the colors of its bands. Colors come from the
    explorer's theme tokens (styles.css) and the review's palette (review.css). */
 
 :root {
@@ -129,7 +129,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* a person's initial: each person's own colour, set inline as four custom properties (light and dark) */
+/* a person's initial: each person's own color, set inline as four custom properties (light and dark) */
 .team-chip {
   display: inline-grid;
   place-items: center;
@@ -361,7 +361,7 @@
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
-/* the legend's line sample takes the colour the arrows are drawn in (the change colour of a modified node) */
+/* the legend's line sample takes the color the arrows are drawn in (the change color of a modified node) */
 .team-legend .rv-line {
   background: var(--rv-modified);
 }

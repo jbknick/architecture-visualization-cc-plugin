@@ -1115,7 +1115,7 @@ export function runRecipe(root: string, recipe: Recipe, tanstack?: TanstackHelpe
   const lowConfidence: RecipeOutput["lowConfidence"] = [];
   const tableByKey = new Map<string, TableOut>(); // lower-case name -> table
   const bindings = new Map<string, string>(); // position of a declared identifier -> table key
-  const modelToTable = new Map<string, string>(); // normalised model name -> table key
+  const modelToTable = new Map<string, string>(); // normalized model name -> table key
   const keyOf = (s: string): string => s.toLowerCase();
   const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, "");
   const escRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1459,7 +1459,7 @@ export function runRecipe(root: string, recipe: Recipe, tanstack?: TanstackHelpe
       const aliasStop =
         /^(?:\s+(?:AS\s+)?(?!(?:WHERE|JOIN|LEFT|RIGHT|INNER|FULL|CROSS|ON|GROUP|ORDER|LIMIT|UNION|SET|USING|OFFSET|HAVING|FOR|RETURNING|WINDOW|EXCEPT|INTERSECT|NATURAL|LATERAL|SELECT)\b)[A-Za-z_]\w*)?\s*,\s*/i;
       // A string is SQL when it holds a statement shape: SELECT ... FROM, INSERT INTO, UPDATE ... SET, DELETE FROM,
-      // CREATE TABLE or TRUNCATE (anywhere in it, so a parenthesised subquery or a CTE fragment counts).
+      // CREATE TABLE or TRUNCATE (anywhere in it, so a parenthesized subquery or a CTE fragment counts).
       const sqlShape =
         /\bSELECT\b[\s\S]*?\bFROM\b|\bINSERT\s+INTO\b|\bDELETE\s+FROM\b|\bUPDATE\b[\s\S]*?\bSET\b|\bCREATE\s+(?:[A-Z]+\s+)*TABLE\b|\bTRUNCATE\b/i;
       const idRx = new RegExp(ID, "g");

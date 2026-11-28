@@ -15,7 +15,7 @@ import {
   worstKeys,
 } from "./lib.js";
 
-// Synthetic fact sheets only: nothing here comes from the private labelled set.
+// Synthetic fact sheets only: nothing here comes from the private labeled set.
 function row(name: string, body: string, nameFits = true, key = `k-${name}`): LabelledRow {
   return {
     id: `sym:src/demo.ts#${name}`,
@@ -86,7 +86,7 @@ describe("schemaProblems", () => {
 
 describe("identifier check (spec section 8 rule 3)", () => {
   const tokens = factSheetTokens(row("getName", "const fullName = user_name;").factSheet);
-  it("recognises camelCase, PascalCase and snake_case but not plain words", () => {
+  it("recognizes camelCase, PascalCase and snake_case but not plain words", () => {
     expect(isIdentifierLike("fullName")).toBe(true);
     expect(isIdentifierLike("MilestoneList")).toBe(true);
     expect(isIdentifierLike("user_name")).toBe(true);
@@ -151,7 +151,7 @@ describe("nameFitsMetrics", () => {
     expect(m.recall).toBe(0.5);
     expect(m.agreement).toBe(0.5);
   });
-  it("returns null precision when nothing was flagged and null recall when no positives are labelled", () => {
+  it("returns null precision when nothing was flagged and null recall when no positives are labeled", () => {
     const none = nameFitsMetrics([{ label: false, predicted: true }]);
     expect(none.precision).toBeNull();
     expect(none.recall).toBe(0);

@@ -2,7 +2,7 @@
  * The last check before an upload body leaves the process, or is printed by a dry run. `assertNoSource` walks any
  * JSON value and refuses one that could carry source code: a key named like the place source lives in, a `source`
  * that is not one of the two change set origins, or a string too long to be a name, path or one-sentence description.
- * It is a second line of defence behind the strict request schemas: it looks at the value that is about to be
+ * It is a second line of defense behind the strict request schemas: it looks at the value that is about to be
  * written, not at what the schema was told to expect.
  */
 

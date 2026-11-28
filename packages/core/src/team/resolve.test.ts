@@ -28,7 +28,7 @@ beforeEach(() => {
 afterEach(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 describe("resolveTeamTarget", () => {
-  it("takes the server and organisation from the team block", () => {
+  it("takes the server and organization from the team block", () => {
     expect(resolveTeamTarget(paths, configWith(block), env())).toMatchObject({
       server: block.server,
       org: block.org,
@@ -45,7 +45,7 @@ describe("resolveTeamTarget", () => {
     expect(target).toMatchObject({ server: "http://127.0.0.1:4000", org: "ci-org", token: "gct_abc" });
   });
 
-  it("builds the client config by replacing the block's server and organisation", () => {
+  it("builds the client config by replacing the block's server and organization", () => {
     const target = resolveTeamTarget(paths, configWith(block), env({ GANTRY_ORG: "ci-org" }));
     expect(target?.config.team).toMatchObject({ server: block.server, org: "ci-org" });
     expect(configWith(block).team?.org).toBe("block-org"); // the input is not changed
@@ -61,7 +61,7 @@ describe("resolveTeamTarget", () => {
     expect(target?.config.team).toMatchObject({ server: "https://gantry.example.com", org: "acme" });
   });
 
-  it("is null when the server or the organisation is missing", () => {
+  it("is null when the server or the organization is missing", () => {
     expect(resolveTeamTarget(paths, configWith(), env())).toBeNull();
     expect(resolveTeamTarget(paths, configWith({ server: block.server }), env())).toBeNull();
     expect(resolveTeamTarget(paths, configWith({ org: "acme" }), env())).toBeNull();

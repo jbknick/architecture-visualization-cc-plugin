@@ -146,12 +146,12 @@ test("project map: switch levels, drill into @acme/ui, then see Button's callers
   await expect(page.getByRole("option", { name: /Button/ }).first()).toBeVisible();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/#\/ego\?.*focus=sym/);
-  await expect(rows.filter({ hasText: "centre" })).toHaveCount(1);
+  await expect(rows.filter({ hasText: "center" })).toHaveCount(1);
   // The pages that render Button are its callers.
   await expect(rows.filter({ hasText: "caller" }).first()).toBeVisible();
   await expect(page.getByText(/^\d+ callers?\b/)).toBeVisible();
   await expect(page.getByText(/^\d+ callees?\b/)).toBeVisible();
-  // The graph shows the same thing as a bow-tie: callers left of the centre, callees right.
+  // The graph shows the same thing as a bow-tie: callers left of the center, callees right.
   await page.getByRole("button", { name: "Graph" }).click();
   await expect(page.getByTestId("graph-canvas").locator("canvas[data-ready=true]")).toBeVisible();
   await page.mouse.move(2, 2);

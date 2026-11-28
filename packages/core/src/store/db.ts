@@ -66,7 +66,7 @@ export function readMeta(dbPath: string, key: string): string | undefined {
 }
 
 function initOrCheck(db: Database.Database, dbPath: string, vec: boolean): void {
-  // Checked inside BEGIN IMMEDIATE so concurrent first-time openers serialise.
+  // Checked inside BEGIN IMMEDIATE so concurrent first-time openers serialize.
   db.transaction(() => {
     const found = storedVersion(db);
     if (found === undefined) {

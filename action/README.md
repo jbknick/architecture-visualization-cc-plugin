@@ -32,7 +32,7 @@ jobs:
 
 The workflow needs `pull-requests: write` to comment and `contents: read` for the checkout, and `fetch-depth: 0` so the base and the head are both in the clone. Do not add `actions/setup-node`: the Action sets up Node 26 itself (step 1 below), so the job runs the same Node whatever the runner has.
 
-Pin `actions/checkout` and this Action by commit SHA if your organisation requires it.
+Pin `actions/checkout` and this Action by commit SHA if your organization requires it.
 
 ## Inputs
 
@@ -46,7 +46,7 @@ Pin `actions/checkout` and this Action by commit SHA if your organisation requir
 | `head`         | no       | Head of the range to review. Default: the pull request's head commit. Check out the same commit (as above), because the duplicate check reads `HEAD`.    |
 
 | `team-server` | no | URL of your team server. With `team-org` and `team-token` set, the Action also uploads (see "Uploading to a team server"). Default empty: nothing is uploaded. |
-| `team-org` | no | Your organisation's slug on the team server. Default empty. |
+| `team-org` | no | Your organization's slug on the team server. Default empty. |
 | `team-token` | no | The team's CI token. Store it as a secret. Default empty. A pull request from a fork never gets it. |
 
 Outputs: `comment` (`created`, `updated`, or `summary` when the review went to the job summary) and `comment-url`.
@@ -79,7 +79,7 @@ Uploading is opt-in. With `team-server`, `team-org` and `team-token` all set, a 
 | `pull_request` from a fork                         | `fork: upload skipped`: nothing is sent, and the token is not used                                                                                                                                         |
 | any other action or event                          | `upload skipped: ... does not upload`                                                                                                                                                                      |
 
-On a push there is nothing to review, so the comment and embed steps do not run; the index does, because the upload needs it. If the index failed, a push or a pull request update uploads nothing (`upload skipped: the index failed`); a close still goes through. The step never fails the job: an upload that does not work logs one `::warning title=Gantry::upload failed: <reason>` line, with the token never in it. Store the three values as secrets (the server URL and organisation are not secret, but then they are one place to change):
+On a push there is nothing to review, so the comment and embed steps do not run; the index does, because the upload needs it. If the index failed, a push or a pull request update uploads nothing (`upload skipped: the index failed`); a close still goes through. The step never fails the job: an upload that does not work logs one `::warning title=Gantry::upload failed: <reason>` line, with the token never in it. Store the three values as secrets (the server URL and organization are not secret, but then they are one place to change):
 
 ```yaml
 name: gantry

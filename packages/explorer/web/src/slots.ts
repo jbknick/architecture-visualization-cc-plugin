@@ -17,7 +17,7 @@ export interface CanvasProps {
   onHover: (id: string | null) => void;
   /** The whole view response, for views that send more than nodes and edges (duplicates: clusters). */
   data?: ViewData;
-  /** Optional: call on double-click / Enter-with-modifier to "go into" a node (project map: show its contents; ego: re-centre). */
+  /** Optional: call on double-click / Enter-with-modifier to "go into" a node (project map: show its contents; ego: re-center). */
   onDrill?: (id: string) => void;
 }
 
@@ -68,7 +68,7 @@ export function getFilterPanel(viewId: string): FilterPanel | null {
   return filterPanels.get(viewId) ?? null;
 }
 
-/** Shown in the centre instead of the canvas while a view that needs a `focus` has none. */
+/** Shown in the center instead of the canvas while a view that needs a `focus` has none. */
 export type FocusPrompt = ComponentType<{ viewId: string; notice?: string }>;
 const focusPrompts = new Map<string, FocusPrompt>();
 const promptOnError = new Set<string>();

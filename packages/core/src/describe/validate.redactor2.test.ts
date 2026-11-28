@@ -72,7 +72,7 @@ describe("redactor leaves alone (issue #108)", () => {
       expect(redactForFactSheet(text)).toBe(text);
     });
 
-  it("redacts a capitalised multi-word value behind a plain credential name (as main does)", () => {
+  it("redacts a capitalized multi-word value behind a plain credential name (as main does)", () => {
     for (const t of [
       'const password = "Correct Horse Battery Staple";',
       'DB_PASSWORD = "Winter Is Coming"',

@@ -102,7 +102,7 @@ describe("run", () => {
     expect(readFileSync(join(dir, "summary.md"), "utf8")).toContain("what this pull request changes");
   });
 
-  it("recognises a fork, and a pull request whose fork was deleted", () => {
+  it("recognizes a fork, and a pull request whose fork was deleted", () => {
     expect(isForkPullRequest(pr().pull_request)).toBe(false);
     expect(isForkPullRequest(pr("OCTO/Repo").pull_request)).toBe(false);
     expect(isForkPullRequest(pr("someone/repo").pull_request)).toBe(true);
@@ -170,12 +170,12 @@ describe("run", () => {
     expect(readFileSync(join(dir, "summary.md"), "utf8")).toContain("the analysis failed");
   });
 
-  it("keeps the reason to one bounded, sanitised line", async () => {
+  it("keeps the reason to one bounded, sanitized line", async () => {
     fake = await startFakeGithub();
     const evil = `boom\n\`\`\` @everyone [x](http://evil) ${"y".repeat(1000)}`;
     await run(env(fake, pr(), { GANTRY_FAILURE: evil }), deps(stubExec()));
     const body = fake.comments[0]?.body ?? "";
-    const line = body.split("\n").find((l) => l.startsWith("Gantry could not analyse")) ?? "";
+    const line = body.split("\n").find((l) => l.startsWith("Gantry could not analyze")) ?? "";
     expect(line.length).toBeLessThan(300);
     expect(line).not.toContain("```");
     expect(body.split("\n").filter((l) => l.includes("everyone"))).toHaveLength(1);

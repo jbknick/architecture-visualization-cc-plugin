@@ -116,7 +116,7 @@ export function planSettlement(input: readonly LotInput[], tier: Tier, seed: str
   const minArc = (d: (typeof dists)[number]) => d.max + P.gap + streetW + 0.2;
   const sumMin = dists.reduce((s, d) => s + minArc(d), 0);
   const maxSide = Math.max(1, ...dists.map((d) => d.max));
-  // The first row's centre must leave every wedge its minimum arc.
+  // The first row's center must leave every wedge its minimum arc.
   plaza = Math.max(plaza, sumMin / TAU - P.street - maxSide / 2);
   const r1 = plaza + P.street + maxSide / 2;
   let angles = dists.map((d) => Math.max(minArc(d) / r1, (TAU * d.area) / total));

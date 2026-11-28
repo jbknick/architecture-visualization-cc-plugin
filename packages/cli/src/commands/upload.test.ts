@@ -216,7 +216,7 @@ describe("gantry upload: the main snapshot", () => {
     expect(run.out).toMatch(/\ndone in 1\.8 s\n$/);
   });
 
-  it("sends the target percent-encoded, a sorted begin body, and never an organisation with a CI token", async () => {
+  it("sends the target percent-encoded, a sorted begin body, and never an organization with a CI token", async () => {
     const run = await upload({});
     const begin = run.calls.find((c) => c.method === "POST");
     expect(begin?.url).toBe(`${fake.url}/v1/repos/fixture%2Fpnpm-turbo/uploads`);
@@ -239,7 +239,7 @@ describe("gantry upload: the main snapshot", () => {
     expect(run.calls.filter((c) => c.method === "PUT").length).toBeGreaterThan(0);
   });
 
-  it("sends the organisation with a user token", async () => {
+  it("sends the organization with a user token", async () => {
     const run = await upload({}, { env: { GANTRY_TOKEN: USER_TOKEN } });
     // the fake server takes uploads from CI tokens only, so this ends at the first refusal; the header is what counts
     expect(run.code).toBe(1);
@@ -513,7 +513,7 @@ describe("gantry upload: the default branch", () => {
 });
 
 describe("gantry upload: no team, no token", () => {
-  it("sends nothing and exits 0 with no server and organisation", async () => {
+  it("sends nothing and exits 0 with no server and organization", async () => {
     for (const env of [
       { GANTRY_SERVER: "", GANTRY_ORG: "", GANTRY_TOKEN: "" },
       { GANTRY_ORG: "" },
@@ -524,7 +524,7 @@ describe("gantry upload: no team, no token", () => {
     }
   });
 
-  it("asks for a token when there is a server and organisation but none", async () => {
+  it("asks for a token when there is a server and organization but none", async () => {
     const run = await upload({ forceMain: true }, { env: { GANTRY_TOKEN: "" } });
     expect(run).toEqual({
       code: 1,

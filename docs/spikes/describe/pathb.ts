@@ -1,4 +1,4 @@
-// Path B for issue #6: a describer-style subagent draining the labelled set through a temporary MCP stub.
+// Path B for issue #6: a describer-style subagent draining the labeled set through a temporary MCP stub.
 //   pnpm tsx docs/spikes/describe/pathb.ts --write-agent       regenerate describer.md from system-prompt.md
 //   pnpm tsx docs/spikes/describe/pathb.ts --headless          headless approximation (one `claude -p` session)
 //   pnpm tsx docs/spikes/describe/pathb.ts --finalize          turn evals/private/describe-out/path-b/events.jsonl

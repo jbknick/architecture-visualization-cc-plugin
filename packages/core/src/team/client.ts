@@ -46,7 +46,7 @@ export interface TeamClientOptions {
   env?: NodeJS.ProcessEnv;
   /** Use this server instead of `GANTRY_SERVER` or `team.server` (the `--server` option). */
   server?: string;
-  /** Use this organisation; `null` sends no `X-Gantry-Org` header at all (a user token before any link exists). */
+  /** Use this organization; `null` sends no `X-Gantry-Org` header at all (a user token before any link exists). */
   org?: string | null;
   /** Use this bearer token; `null` sends none (the server then answers 401, which proves it is reachable). */
   token?: string | null;
@@ -106,7 +106,7 @@ type Answer<K extends RouteKey> = z.output<(typeof ROUTES)[K]["response"]>;
 interface CallOptions {
   params?: Record<string, string | number>;
   query?: Record<string, unknown>;
-  /** The request object, or a JSON string that is already serialised (it is checked, then sent byte for byte). */
+  /** The request object, or a JSON string that is already serialized (it is checked, then sent byte for byte). */
   body?: unknown;
   /** A body that is already bytes (an upload part). */
   rawBody?: Uint8Array;

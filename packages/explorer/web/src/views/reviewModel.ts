@@ -1,4 +1,4 @@
-// Pure helpers for the review view (#44, on the map since #167): words, the layer's colours, and the review layer
+// Pure helpers for the review view (#44, on the map since #167): words, the layer's colors, and the review layer
 // resolved against a map scene (tree indices). No DOM, no randomness.
 import type {
   ChangeKind,
@@ -37,7 +37,7 @@ export const MARK_WORDS: Record<ReviewMarkKind, { label: string; hint: string }>
   },
 };
 
-/** Fill colours of the layer, per theme. Lines use the same hue (darkened or lightened for contrast). */
+/** Fill colors of the layer, per theme. Lines use the same hue (darkened or lightened for contrast). */
 export const MARK_COLOURS: Record<Scheme, Record<ReviewMarkKind | "affected", string>> = {
   light: {
     added: "#1f8a4c",
@@ -80,7 +80,7 @@ export function shortName(id: string): string {
   return id;
 }
 
-/** The layer colour of one change (the server's rule: renamed and moved share one, a signature change has its own). */
+/** The layer color of one change (the server's rule: renamed and moved share one, a signature change has its own). */
 export function markKindOf(c: { kind: ChangeKind; signatureChanged: boolean }): ReviewMarkKind {
   if (c.kind === "added" || c.kind === "removed") return c.kind;
   if (c.kind === "renamed" || c.kind === "moved") return "moved";
@@ -187,7 +187,7 @@ export interface LayerPaint {
   change: (ReviewMarkKind | null)[];
   /** Nearest caller hop per index (0: none), as far as the Show filter reaches. */
   hop: Uint8Array;
-  /** 1 for a node that is marked or holds a marked node (it keeps its colours); the rest fade back. */
+  /** 1 for a node that is marked or holds a marked node (it keeps its colors); the rest fade back. */
   lit: Uint8Array;
   /**
    * `soft`: a potentially affected consumer's line (to the node one step nearer the change), drawn faint and dashed.
@@ -527,7 +527,7 @@ export function withHubMembers(
   return { nodes: all, edges: out };
 }
 
-export const RINGS_CAPTION = "Centre: what changed. Each ring out: code that calls the ring inside it.";
+export const RINGS_CAPTION = "Center: what changed. Each ring out: code that calls the ring inside it.";
 
 /** Ring radii from the server's positions (one per hop that has nodes), with a count each. */
 export function ringRadii(nodes: readonly GraphNode[]): { hop: number; r: number; count: number }[] {
@@ -607,7 +607,7 @@ export function ringGroups(nodes: readonly GraphNode[]): RingGroup[] {
 }
 
 /**
- * The path of `id` through the rings: everything it calls on the way to the centre and everything that calls it on
+ * The path of `id` through the rings: everything it calls on the way to the center and everything that calls it on
  * the way out, with the edges between them. Edges point from caller to callee.
  */
 export function ringPath(

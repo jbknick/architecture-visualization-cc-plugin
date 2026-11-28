@@ -1,5 +1,5 @@
-// Flat things on the ground, as vertex-coloured triangle soups: the land, each settlement's plate (districts tinted,
-// plaza, streets, fields, the kerb in the workspace's colour) and each road (asphalt, median, markings, and the
+// Flat things on the ground, as vertex-colored triangle soups: the land, each settlement's plate (districts tinted,
+// plaza, streets, fields, the kerb in the workspace's color) and each road (asphalt, median, markings, and the
 // chevrons that point from the importer to the imported settlement).
 import * as THREE from "three";
 import { color, type Look, mix, wsColor } from "./look.ts";
@@ -35,7 +35,7 @@ class Painter {
     this.tri(a, b, c, y, k);
     this.tri(a, c, d, y, k);
   }
-  /** A strip along `pts`, `width` wide, its centre `offset` to the right of the direction of the points. */
+  /** A strip along `pts`, `width` wide, its center `offset` to the right of the direction of the points. */
   ribbon(pts: readonly Pt[], width: number, y: number, k: THREE.Color, offset = 0): void {
     const n = pts.length;
     if (n < 2) return;
@@ -149,7 +149,7 @@ export function settlementGround(s: Settlement, look: Look, material: THREE.Mate
   const ws = wsColor(s.colorIndex, look);
   const outline = plateOutline(s);
   p.fan(s.x, s.z, outline, Y.plate, plate);
-  // Kerb: a band in the workspace colour round the plate.
+  // Kerb: a band in the workspace color round the plate.
   const kerbW = Math.max(0.45, s.clear * 0.018);
   for (let i = 0; i < outline.length; i++) {
     const a = outline[i] as Pt;
@@ -162,7 +162,7 @@ export function settlementGround(s: Settlement, look: Look, material: THREE.Mate
     };
     p.quad(a, b, inward(b), inward(a), Y.kerb, ws);
   }
-  // Districts: alternate shades of the plate, each tinted a little towards the workspace colour.
+  // Districts: alternate shades of the plate, each tinted a little towards the workspace color.
   s.districts.forEach((d, k) => {
     const shade = mix(
       plate,

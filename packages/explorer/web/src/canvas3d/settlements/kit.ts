@@ -112,7 +112,7 @@ export function truckGeometry(): THREE.BufferGeometry {
   return merge([cab, box]);
 }
 
-/** Head lights in front, tail lights behind (vertex colours), for the night scene. */
+/** Head lights in front, tail lights behind (vertex colors), for the night scene. */
 export function carLightsGeometry(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const colors: number[] = [];
@@ -156,7 +156,7 @@ export function windmillTower(): THREE.BufferGeometry {
   return merge([tower, cap]);
 }
 
-/** Four sails round the Z axis (they turn about Z), centred at the origin. */
+/** Four sails round the Z axis (they turn about Z), centered at the origin. */
 export function windmillSails(): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   for (let k = 0; k < 4; k++) {

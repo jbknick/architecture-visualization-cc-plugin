@@ -108,7 +108,7 @@ const CASE_SENSITIVE_PRONOUNS: ReadonlySet<string> = new Set([
   "I",
 ]);
 
-/** Second-person pronouns and deontic words. None has a place in a one-sentence behaviour description. */
+/** Second-person pronouns and deontic words. None has a place in a one-sentence behavior description. */
 const ADDRESSING_TEXT = `
 you your yours yourself yourselves must should ought shall please todo fixme remember don't dont
 `;

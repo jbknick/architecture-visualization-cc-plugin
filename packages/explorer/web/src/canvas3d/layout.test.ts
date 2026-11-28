@@ -114,7 +114,7 @@ describe("3D layout", () => {
     expect(nodeRadius(0, "file")).toBeGreaterThan(0);
   });
 
-  it("summarizes islands in colour order for the legend", () => {
+  it("summarizes islands in color order for the legend", () => {
     const s = summarizeIslands(files.nodes);
     expect(s.map((i) => i.label)).toEqual(["api", "db", "ui", "utils", "web"]);
     expect(s.map((i) => i.fullLabel)).toEqual([
@@ -194,7 +194,7 @@ describe("3D layout of a large monorepo (3 huge workspaces, 8 tiny)", () => {
     const dist = (i: (typeof layout.islands)[number]) => Math.hypot(i.center.x, i.center.y, i.center.z);
     const bigMean = byFns.slice(0, 3).reduce((a, i) => a + dist(i), 0) / 3;
     const tinyMean = byFns.slice(3).reduce((a, i) => a + dist(i), 0) / 8;
-    // Small islands are satellites around the big ones, which sit near the mass centre.
+    // Small islands are satellites around the big ones, which sit near the mass center.
     expect(bigMean).toBeLessThan(tinyMean);
   });
 
@@ -224,7 +224,7 @@ const large = (level: string) =>
   );
 
 describe("one picture at every level", () => {
-  it("island centres, radii and the default camera are identical at Workspaces, Folders and Files", () => {
+  it("island centers, radii and the default camera are identical at Workspaces, Folders and Files", () => {
     const ws = large("workspaces");
     for (const level of ["dirs", "files"]) {
       const other = large(level);
@@ -372,7 +372,7 @@ describe("folders in the Files level", () => {
     expect(folderKey(node("apps/web", "folded"), "apps/web")).toBe(".");
   });
 
-  it("drops a leading src/ only when every labelled folder shares it", () => {
+  it("drops a leading src/ only when every labeled folder shares it", () => {
     expect(stripSharedSrc(["src/routes", "src/lib"])).toEqual(["routes", "lib"]);
     expect(stripSharedSrc(["src/routes", "scripts"])).toEqual(["src/routes", "scripts"]);
     expect(stripSharedSrc(["src", "src/lib"])).toEqual(["src", "src/lib"]);
@@ -443,7 +443,7 @@ describe("circle packing", () => {
 describe("files as a sunflower inside a folder ring", () => {
   const files = [41, 30, 22, 17, 9, 9, 5, 3, 2, 1, 1, 1].map((f, i) => ({ id: `file${i}`, functions: f }));
 
-  it("puts the biggest file in the middle, keeps every dot inside the ring and clear of its neighbours", () => {
+  it("puts the biggest file in the middle, keeps every dot inside the ring and clear of its neighbors", () => {
     const dots = sunflower(files, 60);
     expect(dots[0]).toMatchObject({ id: "file0", x: 0, y: 0 });
     for (const [i, p] of dots.entries()) {

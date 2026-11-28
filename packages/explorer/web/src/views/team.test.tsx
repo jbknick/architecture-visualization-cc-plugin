@@ -369,7 +369,7 @@ describe("team model", () => {
     expect(layer.marks.find((m) => m.id === ids.postList)?.hop).toBe(1);
   });
 
-  it("gives each person a distinct colour that stays the same when a filter narrows the list, and a readable letter", () => {
+  it("gives each person a distinct color that stays the same when a filter narrows the list, and a readable letter", () => {
     const people = ["ana", "maya", "tomas"];
     for (const scheme of ["light", "dark"] as const) {
       const colours = people.map((p) => personColour(people, p, scheme));

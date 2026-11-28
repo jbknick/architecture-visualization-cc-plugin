@@ -71,7 +71,7 @@ export function placeSettlements(items: readonly PlaceInput[], links: readonly P
       fx[l.j] = (fx[l.j] as number) - (dx / d) * f;
       fz[l.j] = (fz[l.j] as number) - (dz / d) * f;
     }
-    // Gravity to the centre, stronger for big plates: the big settlements gather in the middle and the villages sit
+    // Gravity to the center, stronger for big plates: the big settlements gather in the middle and the villages sit
     // round the edge of the land rather than in the gaps between the cities (where their labels would crowd).
     for (let i = 0; i < n; i++) {
       const g = 0.0015 + 0.006 * ((rs[i] as number) / (rs[0] as number));
@@ -116,7 +116,7 @@ export function placeSettlements(items: readonly PlaceInput[], links: readonly P
           zs[j] = (zs[j] as number) + uz * push * (1 - si);
         }
   }
-  // Centre the land on the origin.
+  // Center the land on the origin.
   let cx = 0;
   let cz = 0;
   for (let i = 0; i < n; i++) {

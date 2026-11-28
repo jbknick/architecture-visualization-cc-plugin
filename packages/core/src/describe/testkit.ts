@@ -29,7 +29,7 @@ export function cleanupData(): void {
   for (const d of dataDirs.splice(0)) rmSync(d, { recursive: true, force: true });
 }
 
-/** Materialises a fixture (optionally overriding/adding files), indexes it into a fresh store. */
+/** Materializes a fixture (optionally overriding/adding files), indexes it into a fresh store. */
 export async function indexedFixture(
   name: "pnpm-turbo" | "single-pkg" | "nx" | "go-basic" = "pnpm-turbo",
   files: Record<string, string> = {},

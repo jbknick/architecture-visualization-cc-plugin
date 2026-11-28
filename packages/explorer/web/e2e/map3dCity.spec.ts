@@ -199,7 +199,7 @@ for (const [level, name] of [
     const key = page.getByTestId("map3d-key");
     await expect(key).toContainText("District = workspace (area = functions)");
     await expect(key).toContainText("Block height = functions");
-    await expect(key).toContainText("Arch A → B = A imports from B (colour = importer, number = imports)");
+    await expect(key).toContainText("Arch A → B = A imports from B (color = importer, number = imports)");
     await expect(key).toContainText("Tests hidden");
 
     if (level === "dirs") {
@@ -457,7 +457,7 @@ test("city, large scenario: top view is the 2D map seen from above (axis-aligned
     (d) => (((d.quad[1] as number[])[0] as number) - ((d.quad[0] as number[])[0] as number)) / d.ww,
   );
   for (const s of scales) expect(Math.abs(s - (scales[0] as number))).toBeLessThan(0.02);
-  // And the centres are the world centres, scaled: the arrangement is the 2D map's.
+  // And the centers are the world centers, scaled: the arrangement is the 2D map's.
   const s0 = scales[0] as number;
   const ref = top[0] as DistrictProbe;
   for (const d of top) {
@@ -611,7 +611,7 @@ test("city, large scenario, folders level: hovering a folder shows its path, fun
 }) => {
   await openCity(page, "dirs");
   const box = await canvasBox(page);
-  // The centre of a caption lies on its folder's block.
+  // The center of a caption lies on its folder's block.
   const cap = page.locator(".c3-cap:visible", { hasText: "routes" }).first();
   const r = (await cap.boundingBox()) as { x: number; y: number; width: number; height: number };
   const x = r.x - box.x + r.width / 2;

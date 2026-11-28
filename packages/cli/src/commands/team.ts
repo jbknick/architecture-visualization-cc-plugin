@@ -140,7 +140,7 @@ export async function teamLogin(ctx: TeamContext, opts: { server?: string }): Pr
         if (answer.status === "denied") throw new GantryError("team_rejected", "The sign-in was denied.");
         if (answer.status === "expired") throw new GantryError("team_rejected", "The code expired.");
 
-        // Read the GitHub login with the new token and no organisation: no link exists yet.
+        // Read the GitHub login with the new token and no organization: no link exists yet.
         const signedIn = teamClient(ctx.paths, config, {
           ...clientOptions(ctx),
           server,
@@ -172,7 +172,7 @@ export async function teamLink(ctx: TeamContext, opts: { server: string; org: st
     () => ({ server, org: opts.org }),
     async () => {
       server = checkedServer(opts.server);
-      if (opts.org.trim() === "") throw new GantryError("team_config", "The organisation must not be empty.");
+      if (opts.org.trim() === "") throw new GantryError("team_config", "The organization must not be empty.");
       saveProjectConfig(ctx.paths, { team: { server, org: opts.org } });
 
       const linked = `Linked ${repo} to ${opts.org} on ${server}.`;
@@ -386,15 +386,15 @@ export function registerTeam(program: Command): void {
 
   team
     .command("link")
-    .description("Say which server and organisation this repo belongs to")
+    .description("Say which server and organization this repo belongs to")
     .requiredOption("--server <url>", "the team server")
-    .requiredOption("--org <slug>", "the organisation slug")
+    .requiredOption("--org <slug>", "the organization slug")
     .action((opts: { server: string; org: string }) => run((ctx) => teamLink(ctx, opts))());
 
   team
     .command("status")
     .description(
-      "Show the server, organisation, user and repo, whether the server answers, and the team cache",
+      "Show the server, organization, user and repo, whether the server answers, and the team cache",
     )
     .option("--json", "print one JSON line")
     .option("--pull", "pull team state from the server first")

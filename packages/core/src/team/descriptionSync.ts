@@ -203,7 +203,7 @@ export interface TeamSyncOptions {
 }
 
 /**
- * What a run of the sync did. `not_linked`: no server, organisation or token, or a repo with no `owner/name` name (nothing was sent). `ci_token`: the token
+ * What a run of the sync did. `not_linked`: no server, organization or token, or a repo with no `owner/name` name (nothing was sent). `ci_token`: the token
  * is a CI token, which cannot read descriptions (nothing was sent). `done`: the counts of `syncDescriptions`; with no
  * local index yet there is nothing to ask about and no request is made.
  */

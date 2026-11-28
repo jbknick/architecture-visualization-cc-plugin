@@ -25,7 +25,7 @@ async function open(page: Page, extra = ""): Promise<Locator> {
 interface Pixels {
   /** Share of pixels that are not the sky (the scene's background). */
   nonSky: number;
-  /** Share of strongly coloured pixels: roofs, kerbs, fields, vehicles. The bare ground and sky are muted. */
+  /** Share of strongly colored pixels: roofs, kerbs, fields, vehicles. The bare ground and sky are muted. */
   vivid: number;
 }
 
@@ -46,7 +46,7 @@ async function pixels(page: Page): Promise<Pixels> {
     const x = c.getContext("2d") as CanvasRenderingContext2D;
     x.drawImage(img, 0, 0);
     const d = x.getImageData(0, 0, c.width, c.height).data;
-    // The sky: the most common colour along the top rows.
+    // The sky: the most common color along the top rows.
     const counts = new Map<number, number>();
     for (let i = 0; i < c.width * 4 * 4; i += 4) {
       const k = ((d[i] as number) << 16) | ((d[i + 1] as number) << 8) | (d[i + 2] as number);
@@ -129,7 +129,7 @@ for (const style of ["settlements", "city"] as const) {
       await page.screenshot({ path: `${process.env.DEBUG_SHOTS}/far-${style}.png` });
     expect(far.nonSky, "zoomed out").toBeGreaterThan(0.02);
     expect(far.vivid, "zoomed out").toBeGreaterThan(0.0002);
-    // Zoom all the way in. (Settlements only: the city has no ground, only a background of the same colour, so close
+    // Zoom all the way in. (Settlements only: the city has no ground, only a background of the same color, so close
     // up over a gap there is nothing to measure, and its label search is slow at that scale in software GL.)
     if (style === "settlements") {
       for (let i = 0; i < 60; i++) {
@@ -174,7 +174,7 @@ for (const style of ["settlements", "city"] as const) {
   });
 }
 
-test("settlements: four tiers, counts equal the API's, the heaviest link is a labelled highway", async ({
+test("settlements: four tiers, counts equal the API's, the heaviest link is a labeled highway", async ({
   page,
 }) => {
   await open(page);

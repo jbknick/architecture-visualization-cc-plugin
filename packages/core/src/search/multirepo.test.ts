@@ -43,7 +43,7 @@ async function open(from: "web" | "api") {
 }
 
 describe("search across the repos of a workspace", () => {
-  it("from web, finds a function that exists only in acme/api, labelled with its repo", async () => {
+  it("from web, finds a function that exists only in acme/api, labeled with its repo", async () => {
     const { store } = await open("web");
     const hits = ftsSearch(store, "computeRetryDelay");
     expect(hits[0]).toMatchObject({ name: "computeRetryDelay", repo: "acme/api" });

@@ -66,7 +66,7 @@ describe("assertNoSource: forbidden keys", () => {
     }
   });
 
-  it("reports the first offence in key order", () => {
+  it("reports the first offense in key order", () => {
     expect(refusedAt({ a: 1, body: 1, signature: 2 })).toBe("body");
   });
 });

@@ -4,7 +4,7 @@ import { BadgeKey } from "../components/BadgeKey.tsx";
 /** The key lines of the project map: what a box, a line and a number mean (and what the filters hid). */
 export function keyLines(level: string | null, hideTests: boolean, ranked = false): string[] {
   const lines = [
-    "Box = workspace (area = functions) · Line colour = importing workspace · dot → arrowhead: A imports from B",
+    "Box = workspace (area = functions) · Line color = importing workspace · dot → arrowhead: A imports from B",
   ];
   const second = ["Number = files importing · thicker = more"];
   // Folders, Files and Functions levels (and a drilled-in view) draw tiles inside the boxes.

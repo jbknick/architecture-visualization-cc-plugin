@@ -25,7 +25,7 @@ export const PROTOCOL_VERSION = 2;
 export const HEADER_PROTOCOL = "X-Gantry-Protocol";
 /** On every response: the highest protocol version the server supports. */
 export const HEADER_PROTOCOL_MAX = "X-Gantry-Protocol-Max";
-/** A user token names its organisation with this header. */
+/** A user token names its organization with this header. */
 export const HEADER_ORG = "X-Gantry-Org";
 /** On `POST /v1/repos/:repo/uploads`: `main` or the change set id, percent-encoded (see `encodeTarget`). */
 export const HEADER_TARGET = "X-Gantry-Target";

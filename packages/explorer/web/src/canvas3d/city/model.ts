@@ -1,6 +1,6 @@
 // The "code city": the 2D project map's ground plan stood up in three dimensions. Pure and deterministic (no DOM, no
 // three.js, no Math.random): it takes the same `Scene` and `MapGeometry` the 2D map draws and returns boxes in world
-// units. World space: X = 2D x, Z = 2D y (both relative to the centre of the 2D diagram), Y is up.
+// units. World space: X = 2D x, Z = 2D y (both relative to the center of the 2D diagram), Y is up.
 import {
   GROUP_KIND,
   kindTier,
@@ -22,7 +22,7 @@ export interface V3 {
   z: number;
 }
 
-/** An axis-aligned box: centre and full size. */
+/** An axis-aligned box: center and full size. */
 export interface Box3 {
   cx: number;
   cy: number;
@@ -184,7 +184,7 @@ export interface CityBuilding {
   label: string;
   path: string;
   loc: number | null;
-  /** 0 or 1: neighbouring siblings alternate a little in shade. */
+  /** 0 or 1: neighboring siblings alternate a little in shade. */
   alt: number;
 }
 
@@ -383,7 +383,7 @@ export function spreadTinyEnds(
       const lane = k % lanes;
       const inLane = Math.floor(k / lanes);
       const laneN = Math.ceil((n - lane) / lanes);
-      // Lanes are offset by a share of the spacing so neighbours zigzag.
+      // Lanes are offset by a share of the spacing so neighbors zigzag.
       const frac = 0.12 + 0.76 * ((inLane + 0.5 + (lanes > 1 ? 0.5 * (lane / lanes - 0.33) : 0)) / laneN);
       const pos = vertical ? r.y + r.h * frac : r.x + r.w * frac;
       const inset = lane * END_LANE_INSET;

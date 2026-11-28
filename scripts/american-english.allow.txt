@@ -1,0 +1,13 @@
+# Allow-list for scripts/american-english.test.ts. Format: <path> <word or *> | <reason>
+# A path ending in / covers every file under it. Every entry needs a reason.
+docs/SPEC.md analyse | names the function analyse() in action/src/run.ts
+docs/SPEC.md serialise | names the serialise option of uploadDescriptions, a code identifier
+docs/SPEC.md labelled | names the directory evals/labelled/, a path
+docs/spikes/describe.md labelled | names directories on disk, paths
+docs/spikes/describe/score.ts labelled | names the directory evals/labelled/ in a comment, a path
+docs/spikes/describe/store.ts labelled | the on-disk directory name for the labeled set
+docs/spikes/describe/validate-real.ts labelled | names a data directory, a path
+docs/spikes/v2-token-hash.md normaliser | names the file ts-normaliser.ts, a file name
+packages/core/src/describe/followups180.test.ts authorised | test input for the lexicon, which lists that spelling
+packages/core/src/describe/lexicon.ts * | word list that matches both spellings on purpose
+packages/core/src/describe/wordlist.ts * | word list of both spellings on purpose

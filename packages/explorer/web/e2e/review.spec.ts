@@ -188,7 +188,7 @@ async function expectTidy(page: Page) {
   expect(out).toEqual([]);
 }
 
-test("2D map: Button's file coloured by its change, caller files tinted, file-to-file lines, the rest faded; risk on the left", async ({
+test("2D map: Button's file colored by its change, caller files tinted, file-to-file lines, the rest faded; risk on the left", async ({
   page,
 }) => {
   const t0 = Date.now();
@@ -329,9 +329,7 @@ test("positions: every node of the review map sits exactly where it sits on the 
   }
 });
 
-test("function level: Button itself coloured, a function-to-function line from HomePage", async ({
-  page,
-}) => {
+test("function level: Button itself colored, a function-to-function line from HomePage", async ({ page }) => {
   await open(page, "#/review?range=main...feature&level=symbols");
   const p = await probe2d(page);
   expect(p.review?.changed).toContainEqual({ id: BUTTON, change: "signature" });
@@ -380,7 +378,7 @@ test("consumers on the map: expanding a change lists who uses it; only its lines
   const inspector = page.getByRole("complementary", { name: "Inspector" });
   await expect(inspector.getByRole("heading", { name: /^Used by \(\d+\)$/ })).toBeVisible();
 
-  // Only Button's consumers keep their colour and lines: direct ones strong, potential ones soft.
+  // Only Button's consumers keep their color and lines: direct ones strong, potential ones soft.
   await page.mouse.move(2, 2);
   const p = await probe2d(page);
   const links = p.review?.drawn?.links ?? [];
@@ -517,7 +515,7 @@ test("a focus-only deep link (as gantry_open_view returns) opens that symbol in 
   await expect(heading).toHaveAttribute("title", BUTTON);
 });
 
-test("3D map: the settlements with Button's building coloured, caller buildings tinted, arcs between them", async ({
+test("3D map: the settlements with Button's building colored, caller buildings tinted, arcs between them", async ({
   page,
 }) => {
   await open(page, "#/review?range=main...feature");
@@ -582,7 +580,7 @@ test("rings: plain-words ring labels with counts, file groups, names on changed 
   const canvas = page.getByTestId("review-canvas");
   await expect(canvas).toHaveAttribute("data-mode", "rings");
   await expect(
-    canvas.getByText("Centre: what changed. Each ring out: code that calls the ring inside it."),
+    canvas.getByText("Center: what changed. Each ring out: code that calls the ring inside it."),
   ).toBeVisible();
   await expect(canvas.getByText(/^Changed in this range \(3\)$/)).toBeVisible();
   await expect(canvas.getByText(/^Call the changed code directly \(\d+\)$/)).toBeVisible();

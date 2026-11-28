@@ -244,7 +244,7 @@ export function TreemapCanvas({
     [scene, generation],
   );
 
-  // Theme: follow the shell's CSS variables and the OS colour scheme.
+  // Theme: follow the shell's CSS variables and the OS color scheme.
   useEffect(() => {
     const update = () => setTheme(readTheme(wrapRef.current));
     update();
@@ -378,8 +378,8 @@ export function TreemapCanvas({
     [ranked.files, scene],
   );
   const rankHoverIndex = ranked.hoverFile ? (scene.tree.index.get(ranked.hoverFile) ?? null) : null;
-  // Team markers, by tree index, with the owners' own colours. They are hidden while a change set is picked (its
-  // colours are on the map then). Each fades and scales in over 150 ms, 20 ms after the one before it, and fades out
+  // Team markers, by tree index, with the owners' own colors. They are hidden while a change set is picked (its
+  // colors are on the map then). Each fades and scales in over 150 ms, 20 ms after the one before it, and fades out
   // over 150 ms when a filter removes it; with reduced motion they come and go at once.
   const teamPeople = team.data?.people;
   const markerScheme = theme.scheme ?? currentScheme();
@@ -449,7 +449,7 @@ export function TreemapCanvas({
       ...live.current,
       theme,
       selected: selectedIndex,
-      // With the review layer on, its own colours and lines say what matters; the selection only gets its outline.
+      // With the review layer on, its own colors and lines say what matters; the selection only gets its outline.
       bright: selectedIndex === null || reviewPaint ? null : brightSet(scene, selectedIndex),
       links:
         selectedIndex !== null && selectedTier > 0 && !reviewPaint
@@ -584,7 +584,7 @@ export function TreemapCanvas({
         zoomedPast = pastFit;
         setZoomedIn(pastFit);
       }
-      // "You are here": the workspace and folders at the centre of the canvas, while zoomed in or when the
+      // "You are here": the workspace and folders at the center of the canvas, while zoomed in or when the
       // workspace title has scrolled out of view.
       const path = locatePath(scene, geo, cam, w / 2, h / 2);
       let shown: Crumb[] | null = null;
@@ -644,7 +644,7 @@ export function TreemapCanvas({
         const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
         // Interpolate the scale geometrically so zooming feels even.
         const scale = from.scale * (target.scale / from.scale) ** e;
-        // Keep the screen point that maps to the target centre moving linearly.
+        // Keep the screen point that maps to the target center moving linearly.
         setCam({
           scale,
           tx: from.tx + (target.tx - from.tx) * e,

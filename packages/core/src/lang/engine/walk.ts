@@ -1,7 +1,7 @@
 import type { SyntaxNode } from "./grammar.js";
 import type { BaseTypeRule, BodiedTypeRule, LanguagePack } from "./pack.js";
 
-/** Base type name of a receiver or type expression: `*S[T]` -> `S`. The pack's `unknown` when the shape is not recognised. */
+/** Base type name of a receiver or type expression: `*S[T]` -> `S`. The pack's `unknown` when the shape is not recognized. */
 export function baseTypeName(rule: BaseTypeRule, n: SyntaxNode | null): string {
   let cur = n;
   while (cur) {

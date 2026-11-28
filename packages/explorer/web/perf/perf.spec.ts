@@ -47,7 +47,7 @@ async function stopRecorder(page: Page): Promise<FrameStats> {
 }
 
 async function interact(page: Page, centre: { x: number; y: number }, zoom: boolean) {
-  // About three seconds of dragging and wheel-zooming around the centre of the canvas.
+  // About three seconds of dragging and wheel-zooming around the center of the canvas.
   await page.mouse.move(centre.x, centre.y);
   for (let round = 0; round < 6; round++) {
     await page.mouse.down();

@@ -1,4 +1,4 @@
-// Go-specific behaviour of the description checks (#224). The rules are the TypeScript ones; the rows below are the
+// Go-specific behavior of the description checks (#224). The rules are the TypeScript ones; the rows below are the
 // places where a rule read a TypeScript-only token: the assignment forms of credentials (`:=`, `var x string =`).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

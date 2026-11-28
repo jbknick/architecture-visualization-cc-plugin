@@ -254,7 +254,7 @@ describe("gantry team, built, against the fake server", () => {
     expect(readFileSync(configFile, "utf8")).not.toContain(USER_TOKEN);
   });
 
-  it("signs in before any link: no organisation is sent and the user is stored", async () => {
+  it("signs in before any link: no organization is sent and the user is stored", async () => {
     const signedIn = await login(["--server", proxy.url]);
     expect(signedIn.code).toBe(0);
     const whoami = proxy.seen.filter((s) => s.path.startsWith("/v1/whoami"));

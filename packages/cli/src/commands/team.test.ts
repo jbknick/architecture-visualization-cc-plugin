@@ -77,9 +77,9 @@ describe("help", () => {
 
       Commands:
         login [options]              Sign in to a team server with a code
-        link [options]               Say which server and organisation this repo
+        link [options]               Say which server and organization this repo
                                      belongs to
-        status [options]             Show the server, organisation, user and repo,
+        status [options]             Show the server, organization, user and repo,
                                      whether the server answers, and the team cache
         logout [options]             Remove the stored sign-in for a server
         boundaries [options]         List the edges of the changed functions and files
@@ -386,7 +386,7 @@ describe("gantry team status", () => {
     expect(stderr.join("")).not.toContain("tok-rejected");
   });
 
-  it("names team_forbidden for an organisation the user is not in", async () => {
+  it("names team_forbidden for an organization the user is not in", async () => {
     await link("other-org");
     signIn();
     expect(await teamStatus(ctx(), {})).toBe(1);
