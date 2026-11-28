@@ -385,7 +385,8 @@ export const DeviceCodeResponseSchema = z.object({
   device_code: z.string(),
   user_code: z.string(),
   verification_uri: z.string(),
-  verification_uri_complete: z.string(),
+  /** Optional in RFC 8628: the verification URL with the user code already in it. */
+  verification_uri_complete: z.string().optional(),
   expires_in: z.number().int(),
   interval: z.number().int(),
 });

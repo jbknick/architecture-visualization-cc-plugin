@@ -214,7 +214,9 @@ describe("gantry team, built, against the fake server", () => {
 
     const signedIn = await login();
     expect(signedIn.code).toBe(0);
-    expect(signedIn.out).toContain(`Open http://127.0.0.1/device and enter the code:\n\n    `);
+    expect(signedIn.out).toMatch(
+      /^Open http:\/\/127\.0\.0\.1\/device\?user_code=[0-9A-F]{8} and check that the page shows this code:\n\n {4}[0-9A-F]{4}-[0-9A-F]{4}\n/,
+    );
     expect(signedIn.out).toContain(`Signed in as octo-dev on ${server}.\n`);
     expect(mode(credentials)).toBe(0o600);
     expect(mode(dirname(credentials))).toBe(0o700);
