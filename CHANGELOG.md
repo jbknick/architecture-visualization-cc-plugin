@@ -137,7 +137,7 @@ One section per release, newest first. Written by `pnpm release`.
 - #242: V2 plan: React Router and Fastify recipes first (#243)
 - #238: Review plan for M16 to M20 (#239)
 - V2 plan: make each path self-contained (#236)
-- CONTRIBUTING: review process, Devprentice section and CODEOWNERS (#237)
+- CONTRIBUTING: review process and CODEOWNERS (#237)
 - V2 plan: reviewed, spiked and split into two paths (#234)
 - #197: pnpm check passes on a fresh clone (#235)
 - #195: Re-index stores built with an older index format (#196)
