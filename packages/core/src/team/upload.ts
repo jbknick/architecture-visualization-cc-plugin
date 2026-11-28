@@ -124,11 +124,11 @@ export function buildMainSnapshotChecked(
     .filter((w) => inRepo(w.id, repo))
     .map((w) => ({ id: w.id, name: w.name, path: w.dir }))
     .sort(byId);
-  const files = store.effectiveFiles().filter((f) => inRepo(f.id, repo));
+  const files = store.mainFiles().filter((f) => inRepo(f.id, repo));
   const filePath = new Map(files.map((f) => [f.id, f.path]));
   const fileWorkspace = new Map(files.map((f) => [f.id, f.workspaceId ?? rootWorkspace]));
   const symbols = store
-    .effectiveSymbols()
+    .mainSymbols()
     .filter((s) => fileWorkspace.has(s.fileId))
     .map((s) => ({
       id: s.id,
@@ -146,13 +146,13 @@ export function buildMainSnapshotChecked(
     .sort(byId);
   // An edge belongs to the repo of its source. Its target may be another repo's node or an external package (`ext:react`).
   const edges = store
-    .effectiveEdges()
+    .mainEdges()
     .filter((e) => e.kind !== "similar_to" && inRepo(e.src, repo))
     .map((e) => ({ from: e.src, to: e.dst, kind: e.kind }))
     .sort((a, b) => cmp(a.from, b.from) || cmp(a.to, b.to) || cmp(a.kind, b.kind));
   let heldBack = 0;
   const adapterNodes = store
-    .effectiveAdapterNodes()
+    .mainAdapterNodes()
     .filter((n) => inRepo(n.id, repo))
     .map((n) => {
       // The control check runs on the raw label: trimming first would drop a leading or trailing line break unseen.

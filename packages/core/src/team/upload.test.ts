@@ -1,8 +1,9 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { decodePart, splitIntoParts } from "@gantry/protocol";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { rebuildIndex, refreshWorking } from "../heal/index.js";
 import { dumpGraph, indexRepo } from "../indexer.js";
 import { type GantryPaths, resolvePaths } from "../paths/index.js";
 import type { ChangeConsumers, Consumer, HubEntry } from "../review/consumers.js";
@@ -279,7 +280,7 @@ describe("cutNodes", () => {
 describe("adapter labels", () => {
   const patched = (label: string): Store =>
     Object.create(store, {
-      effectiveAdapterNodes: {
+      mainAdapterNodes: {
         value: () => [
           {
             id: "route:fixture/pnpm-turbo:@acme/web:GET /x",
@@ -428,5 +429,58 @@ describe("the radius", () => {
   it("sends no total and no warning when nothing is cut", () => {
     const merged = [{ id: "a", hop: 1, tier: "direct" as const, via_hub: false }];
     expect(cutRadius({ merged, unlisted: 0 })).toEqual({ radius: merged });
+  });
+});
+
+describe("a main snapshot in a dirty working tree", () => {
+  let dirty: UploadFixture;
+  let dirtyData: string;
+  let dirtyPaths: GantryPaths;
+
+  beforeAll(async () => {
+    dirty = await materializeUploadFixture("pnpm-turbo", {
+      dirName: "pnpm-turbo",
+      origin: "https://github.com/fixture/pnpm-turbo.git",
+    });
+    dirtyData = mkdtempSync(join(tmpdir(), "gantry-data-dirty-"));
+    dirtyPaths = resolvePaths(dirty.dir, { HOME: join(dirtyData, "home"), CLAUDE_PLUGIN_DATA: dirtyData });
+    await indexRepo(dirtyPaths, { layer: "main" });
+  });
+  afterAll(async () => {
+    rmSync(dirtyData, { recursive: true, force: true });
+    await dirty.cleanup();
+  });
+
+  it("holds the committed graph only: edits and untracked files change nothing in the body", async () => {
+    const snap = async () => {
+      await rebuildIndex(dirtyPaths); // what `gantry upload` does first
+      const s = openStore(dirtyPaths.dbPath, { overlayPath: dirtyPaths.overlayPath, repo: dirtyPaths.repo });
+      try {
+        return buildMainSnapshotChecked(s, dirtyPaths);
+      } finally {
+        s.close();
+      }
+    };
+    const clean = await snap();
+
+    // A tracked file edited (a new function, a changed body) and an untracked file, with the working layer filled
+    // the way the hooks and the MCP server fill it.
+    const tracked = join(dirty.dir, "packages/utils/src/slug.ts");
+    writeFileSync(
+      tracked,
+      `${readFileSync(tracked, "utf8")}\nexport function uncommittedSecretName(): number {\n  return 1;\n}\n`,
+    );
+    writeFileSync(
+      join(dirty.dir, "packages/utils/src/untracked-only.ts"),
+      "export const neverCommitted = 1;\n",
+    );
+    await refreshWorking(dirtyPaths);
+
+    const dirtyRun = await snap();
+    const text = JSON.stringify(dirtyRun.snapshot);
+    expect(text).not.toContain("uncommittedSecretName");
+    expect(text).not.toContain("untracked-only");
+    expect(dirtyRun.snapshot).toEqual(clean.snapshot);
+    expect(dirtyRun.warnings).toEqual(clean.warnings);
   });
 });
