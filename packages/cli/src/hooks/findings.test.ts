@@ -333,6 +333,14 @@ describe("group names as data", () => {
     expect(quoteName("\u200b")).toBe("`-`");
   });
 
+  it("keeps an emoji sequence and a Persian word, and drops a run of supplement variation selectors", () => {
+    expect(cleanGroupName("👩\u200d💻 Devs")).toBe("👩\u200d💻 Devs");
+    expect(cleanGroupName("می\u200cخواهم")).toBe("می\u200cخواهم");
+    const run = String.fromCodePoint(...Array.from({ length: 30 }, (_, i) => 0xe0100 + i));
+    expect(cleanGroupName(`Orders${run}`)).toBe("Orders");
+    expect(cleanGroupName("Orders\u3164\u2800\u034f")).toBe("Orders");
+  });
+
   it("cuts a long name to 80 characters", () => {
     const cut = cleanGroupName("x".repeat(500));
     expect(cut).toBe(`${"x".repeat(79)}…`);

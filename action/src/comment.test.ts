@@ -117,6 +117,12 @@ describe("comment body", () => {
     expect(code("\u200b\u202e")).toBe("`-`");
   });
 
+  it("keeps joiners between visible characters in a code span and drops the blanks", () => {
+    expect(code("👩\u200d💻")).toBe("`👩\u200d💻`");
+    expect(code("می\u200cخواهم")).toBe("`می\u200cخواهم`");
+    expect(code(`a${String.fromCodePoint(0xe0100, 0xe0101)}\u3164\u2800b`)).toBe("`ab`");
+  });
+
   it("names a node from its id", () => {
     expect(nameOfId("sym:repo:src/a.ts#f")).toBe("f");
     expect(nameOfId("file:repo:src/a.ts")).toBe("src/a.ts");

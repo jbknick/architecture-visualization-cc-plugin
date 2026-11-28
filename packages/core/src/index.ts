@@ -40,6 +40,7 @@ export type { ScipStats } from "./scip/index.js";
 export * from "./search/index.js";
 export * from "./store/index.js";
 export * from "./team/index.js";
+export * from "./text/untrusted.js";
 export * from "./trace.js";
 export * from "./types.js";
 export * from "./usage/index.js";

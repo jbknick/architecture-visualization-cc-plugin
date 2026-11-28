@@ -4,6 +4,7 @@ import {
   type Advice,
   adviseReuse,
   checkImports,
+  cleanUntrustedText,
   declaredOnDisk,
   FUNCTION_LIKE_KINDS,
   findDuplicates,
@@ -264,15 +265,7 @@ export const GROUP_NAME_MAX = 80;
  * by teammates, so it is data and never an instruction; the lines that print it quote it (see `quoteName`).
  */
 export function cleanGroupName(name: string): string {
-  const visible = name
-    .replace(/[\p{Cf}\p{Co}\p{Cs}\u{E0000}-\u{E007F}]/gu, "") // zero-width, bidi, tag-encoded text, private use, lone surrogates
-    .replace(/[\p{Cc}\p{Zs}\p{Zl}\p{Zp}]+/gu, " ") // control characters, line breaks, NBSP, U+3000 and other spaces
-    .trim();
-  const cut =
-    visible.length > GROUP_NAME_MAX
-      ? `${visible.slice(0, GROUP_NAME_MAX - 1).replace(/[\ud800-\udbff]$/, "")}…`
-      : visible;
-  return cut.replaceAll("`", "'");
+  return cleanUntrustedText(name, GROUP_NAME_MAX);
 }
 
 /** A group name as a code span, the way the pull request comment quotes it: `-` when nothing is left. */

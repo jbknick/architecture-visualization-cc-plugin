@@ -23,6 +23,7 @@ import {
 import { reviewDiff } from "../review/diff.js";
 import { computeImpact } from "../review/impact.js";
 import type { Store } from "../store/index.js";
+import { hasHiddenText } from "../text/untrusted.js";
 import type { SymbolKind } from "../types.js";
 
 /**
@@ -104,7 +105,7 @@ function cutLabel(s: string, max = 200): string {
  * invisible format character (zero-width, bidi, tag characters, private use, a lone surrogate).
  */
 function hasControl(s: string): boolean {
-  return /[\p{Cc}\p{Cf}\p{Co}\p{Cs}\p{Zl}\p{Zp}\u{E0000}-\u{E007F}]/u.test(s);
+  return hasHiddenText(s);
 }
 
 /**

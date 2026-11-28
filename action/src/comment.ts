@@ -6,7 +6,9 @@
 // Everything that comes from the reviewed repository (names, paths, notes) is untrusted text: it only ever appears
 // inside a code span, with backticks, line breaks and table pipes neutralised, so a file name cannot add links,
 // mentions, HTML or table cells to the comment.
+
 import type { ChangeConsumers, Consumer, Impact, ReviewDiff } from "../../packages/core/src/index.js";
+import { cleanUntrustedText } from "../../packages/core/src/text/untrusted.js";
 import type { DupCluster, DuplicatesResult } from "../../packages/explorer/src/index.js";
 
 /** Hidden first line of the comment; the script finds its earlier comment by it. */
@@ -74,12 +76,7 @@ const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
 
 function sanitize(text: string, max: number): string {
-  const flat = text
-    .replace(/[\p{Cf}\p{Co}\p{Cs}\u{E0000}-\u{E007F}]/gu, "") // zero-width, bidi, tag-encoded text, private use, lone surrogates
-    .replace(/[\p{Cc}\p{Zs}\p{Zl}\p{Zp}]+/gu, " ")
-    .trim();
-  const cut = flat.length > max ? `${flat.slice(0, max - 1).replace(/[\ud800-\udbff]$/, "")}…` : flat;
-  return cut.replaceAll("`", "'");
+  return cleanUntrustedText(text, max);
 }
 
 /** Untrusted text as a code span: no backticks, no line breaks, cut to `max` characters. */
