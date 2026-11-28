@@ -57,4 +57,11 @@ describe("ROUTES", () => {
     expect(ROUTES.putPart.errors).toContain("budget");
     expect(ROUTES.putPart.errors).toContain("too_large");
   });
+
+  it("the group and view save routes can answer conflict and too_large", () => {
+    for (const route of [ROUTES.putGroup, ROUTES.putView]) {
+      expect(route.errors).toContain("conflict");
+      expect(route.errors).toContain("too_large");
+    }
+  });
 });

@@ -18,6 +18,7 @@ import {
   ErrorSchema,
   type MainSnapshot,
   type PartRecord,
+  LIMITS as PROTOCOL_LIMITS,
   type UploadStart,
 } from "../schemas.js";
 import { type FakeServer, type FakeServerOptions, startFakeServer } from "./fakeServer.js";
@@ -313,6 +314,23 @@ describe("auth, headers and validation", () => {
     }
   });
 
+  it("answers 413 too_large when a group or view is over the item size", async () => {
+    // Valid by the schema (50 selectors of 20 ids each) and still over 32 KB serialised.
+    const selectors = Array.from({ length: 50 }, () => ({
+      type: "ids" as const,
+      ids: Array.from({ length: 20 }, () => `sym:${"a".repeat(32)}:src/a.ts#f`),
+    }));
+    for (const [route, item] of [
+      [ROUTES.putGroup, { ...group, selectors }],
+      [ROUTES.putView, { ...view, spec: { ...view.spec, hidden: selectors } }],
+    ] as const) {
+      expect(Buffer.byteLength(JSON.stringify(item))).toBeGreaterThan(PROTOCOL_LIMITS.item_bytes);
+      const r = await call(route, { repo: REPO, id: item.id }, asUser({ body: item }));
+      expect(r.status).toBe(413);
+      expect(ErrorSchema.parse(r.json).error).toBe("too_large");
+    }
+  });
+
   it("answers 400 to an invalid body, an extra key and a body that is not JSON", async () => {
     const bad = await call(
       ROUTES.putDescriptions,
@@ -343,7 +361,7 @@ describe("auth, headers and validation", () => {
     expect(r.status).toBe(200);
   });
 
-  it("limits groups and views per repo, and a member cannot delete a group", async () => {
+  it("limits groups per repo with 409 conflict, and a member cannot delete a group", async () => {
     for (let i = 0; i < 100; i++) {
       expect(
         (
@@ -358,10 +376,23 @@ describe("auth, headers and validation", () => {
     expect(
       (await call(ROUTES.putGroup, { repo: REPO, id: "g100" }, asUser({ body: { ...group, id: "g100" } })))
         .status,
-    ).toBe(400);
+    ).toBe(409);
     expect(
       (await call(ROUTES.putGroup, { repo: REPO, id: "g0" }, asUser({ body: group, ...{} }))).status,
     ).toBe(400);
+    for (let i = 0; i < 100; i++) {
+      await call(ROUTES.putView, { repo: REPO, id: `v${i}` }, asUser({ body: { ...view, id: `v${i}` } }));
+    }
+    const fullViews = await call(
+      ROUTES.putView,
+      { repo: REPO, id: "v100" },
+      asUser({ body: { ...view, id: "v100" } }),
+    );
+    expect(fullViews.status).toBe(409);
+    expect(ErrorSchema.parse(fullViews.json).error).toBe("conflict");
+    expect(
+      (await call(ROUTES.putView, { repo: REPO, id: "v0" }, asUser({ body: { ...view, id: "v0" } }))).status,
+    ).toBe(200);
     await server.close();
     await start({ role: "member" });
     expect((await call(ROUTES.deleteGroup, { repo: REPO, id: "g0" }, asUser())).status).toBe(403);

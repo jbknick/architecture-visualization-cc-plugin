@@ -307,9 +307,9 @@ export async function startFakeServer(opts: FakeServerOptions = {}): Promise<Fak
     if (item.id !== id) throw new HttpError(400, "invalid", "the body id differs from the path id");
     const items = collection(map, repo);
     if (!items.has(id) && items.size >= limit)
-      throw new HttpError(400, "invalid", `the repo already has ${limit} ${noun}`);
+      throw new HttpError(409, "conflict", `the repo already has ${limit} ${noun}`);
     if (Buffer.byteLength(JSON.stringify(item)) > LIMITS.item_bytes)
-      throw new HttpError(400, "invalid", `the ${noun} is too large`);
+      throw new HttpError(413, "too_large", `the ${noun} is too large`);
     items.set(id, item);
   }
 
