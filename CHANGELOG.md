@@ -2,6 +2,13 @@
 
 One section per release, newest first. Written by `pnpm release`.
 
+## 0.5.0 - 2026-11-28
+
+- Team login prints the verification URL with the code in it, falling back to the plain URL and the code (#452)
+- Protocol: putGroup and putView list conflict and too_large among their errors (#451)
+- Team cache pull restarts from page 1 when a later page answers 409 conflict, at most 3 times (#450)
+- pnpm check passes on a fresh checkout: tests bundle the CLI and Action from source (#449)
+
 ## 0.4.0 - 2026-11-27
 
 - A runtime guard refuses any upload that could carry source, and the description switch is proved to stop every description upload (#447)
