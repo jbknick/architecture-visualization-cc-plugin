@@ -1,0 +1,28 @@
+{
+  "repos": [
+    {
+      "name": "clojure-lsp",
+      "url": "https://github.com/clojure-lsp/clojure-lsp.git",
+      "sha": "1e93ac58bede574786c5cc75b0fd3a51bc224f7a",
+      "stack": ["clojure", "deps-edn"],
+      "lang": ["clojure"],
+      "role": "held-out"
+    },
+    {
+      "name": "ring",
+      "url": "https://github.com/ring-clojure/ring.git",
+      "sha": "5f745bbc7daefa097d7e9cf6394b44dce51cf597",
+      "stack": ["clojure", "leiningen"],
+      "lang": ["clojure"],
+      "role": "held-out"
+    },
+    {
+      "name": "status-mobile",
+      "url": "https://github.com/status-im/status-mobile.git",
+      "sha": "e0da660e053ae9058e6f4523292407fac21ef945",
+      "stack": ["clojurescript", "shadow-cljs", "re-frame"],
+      "lang": ["clojure"],
+      "role": "held-out"
+    }
+  ]
+}

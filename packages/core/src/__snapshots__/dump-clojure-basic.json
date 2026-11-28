@@ -1,0 +1,1123 @@
+{
+  "repos": [
+    {
+      "name": "clojure-basic"
+    }
+  ],
+  "workspaces": [
+    {
+      "id": "ws:clojure-basic:acme/app",
+      "repo": "clojure-basic",
+      "name": "acme/app",
+      "dir": "app",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [
+        "acme/core",
+        "org.clojure/clojure"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:clojure-basic:core",
+      "repo": "clojure-basic",
+      "name": "core",
+      "dir": "core",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [
+        "org.clojure/clojure"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:clojure-basic:tools",
+      "repo": "clojure-basic",
+      "name": "tools",
+      "dir": "tools",
+      "kind": "package",
+      "frameworks": [],
+      "deps": [
+        "acme/core"
+      ],
+      "exportsMap": null
+    },
+    {
+      "id": "ws:clojure-basic:ui",
+      "repo": "clojure-basic",
+      "name": "ui",
+      "dir": "ui",
+      "kind": "app",
+      "frameworks": [],
+      "deps": [
+        "reagent"
+      ],
+      "exportsMap": null
+    }
+  ],
+  "files": [
+    {
+      "id": "file:clojure-basic:app/project.clj",
+      "repo": "clojure-basic",
+      "path": "app/project.clj",
+      "lang": "clojure",
+      "workspaceId": "ws:clojure-basic:acme/app",
+      "contentHash": "bc25741760fe1fc9999a822159c0623012af0cf23cfb46850ca2415b2a958947"
+    },
+    {
+      "id": "file:clojure-basic:app/src/acme/app/main.clj",
+      "repo": "clojure-basic",
+      "path": "app/src/acme/app/main.clj",
+      "lang": "clojure",
+      "workspaceId": "ws:clojure-basic:acme/app",
+      "contentHash": "b6abbf5222bc2a1394edb7addcf7951a8c824e8cd7b6f4dfdaf3186e5878fa8e"
+    },
+    {
+      "id": "file:clojure-basic:app/src/acme/app/report.clj",
+      "repo": "clojure-basic",
+      "path": "app/src/acme/app/report.clj",
+      "lang": "clojure",
+      "workspaceId": "ws:clojure-basic:acme/app",
+      "contentHash": "6127aff20232488a55d166a6175735a151611dd4d6e4c3d7e0d852761c529123"
+    },
+    {
+      "id": "file:clojure-basic:app/test/acme/app/main_test.clj",
+      "repo": "clojure-basic",
+      "path": "app/test/acme/app/main_test.clj",
+      "lang": "clojure",
+      "workspaceId": "ws:clojure-basic:acme/app",
+      "contentHash": "3d0bc1aac6b3bd27e6fe9cde87ebd0b05d1bcc81f899a0d6b239336ed7cc690f"
+    },
+    {
+      "id": "file:clojure-basic:core/src/acme/core/macros.clj",
+      "repo": "clojure-basic",
+      "path": "core/src/acme/core/macros.clj",
+      "lang": "clojure",
+      "workspaceId": "ws:clojure-basic:core",
+      "contentHash": "e8b6610b45fece44c2bb39be29f12b1aa259c59bc9b77272f0aeab6121fa9ce9"
+    },
+    {
+      "id": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "repo": "clojure-basic",
+      "path": "core/src/acme/core/shapes.clj",
+      "lang": "clojure",
+      "workspaceId": "ws:clojure-basic:core",
+      "contentHash": "45f13b5ef001c5fb644ad0d9cbbdb416ecb998e25d4441546341ea36c4ad950e"
+    },
+    {
+      "id": "file:clojure-basic:core/src/acme/core/util.cljc",
+      "repo": "clojure-basic",
+      "path": "core/src/acme/core/util.cljc",
+      "lang": "clojure",
+      "workspaceId": "ws:clojure-basic:core",
+      "contentHash": "a5881d6c663bc73ebdbb26daa83f19afb88b4318a8255f05f2010550d07e2cc9"
+    },
+    {
+      "id": "file:clojure-basic:tools/bb.edn",
+      "repo": "clojure-basic",
+      "path": "tools/bb.edn",
+      "lang": "clojure",
+      "workspaceId": "ws:clojure-basic:tools",
+      "contentHash": "291356e8c1beee063ae49d279dda25a2fb3ac89bd1510119d54fc38f24b46fbf"
+    },
+    {
+      "id": "file:clojure-basic:tools/src/acme/tools/build.clj",
+      "repo": "clojure-basic",
+      "path": "tools/src/acme/tools/build.clj",
+      "lang": "clojure",
+      "workspaceId": "ws:clojure-basic:tools",
+      "contentHash": "3105b2c53e7007308dd56db772dca005eeba2b5a46eb6fa66ab1dcd15ea4065c"
+    },
+    {
+      "id": "file:clojure-basic:ui/src/acme/ui/view.cljs",
+      "repo": "clojure-basic",
+      "path": "ui/src/acme/ui/view.cljs",
+      "lang": "clojure",
+      "workspaceId": "ws:clojure-basic:ui",
+      "contentHash": "6cb25b18b302cc676ceb80a4ad579e65277084f3dd6e8622dd371e6836a3aa7f"
+    }
+  ],
+  "symbols": [
+    {
+      "id": "sym:clojure-basic:app/src/acme/app/main.clj#-main",
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj",
+      "name": "-main",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[& args]",
+      "startLine": 16,
+      "endLine": 17,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "c2dbaa7952c81c5d10a48dc2452cd4d9",
+      "shapeHash": "cd59ad13655d896e880152443b18f3cd"
+    },
+    {
+      "id": "sym:clojure-basic:app/src/acme/app/main.clj#on-ping",
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj",
+      "name": "on-ping",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[req]",
+      "startLine": 8,
+      "endLine": 9,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "7c7a26130f7724f007b51b8beeba0f9e",
+      "shapeHash": "bfd36522e6924e882680d8270644d897"
+    },
+    {
+      "id": "sym:clojure-basic:app/src/acme/app/main.clj#run",
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj",
+      "name": "run",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[args]",
+      "startLine": 11,
+      "endLine": 14,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 7,
+      "exactHash": "c22f17cfebd184089c29740a8b6f800d",
+      "shapeHash": "8143b5a917d430e7ee35c9a80d28b1b0"
+    },
+    {
+      "id": "sym:clojure-basic:app/src/acme/app/report.clj#print-report",
+      "fileId": "file:clojure-basic:app/src/acme/app/report.clj",
+      "name": "print-report",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[shapes]",
+      "startLine": 4,
+      "endLine": 6,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 3,
+      "exactHash": "682ec303217825b766f25c65cc65ce02",
+      "shapeHash": "874e5258a4c62c0d7c375006a7f8f96d"
+    },
+    {
+      "id": "sym:clojure-basic:app/test/acme/app/main_test.clj#run-gives-an-area",
+      "fileId": "file:clojure-basic:app/test/acme/app/main_test.clj",
+      "name": "run-gives-an-area",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "",
+      "startLine": 5,
+      "endLine": 6,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 3,
+      "exactHash": "8fec575c5d950821651153d560e423f9",
+      "shapeHash": "81c1190f50fb7e954aa8ffb34b4e922e"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/macros.clj#defhandler",
+      "fileId": "file:clojure-basic:core/src/acme/core/macros.clj",
+      "name": "defhandler",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[name args & body]",
+      "startLine": 3,
+      "endLine": 6,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "bdb5554ab3bc92ade47705ced69d20f9",
+      "shapeHash": "ebb2f46b70cb452cec6bcf2f356572da"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/shapes.clj#->Circle",
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "name": "->Circle",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[r]",
+      "startLine": 9,
+      "endLine": 9,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "362fad5ce9fd1bb15094363446fc0e70",
+      "shapeHash": "3843971dcfdee5083e6289e1bbdbb003"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/shapes.clj#Circle",
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "name": "Circle",
+      "kind": "class",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[r]",
+      "startLine": 9,
+      "endLine": 12,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 6,
+      "exactHash": "091ab1245a440a0995f1735c6936f27b",
+      "shapeHash": "9eacf80bfbc7bb398bb1758cc6d4b94a"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/shapes.clj#Shape",
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "name": "Shape",
+      "kind": "interface",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "",
+      "startLine": 5,
+      "endLine": 7,
+      "loc": 3,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "17da0ed1444e0392aa1f2046950fdced",
+      "shapeHash": "8c45a46c09f70311497e1b47c9d34997"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/shapes.clj#Shape.area",
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "name": "Shape.area",
+      "kind": "method",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[this]",
+      "startLine": 6,
+      "endLine": 6,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "eb9656b0391045198881d68bcc10a0fe",
+      "shapeHash": "71943efae6edbda00531032ced952ae9"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/shapes.clj#Shape.describe",
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "name": "Shape.describe",
+      "kind": "method",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[this]",
+      "startLine": 7,
+      "endLine": 7,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "930ab4567cacd4ec307dbed5fc2896f6",
+      "shapeHash": "43094e37c05dbb591237b52cd5ef020a"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/shapes.clj#circle",
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "name": "circle",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[r]",
+      "startLine": 14,
+      "endLine": 17,
+      "loc": 4,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "de50453043e83968f9cc703613c0141e",
+      "shapeHash": "c5683e9b672f9da2229f8e8e59052fb4"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/shapes.clj#map->Circle",
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "name": "map->Circle",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[m]",
+      "startLine": 9,
+      "endLine": 9,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "362fad5ce9fd1bb15094363446fc0e70",
+      "shapeHash": "3843971dcfdee5083e6289e1bbdbb003"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/shapes.clj#scale",
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "name": "scale",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "",
+      "startLine": 23,
+      "endLine": 23,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "957887a6f683dc3be8ec196f428b06d3",
+      "shapeHash": "8c7f019bda382b80a2c4a53d462ab228"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/shapes.clj#scale.Circle",
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "name": "scale.Circle",
+      "kind": "method",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[c k]",
+      "startLine": 25,
+      "endLine": 26,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 3,
+      "exactHash": "9a032ff12040dc9aab2d603e7cb659a7",
+      "shapeHash": "f23fe5b2bb97785871c717c01825d5b1"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/shapes.clj#unit",
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "name": "unit",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[]",
+      "startLine": 21,
+      "endLine": 21,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "b104c0b9dab6e0d66241a243e13a1a36",
+      "shapeHash": "ef16f69369e8c0935514e26cca3183d6"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/shapes.clj#unit-radius",
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "name": "unit-radius",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": false,
+      "signature": "[]",
+      "startLine": 19,
+      "endLine": 19,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "60b3b4261594744767fc26cb064c32ad",
+      "shapeHash": "c63516bd9133829f481254200ec3a023"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/util.cljc#clamp",
+      "fileId": "file:clojure-basic:core/src/acme/core/util.cljc",
+      "name": "clamp",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[x lo hi]",
+      "startLine": 3,
+      "endLine": 4,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "e0a19b585c10e105d5ee5c25931992e4",
+      "shapeHash": "12f8aecab14acf4a747fef3b7cee4af1"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/util.cljc#platform",
+      "fileId": "file:clojure-basic:core/src/acme/core/util.cljc",
+      "name": "platform",
+      "kind": "const",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "",
+      "startLine": 15,
+      "endLine": 15,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "0e5b09250a5a63b072c22e5a1651e342",
+      "shapeHash": "9344146a5f6bd9e889203f89fdacd5ba"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/util.cljc#platform~2",
+      "fileId": "file:clojure-basic:core/src/acme/core/util.cljc",
+      "name": "platform",
+      "kind": "const",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "",
+      "startLine": 16,
+      "endLine": 16,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 0,
+      "exactHash": "04ba26ca07bce68f7ef68c40d8548257",
+      "shapeHash": "9344146a5f6bd9e889203f89fdacd5ba"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/util.cljc#round-to",
+      "fileId": "file:clojure-basic:core/src/acme/core/util.cljc",
+      "name": "round-to",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "([x] [x step])",
+      "startLine": 8,
+      "endLine": 13,
+      "loc": 6,
+      "complexity": 1,
+      "stmtCount": 5,
+      "exactHash": "0e2e9084ee93b627ece11143d6c2d867",
+      "shapeHash": "29ba6cf5ff5a17f4cd258a072f1b0a9e"
+    },
+    {
+      "id": "sym:clojure-basic:core/src/acme/core/util.cljc#square",
+      "fileId": "file:clojure-basic:core/src/acme/core/util.cljc",
+      "name": "square",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[x]",
+      "startLine": 6,
+      "endLine": 6,
+      "loc": 1,
+      "complexity": 1,
+      "stmtCount": 1,
+      "exactHash": "82cdde96fea5973a13b40936e6c4bac9",
+      "shapeHash": "b891b3efb0448683e8d7e4743b87decd"
+    },
+    {
+      "id": "sym:clojure-basic:tools/src/acme/tools/build.clj#clean",
+      "fileId": "file:clojure-basic:tools/src/acme/tools/build.clj",
+      "name": "clean",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[dir]",
+      "startLine": 4,
+      "endLine": 5,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "db3ce3a2495be52ab78b2ba645975f5f",
+      "shapeHash": "4039928b410591d0710c14942598f26e"
+    },
+    {
+      "id": "sym:clojure-basic:ui/src/acme/ui/view.cljs#init",
+      "fileId": "file:clojure-basic:ui/src/acme/ui/view.cljs",
+      "name": "init",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[]",
+      "startLine": 7,
+      "endLine": 8,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "6f83ef87a29ac17a4e4357a0c5376108",
+      "shapeHash": "bde44242c22c751ac27ee680fb88fa32"
+    },
+    {
+      "id": "sym:clojure-basic:ui/src/acme/ui/view.cljs#label",
+      "fileId": "file:clojure-basic:ui/src/acme/ui/view.cljs",
+      "name": "label",
+      "kind": "function",
+      "lang": "clojure",
+      "exported": true,
+      "signature": "[n]",
+      "startLine": 4,
+      "endLine": 5,
+      "loc": 2,
+      "complexity": 1,
+      "stmtCount": 2,
+      "exactHash": "78d708e9bd6456a8e349e686753e8827",
+      "shapeHash": "4ffe4f3296bcaa4974bf6bbc3e0a3d9d"
+    }
+  ],
+  "edges": [
+    {
+      "src": "file:clojure-basic:app/src/acme/app/main.clj",
+      "dst": "sym:clojure-basic:app/src/acme/app/main.clj#-main",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj"
+    },
+    {
+      "src": "file:clojure-basic:app/src/acme/app/main.clj",
+      "dst": "sym:clojure-basic:app/src/acme/app/main.clj#on-ping",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj"
+    },
+    {
+      "src": "file:clojure-basic:app/src/acme/app/main.clj",
+      "dst": "sym:clojure-basic:app/src/acme/app/main.clj#run",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj"
+    },
+    {
+      "src": "file:clojure-basic:app/src/acme/app/report.clj",
+      "dst": "sym:clojure-basic:app/src/acme/app/report.clj#print-report",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:app/src/acme/app/report.clj"
+    },
+    {
+      "src": "file:clojure-basic:app/test/acme/app/main_test.clj",
+      "dst": "sym:clojure-basic:app/test/acme/app/main_test.clj#run-gives-an-area",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:app/test/acme/app/main_test.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/macros.clj",
+      "dst": "sym:clojure-basic:core/src/acme/core/macros.clj#defhandler",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/macros.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#->Circle",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#Circle",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#Shape",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#Shape.area",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#Shape.describe",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#circle",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#map->Circle",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#scale",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#scale.Circle",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#unit",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#unit-radius",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/util.cljc",
+      "dst": "sym:clojure-basic:core/src/acme/core/util.cljc#clamp",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/util.cljc"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/util.cljc",
+      "dst": "sym:clojure-basic:core/src/acme/core/util.cljc#platform",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/util.cljc"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/util.cljc",
+      "dst": "sym:clojure-basic:core/src/acme/core/util.cljc#platform~2",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/util.cljc"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/util.cljc",
+      "dst": "sym:clojure-basic:core/src/acme/core/util.cljc#round-to",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/util.cljc"
+    },
+    {
+      "src": "file:clojure-basic:core/src/acme/core/util.cljc",
+      "dst": "sym:clojure-basic:core/src/acme/core/util.cljc#square",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/util.cljc"
+    },
+    {
+      "src": "file:clojure-basic:tools/src/acme/tools/build.clj",
+      "dst": "sym:clojure-basic:tools/src/acme/tools/build.clj#clean",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:tools/src/acme/tools/build.clj"
+    },
+    {
+      "src": "file:clojure-basic:ui/src/acme/ui/view.cljs",
+      "dst": "sym:clojure-basic:ui/src/acme/ui/view.cljs#init",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:ui/src/acme/ui/view.cljs"
+    },
+    {
+      "src": "file:clojure-basic:ui/src/acme/ui/view.cljs",
+      "dst": "sym:clojure-basic:ui/src/acme/ui/view.cljs#label",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:ui/src/acme/ui/view.cljs"
+    },
+    {
+      "src": "sym:clojure-basic:app/src/acme/app/main.clj#-main",
+      "dst": "sym:clojure-basic:app/src/acme/app/main.clj#run",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/acme/app/main.clj:17"
+      ],
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:app/src/acme/app/main.clj#on-ping",
+      "dst": "sym:clojure-basic:core/src/acme/core/macros.clj#defhandler",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/acme/app/main.clj:8"
+      ],
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:app/src/acme/app/main.clj#run",
+      "dst": "sym:clojure-basic:app/src/acme/app/report.clj#print-report",
+      "kind": "calls",
+      "confidence": "low",
+      "count": 1,
+      "evidence": [
+        "app/src/acme/app/main.clj:13"
+      ],
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:app/src/acme/app/main.clj#run",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#Shape.area",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/acme/app/main.clj:14"
+      ],
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:app/src/acme/app/main.clj#run",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#circle",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/acme/app/main.clj:12"
+      ],
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:app/src/acme/app/main.clj#run",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#unit",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/acme/app/main.clj:13"
+      ],
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:app/src/acme/app/main.clj#run",
+      "dst": "sym:clojure-basic:core/src/acme/core/util.cljc#clamp",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/acme/app/main.clj:12"
+      ],
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:app/src/acme/app/report.clj#print-report",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#Shape.describe",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/src/acme/app/report.clj:6"
+      ],
+      "fileId": "file:clojure-basic:app/src/acme/app/report.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:app/test/acme/app/main_test.clj#run-gives-an-area",
+      "dst": "sym:clojure-basic:app/src/acme/app/main.clj#run",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "app/test/acme/app/main_test.clj:6"
+      ],
+      "fileId": "file:clojure-basic:app/test/acme/app/main_test.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:core/src/acme/core/shapes.clj#Circle",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#Shape",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/acme/core/shapes.clj:10"
+      ],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:core/src/acme/core/shapes.clj#Circle",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#Shape.area",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/acme/core/shapes.clj:12"
+      ],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:core/src/acme/core/shapes.clj#Circle",
+      "dst": "sym:clojure-basic:core/src/acme/core/util.cljc#square",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/acme/core/shapes.clj:11"
+      ],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:core/src/acme/core/shapes.clj#circle",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#->Circle",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/acme/core/shapes.clj:17"
+      ],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:core/src/acme/core/shapes.clj#circle",
+      "dst": "sym:clojure-basic:core/src/acme/core/util.cljc#clamp",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/acme/core/shapes.clj:17"
+      ],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:core/src/acme/core/shapes.clj#scale.Circle",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#Circle",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/acme/core/shapes.clj:25"
+      ],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:core/src/acme/core/shapes.clj#scale.Circle",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#circle",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/acme/core/shapes.clj:26"
+      ],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:core/src/acme/core/shapes.clj#scale.Circle",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#scale",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/acme/core/shapes.clj:25"
+      ],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:core/src/acme/core/shapes.clj#unit",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#circle",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/acme/core/shapes.clj:21"
+      ],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:core/src/acme/core/shapes.clj#unit",
+      "dst": "sym:clojure-basic:core/src/acme/core/shapes.clj#unit-radius",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "core/src/acme/core/shapes.clj:21"
+      ],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:tools/src/acme/tools/build.clj#clean",
+      "dst": "sym:clojure-basic:core/src/acme/core/util.cljc#clamp",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "tools/src/acme/tools/build.clj:5"
+      ],
+      "fileId": "file:clojure-basic:tools/src/acme/tools/build.clj",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:ui/src/acme/ui/view.cljs#init",
+      "dst": "sym:clojure-basic:ui/src/acme/ui/view.cljs#label",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "ui/src/acme/ui/view.cljs:8"
+      ],
+      "fileId": "file:clojure-basic:ui/src/acme/ui/view.cljs",
+      "level": 1
+    },
+    {
+      "src": "sym:clojure-basic:ui/src/acme/ui/view.cljs#label",
+      "dst": "sym:clojure-basic:core/src/acme/core/util.cljc#round-to",
+      "kind": "calls",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [
+        "ui/src/acme/ui/view.cljs:5"
+      ],
+      "fileId": "file:clojure-basic:ui/src/acme/ui/view.cljs",
+      "level": 1
+    },
+    {
+      "src": "ws:clojure-basic:acme/app",
+      "dst": "file:clojure-basic:app/src/acme/app/main.clj",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:app/src/acme/app/main.clj"
+    },
+    {
+      "src": "ws:clojure-basic:acme/app",
+      "dst": "file:clojure-basic:app/src/acme/app/report.clj",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:app/src/acme/app/report.clj"
+    },
+    {
+      "src": "ws:clojure-basic:acme/app",
+      "dst": "file:clojure-basic:app/test/acme/app/main_test.clj",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:app/test/acme/app/main_test.clj"
+    },
+    {
+      "src": "ws:clojure-basic:acme/app",
+      "dst": "ws:clojure-basic:core",
+      "kind": "depends_on",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:app/project.clj"
+    },
+    {
+      "src": "ws:clojure-basic:core",
+      "dst": "file:clojure-basic:core/src/acme/core/macros.clj",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/macros.clj"
+    },
+    {
+      "src": "ws:clojure-basic:core",
+      "dst": "file:clojure-basic:core/src/acme/core/shapes.clj",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/shapes.clj"
+    },
+    {
+      "src": "ws:clojure-basic:core",
+      "dst": "file:clojure-basic:core/src/acme/core/util.cljc",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:core/src/acme/core/util.cljc"
+    },
+    {
+      "src": "ws:clojure-basic:tools",
+      "dst": "file:clojure-basic:tools/src/acme/tools/build.clj",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:tools/src/acme/tools/build.clj"
+    },
+    {
+      "src": "ws:clojure-basic:tools",
+      "dst": "ws:clojure-basic:core",
+      "kind": "depends_on",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:tools/bb.edn"
+    },
+    {
+      "src": "ws:clojure-basic:ui",
+      "dst": "file:clojure-basic:ui/src/acme/ui/view.cljs",
+      "kind": "contains",
+      "confidence": "high",
+      "count": 1,
+      "evidence": [],
+      "fileId": "file:clojure-basic:ui/src/acme/ui/view.cljs"
+    }
+  ]
+}

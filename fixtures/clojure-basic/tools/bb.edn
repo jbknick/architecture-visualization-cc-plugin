@@ -1,0 +1,2 @@
+{:paths ["src"]
+ :deps {acme/core {:local/root "../core"}}}

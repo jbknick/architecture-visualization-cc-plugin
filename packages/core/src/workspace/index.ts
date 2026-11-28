@@ -4,7 +4,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import picomatch from "picomatch";
 import { BUILTIN_EXCLUDES, matchesAny } from "../config/index.js";
 import { workspaceId } from "../ids.js";
-import { PACKS } from "../lang/packs/index.js";
+import { langIdByExtension } from "../lang/langs.js";
 import type { ExportsEntry, WorkspaceRecord } from "../types.js";
 
 /** The slice of GantryConfig (spec section 5) that workspace detection reads. */
@@ -365,7 +365,7 @@ export function workspaceForPath(ws: WorkspaceRecord[], repoRelPath: string): Wo
   }
   // A repo can hold workspaces of several languages at the root; a path belongs to the one of its own language.
   const roots = ws.filter((w) => w.dir === ".");
-  const fileLang = PACKS.find((pk) => pk.extensions.some((x) => p.endsWith(x)))?.id ?? "typescript";
+  const fileLang = langIdByExtension(p);
   const fallback = best ?? roots.find((w) => (w.lang ?? "typescript") === fileLang) ?? roots[0] ?? ws[0];
   if (!fallback) throw new Error("workspaceForPath: no workspaces");
   return fallback;

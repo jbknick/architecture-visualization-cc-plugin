@@ -434,13 +434,13 @@ describe("language packs", () => {
     "the %s pack is claimed by its extensions and has a module",
     (_id, pack) => {
       expect(languageModule(pack.id).id).toBe(pack.id);
-      expect(languages().map((m) => m.id)).toEqual(["typescript", ...PACKS.map((p) => p.id)]);
+      expect(languages().map((m) => m.id)).toEqual(["typescript", ...PACKS.map((p) => p.id), "clojure"]);
       for (const ext of pack.extensions) expect(languageOfPath(`a/b${ext}`)?.id).toBe(pack.id);
     },
   );
 
-  it("derives the language ids from the packs plus TypeScript", () => {
-    expect(LANG_IDS).toEqual(["typescript", ...PACKS.map((p) => p.id)]);
+  it("derives the language ids from the packs plus TypeScript and Clojure", () => {
+    expect(LANG_IDS).toEqual(["typescript", ...PACKS.map((p) => p.id), "clojure"]);
     for (const p of PACKS) expect(languageModule(p.id).label).toBe(p.label);
   });
 });
