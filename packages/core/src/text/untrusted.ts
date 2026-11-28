@@ -10,6 +10,8 @@
  * Turned into one space: control characters, line and paragraph separators, and every space character.
  */
 
+const ZWNJ = String.fromCodePoint(0x200c);
+const ZWJ = String.fromCodePoint(0x200d);
 const CATEGORY = /^[\p{Cf}\p{Co}\p{Cs}]$/u;
 /** Variation selectors of the supplement and the Mongolian ones, and the characters that draw nothing. */
 const BLANKS = new Set([
@@ -24,18 +26,21 @@ const NEVER = {
 const SPACE = /^[\p{Cc}\p{Zs}\p{Zl}\p{Zp}]$/u;
 const BREAK = /^[\p{Cc}\p{Zl}\p{Zp}]$/u;
 
-const isJoiner = (c: string): boolean => c === "‌" || c === "‍";
-const isVariation = (c: string): boolean => c >= "︀" && c <= "️";
+const isJoiner = (c: string): boolean => c === ZWNJ || c === ZWJ;
+const isVariation = (c: string): boolean => {
+  const cp = c.codePointAt(0) as number;
+  return cp >= 0xfe00 && cp <= 0xfe0f;
+};
 /** Not removed, not a space, not a joiner and not a variation selector. */
 const isVisible = (c: string | undefined): boolean =>
   c !== undefined && !isJoiner(c) && !isVariation(c) && !NEVER.test(c) && !SPACE.test(c);
 
 /** The text with the invisible characters removed or kept by the rule above; `hidden` says whether anything was dropped or was a break. */
-function scan(text: string): { out: string[]; hidden: boolean } {
+function scan(text: string, limit = Number.POSITIVE_INFINITY): { out: string[]; hidden: boolean } {
   const cps = [...text];
   const out: string[] = [];
   let hidden = false;
-  for (let i = 0; i < cps.length; i++) {
+  for (let i = 0; i < cps.length && out.length <= limit; i++) {
     const c = cps[i] as string;
     const prev = out[out.length - 1];
     if (isJoiner(c)) {
@@ -51,7 +56,7 @@ function scan(text: string): { out: string[]; hidden: boolean } {
       hidden = true;
     } else if (SPACE.test(c)) {
       if (BREAK.test(c)) hidden = true;
-      out.push(" ");
+      if (prev !== undefined && prev !== " ") out.push(" "); // runs of spaces are one, and none leads
     } else {
       out.push(c);
     }
@@ -59,19 +64,26 @@ function scan(text: string): { out: string[]; hidden: boolean } {
   return { out, hidden };
 }
 
+const PLAIN = /^[\x20-\x7e]*$/;
+
 /** True when `text` holds a control character, a line break or an invisible character the rule removes. */
 export function hasHiddenText(text: string): boolean {
-  return scan(text).hidden;
+  return !PLAIN.test(text) && scan(text).hidden;
 }
 
 /** `text` with the invisible characters dealt with, runs of spaces made one, and trimmed. */
 export function stripHiddenText(text: string): string {
-  return scan(text).out.join("").replace(/ {2,}/g, " ").trim();
+  return PLAIN.test(text) ? text.replace(/ {2,}/g, " ").trim() : scan(text).out.join("").trim();
 }
 
-/** Untrusted text made safe to show: `stripHiddenText`, cut to `max` characters (`…` when cut), backticks as apostrophes. */
+/**
+ * Untrusted text made safe to show: `stripHiddenText`, cut to `max` characters (`…` when cut), backticks as
+ * apostrophes. Only as much of a long text as the cut needs is read.
+ */
 export function cleanUntrustedText(text: string, max: number): string {
-  const flat = stripHiddenText(text);
+  const flat = scan(text, max + 2)
+    .out.join("")
+    .trim();
   const cut = flat.length > max ? `${flat.slice(0, max - 1).replace(/[\ud800-\udbff]$/, "")}…` : flat;
   return cut.replaceAll("`", "'");
 }
