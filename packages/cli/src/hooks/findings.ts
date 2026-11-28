@@ -254,15 +254,40 @@ function stillImports(disk: { parsed: ParsedFile } | null, srcPath: string, dstP
 
 const score = (n: number): string => n.toFixed(2);
 
+/** Longest group name that reaches the agent (the protocol's own limit for a group name). */
+export const GROUP_NAME_MAX = 80;
+
+/**
+ * A group name made safe to show: control characters and line breaks (also U+2028 and U+2029) become one space, a
+ * backtick becomes an apostrophe, the text is trimmed and cut to `GROUP_NAME_MAX` characters. A group name is written
+ * by teammates, so it is data and never an instruction; the lines that print it quote it (see `quoteName`).
+ */
+export function cleanGroupName(name: string): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are exactly what is removed
+  const flat = name.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, " ").trim();
+  const cut =
+    flat.length > GROUP_NAME_MAX
+      ? `${flat.slice(0, GROUP_NAME_MAX - 1).replace(/[\ud800-\udbff]$/, "")}…`
+      : flat;
+  return cut.replaceAll("`", "'");
+}
+
+/** A group name as a code span, the way the pull request comment quotes it: `-` when nothing is left. */
+export function quoteName(name: string): string {
+  const t = cleanGroupName(name);
+  return t === "" ? "`-`" : `\`${t}\``;
+}
+
 /** One finding as one line. */
 export function formatFinding(f: Finding): string {
   if (f.kind === "import") return `Gantry: ${f.action} (line ${f.line})`;
   if (f.kind === "crossing") {
     const word = f.team === true ? "team group" : "group";
-    const tail = `in ${word} ${f.dstGroup}, which ${f.srcGroup} does not list. Warn only.`;
+    const src = quoteName(f.srcGroup);
+    const tail = `in ${word} ${quoteName(f.dstGroup)}, which ${src} does not list. Warn only.`;
     return f.srcLine === 0 && f.dstLine === 0 && f.srcName === f.srcPath
-      ? `Gantry: ${f.srcPath} in ${word} ${f.srcGroup} imports ${f.dstPath} ${tail}`
-      : `Gantry: ${f.srcName} (${f.srcPath}:${f.srcLine}) in ${word} ${f.srcGroup} uses ${f.dstName} (${f.dstPath}:${f.dstLine}) ${tail}`;
+      ? `Gantry: ${f.srcPath} in ${word} ${src} imports ${f.dstPath} ${tail}`
+      : `Gantry: ${f.srcName} (${f.srcPath}:${f.srcLine}) in ${word} ${src} uses ${f.dstName} (${f.dstPath}:${f.dstLine}) ${tail}`;
   }
   return (
     `Gantry: ${f.name} (${f.path}:${f.line}) looks like ${f.existing} in ${f.existingRepo === undefined ? "" : `${f.existingRepo}:`}${f.existingPath}:${f.existingLine} ` +

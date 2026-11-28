@@ -34,7 +34,7 @@ const fixtureDir = join(repoRoot, "fixtures/overlay-groups");
 const EDIT = readFileSync(join(fixtureDir, "invoice.edited.txt"), "utf8");
 const TEAM = JSON.parse(readFileSync(join(fixtureDir, "groups.json"), "utf8")) as Group[];
 const TEAM_LINE =
-  "Gantry: totalDue (src/orders/invoice.ts:3) in team group Orders uses formatPrice (src/catalog/price.ts:1) in team group Catalog, which Orders does not list. Warn only.";
+  "Gantry: totalDue (src/orders/invoice.ts:3) in team group `Orders` uses formatPrice (src/catalog/price.ts:1) in team group `Catalog`, which `Orders` does not list. Warn only.";
 const BUDGET_MS = 1500;
 
 /** Loaded before the hook: `fetch` and every way to open a socket throw, and leave a note in `NET_LOG`. */
