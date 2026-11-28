@@ -14,7 +14,7 @@ Caveats, none of which change the verdict:
 
 ## Operator steps (done)
 
-Run on 2026-11-14 with `GANTRY_CLAUDE_BIN=/Users/joseph/.local/bin/claude`. The CLI needed no harness change for 2.1.325. One small harness fix: over-length `behavior` text is now a printed warning (exit 0) instead of a failure, because the host can repair it; schema and missing-key problems still exit 1. `--matrix` and `--effort-env` were run with `--reps 2` instead of the default 3 to keep the call count near 40.
+Run on 2026-11-14 with `GANTRY_CLAUDE_BIN=~/.local/bin/claude`. The CLI needed no harness change for 2.1.325. One small harness fix: over-length `behavior` text is now a printed warning (exit 0) instead of a failure, because the host can repair it; schema and missing-key problems still exit 1. `--matrix` and `--effort-env` were run with `--reps 2` instead of the default 3 to keep the call count near 40.
 
 ```
 pnpm tsx docs/spikes/worker/run.ts --version
@@ -34,7 +34,7 @@ Step 6 (real Claude-made commit) was run by hand in a scratch repo, see below. M
 | `claude --version`   | 2.1.325 (Claude Code). The earlier offline prep used 2.1.321; the results below were re-run on 2.1.325. |
 | `claude auth status` | `loggedIn: true`, `authMethod: claude.ai`, `apiProvider: firstParty`                                    |
 | Node / pnpm          | Node 22+, pnpm 10.31 (repo toolchain)                                                                   |
-| Binary location      | `/Users/joseph/.local/bin/claude`, not on `PATH` in the agent shell; passed via `GANTRY_CLAUDE_BIN`.    |
+| Binary location      | `~/.local/bin/claude`, not on `PATH` in the agent shell; passed via `GANTRY_CLAUDE_BIN`.                |
 
 ## Working command line
 
