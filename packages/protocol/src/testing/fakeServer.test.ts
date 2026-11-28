@@ -781,6 +781,21 @@ describe("pull ETag and 304", () => {
 });
 
 describe("device sign-in", () => {
+  it("leaves verification_uri_complete out when asked to", async () => {
+    const plain = await startFakeServer({ omitVerificationUriComplete: true });
+    try {
+      const res = await fetch(`${plain.url}/api/auth/device/code`, {
+        method: "POST",
+        body: JSON.stringify({ client_id: "gantry-cli" }),
+      });
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body.verification_uri).toBe("http://127.0.0.1/device");
+      expect(body).not.toHaveProperty("verification_uri_complete");
+    } finally {
+      await plain.close();
+    }
+  });
+
   it("issues a code, answers pending until approved, then gives a user token that works", async () => {
     const codeRes = await fetch(`${server.url}/api/auth/device/code`, {
       method: "POST",

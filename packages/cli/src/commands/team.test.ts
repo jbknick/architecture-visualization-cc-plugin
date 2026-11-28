@@ -192,9 +192,10 @@ describe("gantry team login", () => {
     expect(sleeps).toEqual([5000, 5000]);
     const shown = printed(stdout)
       .replace(/[0-9A-F]{4}-[0-9A-F]{4}/, "BCDF-GHJK")
+      .replace(/user_code=[0-9A-F]{8}/, "user_code=BCDFGHJK")
       .replace("http://127.0.0.1/device", "https://gantry.example.com/device");
     expect(shown).toMatchInlineSnapshot(`
-      "Open https://gantry.example.com/device and enter the code:
+      "Open https://gantry.example.com/device?user_code=BCDFGHJK and check that the page shows this code:
 
           BCDF-GHJK
 
@@ -207,6 +208,49 @@ describe("gantry team login", () => {
     };
     expect(stored.servers[fake.url]).toMatchObject({ token: USER_TOKEN, user: "octo-dev" });
     expect(stdout.join("") + stderr.join("")).not.toContain(USER_TOKEN);
+  });
+
+  it("prints the complete URL, with the code in it, and the code on its own line", async () => {
+    const exit = await teamLogin(
+      ctx({
+        sleep: async () => {
+          fake.state.approveDevice(
+            /([0-9A-F]{4})-([0-9A-F]{4})/.exec(stdout.join(""))?.slice(1, 3).join("") ?? "",
+          );
+        },
+      }),
+      { server: fake.url },
+    );
+    expect(exit).toBe(0);
+    const text = stdout.join("");
+    const code = /^ {4}([0-9A-F]{4})-([0-9A-F]{4})$/m.exec(text);
+    expect(code).not.toBeNull();
+    expect(text).toContain(
+      `Open http://127.0.0.1/device?user_code=${code?.[1]}${code?.[2]} and check that the page shows this code:\n`,
+    );
+  });
+
+  it("falls back to the plain URL and the code when the server sends no complete URL", async () => {
+    const plain = await startFakeServer({ omitVerificationUriComplete: true });
+    try {
+      const exit = await teamLogin(
+        ctx({
+          sleep: async () => {
+            plain.state.approveDevice(
+              /([0-9A-F]{4})-([0-9A-F]{4})/.exec(stdout.join(""))?.slice(1, 3).join("") ?? "",
+            );
+          },
+        }),
+        { server: plain.url },
+      );
+      expect(exit).toBe(0);
+      const text = stdout.join("");
+      expect(text).toContain("Open http://127.0.0.1/device and enter the code:\n\n    ");
+      expect(text).not.toContain("user_code=");
+      expect(text).toMatch(/^ {4}[0-9A-F]{4}-[0-9A-F]{4}$/m);
+    } finally {
+      await plain.close();
+    }
   });
 
   it("uses the linked server when --server is not given", async () => {

@@ -60,6 +60,8 @@ export interface FakeServerOptions {
   pullDelayMs?: number;
   /** Wait this long before answering `POST /v1/descriptions/lookup` (default 0), to stand in for a server that hangs. */
   lookupDelayMs?: number;
+  /** Leave `verification_uri_complete` out of the device code answer (RFC 8628 makes it optional). */
+  omitVerificationUriComplete?: boolean;
 }
 
 export interface FakeUpload {
@@ -332,7 +334,9 @@ export async function startFakeServer(opts: FakeServerOptions = {}): Promise<Fak
         device_code: deviceCode,
         user_code: userCode,
         verification_uri: verification,
-        verification_uri_complete: `${verification}?user_code=${userCode}`,
+        ...(opts.omitVerificationUriComplete
+          ? {}
+          : { verification_uri_complete: `${verification}?user_code=${userCode}` }),
         expires_in: 900,
         interval: 5,
       });

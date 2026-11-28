@@ -107,9 +107,15 @@ export async function teamLogin(ctx: TeamContext, opts: { server?: string }): Pr
         token: null,
       });
       const code = await anonymous.deviceCode();
+      // RFC 8628: verification_uri_complete already holds the code, so the page opens pre-filled.
+      // The code is printed on its own line either way, so it can be compared with the one on the page.
+      const opening =
+        code.verification_uri_complete === undefined
+          ? `Open ${code.verification_uri} and enter the code:`
+          : `Open ${code.verification_uri_complete} and check that the page shows this code:`;
       ctx.out(
         [
-          `Open ${code.verification_uri} and enter the code:`,
+          opening,
           "",
           `    ${showCode(code.user_code)}`,
           "",
