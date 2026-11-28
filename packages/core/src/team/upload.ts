@@ -1,4 +1,7 @@
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 import {
   type ChangeSet,
@@ -11,9 +14,11 @@ import {
   changeSetRecords as protocolChangeSetRecords,
   type RadiusEntry,
 } from "@gantry/protocol";
+import { loadConfig } from "../config/index.js";
 import { contentKey, FUNCTION_LIKE_KINDS } from "../describe/factsheet.js";
 import { fileId as makeFileId, parseId, parseWorkspaceId, workspaceId } from "../ids.js";
-import type { GantryPaths } from "../paths/index.js";
+import { indexRepo } from "../indexer.js";
+import { ensureDataDir, type GantryPaths } from "../paths/index.js";
 import {
   type ChangeConsumers,
   type Consumer,
@@ -22,7 +27,7 @@ import {
 } from "../review/consumers.js";
 import { reviewDiff } from "../review/diff.js";
 import { computeImpact } from "../review/impact.js";
-import type { Store } from "../store/index.js";
+import { openStore, type Store } from "../store/index.js";
 import { hasHiddenText } from "../text/untrusted.js";
 import type { SymbolKind } from "../types.js";
 
@@ -90,6 +95,188 @@ export function buildMainSnapshot(store: Store, paths: GantryPaths): MainSnapsho
   return buildMainSnapshotChecked(store, paths).snapshot;
 }
 
+const TEMP_PREFIX = "gantry-upload-head-";
+const STALE_MS = 60 * 60 * 1000;
+
+function gitIn(cwd: string, args: string[], env?: NodeJS.ProcessEnv) {
+  return spawnSync("git", ["-c", "core.hooksPath=/dev/null", ...args], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    ...(env === undefined ? {} : { env }),
+  });
+}
+
+/** The realpath of `p`, or `p` when it is gone. */
+function real(p: string): string {
+  try {
+    return fs.realpathSync(p);
+  } catch {
+    return p;
+  }
+}
+
+/**
+ * Removes what an earlier main upload left behind when it was killed: the worktrees registered in the repo that sit
+ * under the temp dir with the upload prefix and are gone or older than an hour, then the temp dirs with that prefix
+ * older than an hour. A younger one belongs to an upload that may still be running and is left alone.
+ */
+export function sweepUploadLeftovers(repoRoot: string, now: number = Date.now()): void {
+  const tmp = os.tmpdir();
+  const prefixes = [path.join(tmp, TEMP_PREFIX), path.join(real(tmp), TEMP_PREFIX)];
+  const listed = gitIn(repoRoot, ["worktree", "list", "--porcelain"]);
+  if (listed.status === 0) {
+    for (const line of listed.stdout.split("\n")) {
+      if (!line.startsWith("worktree ")) continue;
+      const dir = line.slice("worktree ".length);
+      if (!prefixes.some((pre) => dir.startsWith(pre))) continue;
+      let old = true;
+      try {
+        old = now - fs.statSync(dir).mtimeMs > STALE_MS;
+      } catch {
+        // the directory is gone: prune below drops the registration
+      }
+      if (old) {
+        gitIn(repoRoot, ["worktree", "remove", "--force", dir]);
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }
+  }
+  let names: string[] = [];
+  try {
+    names = fs.readdirSync(tmp).filter((n) => n.startsWith(TEMP_PREFIX));
+  } catch {
+    // an unreadable temp dir has nothing to sweep
+  }
+  for (const n of names) {
+    const dir = path.join(tmp, n);
+    try {
+      if (now - fs.statSync(dir).mtimeMs > STALE_MS) fs.rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // gone already
+    }
+  }
+  gitIn(repoRoot, ["worktree", "prune"]);
+}
+
+/** Names of the git filters set in the configuration of `root` (git-lfs, or any other clean and smudge pair). */
+function filterNames(root: string): string[] {
+  const r = gitIn(root, ["config", "--get-regexp", "^filter\\..+\\.(smudge|process|clean|required)$"]);
+  const names = new Set<string>();
+  if (r.status === 0) {
+    for (const line of r.stdout.split("\n")) {
+      const key = line.split(" ")[0] ?? "";
+      const m = /^filter\.(.+)\.[^.]+$/.exec(key);
+      if (m?.[1] !== undefined) names.add(m[1]);
+    }
+  }
+  names.add("lfs");
+  return [...names].sort();
+}
+
+/**
+ * The main snapshot of the commit `HEAD` names, whatever the working tree looks like. The user's own store is never
+ * read: its main layer can hold the working tree (a first or full index reads the files on disk, and an incremental
+ * heal re-indexes dirty importers into main), and its workspaces have no layer. Instead `HEAD` of every repo of the
+ * workspace is checked out detached into a temporary directory (git hooks off, no smudge or process filter run),
+ * indexed there into a temporary store with the others as siblings, and the snapshot is built from that store with
+ * the temporary checkout's `HEAD` as `sha`, so the body holds exactly the graph of that commit and a sibling's dirty
+ * tree cannot reach its edges. The temporary directory and the worktrees are removed whether the build succeeds, fails
+ * or is interrupted by SIGINT or SIGTERM; leftovers of a killed earlier upload are swept first. The config of the data
+ * dir is copied over, so the same files are indexed as in the user's own index; `precise.scip` is read from the user's
+ * checkout and its edges kept only between nodes of this index.
+ */
+export async function buildMainSnapshotOfHead(
+  paths: GantryPaths,
+): Promise<{ snapshot: MainSnapshot; warnings: string[] }> {
+  headSha(paths); // a clear error when there is no commit
+  sweepUploadLeftovers(paths.root);
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), TEMP_PREFIX));
+  const added: { root: string; dir: string }[] = [];
+  let cleaned = false;
+  const cleanup = (): void => {
+    if (cleaned) return;
+    cleaned = true;
+    for (const w of added) gitIn(w.root, ["worktree", "remove", "--force", w.dir]);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    for (const w of added) gitIn(w.root, ["worktree", "prune"]);
+  };
+  const onSignal = (signal: NodeJS.Signals): void => {
+    cleanup();
+    process.off("SIGINT", onSignal);
+    process.off("SIGTERM", onSignal);
+    process.kill(process.pid, signal);
+  };
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+  try {
+    // One detached worktree of HEAD per repo of the workspace; a sibling with no commit is left out.
+    const repos = paths.workspace.repos.some((r) => r.name === paths.repo)
+      ? paths.workspace.repos
+      : [...paths.workspace.repos, { name: paths.repo, root: paths.root }];
+    const mapped: { name: string; root: string }[] = [];
+    let own: string | undefined;
+    for (const [i, r] of repos.entries()) {
+      const mine = r.name === paths.repo;
+      if (!mine && gitIn(r.root, ["rev-parse", "--verify", "--quiet", "HEAD"]).status !== 0) continue;
+      const dir = path.join(tmp, `repo${i}`);
+      const filters = filterNames(r.root).flatMap((n) => [
+        "-c",
+        `filter.${n}.smudge=`,
+        "-c",
+        `filter.${n}.process=`,
+        "-c",
+        `filter.${n}.required=false`,
+      ]);
+      const add = gitIn(r.root, [...filters, "worktree", "add", "--detach", "--quiet", dir, "HEAD"], {
+        ...process.env,
+        GIT_LFS_SKIP_SMUDGE: "1",
+      });
+      if (add.status !== 0) {
+        if (mine) throw new Error(`cannot check out HEAD to build the main snapshot: ${add.stderr.trim()}`);
+        continue;
+      }
+      added.push({ root: r.root, dir });
+      const root = fs.realpathSync(dir);
+      mapped.push({ name: r.name, root });
+      if (mine) own = root;
+    }
+    if (own === undefined) throw new Error("cannot check out HEAD to build the main snapshot");
+    const dataDir = path.join(tmp, "data");
+    const tmpPaths: GantryPaths = {
+      ...paths,
+      root: own,
+      workspace: { file: paths.workspace.file, repos: mapped },
+      dataDir,
+      dbPath: path.join(dataDir, "gantry.db"),
+      overlayPath: path.join(dataDir, "overlay.db"),
+      configPath: path.join(dataDir, "config.json"),
+      catalogDir: path.join(dataDir, "catalog"),
+      logsDir: path.join(dataDir, "logs"),
+    };
+    ensureDataDir(tmpPaths);
+    if (fs.existsSync(paths.configPath)) fs.copyFileSync(paths.configPath, tmpPaths.configPath);
+    // Precise mode: the SCIP file is the user's, found from the user's checkout; the temp checkout is fresh, so file
+    // times say nothing about it.
+    const precise = loadConfig(tmpPaths).precise?.scip;
+    await indexRepo(tmpPaths, {
+      layer: "main",
+      scipIgnoreMtime: true,
+      ...(precise === undefined ? {} : { scip: path.resolve(paths.root, precise) }),
+    });
+    const store = openStore(tmpPaths.dbPath, { overlayPath: tmpPaths.overlayPath, repo: tmpPaths.repo });
+    try {
+      return buildMainSnapshotChecked(store, tmpPaths);
+    } finally {
+      store.close();
+    }
+  } finally {
+    process.off("SIGINT", onSignal);
+    process.off("SIGTERM", onSignal);
+    cleanup();
+  }
+}
+
 /** At most 200 UTF-16 units (the schema counts those), never splitting a surrogate pair. */
 function cutLabel(s: string, max = 200): string {
   let out = "";
@@ -124,11 +311,11 @@ export function buildMainSnapshotChecked(
     .filter((w) => inRepo(w.id, repo))
     .map((w) => ({ id: w.id, name: w.name, path: w.dir }))
     .sort(byId);
-  const files = store.effectiveFiles().filter((f) => inRepo(f.id, repo));
+  const files = store.mainFiles().filter((f) => inRepo(f.id, repo));
   const filePath = new Map(files.map((f) => [f.id, f.path]));
   const fileWorkspace = new Map(files.map((f) => [f.id, f.workspaceId ?? rootWorkspace]));
   const symbols = store
-    .effectiveSymbols()
+    .mainSymbols()
     .filter((s) => fileWorkspace.has(s.fileId))
     .map((s) => ({
       id: s.id,
@@ -146,13 +333,13 @@ export function buildMainSnapshotChecked(
     .sort(byId);
   // An edge belongs to the repo of its source. Its target may be another repo's node or an external package (`ext:react`).
   const edges = store
-    .effectiveEdges()
+    .mainEdges()
     .filter((e) => e.kind !== "similar_to" && inRepo(e.src, repo))
     .map((e) => ({ from: e.src, to: e.dst, kind: e.kind }))
     .sort((a, b) => cmp(a.from, b.from) || cmp(a.to, b.to) || cmp(a.kind, b.kind));
   let heldBack = 0;
   const adapterNodes = store
-    .effectiveAdapterNodes()
+    .mainAdapterNodes()
     .filter((n) => inRepo(n.id, repo))
     .map((n) => {
       // The control check runs on the raw label: trimming first would drop a leading or trailing line break unseen.

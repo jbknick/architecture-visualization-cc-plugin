@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { gunzipSync } from "node:zlib";
 import {
   buildChangeSet,
-  buildMainSnapshotChecked,
+  buildMainSnapshotOfHead,
   type DryRunPayload,
   ensureDataDir,
   GantryError,
@@ -434,22 +434,23 @@ interface LoadedRecords {
 /** The records of a main snapshot or a change set, from the index by the payload builders. The one place they are built. */
 async function loadRecords(ctx: UploadContext, opts: UploadOptions, a: PrArgs): Promise<LoadedRecords> {
   const repo = ctx.paths.repo;
+  if (a.pr === undefined) {
+    // The main snapshot never comes from the user's own index: it is built from a fresh index of HEAD.
+    const built = await buildMainSnapshotOfHead(ctx.paths);
+    const sha = built.snapshot.sha;
+    return {
+      records: snapshotRecords(built.snapshot),
+      warnings: built.warnings,
+      sha,
+      targetId: "main",
+      announce: `Uploading main snapshot for ${repo} (${sha.slice(0, 7)})...`,
+    };
+  }
   resetStaleStore(ctx.paths);
   ensureDataDir(ctx.paths);
   await rebuildIndex(ctx.paths);
   const store = openStore(ctx.paths.dbPath, { overlayPath: ctx.paths.overlayPath, repo });
   try {
-    if (a.pr === undefined) {
-      const built = buildMainSnapshotChecked(store, ctx.paths);
-      const sha = built.snapshot.sha;
-      return {
-        records: snapshotRecords(built.snapshot),
-        warnings: built.warnings,
-        sha,
-        targetId: "main",
-        announce: `Uploading main snapshot for ${repo} (${sha.slice(0, 7)})...`,
-      };
-    }
     const title = pick(opts.title, ctx.env, "GANTRY_PR_TITLE");
     const createdAt = pick(opts.createdAt, ctx.env, "GANTRY_PR_CREATED_AT");
     const built = await buildChangeSet(store, ctx.paths, {

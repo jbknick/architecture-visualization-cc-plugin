@@ -1,5 +1,13 @@
 import { spawn } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import net from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -774,6 +782,27 @@ const NO_TEAM = {
 
 describe("gantry upload --dry-run", () => {
   const DRY_LINE = "dry run: nothing was sent\n";
+
+  it("a dirty working tree changes nothing in the main body: edits, untracked files and an untracked package", async () => {
+    const clean = await upload({ dryRun: true, forceMain: true }, { env: NO_TEAM });
+    expect(clean.code).toBe(0);
+    const slug = join(fx.dir, "packages/utils/src/slug.ts");
+    const original = readFileSync(slug, "utf8");
+    const extra = [join(fx.dir, "packages/utils/src/untracked-only.ts"), join(fx.dir, "packages/ghost")];
+    try {
+      writeFileSync(slug, `${original}\nexport function uncommittedSecretName(): number {\n  return 1;\n}\n`);
+      writeFileSync(extra[0] as string, "export const neverCommitted = 1;\n");
+      mkdirSync(extra[1] as string);
+      writeFileSync(join(extra[1] as string, "package.json"), '{ "name": "@acme/ghost" }\n');
+      const dirty = await upload({ dryRun: true, forceMain: true }, { env: NO_TEAM });
+      expect(dirty.code).toBe(0);
+      expect(dirty.out).not.toMatch(/uncommittedSecretName|untracked-only|ghost/);
+      expect(dirty.out).toBe(clean.out);
+    } finally {
+      writeFileSync(slug, original);
+      for (const f of extra) rmSync(f, { recursive: true, force: true });
+    }
+  });
 
   it("dry run prints the begin body and each part exactly as the fake server receives them from a real upload", async () => {
     const real = await upload({});

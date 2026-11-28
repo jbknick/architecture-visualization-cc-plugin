@@ -1,8 +1,17 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { decodePart, splitIntoParts } from "@gantry/protocol";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { rebuildIndex, refreshWorking } from "../heal/index.js";
 import { dumpGraph, indexRepo } from "../indexer.js";
 import { type GantryPaths, resolvePaths } from "../paths/index.js";
 import type { ChangeConsumers, Consumer, HubEntry } from "../review/consumers.js";
@@ -11,6 +20,7 @@ import {
   buildChangeSet,
   buildMainSnapshot,
   buildMainSnapshotChecked,
+  buildMainSnapshotOfHead,
   changeSetRecords,
   cutNodes,
   cutRadius,
@@ -279,7 +289,7 @@ describe("cutNodes", () => {
 describe("adapter labels", () => {
   const patched = (label: string): Store =>
     Object.create(store, {
-      effectiveAdapterNodes: {
+      mainAdapterNodes: {
         value: () => [
           {
             id: "route:fixture/pnpm-turbo:@acme/web:GET /x",
@@ -448,5 +458,138 @@ describe("the radius", () => {
   it("sends no total and no warning when nothing is cut", () => {
     const merged = [{ id: "a", hop: 1, tier: "direct" as const, via_hub: false }];
     expect(cutRadius({ merged, unlisted: 0 })).toEqual({ radius: merged });
+  });
+});
+
+describe("a main snapshot in a dirty working tree", () => {
+  interface Env {
+    fx: UploadFixture;
+    paths: GantryPaths;
+    data: string;
+  }
+  const open: Env[] = [];
+  async function make(): Promise<Env> {
+    const f = await materializeUploadFixture("pnpm-turbo", {
+      dirName: "pnpm-turbo",
+      origin: "https://github.com/fixture/pnpm-turbo.git",
+    });
+    const d = mkdtempSync(join(tmpdir(), "gantry-data-dirty-"));
+    const e = {
+      fx: f,
+      data: d,
+      paths: resolvePaths(f.dir, { HOME: join(d, "home"), CLAUDE_PLUGIN_DATA: d }),
+    };
+    open.push(e);
+    return e;
+  }
+  afterAll(async () => {
+    for (const e of open) {
+      rmSync(e.data, { recursive: true, force: true });
+      await e.fx.cleanup();
+    }
+  });
+  const append = (e: Env, rel: string, text: string) => {
+    const file = join(e.fx.dir, rel);
+    writeFileSync(file, readFileSync(file, "utf8") + text);
+  };
+  /** What `gantry upload` sends as the body of a main upload. */
+  const body = async (e: Env): Promise<string> =>
+    JSON.stringify((await buildMainSnapshotOfHead(e.paths)).snapshot);
+  const dirtyTree = (e: Env) => {
+    append(
+      e,
+      "packages/utils/src/slug.ts",
+      "\nexport function uncommittedSecretName(): number {\n  return 1;\n}\n",
+    );
+    writeFileSync(
+      join(e.fx.dir, "packages/utils/src/untracked-only.ts"),
+      "export const neverCommitted = 1;\n",
+    );
+    rmSync(join(e.fx.dir, "packages/utils/src/date.ts"));
+  };
+  const commitDate = (e: Env) => {
+    append(e, "packages/utils/src/date.ts", "\nexport function laterAdded(): number {\n  return 2;\n}\n");
+    e.fx.git(["add", "packages/utils/src/date.ts"]);
+    e.fx.git(["commit", "-q", "-m", "date"]);
+  };
+  const noLeak = (text: string) => {
+    for (const w of ["uncommittedSecretName", "untracked-only", "neverCommitted", "dirtyCaller", "ghost"]) {
+      expect(text).not.toContain(w);
+    }
+  };
+
+  it("a first index of a dirty tree changes nothing in the body", async () => {
+    const clean = await body(await make());
+    const e = await make();
+    dirtyTree(e);
+    await rebuildIndex(e.paths); // a first index of the user's own store reads the files on disk
+    const text = await body(e);
+    noLeak(text);
+    expect(text).toBe(clean);
+  });
+
+  it("an edit and a deleted file with the working layer filled change nothing in the body", async () => {
+    const clean = await body(await make());
+    const e = await make();
+    await rebuildIndex(e.paths);
+    dirtyTree(e);
+    await refreshWorking(e.paths);
+    append(e, "package.json", "\n");
+    const text = await body(e);
+    noLeak(text);
+    expect(text).toBe(clean);
+  });
+
+  it("a dirty importer of a file changed by a commit stays out of the body", async () => {
+    const c = await make();
+    commitDate(c);
+    const clean = await body(c);
+    const e = await make();
+    await rebuildIndex(e.paths);
+    append(
+      e,
+      "packages/utils/src/time.ts",
+      '\nimport { laterAdded } from "./date";\nexport function dirtyCaller(): number {\n  return laterAdded();\n}\n',
+    );
+    await refreshWorking(e.paths);
+    commitDate(e);
+    await rebuildIndex(e.paths); // the incremental heal re-indexes the importers of date.ts from disk
+    const text = await body(e);
+    noLeak(text);
+    expect(text).toBe(clean);
+  });
+
+  it("an untracked workspace package is not in the body", async () => {
+    const clean = await body(await make());
+    const e = await make();
+    mkdirSync(join(e.fx.dir, "packages/ghost/src"), { recursive: true });
+    writeFileSync(
+      join(e.fx.dir, "packages/ghost/package.json"),
+      '{ "name": "@acme/ghost", "version": "1.0.0" }\n',
+    );
+    writeFileSync(join(e.fx.dir, "packages/ghost/src/index.ts"), "export const ghost = 1;\n");
+    await rebuildIndex(e.paths);
+    const text = await body(e);
+    noLeak(text);
+    expect(text).toBe(clean);
+  });
+
+  it("takes sha from the commit it indexed, and leaves no checkout, worktree or store behind", async () => {
+    const e = await make();
+    const before = e.fx.git(["worktree", "list"]);
+    const scratch = mkdtempSync(join(tmpdir(), "gantry-tmpdir-"));
+    const saved = process.env.TMPDIR;
+    process.env.TMPDIR = scratch; // the temporary checkout is made here, so nothing else can add to it
+    try {
+      const built = await buildMainSnapshotOfHead(e.paths);
+      expect(built.snapshot.sha).toBe(e.fx.git(["rev-parse", "HEAD"]).trim());
+    } finally {
+      if (saved === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = saved;
+    }
+    expect(readdirSync(scratch)).toEqual([]);
+    rmSync(scratch, { recursive: true, force: true });
+    expect(e.fx.git(["worktree", "list"])).toBe(before);
+    expect(existsSync(e.paths.dbPath)).toBe(false); // the user's own store was not created or touched
   });
 });
